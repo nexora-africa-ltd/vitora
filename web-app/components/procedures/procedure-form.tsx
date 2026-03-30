@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,10 +26,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { proceduresApi } from '@/lib/api/procedures';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { useClinics } from '@/lib/hooks/use-clinics';
 import { toast } from '@/lib/hooks/use-toast';
 import type { ProcedureCatalogDetail } from '@/lib/types/procedure';
+
+const PROCEDURE_CLINIC_TYPES = ['PROCEDURE', 'DRESSING', 'INJECTION', 'SURGICAL', 'OT'];
 
 const CATEGORIES = [
   { value: 'MINOR', label: 'Minor Procedure' },
@@ -101,6 +105,8 @@ const procedureFormSchema = z.object({
   // Follow-up
   requires_follow_up: z.boolean().default(false),
   default_follow_up_days: z.coerce.number().min(1).default(7),
+  // Clinic Assignment
+  default_clinics: z.array(z.number()).default([]),
   // Status
   is_active: z.boolean().default(true),
 });
@@ -147,6 +153,7 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
           sha_package_code: procedure.sha_package_code || '',
           requires_follow_up: procedure.requires_follow_up,
           default_follow_up_days: procedure.default_follow_up_days,
+          default_clinics: procedure.default_clinics ?? [],
           is_active: procedure.is_active,
         }
       : {
@@ -176,6 +183,7 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
           sha_package_code: '',
           requires_follow_up: false,
           default_follow_up_days: 7,
+          default_clinics: [],
           is_active: true,
         },
   });
@@ -593,6 +601,9 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
           </CardContent>
         </Card>
 
+        {/* Procedure Rooms / Clinics */}
+        <ClinicAssignmentCard form={form} procedure={procedure} />
+
         {/* Actions */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button
@@ -610,5 +621,99 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
         </div>
       </form>
     </Form>
+  );
+}
+
+// =============================================================================
+// ClinicAssignmentCard — Multi-select for linking clinics to a catalog entry
+// =============================================================================
+
+function ClinicAssignmentCard({
+  form,
+  procedure,
+}: {
+  form: ReturnType<typeof useForm<ProcedureFormValues>>;
+  procedure?: ProcedureCatalogDetail;
+}) {
+  const selectedIds: number[] = form.watch('default_clinics');
+
+  // Fetch PROCEDURE-type clinics
+  const { data: clinicsData } = useClinics({ status: 'ACTIVE', page_size: 100 });
+  const procedureClinics = (clinicsData?.results ?? []).filter((c) =>
+    PROCEDURE_CLINIC_TYPES.includes(c.clinic_type)
+  );
+
+  const selectedClinics = procedureClinics.filter((c) => selectedIds.includes(c.id));
+  const availableClinics = procedureClinics.filter((c) => !selectedIds.includes(c.id));
+
+  const addClinic = (id: number) => {
+    form.setValue('default_clinics', [...selectedIds, id], { shouldDirty: true });
+  };
+
+  const removeClinic = (id: number) => {
+    form.setValue(
+      'default_clinics',
+      selectedIds.filter((cid) => cid !== id),
+      { shouldDirty: true }
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Procedure Rooms</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Clinics where this procedure can be performed. When assigned, scheduling will auto-list available slots from these clinics.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Selected clinics */}
+        {selectedClinics.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {selectedClinics.map((clinic) => (
+              <Badge key={clinic.id} variant="secondary" className="gap-1 pr-1">
+                {clinic.name}
+                <button
+                  type="button"
+                  onClick={() => removeClinic(clinic.id)}
+                  className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+                  aria-label={`Remove ${clinic.name}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Add clinic dropdown */}
+        {availableClinics.length > 0 && (
+          <Select onValueChange={(val) => addClinic(Number(val))}>
+            <SelectTrigger className="w-full sm:w-72">
+              <SelectValue placeholder="Add a procedure room..." />
+            </SelectTrigger>
+            <SelectContent>
+              {availableClinics.map((clinic) => (
+                <SelectItem key={clinic.id} value={String(clinic.id)}>
+                  {clinic.name} ({clinic.clinic_type_display})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {procedureClinics.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No procedure-type clinics have been created. Create a clinic with type Procedure Room, Dressing, Injection Room, Surgical, or OT first.
+          </p>
+        )}
+
+        {selectedIds.length === 0 && procedureClinics.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            No clinics assigned — scheduling for this procedure will be manual (date, time, and location entered by hand).
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
