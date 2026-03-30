@@ -602,6 +602,7 @@ class Encounter(HistoryMixin, models.Model):
         ("NEW_COMPLAINT", "New Complaint"),
         ("FOLLOW_UP", "Follow-up"),
         ("CHRONIC_CARE", "Chronic Care Review"),
+        ("SCHEDULED_PROCEDURE", "Scheduled Procedure"),
         ("PROCEDURE_REVIEW", "Post-Procedure Review"),
         ("REFILL_ONLY", "Medication Refill Only"),
         ("LAB_REVIEW", "Lab Results Review"),

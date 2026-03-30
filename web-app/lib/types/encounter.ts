@@ -284,6 +284,7 @@ export type VisitReason =
   | 'NEW_COMPLAINT'
   | 'FOLLOW_UP'
   | 'CHRONIC_CARE'
+  | 'SCHEDULED_PROCEDURE'
   | 'PROCEDURE_REVIEW'
   | 'REFILL_ONLY'
   | 'LAB_REVIEW'
@@ -295,6 +296,7 @@ export const VISIT_REASON_DISPLAY: Record<VisitReason, string> = {
   NEW_COMPLAINT: 'New Complaint',
   FOLLOW_UP: 'Follow-up',
   CHRONIC_CARE: 'Chronic Care Review',
+  SCHEDULED_PROCEDURE: 'Scheduled Procedure',
   PROCEDURE_REVIEW: 'Post-Procedure Review',
   REFILL_ONLY: 'Medication Refill Only',
   LAB_REVIEW: 'Lab Results Review',
@@ -304,7 +306,7 @@ export const VISIT_REASON_DISPLAY: Record<VisitReason, string> = {
 };
 
 // Visit reasons that can skip triage
-export const SKIP_TRIAGE_REASONS: VisitReason[] = ['LAB_REVIEW', 'REFILL_ONLY'];
+export const SKIP_TRIAGE_REASONS: VisitReason[] = ['LAB_REVIEW', 'REFILL_ONLY', 'SCHEDULED_PROCEDURE'];
 
 // Encounter state transition request/response
 export interface EncounterTransitionRequest {

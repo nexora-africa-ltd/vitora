@@ -2,18 +2,27 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { PlayCircle, User, Calendar, Stethoscope, Eye } from 'lucide-react';
+import {
+  PlayCircle, User, Calendar, Stethoscope, Eye,
+  ClipboardList, FileText, Beaker, ScanLine, Pill, Scissors,
+  HeartHandshake, ArrowRightLeft, ScrollText, ShieldCheck,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterImagingOrders } from '@/lib/hooks/use-imaging';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
+import { useEncounterProcedureOrders } from '@/lib/hooks/use-procedures';
 import { useEncounterReferrals } from '@/lib/hooks/use-referrals';
 import { useLabEncounterSocket } from '@/lib/hooks';
 import {
@@ -40,6 +49,7 @@ import { ClinicalSnapshotBanner } from '@/components/encounters/clinical-snapsho
 import { EncounterAuditTrail } from '@/components/encounters/encounter-audit-trail';
 import { EncounterAlliedHealthContent } from '@/components/encounters/encounter-allied-health-content';
 import { EncounterReferralsContent } from '@/components/encounters/encounter-referrals-content';
+import { EncounterProcedureOrders } from '@/components/encounters/encounter-procedure-orders';
 import { EncounterChiefComplaintCard } from '@/components/encounters/encounter-chief-complaint-card';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import Link from 'next/link';
@@ -119,6 +129,7 @@ export default function EncounterDetailPage() {
   const { data: labOrders } = useEncounterLabOrders(encounterId);
   const { data: imagingOrders } = useEncounterImagingOrders(encounterId);
   const { data: prescriptions } = useEncounterPrescriptions(encounterId);
+  const { data: procedureOrdersData } = useEncounterProcedureOrders(encounterId);
 
   // Allied health data (for tab badge count)
   const { data: ahPhysio } = useEncounterPhysioOrders(encounterId);
@@ -136,6 +147,11 @@ export default function EncounterDetailPage() {
   // Referrals data (for tab badge count)
   const { data: referralsList } = useEncounterReferrals(encounterId);
   const referralsCount = referralsList?.length || 0;
+
+  // Computed counts for grouped tabs
+  const procedureOrdersCount = procedureOrdersData?.results?.length || 0;
+  const ordersCount = (labOrders?.length || 0) + (imagingOrders?.length || 0) + (prescriptions?.length || 0) + procedureOrdersCount;
+  const servicesCount = alliedHealthCount + referralsCount;
 
   // Real-time WebSocket subscription for lab result updates
   // Automatically invalidates lab orders cache when results are verified
@@ -398,28 +414,52 @@ export default function EncounterDetailPage() {
         onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
       />
 
-      {/* Tabs */}
+      {/* Tabs — grouped: SOAP | Assessment & Dx | Orders | Referrals | History */}
       <Tabs defaultValue="soap" className="space-y-4">
+        <TooltipProvider delayDuration={400}>
         <TabsList className="flex flex-wrap h-auto gap-1 p-1 justify-start">
-          <TabsTrigger value="soap" className="text-xs sm:text-sm">📋 SOAP</TabsTrigger>
-          <TabsTrigger value="assessment" className="text-xs sm:text-sm">Assessment</TabsTrigger>
-          <TabsTrigger value="diagnoses" className="text-xs sm:text-sm">Dx ({diagnoses?.length || 0})</TabsTrigger>
-          <TabsTrigger value="treatment" className="text-xs sm:text-sm">Treatment</TabsTrigger>
-          <TabsTrigger value="lab" className="text-xs sm:text-sm">Lab ({labOrders?.length || 0})</TabsTrigger>
-          <TabsTrigger value="imaging" className="text-xs sm:text-sm">Imaging ({imagingOrders?.length || 0})</TabsTrigger>
-          <TabsTrigger value="pharmacy" className="text-xs sm:text-sm">Rx ({prescriptions?.length || 0})</TabsTrigger>
-          <TabsTrigger value="allied-health" className="text-xs sm:text-sm">
-            <span className="sm:hidden">AH{alliedHealthCount > 0 ? ` (${alliedHealthCount})` : ''}</span>
-            <span className="hidden sm:inline">Allied Health{alliedHealthCount > 0 ? ` (${alliedHealthCount})` : ''}</span>
-          </TabsTrigger>
-          <TabsTrigger value="referrals" className="text-xs sm:text-sm">
-            <span className="sm:hidden">Ref{referralsCount > 0 ? ` (${referralsCount})` : ''}</span>
-            <span className="hidden sm:inline">Referrals{referralsCount > 0 ? ` (${referralsCount})` : ''}</span>
-          </TabsTrigger>
-          <TabsTrigger value="history" className="text-xs sm:text-sm">Hx</TabsTrigger>
-          <TabsTrigger value="audit" className="text-xs sm:text-sm">Audit</TabsTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TabsTrigger value="soap" className="text-xs sm:text-sm">📋 SOAP</TabsTrigger>
+            </TooltipTrigger>
+            <TooltipContent><p>Subjective, Objective, Assessment & Plan summary</p></TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TabsTrigger value="assessment-dx" className="text-xs sm:text-sm">
+                <span className="sm:hidden">A&Dx ({diagnoses?.length || 0})</span>
+                <span className="hidden sm:inline">Assessment & Dx ({diagnoses?.length || 0})</span>
+              </TabsTrigger>
+            </TooltipTrigger>
+            <TooltipContent><p>HPI, physical exam, assessment, diagnoses & treatment plan</p></TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TabsTrigger value="orders" className="text-xs sm:text-sm">
+                Orders ({ordersCount})
+              </TabsTrigger>
+            </TooltipTrigger>
+            <TooltipContent><p>Lab orders, imaging requests, prescriptions & procedures</p></TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TabsTrigger value="referrals" className="text-xs sm:text-sm">
+                <span className="sm:hidden">Ref ({servicesCount})</span>
+                <span className="hidden sm:inline">Referrals ({servicesCount})</span>
+              </TabsTrigger>
+            </TooltipTrigger>
+            <TooltipContent><p>Allied health services & internal/external referrals</p></TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TabsTrigger value="history" className="text-xs sm:text-sm">History</TabsTrigger>
+            </TooltipTrigger>
+            <TooltipContent><p>Medical history & audit trail</p></TooltipContent>
+          </Tooltip>
         </TabsList>
+        </TooltipProvider>
 
+        {/* SOAP Summary */}
         <TabsContent value="soap">
           {formData && (
             <SOAPNoteSummary
@@ -436,108 +476,243 @@ export default function EncounterDetailPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="assessment">
-          <Card>
-            <CardContent className="pt-6 space-y-6">
-              {encounter.history_of_present_illness && (
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                    History of Present Illness
-                  </h4>
-                  <p className="text-sm">{encounter.history_of_present_illness}</p>
+        {/* Assessment & Diagnoses — Clinical Assessment, Dx, Treatment Plan */}
+        <TabsContent value="assessment-dx">
+          <Accordion type="multiple" defaultValue={['clinical-assessment', 'diagnoses', 'treatment']}>
+            <AccordionItem value="clinical-assessment">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  <span>Clinical Assessment</span>
                 </div>
-              )}
-              {encounter.physical_examination && (
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                    Physical Examination
-                  </h4>
-                  <p className="text-sm">{encounter.physical_examination}</p>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-6">
+                  {encounter.history_of_present_illness && (
+                    <div>
+                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                        History of Present Illness
+                      </h4>
+                      <p className="text-sm">{encounter.history_of_present_illness}</p>
+                    </div>
+                  )}
+                  {encounter.physical_examination && (
+                    <div>
+                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                        Physical Examination
+                      </h4>
+                      <p className="text-sm">{encounter.physical_examination}</p>
+                    </div>
+                  )}
+                  {encounter.assessment && (
+                    <div>
+                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                        Assessment
+                      </h4>
+                      <p className="text-sm">{encounter.assessment}</p>
+                    </div>
+                  )}
+                  {treatmentPlan?.clinical_notes && (
+                    <div>
+                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                        Plan
+                      </h4>
+                      <p className="text-sm">{treatmentPlan.clinical_notes}</p>
+                    </div>
+                  )}
+                  {!encounter.history_of_present_illness &&
+                    !encounter.physical_examination &&
+                    !encounter.assessment &&
+                    !treatmentPlan?.clinical_notes && (
+                      <p className="text-center text-muted-foreground py-4">
+                        No assessment details recorded.
+                      </p>
+                    )}
                 </div>
-              )}
-              {encounter.assessment && (
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                    Assessment
-                  </h4>
-                  <p className="text-sm">{encounter.assessment}</p>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="diagnoses">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Stethoscope className="h-4 w-4 text-muted-foreground" />
+                  <span>Diagnoses</span>
+                  {(diagnoses?.length || 0) > 0 && (
+                    <Badge variant="secondary" className="text-xs">{diagnoses?.length}</Badge>
+                  )}
                 </div>
-              )}
-              {treatmentPlan?.clinical_notes && (
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                    Plan
-                  </h4>
-                  <p className="text-sm">{treatmentPlan.clinical_notes}</p>
+              </AccordionTrigger>
+              <AccordionContent>
+                <DiagnosesList diagnoses={diagnoses || []} />
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="treatment" className="border-b-0">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span>Treatment Plan</span>
                 </div>
-              )}
-              {!encounter.history_of_present_illness &&
-                !encounter.physical_examination &&
-                !encounter.assessment &&
-                !treatmentPlan?.clinical_notes && (
-                  <p className="text-center text-muted-foreground py-4">
-                    No assessment details recorded.
-                  </p>
-                )}
-            </CardContent>
-          </Card>
+              </AccordionTrigger>
+              <AccordionContent>
+                <TreatmentPlanView treatmentPlan={treatmentPlan} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
 
-        <TabsContent value="diagnoses">
-          <DiagnosesList diagnoses={diagnoses || []} />
+        {/* Orders — Lab, Imaging, Prescriptions, Procedures */}
+        <TabsContent value="orders">
+          <Accordion type="multiple" defaultValue={['lab', 'imaging', 'prescriptions', 'procedures']}>
+            <AccordionItem value="lab">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Beaker className="h-4 w-4 text-muted-foreground" />
+                  <span>Lab Orders</span>
+                  {(labOrders?.length || 0) > 0 && (
+                    <Badge variant="secondary" className="text-xs">{labOrders?.length}</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <EncounterLabOrders
+                  encounterId={encounterId}
+                  patientId={encounter.patient}
+                  disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+                />
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="imaging">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <ScanLine className="h-4 w-4 text-muted-foreground" />
+                  <span>Imaging Orders</span>
+                  {(imagingOrders?.length || 0) > 0 && (
+                    <Badge variant="secondary" className="text-xs">{imagingOrders?.length}</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <EncounterImagingOrders
+                  encounterId={encounterId}
+                  patientId={encounter.patient}
+                  disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+                />
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="prescriptions">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Pill className="h-4 w-4 text-muted-foreground" />
+                  <span>Prescriptions</span>
+                  {(prescriptions?.length || 0) > 0 && (
+                    <Badge variant="secondary" className="text-xs">{prescriptions?.length}</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <EncounterPrescriptions
+                  encounterId={encounterId}
+                  patientId={encounter.patient}
+                  disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+                />
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="procedures" className="border-b-0">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Scissors className="h-4 w-4 text-muted-foreground" />
+                  <span>Procedures</span>
+                  {procedureOrdersCount > 0 && (
+                    <Badge variant="secondary" className="text-xs">{procedureOrdersCount}</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <EncounterProcedureOrders
+                  encounterId={encounterId}
+                  patientId={encounter.patient}
+                  disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
 
-        <TabsContent value="treatment">
-          <TreatmentPlanView treatmentPlan={treatmentPlan} />
-        </TabsContent>
-
-        <TabsContent value="lab">
-          <EncounterLabOrders
-            encounterId={encounterId}
-            patientId={encounter.patient}
-            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
-          />
-        </TabsContent>
-
-        <TabsContent value="imaging">
-          <EncounterImagingOrders
-            encounterId={encounterId}
-            patientId={encounter.patient}
-            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
-          />
-        </TabsContent>
-
-        <TabsContent value="pharmacy">
-          <EncounterPrescriptions
-            encounterId={encounterId}
-            patientId={encounter.patient}
-            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
-          />
-        </TabsContent>
-
-        <TabsContent value="allied-health">
-          <EncounterAlliedHealthContent
-            encounterId={encounterId}
-            patientId={encounter.patient}
-            showActions={false}
-            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
-          />
-        </TabsContent>
-
+        {/* Referrals — Allied Health + External/Internal Referrals */}
         <TabsContent value="referrals">
-          <EncounterReferralsContent
-            encounterId={encounterId}
-            patientId={encounter.patient}
-            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
-          />
+          <Accordion type="multiple" defaultValue={['allied-health', 'referrals']}>
+            <AccordionItem value="allied-health">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <HeartHandshake className="h-4 w-4 text-muted-foreground" />
+                  <span>Allied Health</span>
+                  {alliedHealthCount > 0 && (
+                    <Badge variant="secondary" className="text-xs">{alliedHealthCount}</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <EncounterAlliedHealthContent
+                  encounterId={encounterId}
+                  patientId={encounter.patient}
+                  showActions={false}
+                  disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+                />
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="referrals" className="border-b-0">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
+                  <span>Referrals</span>
+                  {referralsCount > 0 && (
+                    <Badge variant="secondary" className="text-xs">{referralsCount}</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <EncounterReferralsContent
+                  encounterId={encounterId}
+                  patientId={encounter.patient}
+                  disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
 
+        {/* History & Audit */}
         <TabsContent value="history">
-          <MedicalHistoryView encounter={encounter} />
-        </TabsContent>
+          <Accordion type="multiple" defaultValue={['medical-history', 'audit']}>
+            <AccordionItem value="medical-history">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <ScrollText className="h-4 w-4 text-muted-foreground" />
+                  <span>Medical History</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <MedicalHistoryView encounter={encounter} />
+              </AccordionContent>
+            </AccordionItem>
 
-        <TabsContent value="audit">
-          <EncounterAuditTrail encounterId={encounterId} />
+            <AccordionItem value="audit" className="border-b-0">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                  <span>Audit Trail</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <EncounterAuditTrail encounterId={encounterId} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
       </Tabs>
     </div>

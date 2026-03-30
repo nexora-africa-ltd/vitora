@@ -178,6 +178,7 @@ export const VISIT_REASON_OPTIONS: { value: VisitReason; label: string; skipTria
   { value: 'FOLLOW_UP', label: 'Follow-up' },
   { value: 'EMERGENCY', label: 'Emergency', emergency: true },
   { value: 'CHRONIC_CARE', label: 'Chronic Care Review' },
+  { value: 'SCHEDULED_PROCEDURE', label: 'Scheduled Procedure', skipTriage: true },
   { value: 'PROCEDURE_REVIEW', label: 'Post-Procedure Review' },
   { value: 'REFILL_ONLY', label: 'Medication Refill Only', skipTriage: true },
   { value: 'LAB_REVIEW', label: 'Lab Results Review', skipTriage: true },
