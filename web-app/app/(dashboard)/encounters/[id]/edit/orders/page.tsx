@@ -10,7 +10,7 @@
 
 import { useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Beaker, ScanLine, Pill } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Beaker, ScanLine, Pill, Syringe } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -19,11 +19,14 @@ import { PageHeader } from '@/components/shared/page-header';
 import { EncounterLabOrdersContent } from '@/components/encounters/encounter-lab-orders';
 import { EncounterImagingOrdersContent } from '@/components/encounters/encounter-imaging-orders';
 import { EncounterPrescriptionsContent } from '@/components/encounters/encounter-prescriptions';
+import { EncounterProcedureOrders } from '@/components/encounters/encounter-procedure-orders';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterEditStore } from '@/lib/stores/encounter-edit-store';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterImagingOrders } from '@/lib/hooks/use-imaging';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
+import { useQuery } from '@tanstack/react-query';
+import { proceduresApi } from '@/lib/api/procedures';
 import { AlertTriangle } from 'lucide-react';
 
 export default function EncounterEditOrdersPage() {
@@ -38,12 +41,18 @@ export default function EncounterEditOrdersPage() {
   const { data: labOrders } = useEncounterLabOrders(encounterId);
   const { data: imagingOrders } = useEncounterImagingOrders(encounterId);
   const { data: prescriptions } = useEncounterPrescriptions(encounterId);
+  const { data: procOrdersData } = useQuery({
+    queryKey: ['procedure-orders', { encounter: encounterId }],
+    queryFn: () => proceduresApi.listOrders({ encounter: String(encounterId), page_size: '50' }),
+    enabled: !!encounterId,
+  });
 
   const session = getSession(encounterId);
 
   const labCount = labOrders?.length || 0;
   const imagingCount = imagingOrders?.length || 0;
   const rxCount = prescriptions?.length || 0;
+  const procCount = procOrdersData?.results?.length || 0;
 
   // Check if encounter is editable
   const isEditable = encounter?.status !== 'CLOSED' && encounter?.status !== 'CANCELLED';
@@ -86,8 +95,8 @@ export default function EncounterEditOrdersPage() {
       <Card>
         <CardContent className="pt-6">
           <Tabs defaultValue="lab" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="lab" className="gap-2">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="lab" className="gap-1.5">
                 <Beaker className="h-4 w-4" />
                 <span className="hidden sm:inline">Lab</span>
                 {labCount > 0 && (
@@ -96,7 +105,7 @@ export default function EncounterEditOrdersPage() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="imaging" className="gap-2">
+              <TabsTrigger value="imaging" className="gap-1.5">
                 <ScanLine className="h-4 w-4" />
                 <span className="hidden sm:inline">Imaging</span>
                 {imagingCount > 0 && (
@@ -105,12 +114,21 @@ export default function EncounterEditOrdersPage() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="pharmacy" className="gap-2">
+              <TabsTrigger value="pharmacy" className="gap-1.5">
                 <Pill className="h-4 w-4" />
                 <span className="hidden sm:inline">Rx</span>
                 {rxCount > 0 && (
                   <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
                     {rxCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="procedures" className="gap-1.5">
+                <Syringe className="h-4 w-4" />
+                <span className="hidden sm:inline">Proc</span>
+                {procCount > 0 && (
+                  <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                    {procCount}
                   </span>
                 )}
               </TabsTrigger>
@@ -140,6 +158,14 @@ export default function EncounterEditOrdersPage() {
                 disabled={!isEditable}
               />
             </TabsContent>
+
+            <TabsContent value="procedures">
+              <EncounterProcedureOrders
+                encounterId={encounterId}
+                patientId={session.patientId}
+                disabled={!isEditable}
+              />
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
@@ -149,7 +175,7 @@ export default function EncounterEditOrdersPage() {
         <CardContent className="py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
             <p className="text-sm text-muted-foreground">
-              Step 5 of 7 — {labCount + imagingCount + rxCount} orders placed
+              Step 5 of 7 — {labCount + imagingCount + rxCount + procCount} orders placed
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handlePrev}>

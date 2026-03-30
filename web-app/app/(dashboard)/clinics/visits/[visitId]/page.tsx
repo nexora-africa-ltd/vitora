@@ -27,6 +27,7 @@ import {
   FileText,
   ArrowRight,
 } from 'lucide-react';
+import { EncounterProcedureOrders } from '@/components/encounters/encounter-procedure-orders';
 import {
   useClinicVisit,
   useCallPatient,
@@ -326,6 +327,13 @@ export default function ClinicVisitDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Procedure Orders */}
+      <EncounterProcedureOrders
+        clinicVisitId={visit.id}
+        patientId={visit.patient.id}
+        disabled={visit.status === 'COMPLETED' || visit.status === 'CANCELLED' || visit.status === 'NO_SHOW'}
+      />
 
       {/* Actions */}
       <Card>

@@ -29,5 +29,8 @@ class ProcedureOrderFilter(django_filters.FilterSet):
             "status": ["exact"],
             "priority": ["exact"],
             "patient": ["exact"],
+            "encounter": ["exact"],
+            "clinic_visit": ["exact"],
+            "admission": ["exact"],
             "facility": ["exact"],
         }

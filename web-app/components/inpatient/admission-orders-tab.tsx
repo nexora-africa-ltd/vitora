@@ -6,12 +6,15 @@
 'use client';
 
 import Link from 'next/link';
-import { Beaker, ImageIcon, Pill, Clock, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react';
+import { Beaker, ImageIcon, Pill, Syringe, Clock, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAdmissionOrders } from '@/lib/hooks/use-inpatient';
+import { useQuery } from '@tanstack/react-query';
+import { proceduresApi } from '@/lib/api/procedures';
+import { PROCEDURE_STATUS_COLORS, PROCEDURE_STATUS_LABELS, PROCEDURE_PRIORITY_COLORS } from '@/lib/types/procedure';
 import { formatDate } from '@/lib/utils/format';
 import type { LabOrder, LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 import type { ImagingOrder, ImagingOrderStatus } from '@/lib/types/imaging';
@@ -68,6 +71,12 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; color: string }> = {
 
 export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActive = true }: AdmissionOrdersTabProps) {
   const { data: orders, isLoading, error } = useAdmissionOrders(admissionId);
+  const { data: procOrdersData } = useQuery({
+    queryKey: ['procedure-orders', { admission: admissionId }],
+    queryFn: () => proceduresApi.listOrders({ admission: String(admissionId), page_size: '50' }),
+    enabled: !!admissionId,
+  });
+  const procOrders = (procOrdersData?.results ?? []) as import('@/lib/types/procedure').ProcedureOrderListItem[];
 
   if (isLoading) {
     return <OrdersLoadingSkeleton />;
@@ -85,7 +94,7 @@ export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActi
   const labOrders = orders?.lab_orders ?? [];
   const imagingOrders = orders?.imaging_orders ?? [];
   const prescriptions = orders?.prescriptions ?? [];
-  const totalOrders = labOrders.length + imagingOrders.length + prescriptions.length;
+  const totalOrders = labOrders.length + imagingOrders.length + prescriptions.length + procOrders.length;
 
   return (
     <div className="space-y-4">
@@ -113,6 +122,13 @@ export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActi
               <span className="sm:hidden">Rx</span>
             </Link>
           </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/procedures/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`}>
+              <Syringe className="h-4 w-4 mr-1.5" />
+              <span className="hidden sm:inline">New Procedure</span>
+              <span className="sm:hidden">Proc</span>
+            </Link>
+          </Button>
         </div>
       )}
 
@@ -124,7 +140,7 @@ export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActi
           <p className="text-sm text-muted-foreground">No orders placed yet</p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {/* Lab Orders Card */}
           <OrdersSummaryCard
             icon={Beaker}
@@ -172,6 +188,32 @@ export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActi
               statusConfig: RX_STATUS_CONFIG[rx.status],
               date: rx.prescribed_date,
               href: `/pharmacy/prescriptions/${rx.id}`,
+            }))}
+          />
+
+          {/* Procedure Orders Card */}
+          <OrdersSummaryCard
+            icon={Syringe}
+            title="Procedures"
+            count={procOrders.length}
+            items={procOrders.map((o) => ({
+              id: o.id,
+              label: o.order_number,
+              sublabel: o.procedure_name,
+              status: o.status,
+              statusConfig: {
+                label: PROCEDURE_STATUS_LABELS[o.status as keyof typeof PROCEDURE_STATUS_LABELS] ?? o.status,
+                color: PROCEDURE_STATUS_COLORS[o.status as keyof typeof PROCEDURE_STATUS_COLORS] ?? 'bg-gray-100 text-gray-800',
+                icon: Clock,
+              },
+              ...(o.priority !== 'ROUTINE' ? {
+                priorityConfig: {
+                  label: o.priority,
+                  color: PROCEDURE_PRIORITY_COLORS[o.priority as keyof typeof PROCEDURE_PRIORITY_COLORS] ?? 'bg-gray-100 text-gray-700',
+                },
+              } : {}),
+              date: o.ordered_at,
+              href: `/procedures/orders/${o.id}`,
             }))}
           />
         </div>
