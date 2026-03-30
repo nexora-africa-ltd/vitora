@@ -92,6 +92,13 @@ export interface AlliedHealthStats {
   open_cases: number;
 }
 
+export interface ProceduresStats {
+  scheduled_today: number;
+  pending_consent: number;
+  in_progress: number;
+  completed_today: number;
+}
+
 export interface OrgAdminStats {
   total_facilities: number;
   active_facilities: number;
@@ -115,5 +122,6 @@ export interface DashboardStats {
   mch: MCHStats;
   theatre: TheatreStats;
   allied_health: AlliedHealthStats;
+  procedures: ProceduresStats;
   org_admin?: OrgAdminStats;
 }

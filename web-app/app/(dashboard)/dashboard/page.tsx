@@ -30,6 +30,7 @@ import {
   Scissors,
   HeartHandshake,
   Building2,
+  Syringe,
 } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
@@ -42,6 +43,7 @@ import { useEmergencySocket } from '@/lib/hooks/use-websocket';
 import { useIsSupervisor, useUser } from '@/lib/auth';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
 import { getClinicianHonorific } from '@/lib/utils/clinician-role';
 
 type DashboardStatCard = {
@@ -156,9 +158,11 @@ export default function DashboardPage() {
   const canViewEmergency = canAccessModule('emergency');
   const canViewMCH = canAccessModule('mch');
   const canViewTheatre = canAccessModule('theatre');
+  const canViewProcedures = canAccessModule('procedures');
   const canViewAlliedHealth = canAccessModule('allied_health');
   const canViewAdmin = canAccessModule('admin');
   const { data: staffProfile } = useMyStaffProfile();
+  const { hasModule } = useFacility();
   const { refresh, isRefreshing } = usePageRefresh();
 
   // Triage queue metrics
@@ -327,7 +331,7 @@ export default function DashboardPage() {
       variant: ((stats?.mch.high_risk ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
     }] : []),
-    ...(canViewTheatre ? [{
+    ...(canViewTheatre && hasModule('theatre') ? [{
       title: 'Theatre Today',
       value: formatNumber(stats?.theatre.scheduled_today ?? 0),
       meta: `${formatNumber(stats?.theatre.in_progress ?? 0)} in progress`,
@@ -335,6 +339,24 @@ export default function DashboardPage() {
       icon: Scissors,
       href: '/theatre',
       ariaLabel: 'Open theatre schedule',
+      showTrendIndicator: false,
+    }] : []),
+    ...(canViewProcedures ? [{
+      title: 'Procedures Today',
+      value: formatNumber(
+        (stats?.procedures.scheduled_today ?? 0) +
+        (stats?.procedures.in_progress ?? 0) +
+        (stats?.procedures.pending_consent ?? 0)
+      ),
+      meta: `${formatNumber(stats?.procedures.in_progress ?? 0)} in progress · ${formatNumber(stats?.procedures.scheduled_today ?? 0)} scheduled`,
+      description: `${formatNumber(stats?.procedures.completed_today ?? 0)} completed` +
+        ((stats?.procedures.pending_consent ?? 0) > 0
+          ? ` · ${formatNumber(stats?.procedures.pending_consent ?? 0)} awaiting consent`
+          : ''),
+      icon: Syringe,
+      href: '/procedures',
+      ariaLabel: 'Open procedures dashboard',
+      variant: ((stats?.procedures.pending_consent ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
     }] : []),
     ...(canViewAlliedHealth ? [{
