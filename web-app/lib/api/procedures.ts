@@ -22,6 +22,16 @@ export const proceduresApi = {
     return response.data;
   },
 
+  createCatalogEntry: async (data: Record<string, unknown>) => {
+    const response = await apiClient.post('/api/procedures/catalog/', data);
+    return response.data;
+  },
+
+  updateCatalogEntry: async (id: number, data: Record<string, unknown>) => {
+    const response = await apiClient.patch(`/api/procedures/catalog/${id}/`, data);
+    return response.data;
+  },
+
   // ---- Orders ----
   listOrders: async (params?: Record<string, string>) => {
     const response = await apiClient.get('/api/procedures/orders/', { params });

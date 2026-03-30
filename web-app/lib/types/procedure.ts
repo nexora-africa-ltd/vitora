@@ -15,6 +15,32 @@ export interface ProcedureCatalogEntry {
   is_active: boolean;
 }
 
+/** Full detail returned by GET /api/procedures/catalog/{id}/ */
+export interface ProcedureCatalogDetail extends ProcedureCatalogEntry {
+  icd10_pcs_code: string;
+  consent_template: string;
+  guardian_consent_required: boolean;
+  witness_required: boolean;
+  requires_anesthesia: boolean;
+  anesthesia_type: string;
+  requires_fasting: boolean;
+  pre_procedure_instructions: string;
+  post_procedure_instructions: string;
+  required_qualifications: string;
+  minimum_staff_count: number;
+  sha_package_code: string;
+  requires_follow_up: boolean;
+  default_follow_up_days: number;
+  follow_up_clinic: number | null;
+  billing_service: number | null;
+  billing_price: number | null;
+  billing_service_name: string | null;
+  organization: number | null;
+  facility: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type ProcedureOrderStatus =
   | 'ORDERED'
   | 'CONSENT_PENDING'

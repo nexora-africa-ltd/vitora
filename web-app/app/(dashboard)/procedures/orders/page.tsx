@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Filter, ClipboardList } from 'lucide-react';
+import { Search, Filter, ClipboardList, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -38,21 +38,36 @@ export default function ProcedureOrdersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
 
+  const PAGE_SIZE = 20;
+
   const { data, isLoading } = useQuery({
-    queryKey: ['procedure-orders', debouncedSearch, statusFilter, priorityFilter],
+    queryKey: ['procedure-orders', debouncedSearch, statusFilter, priorityFilter, page],
     queryFn: () =>
       proceduresApi.listOrders({
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
-        ...(statusFilter ? { status: statusFilter } : {}),
-        ...(priorityFilter ? { priority: priorityFilter } : {}),
+        ...(statusFilter && statusFilter !== 'all' ? { status: statusFilter } : {}),
+        ...(priorityFilter && priorityFilter !== 'all' ? { priority: priorityFilter } : {}),
         ordering: '-ordered_at',
+        page: String(page),
+        page_size: String(PAGE_SIZE),
       }),
     staleTime: 30000,
   });
 
   const orders = useMemo(() => (data?.results || []) as ProcedureOrderListItem[], [data]);
+  const totalCount = data?.count ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const hasNext = !!data?.next;
+  const hasPrev = page > 1;
+
+  // Reset page when filters change
+  const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
+    setter(v);
+    setPage(1);
+  };
 
   const columns = [
     {
@@ -132,6 +147,12 @@ export default function ProcedureOrdersPage() {
         <PageHeader
           title="Procedure Orders"
           helpContent="View and manage all procedure orders. Filter by status, priority, or search by patient name or order number."
+          actions={
+            <Button onClick={() => router.push('/procedures/orders/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Order
+            </Button>
+          }
         />
 
         {/* Filters */}
@@ -146,7 +167,7 @@ export default function ProcedureOrdersPage() {
             />
           </div>
           <div className="flex gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -161,7 +182,7 @@ export default function ProcedureOrdersPage() {
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <Select value={priorityFilter} onValueChange={handleFilterChange(setPriorityFilter)}>
               <SelectTrigger className="w-[130px]">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
@@ -187,6 +208,22 @@ export default function ProcedureOrdersPage() {
           defaultSortColumn="ordered_at"
           defaultSortDirection="desc"
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              <span className="hidden sm:inline">Page {page} of {totalPages} ({totalCount} orders)</span>
+              <span className="sm:hidden">{page}/{totalPages}</span>
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+              Next
+            </Button>
+          </div>
+        )}
       </div>
     </PullToRefresh>
   );
