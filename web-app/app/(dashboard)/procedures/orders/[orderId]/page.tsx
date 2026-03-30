@@ -40,9 +40,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { toast } from '@/lib/hooks/use-toast';
 import { proceduresApi } from '@/lib/api/procedures';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { formatDate, formatDateTime, formatTime, formatCurrency } from '@/lib/utils/format';
 import type {
   ProcedureOrder,
@@ -79,6 +81,20 @@ export default function ProcedureOrderDetailPage() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
+  const [createConsentOpen, setCreateConsentOpen] = useState(false);
+
+  // Consent create form
+  const [consentType, setConsentType] = useState('WRITTEN');
+  const [procedureExplained, setProcedureExplained] = useState(false);
+  const [risksExplained, setRisksExplained] = useState(false);
+  const [alternativesExplained, setAlternativesExplained] = useState(false);
+  const [questionsAnswered, setQuestionsAnswered] = useState(false);
+  const [signedByPatient, setSignedByPatient] = useState(false);
+  const [signedByGuardian, setSignedByGuardian] = useState(false);
+  const [guardianName, setGuardianName] = useState('');
+  const [guardianRelationship, setGuardianRelationship] = useState('');
+  const [witnessRequired, setWitnessRequired] = useState(false);
+  const [witnessName, setWitnessName] = useState('');
 
   // Schedule form
   const [scheduleDate, setScheduleDate] = useState('');
@@ -113,8 +129,8 @@ export default function ProcedureOrderDetailPage() {
       invalidateOrder();
       setScheduleOpen(false);
     },
-    onError: () => {
-      toast({ title: 'Schedule failed', variant: 'destructive' });
+    onError: (err) => {
+      toast({ title: 'Schedule failed', description: getApiErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -124,8 +140,8 @@ export default function ProcedureOrderDetailPage() {
       toast({ title: 'Procedure started', description: 'The procedure is now in progress.' });
       invalidateOrder();
     },
-    onError: () => {
-      toast({ title: 'Failed to start', variant: 'destructive' });
+    onError: (err) => {
+      toast({ title: 'Failed to start', description: getApiErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -133,17 +149,17 @@ export default function ProcedureOrderDetailPage() {
     mutationFn: () =>
       proceduresApi.completeProcedure(orderId, {
         status: completeStatus,
-        immediate_outcome: completeOutcome,
+        ...(completeOutcome ? { immediate_outcome: completeOutcome } : {}),
         complications_occurred: complications,
-        complication_details: complicationDetails,
+        ...(complications && complicationDetails ? { complication_details: complicationDetails } : {}),
       }),
     onSuccess: () => {
       toast({ title: 'Procedure completed', description: 'The procedure has been recorded.' });
       invalidateOrder();
       setCompleteOpen(false);
     },
-    onError: () => {
-      toast({ title: 'Completion failed', variant: 'destructive' });
+    onError: (err) => {
+      toast({ title: 'Completion failed', description: getApiErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -154,8 +170,8 @@ export default function ProcedureOrderDetailPage() {
       invalidateOrder();
       setCancelOpen(false);
     },
-    onError: () => {
-      toast({ title: 'Cancellation failed', variant: 'destructive' });
+    onError: (err) => {
+      toast({ title: 'Cancellation failed', description: getApiErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -165,8 +181,34 @@ export default function ProcedureOrderDetailPage() {
       toast({ title: 'Consent signed' });
       invalidateOrder();
     },
-    onError: () => {
-      toast({ title: 'Failed to sign consent', variant: 'destructive' });
+    onError: (err) => {
+      toast({ title: 'Failed to sign consent', description: getApiErrorMessage(err), variant: 'destructive' });
+    },
+  });
+
+  const { mutateAsync: createConsent, isPending: creatingConsent } = useMutation({
+    mutationFn: () =>
+      proceduresApi.createConsent(orderId, {
+        consent_type: consentType,
+        consent_text: `I consent to the procedure: ${order?.procedure?.name || ''}. The procedure, risks, alternatives, and expected outcomes have been explained to me.`,
+        procedure_explained: procedureExplained,
+        risks_explained: risksExplained,
+        alternatives_explained: alternativesExplained,
+        questions_answered: questionsAnswered,
+        signed_by_patient: signedByPatient,
+        signed_by_guardian: signedByGuardian,
+        guardian_name: guardianName,
+        guardian_relationship: guardianRelationship,
+        witness_required: witnessRequired,
+        witness_name: witnessName,
+      }),
+    onSuccess: () => {
+      toast({ title: 'Consent created', description: 'Consent record has been created. It can now be signed.' });
+      invalidateOrder();
+      setCreateConsentOpen(false);
+    },
+    onError: (err) => {
+      toast({ title: 'Failed to create consent', description: getApiErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -405,6 +447,12 @@ export default function ProcedureOrderDetailPage() {
                 <p className="text-xs mt-1">
                   Consent must be obtained before the procedure can begin.
                 </p>
+                {!['COMPLETED', 'CANCELLED'].includes(order.status) && (
+                  <Button className="mt-4" onClick={() => setCreateConsentOpen(true)}>
+                    <ClipboardCheck className="h-4 w-4 mr-2" />
+                    Obtain Consent
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
@@ -581,6 +629,173 @@ export default function ProcedureOrderDetailPage() {
             </Button>
             <Button onClick={() => completeProcedure()} disabled={completing}>
               {completing ? 'Completing...' : 'Complete Procedure'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Consent Dialog */}
+      <Dialog open={createConsentOpen} onOpenChange={setCreateConsentOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <DialogTitle>Obtain Consent</DialogTitle>
+              <HelpPopover content="Record informed consent. Ensure the patient understands the procedure, risks, and alternatives before signing." />
+            </div>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            {/* Consent Type */}
+            <div>
+              <Label>Consent Type</Label>
+              <Select value={consentType} onValueChange={setConsentType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WRITTEN">Written Consent</SelectItem>
+                  <SelectItem value="VERBAL">Verbal Consent (documented)</SelectItem>
+                  <SelectItem value="EMERGENCY">Emergency (implied consent)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Informed Consent Checklist */}
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">Informed Consent Checklist</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Confirm each item was discussed with the patient.
+              </p>
+              <div className="space-y-3 rounded-md border p-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="proc_explained"
+                    checked={procedureExplained}
+                    onCheckedChange={(v) => setProcedureExplained(!!v)}
+                  />
+                  <Label htmlFor="proc_explained" className="text-sm !mt-0">
+                    Procedure explained to patient
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="risks_explained"
+                    checked={risksExplained}
+                    onCheckedChange={(v) => setRisksExplained(!!v)}
+                  />
+                  <Label htmlFor="risks_explained" className="text-sm !mt-0">
+                    Risks and complications explained
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="alts_explained"
+                    checked={alternativesExplained}
+                    onCheckedChange={(v) => setAlternativesExplained(!!v)}
+                  />
+                  <Label htmlFor="alts_explained" className="text-sm !mt-0">
+                    Alternative treatments discussed
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="questions_answered"
+                    checked={questionsAnswered}
+                    onCheckedChange={(v) => setQuestionsAnswered(!!v)}
+                  />
+                  <Label htmlFor="questions_answered" className="text-sm !mt-0">
+                    Patient&apos;s questions answered
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            {/* Patient Signature */}
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="signed_patient"
+                  checked={signedByPatient}
+                  onCheckedChange={(v) => setSignedByPatient(!!v)}
+                />
+                <Label htmlFor="signed_patient" className="text-sm !mt-0 font-medium">
+                  Patient signed consent form
+                </Label>
+              </div>
+
+              {/* Guardian (for minors / incapacitated) */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="signed_guardian"
+                  checked={signedByGuardian}
+                  onCheckedChange={(v) => setSignedByGuardian(!!v)}
+                />
+                <Label htmlFor="signed_guardian" className="text-sm !mt-0">
+                  Guardian signed (for minors)
+                </Label>
+              </div>
+              {signedByGuardian && (
+                <div className="grid gap-3 sm:grid-cols-2 pl-6">
+                  <div>
+                    <Label htmlFor="guardian_name" className="text-xs">Guardian Name</Label>
+                    <Input
+                      id="guardian_name"
+                      value={guardianName}
+                      onChange={(e) => setGuardianName(e.target.value)}
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="guardian_rel" className="text-xs">Relationship</Label>
+                    <Input
+                      id="guardian_rel"
+                      value={guardianRelationship}
+                      onChange={(e) => setGuardianRelationship(e.target.value)}
+                      placeholder="e.g., Parent, Spouse"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Witness */}
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="witness_req"
+                  checked={witnessRequired}
+                  onCheckedChange={(v) => setWitnessRequired(!!v)}
+                />
+                <Label htmlFor="witness_req" className="text-sm !mt-0">
+                  Witness present
+                </Label>
+              </div>
+              {witnessRequired && (
+                <div className="pl-6">
+                  <Label htmlFor="witness_name" className="text-xs">Witness Name</Label>
+                  <Input
+                    id="witness_name"
+                    value={witnessName}
+                    onChange={(e) => setWitnessName(e.target.value)}
+                    placeholder="Witness full name"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateConsentOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createConsent()}
+              disabled={
+                creatingConsent ||
+                !procedureExplained ||
+                !risksExplained ||
+                (!signedByPatient && !signedByGuardian)
+              }
+            >
+              {creatingConsent ? 'Creating...' : 'Create Consent'}
             </Button>
           </DialogFooter>
         </DialogContent>

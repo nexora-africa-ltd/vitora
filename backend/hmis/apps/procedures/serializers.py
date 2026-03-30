@@ -240,6 +240,6 @@ class ProcedureCompleteSerializer(serializers.Serializer):
         choices=["COMPLETED", "PARTIAL", "COMPLICATED"],
         default="COMPLETED",
     )
-    immediate_outcome = serializers.CharField(required=False, default="")
+    immediate_outcome = serializers.CharField(required=False, default="", allow_blank=True)
     complications_occurred = serializers.BooleanField(required=False, default=False)
-    complication_details = serializers.CharField(required=False, default="")
+    complication_details = serializers.CharField(required=False, default="", allow_blank=True)
