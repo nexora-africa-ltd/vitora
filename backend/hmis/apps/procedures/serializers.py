@@ -157,6 +157,9 @@ class ProcedureOrderListSerializer(serializers.ModelSerializer):
     procedure_name = serializers.CharField(source="procedure.name", read_only=True)
     patient_name = serializers.SerializerMethodField()
     is_overdue = serializers.BooleanField(read_only=True)
+    scheduled_clinic_name = serializers.CharField(
+        source="scheduled_clinic.name", read_only=True, default=None
+    )
 
     class Meta:
         model = ProcedureOrder
@@ -171,6 +174,8 @@ class ProcedureOrderListSerializer(serializers.ModelSerializer):
             "priority",
             "scheduled_date",
             "scheduled_time",
+            "scheduled_clinic",
+            "scheduled_clinic_name",
             "is_overdue",
             "ordered_at",
         ]
@@ -209,10 +214,19 @@ class ProcedureOrderDetailSerializer(serializers.ModelSerializer):
     consent = serializers.SerializerMethodField()
     log = serializers.SerializerMethodField()
     is_overdue = serializers.BooleanField(read_only=True)
+    scheduled_clinic_name = serializers.CharField(
+        source="scheduled_clinic.name", read_only=True, default=None
+    )
+    assigned_performer_name = serializers.SerializerMethodField()
 
     class Meta:
         model = ProcedureOrder
         fields = "__all__"
+
+    def get_assigned_performer_name(self, obj: ProcedureOrder) -> str | None:
+        if obj.assigned_performer:
+            return f"{obj.assigned_performer.first_name} {obj.assigned_performer.last_name}".strip() or obj.assigned_performer.username
+        return None
 
     def get_consent(self, obj: ProcedureOrder) -> dict | None:
         try:

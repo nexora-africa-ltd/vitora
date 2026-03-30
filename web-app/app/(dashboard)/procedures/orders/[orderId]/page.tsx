@@ -455,6 +455,18 @@ export default function ProcedureOrderDetailPage() {
                     <span>{order.scheduled_location}</span>
                   </div>
                 )}
+                {order.scheduled_clinic_name && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Procedure Clinic</span>
+                    <span>{order.scheduled_clinic_name}</span>
+                  </div>
+                )}
+                {order.assigned_performer_name && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Assigned Staff</span>
+                    <span>{order.assigned_performer_name}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

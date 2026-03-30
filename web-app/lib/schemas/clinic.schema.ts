@@ -36,7 +36,7 @@ export const ClinicTypeSchema = z.enum([
 export const ClinicStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'TEMPORARILY_CLOSED']);
 
 export const ClinicVisitStatusSchema = z.enum([
-  'REGISTERED', 'WAITING', 'CALLED', 'IN_CONSULTATION', 'COMPLETED', 'REFERRED', 'NO_SHOW', 'CANCELLED',
+  'REGISTERED', 'WAITING', 'CALLED', 'IN_CONSULTATION', 'COMPLETED', 'REFERRED', 'NO_SHOW', 'CANCELLED', 'CLOSED',
 ]);
 
 // Priority can be either clinical priorities OR triage category colors

@@ -24,6 +24,7 @@ const STATUS_STYLES: Record<ClinicVisitStatus, { className: string; variant: 'de
   REFERRED: { className: 'bg-purple-500 hover:bg-purple-500/90', variant: 'default' },
   NO_SHOW: { className: 'bg-orange-500 hover:bg-orange-500/90', variant: 'default' },
   CANCELLED: { className: '', variant: 'destructive' },
+  CLOSED: { className: '', variant: 'outline' },
 };
 
 const STATUS_LABELS: Record<ClinicVisitStatus, string> = {
@@ -35,6 +36,7 @@ const STATUS_LABELS: Record<ClinicVisitStatus, string> = {
   REFERRED: 'Referred',
   NO_SHOW: 'No-Show',
   CANCELLED: 'Cancelled',
+  CLOSED: 'Closed',
 };
 
 export function ClinicVisitStatusBadge({

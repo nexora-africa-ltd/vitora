@@ -189,6 +189,17 @@ export function useClinicSessions(clinicId: number | undefined, params?: { date_
 }
 
 /**
+ * Fetch a specific clinic session by ID
+ */
+export function useClinicSession(clinicId: number | undefined, sessionId: number | undefined) {
+  return useQuery({
+    queryKey: ['clinics', clinicId, 'sessions', sessionId],
+    queryFn: () => clinicsApi.getSession(clinicId!, sessionId!),
+    enabled: !!clinicId && !!sessionId,
+  });
+}
+
+/**
  * Fetch today's session for a clinic
  */
 export function useTodaySession(clinicId: number | undefined) {
