@@ -40,5 +40,7 @@ python manage.py seed_inpatient_demo
 python manage.py backfill_death_records --apply
 python manage.py init_pki_ca
 python manage.py backfill_org_facility
+python manage.py seed_procedure_catalog --link-billing
+python manage.py seed_service_catalog
 
 echo "==> Seeding complete!"

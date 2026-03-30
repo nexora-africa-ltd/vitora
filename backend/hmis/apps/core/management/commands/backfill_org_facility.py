@@ -101,6 +101,12 @@ class Command(BaseCommand):
             ("ai", "AIDischargeResult", "organization", "facility"),
             ("ai", "AIICURiskResult", "organization", "facility"),
             ("cds", "CDSAlert", "organization", "facility"),
+            # Procedures
+            ("procedures", "ProcedureCatalog", "organization", "facility"),
+            ("procedures", "ProcedureOrder", "organization", "facility"),
+            ("procedures", "ProcedureConsent", "organization", "facility"),
+            ("procedures", "ProcedureLog", "organization", "facility"),
+            ("procedures", "ProcedureOutcome", "organization", "facility"),
             # Core
             ("core", "AuditLog", "organization", "facility"),
             ("core", "SyncQueue", "organization", "facility"),

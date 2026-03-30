@@ -201,6 +201,17 @@ const _allNavItems: NavItemType[] = [
     ],
   },
   {
+    label: 'Procedures',
+    icon: Syringe,
+    moduleKey: 'procedures',
+    facilityModule: 'outpatient',
+    children: [
+      { label: 'Dashboard', href: '/procedures', icon: LayoutDashboard, actionKey: 'procedures.view_dashboard' },
+      { label: 'Orders', href: '/procedures/orders', icon: ClipboardList, actionKey: 'procedures.view_orders' },
+      { label: 'Catalog', href: '/procedures/catalog', icon: Syringe, actionKey: 'procedures.view_catalog' },
+    ],
+  },
+  {
     label: 'Inpatient',
     icon: BedDouble,
     moduleKey: 'inpatient',

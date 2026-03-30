@@ -212,6 +212,68 @@ class BillingAgentService:
 
     @classmethod
     @transaction.atomic
+    def handle_procedure_completed(cls, procedure_order) -> None:
+        """Auto-bill a procedure when order is completed.
+
+        Called from ProcedureLog.complete() after the order status → COMPLETED.
+        Resolves billing via: ProcedureCatalog.billing_service → Service code match → base_fee fallback.
+        """
+        catalog_entry = procedure_order.procedure
+        encounter = procedure_order.encounter
+        invoice = cls.get_or_create_draft_invoice(procedure_order.patient, encounter)
+
+        # 1) Explicit billing_service FK on catalog entry
+        service = catalog_entry.billing_service
+
+        # 2) Fallback: match by code in PROC category
+        if not service:
+            service = Service.objects.filter(
+                category__code="PROC",
+                code=catalog_entry.code,
+                is_active=True,
+            ).first()
+
+        if service:
+            cls.add_line_item(
+                invoice,
+                service=service,
+                quantity=1,
+                description=f"Procedure: {catalog_entry.name}",
+                item_type=InvoiceItem.ItemType.SERVICE,
+            )
+            logger.info(
+                "Billing agent: added procedure %s to invoice %s (service %s)",
+                catalog_entry.name,
+                invoice.invoice_number,
+                service.code,
+            )
+        elif catalog_entry.base_fee:
+            # 3) Direct base_fee fallback (no Service record)
+            InvoiceItem.objects.create(
+                invoice=invoice,
+                item_type=InvoiceItem.ItemType.SERVICE,
+                description=f"Procedure: {catalog_entry.name}",
+                quantity=1,
+                unit_price=catalog_entry.base_fee,
+                line_total=catalog_entry.base_fee,
+                sha_code=catalog_entry.sha_tariff_code,
+            )
+            logger.info(
+                "Billing agent: added procedure %s to invoice %s (base_fee fallback: %s)",
+                catalog_entry.name,
+                invoice.invoice_number,
+                catalog_entry.base_fee,
+            )
+        else:
+            logger.warning(
+                "Billing agent: no billing Service or base_fee for procedure %s (code=%s). "
+                "Link a billing.Service or set base_fee on the catalog entry.",
+                catalog_entry.name,
+                catalog_entry.code,
+            )
+
+    @classmethod
+    @transaction.atomic
     def handle_discharge(cls, discharge) -> None:
         """Finalize billing on patient discharge.
 
