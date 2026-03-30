@@ -669,7 +669,7 @@ function RecentCheckinsCard() {
                 </div>
                 <div className="text-right shrink-0">
                   <Badge variant="outline">
-                    {checkin.visit_type}
+                    {VISIT_REASON_OPTIONS.find((o) => o.value === checkin.visit_reason)?.label ?? checkin.visit_reason}
                   </Badge>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {formatDistanceToNow(new Date(checkin.checked_in_at), { addSuffix: true })}
