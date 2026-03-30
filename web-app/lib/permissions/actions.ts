@@ -47,6 +47,7 @@ export const ACTION_PERMISSIONS = {
   'procedures.create_order': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
   'procedures.perform': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE'],
   'procedures.view_catalog': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'procedures.manage_catalog': ['ADMIN'],
   'procedures.manage_consent': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE'],
 
   // === Emergency Module ===

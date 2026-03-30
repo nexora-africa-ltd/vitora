@@ -31,11 +31,27 @@ export const GENERIC_PROCEDURE_CLINIC_TYPES: ClinicType[] = [
  * Get the clinic types that should be available for a given procedure category.
  * Returns category-specific types first, then generic procedure room types.
  * Deduplicates the result.
+ * Used for the manual "Add room..." dropdown — shows all compatible options.
  */
 export function getClinicTypesForCategory(category: string): ClinicType[] {
   const specific = CATEGORY_CLINIC_MAP[category] ?? [];
   const combined = [...specific, ...GENERIC_PROCEDURE_CLINIC_TYPES];
   return [...new Set(combined)];
+}
+
+/**
+ * Get the BEST-FIT clinic types for auto-assignment.
+ * If the category has a specific match (e.g., DENTAL → DENTAL clinic),
+ * return ONLY that. Fall back to generic procedure rooms only if no
+ * category-specific mapping exists.
+ * Used by the "Auto-Assign" button.
+ */
+export function getBestFitClinicTypes(category: string): ClinicType[] {
+  const specific = CATEGORY_CLINIC_MAP[category];
+  if (specific && specific.length > 0) {
+    return specific;
+  }
+  return [...GENERIC_PROCEDURE_CLINIC_TYPES];
 }
 
 /**
