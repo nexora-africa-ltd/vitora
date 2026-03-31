@@ -35,6 +35,14 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
 
     prescription = instance.prescription
 
+    # Skip external prescriptions (filled at outside pharmacy - not billed by us)
+    if prescription.dispensing_type == prescription.DispensingType.EXTERNAL:
+        logger.debug(
+            f"Skipping invoice item for external prescription "
+            f"{prescription.prescription_number} - filled at outside pharmacy"
+        )
+        return
+
     # Skip walk-in prescriptions (no encounter)
     if not prescription.encounter:
         logger.debug(
