@@ -102,6 +102,7 @@ def sample_drug(db):
         form="TABLET",
         categories=["OTHER"],
         unit="tablet",
+        reference_price=Decimal("100.00"),
     )
 
 
@@ -319,6 +320,88 @@ class TestDispensingAutoBilling:
 
         draft_invoice.refresh_from_db()
         assert draft_invoice.total_amount > initial_total
+
+    def test_external_prescription_does_not_create_invoice_item(
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_drug,
+        sample_user,
+    ):
+        """External prescriptions (filled at outside pharmacy) should NOT create InvoiceItem.
+
+        Business rule: The hospital only bills for drugs it dispenses internally.
+        Prescriptions marked EXTERNAL are filled at an outside pharmacy, so
+        no invoice item should be generated.
+        """
+        from hmis.apps.pharmacy.models import Prescription, PrescriptionItem
+
+        initial_item_count = draft_invoice.items.count()
+
+        # Create an EXTERNAL prescription
+        prescription = Prescription.objects.create(
+            encounter=sample_encounter_with_invoice,
+            patient=sample_patient_for_billing,
+            prescribed_by=sample_user,
+            valid_until=date.today() + timedelta(days=30),
+            dispensing_type=Prescription.DispensingType.EXTERNAL,
+        )
+
+        PrescriptionItem.objects.create(
+            prescription=prescription,
+            drug=sample_drug,
+            quantity=10,
+            dosage="1 tablet",
+            frequency="twice daily",
+            duration="5 days",
+        )
+
+        draft_invoice.refresh_from_db()
+
+        # Should NOT have created an invoice item
+        assert draft_invoice.items.count() == initial_item_count, (
+            "External prescription should not create an invoice item"
+        )
+
+    def test_internal_prescription_creates_invoice_item(
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_drug,
+        sample_user,
+    ):
+        """Internal prescriptions should still create InvoiceItem as before.
+
+        Regression test: Ensure the external guard doesn't break internal billing.
+        """
+        from hmis.apps.pharmacy.models import Prescription, PrescriptionItem
+
+        initial_item_count = draft_invoice.items.count()
+
+        prescription = Prescription.objects.create(
+            encounter=sample_encounter_with_invoice,
+            patient=sample_patient_for_billing,
+            prescribed_by=sample_user,
+            valid_until=date.today() + timedelta(days=30),
+            dispensing_type=Prescription.DispensingType.INTERNAL,
+        )
+
+        PrescriptionItem.objects.create(
+            prescription=prescription,
+            drug=sample_drug,
+            quantity=10,
+            dosage="1 tablet",
+            frequency="twice daily",
+            duration="5 days",
+        )
+
+        draft_invoice.refresh_from_db()
+
+        assert draft_invoice.items.count() == initial_item_count + 1, (
+            "Internal prescription should create an invoice item"
+        )
 
 
 # ============================================================================
