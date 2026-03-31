@@ -102,21 +102,21 @@ export function useIdleTimer({
     }
   }, []);
 
-  // Start countdown timer
+  // Track when auto-logout should fire (wall-clock timestamp)
+  const logoutAtRef = useRef<number>(0);
+
+  // Start countdown timer using wall-clock time so it stays accurate
+  // even when the browser tab is backgrounded / throttled
   const startCountdown = useCallback(() => {
-    const remainingMs = warningToLogoutDuration;
-    setSecondsRemaining(Math.ceil(remainingMs / 1000));
+    logoutAtRef.current = Date.now() + warningToLogoutDuration;
+    setSecondsRemaining(Math.ceil(warningToLogoutDuration / 1000));
 
     countdownIntervalRef.current = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
+      const remaining = Math.max(0, Math.ceil((logoutAtRef.current - Date.now()) / 1000));
+      setSecondsRemaining(remaining);
+      if (remaining <= 0 && countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
     }, 1000);
   }, [warningToLogoutDuration]);
 
@@ -246,21 +246,18 @@ export function useIdleTimer({
     } else if (timeSinceActivity >= warningTimeout) {
       // In warning period - show warning with remaining time
       const remainingTime = logoutTimeout - timeSinceActivity;
+      logoutAtRef.current = Date.now() + remainingTime;
       setIsWarning(true);
       setIsIdle(true);
       setSecondsRemaining(Math.ceil(remainingTime / 1000));
       onWarning?.();
 
       countdownIntervalRef.current = setInterval(() => {
-        setSecondsRemaining((prev) => {
-          if (prev <= 1) {
-            if (countdownIntervalRef.current) {
-              clearInterval(countdownIntervalRef.current);
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
+        const remaining = Math.max(0, Math.ceil((logoutAtRef.current - Date.now()) / 1000));
+        setSecondsRemaining(remaining);
+        if (remaining <= 0 && countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
       }, 1000);
 
       logoutTimeoutRef.current = setTimeout(() => {

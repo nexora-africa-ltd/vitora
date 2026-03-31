@@ -160,6 +160,12 @@ export const mfaToast = {
   backupCodeHint: showBackupCodeHint,
   codeEntryHint: showCodeEntryHint,
   lowBackupCodesWarning: showLowBackupCodesWarning,
+  expired: () => {
+    toast.warning('Verification Expired', {
+      description: 'The verification window has expired. Please sign in again to generate a new code.',
+      duration: 6000,
+    });
+  },
 };
 
 export default mfaToast;
