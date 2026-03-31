@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { FileText, Search, Filter, Clock, User, Shield, PencilLine, Trash2, PlusCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Input } from '@/components/ui/input';
@@ -59,15 +60,24 @@ function formatActionLabel(action: string): string {
     .join(' ');
 }
 
+const PAGE_SIZE = 20;
+
 export default function AuditLogsPage() {
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
   const { refresh, isRefreshing } = usePageRefresh();
 
   const { data, isLoading, error, refetch } = useAuditLogs({
+    page,
+    page_size: PAGE_SIZE,
     search: search || undefined,
     action: actionFilter !== 'all' ? (actionFilter as AuditAction) : undefined,
   });
+
+  const totalPages = data ? Math.ceil(data.count / PAGE_SIZE) : 0;
+  const hasNext = !!data?.next;
+  const hasPrev = page > 1;
 
   const logs = data?.results ?? [];
   const createdCount = logs.filter((log) => log.action.includes('create')).length;
@@ -149,10 +159,10 @@ export default function AuditLogsPage() {
                   name="audit-log-search"
                   placeholder="Search by user, action, or resource…"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 />
               </div>
-              <Select value={actionFilter} onValueChange={setActionFilter}>
+              <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); setPage(1); }}>
                 <SelectTrigger aria-label="Filter audit logs by action">
                   <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                   <SelectValue placeholder="Filter by action" />
@@ -255,6 +265,20 @@ export default function AuditLogsPage() {
                   },
                 ]}
               />
+            )}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+                  Next
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
