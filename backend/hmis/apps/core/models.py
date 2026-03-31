@@ -2362,6 +2362,11 @@ class Organization(TimeStampedModel):
         help_text="Whether this organization is currently active.",
     )
 
+    is_verified = models.BooleanField(
+        default=False,
+        help_text="Whether the admin email has been verified (self-service signup).",
+    )
+
     # ------------------------------------------------------------------
     # Meta & Methods
     # ------------------------------------------------------------------
@@ -3309,6 +3314,79 @@ class PasswordResetToken(models.Model):
             from datetime import timedelta
 
             self.expires_at = timezone.now() + timedelta(hours=1)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if this token is still valid (not used, not expired)."""
+        return not self.used and timezone.now() < self.expires_at
+
+    def consume(self):
+        """Mark the token as used."""
+        self.used = True
+        self.used_at = timezone.now()
+        self.save(update_fields=["used", "used_at"])
+
+
+# ============================================================================
+# Email Verification Token (Self-Service Org Signup)
+# ============================================================================
+
+
+class EmailVerificationToken(models.Model):
+    """
+    Time-limited token for email verification during self-service org signup.
+
+    Tokens are single-use and expire after 24 hours by default.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="email_verification_tokens",
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="verification_tokens",
+    )
+    token = models.UUIDField(
+        unique=True,
+        editable=False,
+        help_text="Unique verification token.",
+    )
+    expires_at = models.DateTimeField(
+        help_text="When this token expires (default: 24 hours).",
+    )
+    used = models.BooleanField(
+        default=False,
+        help_text="Whether this token has been used.",
+    )
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Email Verification Token"
+        verbose_name_plural = "Email Verification Tokens"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["token"]),
+            models.Index(fields=["user", "used"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Verification token for {self.user.username} (used={self.used})"
+
+    def save(self, *args, **kwargs):
+        """Auto-generate token and set expiry on first save."""
+        import uuid
+
+        if not self.token:
+            self.token = uuid.uuid4()
+        if not self.expires_at:
+            from datetime import timedelta
+
+            self.expires_at = timezone.now() + timedelta(hours=24)
         super().save(*args, **kwargs)
 
     @property

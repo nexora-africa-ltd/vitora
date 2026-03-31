@@ -1371,3 +1371,124 @@ class InvitationPublicSerializer(serializers.ModelSerializer):
 
     def get_department_name(self, obj) -> str:
         return obj.department.name if obj.department else ""
+
+
+# ============================================================================
+# Self-Service Organization Signup Serializers
+# ============================================================================
+
+
+class OrgSignupSerializer(serializers.Serializer):
+    """
+    Self-service organization signup.
+
+    Creates Organization + Admin User + StaffProfile atomically.
+    """
+
+    org_name = serializers.CharField(max_length=200)
+    admin_email = serializers.EmailField()
+    admin_first_name = serializers.CharField(max_length=150)
+    admin_last_name = serializers.CharField(max_length=150)
+    admin_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
+    confirm_password = serializers.CharField(max_length=128, write_only=True)
+
+    def validate_org_name(self, value):
+        """Ensure org name is unique."""
+        if Organization.objects.filter(name__iexact=value).exists():
+            raise serializers.ValidationError("An organization with this name already exists.")
+        return value
+
+    def validate_admin_email(self, value):
+        """Ensure email isn't already registered."""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        normalized = value.lower()
+        if User.objects.filter(email__iexact=normalized).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return normalized
+
+    def validate(self, data):
+        if data["admin_password"] != data["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
+        return data
+
+
+class EmailVerifySerializer(serializers.Serializer):
+    """Verify email address with a token."""
+
+    token = serializers.UUIDField()
+
+
+# ============================================================================
+# Setup Wizard Serializer
+# ============================================================================
+
+
+class SetupWizardSerializer(serializers.Serializer):
+    """
+    First-run setup wizard — creates Org + Facility + Admin atomically.
+
+    Only works when no organizations exist in the database.
+    """
+
+    # Organization
+    org_name = serializers.CharField(max_length=200)
+    org_contact_email = serializers.EmailField(required=False, allow_blank=True, default="")
+    org_contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True, default="")
+
+    # Facility
+    facility_name = serializers.CharField(max_length=200)
+    facility_mfl_code = serializers.CharField(max_length=20)
+    facility_level = serializers.ChoiceField(choices=Facility.FacilityLevel.choices)
+    facility_ownership = serializers.ChoiceField(
+        choices=Facility.OwnershipType.choices,
+        default=Facility.OwnershipType.PRIVATE,
+    )
+    facility_county = serializers.PrimaryKeyRelatedField(
+        queryset=County.objects.all(),
+    )
+    facility_sub_county = serializers.PrimaryKeyRelatedField(
+        queryset=SubCounty.objects.all(),
+    )
+
+    # Admin Account
+    admin_username = serializers.CharField(max_length=150)
+    admin_email = serializers.EmailField()
+    admin_first_name = serializers.CharField(max_length=150)
+    admin_last_name = serializers.CharField(max_length=150)
+    admin_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
+    confirm_password = serializers.CharField(max_length=128, write_only=True)
+
+    def validate_facility_mfl_code(self, value):
+        """Check MFL code uniqueness."""
+        if Facility.objects.filter(mfl_code=value).exists():
+            raise serializers.ValidationError("A facility with this MFL code already exists.")
+        return value
+
+    def validate_admin_username(self, value):
+        """Check username uniqueness."""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value.lower()
+
+    def validate_admin_email(self, value):
+        """Check email uniqueness."""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        if User.objects.filter(email__iexact=value.lower()).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value.lower()
+
+    def validate(self, data):
+        if data["admin_password"] != data["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
+        return data

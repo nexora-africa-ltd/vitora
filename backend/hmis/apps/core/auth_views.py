@@ -25,27 +25,57 @@ from rest_framework.response import Response
 
 from .models import (
     AuditLog,
+    Department,
+    EmailVerificationToken,
+    Organization,
     PasswordResetToken,
+    Role,
     StaffInvitation,
     StaffProfile,
 )
 from .serializers import (
     ChangePasswordSerializer,
+    EmailVerifySerializer,
     InvitationAcceptSerializer,
     InvitationPublicSerializer,
+    OrgSignupSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    SetupWizardSerializer,
     StaffInvitationCreateSerializer,
     StaffInvitationSerializer,
 )
 from .services.email_service import (
     send_invitation_email,
+    send_org_verification_email,
     send_password_reset_email,
     send_welcome_email,
 )
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+def _get_or_create_admin_defaults(org: Organization) -> tuple:
+    """Get or create a bootstrap 'Administration' department and 'Admin' role."""
+    dept, _ = Department.objects.get_or_create(
+        code="ADMIN",
+        defaults={
+            "name": "Administration",
+            "department_type": "ADMINISTRATIVE",
+            "is_active": True,
+        },
+    )
+    role, _ = Role.objects.get_or_create(
+        code="ORG-ADMIN",
+        defaults={
+            "name": "Administrator",
+            "category": "MANAGEMENT",
+            "organization": org,
+            "is_active": True,
+        },
+    )
+    return dept, role
 
 
 def _get_client_ip(request) -> str | None:
@@ -479,4 +509,307 @@ def change_password(request):
     return Response(
         {"message": "Password changed successfully."},
         status=status.HTTP_200_OK,
+    )
+
+
+# ============================================================================
+# Self-Service Organization Signup
+# ============================================================================
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="5/h", method="POST", block=True)
+def org_signup(request):
+    """
+    Self-service organization signup.
+
+    Creates Organization + Admin User + StaffProfile atomically.
+    Sends a verification email that must be confirmed before the org is active.
+    """
+    serializer = OrgSignupSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    from django.utils.text import slugify
+
+    with transaction.atomic():
+        # 1. Create Organization (inactive + unverified until email confirmed)
+        org_slug = slugify(data["org_name"])
+        # Handle slug collision
+        base_slug = org_slug
+        counter = 1
+        while Organization.objects.filter(slug=org_slug).exists():
+            org_slug = f"{base_slug}-{counter}"
+            counter += 1
+
+        org = Organization.objects.create(
+            name=data["org_name"],
+            slug=org_slug,
+            contact_email=data["admin_email"],
+            is_active=False,
+            is_verified=False,
+            subscription_tier=Organization.SubscriptionTier.FREE,
+        )
+
+        # 2. Create admin user
+        user = User.objects.create_user(
+            username=data["admin_email"].split("@")[0],
+            email=data["admin_email"],
+            password=data["admin_password"],
+            first_name=data["admin_first_name"],
+            last_name=data["admin_last_name"],
+            is_staff=True,
+            is_active=True,
+        )
+
+        # 3. Bootstrap department & role, then create StaffProfile
+        dept, role = _get_or_create_admin_defaults(org)
+        StaffProfile.objects.create(
+            user=user,
+            employee_id=f"ADMIN-{org.id:04d}",
+            organization=org,
+            primary_department=dept,
+            primary_role=role,
+            date_joined=date.today(),
+            must_change_password=False,
+        )
+
+        # 4. Create verification token
+        token = EmailVerificationToken.objects.create(
+            user=user,
+            organization=org,
+        )
+
+    # 5. Send verification email (outside transaction)
+    admin_name = f"{data['admin_first_name']} {data['admin_last_name']}"
+    send_org_verification_email(
+        to_email=data["admin_email"],
+        token=str(token.token),
+        org_name=data["org_name"],
+        admin_name=admin_name,
+    )
+
+    AuditLog.log(
+        action="org_signup",
+        user=user,
+        resource_type="Organization",
+        resource_id=org.id,
+        ip_address=_get_client_ip(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        details={"org_name": data["org_name"], "admin_email": data["admin_email"]},
+    )
+
+    return Response(
+        {
+            "message": (
+                "Organization created! Please check your email to verify your account. "
+                "After verification, a Nexora administrator will review and activate your organization."
+            ),
+            "org_name": data["org_name"],
+            "admin_email": data["admin_email"],
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+# ============================================================================
+# Email Verification
+# ============================================================================
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="10/h", method="POST", block=True)
+def verify_email(request):
+    """
+    Verify email address after self-service org signup.
+
+    Marks the organization as verified (but still inactive pending admin review).
+    """
+    serializer = EmailVerifySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        token = EmailVerificationToken.objects.select_related("user", "organization").get(
+            token=serializer.validated_data["token"]
+        )
+    except EmailVerificationToken.DoesNotExist:
+        return Response(
+            {"error": "Invalid or expired verification link."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not token.is_valid:
+        return Response(
+            {"error": "This verification link has expired or already been used."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    with transaction.atomic():
+        # Mark org as verified
+        token.organization.is_verified = True
+        token.organization.save(update_fields=["is_verified"])
+
+        token.consume()
+
+    AuditLog.log(
+        action="email_verified",
+        user=token.user,
+        resource_type="Organization",
+        resource_id=token.organization.id,
+        ip_address=_get_client_ip(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        details={"org_name": token.organization.name},
+    )
+
+    return Response(
+        {
+            "message": (
+                "Email verified successfully! "
+                "Your organization is now pending administrator review. "
+                "You'll receive a notification once it's activated."
+            ),
+            "org_name": token.organization.name,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+# ============================================================================
+# Setup Wizard (First-Run Bootstrap)
+# ============================================================================
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def setup_check(request):
+    """
+    Check whether the setup wizard should be shown.
+
+    Returns True if no organizations exist and the feature flag is enabled.
+    """
+    setup_enabled = getattr(settings, "SETUP_WIZARD_ENABLED", False)
+    has_orgs = Organization.objects.exists()
+
+    return Response(
+        {
+            "setup_required": setup_enabled and not has_orgs,
+            "setup_enabled": setup_enabled,
+            "has_organizations": has_orgs,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="3/h", method="POST", block=True)
+def setup_initialize(request):
+    """
+    First-run setup wizard.
+
+    Creates Organization + Facility + Admin User atomically.
+    Only works when no organizations exist in the database and
+    SETUP_WIZARD_ENABLED is True.
+    """
+    setup_enabled = getattr(settings, "SETUP_WIZARD_ENABLED", False)
+    if not setup_enabled:
+        return Response(
+            {"error": "Setup wizard is not enabled."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if Organization.objects.exists():
+        return Response(
+            {"error": "Setup has already been completed. Organizations already exist."},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    serializer = SetupWizardSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    from django.utils.text import slugify
+
+    with transaction.atomic():
+        # 1. Create Organization (verified + active — setup wizard is trusted)
+        org = Organization.objects.create(
+            name=data["org_name"],
+            slug=slugify(data["org_name"]),
+            contact_email=data.get("org_contact_email", ""),
+            contact_phone=data.get("org_contact_phone", ""),
+            is_active=True,
+            is_verified=True,
+            subscription_tier=Organization.SubscriptionTier.BASIC,
+        )
+
+        # 2. Create Facility
+        from .models import Facility
+
+        facility = Facility.objects.create(
+            organization=org,
+            name=data["facility_name"],
+            mfl_code=data["facility_mfl_code"],
+            level=data["facility_level"],
+            ownership=data.get("facility_ownership", Facility.OwnershipType.PRIVATE),
+            county=data["facility_county"],
+            sub_county=data["facility_sub_county"],
+            is_headquarters=True,
+            is_active=True,
+        )
+
+        # Apply default modules based on KEPH level
+        defaults = Facility.default_modules_for_level(data["facility_level"])
+        for key, value in defaults.items():
+            setattr(facility, key, value)
+        facility.save()
+
+        # 3. Create admin user
+        user = User.objects.create_user(
+            username=data["admin_username"],
+            email=data["admin_email"],
+            password=data["admin_password"],
+            first_name=data["admin_first_name"],
+            last_name=data["admin_last_name"],
+            is_staff=True,
+            is_superuser=True,
+            is_active=True,
+        )
+
+        # 4. Bootstrap department & role, then create StaffProfile
+        dept, role = _get_or_create_admin_defaults(org)
+        StaffProfile.objects.create(
+            user=user,
+            employee_id=f"ADMIN-{org.id:04d}",
+            organization=org,
+            primary_facility=facility,
+            primary_department=dept,
+            primary_role=role,
+            date_joined=date.today(),
+            must_change_password=False,
+        )
+
+    AuditLog.log(
+        action="setup_initialized",
+        user=user,
+        resource_type="Organization",
+        resource_id=org.id,
+        ip_address=_get_client_ip(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        details={
+            "org_name": data["org_name"],
+            "facility_name": data["facility_name"],
+            "mfl_code": data["facility_mfl_code"],
+        },
+    )
+
+    return Response(
+        {
+            "message": "Setup complete! You can now log in.",
+            "org_name": data["org_name"],
+            "facility_name": data["facility_name"],
+            "username": data["admin_username"],
+        },
+        status=status.HTTP_201_CREATED,
     )

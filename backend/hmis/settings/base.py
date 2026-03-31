@@ -612,6 +612,10 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 # Frontend URL for notification links
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3009")
 
+# Setup wizard — set to True to enable the /setup first-run wizard.
+# Only works when no organizations exist in the database.
+SETUP_WIZARD_ENABLED = os.getenv("SETUP_WIZARD_ENABLED", "false").lower() in ("true", "1", "yes")
+
 # Document verification URL (for QR codes on receipts/invoices)
 # In production, set to your public domain e.g., https://vitora.health/verify
 DOCUMENT_VERIFICATION_URL = os.getenv("DOCUMENT_VERIFICATION_URL", f"{FRONTEND_URL}/verify")

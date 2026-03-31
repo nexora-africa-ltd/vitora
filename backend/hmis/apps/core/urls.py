@@ -10,8 +10,12 @@ from .auth_views import (
     change_password,
     invitation_accept,
     invitation_lookup,
+    org_signup,
     password_reset_confirm,
     password_reset_request,
+    setup_check,
+    setup_initialize,
+    verify_email,
 )
 from .dashboard_views import (
     activity_feed,
@@ -75,4 +79,10 @@ urlpatterns = [
     path("auth/password-reset/request/", password_reset_request, name="password-reset-request"),
     path("auth/password-reset/confirm/", password_reset_confirm, name="password-reset-confirm"),
     path("auth/change-password/", change_password, name="change-password"),
+    # --- Self-service signup ---
+    path("auth/signup/", org_signup, name="org-signup"),
+    path("auth/verify-email/", verify_email, name="verify-email"),
+    # --- Setup wizard (first-run, feature-flagged) ---
+    path("setup/check/", setup_check, name="setup-check"),
+    path("setup/initialize/", setup_initialize, name="setup-initialize"),
 ] + router.urls
