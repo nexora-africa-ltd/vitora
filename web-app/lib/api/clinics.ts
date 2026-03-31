@@ -299,7 +299,14 @@ export const clinicsApi = {
    * Assign staff to clinic
    */
   assignStaff: async (clinicId: number, data: ClinicStaffCreateData): Promise<ClinicStaff> => {
-    const response = await apiClient.post<ClinicStaff>(`/api/clinics/${clinicId}/staff/`, data);
+    // Map frontend field names to backend serializer expectations
+    const { user_id, start_date, ...rest } = data;
+    const payload = {
+      ...rest,
+      user: user_id,
+      start_date: start_date || new Date().toISOString().split('T')[0],
+    };
+    const response = await apiClient.post<ClinicStaff>(`/api/clinics/${clinicId}/staff/`, payload);
     return parseResponse(ClinicStaffSchema, response.data, { context: 'clinicsApi.assignStaff' });
   },
 

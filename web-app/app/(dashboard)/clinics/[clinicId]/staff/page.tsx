@@ -133,6 +133,22 @@ const ROLE_CONFIG: Record<ClinicStaffRole, { label: string; color: string; icon:
   },
 };
 
+/**
+ * Map a staff profile's primary_role_name to a ClinicStaffRole.
+ * Falls back to 'OTHER' if no match is found.
+ */
+function mapRoleNameToClinicRole(roleName?: string | null): ClinicStaffRole {
+  if (!roleName) return 'OTHER';
+  const name = roleName.toUpperCase();
+  if (name.includes('LEAD') || name.includes('IN-CHARGE') || name.includes('IN CHARGE')) return 'LEAD';
+  if (name.includes('DOCTOR') || name.includes('CLINICAL OFFICER') || name.includes('PHYSICIAN')) return 'DOCTOR';
+  if (name.includes('NURSE') || name.includes('NURSING')) return 'NURSE';
+  if (name.includes('COUNSELOR') || name.includes('COUNSELLOR') || name.includes('PSYCHOLOGIST')) return 'COUNSELOR';
+  if (name.includes('NUTRITIONIST') || name.includes('DIETITIAN') || name.includes('DIETICIAN')) return 'NUTRITIONIST';
+  if (name.includes('CLERK') || name.includes('RECEPTIONIST') || name.includes('ADMIN')) return 'CLERK';
+  return 'OTHER';
+}
+
 function formatDate(dateString: string | null): string {
   if (!dateString) return 'N/A';
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -272,7 +288,7 @@ export default function ClinicStaffPage() {
                 <span className="hidden sm:inline">Assign Staff</span>
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
               <DialogHeader>
                 <div className="flex items-center gap-2">
                   <DialogTitle>Assign Staff to Clinic</DialogTitle>
@@ -284,8 +300,12 @@ export default function ClinicStaffPage() {
                   <Label>Staff Member</Label>
                   <StaffSearchCombobox
                     value={newStaffData.user_id}
-                    onSelect={(userId) =>
-                      setNewStaffData((prev) => ({ ...prev, user_id: userId }))
+                    onSelect={(userId, staffProfile) =>
+                      setNewStaffData((prev) => ({
+                        ...prev,
+                        user_id: userId,
+                        role: mapRoleNameToClinicRole(staffProfile.primary_role_name),
+                      }))
                     }
                     placeholder="Search and select a staff member..."
                     excludeUserIds={(staff ?? []).map((s) => s.user)}
@@ -296,7 +316,10 @@ export default function ClinicStaffPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">Role in this clinic</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-filled from staff profile. Change if needed.
+                  </p>
                   <Select
                     value={newStaffData.role}
                     onValueChange={(v) =>
@@ -346,11 +369,11 @@ export default function ClinicStaffPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAddStaffOpen(false)}>
+              <DialogFooter className="flex-col gap-2 sm:flex-row">
+                <Button variant="outline" onClick={() => setAddStaffOpen(false)} className="w-full sm:w-auto">
                   Cancel
                 </Button>
-                <Button onClick={handleAssignStaff} disabled={assigningStaff}>
+                <Button onClick={handleAssignStaff} disabled={assigningStaff} className="w-full sm:w-auto">
                   {assigningStaff ? 'Assigning...' : 'Assign Staff'}
                 </Button>
               </DialogFooter>
