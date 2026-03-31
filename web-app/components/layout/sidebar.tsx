@@ -53,8 +53,11 @@ import {
   type NavItemWithChildren,
 } from '@/lib/config/navigation';
 import { useNavigationItems } from '@/lib/hooks/use-navigation-items';
+import { useSidebarBadges, type SidebarBadges } from '@/lib/hooks/use-sidebar-badges';
 
 const SIDEBAR_COLLAPSED_KEY = 'vitora-sidebar-collapsed';
+const SIDEBAR_OPEN_MENUS_KEY = 'vitora-sidebar-open-menus';
+const SIDEBAR_SCROLL_KEY = 'vitora-sidebar-scroll';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -70,6 +73,7 @@ interface NavLinkProps {
   pathname: string;
   searchParamsString: string;
   onMobileClose: () => void;
+  badgeCounts?: SidebarBadges;
 }
 
 interface NavGroupProps {
@@ -78,6 +82,7 @@ interface NavGroupProps {
   pathname: string;
   isOpen: boolean;
   onToggle: () => void;
+  badgeCounts?: SidebarBadges;
   onMobileClose: () => void;
 }
 
@@ -464,9 +469,13 @@ const NavLink = memo(function NavLink({
   pathname,
   searchParamsString,
   onMobileClose,
+  badgeCounts,
 }: NavLinkProps) {
   const isActive = useIsActive(item.href, pathname, searchParamsString);
   const Icon = item.icon;
+
+  // Dynamic badge: prefer live count from badgeCounts, fall back to static item.badge
+  const badgeCount = badgeCounts?.[item.href] ?? item.badge ?? 0;
 
   const baseStyles =
     'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200';
@@ -490,18 +499,22 @@ const NavLink = memo(function NavLink({
       )}
     >
       <div className={cn(
-        'flex shrink-0 items-center justify-center rounded-md transition-all',
+        'relative flex shrink-0 items-center justify-center rounded-md transition-all',
         collapsed ? 'h-10 w-10' : 'h-8 w-8',
         'group-hover:scale-110 group-hover:bg-cyan-500/15'
       )}>
         <Icon className={cn(collapsed ? 'h-6 w-6' : 'h-5 w-5')} />
+        {/* Collapsed: show dot indicator */}
+        {collapsed && badgeCount > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
+        )}
       </div>
 
       {!collapsed && <span>{item.label}</span>}
 
-      {!collapsed && item.badge && (
-        <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">
-          {item.badge}
+      {!collapsed && badgeCount > 0 && (
+        <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-destructive-foreground">
+          {badgeCount > 99 ? '99+' : badgeCount}
         </span>
       )}
     </Link>
@@ -511,7 +524,14 @@ const NavLink = memo(function NavLink({
     return (
       <Tooltip>
         <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right">{item.label}</TooltipContent>
+        <TooltipContent side="right" className="flex items-center gap-2">
+          {item.label}
+          {badgeCount > 0 && (
+            <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-medium text-destructive-foreground">
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
+        </TooltipContent>
       </Tooltip>
     );
   }
@@ -530,6 +550,7 @@ const NavGroup = memo(function NavGroup({
   isOpen,
   onToggle,
   onMobileClose,
+  badgeCounts,
 }: NavGroupProps) {
   const Icon = item.icon;
 
@@ -542,6 +563,12 @@ const NavGroup = memo(function NavGroup({
       ),
     [item.children, pathname]
   );
+
+  // Aggregate badge count across all children
+  const groupBadgeCount = useMemo(() => {
+    if (!badgeCounts) return 0;
+    return item.children.reduce((sum, child) => sum + (badgeCounts[child.href] ?? 0), 0);
+  }, [badgeCounts, item.children]);
 
   if (collapsed) {
     return (
@@ -556,12 +583,22 @@ const NavGroup = memo(function NavGroup({
                 : 'text-muted-foreground hover:bg-cyan-500/10'
             )}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-110 group-hover:bg-cyan-500/15">
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-110 group-hover:bg-cyan-500/15">
               <Icon className="h-6 w-6" />
+              {groupBadgeCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
+              )}
             </div>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right">{item.label}</TooltipContent>
+        <TooltipContent side="right" className="flex items-center gap-2">
+          {item.label}
+          {groupBadgeCount > 0 && (
+            <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-medium text-destructive-foreground">
+              {groupBadgeCount > 99 ? '99+' : groupBadgeCount}
+            </span>
+          )}
+        </TooltipContent>
       </Tooltip>
     );
   }
@@ -581,6 +618,11 @@ const NavGroup = memo(function NavGroup({
             <Icon className="h-5 w-5" />
           </div>
           <span className="flex-1 text-left">{item.label}</span>
+          {groupBadgeCount > 0 && !isOpen && (
+            <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-destructive-foreground">
+              {groupBadgeCount > 99 ? '99+' : groupBadgeCount}
+            </span>
+          )}
           <ChevronDown
             className={cn(
               'h-4 w-4 transition-transform',
@@ -600,6 +642,7 @@ const NavGroup = memo(function NavGroup({
             pathname={pathname}
             searchParamsString=""
             onMobileClose={onMobileClose}
+            badgeCounts={badgeCounts}
           />
         ))}
       </CollapsibleContent>
@@ -622,22 +665,34 @@ export function Sidebar({
   const logout = useLogout();
   const filteredNavItems = useNavigationItems();
   const searchParamsString = searchParams.toString();
+  const badgeCounts = useSidebarBadges();
 
   const navScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
 
   useSidebarPersistence(collapsed, onCollapse);
 
-  // Track scroll position for fade effect
+  // Track scroll position for fade effect + restore persisted scroll
   useEffect(() => {
     const scrollArea = navScrollAreaRef.current;
     if (!scrollArea) return;
 
-    const viewport = scrollArea.querySelector('[data-radix-scroll-area-viewport]');
+    const viewport = scrollArea.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
     if (!viewport) return;
+
+    // Restore persisted scroll position
+    const savedScroll = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+    if (savedScroll) {
+      const scrollTop = parseInt(savedScroll, 10);
+      if (!isNaN(scrollTop)) {
+        viewport.scrollTop = scrollTop;
+      }
+    }
 
     const handleScroll = () => {
       setIsScrolled(viewport.scrollTop > 8);
+      // Debounce-free: sessionStorage writes are fast and synchronous
+      sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(Math.round(viewport.scrollTop)));
     };
 
     viewport.addEventListener('scroll', handleScroll);
@@ -655,9 +710,24 @@ export function Sidebar({
     [filteredNavItems]
   );
 
-  const [openMenus, setOpenMenus] = useState<string[]>(
-    activeParent ? [activeParent] : []
-  );
+  const [openMenus, setOpenMenus] = useState<string[]>(() => {
+    // Restore persisted open menus from sessionStorage
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem(SIDEBAR_OPEN_MENUS_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        } catch { /* ignore parse errors */ }
+      }
+    }
+    return activeParent ? [activeParent] : [];
+  });
+
+  // Persist open menus to sessionStorage on change
+  useEffect(() => {
+    sessionStorage.setItem(SIDEBAR_OPEN_MENUS_KEY, JSON.stringify(openMenus));
+  }, [openMenus]);
 
   const lastAutoOpenedParentRef = useRef<string | null>(null);
 
@@ -727,6 +797,7 @@ export function Sidebar({
                         )
                       }
                       onMobileClose={onMobileClose}
+                      badgeCounts={badgeCounts}
                     />
                   ) : (
                     <NavLink
@@ -736,6 +807,7 @@ export function Sidebar({
                       pathname={pathname}
                       searchParamsString={searchParamsString}
                       onMobileClose={onMobileClose}
+                      badgeCounts={badgeCounts}
                     />
                   )
                 )}
