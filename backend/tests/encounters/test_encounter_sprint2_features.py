@@ -257,6 +257,7 @@ class TestVisitReasonTaxonomy:
             "NEW_COMPLAINT",
             "FOLLOW_UP",
             "CHRONIC_CARE",
+            "SCHEDULED_PROCEDURE",
             "PROCEDURE_REVIEW",
             "REFILL_ONLY",
             "LAB_REVIEW",
