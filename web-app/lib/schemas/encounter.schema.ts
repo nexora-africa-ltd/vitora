@@ -53,6 +53,7 @@ export const VisitReasonSchema = z.enum([
   'FOLLOW_UP',
   'EMERGENCY',
   'CHRONIC_CARE',
+  'SCHEDULED_PROCEDURE',
   'PROCEDURE_REVIEW',
   'REFILL_ONLY',
   'LAB_REVIEW',

@@ -119,6 +119,15 @@ export default function ProcedureOrderDetailPage() {
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleLocation, setRescheduleLocation] = useState('');
+  const [rescheduleClinicId, setRescheduleClinicId] = useState<number | null>(null);
+
+  // Fetch available slots for reschedule when a date is picked
+  const { data: rescheduleSlotsData, isLoading: loadingRescheduleSlots } = useQuery({
+    queryKey: ['procedure-available-slots', catalogId, rescheduleDate],
+    queryFn: () => proceduresApi.getAvailableSlots(catalogId!, rescheduleDate),
+    enabled: !!catalogId && !!rescheduleDate && hasClinics && rescheduleOpen,
+  });
+  const rescheduleSlots = (rescheduleSlotsData?.slots ?? []).filter((s: ProcedureAvailableSlot) => s.available);
 
   // Cancel form
   const [cancelReason, setCancelReason] = useState('');
@@ -160,6 +169,7 @@ export default function ProcedureOrderDetailPage() {
         scheduled_date: rescheduleDate,
         ...(rescheduleTime ? { scheduled_time: rescheduleTime } : {}),
         ...(rescheduleLocation ? { scheduled_location: rescheduleLocation } : {}),
+        ...(rescheduleClinicId ? { scheduled_clinic: rescheduleClinicId } : {}),
       }),
     onSuccess: () => {
       toast({ title: 'Procedure rescheduled', description: 'The schedule has been updated.' });
@@ -334,6 +344,7 @@ export default function ProcedureOrderDetailPage() {
             setRescheduleDate(order.scheduled_date || '');
             setRescheduleTime(order.scheduled_time || '');
             setRescheduleLocation(order.scheduled_location || '');
+            setRescheduleClinicId(order.scheduled_clinic || null);
             setRescheduleOpen(true);
           }}>
             <Calendar className="h-4 w-4 mr-2" />
@@ -668,7 +679,7 @@ export default function ProcedureOrderDetailPage() {
           <DialogHeader>
             <div className="flex items-center gap-2">
               <DialogTitle>Reschedule Procedure</DialogTitle>
-              <HelpPopover content="Change the scheduled date, time, or location for this procedure." />
+              <HelpPopover content="Change the scheduled date, time, or location for this procedure. Pick a slot if available." />
             </div>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -679,28 +690,102 @@ export default function ProcedureOrderDetailPage() {
                   id="reschedule_date"
                   type="date"
                   value={rescheduleDate}
-                  onChange={(e) => setRescheduleDate(e.target.value)}
+                  onChange={(e) => {
+                    setRescheduleDate(e.target.value);
+                    // Reset slot selection when date changes
+                    if (hasClinics) {
+                      setRescheduleClinicId(null);
+                      setRescheduleTime('');
+                      setRescheduleLocation('');
+                    }
+                  }}
                 />
               </div>
+              {!hasClinics && (
+                <div>
+                  <Label htmlFor="reschedule_time">New Time</Label>
+                  <Input
+                    id="reschedule_time"
+                    type="time"
+                    value={rescheduleTime}
+                    onChange={(e) => setRescheduleTime(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {hasClinics && rescheduleDate && (
               <div>
-                <Label htmlFor="reschedule_time">New Time</Label>
+                <Label>Available Slots</Label>
+                {loadingRescheduleSlots ? (
+                  <div className="space-y-2 mt-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : rescheduleSlots.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    No available slots for this date. Try a different date or use manual scheduling below.
+                  </p>
+                ) : (
+                  <div className="grid gap-2 mt-2 max-h-48 overflow-y-auto">
+                    {rescheduleSlots.map((slot: ProcedureAvailableSlot, idx: number) => (
+                      <button
+                        key={`${slot.clinic_id}-${slot.start_time}-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          setRescheduleClinicId(slot.clinic_id);
+                          setRescheduleTime(slot.start_time);
+                          setRescheduleLocation(slot.clinic_name);
+                        }}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-colors ${
+                          rescheduleClinicId === slot.clinic_id && rescheduleTime === slot.start_time
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'hover:bg-muted/50'
+                        }`}
+                      >
+                        <span className="font-medium">{slot.start_time} – {slot.end_time}</span>
+                        <span className="text-muted-foreground">{slot.clinic_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!hasClinics && (
+              <div>
+                <Label htmlFor="reschedule_location">Location</Label>
                 <Input
-                  id="reschedule_time"
-                  type="time"
-                  value={rescheduleTime}
-                  onChange={(e) => setRescheduleTime(e.target.value)}
+                  id="reschedule_location"
+                  placeholder="e.g., Procedure Room 1"
+                  value={rescheduleLocation}
+                  onChange={(e) => setRescheduleLocation(e.target.value)}
                 />
               </div>
-            </div>
-            <div>
-              <Label htmlFor="reschedule_location">Location</Label>
-              <Input
-                id="reschedule_location"
-                placeholder="e.g., Procedure Room 1"
-                value={rescheduleLocation}
-                onChange={(e) => setRescheduleLocation(e.target.value)}
-              />
-            </div>
+            )}
+
+            {hasClinics && rescheduleSlots.length === 0 && rescheduleDate && !loadingRescheduleSlots && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="reschedule_time_fallback">Time (manual)</Label>
+                  <Input
+                    id="reschedule_time_fallback"
+                    type="time"
+                    value={rescheduleTime}
+                    onChange={(e) => setRescheduleTime(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="reschedule_location_fallback">Location</Label>
+                  <Input
+                    id="reschedule_location_fallback"
+                    placeholder="e.g., Procedure Room 1"
+                    value={rescheduleLocation}
+                    onChange={(e) => setRescheduleLocation(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => setRescheduleOpen(false)}>

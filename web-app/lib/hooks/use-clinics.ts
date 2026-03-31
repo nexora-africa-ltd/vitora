@@ -180,11 +180,12 @@ export function useDeleteClinic() {
 /**
  * Fetch sessions for a clinic
  */
-export function useClinicSessions(clinicId: number | undefined, params?: { date_from?: string; date_to?: string }) {
+export function useClinicSessions(clinicId: number | undefined, params?: { date_from?: string; date_to?: string; page?: number; page_size?: number }) {
   return useQuery({
-    queryKey: clinicKeys.sessions(clinicId!),
+    queryKey: [...clinicKeys.sessions(clinicId!), params],
     queryFn: () => clinicsApi.listSessions(clinicId!, params),
     enabled: !!clinicId,
+    placeholderData: (prev) => prev,
   });
 }
 

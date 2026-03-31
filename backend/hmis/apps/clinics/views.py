@@ -109,6 +109,7 @@ class ClinicVisitFilter(filters.FilterSet):
     status = filters.CharFilter(method="filter_status")
     clinic = filters.NumberFilter(field_name="session__clinic__id")
     clinic_type = filters.CharFilter(method="filter_clinic_type")
+    session = filters.NumberFilter(field_name="session__id")
     date = filters.DateFilter(field_name="session__session_date")
     patient = filters.NumberFilter(field_name="patient__id")
 
@@ -116,7 +117,7 @@ class ClinicVisitFilter(filters.FilterSet):
         """Meta options for ClinicVisitFilter."""
 
         model = ClinicVisit
-        fields = ["status", "clinic", "clinic_type", "date", "patient"]
+        fields = ["status", "clinic", "clinic_type", "session", "date", "patient"]
 
     def filter_status(self, queryset, name, value):
         """Filter by status, supporting comma-separated values."""
@@ -385,6 +386,20 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 # =============================================================================
 
 
+class ClinicSessionFilter(filters.FilterSet):
+    """Filter for ClinicSession queryset."""
+
+    date_from = filters.DateFilter(field_name="session_date", lookup_expr="gte")
+    date_to = filters.DateFilter(field_name="session_date", lookup_expr="lte")
+    status = filters.CharFilter(field_name="status")
+
+    class Meta:
+        """Meta options for ClinicSessionFilter."""
+
+        model = ClinicSession
+        fields = ["date_from", "date_to", "status"]
+
+
 class ClinicSessionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for ClinicSession operations nested under clinic.
@@ -399,9 +414,10 @@ class ClinicSessionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     tenant_scope = "facility"  # Sessions are facility-scoped
 
-    queryset = ClinicSession.objects.select_related("clinic").all()
+    queryset = ClinicSession.objects.select_related("clinic").order_by("-session_date").all()
     serializer_class = ClinicSessionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_class = ClinicSessionFilter
 
     def get_queryset(self):
         """Filter sessions by clinic, scoped by tenant."""
@@ -442,6 +458,28 @@ class ClinicSessionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         session, _ = clinic.get_or_create_session(timezone.localdate())
         session.close_session(request.user)
         serializer = self.get_serializer(session)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="scheduled-orders")
+    def scheduled_orders(self, request, clinic_pk=None, pk=None):
+        """
+        Return procedure orders scheduled for this session's clinic + date.
+
+        These are patients who have procedures scheduled at this clinic on
+        the session date but haven't checked in yet (no ClinicVisit).
+        """
+        from hmis.apps.procedures.models import ProcedureOrder
+        from hmis.apps.procedures.serializers import ProcedureOrderListSerializer
+
+        session = self.get_object()
+        orders = ProcedureOrder.objects.filter(
+            scheduled_clinic=session.clinic,
+            scheduled_date=session.session_date,
+        ).exclude(
+            status__in=["COMPLETED", "CANCELLED"],
+        ).select_related("procedure", "patient", "scheduled_clinic").order_by("scheduled_time")
+
+        serializer = ProcedureOrderListSerializer(orders, many=True)
         return Response(serializer.data)
 
 
