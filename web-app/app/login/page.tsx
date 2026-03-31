@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { Eye, EyeOff, Loader2, Sun, Moon, AlertCircle, WifiOff, Clock } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertCircle, WifiOff, Clock } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
 import { Button } from '@/components/ui/button';
+import { AnimatedThemeToggle } from '@/components/ui/animated-theme-toggle';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MFAVerification } from '@/components/auth/mfa-verification';
@@ -32,7 +33,7 @@ export default function LoginPage() {
   const { login, verifyMFA } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   // Prevent hydration mismatch for theme-dependent images
   useEffect(() => {
@@ -126,16 +127,7 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen">
       {/* Theme toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-4 right-4 z-10"
-        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-      >
-        <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-        <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-        <span className="sr-only">Toggle theme</span>
-      </Button>
+      <AnimatedThemeToggle className="absolute top-4 right-4 z-50" />
 
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-burgundy-900 via-brand-burgundy-900 to-brand-teal-600 p-12 flex-col justify-between">
@@ -187,7 +179,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right side - Login form */}
-      <div className="relative flex w-full lg:w-1/2 items-center justify-center p-8 bg-background overflow-hidden">
+      <div className="relative flex w-full lg:w-1/2 items-center justify-center p-4 sm:p-8 bg-background overflow-hidden">
         <Card className="relative z-10 w-full max-w-md border-brand-burgundy-200 dark:border-muted/30 shadow-none lg:shadow-lg lg:border-2 transition-shadow duration-300 hover:shadow-2xl overflow-hidden">
           {/* Background logo watermark - centered in card */}
           {mounted && (
@@ -313,13 +305,22 @@ export default function LoginPage() {
                 )}
               </Button>
 
-              <div className="text-center">
+              <div className="text-center space-y-2 pt-1">
                 <Link
                   href="/forgot-password"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Forgot your password?
                 </Link>
+                <p className="text-sm text-muted-foreground">
+                  Don&apos;t have an account?{' '}
+                  <Link
+                    href="/signup"
+                    className="font-medium text-primary dark:text-brand-teal-400 hover:text-primary/80 dark:hover:text-brand-teal-300 transition-colors"
+                  >
+                    Sign up
+                  </Link>
+                </p>
               </div>
             </form>
 

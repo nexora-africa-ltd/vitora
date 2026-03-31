@@ -122,3 +122,73 @@ export interface InvitationListParams {
   status?: InvitationStatus;
   search?: string;
 }
+
+// =============================================================================
+// Org Signup Types (Phase C)
+// =============================================================================
+
+export interface OrgSignupData {
+  org_name: string;
+  admin_email: string;
+  admin_first_name: string;
+  admin_last_name: string;
+  admin_password: string;
+  confirm_password: string;
+}
+
+export interface OrgSignupResponse {
+  message: string;
+  org_name: string;
+  admin_email: string;
+}
+
+// =============================================================================
+// Email Verification Types (Phase C)
+// =============================================================================
+
+export interface EmailVerifyData {
+  token: string;
+}
+
+export interface EmailVerifyResponse {
+  message: string;
+  org_name: string;
+}
+
+// =============================================================================
+// Setup Wizard Types (Phase C)
+// =============================================================================
+
+export interface SetupCheckResponse {
+  setup_required: boolean;
+  setup_enabled: boolean;
+  has_organizations: boolean;
+}
+
+export type FacilityLevel = '1' | '2' | '3' | '4' | '5' | '6';
+export type OwnershipType = 'GOK' | 'FBO' | 'NGO' | 'PRIVATE';
+
+export interface SetupInitializeData {
+  org_name: string;
+  org_contact_email?: string;
+  org_contact_phone?: string;
+  facility_name: string;
+  facility_mfl_code: string;
+  facility_level: FacilityLevel;
+  facility_ownership?: OwnershipType;
+  facility_county: number;
+  facility_sub_county: number;
+  admin_username: string;
+  admin_email: string;
+  admin_first_name: string;
+  admin_last_name: string;
+  admin_password: string;
+  confirm_password: string;
+}
+
+export interface SetupInitializeResponse {
+  message: string;
+  org_name: string;
+  facility_name: string;
+  username: string;
+}
