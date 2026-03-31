@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, LogOut, MousePointer } from 'lucide-react';
+import { LogOut, MousePointer } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { CircularProgress } from '@/components/ui/circular-progress';
 import { formatCountdown } from '@/lib/hooks/use-idle-timer';
 import { cn } from '@/lib/utils/cn';
 
@@ -45,23 +45,25 @@ export function IdleWarningModal({
 }: IdleWarningModalProps) {
   // Calculate progress (100% when full time, 0% when about to logout)
   const progressValue = (secondsRemaining / totalWarningSeconds) * 100;
-  
-  // Determine urgency level for visual feedback
-  const isUrgent = secondsRemaining <= 60; // Last minute
-  const isCritical = secondsRemaining <= 30; // Last 30 seconds
+
+  // Smooth green → amber → red color coding based on percentage remaining
+  const timerStroke =
+    progressValue > 75 ? 'stroke-emerald-500' :
+    progressValue > 50 ? 'stroke-lime-500' :
+    progressValue > 30 ? 'stroke-amber-500' :
+    progressValue > 15 ? 'stroke-orange-500' :
+    'stroke-red-500';
+  const timerText =
+    progressValue > 75 ? 'text-emerald-600 dark:text-emerald-400' :
+    progressValue > 50 ? 'text-lime-600 dark:text-lime-400' :
+    progressValue > 30 ? 'text-amber-600 dark:text-amber-400' :
+    progressValue > 15 ? 'text-orange-600 dark:text-orange-400' :
+    'text-red-600 dark:text-red-400';
 
   return (
     <AlertDialog open={isOpen}>
       <AlertDialogContent className="sm:max-w-md">
         <AlertDialogHeader>
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mb-2">
-            <Clock className={cn(
-              "h-6 w-6",
-              isCritical ? "text-red-600 dark:text-red-400 animate-pulse" :
-              isUrgent ? "text-amber-600 dark:text-amber-400" :
-              "text-amber-600 dark:text-amber-400"
-            )} />
-          </div>
           <AlertDialogTitle className="text-center">
             Session About to Expire
           </AlertDialogTitle>
@@ -71,31 +73,27 @@ export function IdleWarningModal({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {/* Countdown Display */}
-        <div className="space-y-4 py-4">
-          <div className="text-center">
-            <div className={cn(
-              "text-4xl font-mono font-bold tabular-nums",
-              isCritical ? "text-red-600 dark:text-red-400" :
-              isUrgent ? "text-amber-600 dark:text-amber-400" :
-              "text-foreground"
-            )}>
-              {formatCountdown(secondsRemaining)}
+        {/* Circular Countdown Display */}
+        <div className="flex flex-col items-center gap-3 py-4">
+          <CircularProgress
+            value={progressValue}
+            size={100}
+            strokeWidth={6}
+            indicatorClassName={timerStroke}
+            trackClassName="stroke-muted"
+          >
+            <div className="flex flex-col items-center">
+              <span className={cn(
+                "text-2xl font-mono font-bold tabular-nums",
+                timerText
+              )}>
+                {formatCountdown(secondsRemaining)}
+              </span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Time remaining before logout
-            </p>
-          </div>
-
-          {/* Progress Bar */}
-          <Progress 
-            value={progressValue} 
-            className={cn(
-              "h-2",
-              isCritical && "[&>div]:bg-red-600",
-              isUrgent && !isCritical && "[&>div]:bg-amber-500"
-            )}
-          />
+          </CircularProgress>
+          <p className="text-sm text-muted-foreground">
+            Time remaining before logout
+          </p>
         </div>
 
         <AlertDialogFooter className="flex-col gap-2 sm:flex-col">

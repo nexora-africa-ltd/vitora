@@ -1,16 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Key, Loader2, Smartphone, Archive, LockKeyhole } from 'lucide-react';
+import { Shield, Key, Loader2, Smartphone, Archive, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { CircularProgress } from '@/components/ui/circular-progress';
 import { cn } from '@/lib/utils';
 import { mfaToast } from './mfa-toast';
+
+// MFA token validity period (5 minutes)
+const MFA_TOKEN_LIFETIME_SECONDS = 5 * 60;
 
 interface MFAVerificationProps {
   mfaToken: string;
@@ -22,8 +26,49 @@ export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
   const [backupCode, setBackupCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'token' | 'backup'>('token');
+  const [isExpired, setIsExpired] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState(MFA_TOKEN_LIFETIME_SECONDS);
   const { verifyMFA } = useAuth();
   const router = useRouter();
+  const expiresAtRef = useRef(Date.now() + MFA_TOKEN_LIFETIME_SECONDS * 1000);
+
+  // Wall-clock countdown — works correctly even when tab is backgrounded
+  useEffect(() => {
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000));
+      setSecondsRemaining(remaining);
+      if (remaining <= 0) {
+        setIsExpired(true);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleExpiredReturn = useCallback(() => {
+    mfaToast.expired();
+    onCancel();
+  }, [onCancel]);
+
+  const progressValue = (secondsRemaining / MFA_TOKEN_LIFETIME_SECONDS) * 100;
+  const mins = Math.floor(secondsRemaining / 60);
+  const secs = secondsRemaining % 60;
+  const countdownText = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+  // Smooth green → amber → red color coding based on percentage remaining
+  const timerStroke =
+    progressValue > 75 ? 'stroke-emerald-500' :
+    progressValue > 50 ? 'stroke-lime-500' :
+    progressValue > 30 ? 'stroke-amber-500' :
+    progressValue > 15 ? 'stroke-orange-500' :
+    'stroke-red-500';
+  const timerText =
+    progressValue > 75 ? 'text-emerald-600 dark:text-emerald-400' :
+    progressValue > 50 ? 'text-lime-600 dark:text-lime-400' :
+    progressValue > 30 ? 'text-amber-600 dark:text-amber-400' :
+    progressValue > 15 ? 'text-orange-600 dark:text-orange-400' :
+    'text-red-600 dark:text-red-400';
 
   const handleVerify = async (method: 'token' | 'backup') => {
     setIsLoading(true);
@@ -69,6 +114,43 @@ export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
     }
   };
 
+  // Expired state — prompt user to log in again
+  if (isExpired) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-background via-background to-muted/30">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-destructive/5 rounded-full blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-destructive/5 rounded-full blur-3xl" />
+        </div>
+        <Card className="relative w-full max-w-sm sm:max-w-md border-border/50 shadow-xl backdrop-blur-sm">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-destructive/60 via-destructive to-destructive/60 rounded-t-lg" />
+          <CardHeader className="text-center pb-4 pt-6">
+            <div className="mx-auto mb-4">
+              <CircularProgress
+                value={0}
+                size={72}
+                strokeWidth={5}
+                indicatorClassName="stroke-destructive"
+                trackClassName="stroke-destructive/20"
+              >
+                <AlertTriangle className="h-7 w-7 text-destructive" />
+              </CircularProgress>
+            </div>
+            <CardTitle className="text-xl sm:text-2xl font-semibold">Verification Expired</CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              The verification code has expired. Please sign in again to generate a new code.
+            </p>
+          </CardHeader>
+          <CardContent className="pb-6">
+            <Button onClick={handleExpiredReturn} className="w-full h-11 sm:h-12" size="lg">
+              ← Return to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-background via-background to-muted/30">
       {/* Decorative elements */}
@@ -83,12 +165,21 @@ export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
         
         <CardHeader className="text-center pb-4 pt-6">
           <div className="mx-auto mb-4 relative">
-            {/* Outer glow ring */}
-            <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse scale-125" />
-            {/* Icon container */}
-            <div className="relative flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
-              <LockKeyhole className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
-            </div>
+            {/* Circular countdown timer */}
+            <CircularProgress
+              value={progressValue}
+              size={72}
+              strokeWidth={5}
+              indicatorClassName={timerStroke}
+              trackClassName="stroke-muted"
+            >
+              <div className={cn(
+                "text-xs font-mono font-bold tabular-nums",
+                timerText
+              )}>
+                {countdownText}
+              </div>
+            </CircularProgress>
           </div>
           <div className="flex items-center justify-center gap-2">
             <CardTitle className="text-xl sm:text-2xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Verification Required</CardTitle>
