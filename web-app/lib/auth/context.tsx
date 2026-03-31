@@ -72,6 +72,7 @@ export interface LoginResult {
   mfaRequired?: boolean;
   mfaToken?: string;
   mfaSetupRequired?: boolean;
+  mustChangePassword?: boolean;
   error?: string;
 }
 
@@ -241,7 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
       });
 
-      return { success: true };
+      return { success: true, mustChangePassword: !!data.must_change_password };
     } catch (error) {
       setState((prev) => ({ ...prev, isLoading: false }));
       return {

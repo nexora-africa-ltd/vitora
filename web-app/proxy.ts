@@ -9,7 +9,7 @@ const AUTH_COOKIE_NAME = 'vitora_authenticated';
 /**
  * Routes that don't require authentication
  */
-const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password'];
+const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/invite', '/change-password'];
 
 /**
  * Routes that should redirect to dashboard if already authenticated

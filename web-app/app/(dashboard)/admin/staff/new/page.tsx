@@ -2,7 +2,10 @@
  * New Staff Profile Page
  * Sprint 1.1-1.2 Track C: RBAC Foundation
  *
- * Create a new staff profile with user account, role, and department.
+ * Two modes:
+ * - "invite" (default): Send invitation email, user sets up own account
+ * - "direct": Create account directly with temp password (for offline/no-email scenarios)
+ *
  * Professional details section moved first to support DHA registry auto-population.
  */
 'use client';
@@ -10,7 +13,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, Check, X, Loader2, Sparkles } from 'lucide-react';
+import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, Check, X, Loader2, Sparkles, Send } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,11 +28,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
 import { DatePicker } from '@/components/ui/date-picker';
 import { DHAPractitionerSearch } from '@/components/sha/practitioner-search';
 import { staffApi } from '@/lib/api/rbac';
+import { invitationsApi } from '@/lib/api/onboarding';
+import { CredentialDialog } from '@/components/admin/credential-dialog';
 import type { DHAPractitioner } from '@/lib/types/sha';
 import type { Department, Role } from '@/lib/types/rbac';
 import { useDebouncedCallback } from 'use-debounce';
@@ -41,6 +47,47 @@ export default function NewStaffPage() {
 
   const { data: departments } = useDepartments({ is_active: true, page_size: 100 });
   const { data: roles } = useRoles({ page_size: 100 });
+
+  // Mode: "invite" (default) or "direct"
+  const [mode, setMode] = useState<'invite' | 'direct'>('invite');
+
+  // Credential dialog state (for direct creation)
+  const [credentialDialog, setCredentialDialog] = useState<{
+    open: boolean;
+    username: string;
+    tempPassword: string;
+    fullName: string;
+    email: string;
+  }>({ open: false, username: '', tempPassword: '', fullName: '', email: '' });
+
+  // Invitation-specific form state
+  const [inviteData, setInviteData] = useState({
+    email: '',
+    organization: '',
+    facility: '',
+    role: '',
+    department: '',
+    job_title: '',
+    employee_id: '',
+    expires_hours: '72',
+  });
+  const [isInviting, setIsInviting] = useState(false);
+  const [inviteErrors, setInviteErrors] = useState<Record<string, string>>({});
+
+  // Organizations for invitation form
+  const [organizations, setOrganizations] = useState<Array<{ id: number; name: string }>>([]);
+  useEffect(() => {
+    async function loadOrgs() {
+      try {
+        const { organizationsApi } = await import('@/lib/api/organizations');
+        const result = await organizationsApi.list({ page_size: 100 });
+        setOrganizations(result.results.map((o) => ({ id: o.id, name: o.name })));
+      } catch {
+        // Silently fail - orgs dropdown will be empty
+      }
+    }
+    loadOrgs();
+  }, []);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -279,7 +326,7 @@ export default function NewStaffPage() {
     if (!validate()) return;
 
     try {
-      await createStaff.mutateAsync({
+      const result = await createStaff.mutateAsync({
         username: formData.username,
         email: formData.email,
         first_name: formData.first_name,
@@ -297,12 +344,23 @@ export default function NewStaffPage() {
         hire_date: formData.hire_date?.toISOString().split('T')[0],
       });
 
-      toast({
-        title: 'Staff profile created',
-        description: `Successfully created profile for ${formData.first_name} ${formData.last_name}`,
-      });
-
-      router.push('/admin/staff');
+      // Check if response includes temp_password (direct creation)
+      const resultAny = result as unknown as Record<string, unknown>;
+      if (resultAny.temp_password) {
+        setCredentialDialog({
+          open: true,
+          username: String(resultAny.user_username || formData.username),
+          tempPassword: String(resultAny.temp_password),
+          fullName: `${formData.first_name} ${formData.last_name}`,
+          email: formData.email,
+        });
+      } else {
+        toast({
+          title: 'Staff profile created',
+          description: `Successfully created profile for ${formData.first_name} ${formData.last_name}`,
+        });
+        router.push('/admin/staff');
+      }
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -312,16 +370,269 @@ export default function NewStaffPage() {
     }
   };
 
+  // Invitation submit handler
+  const handleInviteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+
+    if (!inviteData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteData.email)) newErrors.email = 'Invalid email';
+    if (!inviteData.organization) newErrors.organization = 'Organization is required';
+
+    setInviteErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    setIsInviting(true);
+    try {
+      await invitationsApi.create({
+        email: inviteData.email,
+        organization: parseInt(inviteData.organization),
+        facility: inviteData.facility ? parseInt(inviteData.facility) : undefined,
+        role: inviteData.role ? parseInt(inviteData.role) : undefined,
+        department: inviteData.department ? parseInt(inviteData.department) : undefined,
+        job_title: inviteData.job_title || undefined,
+        employee_id: inviteData.employee_id || undefined,
+        expires_hours: parseInt(inviteData.expires_hours) || 72,
+      });
+
+      toast({
+        title: 'Invitation sent',
+        description: `Invitation email sent to ${inviteData.email}. They can set up their own account.`,
+      });
+      router.push('/admin/staff');
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error sending invitation',
+        description: error instanceof Error ? error.message : 'Failed to send invitation',
+      });
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
       <PageHeader
-        title="New Staff Profile"
-        helpContent="Create a staff account, assign a department and role, and capture professional registration details."
+        title="Add Staff Member"
+        helpContent="Invite a new staff member by email (recommended) or create their account directly."
       />
 
-      <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
-        Start with DHA registry lookup when available so licensing fields are populated consistently before assigning the user account.
-      </div>
+      <Tabs value={mode} onValueChange={(v) => setMode(v as 'invite' | 'direct')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="invite" className="gap-2">
+            <Send className="h-4 w-4" />
+            <span className="sm:hidden">Invite</span>
+            <span className="hidden sm:inline">Send Invitation</span>
+          </TabsTrigger>
+          <TabsTrigger value="direct" className="gap-2">
+            <User className="h-4 w-4" />
+            <span className="sm:hidden">Create</span>
+            <span className="hidden sm:inline">Create Directly</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ================================================================ */}
+        {/* INVITATION MODE                                                   */}
+        {/* ================================================================ */}
+        <TabsContent value="invite" className="space-y-6 mt-6">
+          <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+            Send an invitation email. The staff member will set up their own username and password.
+            You configure their role, department, and organizational assignment.
+          </div>
+
+          <form onSubmit={handleInviteSubmit} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Invitation Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="invite_email">
+                    Email Address <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="invite_email"
+                      type="email"
+                      value={inviteData.email}
+                      onChange={(e) => {
+                        setInviteData(prev => ({ ...prev, email: e.target.value }));
+                        if (inviteErrors.email) setInviteErrors(prev => ({ ...prev, email: '' }));
+                      }}
+                      placeholder="staff@facility.com"
+                      className={`pl-9 ${inviteErrors.email ? 'border-destructive' : ''}`}
+                    />
+                  </div>
+                  {inviteErrors.email && (
+                    <p className="text-sm text-destructive">{inviteErrors.email}</p>
+                  )}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>
+                      Organization <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={inviteData.organization}
+                      onValueChange={(v) => {
+                        setInviteData(prev => ({ ...prev, organization: v }));
+                        if (inviteErrors.organization) setInviteErrors(prev => ({ ...prev, organization: '' }));
+                      }}
+                    >
+                      <SelectTrigger className={inviteErrors.organization ? 'border-destructive' : ''}>
+                        <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <SelectValue placeholder="Select organization" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {organizations.length > 0 ? (
+                          organizations.map((org) => (
+                            <SelectItem key={org.id} value={org.id.toString()}>
+                              {org.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectEmpty>No organizations</SelectEmpty>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {inviteErrors.organization && (
+                      <p className="text-sm text-destructive">{inviteErrors.organization}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Invitation Expiry</Label>
+                    <Select
+                      value={inviteData.expires_hours}
+                      onValueChange={(v) => setInviteData(prev => ({ ...prev, expires_hours: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="24">24 hours</SelectItem>
+                        <SelectItem value="72">3 days (default)</SelectItem>
+                        <SelectItem value="168">7 days</SelectItem>
+                        <SelectItem value="336">14 days</SelectItem>
+                        <SelectItem value="720">30 days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5" />
+                  Role & Assignment
+                </CardTitle>
+                <CardDescription>
+                  Pre-configure the role and department for the new staff member
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Role</Label>
+                    <Select
+                      value={inviteData.role}
+                      onValueChange={(v) => setInviteData(prev => ({ ...prev, role: v }))}
+                    >
+                      <SelectTrigger>
+                        <Shield className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles?.results && roles.results.length > 0 ? (
+                          roles.results.map((role: Role) => (
+                            <SelectItem key={role.id} value={role.id.toString()}>
+                              {role.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectEmpty>No roles available</SelectEmpty>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Department</Label>
+                    <Select
+                      value={inviteData.department}
+                      onValueChange={(v) => setInviteData(prev => ({ ...prev, department: v }))}
+                    >
+                      <SelectTrigger>
+                        <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments?.results && departments.results.length > 0 ? (
+                          departments.results.map((dept: Department) => (
+                            <SelectItem key={dept.id} value={dept.id.toString()}>
+                              {dept.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectEmpty>No departments available</SelectEmpty>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="invite_job_title">Job Title</Label>
+                    <Input
+                      id="invite_job_title"
+                      value={inviteData.job_title}
+                      onChange={(e) => setInviteData(prev => ({ ...prev, job_title: e.target.value }))}
+                      placeholder="e.g., Senior Nurse"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invite_employee_id">Employee ID</Label>
+                    <Input
+                      id="invite_employee_id"
+                      value={inviteData.employee_id}
+                      onChange={(e) => setInviteData(prev => ({ ...prev, employee_id: e.target.value }))}
+                      placeholder="Auto-generated if blank"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button variant="outline" type="button" asChild>
+                <Link href="/admin/staff">Cancel</Link>
+              </Button>
+              <Button type="submit" disabled={isInviting}>
+                <Send className="h-4 w-4 mr-2" />
+                {isInviting ? 'Sending…' : 'Send Invitation'}
+              </Button>
+            </div>
+          </form>
+        </TabsContent>
+
+        {/* ================================================================ */}
+        {/* DIRECT CREATION MODE                                              */}
+        {/* ================================================================ */}
+        <TabsContent value="direct" className="space-y-6 mt-6">
+          <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+            Create the account directly with a temporary password. Use this when email is unavailable
+            or the staff member needs immediate access. Start with DHA registry lookup when available
+            so licensing fields are populated consistently before assigning the user account.
+          </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
@@ -688,6 +999,21 @@ export default function NewStaffPage() {
           </Button>
         </div>
       </form>
+        </TabsContent>
+      </Tabs>
+
+      {/* Credential Dialog for direct creation */}
+      <CredentialDialog
+        open={credentialDialog.open}
+        onClose={() => {
+          setCredentialDialog(prev => ({ ...prev, open: false }));
+          router.push('/admin/staff');
+        }}
+        username={credentialDialog.username}
+        tempPassword={credentialDialog.tempPassword}
+        fullName={credentialDialog.fullName}
+        email={credentialDialog.email}
+      />
     </div>
   );
 }

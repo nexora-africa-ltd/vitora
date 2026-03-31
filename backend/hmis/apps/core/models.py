@@ -1491,6 +1491,12 @@ class StaffProfile(models.Model):
         help_text="Emergency contact phone",
     )
 
+    # Account lifecycle
+    must_change_password = models.BooleanField(
+        default=False,
+        help_text="When True the user must set a new password on next login.",
+    )
+
     # Employment
     employment_status = models.CharField(
         max_length=20,
@@ -3073,3 +3079,245 @@ class DocumentSignature(models.Model):
 
     def __str__(self) -> str:
         return f"Sig on {self.document_type}#{self.document_id} by {self.signer.username}"
+
+
+# ============================================================================
+# Staff Invitation & Password Reset Models
+# ============================================================================
+
+
+class StaffInvitation(models.Model):
+    """
+    Invitation for a new staff member to join the system.
+
+    An admin creates an invitation specifying the email, role, department, and
+    facility. The system sends an email with a unique link. The invitee uses the
+    link to set their own username, password, and personal details. Once accepted
+    a User + StaffProfile are created with the pre-configured role/department.
+
+    Invitations expire after ``expires_hours`` (default 72h, max 720h / 30 days).
+    """
+
+    class InvitationStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        EXPIRED = "EXPIRED", "Expired"
+        REVOKED = "REVOKED", "Revoked"
+
+    # Invitation identity
+    token = models.UUIDField(
+        unique=True,
+        editable=False,
+        help_text="Unique token embedded in the invitation link.",
+    )
+    email = models.EmailField(
+        help_text="Email address the invitation was sent to.",
+    )
+
+    # Pre-configured admin settings
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="invitations",
+        help_text="Organization the invitee will belong to.",
+    )
+    facility = models.ForeignKey(
+        "Facility",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="invitations",
+        help_text="Primary facility assignment.",
+    )
+    role = models.ForeignKey(
+        "Role",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invitations",
+        help_text="Primary role to assign on acceptance.",
+    )
+    department = models.ForeignKey(
+        "Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invitations",
+        help_text="Primary department to assign on acceptance.",
+    )
+    secondary_roles = models.ManyToManyField(
+        "Role",
+        blank=True,
+        related_name="secondary_invitations",
+        help_text="Additional roles to assign on acceptance.",
+    )
+    secondary_departments = models.ManyToManyField(
+        "Department",
+        blank=True,
+        related_name="secondary_invitations",
+        help_text="Additional departments to assign on acceptance.",
+    )
+    job_title = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Job title for the new staff member.",
+    )
+    employee_id = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Pre-assigned employee ID (admin can pre-fill or leave blank).",
+    )
+
+    # Lifecycle
+    status = models.CharField(
+        max_length=10,
+        choices=InvitationStatus.choices,
+        default=InvitationStatus.PENDING,
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="sent_invitations",
+        help_text="Admin who created the invitation.",
+    )
+    expires_at = models.DateTimeField(
+        help_text="When the invitation link expires.",
+    )
+    expires_hours = models.PositiveIntegerField(
+        default=72,
+        help_text="Invitation validity in hours (default 72, max 720 = 30 days).",
+    )
+
+    # Acceptance tracking
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    accepted_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="accepted_invitation",
+        help_text="User account created when invitation was accepted.",
+    )
+
+    # Email tracking
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    send_count = models.PositiveIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Staff Invitation"
+        verbose_name_plural = "Staff Invitations"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["token"]),
+            models.Index(fields=["email"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Invitation for {self.email} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        """Auto-generate token and set expiry on first save."""
+        import uuid
+
+        if not self.token:
+            self.token = uuid.uuid4()
+        if not self.expires_at:
+            from datetime import timedelta
+
+            hours = min(self.expires_hours, 720)  # Cap at 30 days
+            self.expires_at = timezone.now() + timedelta(hours=hours)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self) -> bool:
+        """Check if the invitation has expired."""
+        return timezone.now() > self.expires_at
+
+    @property
+    def is_usable(self) -> bool:
+        """Check if the invitation can still be accepted."""
+        return self.status == self.InvitationStatus.PENDING and not self.is_expired
+
+    def revoke(self, user=None):
+        """Revoke the invitation."""
+        self.status = self.InvitationStatus.REVOKED
+        self.save(update_fields=["status", "updated_at"])
+
+    def mark_accepted(self, user):
+        """Mark invitation as accepted and link to the created user."""
+        self.status = self.InvitationStatus.ACCEPTED
+        self.accepted_at = timezone.now()
+        self.accepted_user = user
+        self.save(update_fields=["status", "accepted_at", "accepted_user", "updated_at"])
+
+
+class PasswordResetToken(models.Model):
+    """
+    Time-limited token for password reset flows.
+
+    Tokens are single-use and expire after 1 hour by default.
+    The endpoint always returns 200 regardless of email existence
+    to prevent email enumeration attacks.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="password_reset_tokens",
+    )
+    token = models.UUIDField(
+        unique=True,
+        editable=False,
+        help_text="Unique reset token.",
+    )
+    expires_at = models.DateTimeField(
+        help_text="When this token expires (default: 1 hour).",
+    )
+    used = models.BooleanField(
+        default=False,
+        help_text="Whether this token has been used.",
+    )
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Password Reset Token"
+        verbose_name_plural = "Password Reset Tokens"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["token"]),
+            models.Index(fields=["user", "used"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Reset token for {self.user.username} (used={self.used})"
+
+    def save(self, *args, **kwargs):
+        """Auto-generate token and set expiry on first save."""
+        import uuid
+
+        if not self.token:
+            self.token = uuid.uuid4()
+        if not self.expires_at:
+            from datetime import timedelta
+
+            self.expires_at = timezone.now() + timedelta(hours=1)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if this token is still valid (not used, not expired)."""
+        return not self.used and timezone.now() < self.expires_at
+
+    def consume(self):
+        """Mark the token as used."""
+        self.used = True
+        self.used_at = timezone.now()
+        self.save(update_fields=["used", "used_at"])

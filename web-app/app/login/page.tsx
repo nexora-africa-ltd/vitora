@@ -13,6 +13,7 @@ import { APP_NAME } from '@/lib/utils/constants';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -96,6 +97,11 @@ export default function LoginPage() {
           token: result.mfaToken,
           setupRequired: result.mfaSetupRequired,
         });
+        return;
+      }
+
+      if (result.mustChangePassword) {
+        router.push('/change-password');
         return;
       }
 
@@ -306,6 +312,15 @@ export default function LoginPage() {
                   'Sign in'
                 )}
               </Button>
+
+              <div className="text-center">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Forgot your password?
+                </Link>
+              </div>
             </form>
 
             {/* Development helper */}
