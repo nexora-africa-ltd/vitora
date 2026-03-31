@@ -87,3 +87,35 @@ export const StaffCreateWithCredentialsSchema = z.object({
   full_name: z.string(),
   employee_id: z.string(),
 });
+
+// =============================================================================
+// ORG SIGNUP SCHEMAS (Phase C)
+// =============================================================================
+
+export const OrgSignupResponseSchema = z.object({
+  message: z.string(),
+  org_name: z.string(),
+  admin_email: z.string(),
+});
+
+export const EmailVerifyResponseSchema = z.object({
+  message: z.string(),
+  org_name: z.string(),
+});
+
+// =============================================================================
+// SETUP WIZARD SCHEMAS (Phase C)
+// =============================================================================
+
+export const SetupCheckResponseSchema = z.object({
+  setup_required: z.boolean(),
+  setup_enabled: z.boolean(),
+  has_organizations: z.boolean(),
+});
+
+export const SetupInitializeResponseSchema = z.object({
+  message: z.string(),
+  org_name: z.string(),
+  facility_name: z.string(),
+  username: z.string(),
+});

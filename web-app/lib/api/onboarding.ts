@@ -11,6 +11,10 @@ import {
   InvitationPublicSchema,
   InvitationAcceptResponseSchema,
   MessageResponseSchema,
+  OrgSignupResponseSchema,
+  EmailVerifyResponseSchema,
+  SetupCheckResponseSchema,
+  SetupInitializeResponseSchema,
 } from '@/lib/schemas/onboarding.schema';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import type { PaginatedResponse } from '@/lib/types';
@@ -24,6 +28,13 @@ import type {
   PasswordResetRequestData,
   PasswordResetConfirmData,
   ChangePasswordData,
+  OrgSignupData,
+  OrgSignupResponse,
+  EmailVerifyData,
+  EmailVerifyResponse,
+  SetupCheckResponse,
+  SetupInitializeData,
+  SetupInitializeResponse,
 } from '@/lib/types/onboarding';
 
 // =============================================================================
@@ -135,5 +146,75 @@ export const changePasswordApi = {
   change: async (data: ChangePasswordData): Promise<{ message: string }> => {
     const response = await apiClient.post('/api/auth/change-password/', data);
     return parseResponse(MessageResponseSchema, response.data, { context: 'changePasswordApi.change' });
+  },
+};
+
+// =============================================================================
+// Org Signup API (Public - Phase C)
+// =============================================================================
+
+export const orgSignupApi = {
+  signup: async (data: OrgSignupData): Promise<OrgSignupResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/core/auth/signup/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      if (error.org_name) throw new Error(Array.isArray(error.org_name) ? error.org_name[0] : error.org_name);
+      if (error.admin_email) throw new Error(Array.isArray(error.admin_email) ? error.admin_email[0] : error.admin_email);
+      if (error.confirm_password) throw new Error(Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password);
+      throw new Error(error.error || error.detail || 'Signup failed');
+    }
+    const result = await response.json();
+    return parseResponse(OrgSignupResponseSchema, result, { context: 'orgSignupApi.signup' });
+  },
+
+  verifyEmail: async (data: EmailVerifyData): Promise<EmailVerifyResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/core/auth/verify-email/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Verification failed');
+    }
+    const result = await response.json();
+    return parseResponse(EmailVerifyResponseSchema, result, { context: 'orgSignupApi.verifyEmail' });
+  },
+};
+
+// =============================================================================
+// Setup Wizard API (Public - Phase C)
+// =============================================================================
+
+export const setupApi = {
+  check: async (): Promise<SetupCheckResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/core/setup/check/`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error('Failed to check setup status');
+    const result = await response.json();
+    return parseResponse(SetupCheckResponseSchema, result, { context: 'setupApi.check' });
+  },
+
+  initialize: async (data: SetupInitializeData): Promise<SetupInitializeResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/core/setup/initialize/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      if (error.facility_mfl_code) throw new Error(Array.isArray(error.facility_mfl_code) ? error.facility_mfl_code[0] : error.facility_mfl_code);
+      if (error.admin_username) throw new Error(Array.isArray(error.admin_username) ? error.admin_username[0] : error.admin_username);
+      if (error.admin_email) throw new Error(Array.isArray(error.admin_email) ? error.admin_email[0] : error.admin_email);
+      if (error.confirm_password) throw new Error(Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password);
+      throw new Error(error.error || error.detail || 'Setup failed');
+    }
+    const result = await response.json();
+    return parseResponse(SetupInitializeResponseSchema, result, { context: 'setupApi.initialize' });
   },
 };
