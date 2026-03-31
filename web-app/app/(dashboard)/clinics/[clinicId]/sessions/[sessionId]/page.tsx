@@ -9,11 +9,14 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   AlertCircle,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clipboard,
   Clock,
   Stethoscope,
   Users,
@@ -34,6 +37,8 @@ import { useClinic, useClinicSession } from '@/lib/hooks/use-clinics';
 import { clinicsApi } from '@/lib/api/clinics';
 import { ClinicNavigation } from '@/components/clinics/clinic-navigation';
 import type { ClinicVisit, ClinicVisitStatus, ClinicSessionStatus } from '@/lib/types/clinic';
+import type { ProcedureOrderListItem } from '@/lib/types/procedure';
+import { PROCEDURE_STATUS_COLORS, PROCEDURE_STATUS_LABELS, PROCEDURE_PRIORITY_COLORS } from '@/lib/types/procedure';
 import { cn } from '@/lib/utils/cn';
 
 // =============================================================================
@@ -102,32 +107,52 @@ function getPatientName(visit: ClinicVisit): string {
 
 export default function SessionDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const clinicId = Number(params.clinicId);
   const sessionId = Number(params.sessionId);
   const { refresh, isRefreshing } = usePageRefresh();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   // Fetch session detail
   const { data: clinic, isLoading: clinicLoading } = useClinic(clinicId);
   const { data: session, isLoading: sessionLoading } = useClinicSession(clinicId, sessionId);
 
-  // Fetch visits for this session
+  // Fetch visits for this session (server-paginated)
   const { data: visitsData, isLoading: visitsLoading } = useQuery({
-    queryKey: ['clinic-visits', 'session', sessionId],
-    queryFn: () => clinicsApi.listVisits({ session: sessionId, page_size: 200 }),
+    queryKey: ['clinic-visits', 'session', sessionId, page],
+    queryFn: () => clinicsApi.listVisits({ session: sessionId, page, page_size: PAGE_SIZE }),
     enabled: !!sessionId,
+    placeholderData: (prev) => prev,
+  });
+
+  // Fetch scheduled procedure orders for this session's clinic + date
+  const { data: scheduledOrders = [], isLoading: ordersLoading } = useQuery({
+    queryKey: ['clinic-session-orders', clinicId, sessionId],
+    queryFn: () => clinicsApi.getSessionScheduledOrders(clinicId, sessionId),
+    enabled: !!clinicId && !!sessionId,
   });
 
   const visits = useMemo(() => visitsData?.results ?? [], [visitsData]);
+  const totalVisits = visitsData?.count ?? 0;
+  const totalPages = Math.ceil(totalVisits / PAGE_SIZE);
+  const hasNext = !!visitsData?.next;
+  const hasPrev = page > 1;
 
-  // Group visits by status for stats
+  // Stats from total counts (use session-level stats if available, else current page)
   const stats = useMemo(() => {
-    const waiting = visits.filter((v) => v.status === 'WAITING' || v.status === 'REGISTERED').length;
-    const inConsultation = visits.filter((v) => v.status === 'IN_CONSULTATION' || v.status === 'CALLED').length;
-    const completed = visits.filter((v) => v.status === 'COMPLETED').length;
-    const noShow = visits.filter((v) => v.status === 'NO_SHOW').length;
-    return { total: visits.length, waiting, inConsultation, completed, noShow };
-  }, [visits]);
+    if (session) {
+      return {
+        total: (session.patients_registered || 0) + scheduledOrders.length,
+        waiting: session.patients_waiting || 0,
+        inConsultation: 0,
+        completed: session.patients_seen || 0,
+        scheduled: scheduledOrders.length,
+      };
+    }
+    return { total: 0, waiting: 0, inConsultation: 0, completed: 0, scheduled: 0 };
+  }, [session, scheduledOrders]);
 
   const isLoading = clinicLoading || sessionLoading;
 
@@ -234,14 +259,103 @@ export default function SessionDetailPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">No Show</CardTitle>
-              <AlertCircle className="h-4 w-4 text-red-500 hidden sm:block" />
+              <CardTitle className="text-xs sm:text-sm font-medium">Scheduled</CardTitle>
+              <Calendar className="h-4 w-4 text-blue-500 hidden sm:block" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.noShow}</div>
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.scheduled}</div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Scheduled Procedure Orders */}
+        {(scheduledOrders.length > 0 || ordersLoading) && (
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center gap-2">
+                <Clipboard className="h-4 w-4 text-blue-500" />
+                <CardTitle className="text-base sm:text-lg">Scheduled Procedures</CardTitle>
+                <Badge variant="secondary">{scheduledOrders.length}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              {ordersLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-14 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <ResponsiveTable<ProcedureOrderListItem>
+                  data={scheduledOrders}
+                  keyExtractor={(o) => o.id}
+                  isLoading={ordersLoading}
+                  emptyMessage="No scheduled procedures."
+                  onRowClick={(o) => router.push(`/procedures/orders/${o.id}`)}
+                  columns={[
+                    {
+                      key: 'order_number',
+                      header: 'Order',
+                      cell: (o) => (
+                        <span className="font-mono text-xs">{o.order_number}</span>
+                      ),
+                    },
+                    {
+                      key: 'patient_name',
+                      header: 'Patient',
+                      cell: (o) => <span className="font-medium">{o.patient_name}</span>,
+                    },
+                    {
+                      key: 'procedure_name',
+                      header: 'Procedure',
+                      cell: (o) => o.procedure_name,
+                    },
+                    {
+                      key: 'scheduled_time',
+                      header: 'Time',
+                      cell: (o) => o.scheduled_time || '--',
+                      hideOnMobile: true,
+                    },
+                    {
+                      key: 'status',
+                      header: 'Status',
+                      cell: (o) => (
+                        <Badge className={cn('font-normal text-xs w-fit', PROCEDURE_STATUS_COLORS[o.status])}>
+                          {PROCEDURE_STATUS_LABELS[o.status]}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      key: 'priority',
+                      header: 'Priority',
+                      cell: (o) => (
+                        <Badge className={cn('font-normal text-xs w-fit', PROCEDURE_PRIORITY_COLORS[o.priority])}>
+                          {o.priority}
+                        </Badge>
+                      ),
+                      hideOnMobile: true,
+                    },
+                  ]}
+                  mobileCard={(o) => (
+                    <div className="rounded-lg border p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-sm truncate">{o.patient_name}</span>
+                        <Badge className={cn('font-normal shrink-0 text-xs', PROCEDURE_STATUS_COLORS[o.status])}>
+                          {PROCEDURE_STATUS_LABELS[o.status]}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span className="font-mono">{o.order_number}</span>
+                        <span>{o.procedure_name}</span>
+                        {o.scheduled_time && <span>{o.scheduled_time}</span>}
+                      </div>
+                    </div>
+                  )}
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* View Toggle + Patients Header */}
         <Card>
@@ -249,7 +363,7 @@ export default function SessionDetailPage() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <CardTitle className="text-base sm:text-lg">Patients</CardTitle>
-                <Badge variant="secondary">{visits.length}</Badge>
+                <Badge variant="secondary">{totalVisits}</Badge>
               </div>
               <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
@@ -275,7 +389,7 @@ export default function SessionDetailPage() {
                     subtitle={visit.patient?.mrn || visit.patient_mrn || undefined}
                     initials={getPatientInitials(visit)}
                     gender={visit.patient?.gender as 'M' | 'F' | 'O' | undefined}
-                    href={visit.patient ? `/patients/${visit.patient.id}` : undefined}
+                    href={visit.encounter ? `/encounters/${visit.encounter}` : `/clinics/visits/${visit.id}`}
                     status={{
                       label: visit.status_display,
                       variant: VISIT_STATUS_BADGE_VARIANT[visit.status],
@@ -299,7 +413,13 @@ export default function SessionDetailPage() {
                 keyExtractor={(visit) => visit.id}
                 isLoading={visitsLoading}
                 emptyMessage="No patients in this session."
-                onRowClick={(visit) => visit.patient ? window.location.href = `/patients/${visit.patient.id}` : undefined}
+                onRowClick={(visit) => {
+                  if (visit.encounter) {
+                    router.push(`/encounters/${visit.encounter}`);
+                  } else {
+                    router.push(`/clinics/visits/${visit.id}`);
+                  }
+                }}
                 defaultSortColumn="queue_number"
                 defaultSortDirection="asc"
                 columns={[
@@ -390,6 +510,33 @@ export default function SessionDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!hasPrev}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} ({totalVisits} visit{totalVisits !== 1 ? 's' : ''})
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNext}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        )}
       </div>
     </PullToRefresh>
   );

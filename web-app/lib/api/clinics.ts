@@ -47,6 +47,7 @@ import type {
   ClinicQueueStats,
   ClinicDashboardStats,
 } from '@/lib/types/clinic';
+import type { ProcedureOrderListItem } from '@/lib/types/procedure';
 import type { PaginatedResponse } from '@/lib/types';
 
 // =============================================================================
@@ -112,7 +113,7 @@ export const clinicsApi = {
   /**
    * List sessions for a clinic
    */
-  listSessions: async (clinicId: number, params?: { date_from?: string; date_to?: string }): Promise<PaginatedResponse<ClinicSession>> => {
+  listSessions: async (clinicId: number, params?: { date_from?: string; date_to?: string; page?: number; page_size?: number; status?: string }): Promise<PaginatedResponse<ClinicSession>> => {
     const response = await apiClient.get<PaginatedResponse<ClinicSession>>(`/api/clinics/${clinicId}/sessions/`, { params });
     return parseResponse(PaginatedClinicSessionSchema, response.data, { context: 'clinicsApi.listSessions' });
   },
@@ -123,6 +124,14 @@ export const clinicsApi = {
   getSession: async (clinicId: number, sessionId: number): Promise<ClinicSession> => {
     const response = await apiClient.get<ClinicSession>(`/api/clinics/${clinicId}/sessions/${sessionId}/`);
     return parseResponse(ClinicSessionSchema, response.data, { context: 'clinicsApi.getSession' });
+  },
+
+  /**
+   * Get procedure orders scheduled for a specific session (clinic + date)
+   */
+  getSessionScheduledOrders: async (clinicId: number, sessionId: number): Promise<ProcedureOrderListItem[]> => {
+    const response = await apiClient.get(`/api/clinics/${clinicId}/sessions/${sessionId}/scheduled-orders/`);
+    return response.data;
   },
 
   /**

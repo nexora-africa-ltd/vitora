@@ -13,6 +13,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   Users,
   CheckCircle,
   Download,
@@ -90,6 +92,8 @@ export default function ClinicSessionsPage() {
   const [dateRange, setDateRange] = useState<DateRange>('month');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   // Calculate date range
   const dateParams = useMemo(() => {
@@ -124,13 +128,17 @@ export default function ClinicSessionsPage() {
 
   // Fetch data
   const { data: clinic, isLoading: clinicLoading } = useClinic(clinicId);
-  const { data: sessionsData, isLoading: sessionsLoading, refetch } = useClinicSessions(clinicId, dateParams);
+  const { data: sessionsData, isLoading: sessionsLoading, refetch } = useClinicSessions(clinicId, { ...dateParams, page, page_size: PAGE_SIZE });
 
   const sessions = useMemo(() => sessionsData?.results ?? [], [sessionsData]);
+  const totalSessions = sessionsData?.count ?? 0;
+  const totalPages = Math.ceil(totalSessions / PAGE_SIZE);
+  const hasNextPage = !!sessionsData?.next;
+  const hasPrevPage = page > 1;
 
-  // Calculate statistics
+  // Calculate statistics (from current page data; totalSessions from server count)
   const stats = useMemo(() => {
-    if (sessions.length === 0) {
+    if (sessions.length === 0 && totalSessions === 0) {
       return {
         totalSessions: 0,
         totalPatientsSeen: 0,
@@ -144,17 +152,17 @@ export default function ClinicSessionsPage() {
     const closedSessions = sessions.filter((s) => s.status === 'CLOSED');
 
     return {
-      totalSessions: sessions.length,
+      totalSessions,
       totalPatientsSeen,
       avgPatientsPerSession: closedSessions.length > 0
         ? Math.round(totalPatientsSeen / closedSessions.length)
         : 0,
-      avgWaitTime: 0, // Would need additional data
+      avgWaitTime: 0,
       completionRate: sessions.length > 0
         ? Math.round((closedSessions.length / sessions.length) * 100)
         : 0,
     };
-  }, [sessions]);
+  }, [sessions, totalSessions]);
 
   if (clinicLoading) {
     return (
@@ -208,7 +216,7 @@ export default function ClinicSessionsPage() {
               <span className="text-xs sm:text-sm font-medium">Date Range:</span>
             </div>
 
-            <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
+            <Select value={dateRange} onValueChange={(v) => { setDateRange(v as DateRange); setPage(1); }}>
               <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Select range" />
               </SelectTrigger>
@@ -450,6 +458,33 @@ export default function ClinicSessionsPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => p - 1)}
+            disabled={!hasPrevPage}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!hasNextPage}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      )}
     </div>
     </PullToRefresh>
   );
