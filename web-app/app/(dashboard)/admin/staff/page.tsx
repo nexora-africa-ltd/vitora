@@ -45,6 +45,8 @@ import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { useStaffList, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
 import type { StaffProfile, EmploymentStatus } from '@/lib/types/rbac';
 
+const PAGE_SIZE = 20;
+
 export default function StaffListPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -52,6 +54,7 @@ export default function StaffListPage() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<EmploymentStatus | 'all'>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [page, setPage] = useState(1);
   const { refresh, isRefreshing } = usePageRefresh();
 
   const {
@@ -69,6 +72,8 @@ export default function StaffListPage() {
     error,
     refetch: refetchStaff,
   } = useStaffList({
+    page,
+    page_size: PAGE_SIZE,
     search: search || undefined,
     primary_department: departmentFilter !== 'all' ? parseInt(departmentFilter, 10) : undefined,
     primary_role: roleFilter !== 'all' ? parseInt(roleFilter, 10) : undefined,
@@ -76,6 +81,9 @@ export default function StaffListPage() {
   });
 
   const staff = data?.results ?? [];
+  const totalPages = data ? Math.ceil(data.count / PAGE_SIZE) : 0;
+  const hasNext = !!data?.next;
+  const hasPrev = page > 1;
   const activeCount = staff.filter((member) => member.employment_status === 'ACTIVE').length;
   const onLeaveCount = staff.filter((member) => member.employment_status === 'ON_LEAVE').length;
   const unassignedCount = staff.filter(
@@ -171,10 +179,10 @@ export default function StaffListPage() {
                   name="staff-search"
                   placeholder="Search by name, username, or employee ID…"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 />
               </div>
-              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <Select value={departmentFilter} onValueChange={(v) => { setDepartmentFilter(v); setPage(1); }}>
                 <SelectTrigger aria-label="Filter by department">
                   <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
@@ -187,7 +195,7 @@ export default function StaffListPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
                 <SelectTrigger aria-label="Filter by role">
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
@@ -202,7 +210,7 @@ export default function StaffListPage() {
               </Select>
               <Select
                 value={statusFilter}
-                onValueChange={(value) => setStatusFilter(value as EmploymentStatus | 'all')}
+                onValueChange={(value) => { setStatusFilter(value as EmploymentStatus | 'all'); setPage(1); }}
               >
                 <SelectTrigger aria-label="Filter by employment status">
                   <SelectValue placeholder="All Status" />
@@ -254,6 +262,20 @@ export default function StaffListPage() {
               />
             ) : (
               <StaffGridView staff={staff} />
+            )}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+                  Next
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

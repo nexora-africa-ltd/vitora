@@ -32,7 +32,9 @@ export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
   const router = useRouter();
   const expiresAtRef = useRef(Date.now() + MFA_TOKEN_LIFETIME_SECONDS * 1000);
 
-  // Wall-clock countdown — works correctly even when tab is backgrounded
+  // Wall-clock countdown — works correctly even when tab is backgrounded.
+  // setInterval is throttled to ~1/min in background tabs, so we also
+  // listen for visibilitychange to tick immediately when the user returns.
   useEffect(() => {
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000));
@@ -41,9 +43,18 @@ export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
         setIsExpired(true);
       }
     };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        tick();
+      }
+    };
     tick();
     const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, []);
 
   const handleExpiredReturn = useCallback(() => {

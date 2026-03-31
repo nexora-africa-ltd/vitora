@@ -56,18 +56,26 @@ function getCategoryBadgeVariant(category: string) {
   }
 }
 
+const PAGE_SIZE = 20;
+
 export default function RolesListPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [roleType, setRoleType] = useState('all');
+  const [page, setPage] = useState(1);
   const { refresh, isRefreshing } = usePageRefresh();
 
   const { data, isLoading, error, refetch } = useRoles({
+    page,
+    page_size: PAGE_SIZE,
     search: search || undefined,
     category: (roleType !== 'all' ? roleType : undefined) as RoleCategory | undefined,
   });
 
   const roles = data?.results ?? [];
+  const totalPages = data ? Math.ceil(data.count / PAGE_SIZE) : 0;
+  const hasNext = !!data?.next;
+  const hasPrev = page > 1;
   const activeCount = roles.filter((role) => role.is_active).length;
   const licenseRequiredCount = roles.filter((role) => role.requires_license).length;
   const managementCount = roles.filter((role) => role.category === 'MANAGEMENT').length;
@@ -160,10 +168,10 @@ export default function RolesListPage() {
                   name="role-search"
                   placeholder="Search by role name or code…"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 />
               </div>
-              <Select value={roleType} onValueChange={setRoleType}>
+              <Select value={roleType} onValueChange={(v) => { setRoleType(v); setPage(1); }}>
                 <SelectTrigger aria-label="Filter by role category">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
@@ -265,6 +273,20 @@ export default function RolesListPage() {
                   },
                 ]}
               />
+            )}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+                  Next
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
