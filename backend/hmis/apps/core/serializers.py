@@ -21,6 +21,7 @@ from .models import (
     Notification,
     Organization,
     Role,
+    StaffInvitation,
     StaffProfile,
     SubCounty,
     UserCertificate,
@@ -513,8 +514,10 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         password = validated_data.pop("password", None)
 
         # Generate a random password if not provided
+        password_was_generated = False
         if not password:
             password = secrets.token_urlsafe(12)
+            password_was_generated = True
 
         # Ensure date_joined has a default value
         if "date_joined" not in validated_data or validated_data.get("date_joined") is None:
@@ -529,8 +532,15 @@ class StaffProfileCreateSerializer(serializers.Serializer):
             password=password,
         )
 
+        # Set must_change_password for direct creation
+        validated_data["must_change_password"] = True
+
         # Create the staff profile
         staff_profile = StaffProfile.objects.create(user=user, **validated_data)
+
+        # Stash temporary password on instance for the view to read (not persisted)
+        staff_profile._temp_password = password
+        staff_profile._password_was_generated = password_was_generated
 
         return staff_profile
 
@@ -1129,3 +1139,235 @@ class RevokeCertificateRequestSerializer(serializers.Serializer):
     reason = serializers.ChoiceField(
         choices=UserCertificate.RevocationReason.choices,
     )
+
+
+# ============================================================================
+# Staff Invitation Serializers
+# ============================================================================
+
+
+class StaffInvitationCreateSerializer(serializers.Serializer):
+    """Create a new staff invitation (admin action)."""
+
+    email = serializers.EmailField()
+    organization = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.filter(is_active=True),
+    )
+    facility = serializers.PrimaryKeyRelatedField(
+        queryset=Facility.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    secondary_roles = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.filter(is_active=True),
+        many=True,
+        required=False,
+    )
+    secondary_departments = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.filter(is_active=True),
+        many=True,
+        required=False,
+    )
+    job_title = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    employee_id = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    expires_hours = serializers.IntegerField(
+        min_value=1,
+        max_value=720,  # 30 days max
+        default=72,
+        required=False,
+    )
+
+    def validate_email(self, value):
+        """Ensure email isn't already registered or has a pending invitation."""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        normalized = value.lower()
+        if User.objects.filter(email__iexact=normalized).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        # Check for pending (non-expired) invitation
+        from hmis.apps.core.models import StaffInvitation
+
+        pending = StaffInvitation.objects.filter(
+            email__iexact=normalized,
+            status=StaffInvitation.InvitationStatus.PENDING,
+        )
+        for inv in pending:
+            if inv.is_usable:
+                raise serializers.ValidationError(
+                    "A pending invitation for this email already exists. "
+                    "Revoke it first or resend."
+                )
+        return normalized
+
+    def validate_employee_id(self, value):
+        """Validate employee_id is unique if provided."""
+        if value and StaffProfile.objects.filter(employee_id=value).exists():
+            raise serializers.ValidationError("This employee ID is already in use.")
+        return value
+
+
+class StaffInvitationSerializer(serializers.ModelSerializer):
+    """Read serializer for staff invitations."""
+
+    invited_by_name = serializers.SerializerMethodField()
+    organization_name = serializers.CharField(source="organization.name", read_only=True)
+    facility_name = serializers.SerializerMethodField()
+    role_name = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
+    is_expired = serializers.BooleanField(read_only=True)
+    is_usable = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = StaffInvitation
+        fields = [
+            "id",
+            "token",
+            "email",
+            "organization",
+            "organization_name",
+            "facility",
+            "facility_name",
+            "role",
+            "role_name",
+            "department",
+            "department_name",
+            "job_title",
+            "employee_id",
+            "status",
+            "invited_by",
+            "invited_by_name",
+            "expires_at",
+            "expires_hours",
+            "accepted_at",
+            "accepted_user",
+            "last_sent_at",
+            "send_count",
+            "is_expired",
+            "is_usable",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_invited_by_name(self, obj) -> str:
+        if obj.invited_by:
+            return obj.invited_by.get_full_name() or obj.invited_by.username
+        return ""
+
+    def get_facility_name(self, obj) -> str:
+        return obj.facility.name if obj.facility else ""
+
+    def get_role_name(self, obj) -> str:
+        return obj.role.name if obj.role else ""
+
+    def get_department_name(self, obj) -> str:
+        return obj.department.name if obj.department else ""
+
+
+class InvitationAcceptSerializer(serializers.Serializer):
+    """Public serializer for accepting an invitation and creating an account."""
+
+    token = serializers.UUIDField()
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(min_length=8, max_length=128, write_only=True)
+    confirm_password = serializers.CharField(max_length=128, write_only=True)
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    phone_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
+
+    def validate_username(self, value):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value.lower()
+
+    def validate(self, data):
+        if data["password"] != data["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        return data
+
+
+# ============================================================================
+# Password Reset & Change Serializers
+# ============================================================================
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Request a password reset email."""
+
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Confirm a password reset with a token."""
+
+    token = serializers.UUIDField()
+    new_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
+    confirm_password = serializers.CharField(max_length=128, write_only=True)
+
+    def validate(self, data):
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
+        return data
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Change password (authenticated, for must_change_password flow)."""
+
+    current_password = serializers.CharField(
+        max_length=128, write_only=True, required=False,
+        help_text="Required unless the user has must_change_password=True.",
+    )
+    new_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
+    confirm_password = serializers.CharField(max_length=128, write_only=True)
+
+    def validate(self, data):
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
+        return data
+
+
+class InvitationPublicSerializer(serializers.ModelSerializer):
+    """Public-facing serializer showing only non-sensitive invitation info."""
+
+    organization_name = serializers.CharField(source="organization.name", read_only=True)
+    role_name = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
+    is_expired = serializers.BooleanField(read_only=True)
+    is_usable = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = StaffInvitation
+        fields = [
+            "email",
+            "organization_name",
+            "role_name",
+            "department_name",
+            "job_title",
+            "is_expired",
+            "is_usable",
+            "expires_at",
+        ]
+        read_only_fields = fields
+
+    def get_role_name(self, obj) -> str:
+        return obj.role.name if obj.role else ""
+
+    def get_department_name(self, obj) -> str:
+        return obj.department.name if obj.department else ""

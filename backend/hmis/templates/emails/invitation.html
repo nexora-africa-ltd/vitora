@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 0">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+      <!-- Header -->
+      <tr><td style="background:#0f766e;padding:24px 32px">
+        <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600">Vitora HMIS</h1>
+      </td></tr>
+      <!-- Body -->
+      <tr><td style="padding:32px">
+        <h2 style="margin:0 0 16px;color:#18181b;font-size:18px">You've been invited!</h2>
+        <p style="margin:0 0 8px;color:#3f3f46;font-size:14px;line-height:1.6">
+          <strong>{{ invited_by_name }}</strong> has invited you to join
+          <strong>{{ organization_name }}</strong> on Vitora HMIS.
+        </p>
+        {% if role_name or department_name %}
+        <p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6">
+          {% if role_name %}Role: <strong>{{ role_name }}</strong>{% endif %}
+          {% if role_name and department_name %} · {% endif %}
+          {% if department_name %}Department: <strong>{{ department_name }}</strong>{% endif %}
+        </p>
+        {% endif %}
+        <p style="margin:0 0 24px;color:#3f3f46;font-size:14px;line-height:1.6">
+          Click the button below to set up your account. This link expires in
+          <strong>{{ expires_hours }} hours</strong>.
+        </p>
+        <!-- CTA -->
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr><td>
+          <a href="{{ accept_url }}" style="display:inline-block;padding:12px 28px;background:#0f766e;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600">
+            Accept Invitation
+          </a>
+        </td></tr></table>
+        <p style="margin:0;color:#71717a;font-size:12px;line-height:1.5">
+          If the button doesn't work, copy and paste this URL into your browser:<br>
+          <a href="{{ accept_url }}" style="color:#0f766e;word-break:break-all">{{ accept_url }}</a>
+        </p>
+      </td></tr>
+      <!-- Footer -->
+      <tr><td style="padding:16px 32px;background:#f4f4f5;border-top:1px solid #e4e4e7">
+        <p style="margin:0;color:#a1a1aa;font-size:11px;text-align:center">
+          This is an automated message from Vitora HMIS. If you did not expect this
+          invitation, please ignore this email or contact {{ support_email }}.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

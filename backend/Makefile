@@ -83,7 +83,7 @@ help:
 	@echo "  fhir-server-logs    - View FHIR server logs"
 	@echo ""
 	@echo "Git Workflow:"
-	@echo "  merge-to-main       - Merge current branch to main and push"
+	@echo "  m2m       - Merge current branch to main and push"
 	@echo ""
 	@echo "Staging (Azure Container Apps):"
 	@echo "  staging-status      - Show ACA health, revision, and env var count"
@@ -459,13 +459,13 @@ test-fhir-full:
 # ============================================================================
 
 # Merge current branch to main and push
-# Usage: make merge-to-main
+# Usage: make m2m
 # - Saves current branch name
 # - Switches to main, pulls latest
 # - Merges current branch (fast-forward or merge commit)
 # - Pushes to origin
 # - Returns to original branch
-merge-to-main:
+m2m:
 	@CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
 	if [ "$$CURRENT_BRANCH" = "main" ]; then \
 		echo "Error: Already on main branch. Switch to a feature branch first."; \

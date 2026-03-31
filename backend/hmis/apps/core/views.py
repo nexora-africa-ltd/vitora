@@ -476,6 +476,12 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                     user_logged_in.send(sender=self.__class__, request=request, user=user)
                     response.data["mfa_required"] = False
 
+                # Check must_change_password flag
+                if hasattr(user, "staff_profile") and user.staff_profile.must_change_password:
+                    response.data["must_change_password"] = True
+                else:
+                    response.data["must_change_password"] = False
+
                 # Get user's role from StaffProfile or Django groups
                 # Add user info to response (includes role, role_category, facility)
                 response.data["user"] = _build_user_info(user)
@@ -750,7 +756,11 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
-        """Create a new staff profile with user account."""
+        """Create a new staff profile with user account.
+
+        Returns temp_password in response for admin display.
+        Optionally sends welcome email if send_email=true in request.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         staff_profile = serializer.save()
@@ -770,7 +780,31 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
 
         # Return the full staff profile using the read serializer
         read_serializer = StaffProfileSerializer(staff_profile)
-        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+        response_data = read_serializer.data
+
+        # Include temp password (one-time, for credential display dialog)
+        temp_password = getattr(staff_profile, "_temp_password", None)
+        if temp_password:
+            response_data["temp_password"] = temp_password
+
+        # Optionally send welcome email with credentials
+        send_email = request.data.get("send_email", False)
+        if send_email and temp_password:
+            from .services.email_service import send_welcome_email
+
+            org_name = ""
+            if staff_profile.organization:
+                org_name = staff_profile.organization.name
+            send_welcome_email(
+                to_email=staff_profile.user.email,
+                username=staff_profile.user.username,
+                temp_password=temp_password,
+                full_name=staff_profile.user.get_full_name(),
+                organization_name=org_name,
+            )
+            response_data["email_sent"] = True
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         """Update a staff profile and return the canonical read representation."""

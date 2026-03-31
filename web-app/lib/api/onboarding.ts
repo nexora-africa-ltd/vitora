@@ -1,0 +1,139 @@
+/**
+ * Onboarding & Authentication API Client
+ * Staff invitations, password reset, credential flows
+ */
+
+import { apiClient } from './client';
+import { parseResponse } from '@/lib/schemas/validation';
+import {
+  StaffInvitationSchema,
+  PaginatedInvitationSchema,
+  InvitationPublicSchema,
+  InvitationAcceptResponseSchema,
+  MessageResponseSchema,
+} from '@/lib/schemas/onboarding.schema';
+import { API_BASE_URL } from '@/lib/utils/constants';
+import type { PaginatedResponse } from '@/lib/types';
+import type {
+  StaffInvitation,
+  InvitationCreateData,
+  InvitationPublicInfo,
+  InvitationAcceptData,
+  InvitationAcceptResponse,
+  InvitationListParams,
+  PasswordResetRequestData,
+  PasswordResetConfirmData,
+  ChangePasswordData,
+} from '@/lib/types/onboarding';
+
+// =============================================================================
+// Invitations API (Admin - authenticated)
+// =============================================================================
+
+export const invitationsApi = {
+  list: async (params?: InvitationListParams): Promise<PaginatedResponse<StaffInvitation>> => {
+    const response = await apiClient.get('/api/invitations/', { params });
+    return parseResponse(PaginatedInvitationSchema, response.data, { context: 'invitationsApi.list' });
+  },
+
+  create: async (data: InvitationCreateData): Promise<StaffInvitation> => {
+    const response = await apiClient.post('/api/invitations/', data);
+    return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.create' });
+  },
+
+  get: async (id: number): Promise<StaffInvitation> => {
+    const response = await apiClient.get(`/api/invitations/${id}/`);
+    return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.get' });
+  },
+
+  resend: async (id: number): Promise<StaffInvitation> => {
+    const response = await apiClient.post(`/api/invitations/${id}/resend/`);
+    return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.resend' });
+  },
+
+  revoke: async (id: number): Promise<StaffInvitation> => {
+    const response = await apiClient.post(`/api/invitations/${id}/revoke/`);
+    return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.revoke' });
+  },
+};
+
+// =============================================================================
+// Public Invitation API (No auth required - uses fetch directly)
+// =============================================================================
+
+export const invitationPublicApi = {
+  lookup: async (token: string): Promise<InvitationPublicInfo> => {
+    const response = await fetch(`${API_BASE_URL}/api/invitations/${token}/`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Invitation not found');
+    }
+    const data = await response.json();
+    return parseResponse(InvitationPublicSchema, data, { context: 'invitationPublicApi.lookup' });
+  },
+
+  accept: async (data: InvitationAcceptData): Promise<InvitationAcceptResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/invitations/accept/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      // Extract field-level errors or general error
+      if (error.username) throw new Error(Array.isArray(error.username) ? error.username[0] : error.username);
+      if (error.error) throw new Error(error.error);
+      if (error.confirm_password) throw new Error(Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password);
+      throw new Error('Failed to accept invitation');
+    }
+    const result = await response.json();
+    return parseResponse(InvitationAcceptResponseSchema, result, { context: 'invitationPublicApi.accept' });
+  },
+};
+
+// =============================================================================
+// Password Reset API (Public - uses fetch directly)
+// =============================================================================
+
+export const passwordResetApi = {
+  request: async (data: PasswordResetRequestData): Promise<{ message: string }> => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/password-reset/request/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to send reset email');
+    }
+    const result = await response.json();
+    return parseResponse(MessageResponseSchema, result, { context: 'passwordResetApi.request' });
+  },
+
+  confirm: async (data: PasswordResetConfirmData): Promise<{ message: string }> => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/password-reset/confirm/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to reset password');
+    }
+    const result = await response.json();
+    return parseResponse(MessageResponseSchema, result, { context: 'passwordResetApi.confirm' });
+  },
+};
+
+// =============================================================================
+// Change Password API (Authenticated)
+// =============================================================================
+
+export const changePasswordApi = {
+  change: async (data: ChangePasswordData): Promise<{ message: string }> => {
+    const response = await apiClient.post('/api/auth/change-password/', data);
+    return parseResponse(MessageResponseSchema, response.data, { context: 'changePasswordApi.change' });
+  },
+};

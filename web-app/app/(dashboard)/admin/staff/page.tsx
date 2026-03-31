@@ -22,6 +22,7 @@ import {
   UserCheck,
   UserMinus,
   UserCog,
+  Send,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -129,12 +130,20 @@ export default function StaffListPage() {
           title="Staff Profiles"
           helpContent="Manage staff accounts, role assignments, and department placement for administrative oversight. Pull down to refresh on mobile when new records are added from another workstation."
           actions={
-            <Button asChild>
-              <Link href="/admin/staff/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Staff
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link href="/admin/staff/invitations">
+                  <Send className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Invitations</span>
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/admin/staff/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Staff
+                </Link>
+              </Button>
+            </div>
           }
         />
 

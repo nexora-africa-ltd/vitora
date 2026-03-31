@@ -106,7 +106,7 @@ ROOT_URLCONF = "hmis.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "hmis" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -602,8 +602,12 @@ LOINC_DATA_PATH = "data/loinc_common.csv"
 # ============================================================================
 
 # Email configuration
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@vitora.health")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@vitora.digital")
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For development
+
+# Resend API key — when set, email_service.py uses the Resend SDK
+# instead of Django's EMAIL_BACKEND. Obtain from https://resend.com/api-keys
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 
 # Frontend URL for notification links
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3009")

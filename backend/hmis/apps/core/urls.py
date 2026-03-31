@@ -5,6 +5,14 @@ URL configuration for core app.
 from django.urls import include, path
 from rest_framework import routers
 
+from .auth_views import (
+    StaffInvitationViewSet,
+    change_password,
+    invitation_accept,
+    invitation_lookup,
+    password_reset_confirm,
+    password_reset_request,
+)
 from .dashboard_views import (
     activity_feed,
     dashboard_stats,
@@ -39,6 +47,7 @@ router.register(r"features", FeatureFlagViewSet, basename="featureflag")
 router.register(r"facilities", FacilityViewSet, basename="facility")
 router.register(r"certificates", CertificateViewSet, basename="certificate")
 router.register(r"signatures", DocumentSignatureViewSet, basename="documentsignature")
+router.register(r"invitations", StaffInvitationViewSet, basename="staffinvitation")
 
 urlpatterns = [
     # Dashboard statistics
@@ -60,4 +69,10 @@ urlpatterns = [
         EncounterHistoryView.as_view(),
         name="encounter-history",
     ),
+    # --- Auth / Onboarding (public endpoints) ---
+    path("invitations/<uuid:token>/", invitation_lookup, name="invitation-lookup"),
+    path("invitations/accept/", invitation_accept, name="invitation-accept"),
+    path("auth/password-reset/request/", password_reset_request, name="password-reset-request"),
+    path("auth/password-reset/confirm/", password_reset_confirm, name="password-reset-confirm"),
+    path("auth/change-password/", change_password, name="change-password"),
 ] + router.urls
