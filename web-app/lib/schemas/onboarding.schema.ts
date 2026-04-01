@@ -113,6 +113,8 @@ export const SetupCheckResponseSchema = z.object({
   setup_required: z.boolean(),
   setup_enabled: z.boolean(),
   has_organizations: z.boolean(),
+  has_facilities: z.boolean().optional(),
+  has_staff_with_facility: z.boolean().optional(),
 });
 
 export const SetupInitializeResponseSchema = z.object({

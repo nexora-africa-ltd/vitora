@@ -165,6 +165,8 @@ export interface SetupCheckResponse {
   setup_required: boolean;
   setup_enabled: boolean;
   has_organizations: boolean;
+  has_facilities?: boolean;
+  has_staff_with_facility?: boolean;
 }
 
 export type FacilityLevel = '1' | '2' | '3' | '4' | '5' | '6';

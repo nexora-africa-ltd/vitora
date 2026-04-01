@@ -27,6 +27,7 @@ from .models import (
     AuditLog,
     Department,
     EmailVerificationToken,
+    Facility,
     Organization,
     PasswordResetToken,
     Role,
@@ -692,16 +693,29 @@ def setup_check(request):
     """
     Check whether the setup wizard should be shown.
 
-    Returns True if no organizations exist and the feature flag is enabled.
+    Setup is required when any of these are missing:
+    - No organizations exist
+    - No facilities exist
+    - No staff profile is linked to a facility
     """
     setup_enabled = getattr(settings, "SETUP_WIZARD_ENABLED", False)
     has_orgs = Organization.objects.exists()
+    has_facilities = Facility.objects.exists() if has_orgs else False
+    has_staff_with_facility = (
+        StaffProfile.objects.filter(primary_facility__isnull=False).exists()
+        if has_facilities
+        else False
+    )
+
+    setup_complete = has_orgs and has_facilities and has_staff_with_facility
 
     return Response(
         {
-            "setup_required": setup_enabled and not has_orgs,
+            "setup_required": setup_enabled and not setup_complete,
             "setup_enabled": setup_enabled,
             "has_organizations": has_orgs,
+            "has_facilities": has_facilities,
+            "has_staff_with_facility": has_staff_with_facility,
         },
         status=status.HTTP_200_OK,
     )
@@ -750,8 +764,6 @@ def setup_initialize(request):
         )
 
         # 2. Create Facility
-        from .models import Facility
-
         facility = Facility.objects.create(
             organization=org,
             name=data["facility_name"],
