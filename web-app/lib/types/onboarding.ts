@@ -140,6 +140,7 @@ export interface OrgSignupResponse {
   message: string;
   org_name: string;
   admin_email: string;
+  username: string;
 }
 
 // =============================================================================
@@ -153,6 +154,7 @@ export interface EmailVerifyData {
 export interface EmailVerifyResponse {
   message: string;
   org_name: string;
+  username: string;
 }
 
 // =============================================================================

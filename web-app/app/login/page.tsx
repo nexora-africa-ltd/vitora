@@ -13,6 +13,7 @@ import { MFAVerification } from '@/components/auth/mfa-verification';
 import { APP_NAME } from '@/lib/utils/constants';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { SHALogo } from '@/components/ui/sha-logo';
+import { setupApi } from '@/lib/api/onboarding';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import Link from 'next/link';
 
@@ -104,6 +105,19 @@ export default function LoginPage() {
       if (result.mustChangePassword) {
         router.push('/change-password');
         return;
+      }
+
+      // Check if setup wizard needs to run before entering the app
+      if (process.env.NEXT_PUBLIC_SETUP_WIZARD_ENABLED === 'true') {
+        try {
+          const setupStatus = await setupApi.check();
+          if (setupStatus.setup_required) {
+            router.push('/setup');
+            return;
+          }
+        } catch {
+          // If check fails, proceed to dashboard
+        }
       }
 
       router.push('/');

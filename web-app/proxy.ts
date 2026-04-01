@@ -31,10 +31,15 @@ const SKIP_PATTERNS = [
 ];
 
 /**
+ * Whether the setup wizard feature is enabled
+ */
+const SETUP_WIZARD_ENABLED = process.env.NEXT_PUBLIC_SETUP_WIZARD_ENABLED === 'true';
+
+/**
  * Proxy for server-side authentication routing.
  *
  * - Unauthenticated users are redirected to /login
- * - Authenticated users on /login are redirected to /dashboard
+ * - Authenticated users on /login are redirected to /dashboard (or /setup if wizard enabled)
  * - Root path (/) redirects based on auth status
  */
 export function proxy(request: NextRequest) {
@@ -49,8 +54,13 @@ export function proxy(request: NextRequest) {
   const isAuthenticated = request.cookies.has(AUTH_COOKIE_NAME);
 
   // Root path - redirect based on auth status
+  // When setup wizard is enabled, authenticated users go to /setup first
+  // (the setup page will redirect to /dashboard if setup is already complete)
   if (pathname === '/') {
-    const destination = isAuthenticated ? '/dashboard' : '/login';
+    if (!isAuthenticated) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    const destination = SETUP_WIZARD_ENABLED ? '/setup' : '/dashboard';
     return NextResponse.redirect(new URL(destination, request.url));
   }
 
