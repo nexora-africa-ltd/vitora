@@ -278,12 +278,28 @@ class TestSetupCheck:
         assert response.data["has_organizations"] is False
 
     @override_settings(SETUP_WIZARD_ENABLED=True)
-    def test_check_returns_not_required_when_orgs_exist(self, anon_client):
+    def test_check_returns_required_when_org_exists_but_no_facility(self, anon_client):
+        """Org alone is not enough — facility + staff required."""
         Organization.objects.create(name="Existing", slug="existing")
+        response = anon_client.get("/api/core/setup/check/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["setup_required"] is True
+        assert response.data["has_organizations"] is True
+        assert response.data["has_facilities"] is False
+
+    @override_settings(SETUP_WIZARD_ENABLED=True)
+    def test_check_returns_not_required_when_setup_complete(
+        self, anon_client, setup_data
+    ):
+        """Setup complete = org + facility + staff linked to facility."""
+        # Run the full setup wizard to create everything properly
+        anon_client.post("/api/core/setup/initialize/", setup_data, format="json")
         response = anon_client.get("/api/core/setup/check/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["setup_required"] is False
         assert response.data["has_organizations"] is True
+        assert response.data["has_facilities"] is True
+        assert response.data["has_staff_with_facility"] is True
 
     @override_settings(SETUP_WIZARD_ENABLED=False)
     def test_check_returns_not_required_when_disabled(self, anon_client):

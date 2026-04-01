@@ -2640,6 +2640,27 @@ class Facility(TimeStampedModel):
         """Return the facility name and MFL code for human-readable display."""
         return f"{self.name} ({self.mfl_code})"
 
+    def save(self, *args, **kwargs):
+        """Auto-apply default modules based on KEPH level on creation."""
+        if self._state.adding:
+            module_fields = [
+                "has_outpatient", "has_inpatient", "has_emergency", "has_pharmacy",
+                "has_laboratory", "has_imaging", "has_theatre", "has_dialysis",
+                "has_icu", "has_maternity", "has_mortuary", "has_blood_bank",
+            ]
+            # Only apply defaults if no module was explicitly set beyond the
+            # model-level defaults (outpatient=True, pharmacy=True, rest=False).
+            defaults_from_model = {"has_outpatient": True, "has_pharmacy": True}
+            all_at_model_default = all(
+                getattr(self, f) == defaults_from_model.get(f, False)
+                for f in module_fields
+            )
+            if all_at_model_default and self.level:
+                level_defaults = self.default_modules_for_level(self.level)
+                for module_name, enabled in level_defaults.items():
+                    setattr(self, f"has_{module_name}", enabled)
+        super().save(*args, **kwargs)
+
     # ------------------------------------------------------------------
     # Properties
     # ------------------------------------------------------------------
