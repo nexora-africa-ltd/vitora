@@ -14,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.history_views import ModelHistoryMixin
-from hmis.apps.core.mixins import IdempotentCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import IdempotentCreateMixin, NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog, IdempotencyKey
 from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
 from hmis.apps.encounters.models import Encounter
@@ -744,7 +744,7 @@ class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateM
         })
 
 
-class EmergencyContactViewSet(viewsets.ModelViewSet):
+class EmergencyContactViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for EmergencyContact model.
 
@@ -753,12 +753,16 @@ class EmergencyContactViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = EmergencyContactSerializer
+    queryset = EmergencyContact.objects.all()
     permission_classes = [IsAuthenticated]
+    tenant_facility_chain = "patient__registered_at_facility"
+    tenant_org_chain = "patient__organization"
 
     def get_queryset(self):
-        """Get emergency contacts for a specific patient."""
+        """Get emergency contacts for a specific patient, scoped by tenant."""
+        qs = super().get_queryset()
         patient_id = self.kwargs.get("patient_pk")
-        return EmergencyContact.objects.filter(patient_id=patient_id)
+        return qs.filter(patient_id=patient_id)
 
     def get_patient(self):
         """Get the patient from URL kwargs."""
@@ -1225,7 +1229,7 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         })
 
 
-class DeathRecordViewSet(viewsets.ModelViewSet):
+class DeathRecordViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for Death Records (Last Office / Morgue management).
 
@@ -1259,6 +1263,8 @@ class DeathRecordViewSet(viewsets.ModelViewSet):
     ]
     ordering_fields = ["date_of_death", "created_at", "status"]
     ordering = ["-date_of_death"]
+    tenant_facility_chain = "patient__registered_at_facility"
+    tenant_org_chain = "patient__organization"
 
     def get_serializer_class(self):
         if self.action == "create":

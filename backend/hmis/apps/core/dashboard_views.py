@@ -114,6 +114,14 @@ def dashboard_stats(request):
     facility = getattr(request, "facility", None)
     organization = getattr(request, "organization", None)
 
+    # SECURITY: Refuse to return stats when no tenant scope is resolved.
+    # Without this, queries would be unfiltered — leaking ALL tenant data.
+    if not facility and not organization:
+        return Response(
+            {"error": "No facility or organization context. Please select a facility."},
+            status=403,
+        )
+
     # Scope cache key to facility (or org, or global) to prevent cross-tenant leaks
     scope_suffix = ""
     if facility:
@@ -140,12 +148,18 @@ def dashboard_stats(request):
 
 
 def _build_scope_filter(facility, organization, facility_field="facility"):
-    """Build a queryset filter dict for tenant scoping."""
+    """Build a queryset filter dict for tenant scoping.
+
+    Raises ValueError if no scope is available to prevent unfiltered queries.
+    """
     if facility:
         return {facility_field: facility}
     if organization:
         return {"organization": organization}
-    return {}
+    raise ValueError(
+        "No tenant scope available — refusing to build an unfiltered query. "
+        "This is a security guard to prevent cross-tenant data leaks."
+    )
 
 
 def _compute_dashboard_stats(*, facility=None, organization=None) -> dict:

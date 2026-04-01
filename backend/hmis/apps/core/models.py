@@ -1426,7 +1426,13 @@ class StaffProfile(models.Model):
         blank=True,
         on_delete=models.PROTECT,
         related_name="staff_profiles",
-        help_text="Parent organization (cached from primary_facility for query performance)",
+        help_text="Primary organization (cached from primary_facility for query performance)",
+    )
+    secondary_organizations = models.ManyToManyField(
+        "Organization",
+        blank=True,
+        related_name="secondary_staff_profiles",
+        help_text="Additional organizations (for locum, part-time, or consultant physicians)",
     )
     primary_facility = models.ForeignKey(
         "Facility",
@@ -1543,11 +1549,56 @@ class StaffProfile(models.Model):
         """Return formatted name."""
         return self.get_full_name()
 
+    def clean(self):
+        """Validate cross-organization constraints."""
+        from django.core.exceptions import ValidationError
+
+        errors = {}
+        if self.primary_facility_id and self.organization_id:
+            if self.primary_facility.organization_id != self.organization_id:
+                errors["primary_facility"] = (
+                    "Primary facility must belong to the staff member's primary organization."
+                )
+        if errors:
+            raise ValidationError(errors)
+
     def save(self, *args, **kwargs):
         """Auto-set organization from primary_facility on save."""
         if self.primary_facility and self.primary_facility.organization:
             self.organization = self.primary_facility.organization
         super().save(*args, **kwargs)
+
+    def validate_secondary_facilities(self):
+        """Validate that all secondary facilities belong to allowed organizations.
+
+        Allowed orgs = primary organization + secondary organizations.
+        Call after saving M2M relations.
+        """
+        from django.core.exceptions import ValidationError
+
+        if not self.pk:
+            return
+        allowed_org_ids = set()
+        if self.organization_id:
+            allowed_org_ids.add(self.organization_id)
+        allowed_org_ids.update(
+            self.secondary_organizations.values_list("id", flat=True)
+        )
+        if not allowed_org_ids:
+            return
+        bad = list(
+            self.secondary_facilities.exclude(organization_id__in=allowed_org_ids)
+            .values_list("name", flat=True)
+        )
+        if bad:
+            raise ValidationError(
+                {
+                    "secondary_facilities": (
+                        f"These facilities do not belong to any of the staff member's "
+                        f"organizations: {', '.join(bad)}"
+                    )
+                }
+            )
 
     def get_full_name(self) -> str:
         """

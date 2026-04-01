@@ -17,7 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 
 from .models import (
     AnalyzerRun,
@@ -399,7 +399,7 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class LabResultViewSet(viewsets.ModelViewSet):
+class LabResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for lab results.
     Provides CRUD operations and verification.
@@ -407,6 +407,8 @@ class LabResultViewSet(viewsets.ModelViewSet):
 
     queryset = LabResult.objects.all().select_related("order_item__test", "entered_by")
     permission_classes = [IsAuthenticated]
+    tenant_facility_chain = "order_item__lab_order__facility"
+    tenant_org_chain = "order_item__lab_order__organization"
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -702,7 +704,7 @@ class LOINCCodeViewSet(viewsets.ReadOnlyModelViewSet):
 # ============================================================================
 
 
-class LabQueueViewSet(viewsets.ModelViewSet):
+class LabQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for lab queue management.
 
@@ -723,6 +725,8 @@ class LabQueueViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ["queue_status", "priority", "assigned_technician"]
     lookup_field = "queue_number"
+    tenant_facility_chain = "lab_order__facility"
+    tenant_org_chain = "lab_order__organization"
 
     def get_queryset(self):
         from .models import LabQueue

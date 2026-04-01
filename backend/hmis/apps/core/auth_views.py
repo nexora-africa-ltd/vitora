@@ -668,6 +668,15 @@ def verify_email(request):
         details={"org_name": token.organization.name},
     )
 
+    # Notify Nexora platform admins so they can review & activate the org.
+    from hmis.apps.core.services.email_service import send_admin_signup_notification
+
+    send_admin_signup_notification(
+        org_name=token.organization.name,
+        admin_email=token.user.email,
+        admin_name=token.user.get_full_name() or token.user.username,
+    )
+
     return Response(
         {
             "message": (

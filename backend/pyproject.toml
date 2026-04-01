@@ -114,13 +114,14 @@ addopts = [
     "-v",
     "--tb=short",
     "--strict-markers",
-    "--cov=hmis",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-    "--cov-report=xml",
-    "--cov-fail-under=80",
+    "--no-migrations",
     "--ignore=tests/integration",
 ]
+# Coverage is NOT in addopts — use `make test` or pass --cov=hmis explicitly.
+# This keeps `poetry run pytest tests/foo/ -x` fast for development.
+# --no-migrations creates tables from models directly (skips 252 migration
+# files), dropping setup time from ~165s to ~2s.  CI (`make test`) overrides
+# with --migrations to verify data-migration correctness.
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",

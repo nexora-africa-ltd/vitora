@@ -6,6 +6,7 @@ from django.contrib import admin
 
 from .emergency_access.admin import EmergencyAccessAdmin  # noqa: F401
 from .models import (
+    ActivityFeed,
     AuditLog,
     CertificateAuthority,
     CertificateRevocation,
@@ -13,12 +14,19 @@ from .models import (
     County,
     Department,
     DocumentSignature,
+    EmailVerificationToken,
     ExternalCodeMapping,
     Facility,
     FeatureFlag,
+    FrontendEvent,
+    IdempotencyKey,
     NetworkStatus,
+    Notification,
     Organization,
+    PasswordResetToken,
     Role,
+    SNOMEDConcept,
+    StaffInvitation,
     StaffProfile,
     SubCounty,
     SyncConflict,
@@ -341,6 +349,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
     list_display = [
         "employee_id",
         "get_user_full_name",
+        "organization",
         "primary_role",
         "primary_department",
         "primary_facility",
@@ -349,6 +358,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
         "is_license_valid_display",
     ]
     list_filter = [
+        "organization",
         "primary_role",
         "primary_department",
         "primary_facility",
@@ -366,8 +376,11 @@ class StaffProfileAdmin(admin.ModelAdmin):
         "license_number",
     ]
     ordering = ["user__last_name", "user__first_name"]
-    readonly_fields = ["created_at", "updated_at", "is_license_valid_display"]
-    filter_horizontal = ["secondary_roles", "secondary_departments", "secondary_facilities"]
+    readonly_fields = ["created_at", "updated_at", "organization", "is_license_valid_display"]
+    filter_horizontal = [
+        "secondary_roles", "secondary_departments",
+        "secondary_facilities", "secondary_organizations",
+    ]
 
     actions = ["activate_staff", "deactivate_staff", "suspend_staff", "export_to_csv"]
 
@@ -397,8 +410,10 @@ class StaffProfileAdmin(admin.ModelAdmin):
             "Facility Assignment",
             {
                 "fields": (
+                    "organization",
                     "primary_facility",
                     "secondary_facilities",
+                    "secondary_organizations",
                 )
             },
         ),
@@ -765,11 +780,12 @@ class OrganizationAdmin(admin.ModelAdmin):
         "name",
         "slug",
         "subscription_tier",
+        "is_verified",
         "is_active",
         "facility_count",
         "created_at",
     ]
-    list_filter = ["subscription_tier", "is_active"]
+    list_filter = ["subscription_tier", "is_active", "is_verified"]
     search_fields = ["name", "slug", "contact_email"]
     prepopulated_fields = {"slug": ("name",)}
     ordering = ["name"]
@@ -834,7 +850,7 @@ class OrganizationAdmin(admin.ModelAdmin):
         (
             "Status",
             {
-                "fields": ("is_active",),
+                "fields": ("is_verified", "is_active"),
             },
         ),
         (
@@ -1180,6 +1196,132 @@ class DocumentSignatureAdmin(admin.ModelAdmin):
     ]
     search_fields = ["document_type", "signer__username"]
     raw_id_fields = ["signer", "certificate"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+# ============================================================================
+# Onboarding & Lifecycle Admin
+# ============================================================================
+
+
+@admin.register(StaffInvitation)
+class StaffInvitationAdmin(admin.ModelAdmin):
+    """Admin for Staff Invitations."""
+
+    list_display = [
+        "email", "organization", "facility", "role",
+        "status", "invited_by", "expires_at", "created_at",
+    ]
+    list_filter = ["status", "organization"]
+    search_fields = ["email", "organization__name", "token"]
+    readonly_fields = ["token", "accepted_at", "accepted_user", "created_at", "updated_at"]
+    raw_id_fields = ["invited_by", "accepted_user", "organization", "facility", "role", "department"]
+    ordering = ["-created_at"]
+
+
+@admin.register(EmailVerificationToken)
+class EmailVerificationTokenAdmin(admin.ModelAdmin):
+    """Admin for Email Verification Tokens."""
+
+    list_display = ["user", "organization", "token", "used", "expires_at", "created_at"]
+    list_filter = ["used"]
+    search_fields = ["user__username", "user__email", "organization__name"]
+    readonly_fields = ["token", "used_at", "created_at"]
+    raw_id_fields = ["user", "organization"]
+    ordering = ["-created_at"]
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(PasswordResetToken)
+class PasswordResetTokenAdmin(admin.ModelAdmin):
+    """Admin for Password Reset Tokens."""
+
+    list_display = ["user", "token", "used", "expires_at", "created_at"]
+    list_filter = ["used"]
+    search_fields = ["user__username", "user__email"]
+    readonly_fields = ["token", "used_at", "created_at"]
+    raw_id_fields = ["user"]
+    ordering = ["-created_at"]
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    """Admin for Notifications."""
+
+    list_display = ["user", "notification_type", "priority", "title", "is_read", "created_at"]
+    list_filter = ["notification_type", "priority", "is_read"]
+    search_fields = ["user__username", "title", "message"]
+    readonly_fields = ["created_at", "read_at"]
+    raw_id_fields = ["user"]
+    ordering = ["-created_at"]
+
+
+@admin.register(ActivityFeed)
+class ActivityFeedAdmin(admin.ModelAdmin):
+    """Admin for Activity Feed entries."""
+
+    list_display = ["activity_type", "action", "title", "user", "timestamp"]
+    list_filter = ["activity_type"]
+    search_fields = ["title", "description", "user__username"]
+    readonly_fields = ["timestamp"]
+    raw_id_fields = ["user"]
+    ordering = ["-timestamp"]
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(FrontendEvent)
+class FrontendEventAdmin(admin.ModelAdmin):
+    """Admin for Frontend Event tracking (read-only)."""
+
+    list_display = ["event_type", "user", "resource_type", "resource_id", "server_timestamp"]
+    list_filter = ["event_type", "device_type", "was_offline"]
+    search_fields = ["user__username", "resource_type", "session_id"]
+    readonly_fields = [
+        "user", "event_type", "resource_type", "resource_id",
+        "client_timestamp", "server_timestamp", "session_id",
+        "device_type", "details", "was_offline",
+    ]
+    ordering = ["-server_timestamp"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(SNOMEDConcept)
+class SNOMEDConceptAdmin(admin.ModelAdmin):
+    """Admin for cached SNOMED CT Concepts."""
+
+    list_display = ["concept_id", "display", "semantic_tag", "is_active"]
+    list_filter = ["semantic_tag", "is_active"]
+    search_fields = ["concept_id", "display"]
+    ordering = ["display"]
+
+
+@admin.register(IdempotencyKey)
+class IdempotencyKeyAdmin(admin.ModelAdmin):
+    """Admin for Idempotency Keys (troubleshooting)."""
+
+    list_display = ["key", "user", "resource_type", "resource_id", "response_status", "created_at"]
+    list_filter = ["resource_type", "response_status"]
+    search_fields = ["key", "user__username", "resource_type"]
+    readonly_fields = ["key", "user", "resource_type", "resource_id", "response_status", "response_data", "created_at"]
+    raw_id_fields = ["user"]
+    ordering = ["-created_at"]
 
     def has_add_permission(self, request):
         return False

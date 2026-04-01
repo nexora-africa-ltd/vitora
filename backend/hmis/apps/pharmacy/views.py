@@ -14,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.pharmacy.models import (
     Dispensing,
     Drug,
@@ -486,7 +486,7 @@ class DispensingViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class StockAdjustmentViewSet(viewsets.ModelViewSet):
+class StockAdjustmentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for StockAdjustment model.
 
@@ -505,6 +505,8 @@ class StockAdjustmentViewSet(viewsets.ModelViewSet):
     filterset_fields = ["batch", "adjustment_type", "requires_approval"]
     ordering_fields = ["adjusted_at", "created_at"]
     ordering = ["-adjusted_at"]
+    tenant_facility_chain = "batch__facility"
+    tenant_org_chain = "batch__organization"
 
     def perform_create(self, serializer):
         """Set adjusted_by to current user when creating adjustment."""

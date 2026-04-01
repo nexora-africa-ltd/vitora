@@ -275,6 +275,80 @@ def resolve_tenant_from_related(instance, encounter_field="encounter", patient_f
                 pass
 
 
+class NestedTenantScopeMixin:
+    """
+    ViewSet mixin for models that don't have direct ``facility``/``organization``
+    FKs but connect to a tenant through a parent chain (e.g., Diagnosis → Encounter → Facility).
+
+    Unlike ``TenantScopedViewMixin``, this mixin:
+    * Only scopes the **read** queryset (get_queryset).
+    * Does **not** auto-set tenant FKs on create (the parent sets these).
+
+    Usage::
+
+        class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
+            tenant_facility_chain = "encounter__facility"
+            tenant_org_chain = "encounter__organization"
+            ...
+    """
+
+    tenant_facility_chain: str = ""  # e.g., "encounter__facility"
+    tenant_org_chain: str = ""  # e.g., "encounter__organization"
+
+    def _resolve_tenant_context(self):
+        """Resolve tenant from request (same logic as TenantScopedViewMixin)."""
+        request = self.request
+        if getattr(request, "facility", None) or getattr(request, "organization", None):
+            return
+
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return
+
+        from hmis.apps.core.models import Facility
+
+        facility_id = request.META.get("HTTP_X_FACILITY_ID")
+        if facility_id:
+            try:
+                facility = Facility.objects.select_related("organization").get(
+                    pk=int(facility_id), is_active=True
+                )
+                request.facility = facility
+                request.organization = facility.organization
+                return
+            except (Facility.DoesNotExist, ValueError, TypeError):
+                pass
+
+        profile = getattr(user, "staff_profile", None)
+        if profile and profile.primary_facility_id:
+            try:
+                facility = Facility.objects.select_related("organization").get(
+                    pk=profile.primary_facility_id, is_active=True
+                )
+                request.facility = facility
+                request.organization = facility.organization
+            except Facility.DoesNotExist:
+                pass
+
+    def get_queryset(self):
+        """Filter queryset through the parent FK chain to the tenant."""
+        self._resolve_tenant_context()
+        qs = super().get_queryset()
+        request = self.request
+
+        facility = getattr(request, "facility", None)
+        org = getattr(request, "organization", None)
+
+        if facility and self.tenant_facility_chain:
+            qs = qs.filter(**{self.tenant_facility_chain: facility})
+        elif org and self.tenant_org_chain:
+            qs = qs.filter(**{self.tenant_org_chain: org})
+        else:
+            return qs.none()
+
+        return qs
+
+
 class TenantScopedViewMixin:
     """
     ViewSet mixin that scopes querysets and auto-sets tenant FKs on create.
@@ -342,7 +416,12 @@ class TenantScopedViewMixin:
                 pass
 
     def get_queryset(self):
-        """Filter queryset by the active tenant scope."""
+        """Filter queryset by the active tenant scope.
+
+        Returns an empty queryset when no tenant context is available,
+        preventing cross-tenant data leaks for users without a
+        facility or organization assignment.
+        """
         self._resolve_tenant_context()
         qs = super().get_queryset()
         request = self.request
@@ -354,6 +433,10 @@ class TenantScopedViewMixin:
             qs = qs.filter(**{self.tenant_facility_field: facility})
         elif org:
             qs = qs.filter(organization=org)
+        else:
+            # No tenant context resolved — return empty queryset to prevent
+            # unscoped access across all tenants.
+            return qs.none()
 
         return qs
 

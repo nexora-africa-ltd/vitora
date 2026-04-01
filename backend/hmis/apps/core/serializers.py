@@ -318,6 +318,8 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             "primary_facility",
             "primary_facility_name",
             "secondary_facilities",
+            "organization",
+            "secondary_organizations",
             "hwr_id",
             "license_number",
             "license_expiry",
@@ -336,7 +338,7 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["created_at", "updated_at", "is_license_valid"]
+        read_only_fields = ["created_at", "updated_at", "is_license_valid", "organization"]
 
     def get_full_name(self, obj) -> str:
         """Get full name with title."""
@@ -383,6 +385,7 @@ class StaffProfileUpdateSerializer(serializers.ModelSerializer):
             "secondary_departments",
             "primary_facility",
             "secondary_facilities",
+            "secondary_organizations",
             "hwr_id",
             "license_number",
             "license_expiry",
@@ -398,6 +401,20 @@ class StaffProfileUpdateSerializer(serializers.ModelSerializer):
             "date_left",
             "supervisor",
         ]
+
+    def validate(self, attrs):
+        """Cross-field validation for facility-organization consistency."""
+        attrs = super().validate(attrs)
+        instance = self.instance
+        primary_facility = attrs.get("primary_facility", getattr(instance, "primary_facility", None))
+        if primary_facility and instance and instance.organization_id:
+            if primary_facility.organization_id != instance.organization_id:
+                raise serializers.ValidationError({
+                    "primary_facility": (
+                        "Primary facility must belong to the staff member's organization."
+                    )
+                })
+        return attrs
 
     def validate_email(self, value):
         """Validate email uniqueness for updates."""

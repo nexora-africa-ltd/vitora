@@ -5,13 +5,11 @@ This file contains shared fixtures and configuration for all tests.
 """
 
 import os
-import tempfile
 from collections.abc import Generator
 from datetime import date
 
 import django
 import pytest  # type: ignore
-from django.core.management import call_command
 
 # Set Django settings module for tests
 os.environ.setdefault("DJANGO_ENV", "test")
@@ -75,23 +73,9 @@ def pytest_pycollect_makeitem(collector, name, obj):
 # Django Database Fixtures
 # ============================================================================
 
-
-@pytest.fixture(scope="session")
-def django_db_setup(django_db_blocker):
-    """Set up test database with migrations."""
-    with django_db_blocker.unblock():
-        # The test settings use a file-backed SQLite DB at a stable path (for Channels tests).
-        # If the file persists across runs, migrations are not re-executed, and data migrations
-        # (like default clinic seeding) can silently be skipped, causing flaky/incorrect state.
-        test_db_path = os.path.join(tempfile.gettempdir(), "vitora_test.db")
-        for path in (test_db_path, f"{test_db_path}-wal", f"{test_db_path}-shm"):
-            try:
-                if os.path.exists(path):
-                    os.remove(path)
-            except OSError:
-                # Best-effort cleanup; migrate will surface real DB issues.
-                pass
-        call_command("migrate", "--run-syncdb", verbosity=0)
+# We rely on pytest-django's default django_db_setup which handles in-memory
+# SQLite correctly.  No custom override needed — the default runs migrations
+# once per session and uses transactional rollback per test.
 
 
 @pytest.fixture(autouse=True)
@@ -130,6 +114,75 @@ def mock_settings(monkeypatch) -> Generator[None, None, None]:
     # This will be used once Django is set up
     # monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "hmis.settings.test")
     yield
+
+
+# ============================================================================
+# Multitenancy Fixtures (Organization, Facility, StaffProfile)
+# ============================================================================
+
+
+@pytest.fixture
+def sample_organization(db):
+    """Create a sample Organization for testing."""
+    from hmis.apps.core.models import Organization
+
+    return Organization.objects.create(
+        name="Test Hospital Group",
+        slug="test-hospital-group",
+        contact_email="admin@test-hospital.co.ke",
+        is_active=True,
+        is_verified=True,
+    )
+
+
+@pytest.fixture
+def sample_facility(db, sample_organization, sample_county, sample_sub_county):
+    """Create a sample Facility for testing."""
+    from hmis.apps.core.models import Facility
+
+    return Facility.objects.create(
+        organization=sample_organization,
+        name="Test Health Centre",
+        mfl_code="99999",
+        level="3",
+        county=sample_county,
+        sub_county=sample_sub_county,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def sample_department(db):
+    """Create a sample Department for testing."""
+    from hmis.apps.core.models import Department
+
+    return Department.objects.create(name="General Outpatient", code="GOP", is_active=True)
+
+
+@pytest.fixture
+def sample_role(db):
+    """Create a sample Role for testing."""
+    from hmis.apps.core.models import Role
+
+    return Role.objects.create(name="Doctor", code="DOC", hierarchy_level=5, is_active=True)
+
+
+@pytest.fixture
+def test_staff_profile(db, test_user, sample_organization, sample_facility, sample_department, sample_role):
+    """Create a StaffProfile linking test_user to the sample org/facility."""
+    from datetime import date
+
+    from hmis.apps.core.models import StaffProfile
+
+    return StaffProfile.objects.create(
+        user=test_user,
+        employee_id="TEST-0001",
+        organization=sample_organization,
+        primary_facility=sample_facility,
+        primary_department=sample_department,
+        primary_role=sample_role,
+        date_joined=date.today(),
+    )
 
 
 # ============================================================================
@@ -174,8 +227,12 @@ def another_user(db):
 
 
 @pytest.fixture
-def authenticated_client(api_client, test_user):
-    """Provide authenticated API client."""
+def authenticated_client(api_client, test_user, test_staff_profile):
+    """Provide authenticated API client with full multitenancy context.
+
+    Automatically creates Organization → Facility → StaffProfile for
+    the test user so that TenantScopedViewMixin can resolve the tenant.
+    """
     api_client.force_authenticate(user=test_user)
     return api_client
 
@@ -223,7 +280,7 @@ def patient_data(sample_county, sample_sub_county):
 
 
 @pytest.fixture
-def sample_patient(db, test_user, sample_county, sample_sub_county):
+def sample_patient(db, test_user, sample_county, sample_sub_county, sample_organization, sample_facility):
     """Create a sample patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -234,6 +291,8 @@ def sample_patient(db, test_user, sample_county, sample_sub_county):
         gender="F",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
+        registered_at_facility=sample_facility,
     )
 
 
@@ -253,7 +312,7 @@ def encounter_data(sample_patient):
 
 
 @pytest.fixture
-def sample_encounter(db, sample_patient):
+def sample_encounter(db, sample_patient, sample_organization, sample_facility):
     """Create a sample encounter for testing."""
     from hmis.apps.encounters.models import Encounter
 
@@ -261,6 +320,8 @@ def sample_encounter(db, sample_patient):
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Headache for 2 days",
+        organization=sample_organization,
+        facility=sample_facility,
     )
 
 

@@ -217,3 +217,49 @@ def send_org_verification_email(
         html_body=html_body,
         to_email=to_email,
     )
+
+
+# ============================================================================
+# Admin Notifications
+# ============================================================================
+
+
+def send_admin_signup_notification(
+    *,
+    org_name: str,
+    admin_email: str,
+    admin_name: str,
+) -> bool:
+    """Notify Nexora platform administrators that an organization has verified its email.
+
+    Sends an email to ADMIN_NOTIFICATION_EMAIL (defaults to DEFAULT_FROM_EMAIL)
+    so that a human can review and activate the new organization in Django Admin.
+    """
+    admin_notify_email = getattr(
+        settings,
+        "ADMIN_NOTIFICATION_EMAIL",
+        getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@vitora.digital"),
+    )
+    frontend_url = _get_frontend_url()
+
+    html_body = (
+        f"<h2>New Organization Signup — Email Verified</h2>"
+        f"<p>A new organization has completed email verification and is awaiting activation.</p>"
+        f"<table style='border-collapse:collapse;'>"
+        f"<tr><td style='padding:4px 12px;font-weight:bold;'>Organization</td>"
+        f"<td style='padding:4px 12px;'>{org_name}</td></tr>"
+        f"<tr><td style='padding:4px 12px;font-weight:bold;'>Admin Name</td>"
+        f"<td style='padding:4px 12px;'>{admin_name}</td></tr>"
+        f"<tr><td style='padding:4px 12px;font-weight:bold;'>Admin Email</td>"
+        f"<td style='padding:4px 12px;'>{admin_email}</td></tr>"
+        f"</table>"
+        f"<p>To activate this organization, log in to the "
+        f"<a href='{frontend_url}/admin/'>Django Admin</a> and set "
+        f"<code>is_active = True</code> on the Organization record.</p>"
+    )
+
+    return _send(
+        subject=f"[Vitora] New Org Signup: {org_name} — Pending Activation",
+        html_body=html_body,
+        to_email=admin_notify_email,
+    )
