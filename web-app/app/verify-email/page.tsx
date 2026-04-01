@@ -25,6 +25,7 @@ function VerifyEmailContent() {
 
   const [state, setState] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [orgName, setOrgName] = useState('');
+  const [username, setUsername] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -42,6 +43,7 @@ function VerifyEmailContent() {
       try {
         const result = await orgSignupApi.verifyEmail({ token });
         setOrgName(result.org_name);
+        setUsername(result.username);
         setState('success');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Verification failed');
@@ -97,6 +99,11 @@ function VerifyEmailContent() {
               {orgName && (
                 <p className="text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{orgName}</span> has been verified.
+                </p>
+              )}
+              {username && (
+                <p className="text-sm text-muted-foreground">
+                  Your username is <span className="font-mono font-medium text-foreground">{username}</span>
                 </p>
               )}
               <p className="text-sm text-muted-foreground">

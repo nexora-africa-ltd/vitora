@@ -33,6 +33,7 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState('');
+  const [submittedUsername, setSubmittedUsername] = useState('');
 
   const [formData, setFormData] = useState({
     org_name: '',
@@ -78,8 +79,9 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
-      await orgSignupApi.signup(formData);
+      const result = await orgSignupApi.signup(formData);
       setSubmittedEmail(formData.admin_email);
+      setSubmittedUsername(result.username);
       setPageState('success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed');
@@ -122,6 +124,11 @@ export default function SignupPage() {
               <p className="text-sm text-muted-foreground">
                 We&apos;ve sent a verification link to <span className="font-medium text-foreground">{submittedEmail}</span>.
               </p>
+              {submittedUsername && (
+                <p className="text-sm text-muted-foreground">
+                  Your username is <span className="font-mono font-medium text-foreground">{submittedUsername}</span>
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
                 After verifying your email, a Nexora administrator will review and activate your organization.
               </p>

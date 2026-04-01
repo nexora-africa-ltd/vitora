@@ -96,11 +96,13 @@ export const OrgSignupResponseSchema = z.object({
   message: z.string(),
   org_name: z.string(),
   admin_email: z.string(),
+  username: z.string(),
 });
 
 export const EmailVerifyResponseSchema = z.object({
   message: z.string(),
   org_name: z.string(),
+  username: z.string(),
 });
 
 // =============================================================================

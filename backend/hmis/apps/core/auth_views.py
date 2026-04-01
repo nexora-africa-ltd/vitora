@@ -243,6 +243,7 @@ def invitation_lookup(request, token):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@ratelimit(key="ip", rate="10/h", method="POST", block=True)
 def invitation_accept(request):
     """
     Public endpoint to accept an invitation and create a user account.
@@ -348,6 +349,7 @@ def invitation_accept(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@ratelimit(key="ip", rate="5/h", method="POST", block=True)
 def password_reset_request(request):
     """
     Request a password reset email.
@@ -396,6 +398,7 @@ def password_reset_request(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@ratelimit(key="ip", rate="10/h", method="POST", block=True)
 def password_reset_confirm(request):
     """
     Confirm a password reset with a token and set a new password.
@@ -608,6 +611,7 @@ def org_signup(request):
             ),
             "org_name": data["org_name"],
             "admin_email": data["admin_email"],
+            "username": user.username,
         },
         status=status.HTTP_201_CREATED,
     )
@@ -671,6 +675,7 @@ def verify_email(request):
                 "You'll receive a notification once it's activated."
             ),
             "org_name": token.organization.name,
+            "username": token.user.username,
         },
         status=status.HTTP_200_OK,
     )

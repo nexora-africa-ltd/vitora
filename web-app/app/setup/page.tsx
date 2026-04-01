@@ -121,13 +121,14 @@ export default function SetupWizardPage() {
       try {
         const result = await setupApi.check();
         if (!result.setup_required) {
-          router.replace('/login');
+          // Setup already done — go to dashboard if authenticated, login otherwise
+          router.replace('/dashboard');
           return;
         }
         setSetupAllowed(true);
       } catch {
-        // If check fails, redirect to login
-        router.replace('/login');
+        // If check fails, redirect to dashboard (let proxy handle auth)
+        router.replace('/dashboard');
       } finally {
         setChecking(false);
       }

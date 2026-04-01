@@ -110,7 +110,7 @@ export const invitationPublicApi = {
 
 export const passwordResetApi = {
   request: async (data: PasswordResetRequestData): Promise<{ message: string }> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/password-reset/request/`, {
+    const response = await fetch(`${API_BASE_URL}/api/core/auth/password-reset/request/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -124,7 +124,7 @@ export const passwordResetApi = {
   },
 
   confirm: async (data: PasswordResetConfirmData): Promise<{ message: string }> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/password-reset/confirm/`, {
+    const response = await fetch(`${API_BASE_URL}/api/core/auth/password-reset/confirm/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -144,7 +144,7 @@ export const passwordResetApi = {
 
 export const changePasswordApi = {
   change: async (data: ChangePasswordData): Promise<{ message: string }> => {
-    const response = await apiClient.post('/api/auth/change-password/', data);
+    const response = await apiClient.post('/api/core/auth/change-password/', data);
     return parseResponse(MessageResponseSchema, response.data, { context: 'changePasswordApi.change' });
   },
 };
