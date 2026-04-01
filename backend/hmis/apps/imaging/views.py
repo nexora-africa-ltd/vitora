@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.mixins import NestedTenantScopeMixin
 from hmis.apps.scheduling.models import Resource
 
 from .models import (
@@ -340,7 +341,7 @@ class ImagingProcedureViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
-class ImagingOrderViewSet(viewsets.ModelViewSet):
+class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for imaging orders.
     Provides full CRUD operations plus workflow actions.
@@ -358,6 +359,8 @@ class ImagingOrderViewSet(viewsets.ModelViewSet):
         "clinical_indication",
     ]
     lookup_field = "order_number"
+    tenant_facility_chain = "encounter__facility"
+    tenant_org_chain = "encounter__organization"
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -1319,7 +1322,7 @@ class RadiologyReportFilter(filters.FilterSet):
         fields = ["status", "is_critical", "reported_by"]
 
 
-class RadiologyReportViewSet(viewsets.ModelViewSet):
+class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for radiology reports.
 
@@ -1367,6 +1370,8 @@ class RadiologyReportViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = RadiologyReportFilter
     lookup_field = "report_number"
+    tenant_facility_chain = "imaging_order__encounter__facility"
+    tenant_org_chain = "imaging_order__encounter__organization"
 
     def get_serializer_class(self):
         if self.action == "create":

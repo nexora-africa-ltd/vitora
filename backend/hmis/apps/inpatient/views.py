@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.patients.models import Patient
 
@@ -1041,7 +1041,7 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
         )
 
 
-class BedViewSet(viewsets.ModelViewSet):
+class BedViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for Bed model.
 
@@ -1064,6 +1064,8 @@ class BedViewSet(viewsets.ModelViewSet):
     search_fields = ["bed_number"]
     ordering_fields = ["bed_number", "status", "status_changed_at"]
     ordering = ["bed_number"]
+    tenant_facility_chain = "ward__facility"
+    tenant_org_chain = "ward__organization"
 
     def perform_update(self, serializer):
         """Update bed and log status changes."""
@@ -1131,7 +1133,7 @@ class BedViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(bed).data, status=status.HTTP_200_OK)
 
 
-class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
+class AdmissionRecommendationViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for AdmissionRecommendation model.
 
@@ -1156,6 +1158,8 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
     search_fields = ["reason", "provisional_diagnosis_text"]
     ordering_fields = ["created_at", "expires_at", "urgency"]
     ordering = ["-created_at"]
+    tenant_facility_chain = "encounter__facility"
+    tenant_org_chain = "encounter__organization"
 
     def perform_create(self, serializer):
         """Create recommendation and log action."""
@@ -1992,7 +1996,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
 
 
-class DischargeViewSet(viewsets.ModelViewSet):
+class DischargeViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for Discharge model.
 
@@ -2017,6 +2021,8 @@ class DischargeViewSet(viewsets.ModelViewSet):
     serializer_class = DischargeSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    tenant_facility_chain = "admission__ward__facility"
+    tenant_org_chain = "admission__organization"
     filterset_fields = ["admission", "discharge_type", "pharmacy_cleared", "billing_cleared", "discharged_by"]
     search_fields = [
         "admission__admission_number",

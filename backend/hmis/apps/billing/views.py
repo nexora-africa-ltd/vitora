@@ -46,7 +46,7 @@ from hmis.apps.billing.serializers import (
     ServiceCategorySerializer,
     ServiceSerializer,
 )
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 
 
@@ -319,7 +319,7 @@ class InvoiceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class PaymentViewSet(viewsets.ModelViewSet):
+class PaymentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for Payment model.
 
@@ -334,6 +334,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
     search_fields = ["reference", "mpesa_receipt_number", "transaction_reference"]
     ordering_fields = ["payment_date", "amount", "created_at"]
     ordering = ["-payment_date"]
+    tenant_facility_chain = "invoice__facility"
+    tenant_org_chain = "invoice__organization"
 
     @action(detail=True, methods=["get"])
     def receipt(self, request, pk=None):
@@ -441,7 +443,7 @@ class PaymentPointViewSet(viewsets.ModelViewSet):
     ordering = ["method", "name"]
 
 
-class CreditNoteViewSet(viewsets.ModelViewSet):
+class CreditNoteViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for CreditNote model.
 
@@ -458,6 +460,8 @@ class CreditNoteViewSet(viewsets.ModelViewSet):
     search_fields = ["credit_note_number", "reason_detail"]
     ordering_fields = ["created_at", "approved_at"]
     ordering = ["-created_at"]
+    tenant_facility_chain = "invoice__facility"
+    tenant_org_chain = "invoice__organization"
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):

@@ -106,7 +106,7 @@ install:
 	poetry install
 
 test:
-	poetry run pytest --cov=hmis --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=80
+	poetry run pytest --migrations --cov=hmis --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=80
 
 test-fast:
 	poetry run pytest --no-cov --tb=short -q

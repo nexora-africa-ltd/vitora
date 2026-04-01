@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
 from hmis.apps.core.history_views import ModelHistoryMixin
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
@@ -125,7 +125,7 @@ class TreatmentPlanTemplateViewSet(viewsets.ModelViewSet):
         return Response({"results": serializer.data})
 
 
-class DiagnosisViewSet(viewsets.ModelViewSet):
+class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for Diagnosis model.
 
@@ -140,16 +140,20 @@ class DiagnosisViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = DiagnosisSerializer
+    queryset = Diagnosis.objects.all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["diagnosis_type", "is_confirmed"]
     ordering_fields = ["diagnosis_type", "created_at"]
     ordering = ["created_at"]
+    tenant_facility_chain = "encounter__facility"
+    tenant_org_chain = "encounter__organization"
 
     def get_queryset(self):
-        """Filter diagnoses by encounter."""
+        """Filter diagnoses by encounter and tenant."""
+        qs = super().get_queryset()
         encounter_id = self.kwargs.get("encounter_pk")
-        return Diagnosis.objects.filter(encounter_id=encounter_id).select_related("icd10_code")
+        return qs.filter(encounter_id=encounter_id).select_related("icd10_code")
 
     def get_serializer_context(self):
         """Add encounter to serializer context."""
@@ -1803,7 +1807,7 @@ class ApplyTemplateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class MedicationViewSet(viewsets.ModelViewSet):
+class MedicationViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for Medication model.
 
@@ -1818,10 +1822,13 @@ class MedicationViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = MedicationSerializer
+    queryset = Medication.objects.all()
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["name", "created_at"]
     ordering = ["name"]
+    tenant_facility_chain = "treatment_plan__encounter__facility"
+    tenant_org_chain = "treatment_plan__encounter__organization"
 
     def _get_treatment_plan(self, encounter_pk):
         """Get treatment plan for encounter."""
@@ -1832,11 +1839,12 @@ class MedicationViewSet(viewsets.ModelViewSet):
             return None
 
     def get_queryset(self):
-        """Filter medications by treatment plan."""
+        """Filter medications by treatment plan and tenant."""
+        qs = super().get_queryset()
         encounter_pk = self.kwargs.get("encounter_pk")
         plan = self._get_treatment_plan(encounter_pk)
         if plan:
-            return Medication.objects.filter(treatment_plan=plan)
+            return qs.filter(treatment_plan=plan)
         return Medication.objects.none()
 
     def create(self, request, *args, **kwargs):

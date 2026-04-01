@@ -444,6 +444,32 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
             try:
                 user = User.objects.get(username=username)
 
+                # ── Organization activation gate ─────────────────────────
+                # Block login when the user's organization exists but has
+                # not been activated by a Nexora administrator yet.
+                profile = getattr(user, "staff_profile", None)
+                if profile and profile.organization_id:
+                    org = profile.organization
+                    if not org.is_active:
+                        user_login_failed.send(
+                            sender=self.__class__,
+                            credentials={"username": username},
+                            request=request,
+                        )
+                        msg = (
+                            "Your organization is pending administrator review. "
+                            "You'll receive a notification once it's activated."
+                        )
+                        if not org.is_verified:
+                            msg = (
+                                "Your organization's email has not been verified yet. "
+                                "Please check your inbox for the verification link."
+                            )
+                        return Response(
+                            {"detail": msg, "code": "organization_inactive"},
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+
                 # Check if MFA is enabled for this user
                 mfa_enabled = is_mfa_enabled(user)
                 mfa_required = is_mfa_required(user)
@@ -705,7 +731,7 @@ class RoleViewSet(viewsets.ModelViewSet):
         return Response(role.get_all_permissions())
 
 
-class StaffProfileViewSet(viewsets.ModelViewSet):
+class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for StaffProfile CRUD operations.
 
@@ -718,6 +744,7 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         "user", "primary_role", "primary_department", "primary_facility", "supervisor"
     ).prefetch_related("secondary_roles", "secondary_departments", "secondary_facilities")
     serializer_class = StaffProfileSerializer
+    tenant_scope = "organization"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = [
         "primary_role",

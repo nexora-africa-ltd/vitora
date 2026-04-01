@@ -2,31 +2,34 @@
 Test settings for Vitora HMIS.
 
 These settings are used for running tests.
+
+Performance notes:
+  - Default DB is in-memory SQLite — migrations are applied once per session
+    using pytest-django's built-in transactional rollback, so each test is ~ms.
+  - Coverage is NOT enabled by default in addopts; use `make test` or pass
+    `--cov=hmis` explicitly when you need a coverage report.
+  - WebSocket tests that need a shared file-backed DB should use the
+    `ws_db` fixture (see conftest.py) which overrides the database per-test.
 """
 
 import os
-import tempfile
 
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
-# Use a file-based SQLite database for tests
-# This is required for WebSocket tests where the async consumer runs in a
-# separate context and needs to see the same database as the test.
-# Using a shared-cache URL allows multiple connections to see the same data.
-_test_db_path = os.path.join(tempfile.gettempdir(), "vitora_test.db")
-
+# In-memory SQLite for speed — migrations run once per pytest session (~2-4s).
+# WebSocket / Channels tests that need cross-thread visibility should use a
+# file-backed override (see conftest.py `ws_db` fixture).
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": f"file:{_test_db_path}?mode=rwc",
+        "NAME": ":memory:",
         "OPTIONS": {
             "timeout": 20,
         },
         "TEST": {
-            # Use the same file for tests
-            "NAME": f"file:{_test_db_path}?mode=rwc",
+            "NAME": ":memory:",
         },
     }
 }
