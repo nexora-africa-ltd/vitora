@@ -84,12 +84,24 @@ def create_consultation_invoice(
             clinic_visit=clinic_visit,
             status=Invoice.Status.DRAFT,
             created_by=created_by,
+            facility=getattr(clinic_visit, "facility", None),
+            organization=getattr(clinic_visit, "organization", None),
         )
     else:
         # Ensure the invoice points back to this visit for reporting
+        updates = []
         if getattr(invoice, "clinic_visit_id", None) != clinic_visit.id:
             invoice.clinic_visit_id = clinic_visit.id
-            invoice.save(update_fields=["clinic_visit", "updated_at"])
+            updates.append("clinic_visit")
+        if not invoice.facility_id and getattr(clinic_visit, "facility_id", None):
+            invoice.facility = clinic_visit.facility
+            updates.append("facility")
+        if not invoice.organization_id and getattr(clinic_visit, "organization_id", None):
+            invoice.organization = clinic_visit.organization
+            updates.append("organization")
+        if updates:
+            updates.append("updated_at")
+            invoice.save(update_fields=updates)
 
     # Determine description
     is_return = clinic_visit.visit_type in ["RETURN", "FOLLOW_UP", "REFERRAL"]

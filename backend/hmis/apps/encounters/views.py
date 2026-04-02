@@ -446,7 +446,7 @@ class EncounterViewSet(TenantScopedViewMixin, ModelHistoryMixin, viewsets.ModelV
     @extend_schema(
         responses={200: ClinicalSnapshotSerializer},
     )
-    @action(detail=True, methods=["get"])
+    @action(detail=True, methods=["get"], url_path="clinical-snapshot")
     def clinical_snapshot(self, request, pk=None):
         """
         Return a clinical snapshot for the encounter's patient.

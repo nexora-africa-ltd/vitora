@@ -957,7 +957,7 @@ def sample_patient_with_recent_visit(db, sample_county, sample_sub_county):
 
 
 @pytest.fixture
-def sample_patient_with_allergies(db, sample_county, sample_sub_county):
+def sample_patient_with_allergies(db, sample_county, sample_sub_county, sample_facility, sample_organization):
     """Create a sample patient with known allergies."""
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.patients.models import Patient
@@ -969,6 +969,7 @@ def sample_patient_with_allergies(db, sample_county, sample_sub_county):
         gender="F",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
     # Create encounter with allergy information
@@ -977,6 +978,8 @@ def sample_patient_with_allergies(db, sample_county, sample_sub_county):
         encounter_type="OPD",
         chief_complaint="Routine checkup",
         allergies="Penicillin (severe - anaphylaxis), Sulfa drugs (moderate - rash)",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
     return patient

@@ -180,8 +180,12 @@ def sample_payment_point(db, test_user):
 
 
 @pytest.fixture
-def test_user_2(db):
+def test_user_2(db, sample_organization, sample_facility):
     """Create a second test user for approval workflows."""
-    return User.objects.create_user(
+    from tests.conftest import ensure_staff_profile
+
+    user = User.objects.create_user(
         username="approver", password="approver123", email="approver@test.com"
     )
+    ensure_staff_profile(user, sample_organization, sample_facility, employee_id="APPROVER-001")
+    return user

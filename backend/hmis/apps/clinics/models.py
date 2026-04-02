@@ -923,6 +923,11 @@ class ClinicVisit(TimeStampedModel):
                 "clinical_template": resolved_template,
             }
 
+            if getattr(self, "facility_id", None):
+                encounter_data["facility"] = self.facility
+            if getattr(self, "organization_id", None):
+                encounter_data["organization"] = self.organization
+
             if self.triage_assessment:
                 ta = self.triage_assessment
                 if ta.temperature is not None:
