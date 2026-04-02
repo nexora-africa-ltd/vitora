@@ -73,7 +73,7 @@ export default function LoginPage() {
     // Client-side validation
     const errors: {username?: string; password?: string} = {};
     if (!username.trim()) {
-      errors.username = 'Username is required';
+      errors.username = 'Username or email is required';
     }
     if (!password) {
       errors.password = 'Password is required';
@@ -241,7 +241,7 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <label htmlFor="username" className="text-sm font-medium">
-                  Username
+                  Username or Email
                 </label>
                 <Input
                   id="username"
@@ -254,7 +254,7 @@ export default function LoginPage() {
                       setValidationErrors(prev => ({ ...prev, username: undefined }));
                     }
                   }}
-                  placeholder="Enter your username"
+                  placeholder="Enter your username or email"
                   autoComplete="username"
                   disabled={isLoading}
                   className="h-11"

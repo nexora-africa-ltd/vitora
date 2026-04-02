@@ -76,7 +76,7 @@ Only after the web app implementation is complete should we shift focus to offli
 - ✅ Emergency contacts with relationship tracking
 - ✅ Clinical encounters with vitals (including SpO2 with critical alerts <95%)
 - ✅ Medical history section (allergies, chronic conditions, medications, surgeries, family/social history)
-- ✅ JWT authentication with refresh tokens
+- ✅ JWT authentication with refresh tokens (login by username or email)
 - ✅ Fernet field-level encryption for sensitive data (national_id, phone_number)
 - ✅ Offline sync queue with conflict resolution
 - ✅ Audit logging (Kenya DPA 2019 compliant - 7 year retention)
@@ -448,6 +448,7 @@ export function useEncounterData(encounterId: string) {
 ### Authentication (JWT)
 ```
 POST   /api/token/           # Login: {username, password} → {access, refresh}
+                              # username field accepts username OR email
 POST   /api/token/refresh/   # Refresh: {refresh} → {access}
 POST   /api/token/verify/    # Verify: {token} → 200 OK or 401
 ```
@@ -906,6 +907,19 @@ POST /api/inpatient/wards/{id}/generate_beds/
 | **Integrity & Confidentiality** | Fernet encryption for national_id, phone_number |
 | **Accountability** | Full audit trail on all data access |
 | **Data Subject Rights** | Export/delete patient data via API |
+
+### Email-or-Username Login
+
+```python
+# Users can log in with either username or email via EmailOrUsernameBackend
+# See: hmis/apps/core/backends.py
+AUTHENTICATION_BACKENDS = ["hmis.apps.core.backends.EmailOrUsernameBackend"]
+
+# Email uniqueness is enforced at three layers:
+# 1. Database: partial unique index on LOWER(email) WHERE email != ''
+# 2. Application: pre_save signal on auth.User (hmis/apps/core/signals.py)
+# 3. Serializers: validate_email() in StaffProfileCreateSerializer et al.
+```
 
 ### Encrypted Fields
 
@@ -1541,6 +1555,6 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: March 2, 2026
+**Last Updated**: April 3, 2026
 **Maintainer**: Engineering Lead
-**Version**: 2.6 (Added full-stack feature implementation pattern from IHR gap #24)
+**Version**: 2.7 (Added email-or-username login with unique email enforcement)

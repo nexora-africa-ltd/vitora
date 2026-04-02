@@ -5,7 +5,7 @@ These signals handle automatic audit logging when certain events occur.
 """
 
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 
@@ -58,6 +58,33 @@ def log_user_login_failed(sender, credentials, request, **kwargs):
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
         details={"username": credentials.get("username", "unknown")},
     )
+
+
+# =============================================================================
+# Unique Email Enforcement (application-level)
+# =============================================================================
+
+
+@receiver(pre_save, sender="auth.User")
+def enforce_unique_email(sender, instance, **kwargs):
+    """Reject saving a User with a duplicate non-empty email.
+
+    This complements the DB-level partial unique index added in migration
+    0034 and ensures uniqueness even when --no-migrations is used (tests).
+    """
+    if not instance.email:
+        return
+
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    qs = User.objects.filter(email__iexact=instance.email)
+    if instance.pk:
+        qs = qs.exclude(pk=instance.pk)
+    if qs.exists():
+        from django.core.exceptions import ValidationError
+
+        raise ValidationError({"email": "A user with this email already exists."})
 
 
 # =============================================================================

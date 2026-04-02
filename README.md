@@ -813,7 +813,7 @@ class ExternalCodeMapping(models.Model):
 
 #### Authentication
 \`\`\`
-POST   /api/token/                  # Login → {access, refresh}
+POST   /api/token/                  # Login → {access, refresh} (username or email)
 POST   /api/token/refresh/          # Refresh → {access}
 POST   /api/token/verify/           # Verify → 200 OK
 \`\`\`
@@ -1160,6 +1160,7 @@ See Section 5 for detailed model definitions. Core tables:
 
 #### Authentication & Authorization
 - JWT-based authentication with 30-min access / 7-day refresh tokens
+- **Login by username or email** (case-insensitive email, unique email enforced at DB + app level)
 - **MFA / Two-Factor Authentication**: TOTP devices, backup codes, MFA tokens
 - Role-Based Access Control (RBAC) with permission matrix
 - **Emergency Access Override**: Break-glass access with reason tracking and auto-review
