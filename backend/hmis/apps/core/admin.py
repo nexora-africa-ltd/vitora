@@ -3,6 +3,9 @@ Admin configuration for core app.
 """
 
 from django.contrib import admin
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.core.exceptions import ValidationError
 
 from .emergency_access.admin import EmergencyAccessAdmin  # noqa: F401
 from .models import (
@@ -35,6 +38,32 @@ from .models import (
     UserCertificate,
     Ward,
 )
+
+
+# ---------------------------------------------------------------------------
+# Custom UserAdmin — enforce unique email in the admin interface
+# ---------------------------------------------------------------------------
+User = get_user_model()
+
+admin.site.unregister(User)
+
+
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    """Extend the default UserAdmin to enforce unique email addresses."""
+
+    def _validate_unique_email(self, email, exclude_pk=None):
+        if not email:
+            return
+        qs = User.objects.filter(email__iexact=email)
+        if exclude_pk:
+            qs = qs.exclude(pk=exclude_pk)
+        if qs.exists():
+            raise ValidationError({"email": "A user with this email already exists."})
+
+    def save_model(self, request, obj, form, change):
+        self._validate_unique_email(obj.email, exclude_pk=obj.pk if change else None)
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(AuditLog)
