@@ -31,7 +31,7 @@ User = get_user_model()
 
 
 @pytest.fixture
-def sample_ward(db):
+def sample_ward(db, sample_facility, sample_organization):
     """Create a sample ward with 5 beds (auto-generated)."""
     ward = Ward.objects.create(
         name="Medical Ward",
@@ -39,6 +39,8 @@ def sample_ward(db):
         ward_type="MEDICAL",
         capacity=5,
         daily_rate=Decimal("500.00"),
+        facility=sample_facility,
+        organization=sample_organization,
     )
     # Ward.save() auto-generates 5 beds: B-001 through B-005
     return ward
@@ -86,7 +88,7 @@ def full_ward(sample_ward, test_user):
 
 
 @pytest.fixture
-def empty_ward(db):
+def empty_ward(db, sample_facility, sample_organization):
     """Create a ward with no beds."""
     return Ward.objects.create(
         name="Empty Ward",
@@ -94,6 +96,8 @@ def empty_ward(db):
         ward_type="MEDICAL",
         capacity=0,
         daily_rate=Decimal("500.00"),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

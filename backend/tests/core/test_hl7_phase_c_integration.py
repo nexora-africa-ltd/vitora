@@ -114,7 +114,7 @@ def external_code_mapping(db, test_catalog_no_loinc):
 
 
 @pytest.fixture
-def lab_order_for_integration(db, sample_patient, sample_encounter, test_user, test_catalog):
+def lab_order_for_integration(db, sample_patient, sample_encounter, test_user, test_catalog, sample_organization, sample_facility):
     """Create lab order for integration testing."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -124,6 +124,8 @@ def lab_order_for_integration(db, sample_patient, sample_encounter, test_user, t
         status="ORDERED",
         priority="ROUTINE",
         clinical_notes="Integration test order",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     LabOrderItem.objects.create(
         lab_order=order,
@@ -135,7 +137,9 @@ def lab_order_for_integration(db, sample_patient, sample_encounter, test_user, t
 
 @pytest.fixture
 def lab_order_with_mapped_test(
-    db, sample_patient, sample_encounter, test_user, test_catalog_no_loinc, external_code_mapping
+    db, sample_patient, sample_encounter, test_user, test_catalog_no_loinc, external_code_mapping,
+    sample_facility,
+    sample_organization,
 ):
     """Create lab order with externally mapped test."""
     order = LabOrder.objects.create(
@@ -146,6 +150,8 @@ def lab_order_with_mapped_test(
         status="ORDERED",
         priority="ROUTINE",
         clinical_notes="Mapped test order",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     LabOrderItem.objects.create(
         lab_order=order,

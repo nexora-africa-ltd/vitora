@@ -53,7 +53,7 @@ class TestMedicalHistoryFields:
 class TestMedicalHistoryModel:
     """Test suite for medical history functionality."""
 
-    def test_create_encounter_with_allergies(self, sample_patient):
+    def test_create_encounter_with_allergies(self, sample_patient, sample_facility):
         """Test creating encounter with allergies."""
         from hmis.apps.encounters.models import Encounter
 
@@ -62,11 +62,12 @@ class TestMedicalHistoryModel:
             encounter_type="OPD",
             chief_complaint="Routine checkup",
             allergies="Penicillin, Sulfa drugs",
+            facility=sample_facility,
         )
 
         assert encounter.allergies == "Penicillin, Sulfa drugs"
 
-    def test_create_encounter_with_chronic_conditions(self, sample_patient):
+    def test_create_encounter_with_chronic_conditions(self, sample_patient, sample_facility):
         """Test creating encounter with chronic conditions."""
         from hmis.apps.encounters.models import Encounter
 
@@ -75,11 +76,12 @@ class TestMedicalHistoryModel:
             encounter_type="OPD",
             chief_complaint="Follow-up visit",
             chronic_conditions="Type 2 Diabetes, Hypertension",
+            facility=sample_facility,
         )
 
         assert encounter.chronic_conditions == "Type 2 Diabetes, Hypertension"
 
-    def test_create_encounter_with_current_medications(self, sample_patient):
+    def test_create_encounter_with_current_medications(self, sample_patient, sample_facility):
         """Test creating encounter with current medications."""
         from hmis.apps.encounters.models import Encounter
 
@@ -88,11 +90,12 @@ class TestMedicalHistoryModel:
             encounter_type="OPD",
             chief_complaint="Medication review",
             current_medications="Metformin 500mg BD, Lisinopril 10mg OD",
+            facility=sample_facility,
         )
 
         assert "Metformin" in encounter.current_medications
 
-    def test_create_encounter_with_past_surgeries(self, sample_patient):
+    def test_create_encounter_with_past_surgeries(self, sample_patient, sample_facility):
         """Test creating encounter with past surgeries."""
         from hmis.apps.encounters.models import Encounter
 
@@ -101,11 +104,12 @@ class TestMedicalHistoryModel:
             encounter_type="OPD",
             chief_complaint="Pre-op assessment",
             past_surgeries="Appendectomy (2015), Cesarean section (2018)",
+            facility=sample_facility,
         )
 
         assert "Appendectomy" in encounter.past_surgeries
 
-    def test_create_encounter_with_family_history(self, sample_patient):
+    def test_create_encounter_with_family_history(self, sample_patient, sample_facility):
         """Test creating encounter with family history."""
         from hmis.apps.encounters.models import Encounter
 
@@ -114,11 +118,12 @@ class TestMedicalHistoryModel:
             encounter_type="OPD",
             chief_complaint="Screening",
             family_history="Father: Diabetes, Mother: Hypertension, Sibling: Asthma",
+            facility=sample_facility,
         )
 
         assert "Diabetes" in encounter.family_history
 
-    def test_create_encounter_with_social_history(self, sample_patient):
+    def test_create_encounter_with_social_history(self, sample_patient, sample_facility):
         """Test creating encounter with social history."""
         from hmis.apps.encounters.models import Encounter
 
@@ -127,11 +132,12 @@ class TestMedicalHistoryModel:
             encounter_type="OPD",
             chief_complaint="General checkup",
             social_history="Non-smoker, Occasional alcohol, Sedentary lifestyle",
+            facility=sample_facility,
         )
 
         assert "Non-smoker" in encounter.social_history
 
-    def test_medical_history_fields_are_optional(self, sample_patient):
+    def test_medical_history_fields_are_optional(self, sample_patient, sample_facility):
         """Test all medical history fields are optional."""
         from hmis.apps.encounters.models import Encounter
 
@@ -139,7 +145,8 @@ class TestMedicalHistoryModel:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Quick visit",
-            # No medical history fields provided
+            # No medical history fields provided,
+            facility=sample_facility,
         )
 
         assert encounter.allergies == ""
@@ -149,7 +156,7 @@ class TestMedicalHistoryModel:
         assert encounter.family_history == ""
         assert encounter.social_history == ""
 
-    def test_create_encounter_with_full_medical_history(self, sample_patient):
+    def test_create_encounter_with_full_medical_history(self, sample_patient, sample_facility):
         """Test creating encounter with complete medical history."""
         from hmis.apps.encounters.models import Encounter
 
@@ -163,6 +170,7 @@ class TestMedicalHistoryModel:
             past_surgeries="Appendectomy 2010",
             family_history="Father: Heart disease",
             social_history="Non-smoker, exercises regularly",
+            facility=sample_facility,
         )
 
         assert encounter.allergies == "Penicillin"
@@ -197,7 +205,7 @@ class TestMedicalHistoryAPI:
         assert response.data["chronic_conditions"] == "Asthma"
         assert response.data["current_medications"] == "Salbutamol inhaler PRN"
 
-    def test_medical_history_in_encounter_response(self, authenticated_client, sample_patient):
+    def test_medical_history_in_encounter_response(self, authenticated_client, sample_patient, sample_facility):
         """Test medical history fields included in encounter response."""
         from hmis.apps.encounters.models import Encounter
 
@@ -207,6 +215,7 @@ class TestMedicalHistoryAPI:
             chief_complaint="Test",
             allergies="NKDA",
             chronic_conditions="None",
+            facility=sample_facility,
         )
 
         response = authenticated_client.get(f"/api/encounters/{encounter.id}/")
@@ -219,7 +228,7 @@ class TestMedicalHistoryAPI:
         assert "family_history" in response.data
         assert "social_history" in response.data
 
-    def test_update_medical_history_via_api(self, authenticated_client, sample_patient):
+    def test_update_medical_history_via_api(self, authenticated_client, sample_patient, sample_facility):
         """Test updating medical history via API."""
         from hmis.apps.encounters.models import Encounter
 
@@ -228,6 +237,7 @@ class TestMedicalHistoryAPI:
             encounter_type="OPD",
             chief_complaint="Initial visit",
             allergies="None known",
+            facility=sample_facility,
         )
 
         response = authenticated_client.patch(

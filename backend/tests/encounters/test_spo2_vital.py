@@ -13,7 +13,7 @@ from django.core.exceptions import ValidationError
 class TestSpO2VitalSign:
     """Test suite for SpO2 vital sign in Encounter model."""
 
-    def test_create_encounter_with_spo2(self, sample_patient):
+    def test_create_encounter_with_spo2(self, sample_patient, sample_facility):
         """Test creating an encounter with SpO2 value."""
         from hmis.apps.encounters.models import Encounter
 
@@ -22,6 +22,7 @@ class TestSpO2VitalSign:
             encounter_type="OPD",
             chief_complaint="Routine checkup",
             spo2=98,
+            facility=sample_facility,
         )
 
         assert encounter.spo2 == 98
@@ -78,7 +79,7 @@ class TestSpO2VitalSign:
 
         assert "spo2" in str(exc_info.value)
 
-    def test_spo2_is_optional(self, sample_patient):
+    def test_spo2_is_optional(self, sample_patient, sample_facility):
         """Test SpO2 is optional (can be null)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -87,11 +88,12 @@ class TestSpO2VitalSign:
             encounter_type="OPD",
             chief_complaint="Test",
             spo2=None,
+            facility=sample_facility,
         )
 
         assert encounter.spo2 is None
 
-    def test_spo2_decimal_values(self, sample_patient):
+    def test_spo2_decimal_values(self, sample_patient, sample_facility):
         """Test SpO2 accepts decimal values."""
         from hmis.apps.encounters.models import Encounter
 
@@ -100,6 +102,7 @@ class TestSpO2VitalSign:
             encounter_type="OPD",
             chief_complaint="Test",
             spo2=97.5,
+            facility=sample_facility,
         )
 
         assert float(encounter.spo2) == 97.5
@@ -204,7 +207,7 @@ class TestSpO2API:
         assert response.status_code == 201
         assert float(response.data["spo2"]) == 97.0
 
-    def test_spo2_included_in_encounter_response(self, authenticated_client, sample_patient):
+    def test_spo2_included_in_encounter_response(self, authenticated_client, sample_patient, sample_facility):
         """Test that SpO2 is included in encounter response."""
         from hmis.apps.encounters.models import Encounter
 
@@ -213,6 +216,7 @@ class TestSpO2API:
             encounter_type="OPD",
             chief_complaint="Test",
             spo2=96,
+            facility=sample_facility,
         )
 
         response = authenticated_client.get(f"/api/encounters/{encounter.id}/")

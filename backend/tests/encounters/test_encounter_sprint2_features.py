@@ -24,7 +24,7 @@ class TestEncounterLinking:
         """Encounter model should have a linked_encounter FK."""
         assert hasattr(Encounter, "linked_encounter")
 
-    def test_create_encounter_with_linked_encounter(self, sample_patient, test_user):
+    def test_create_encounter_with_linked_encounter(self, sample_patient, test_user, sample_facility):
         """Should create encounter linked to a previous encounter."""
         # Create first encounter
         original = Encounter.objects.create(
@@ -32,6 +32,7 @@ class TestEncounterLinking:
             encounter_type="OPD",
             chief_complaint="Original complaint",
             status="CLOSED",
+            facility=sample_facility,
         )
 
         # Create follow-up encounter linked to original
@@ -40,6 +41,7 @@ class TestEncounterLinking:
             encounter_type="FOLLOW_UP",
             chief_complaint="Follow-up visit",
             linked_encounter=original,
+            facility=sample_facility,
         )
 
         follow_up.refresh_from_db()
@@ -50,19 +52,21 @@ class TestEncounterLinking:
         """linked_encounter should be nullable."""
         assert sample_encounter.linked_encounter is None
 
-    def test_linked_encounter_set_null_on_delete(self, sample_patient):
+    def test_linked_encounter_set_null_on_delete(self, sample_patient, sample_facility):
         """Linked encounter FK should SET_NULL on delete."""
         original = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Original",
             status="CLOSED",
+            facility=sample_facility,
         )
         follow_up = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="FOLLOW_UP",
             chief_complaint="Follow-up",
             linked_encounter=original,
+            facility=sample_facility,
         )
 
         # Delete via queryset to bypass ProtectedError from Invoice signal
@@ -99,7 +103,8 @@ class TestEncounterLinking:
         assert response.data["linked_encounter"] == sample_encounter.id
 
     def test_api_encounter_detail_includes_linked_encounter(
-        self, authenticated_client, sample_patient
+        self, authenticated_client, sample_patient,
+        sample_facility,
     ):
         """Encounter detail should include linked_encounter info."""
         original = Encounter.objects.create(
@@ -107,36 +112,41 @@ class TestEncounterLinking:
             encounter_type="OPD",
             chief_complaint="Original",
             status="CLOSED",
+            facility=sample_facility,
         )
         follow_up = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="FOLLOW_UP",
             chief_complaint="Follow-up",
             linked_encounter=original,
+            facility=sample_facility,
         )
 
         response = authenticated_client.get(f"/api/encounters/{follow_up.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["linked_encounter"] == original.id
 
-    def test_encounter_get_related_visits(self, sample_patient):
+    def test_encounter_get_related_visits(self, sample_patient, sample_facility):
         """Should retrieve follow-ups linked to an encounter."""
         original = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Original",
+            facility=sample_facility,
         )
         follow_up1 = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="FOLLOW_UP",
             chief_complaint="Follow-up 1",
             linked_encounter=original,
+            facility=sample_facility,
         )
         follow_up2 = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="FOLLOW_UP",
             chief_complaint="Follow-up 2",
             linked_encounter=original,
+            facility=sample_facility,
         )
 
         # reverse relation
@@ -145,18 +155,20 @@ class TestEncounterLinking:
         assert follow_up1 in related
         assert follow_up2 in related
 
-    def test_api_related_encounters_endpoint(self, authenticated_client, sample_patient):
+    def test_api_related_encounters_endpoint(self, authenticated_client, sample_patient, sample_facility):
         """GET /api/encounters/{id}/related/ should return linked encounters."""
         original = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Original",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=sample_patient,
             encounter_type="FOLLOW_UP",
             chief_complaint="Follow-up",
             linked_encounter=original,
+            facility=sample_facility,
         )
 
         response = authenticated_client.get(f"/api/encounters/{original.id}/related/")
@@ -268,12 +280,13 @@ class TestVisitReasonTaxonomy:
         actual_reasons = {choice[0] for choice in field.choices}
         assert expected_reasons == actual_reasons
 
-    def test_encounter_default_visit_reason(self, sample_patient):
+    def test_encounter_default_visit_reason(self, sample_patient, sample_facility):
         """Default visit_reason should be NEW_COMPLAINT."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
         assert encounter.visit_reason == "NEW_COMPLAINT"
 
@@ -292,19 +305,21 @@ class TestVisitReasonTaxonomy:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["visit_reason"] == "CHRONIC_CARE"
 
-    def test_api_filter_encounters_by_visit_reason(self, authenticated_client, sample_patient):
+    def test_api_filter_encounters_by_visit_reason(self, authenticated_client, sample_patient, sample_facility):
         """Should filter encounters by visit_reason."""
         Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="New issue",
             visit_reason="NEW_COMPLAINT",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=sample_patient,
             encounter_type="FOLLOW_UP",
             chief_complaint="Review",
             visit_reason="CHRONIC_CARE",
+            facility=sample_facility,
         )
 
         response = authenticated_client.get("/api/encounters/?visit_reason=CHRONIC_CARE")
@@ -327,13 +342,14 @@ class TestVisitReasonTaxonomy:
         encounter = Encounter.objects.get(id=encounter_id)
         assert encounter.visit_reason == "CHRONIC_CARE"
 
-    def test_encounter_list_includes_visit_reason(self, authenticated_client, sample_patient):
+    def test_encounter_list_includes_visit_reason(self, authenticated_client, sample_patient, sample_facility):
         """Encounter list serializer should include visit_reason."""
         Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test",
             visit_reason="LAB_REVIEW",
+            facility=sample_facility,
         )
 
         response = authenticated_client.get("/api/encounters/")

@@ -41,24 +41,22 @@ def test_user(db):
 
 
 @pytest.fixture
-def sample_patient(db, test_user):
+def sample_patient(db, test_user, sample_organization, sample_county, sample_sub_county):
     """Create a sample patient."""
-    county = County.objects.create(code=1, name="Test County")
-    sub_county = SubCounty.objects.create(county=county, name="Test SubCounty")
-
     return Patient.objects.create(
         first_name="Transfer",
         last_name="Patient",
         date_of_birth="1980-05-15",
         gender="F",
-        county=county,
-        sub_county=sub_county,
+        county=sample_county,
+        sub_county=sample_sub_county,
         registered_by=test_user,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def source_ward(db):
+def source_ward(db, sample_facility, sample_organization):
     """Create source ward."""
     return Ward.objects.create(
         name="Medical Ward",
@@ -66,11 +64,13 @@ def source_ward(db):
         ward_type="MEDICAL",
         capacity=20,
         daily_rate=Decimal("500.00"),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def destination_ward(db):
+def destination_ward(db, sample_facility, sample_organization):
     """Create destination ward."""
     return Ward.objects.create(
         name="ICU Ward",
@@ -78,6 +78,8 @@ def destination_ward(db):
         ward_type="ICU",
         capacity=10,
         daily_rate=Decimal("2000.00"),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -103,13 +105,14 @@ def destination_bed(db, destination_ward):
 
 
 @pytest.fixture
-def active_admission(db, sample_patient, source_ward, source_bed, test_user):
+def active_admission(db, sample_patient, source_ward, source_bed, test_user, sample_facility):
     """Create an active admission."""
     ipd_encounter = Encounter.objects.create(
         patient=sample_patient,
         encounter_type="IPD",
         encounter_date=timezone.now().date(),
         chief_complaint="Requires specialized care",
+        facility=sample_facility,
     )
 
     return Admission.objects.create(

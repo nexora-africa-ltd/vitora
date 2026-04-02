@@ -319,7 +319,7 @@ class TestOfflineFirstBehavior:
     """Tests for offline-first behavior."""
 
     @pytest.mark.django_db
-    def test_operations_work_offline(self):
+    def test_operations_work_offline(self, sample_organization):
         """Core operations should work when offline."""
         from hmis.apps.core.sync import ConnectivityChecker
         from hmis.apps.patients.models import Patient
@@ -332,13 +332,14 @@ class TestOfflineFirstBehavior:
                 last_name="Patient",
                 date_of_birth="1990-01-01",
                 gender="M",
+                organization=sample_organization,
             )
 
             assert patient.id is not None
             assert patient.mrn is not None
 
     @pytest.mark.django_db
-    def test_changes_queued_when_offline(self):
+    def test_changes_queued_when_offline(self, sample_organization):
         """Changes made offline should be queued for sync."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import ConnectivityChecker
@@ -353,6 +354,7 @@ class TestOfflineFirstBehavior:
                 last_name="Patient",
                 date_of_birth="1990-01-01",
                 gender="M",
+                organization=sample_organization,
             )
 
         # Changes should be queued (implementation will enable this)

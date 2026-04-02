@@ -26,7 +26,7 @@ from hmis.apps.procedures.models import ProcedureCatalog, ProcedureOrder
 
 
 @pytest.fixture
-def procedure_clinic(db):
+def procedure_clinic(db, sample_facility, sample_organization):
     """Create a PROCEDURE-type clinic."""
     return Clinic.objects.create(
         name="Procedure Room 1",
@@ -35,11 +35,13 @@ def procedure_clinic(db):
         status="ACTIVE",
         accepts_walk_ins=False,
         triage_required=False,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def procedure_clinic_2(db):
+def procedure_clinic_2(db, sample_facility, sample_organization):
     """Create a second PROCEDURE-type clinic."""
     return Clinic.objects.create(
         name="Procedure Room 2",
@@ -48,6 +50,8 @@ def procedure_clinic_2(db):
         status="ACTIVE",
         accepts_walk_ins=False,
         triage_required=False,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -70,7 +74,7 @@ def procedure_clinic_schedule(db, procedure_clinic):
 
 
 @pytest.fixture
-def sample_catalog(db):
+def sample_catalog(db, sample_facility, sample_organization):
     """Create a sample procedure catalog entry."""
     return ProcedureCatalog.objects.create(
         code="PROC-TEST-001",
@@ -78,6 +82,8 @@ def sample_catalog(db):
         category="WOUND_CARE",
         typical_duration_minutes=30,
         is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -89,13 +95,15 @@ def catalog_with_clinics(db, sample_catalog, procedure_clinic, procedure_clinic_
 
 
 @pytest.fixture
-def sample_order(db, sample_catalog, sample_patient, test_user):
+def sample_order(db, sample_catalog, sample_patient, test_user, sample_facility, sample_organization):
     """Create a sample ORDERED procedure order."""
     return ProcedureOrder.objects.create(
         procedure=sample_catalog,
         patient=sample_patient,
         indication="Laceration on left forearm",
         ordered_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

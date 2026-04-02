@@ -22,6 +22,7 @@ from hmis.apps.core.models import (
     SubCounty,
     SyncQueue,
 )
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -159,8 +160,9 @@ def admin_user(db):
 
 
 @pytest.fixture
-def admin_client(api_client, admin_user):
+def admin_client(api_client, admin_user, sample_organization, sample_facility):
     """Authenticated API client with admin privileges."""
+    ensure_staff_profile(admin_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=admin_user)
     return api_client
 
@@ -450,6 +452,9 @@ class TestOrganizationAPI:
 
     def test_delete_organization_admin(self, admin_client, sample_org):
         """Admin users can delete organizations."""
+        # Clean up references to the org before deletion
+        Facility.objects.filter(organization=sample_org).update(organization=None)
+        StaffProfile.objects.filter(organization=sample_org).delete()
         response = admin_client.delete(f"/api/organizations/{sample_org.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Organization.objects.filter(pk=sample_org.pk).exists()
@@ -929,11 +934,12 @@ def other_staff_profile(
 
 
 @pytest.fixture
-def staff_client(db, staff_user, staff_profile, sample_facility):
+def staff_client(db, staff_user, staff_profile, sample_facility, sample_organization):
     """API client authenticated as staff at sample_facility with facility header."""
     from rest_framework.test import APIClient
 
     client = APIClient()
+    ensure_staff_profile(staff_user, sample_organization, sample_facility)
     client.force_authenticate(user=staff_user)
     client.credentials(HTTP_X_FACILITY_ID=str(sample_facility.pk))
     return client
@@ -941,12 +947,15 @@ def staff_client(db, staff_user, staff_profile, sample_facility):
 
 @pytest.fixture
 def other_staff_client(
-    db, other_staff_user, other_staff_profile, other_org_facility
+    db, other_staff_user, other_staff_profile, other_org_facility,
+    sample_organization,
+    sample_facility,
 ):
     """API client authenticated as staff at the other org's facility."""
     from rest_framework.test import APIClient
 
     client = APIClient()
+    ensure_staff_profile(other_staff_user, sample_organization, sample_facility)
     client.force_authenticate(user=other_staff_user)
     client.credentials(HTTP_X_FACILITY_ID=str(other_org_facility.pk))
     return client
@@ -1198,10 +1207,13 @@ class TestCrossOrgAPIIsolation:
         assert "FallbackPat" in names
 
     def test_superuser_no_facility_sees_all(
-        self, admin_client, sample_org, another_org, org_county, org_sub_county
+        self, api_client, admin_user, sample_org, another_org, org_county, org_sub_county
     ):
         """Superuser without facility header should see all patients (no filter)."""
         from hmis.apps.patients.models import Patient
+
+        # Delete StaffProfile so superuser has no tenant scope
+        StaffProfile.objects.filter(user=admin_user).delete()
 
         Patient.objects.create(
             first_name="Super1", last_name="A", date_of_birth="1990-01-01",
@@ -1213,8 +1225,9 @@ class TestCrossOrgAPIIsolation:
             gender="F", county=org_county, sub_county=org_sub_county,
             organization=another_org,
         )
-        # Admin without facility header — no tenant filter applied
-        response = admin_client.get("/api/patients/")
+        # Superuser without StaffProfile — should bypass tenant filter
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get("/api/patients/")
         assert response.status_code == 200
         results = response.data.get("results", response.data)
         names = [p["first_name"] for p in results]

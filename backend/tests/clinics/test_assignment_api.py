@@ -362,7 +362,7 @@ class TestAutoAssignmentAPI:
     """Tests for the auto-assignment action endpoint."""
 
     @pytest.fixture
-    def assignment_setup(self, db, sample_county, sample_sub_county):
+    def assignment_setup(self, db, sample_county, sample_sub_county, sample_organization):
         """Set up resources and rule for auto-assignment."""
         from hmis.apps.patients.models import Patient
         from hmis.apps.scheduling.models import AssignmentRule, Resource
@@ -374,6 +374,7 @@ class TestAutoAssignmentAPI:
             gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         resources = []
@@ -491,7 +492,7 @@ class TestManualOverrideAPI:
     """Tests for the manual override action endpoint."""
 
     @pytest.fixture
-    def override_setup(self, db, sample_county, sample_sub_county):
+    def override_setup(self, db, sample_county, sample_sub_county, sample_organization):
         """Set up for manual override testing."""
         from hmis.apps.patients.models import Patient
         from hmis.apps.scheduling.models import Appointment, Resource
@@ -503,6 +504,7 @@ class TestManualOverrideAPI:
             gender="F",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         original = Resource.objects.create(

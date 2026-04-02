@@ -19,6 +19,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -61,13 +62,14 @@ def clinic_user(db):
 
 
 @pytest.fixture
-def authenticated_client(api_client, clinic_user):
+def authenticated_client(api_client, clinic_user, sample_organization, sample_facility):
+    ensure_staff_profile(clinic_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=clinic_user)
     return api_client
 
 
 @pytest.fixture
-def sample_clinic(db):
+def sample_clinic(db, sample_facility, sample_organization):
     from hmis.apps.clinics.models import Clinic
 
     return Clinic.objects.create(
@@ -75,11 +77,13 @@ def sample_clinic(db):
         clinic_type="GENERAL_OPD",
         code="OPD-REPORT-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def session_in_month(db, sample_clinic, clinic_user):
+def session_in_month(db, sample_clinic, clinic_user, sample_facility, sample_organization):
     from hmis.apps.clinics.models import ClinicSession
 
     today = timezone.now().date()
@@ -89,11 +93,13 @@ def session_in_month(db, sample_clinic, clinic_user):
         status="OPEN",
         opened_at=timezone.now(),
         opened_by=clinic_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def session_outside_month(db, sample_clinic, clinic_user):
+def session_outside_month(db, sample_clinic, clinic_user, sample_facility, sample_organization):
     from hmis.apps.clinics.models import ClinicSession
 
     outside = timezone.now().date() - timedelta(days=40)
@@ -103,11 +109,13 @@ def session_outside_month(db, sample_clinic, clinic_user):
         status="OPEN",
         opened_at=timezone.now(),
         opened_by=clinic_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def male_patient(db, sample_county, sample_sub_county):
+def male_patient(db, sample_county, sample_sub_county, sample_organization):
     from hmis.apps.patients.models import Patient
 
     return Patient.objects.create(
@@ -117,6 +125,7 @@ def male_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -127,7 +136,7 @@ def female_patient(sample_patient):
 
 
 @pytest.fixture
-def visits_in_month(db, session_in_month, male_patient, female_patient, clinic_user):
+def visits_in_month(db, session_in_month, male_patient, female_patient, clinic_user, sample_facility, sample_organization):
     from hmis.apps.clinics.models import ClinicVisit
 
     visit_new = ClinicVisit.objects.create(
@@ -139,6 +148,8 @@ def visits_in_month(db, session_in_month, male_patient, female_patient, clinic_u
         source="DIRECT",
         chief_complaint="Headache",
         registered_by=clinic_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     visit_return = ClinicVisit.objects.create(
         session=session_in_month,
@@ -149,13 +160,15 @@ def visits_in_month(db, session_in_month, male_patient, female_patient, clinic_u
         source="DIRECT",
         chief_complaint="Follow up",
         registered_by=clinic_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
     return visit_new, visit_return
 
 
 @pytest.fixture
-def visit_outside_month(db, session_outside_month, female_patient, clinic_user):
+def visit_outside_month(db, session_outside_month, female_patient, clinic_user, sample_facility, sample_organization):
     from hmis.apps.clinics.models import ClinicVisit
 
     return ClinicVisit.objects.create(
@@ -167,11 +180,13 @@ def visit_outside_month(db, session_outside_month, female_patient, clinic_user):
         source="DIRECT",
         chief_complaint="Old visit",
         registered_by=clinic_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def paid_invoice_for_visit(db, visits_in_month, clinic_user):
+def paid_invoice_for_visit(db, visits_in_month, clinic_user, sample_facility, sample_organization):
     """Create a paid invoice linked to the first visit (clinic_visit).
 
     This is used to validate revenue aggregation.
@@ -189,6 +204,8 @@ def paid_invoice_for_visit(db, visits_in_month, clinic_user):
         invoice_date=today,
         due_date=today,
         created_by=clinic_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
     InvoiceItem.objects.create(
@@ -218,7 +235,7 @@ def paid_invoice_for_visit(db, visits_in_month, clinic_user):
 
 
 @pytest.fixture
-def enrollments_for_reporting(db, sample_clinic, female_patient, clinic_user):
+def enrollments_for_reporting(db, sample_clinic, female_patient, clinic_user, sample_facility, sample_organization):
     """Create a mix of enrollments for aggregation tests."""
 
     from hmis.apps.clinics.models import ClinicEnrollment

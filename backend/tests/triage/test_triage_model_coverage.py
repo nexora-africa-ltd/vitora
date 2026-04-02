@@ -162,7 +162,7 @@ class TestTriageAssessmentMethods:
     """Tests for TriageAssessment model methods."""
 
     @pytest.fixture
-    def triage_assessment(self, sample_encounter, test_user):
+    def triage_assessment(self, sample_encounter, test_user, sample_facility, sample_organization):
         """Create a base triage assessment for testing."""
         now = timezone.now()
         return TriageAssessment.objects.create(
@@ -177,6 +177,8 @@ class TestTriageAssessmentMethods:
             arrival_time=now - timedelta(hours=1),
             triage_start_time=now - timedelta(minutes=55),
             triaged_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_calculate_category_red_for_unresponsive(self, sample_encounter, test_user):

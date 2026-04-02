@@ -361,7 +361,7 @@ class TestVersionTracking:
     """Tests for version tracking in sync."""
 
     @pytest.mark.django_db
-    def test_model_has_version_field(self):
+    def test_model_has_version_field(self, sample_organization):
         """Models should have version field for conflict detection."""
         from hmis.apps.patients.models import Patient
 
@@ -370,6 +370,7 @@ class TestVersionTracking:
             last_name="Test",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Check if version field exists or can be tracked via SyncQueue
@@ -381,7 +382,7 @@ class TestVersionTracking:
         assert SyncQueue.objects.model is not None
 
     @pytest.mark.django_db
-    def test_version_increments_on_update(self):
+    def test_version_increments_on_update(self, sample_organization):
         """Version should increment on each update."""
         from hmis.apps.patients.models import Patient
 
@@ -390,6 +391,7 @@ class TestVersionTracking:
             last_name="Test",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         if hasattr(patient, "version"):

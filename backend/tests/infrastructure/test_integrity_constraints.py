@@ -27,7 +27,7 @@ from rest_framework import status
 class TestPatientDuplicatePrevention:
     """Tests for preventing duplicate patient registration."""
 
-    def test_unique_identification_number_constraint(self, db, sample_county, sample_sub_county):
+    def test_unique_identification_number_constraint(self, db, sample_county, sample_sub_county, sample_organization):
         """Should prevent two patients with same identification type and number."""
         from hmis.apps.patients.models import Patient
 
@@ -41,6 +41,7 @@ class TestPatientDuplicatePrevention:
             sub_county=sample_sub_county,
             identification_type="national_id",
             identification_number="12345678",
+            organization=sample_organization,
         )
 
         # Attempt to create second patient with same national ID
@@ -55,9 +56,10 @@ class TestPatientDuplicatePrevention:
                     sub_county=sample_sub_county,
                     identification_type="national_id",
                     identification_number="12345678",
+                    organization=sample_organization,
                 )
 
-    def test_different_identification_types_allowed(self, db, sample_county, sample_sub_county):
+    def test_different_identification_types_allowed(self, db, sample_county, sample_sub_county, sample_organization):
         """Should allow same number with different identification types."""
         from hmis.apps.patients.models import Patient
 
@@ -71,6 +73,7 @@ class TestPatientDuplicatePrevention:
             sub_county=sample_sub_county,
             identification_type="national_id",
             identification_number="12345678",
+            organization=sample_organization,
         )
 
         # Create second patient with passport (same number, different type)
@@ -83,11 +86,12 @@ class TestPatientDuplicatePrevention:
             sub_county=sample_sub_county,
             identification_type="passport",
             identification_number="12345678",
+            organization=sample_organization,
         )
 
         assert p1.pk != p2.pk
 
-    def test_null_identification_numbers_allowed(self, db, sample_county, sample_sub_county):
+    def test_null_identification_numbers_allowed(self, db, sample_county, sample_sub_county, sample_organization):
         """Should allow multiple patients without identification numbers."""
         from hmis.apps.patients.models import Patient
 
@@ -100,6 +104,7 @@ class TestPatientDuplicatePrevention:
             county=sample_county,
             sub_county=sample_sub_county,
             identification_number=None,
+            organization=sample_organization,
         )
 
         # Create second patient without identification
@@ -111,11 +116,12 @@ class TestPatientDuplicatePrevention:
             county=sample_county,
             sub_county=sample_sub_county,
             identification_number=None,
+            organization=sample_organization,
         )
 
         assert p1.pk != p2.pk
 
-    def test_empty_identification_numbers_allowed(self, db, sample_county, sample_sub_county):
+    def test_empty_identification_numbers_allowed(self, db, sample_county, sample_sub_county, sample_organization):
         """Should allow multiple patients with empty identification numbers."""
         from hmis.apps.patients.models import Patient
 
@@ -128,6 +134,7 @@ class TestPatientDuplicatePrevention:
             county=sample_county,
             sub_county=sample_sub_county,
             identification_number="",
+            organization=sample_organization,
         )
 
         # Create second patient with empty identification
@@ -139,12 +146,14 @@ class TestPatientDuplicatePrevention:
             county=sample_county,
             sub_county=sample_sub_county,
             identification_number="",
+            organization=sample_organization,
         )
 
         assert p1.pk != p2.pk
 
     def test_potential_duplicate_detection_via_serializer(
-        self, authenticated_client, sample_county, sample_sub_county
+        self, authenticated_client, sample_county, sample_sub_county,
+        sample_organization,
     ):
         """Should warn about potential duplicates with same demographics."""
         from hmis.apps.patients.models import Patient
@@ -157,6 +166,7 @@ class TestPatientDuplicatePrevention:
             gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         # Attempt to create patient with exact same demographics via API
@@ -181,7 +191,8 @@ class TestPatientDuplicatePrevention:
         )
 
     def test_case_insensitive_duplicate_detection(
-        self, authenticated_client, sample_county, sample_sub_county
+        self, authenticated_client, sample_county, sample_sub_county,
+        sample_organization,
     ):
         """Should detect duplicates regardless of name case."""
         from hmis.apps.patients.models import Patient
@@ -194,6 +205,7 @@ class TestPatientDuplicatePrevention:
             gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         # Attempt to create with different case
@@ -223,7 +235,8 @@ class TestAdmissionConstraints:
     """Tests for admission integrity constraints."""
 
     def test_only_one_active_admission_per_patient(
-        self, db, sample_patient, sample_inpatient_ward, sample_bed, test_user
+        self, db, sample_patient, sample_inpatient_ward, sample_bed, test_user,
+        sample_facility,
     ):
         """Should prevent multiple active admissions for same patient."""
         from django.utils import timezone
@@ -236,6 +249,7 @@ class TestAdmissionConstraints:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Severe infection",
+            facility=sample_facility,
         )
 
         # Create first active admission
@@ -266,6 +280,7 @@ class TestAdmissionConstraints:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Another issue",
+            facility=sample_facility,
         )
 
         # Attempt second active admission - should fail
@@ -285,7 +300,8 @@ class TestAdmissionConstraints:
                 )
 
     def test_discharged_patient_can_be_readmitted(
-        self, db, sample_patient, sample_inpatient_ward, sample_bed, test_user
+        self, db, sample_patient, sample_inpatient_ward, sample_bed, test_user,
+        sample_facility,
     ):
         """Should allow readmission after discharge."""
         from django.utils import timezone
@@ -298,6 +314,7 @@ class TestAdmissionConstraints:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Severe infection",
+            facility=sample_facility,
         )
 
         admission1 = Admission.objects.create(
@@ -327,6 +344,7 @@ class TestAdmissionConstraints:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Relapse",
+            facility=sample_facility,
         )
 
         # Should be able to create new active admission
@@ -355,7 +373,7 @@ class TestAdmissionConstraints:
 class TestEncounterConstraints:
     """Tests for encounter integrity constraints."""
 
-    def test_only_one_active_encounter_per_patient(self, db, sample_patient):
+    def test_only_one_active_encounter_per_patient(self, db, sample_patient, sample_facility):
         """Should prevent multiple IN_PROGRESS encounters for same patient."""
         from hmis.apps.encounters.models import Encounter
 
@@ -365,6 +383,7 @@ class TestEncounterConstraints:
             encounter_type="OPD",
             chief_complaint="Headache",
             status="IN_PROGRESS",
+            facility=sample_facility,
         )
         assert enc1.status == "IN_PROGRESS"
 
@@ -376,9 +395,10 @@ class TestEncounterConstraints:
                     encounter_type="OPD",
                     chief_complaint="Fever",
                     status="IN_PROGRESS",
+                    facility=sample_facility,
                 )
 
-    def test_completed_encounter_allows_new_active(self, db, sample_patient, test_user):
+    def test_completed_encounter_allows_new_active(self, db, sample_patient, test_user, sample_facility):
         """Should allow new encounter after previous one is completed."""
         from django.utils import timezone
 
@@ -392,6 +412,7 @@ class TestEncounterConstraints:
             status="COMPLETED",
             finalized_by=test_user,
             finalized_at=timezone.now(),
+            facility=sample_facility,
         )
 
         # Should be able to create new IN_PROGRESS encounter
@@ -400,12 +421,13 @@ class TestEncounterConstraints:
             encounter_type="OPD",
             chief_complaint="Fever",
             status="IN_PROGRESS",
+            facility=sample_facility,
         )
 
         assert enc1.status == "COMPLETED"
         assert enc2.status == "IN_PROGRESS"
 
-    def test_draft_and_active_encounters_conflict(self, db, sample_patient):
+    def test_draft_and_active_encounters_conflict(self, db, sample_patient, sample_facility):
         """Should allow DRAFT but not multiple IN_PROGRESS encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -415,6 +437,7 @@ class TestEncounterConstraints:
             encounter_type="OPD",
             chief_complaint="Cough",
             status="CREATED",
+            facility=sample_facility,
         )
 
         # Create IN_PROGRESS encounter (allowed)
@@ -423,6 +446,7 @@ class TestEncounterConstraints:
             encounter_type="OPD",
             chief_complaint="Headache",
             status="IN_PROGRESS",
+            facility=sample_facility,
         )
 
         assert enc1.status == "CREATED"
@@ -436,13 +460,14 @@ class TestEncounterConstraints:
                     encounter_type="OPD",
                     chief_complaint="Fever",
                     status="IN_PROGRESS",
+                    facility=sample_facility,
                 )
 
 
 class TestEncounterClinicianAssignment:
     """Tests for clinician assignment to encounters."""
 
-    def test_clinician_can_claim_encounter(self, db, sample_patient, test_user):
+    def test_clinician_can_claim_encounter(self, db, sample_patient, test_user, sample_facility):
         """Should allow clinician to claim an encounter."""
         from django.utils import timezone
 
@@ -453,6 +478,7 @@ class TestEncounterClinicianAssignment:
             encounter_type="OPD",
             chief_complaint="Headache",
             status="CREATED",
+            facility=sample_facility,
         )
 
         # Clinician claims the encounter
@@ -466,7 +492,8 @@ class TestEncounterClinicianAssignment:
         assert encounter.status == "IN_PROGRESS"
 
     def test_encounter_cannot_be_claimed_by_two_clinicians(
-        self, db, sample_patient, test_user, another_user
+        self, db, sample_patient, test_user, another_user,
+        sample_facility,
     ):
         """Should prevent two clinicians from claiming the same encounter."""
         from django.utils import timezone
@@ -480,6 +507,7 @@ class TestEncounterClinicianAssignment:
             status="IN_PROGRESS",
             assigned_clinician=test_user,
             claimed_at=timezone.now(),
+            facility=sample_facility,
         )
 
         # Another clinician attempts to claim - should fail validation
@@ -493,7 +521,7 @@ class TestEncounterClinicianAssignment:
             or "assigned" in str(exc_info.value).lower()
         )
 
-    def test_clinician_can_release_encounter(self, db, sample_patient, test_user):
+    def test_clinician_can_release_encounter(self, db, sample_patient, test_user, sample_facility):
         """Should allow clinician to release an encounter."""
         from django.utils import timezone
 
@@ -506,6 +534,7 @@ class TestEncounterClinicianAssignment:
             status="IN_PROGRESS",
             assigned_clinician=test_user,
             claimed_at=timezone.now(),
+            facility=sample_facility,
         )
 
         # Clinician releases
@@ -768,7 +797,9 @@ class TestBedOccupancyConstraints:
     """Tests for bed occupancy constraints."""
 
     def test_bed_cannot_be_double_booked(
-        self, db, sample_patient, sample_inpatient_ward, sample_bed, test_user
+        self, db, sample_patient, sample_inpatient_ward, sample_bed, test_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should prevent two active admissions to the same bed."""
         from django.utils import timezone
@@ -785,6 +816,7 @@ class TestBedOccupancyConstraints:
             gender="M",
             county=sample_patient.county,
             sub_county=sample_patient.sub_county,
+            organization=sample_organization,
         )
 
         # Create IPD encounters
@@ -792,12 +824,14 @@ class TestBedOccupancyConstraints:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Test 1",
+            facility=sample_facility,
         )
 
         ipd_enc2 = Encounter.objects.create(
             patient=patient2,
             encounter_type="IPD",
             chief_complaint="Test 2",
+            facility=sample_facility,
         )
 
         # First admission to bed

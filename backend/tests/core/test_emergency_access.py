@@ -24,6 +24,7 @@ from hmis.apps.core.emergency_access.models import (
     EmergencyAccessStatus,
 )
 from hmis.apps.core.models import AuditLog
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -69,25 +70,28 @@ def user_with_approve_permission(db):
 
 
 @pytest.fixture
-def authenticated_admin_client(admin_user):
+def authenticated_admin_client(admin_user, sample_organization, sample_facility):
     """API client authenticated as admin."""
     client = APIClient()
+    ensure_staff_profile(admin_user, sample_organization, sample_facility)
     client.force_authenticate(user=admin_user)
     return client
 
 
 @pytest.fixture
-def authenticated_regular_client(regular_user):
+def authenticated_regular_client(regular_user, sample_organization, sample_facility):
     """API client authenticated as regular user."""
     client = APIClient()
+    ensure_staff_profile(regular_user, sample_organization, sample_facility)
     client.force_authenticate(user=regular_user)
     return client
 
 
 @pytest.fixture
-def authenticated_approver_client(user_with_approve_permission):
+def authenticated_approver_client(user_with_approve_permission, sample_organization, sample_facility):
     """API client authenticated as approver."""
     client = APIClient()
+    ensure_staff_profile(user_with_approve_permission, sample_organization, sample_facility)
     client.force_authenticate(user=user_with_approve_permission)
     return client
 

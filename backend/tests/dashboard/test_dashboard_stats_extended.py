@@ -44,19 +44,29 @@ class TestDashboardStatsCheckinSection:
         for key in ("checked_in_today", "waiting", "completed_today"):
             assert isinstance(response.data["checkin"][key], int)
 
-    def test_checkin_counts_reflect_data(self, authenticated_client, sample_patient):
+    def test_checkin_counts_reflect_data(self, authenticated_client, sample_patient, sample_facility):
         """Creating check-ins should be reflected in stats."""
         from hmis.apps.checkin.models import CheckIn
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Check-in test",
+            facility=sample_facility,
+        )
 
         CheckIn.objects.create(
             patient=sample_patient,
             status="WAITING",
             checked_in_at=timezone.now(),
+            encounter=encounter,
         )
         CheckIn.objects.create(
             patient=sample_patient,
             status="COMPLETED",
             checked_in_at=timezone.now(),
+            encounter=encounter,
         )
 
         response = _fresh_stats(authenticated_client)

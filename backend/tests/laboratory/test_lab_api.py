@@ -37,30 +37,48 @@ def authenticated_user(db):
 
 
 @pytest.fixture
-def auth_client(api_client, authenticated_user):
-    """Provide API client with authentication."""
+def auth_client(
+    api_client, authenticated_user, sample_organization, sample_facility,
+    sample_department, sample_role
+):
+    """Provide API client with authentication and multitenancy context."""
+    from hmis.apps.core.models import StaffProfile
+
+    StaffProfile.objects.get_or_create(
+        user=authenticated_user,
+        defaults={
+            "employee_id": "LAB-0001",
+            "organization": sample_organization,
+            "primary_facility": sample_facility,
+            "primary_department": sample_department,
+            "primary_role": sample_role,
+            "date_joined": date.today(),
+        },
+    )
     api_client.force_authenticate(user=authenticated_user)
     return api_client
 
 
 @pytest.fixture
-def sample_patient(db):
+def sample_patient(db, sample_organization):
     """Create a sample patient."""
     return Patient.objects.create(
         first_name="Test",
         last_name="Patient",
         date_of_birth=date(1990, 1, 1),
         gender="M",
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_encounter(sample_patient, authenticated_user):
+def sample_encounter(sample_patient, authenticated_user, sample_facility):
     """Create a sample encounter."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Test complaint",
+        facility=sample_facility,
     )
 
 
@@ -258,13 +276,15 @@ class TestLabOrderWorkflowAPI:
     """Tests for lab order workflow actions."""
 
     @pytest.fixture
-    def sample_order(self, sample_encounter, sample_test_catalog, authenticated_user):
+    def sample_order(self, sample_encounter, sample_test_catalog, authenticated_user, sample_facility, sample_organization):
         """Create a sample lab order."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
             order_type="EXTERNAL",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         LabOrderItem.objects.create(
             lab_order=order,
@@ -317,13 +337,15 @@ class TestLabResultAPI:
     """Tests for lab result API endpoints."""
 
     @pytest.fixture
-    def sample_order_item(self, sample_encounter, sample_test_catalog, authenticated_user):
+    def sample_order_item(self, sample_encounter, sample_test_catalog, authenticated_user, sample_facility, sample_organization):
         """Create a sample order item ready for results."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
             status="IN_PROGRESS",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         item = LabOrderItem.objects.create(
             lab_order=order,
@@ -460,7 +482,7 @@ class TestLabAPIPagination:
         assert "next" in response.data
         assert "previous" in response.data
 
-    def test_orders_list_pagination(self, auth_client, sample_encounter, authenticated_user):
+    def test_orders_list_pagination(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should paginate orders list."""
         # Create multiple orders
         for i in range(35):
@@ -468,6 +490,8 @@ class TestLabAPIPagination:
                 patient=sample_encounter.patient,
                 encounter=sample_encounter,
                 ordered_by=authenticated_user,
+                facility=sample_facility,
+                organization=sample_organization,
             )
 
         response = auth_client.get("/api/lab/orders/")
@@ -481,12 +505,14 @@ class TestLabAPIPagination:
 class TestNestedLabRoutes:
     """Tests for nested lab routes under patients and encounters."""
 
-    def test_patient_lab_orders_list(self, auth_client, sample_encounter, authenticated_user):
+    def test_patient_lab_orders_list(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should list lab orders for a specific patient."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = auth_client.get(f"/api/patients/{sample_encounter.patient.id}/lab-orders/")
@@ -494,7 +520,7 @@ class TestNestedLabRoutes:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
-    def test_patient_lab_results_list(self, auth_client, sample_encounter, authenticated_user):
+    def test_patient_lab_results_list(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should list lab results for a specific patient."""
         test = TestCatalog.objects.create(
             code="PAT_TEST",
@@ -509,6 +535,8 @@ class TestNestedLabRoutes:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         item = LabOrderItem.objects.create(
             lab_order=order,
@@ -526,12 +554,14 @@ class TestNestedLabRoutes:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
-    def test_encounter_lab_orders_list(self, auth_client, sample_encounter, authenticated_user):
+    def test_encounter_lab_orders_list(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should list lab orders for a specific encounter."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = auth_client.get(f"/api/encounters/{sample_encounter.id}/lab-orders/")
@@ -544,7 +574,7 @@ class TestNestedLabRoutes:
 class TestLabOrderItemManagement:
     """Tests for order item management (add/remove items)."""
 
-    def test_add_item_to_order(self, auth_client, sample_encounter, authenticated_user):
+    def test_add_item_to_order(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should add a test item to an existing order."""
         test = TestCatalog.objects.create(
             code="ADD_TEST",
@@ -559,6 +589,8 @@ class TestLabOrderItemManagement:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = auth_client.post(
@@ -569,7 +601,7 @@ class TestLabOrderItemManagement:
         assert response.status_code == status.HTTP_201_CREATED
         assert order.items.count() == 1
 
-    def test_add_duplicate_item_fails(self, auth_client, sample_encounter, authenticated_user):
+    def test_add_duplicate_item_fails(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should prevent adding duplicate test to order."""
         test = TestCatalog.objects.create(
             code="DUP_TEST",
@@ -584,6 +616,8 @@ class TestLabOrderItemManagement:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         LabOrderItem.objects.create(
             lab_order=order,
@@ -599,7 +633,7 @@ class TestLabOrderItemManagement:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "already in this order" in response.data["error"]
 
-    def test_delete_item_from_draft_order(self, auth_client, sample_encounter, authenticated_user):
+    def test_delete_item_from_draft_order(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should delete item from draft order."""
         test = TestCatalog.objects.create(
             code="DEL_TEST",
@@ -615,6 +649,8 @@ class TestLabOrderItemManagement:
             encounter=sample_encounter,
             ordered_by=authenticated_user,
             status="DRAFT",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         item = LabOrderItem.objects.create(
             lab_order=order,
@@ -628,7 +664,8 @@ class TestLabOrderItemManagement:
         assert order.items.count() == 0
 
     def test_delete_item_from_submitted_order_fails(
-        self, auth_client, sample_encounter, authenticated_user
+        self, auth_client, sample_encounter, authenticated_user,
+        sample_facility, sample_organization
     ):
         """Should not allow deleting items from submitted order."""
         test = TestCatalog.objects.create(
@@ -644,7 +681,9 @@ class TestLabOrderItemManagement:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
-            status="ORDERED",  # Already submitted
+            status="ORDERED",  # Already submitted,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         item = LabOrderItem.objects.create(
             lab_order=order,
@@ -661,7 +700,7 @@ class TestLabOrderItemManagement:
 class TestResultVerifyReject:
     """Tests for result verification and rejection workflow."""
 
-    def test_verify_result_approved(self, auth_client, sample_encounter, authenticated_user):
+    def test_verify_result_approved(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should verify (approve) a result."""
         test = TestCatalog.objects.create(
             code="VER_TEST",
@@ -676,6 +715,8 @@ class TestResultVerifyReject:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         item = LabOrderItem.objects.create(
             lab_order=order,
@@ -697,7 +738,7 @@ class TestResultVerifyReject:
         result.refresh_from_db()
         assert result.verification_status == "VERIFIED"
 
-    def test_verify_result_rejected(self, auth_client, sample_encounter, authenticated_user):
+    def test_verify_result_rejected(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should reject a result."""
         test = TestCatalog.objects.create(
             code="REJ_TEST",
@@ -712,6 +753,8 @@ class TestResultVerifyReject:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         item = LabOrderItem.objects.create(
             lab_order=order,
@@ -739,7 +782,7 @@ class TestResultVerifyReject:
 class TestResultAttachmentUpload:
     """Tests for result attachment upload."""
 
-    def test_upload_attachment_success(self, auth_client, sample_encounter, authenticated_user):
+    def test_upload_attachment_success(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
         """Should upload attachment to result."""
         test = TestCatalog.objects.create(
             code="ATT_TEST",
@@ -754,6 +797,8 @@ class TestResultAttachmentUpload:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         item = LabOrderItem.objects.create(
             lab_order=order,
@@ -786,7 +831,8 @@ class TestResultAttachmentUpload:
         assert result.external_result_attachment is not None
 
     def test_upload_invalid_file_type_fails(
-        self, auth_client, sample_encounter, authenticated_user
+        self, auth_client, sample_encounter, authenticated_user,
+        sample_facility, sample_organization
     ):
         """Should reject invalid file types."""
         test = TestCatalog.objects.create(
@@ -802,6 +848,8 @@ class TestResultAttachmentUpload:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         item = LabOrderItem.objects.create(
             lab_order=order,

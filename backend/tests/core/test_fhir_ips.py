@@ -59,7 +59,7 @@ def sample_drug_2(db):
 
 
 @pytest.fixture
-def sample_prescription_with_items(db, sample_patient, sample_encounter, test_user, sample_drug):
+def sample_prescription_with_items(db, sample_patient, sample_encounter, test_user, sample_drug, sample_facility, sample_organization):
     """Create a prescription with items for IPS testing."""
     from hmis.apps.pharmacy.models import Prescription, PrescriptionItem
 
@@ -70,6 +70,8 @@ def sample_prescription_with_items(db, sample_patient, sample_encounter, test_us
         valid_until=date.today() + timedelta(days=30),
         status="PENDING",
         clinical_notes="For fever and pain management",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
     PrescriptionItem.objects.create(
@@ -88,7 +90,9 @@ def sample_prescription_with_items(db, sample_patient, sample_encounter, test_us
 
 @pytest.fixture
 def sample_prescription_multiple_items(
-    db, sample_patient, sample_encounter, test_user, sample_drug, sample_drug_2
+    db, sample_patient, sample_encounter, test_user, sample_drug, sample_drug_2,
+    sample_facility,
+    sample_organization,
 ):
     """Create a prescription with multiple items."""
     from hmis.apps.pharmacy.models import Prescription, PrescriptionItem
@@ -99,6 +103,8 @@ def sample_prescription_multiple_items(
         prescribed_by=test_user,
         valid_until=date.today() + timedelta(days=30),
         status="PENDING",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
     PrescriptionItem.objects.create(
@@ -146,7 +152,7 @@ def sample_treatment_plan_full(db, sample_encounter, test_user):
 
 
 @pytest.fixture
-def sample_allergy_active(db, sample_patient, test_user):
+def sample_allergy_active(db, sample_patient, test_user, sample_organization):
     """Create an active allergy for IPS testing."""
     from hmis.apps.patients.models import Allergy
 
@@ -159,6 +165,7 @@ def sample_allergy_active(db, sample_patient, test_user):
         status="active",
         notes="Causes skin rash within 24 hours",
         recorded_by=test_user,
+        organization=sample_organization,
     )
 
 

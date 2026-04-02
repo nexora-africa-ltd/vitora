@@ -14,6 +14,7 @@ import pytest  # type: ignore
 from django.contrib.auth.models import Permission
 from django.utils import timezone
 from rest_framework import status
+from tests.conftest import ensure_staff_profile
 
 
 @pytest.fixture
@@ -25,14 +26,15 @@ def supervisor_user(test_user):
 
 
 @pytest.fixture
-def supervisor_client(api_client, supervisor_user):
+def supervisor_client(api_client, supervisor_user, sample_organization, sample_facility):
     """Authenticated client with supervisor permissions."""
+    ensure_staff_profile(supervisor_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=supervisor_user)
     return api_client
 
 
 @pytest.fixture
-def medical_ward(db):
+def medical_ward(db, sample_facility, sample_organization):
     """General medical ward."""
     from hmis.apps.inpatient.models import Ward
 
@@ -43,11 +45,13 @@ def medical_ward(db):
         capacity=10,
         daily_rate=Decimal("500.00"),
         is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def isolation_ward(db):
+def isolation_ward(db, sample_facility, sample_organization):
     """Isolation ward."""
     from hmis.apps.inpatient.models import Ward
 
@@ -59,11 +63,13 @@ def isolation_ward(db):
         daily_rate=Decimal("1000.00"),
         is_active=True,
         isolation_capable=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def admission_with_critical_violation(db, sample_patient, isolation_ward, test_user):
+def admission_with_critical_violation(db, sample_patient, isolation_ward, test_user, sample_facility):
     """
     Admission with CRITICAL violation (isolation patient in non-isolation ward).
     Note: We manually set constraint_violations to simulate a critical override.
@@ -94,6 +100,7 @@ def admission_with_critical_violation(db, sample_patient, isolation_ward, test_u
         encounter_type="IPD",
         chief_complaint="Isolation required patient",
         created_by=test_user,
+        facility=sample_facility,
     )
 
     admission = Admission.objects.create(
@@ -121,7 +128,7 @@ def admission_with_critical_violation(db, sample_patient, isolation_ward, test_u
 
 
 @pytest.fixture
-def admission_with_warning_violation(db, sample_county, sample_sub_county, medical_ward, test_user):
+def admission_with_warning_violation(db, sample_county, sample_sub_county, medical_ward, test_user, sample_organization, sample_facility):
     """Admission with WARNING violation (gender mismatch)."""
     from hmis.apps.inpatient.models import Admission, Bed, Ward
     from hmis.apps.patients.models import Patient
@@ -134,6 +141,7 @@ def admission_with_warning_violation(db, sample_county, sample_sub_county, medic
         gender="F",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
     male_ward = Ward.objects.create(
@@ -156,6 +164,7 @@ def admission_with_warning_violation(db, sample_county, sample_sub_county, medic
         encounter_type="IPD",
         chief_complaint="General admission",
         created_by=test_user,
+        facility=sample_facility,
     )
 
     admission = Admission.objects.create(

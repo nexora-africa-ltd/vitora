@@ -34,7 +34,7 @@ User = get_user_model()
 
 
 @pytest.fixture
-def sw_referral(db, sample_patient, sample_encounter, test_user):
+def sw_referral(db, sample_patient, sample_encounter, test_user, sample_facility, sample_organization):
     """Create a sample social work referral."""
     return SocialWorkReferral.objects.create(
         patient=sample_patient,
@@ -45,11 +45,13 @@ def sw_referral(db, sample_patient, sample_encounter, test_user):
         clinical_summary="Patient requires financial assistance for medication",
         presenting_issues="Unable to afford ongoing medication costs",
         status="DRAFT",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def gbv_referral(db, sample_patient, sample_encounter, test_user):
+def gbv_referral(db, sample_patient, sample_encounter, test_user, sample_facility, sample_organization):
     """Create a GBV (sensitive) referral."""
     return SocialWorkReferral.objects.create(
         patient=sample_patient,
@@ -61,6 +63,8 @@ def gbv_referral(db, sample_patient, sample_encounter, test_user):
         presenting_issues="Physical injuries consistent with assault, patient fearful",
         risk_factors="Immediate safety concern, perpetrator known",
         status="PENDING",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

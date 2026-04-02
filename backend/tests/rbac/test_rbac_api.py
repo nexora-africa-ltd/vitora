@@ -11,6 +11,7 @@ import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -32,8 +33,9 @@ class TestDepartmentAPI:
         )
 
     @pytest.fixture
-    def authenticated_client(self, api_client, admin_user):
+    def authenticated_client(self, api_client, admin_user, sample_organization, sample_facility):
         """Get authenticated API client."""
+        ensure_staff_profile(admin_user, sample_organization, sample_facility)
         api_client.force_authenticate(user=admin_user)
         return api_client
 
@@ -283,8 +285,9 @@ class TestRoleAPI:
         )
 
     @pytest.fixture
-    def authenticated_client(self, api_client, admin_user):
+    def authenticated_client(self, api_client, admin_user, sample_organization, sample_facility):
         """Get authenticated API client."""
+        ensure_staff_profile(admin_user, sample_organization, sample_facility)
         api_client.force_authenticate(user=admin_user)
         return api_client
 
@@ -384,13 +387,14 @@ class TestStaffProfileAPI:
         )
 
     @pytest.fixture
-    def authenticated_client(self, api_client, admin_user):
+    def authenticated_client(self, api_client, admin_user, sample_organization, sample_facility):
         """Get authenticated API client."""
+        ensure_staff_profile(admin_user, sample_organization, sample_facility)
         api_client.force_authenticate(user=admin_user)
         return api_client
 
     @pytest.fixture
-    def sample_staff(self):
+    def sample_staff(self, sample_organization, sample_facility):
         """Create sample staff profile."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
@@ -419,6 +423,8 @@ class TestStaffProfileAPI:
             employee_id="VH-2026-001",
             primary_role=role,
             primary_department=department,
+            organization=sample_organization,
+            primary_facility=sample_facility,
             date_joined=date.today(),
         )
 

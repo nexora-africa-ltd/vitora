@@ -133,7 +133,8 @@ class TestSHAMemberModel:
     # Test 4: Unique SHA number constraint
     # =========================================================================
     def test_unique_sha_number_constraint(
-        self, sample_patient, test_user, sample_county, sample_sub_county
+        self, sample_patient, test_user, sample_county, sample_sub_county,
+        sample_organization,
     ):
         """Should reject duplicate SHA numbers."""
         from hmis.apps.billing.models import SHAMember
@@ -155,6 +156,7 @@ class TestSHAMemberModel:
             gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         # Try to create membership with same SHA number
@@ -170,7 +172,7 @@ class TestSHAMemberModel:
     # =========================================================================
     # Test 5: Membership type choices validation
     # =========================================================================
-    def test_membership_type_choices(self, sample_patient, test_user):
+    def test_membership_type_choices(self, sample_patient, test_user, sample_organization):
         """Should accept valid membership type choices."""
         from hmis.apps.billing.models import SHAMember
 
@@ -191,6 +193,7 @@ class TestSHAMemberModel:
                 last_name="User",
                 date_of_birth="1990-01-01",
                 gender="F",
+                organization=sample_organization,
             )
 
             principal_sha = (
@@ -674,7 +677,7 @@ class TestSHAMemberPrincipalForeignKey:
     # =========================================================================
     # Test: Dependent with principal FK is accepted
     # =========================================================================
-    def test_dependent_with_principal_fk_accepted(self, test_user):
+    def test_dependent_with_principal_fk_accepted(self, test_user, sample_organization):
         """Dependent with principal FK should be accepted without principal_sha_number."""
         from hmis.apps.billing.models import SHAMember
         from hmis.apps.core.models import County, SubCounty
@@ -692,6 +695,7 @@ class TestSHAMemberPrincipalForeignKey:
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
+            organization=sample_organization,
         )
 
         # Create principal member
@@ -712,6 +716,7 @@ class TestSHAMemberPrincipalForeignKey:
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
+            organization=sample_organization,
         )
 
         # Create dependent with principal FK (no principal_sha_number needed)
@@ -729,7 +734,7 @@ class TestSHAMemberPrincipalForeignKey:
     # =========================================================================
     # Test: Reverse relationship - get dependents from principal
     # =========================================================================
-    def test_principal_can_access_dependents_via_related_name(self, test_user):
+    def test_principal_can_access_dependents_via_related_name(self, test_user, sample_organization):
         """Principal member should access dependents via related_name='dependents'."""
         from hmis.apps.billing.models import SHAMember
         from hmis.apps.core.models import County, SubCounty
@@ -747,6 +752,7 @@ class TestSHAMemberPrincipalForeignKey:
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
+            organization=sample_organization,
         )
         principal = SHAMember.objects.create(
             patient=principal_patient,
@@ -766,6 +772,7 @@ class TestSHAMemberPrincipalForeignKey:
                 county=county,
                 sub_county=sub_county,
                 registered_by=test_user,
+                organization=sample_organization,
             )
             SHAMember.objects.create(
                 patient=dep_patient,
@@ -785,7 +792,7 @@ class TestSHAMemberPrincipalForeignKey:
     # =========================================================================
     # Test: Principal FK must point to a principal member
     # =========================================================================
-    def test_principal_fk_must_reference_principal_member(self, test_user):
+    def test_principal_fk_must_reference_principal_member(self, test_user, sample_organization):
         """Principal FK must point to a member with membership_type=PRINCIPAL."""
         from hmis.apps.billing.models import SHAMember
         from hmis.apps.core.models import County, SubCounty
@@ -803,6 +810,7 @@ class TestSHAMemberPrincipalForeignKey:
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
+            organization=sample_organization,
         )
         spouse_member = SHAMember.objects.create(
             patient=spouse_patient,
@@ -821,6 +829,7 @@ class TestSHAMemberPrincipalForeignKey:
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
+            organization=sample_organization,
         )
 
         with pytest.raises(ValidationError) as exc_info:

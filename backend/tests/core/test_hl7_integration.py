@@ -76,7 +76,7 @@ class TestHL7ServiceMessageBuilding:
         )
 
     @pytest.fixture
-    def lab_order_with_items(self, db, sample_patient, sample_encounter, test_user, test_catalog):
+    def lab_order_with_items(self, db, sample_patient, sample_encounter, test_user, test_catalog, sample_organization, sample_facility):
         """Create lab order with items for testing."""
         order = LabOrder.objects.create(
             patient=sample_patient,
@@ -86,6 +86,8 @@ class TestHL7ServiceMessageBuilding:
             status="ORDERED",
             priority="ROUTINE",
             clinical_notes="Patient presenting with fatigue",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         LabOrderItem.objects.create(
@@ -211,7 +213,9 @@ class TestHL7ServiceMessageBuilding:
         assert obr_count == 2
 
     def test_build_orm_o01_without_items_raises_error(
-        self, hl7_service, sample_patient, sample_encounter, test_user
+        self, hl7_service, sample_patient, sample_encounter, test_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should raise error when order has no items."""
         order = LabOrder.objects.create(
@@ -220,6 +224,8 @@ class TestHL7ServiceMessageBuilding:
             ordered_by=test_user,
             order_type="EXTERNAL",
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         with pytest.raises(HL7ValidationError, match="at least one test item"):
@@ -436,7 +442,9 @@ class TestHL7ServiceResultImport:
 
     @pytest.fixture
     def lab_order_for_import(
-        self, db, sample_patient, sample_encounter, test_user, test_catalog_with_loinc
+        self, db, sample_patient, sample_encounter, test_user, test_catalog_with_loinc,
+        sample_facility,
+        sample_organization,
     ):
         """Create lab order for result import testing."""
         order = LabOrder.objects.create(
@@ -445,6 +453,8 @@ class TestHL7ServiceResultImport:
             ordered_by=test_user,
             order_type="EXTERNAL",
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         LabOrderItem.objects.create(
@@ -827,7 +837,7 @@ class TestHL7FullWorkflow:
         return HL7Service()
 
     @pytest.fixture
-    def complete_lab_order(self, db, sample_patient, sample_encounter, test_user):
+    def complete_lab_order(self, db, sample_patient, sample_encounter, test_user, sample_organization, sample_facility):
         """Create complete lab order for workflow testing."""
         # Create test catalog
         test_catalog = TestCatalog.objects.create(
@@ -853,6 +863,8 @@ class TestHL7FullWorkflow:
             status="ORDERED",
             priority="ROUTINE",
             clinical_notes="Fasting glucose test",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Add test item

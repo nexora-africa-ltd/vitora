@@ -132,20 +132,23 @@ class TestTriageQueueModel:
 
         assert "status" in str(exc_info.value)
 
-    def test_ordering_by_category_then_arrival_time(self, sample_patient, test_user):
+    def test_ordering_by_category_then_arrival_time(self, sample_patient, test_user, sample_facility):
         """Should order queue by triage category (RED first) then arrival time (FIFO)."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
         # Create encounters and assessments with different categories and times
         encounter1 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 1"
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 1",
+            facility=sample_facility,
         )
         encounter2 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2"
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2",
+            facility=sample_facility,
         )
         encounter3 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 3"
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 3",
+            facility=sample_facility,
         )
 
         # YELLOW category, arrived 60 minutes ago
@@ -209,17 +212,19 @@ class TestTriageQueueModel:
         assert queue[1].triage_assessment == red_late  # RED, later arrival
         assert queue[2].triage_assessment == yellow_early  # YELLOW
 
-    def test_red_category_patients_appear_first(self, sample_patient, test_user):
+    def test_red_category_patients_appear_first(self, sample_patient, test_user, sample_facility):
         """Should prioritize RED category patients at top of queue."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment, TriageQueue
 
         # Create GREEN and RED assessments
         green_encounter = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 1"
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 1",
+            facility=sample_facility,
         )
         red_encounter = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2"
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2",
+            facility=sample_facility,
         )
 
         green_assessment = TriageAssessment.objects.create(
@@ -262,7 +267,7 @@ class TestTriageQueueModel:
         # RED should be first despite arriving later
         assert queue[0].triage_assessment == red_assessment
 
-    def test_same_category_sorted_by_arrival_time_fifo(self, sample_patient, test_user):
+    def test_same_category_sorted_by_arrival_time_fifo(self, sample_patient, test_user, sample_facility):
         """Should sort same category by arrival time (FIFO)."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment, TriageQueue
@@ -270,7 +275,8 @@ class TestTriageQueueModel:
         # Create three GREEN assessments with different arrival times
         encounters = [
             Encounter.objects.create(
-                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {i}"
+                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {i}",
+                facility=sample_facility,
             )
             for i in range(3)
         ]

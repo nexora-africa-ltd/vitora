@@ -17,6 +17,7 @@ from hmis.apps.core.models import (
 )
 from hmis.apps.core.services.pki_service import PKIService
 from hmis.apps.core.services.signing_service import DocumentSigningService
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -63,7 +64,8 @@ def admin_user(db):
 
 
 @pytest.fixture
-def admin_client(api_client, admin_user):
+def admin_client(api_client, admin_user, sample_organization, sample_facility):
+    ensure_staff_profile(admin_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=admin_user)
     return api_client
 

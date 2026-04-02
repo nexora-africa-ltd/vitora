@@ -79,7 +79,7 @@ class TestTestCatalog:
         )
         assert test.loinc_code == "718-7"
 
-    def test_get_normal_range_by_gender(self):
+    def test_get_normal_range_by_gender(self, sample_organization):
         """Should return appropriate normal range based on patient gender."""
         test = TestCatalog.objects.create(
             code="HB",
@@ -99,6 +99,7 @@ class TestTestCatalog:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         assert test.get_normal_range(male_patient) == "13.0-17.0"
 
@@ -108,10 +109,11 @@ class TestTestCatalog:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="F",
+            organization=sample_organization,
         )
         assert test.get_normal_range(female_patient) == "12.0-15.0"
 
-    def test_is_result_abnormal_detection(self):
+    def test_is_result_abnormal_detection(self, sample_organization):
         """Should detect abnormal results."""
         test = TestCatalog.objects.create(
             code="HB",
@@ -129,6 +131,7 @@ class TestTestCatalog:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Normal value
@@ -249,22 +252,24 @@ class TestLabOrder:
     """Tests for LabOrder model."""
 
     @pytest.fixture
-    def sample_patient(self):
+    def sample_patient(self, sample_organization):
         """Create a sample patient."""
         return Patient.objects.create(
             first_name="Test",
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
     @pytest.fixture
-    def sample_encounter(self, sample_patient):
+    def sample_encounter(self, sample_patient, sample_facility):
         """Create a sample encounter."""
         return Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
     @pytest.fixture
@@ -272,36 +277,44 @@ class TestLabOrder:
         """Create a lab technician user."""
         return User.objects.create_user(username="labtech", password="testpass")
 
-    def test_order_number_auto_generated(self, sample_encounter, lab_user):
+    def test_order_number_auto_generated(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Lab order number should be auto-generated."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         assert order.order_number.startswith("LAB-")
         assert len(order.order_number) == 17  # LAB-YYYYMMDD-XXXX
 
-    def test_order_number_uniqueness(self, sample_encounter, lab_user):
+    def test_order_number_uniqueness(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Order numbers should be unique."""
         order1 = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         order2 = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         assert order1.order_number != order2.order_number
 
-    def test_status_workflow_valid_transition(self, sample_encounter, lab_user):
+    def test_status_workflow_valid_transition(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Valid status transitions should succeed."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # DRAFT -> ORDERED
@@ -321,25 +334,29 @@ class TestLabOrder:
         assert order.status == "COMPLETED"
         assert order.completed_at is not None
 
-    def test_status_workflow_invalid_transition(self, sample_encounter, lab_user):
+    def test_status_workflow_invalid_transition(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Invalid status transitions should raise error."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Cannot skip from DRAFT to COMPLETED
         with pytest.raises(ValidationError):
             order.update_status("COMPLETED", lab_user)
 
-    def test_specimen_collection_recording(self, sample_encounter, lab_user):
+    def test_specimen_collection_recording(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should record specimen collection details."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         order.mark_specimen_collected(lab_user)
@@ -349,7 +366,7 @@ class TestLabOrder:
         assert order.specimen_collected_by == lab_user
         assert order.status == "SPECIMEN_COLLECTED"
 
-    def test_external_lab_designation(self, sample_encounter, lab_user):
+    def test_external_lab_designation(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should support external lab orders."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -357,32 +374,38 @@ class TestLabOrder:
             ordered_by=lab_user,
             order_type="EXTERNAL",
             external_lab="Lancet Kenya",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         assert order.order_type == "EXTERNAL"
         assert order.external_lab == "Lancet Kenya"
 
-    def test_priority_level_assignment(self, sample_encounter, lab_user):
+    def test_priority_level_assignment(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should support different priority levels."""
         stat_order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
             priority="STAT",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         assert stat_order.priority == "STAT"
 
-    def test_clinical_notes_attachment(self, sample_encounter, lab_user):
+    def test_clinical_notes_attachment(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should allow clinical notes."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
             clinical_notes="Patient has history of anemia",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         assert order.clinical_notes == "Patient has history of anemia"
 
-    def test_total_cost_calculation(self, sample_encounter, lab_user):
+    def test_total_cost_calculation(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should calculate total cost from items."""
         test1 = TestCatalog.objects.create(
             code="TEST1",
@@ -407,6 +430,8 @@ class TestLabOrder:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         LabOrderItem.objects.create(lab_order=order, test=test1, unit_cost=test1.cost)
@@ -416,67 +441,79 @@ class TestLabOrder:
         assert total == Decimal("300.00")
         assert order.total_cost == Decimal("300.00")
 
-    def test_ordered_by_user_tracking(self, sample_encounter, lab_user):
+    def test_ordered_by_user_tracking(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should track who ordered the tests."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         assert order.ordered_by == lab_user
 
-    def test_status_change_audit(self, sample_encounter, lab_user):
+    def test_status_change_audit(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should track status changes."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         order.update_status("ORDERED", lab_user)
         assert order.status_changed_by == lab_user
         assert order.status_changed_at is not None
 
-    def test_in_house_vs_external_routing(self, sample_encounter, lab_user):
+    def test_in_house_vs_external_routing(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should route to in-house or external labs."""
         in_house_order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
             order_type="IN_HOUSE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         assert in_house_order.order_type == "IN_HOUSE"
 
-    def test_order_cancellation(self, sample_encounter, lab_user):
+    def test_order_cancellation(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should allow order cancellation."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         order.update_status("CANCELLED", lab_user)
         assert order.status == "CANCELLED"
 
-    def test_order_rejection_with_reason(self, sample_encounter, lab_user):
+    def test_order_rejection_with_reason(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should support order rejection."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         order.update_status("REJECTED", lab_user)
         assert order.status == "REJECTED"
 
-    def test_turnaround_time_calculation(self, sample_encounter, lab_user):
+    def test_turnaround_time_calculation(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should calculate turnaround time."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
             status="IN_PROGRESS",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         order.update_status("COMPLETED", lab_user)
@@ -485,7 +522,7 @@ class TestLabOrder:
         assert turnaround is not None
         assert isinstance(turnaround, timedelta)
 
-    def test_pending_results_identification(self, sample_encounter, lab_user):
+    def test_pending_results_identification(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should identify tests without results."""
         test = TestCatalog.objects.create(
             code="TEST1",
@@ -500,6 +537,8 @@ class TestLabOrder:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(lab_order=order, test=test, unit_cost=Decimal("100"))
@@ -507,7 +546,7 @@ class TestLabOrder:
         pending = order.get_pending_results()
         assert item in pending
 
-    def test_completion_detection(self, sample_encounter, lab_user):
+    def test_completion_detection(self, sample_encounter, lab_user, sample_organization, sample_facility):
         """Should detect when all results are in."""
         test = TestCatalog.objects.create(
             code="TEST1",
@@ -522,6 +561,8 @@ class TestLabOrder:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=lab_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(lab_order=order, test=test, unit_cost=Decimal("100"))
@@ -545,24 +586,28 @@ class TestLabOrderItem:
     """Tests for LabOrderItem model."""
 
     @pytest.fixture
-    def sample_order(self):
+    def sample_order(self, sample_organization, sample_facility):
         """Create a sample lab order."""
         patient = Patient.objects.create(
             first_name="Test",
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="testuser", password="testpass")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         return LabOrder.objects.create(
             patient=patient,
             encounter=encounter,
             ordered_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     @pytest.fixture
@@ -716,24 +761,28 @@ class TestLabResult:
     """Tests for LabResult model."""
 
     @pytest.fixture
-    def sample_order_item(self):
+    def sample_order_item(self, sample_organization, sample_facility):
         """Create a sample order item."""
         patient = Patient.objects.create(
             first_name="Test",
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="testuser", password="testpass")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         order = LabOrder.objects.create(
             patient=patient,
             encounter=encounter,
             ordered_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         test = TestCatalog.objects.create(
             code="HB",
@@ -1067,24 +1116,28 @@ class TestLabOrderItemAdvanced:
     """Additional tests for LabOrderItem - panel expansion and duplicate prevention."""
 
     @pytest.fixture
-    def sample_order(self):
+    def sample_order(self, sample_organization, sample_facility):
         """Create a sample lab order."""
         patient = Patient.objects.create(
             first_name="Test",
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="testuser_adv", password="testpass")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         return LabOrder.objects.create(
             patient=patient,
             encounter=encounter,
             ordered_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_panel_expansion_components(self, sample_order):
@@ -1205,24 +1258,28 @@ class TestLabResultAdvanced:
     """Additional tests for LabResult - history and notifications."""
 
     @pytest.fixture
-    def sample_result(self):
+    def sample_result(self, sample_organization, sample_facility):
         """Create a sample lab result with all dependencies."""
         patient = Patient.objects.create(
             first_name="Test",
             last_name="Result",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="labtech_adv", password="testpass")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         order = LabOrder.objects.create(
             patient=patient,
             encounter=encounter,
             ordered_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         test = TestCatalog.objects.create(
             code="TEST_RES",
@@ -1293,24 +1350,28 @@ class TestLabResultAdvanced:
 class TestSpecimenModel:
     """Tests for Specimen model basics."""
 
-    def test_create_specimen_defaults(self):
+    def test_create_specimen_defaults(self, sample_organization, sample_facility):
         """Should create specimen with default status and audit fields."""
         patient = Patient.objects.create(
             first_name="Specimen",
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="specimen_user", password="testpass")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Specimen test",
+            facility=sample_facility,
         )
         order = LabOrder.objects.create(
             patient=patient,
             encounter=encounter,
             ordered_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         specimen = Specimen.objects.create(
@@ -1323,24 +1384,28 @@ class TestSpecimenModel:
         assert specimen.created_at is not None
         assert specimen.updated_at is not None
 
-    def test_specimen_links_order_items(self):
+    def test_specimen_links_order_items(self, sample_organization, sample_facility):
         """Should link specimen to order items."""
         patient = Patient.objects.create(
             first_name="Specimen",
             last_name="Link",
             date_of_birth=date(1990, 1, 1),
             gender="F",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="specimen_link", password="testpass")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Specimen link test",
+            facility=sample_facility,
         )
         order = LabOrder.objects.create(
             patient=patient,
             encounter=encounter,
             ordered_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         test1 = TestCatalog.objects.create(
             code="SPEC-TEST1",

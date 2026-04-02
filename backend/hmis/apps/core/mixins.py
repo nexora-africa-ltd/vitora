@@ -343,6 +343,8 @@ class NestedTenantScopeMixin:
             qs = qs.filter(**{self.tenant_facility_chain: facility})
         elif org and self.tenant_org_chain:
             qs = qs.filter(**{self.tenant_org_chain: org})
+        elif getattr(request, "user", None) and getattr(request.user, "is_superuser", False):
+            return qs
         else:
             return qs.none()
 
@@ -421,6 +423,8 @@ class TenantScopedViewMixin:
         Returns an empty queryset when no tenant context is available,
         preventing cross-tenant data leaks for users without a
         facility or organization assignment.
+
+        Superusers without a tenant context see all records.
         """
         self._resolve_tenant_context()
         qs = super().get_queryset()
@@ -433,6 +437,9 @@ class TenantScopedViewMixin:
             qs = qs.filter(**{self.tenant_facility_field: facility})
         elif org:
             qs = qs.filter(organization=org)
+        elif getattr(request, "user", None) and getattr(request.user, "is_superuser", False):
+            # Superuser without tenant context — return all records
+            return qs
         else:
             # No tenant context resolved — return empty queryset to prevent
             # unscoped access across all tenants.

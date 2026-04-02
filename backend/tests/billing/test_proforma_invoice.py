@@ -60,7 +60,7 @@ def test_service_2(db, service_category, test_user):
 
 
 @pytest.fixture
-def proforma_invoice(db, sample_patient, test_user):
+def proforma_invoice(db, sample_patient, test_user, sample_facility, sample_organization):
     """Create a test proforma invoice."""
     return Invoice.objects.create(
         patient=sample_patient,
@@ -69,6 +69,8 @@ def proforma_invoice(db, sample_patient, test_user):
         status=Invoice.Status.PROFORMA,
         payment_type=Invoice.PaymentType.CASH,
         created_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

@@ -45,7 +45,7 @@ def sample_imaging_procedure(db):
 
 
 @pytest.fixture
-def admission_lab_order(db, sample_admission, sample_lab_test, test_user):
+def admission_lab_order(db, sample_admission, sample_lab_test, test_user, sample_organization, sample_facility):
     """Create a lab order linked to an admission."""
     order = LabOrder.objects.create(
         patient=sample_admission.patient,
@@ -54,6 +54,8 @@ def admission_lab_order(db, sample_admission, sample_lab_test, test_user):
         ordered_by=test_user,
         priority="ROUTINE",
         clinical_notes="Test lab order for admission",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     LabOrderItem.objects.create(
         lab_order=order,
@@ -84,7 +86,7 @@ def admission_imaging_order(db, sample_admission, sample_imaging_procedure, test
 
 
 @pytest.fixture
-def admission_prescription(db, sample_admission, sample_drug, test_user):
+def admission_prescription(db, sample_admission, sample_drug, test_user, sample_facility, sample_organization):
     """Create a prescription linked to an admission."""
     from datetime import date, timedelta
 
@@ -94,6 +96,8 @@ def admission_prescription(db, sample_admission, sample_drug, test_user):
         admission=sample_admission,
         prescribed_by=test_user,
         valid_until=date.today() + timedelta(days=30),
+        facility=sample_facility,
+        organization=sample_organization,
     )
     PrescriptionItem.objects.create(
         prescription=prescription,
@@ -238,7 +242,9 @@ class TestAdmissionFKOnOrders:
     """Tests for admission FK field on order models."""
 
     def test_lab_order_admission_field_optional(
-        self, db, sample_patient, sample_encounter, sample_lab_test, test_user
+        self, db, sample_patient, sample_encounter, sample_lab_test, test_user,
+        sample_facility,
+        sample_organization,
     ):
         """Test that admission field is optional on lab orders."""
         order = LabOrder.objects.create(
@@ -247,6 +253,8 @@ class TestAdmissionFKOnOrders:
             admission=None,  # No admission
             ordered_by=test_user,
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         assert order.admission is None
 
@@ -279,7 +287,7 @@ class TestAdmissionFKOnOrders:
         )
         assert prescription.admission is None
 
-    def test_lab_order_with_admission(self, db, sample_lab_test, sample_admission, test_user):
+    def test_lab_order_with_admission(self, db, sample_lab_test, sample_admission, test_user, sample_organization, sample_facility):
         """Test lab order with admission FK."""
         order = LabOrder.objects.create(
             patient=sample_admission.patient,
@@ -287,6 +295,8 @@ class TestAdmissionFKOnOrders:
             admission=sample_admission,
             ordered_by=test_user,
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         assert order.admission == sample_admission
         assert order in sample_admission.lab_orders.all()

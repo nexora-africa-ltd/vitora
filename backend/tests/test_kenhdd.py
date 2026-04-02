@@ -141,6 +141,7 @@ class TestKENHDDValidationService:
     def test_validate_missing_mandatory_field(
         self, kenhdd_elements, validation_service, db,
         sample_county, sample_sub_county,
+        sample_organization,
     ):
         """A patient missing consent_given=False should still validate (boolean False is not empty)."""
         from hmis.apps.patients.models import Patient
@@ -153,6 +154,7 @@ class TestKENHDDValidationService:
             county=sample_county,
             sub_county=sample_sub_county,
             consent_given=False,
+            organization=sample_organization,
         )
         result = validation_service.validate_record("PATIENT", patient)
         # consent_given is False (boolean) — not empty, should PASS

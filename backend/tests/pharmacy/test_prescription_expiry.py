@@ -19,7 +19,7 @@ from rest_framework import status
 # Helpers
 # ============================================================================
 
-def _create_prescription_with_items(valid_until, rx_status="PENDING"):
+def _create_prescription_with_items(valid_until, sample_organization=None, sample_facility=None, rx_status="PENDING"):
     """Helper to create a prescription with one drug item."""
     from django.contrib.auth import get_user_model
 
@@ -47,12 +47,14 @@ def _create_prescription_with_items(valid_until, rx_status="PENDING"):
         gender="F",
         county=county,
         sub_county=sub_county,
+        organization=sample_organization,
     )
 
     encounter = Encounter.objects.create(
         patient=patient,
         encounter_type="OPD",
         chief_complaint="Headache",
+        facility=sample_facility,
     )
 
     drug = Drug.objects.create(

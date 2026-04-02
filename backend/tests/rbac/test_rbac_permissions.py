@@ -385,7 +385,7 @@ class TestRoleBasedPermission:
         # Should use Django permissions as fallback
         assert has_perm is True
 
-    def test_object_level_department_check(self, permission_class, factory, mock_view):
+    def test_object_level_department_check(self, permission_class, factory, mock_view, sample_organization):
         """Should check department access at object level."""
         from hmis.apps.core.models import Department, Role, StaffProfile
         from hmis.apps.patients.models import Patient
@@ -424,6 +424,7 @@ class TestRoleBasedPermission:
             county=county,
             sub_county=sub_county,
             registered_by=user,
+            organization=sample_organization,
         )
 
         request = factory.get(f"/api/patients/{patient.id}/")
@@ -434,7 +435,7 @@ class TestRoleBasedPermission:
         # Should allow access (basic implementation)
         assert has_perm is True
 
-    def test_sensitive_patient_access(self, permission_class, factory, mock_view):
+    def test_sensitive_patient_access(self, permission_class, factory, mock_view, sample_organization):
         """Should check view_sensitive permission for patients."""
         from hmis.apps.core.models import County, Department, Role, StaffProfile, SubCounty
         from hmis.apps.patients.models import Patient
@@ -474,6 +475,7 @@ class TestRoleBasedPermission:
             sub_county=sub_county,
             registered_by=user,
             is_sensitive=True,
+            organization=sample_organization,
         )
 
         request = factory.get(f"/api/patients/{patient.id}/")

@@ -29,7 +29,7 @@ User = get_user_model()
 
 
 @pytest.fixture
-def lab_patient(db):
+def lab_patient(db, sample_organization):
     """Create a patient for lab signal tests."""
     county = County.objects.create(code=99, name="Signal Test County")
     sub_county = SubCounty.objects.create(county=county, name="Signal Test SubCounty")
@@ -40,6 +40,7 @@ def lab_patient(db):
         gender="M",
         county=county,
         sub_county=sub_county,
+        organization=sample_organization,
     )
 
 
@@ -64,12 +65,13 @@ def lab_tech_user(db):
 
 
 @pytest.fixture
-def lab_encounter(lab_patient):
+def lab_encounter(lab_patient, sample_facility):
     """Create an encounter for lab signal tests."""
     return Encounter.objects.create(
         patient=lab_patient,
         encounter_type="OPD",
         chief_complaint="Lab signal test",
+        facility=sample_facility,
     )
 
 
@@ -115,7 +117,9 @@ class TestCreateLabQueueEntrySignal:
     """Tests for automatic LabQueue creation when LabOrder is created."""
 
     def test_queue_created_for_in_house_order_with_ordered_status(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """LabQueue should be auto-created for IN_HOUSE orders with ORDERED status."""
         order = LabOrder.objects.create(
@@ -125,6 +129,8 @@ class TestCreateLabQueueEntrySignal:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Add item (triggers create_lab_queue_on_item_add signal)
@@ -145,7 +151,9 @@ class TestCreateLabQueueEntrySignal:
         assert queue.specimen.barcode == queue.queue_number
 
     def test_queue_created_for_in_house_order_with_draft_status(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """LabQueue should be auto-created for IN_HOUSE orders with DRAFT status."""
         order = LabOrder.objects.create(
@@ -155,6 +163,8 @@ class TestCreateLabQueueEntrySignal:
             order_type="IN_HOUSE",
             status="DRAFT",
             priority="URGENT",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         LabOrderItem.objects.create(
@@ -169,7 +179,9 @@ class TestCreateLabQueueEntrySignal:
         assert queue.specimen is not None
 
     def test_queue_not_created_for_external_order(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """LabQueue should NOT be created for EXTERNAL lab orders."""
         order = LabOrder.objects.create(
@@ -179,6 +191,8 @@ class TestCreateLabQueueEntrySignal:
             order_type="EXTERNAL",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         LabOrderItem.objects.create(
@@ -191,7 +205,9 @@ class TestCreateLabQueueEntrySignal:
         assert not LabQueue.objects.filter(lab_order=order).exists()
 
     def test_queue_not_duplicated_on_order_update(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """LabQueue should not be duplicated when order is updated."""
         order = LabOrder.objects.create(
@@ -201,6 +217,8 @@ class TestCreateLabQueueEntrySignal:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         LabOrderItem.objects.create(
@@ -220,7 +238,9 @@ class TestCreateLabQueueEntrySignal:
         assert LabQueue.objects.filter(lab_order=order).count() == 1
 
     def test_queue_inherits_specimen_type_from_test(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog_urine
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog_urine,
+        sample_facility,
+        sample_organization,
     ):
         """LabQueue.sample_type should match test.specimen_type when item is added.
 
@@ -235,6 +255,8 @@ class TestCreateLabQueueEntrySignal:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         LabOrderItem.objects.create(
@@ -261,7 +283,9 @@ class TestCreateLabQueueOnItemAddSignal:
     """Tests for LabQueue creation triggered by adding first order item."""
 
     def test_queue_created_when_first_item_added(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """Queue should be created when the first item is added to an order."""
         # Create order (no queue created yet - no items)
@@ -272,6 +296,8 @@ class TestCreateLabQueueOnItemAddSignal:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Before adding item, no queue exists (unless signal on order created it)
@@ -287,7 +313,9 @@ class TestCreateLabQueueOnItemAddSignal:
         assert LabQueue.objects.filter(lab_order=order).exists()
 
     def test_queue_not_duplicated_when_second_item_added(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine,
+        sample_facility,
+        sample_organization,
     ):
         """Queue should not be duplicated when additional items are added."""
         order = LabOrder.objects.create(
@@ -297,6 +325,8 @@ class TestCreateLabQueueOnItemAddSignal:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Add first item
@@ -329,7 +359,9 @@ class TestSyncLabQueuePrioritySignal:
     """Tests for priority synchronization from LabOrder to LabQueue."""
 
     def test_priority_synced_on_order_update(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """LabQueue priority should sync when LabOrder priority is updated."""
         order = LabOrder.objects.create(
@@ -339,6 +371,8 @@ class TestSyncLabQueuePrioritySignal:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         LabOrderItem.objects.create(
@@ -358,7 +392,9 @@ class TestSyncLabQueuePrioritySignal:
         assert queue.priority == "STAT"
 
     def test_priority_synced_from_routine_to_urgent(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """Priority should sync when changed from ROUTINE to URGENT."""
         order = LabOrder.objects.create(
@@ -368,6 +404,8 @@ class TestSyncLabQueuePrioritySignal:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         LabOrderItem.objects.create(
@@ -393,7 +431,9 @@ class TestUpdateOrderStatusOnResultSignal:
     """Tests for order/queue status updates when results are entered."""
 
     def test_first_result_transitions_order_to_in_progress(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine,
+        sample_facility,
+        sample_organization,
     ):
         """First result entry should transition order to IN_PROGRESS.
 
@@ -407,6 +447,8 @@ class TestUpdateOrderStatusOnResultSignal:
             order_type="IN_HOUSE",
             status="SPECIMEN_COLLECTED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item1 = LabOrderItem.objects.create(
@@ -441,7 +483,9 @@ class TestUpdateOrderStatusOnResultSignal:
         assert queue.queue_status == "PROCESSING"
 
     def test_queue_transitions_to_review_when_all_results_entered(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine,
+        sample_facility,
+        sample_organization,
     ):
         """Queue should transition to REVIEW when all results are entered."""
         order = LabOrder.objects.create(
@@ -451,6 +495,8 @@ class TestUpdateOrderStatusOnResultSignal:
             order_type="IN_HOUSE",
             status="SPECIMEN_COLLECTED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item1 = LabOrderItem.objects.create(
@@ -492,7 +538,9 @@ class TestUpdateOrderStatusOnResultSignal:
         assert queue.queue_status == "REVIEW"
 
     def test_processing_timestamps_set_on_first_result(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """Queue.processing_started_at should be set when first result is entered."""
         order = LabOrder.objects.create(
@@ -502,6 +550,8 @@ class TestUpdateOrderStatusOnResultSignal:
             order_type="IN_HOUSE",
             status="SPECIMEN_COLLECTED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(
@@ -527,7 +577,9 @@ class TestUpdateOrderStatusOnResultSignal:
         assert queue.processing_started_at is not None
 
     def test_completion_timestamp_set_when_all_results_entered(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """Queue.processing_completed_at should be set when all results are entered."""
         order = LabOrder.objects.create(
@@ -537,6 +589,8 @@ class TestUpdateOrderStatusOnResultSignal:
             order_type="IN_HOUSE",
             status="SPECIMEN_COLLECTED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(
@@ -571,7 +625,9 @@ class TestNotifyOnResultVerificationSignal:
     """Tests for WebSocket notifications when results are verified."""
 
     def test_broadcast_result_verified_called_on_verification(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        sample_facility,
+        sample_organization,
     ):
         """broadcast_result_verified should be called when result is verified."""
         order = LabOrder.objects.create(
@@ -581,6 +637,8 @@ class TestNotifyOnResultVerificationSignal:
             order_type="IN_HOUSE",
             status="IN_PROGRESS",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(
@@ -607,7 +665,9 @@ class TestNotifyOnResultVerificationSignal:
             mock_broadcast.assert_called_once_with(result)
 
     def test_broadcast_critical_alert_called_for_critical_results(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        sample_facility,
+        sample_organization,
     ):
         """broadcast_critical_alert should be called for critical results."""
         order = LabOrder.objects.create(
@@ -617,6 +677,8 @@ class TestNotifyOnResultVerificationSignal:
             order_type="IN_HOUSE",
             status="IN_PROGRESS",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(
@@ -648,7 +710,9 @@ class TestNotifyOnResultVerificationSignal:
             mock_critical.assert_called_once_with(result)
 
     def test_broadcast_order_completed_when_all_results_verified(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        sample_facility,
+        sample_organization,
     ):
         """broadcast_order_completed should be called when all results are verified."""
         order = LabOrder.objects.create(
@@ -658,6 +722,8 @@ class TestNotifyOnResultVerificationSignal:
             order_type="IN_HOUSE",
             status="IN_PROGRESS",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(
@@ -687,7 +753,9 @@ class TestNotifyOnResultVerificationSignal:
             mock_completed.assert_called_once_with(order)
 
     def test_notification_service_called_on_order_completion(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        sample_facility,
+        sample_organization,
     ):
         """LabNotificationService.send_result_notification should be called."""
         order = LabOrder.objects.create(
@@ -697,6 +765,8 @@ class TestNotifyOnResultVerificationSignal:
             order_type="IN_HOUSE",
             status="IN_PROGRESS",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(
@@ -726,7 +796,9 @@ class TestNotifyOnResultVerificationSignal:
             mock_notify.assert_called_once_with(order)
 
     def test_no_broadcast_on_result_creation(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """Broadcasts should NOT be sent on result creation, only on updates."""
         order = LabOrder.objects.create(
@@ -736,6 +808,8 @@ class TestNotifyOnResultVerificationSignal:
             order_type="IN_HOUSE",
             status="IN_PROGRESS",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(
@@ -758,7 +832,9 @@ class TestNotifyOnResultVerificationSignal:
             mock_broadcast.assert_not_called()
 
     def test_no_broadcast_when_status_not_verified(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """Broadcasts should NOT be sent if status is not VERIFIED."""
         order = LabOrder.objects.create(
@@ -768,6 +844,8 @@ class TestNotifyOnResultVerificationSignal:
             order_type="IN_HOUSE",
             status="IN_PROGRESS",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(
@@ -802,7 +880,9 @@ class TestSignalErrorHandling:
     """Tests for signal error handling and logging."""
 
     def test_queue_creation_handles_exception_gracefully(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, caplog
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, caplog,
+        sample_facility,
+        sample_organization,
     ):
         """Signal should log errors but not raise exceptions."""
         order = LabOrder.objects.create(
@@ -812,6 +892,8 @@ class TestSignalErrorHandling:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Add item normally - should work
@@ -825,7 +907,9 @@ class TestSignalErrorHandling:
         assert LabQueue.objects.filter(lab_order=order).exists()
 
     def test_notification_error_does_not_break_verification(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user
+        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        sample_facility,
+        sample_organization,
     ):
         """Notification errors should not prevent result verification."""
         order = LabOrder.objects.create(
@@ -835,6 +919,8 @@ class TestSignalErrorHandling:
             order_type="IN_HOUSE",
             status="IN_PROGRESS",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         item = LabOrderItem.objects.create(

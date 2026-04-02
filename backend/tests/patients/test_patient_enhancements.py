@@ -147,7 +147,8 @@ class TestRegisteredByTracking:
         assert response.data["registered_by_username"] == test_user.username
 
     def test_registered_by_not_changed_on_update(
-        self, authenticated_client, test_user, sample_county, sample_sub_county
+        self, authenticated_client, test_user, sample_county, sample_sub_county,
+        sample_organization,
     ):
         """Test registered_by is not changed when patient is updated."""
         from hmis.apps.patients.models import Patient
@@ -165,6 +166,7 @@ class TestRegisteredByTracking:
             registered_by=other_user,
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         # Update the patient as test_user
@@ -180,7 +182,8 @@ class TestRegisteredByTracking:
         assert patient.registered_by == other_user
 
     def test_registered_by_displayed_in_patient_details(
-        self, authenticated_client, test_user, sample_county, sample_sub_county
+        self, authenticated_client, test_user, sample_county, sample_sub_county,
+        sample_organization,
     ):
         """Test registered_by info is included in patient details."""
         from hmis.apps.patients.models import Patient
@@ -193,6 +196,7 @@ class TestRegisteredByTracking:
             registered_by=test_user,
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(f"/api/patients/{patient.id}/")
@@ -202,7 +206,7 @@ class TestRegisteredByTracking:
         assert "registered_by_username" in response.data
         assert response.data["registered_by_username"] == test_user.username
 
-    def test_registered_by_is_optional(self, sample_county, sample_sub_county):
+    def test_registered_by_is_optional(self, sample_county, sample_sub_county, sample_organization):
         """Test registered_by can be null (for migrated data)."""
         from hmis.apps.patients.models import Patient
 
@@ -214,12 +218,14 @@ class TestRegisteredByTracking:
             registered_by=None,
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         assert patient.registered_by is None
 
     def test_registered_by_preserved_when_user_deleted(
-        self, test_user, sample_county, sample_sub_county
+        self, test_user, sample_county, sample_sub_county,
+        sample_organization,
     ):
         """Test patient record preserved when registering user is deleted."""
         from hmis.apps.patients.models import Patient
@@ -232,6 +238,7 @@ class TestRegisteredByTracking:
             registered_by=test_user,
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
         patient_id = patient.id
 

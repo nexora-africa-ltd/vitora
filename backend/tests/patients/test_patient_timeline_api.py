@@ -20,6 +20,7 @@ from decimal import Decimal
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db
 
@@ -38,7 +39,7 @@ def timeline_test_user(db):
 
 
 @pytest.fixture
-def timeline_sample_patient(db):
+def timeline_sample_patient(db, sample_organization):
     """Create a sample patient for timeline tests."""
     from hmis.apps.patients.models import Patient
 
@@ -47,11 +48,12 @@ def timeline_sample_patient(db):
         last_name="Test",
         date_of_birth=date(1985, 3, 20),
         gender="F",
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def timeline_sample_encounter(db, timeline_sample_patient):
+def timeline_sample_encounter(db, timeline_sample_patient, sample_facility):
     """Create a sample encounter for timeline tests."""
     from hmis.apps.encounters.models import Encounter
 
@@ -59,13 +61,15 @@ def timeline_sample_encounter(db, timeline_sample_patient):
         patient=timeline_sample_patient,
         encounter_type="OPD",
         chief_complaint="Timeline test complaint",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def timeline_authenticated_client(db, timeline_test_user):
+def timeline_authenticated_client(db, timeline_test_user, sample_organization, sample_facility):
     """Provide authenticated API client for timeline tests."""
     client = APIClient()
+    ensure_staff_profile(timeline_test_user, sample_organization, sample_facility)
     client.force_authenticate(user=timeline_test_user)
     return client
 
@@ -109,7 +113,8 @@ class TestPatientTimelineAPI:
         assert isinstance(response.data["timeline"], list)
 
     def test_timeline_encounters_ordered_by_date(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline encounters are ordered newest first."""
         from hmis.apps.encounters.models import Encounter
@@ -119,12 +124,14 @@ class TestPatientTimelineAPI:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=30),
             chief_complaint="Old visit",
+            facility=sample_facility,
         )
         new = Encounter.objects.create(
             patient=timeline_sample_patient,
             encounter_type="OPD",
             encounter_date=date.today(),
             chief_complaint="New visit",
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -137,7 +144,8 @@ class TestPatientTimelineAPI:
         assert timeline[1]["encounter_id"] == old.id
 
     def test_timeline_includes_vitals_summary(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline includes vitals summary for each encounter."""
         from hmis.apps.encounters.models import Encounter
@@ -149,6 +157,7 @@ class TestPatientTimelineAPI:
             temperature=Decimal("37.5"),
             pulse=80,
             blood_pressure="120/80",
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -161,7 +170,8 @@ class TestPatientTimelineAPI:
         assert "temperature" in encounter_data["vitals_summary"]
 
     def test_timeline_includes_diagnoses(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline includes diagnoses for each encounter."""
         from hmis.apps.encounters.models import Diagnosis, Encounter, ICD10Code
@@ -170,6 +180,7 @@ class TestPatientTimelineAPI:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="With diagnosis",
+            facility=sample_facility,
         )
         code = ICD10Code.objects.create(
             code="K35.80",
@@ -193,7 +204,8 @@ class TestPatientTimelineAPI:
         assert len(encounter_data["diagnoses"]) == 1
 
     def test_timeline_includes_statistics(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline response includes statistics."""
         from hmis.apps.encounters.models import Encounter
@@ -204,6 +216,7 @@ class TestPatientTimelineAPI:
                 encounter_type="OPD" if i < 2 else "IPD",
                 encounter_date=date.today() - timedelta(days=i * 10),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -218,7 +231,8 @@ class TestPatientTimelineAPI:
         assert "by_type" in stats
 
     def test_timeline_date_range_filter(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline can be filtered by date range."""
         from hmis.apps.encounters.models import Encounter
@@ -228,12 +242,14 @@ class TestPatientTimelineAPI:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=60),
             chief_complaint="Old visit",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=timeline_sample_patient,
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=5),
             chief_complaint="Recent visit",
+            facility=sample_facility,
         )
 
         start_date = (date.today() - timedelta(days=30)).isoformat()
@@ -261,7 +277,8 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_includes_treatment_plan(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline includes treatment_plan for each encounter."""
         from hmis.apps.encounters.models import Encounter, Medication, TreatmentPlan
@@ -270,6 +287,7 @@ class TestPatientTimelineAPI:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="With treatment plan",
+            facility=sample_facility,
         )
         plan = TreatmentPlan.objects.create(
             encounter=encounter,
@@ -297,7 +315,8 @@ class TestPatientTimelineAPI:
         assert encounter_data["treatment_plan"]["follow_up_date"] is not None
 
     def test_timeline_treatment_plan_is_none_when_missing(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline shows null treatment_plan when encounter has none."""
         from hmis.apps.encounters.models import Encounter
@@ -306,6 +325,7 @@ class TestPatientTimelineAPI:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="No treatment plan",
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -322,7 +342,8 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_includes_alerts_array(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline includes alerts array for each encounter."""
         from hmis.apps.encounters.models import Encounter
@@ -333,7 +354,8 @@ class TestPatientTimelineAPI:
             encounter_type="EMERGENCY",
             chief_complaint="Severe symptoms",
             temperature=Decimal("39.5"),  # Critical high
-            spo2=Decimal("88"),  # Critical low
+            spo2=Decimal("88"),  # Critical low,
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -347,7 +369,8 @@ class TestPatientTimelineAPI:
         assert len(encounter_data["alerts"]) > 0  # Should have alerts for critical vitals
 
     def test_timeline_alerts_empty_for_normal_vitals(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline alerts array is empty when all vitals are normal."""
         from hmis.apps.encounters.models import Encounter
@@ -358,7 +381,8 @@ class TestPatientTimelineAPI:
             chief_complaint="Normal checkup",
             temperature=Decimal("36.8"),  # Normal
             pulse=75,  # Normal
-            spo2=Decimal("98"),  # Normal
+            spo2=Decimal("98"),  # Normal,
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -375,7 +399,8 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_filters_by_encounter_type(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline can filter by encounter_type query param."""
         from hmis.apps.encounters.models import Encounter
@@ -384,16 +409,19 @@ class TestPatientTimelineAPI:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="Outpatient visit",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=timeline_sample_patient,
             encounter_type="IPD",
             chief_complaint="Inpatient admission",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=timeline_sample_patient,
             encounter_type="EMERGENCY",
             chief_complaint="Emergency visit",
+            facility=sample_facility,
         )
 
         # Filter OPD only
@@ -406,7 +434,8 @@ class TestPatientTimelineAPI:
         assert response.data["timeline"][0]["encounter_type"] == "OPD"
 
     def test_timeline_filters_by_multiple_encounter_types(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline can filter by multiple comma-separated encounter types."""
         from hmis.apps.encounters.models import Encounter
@@ -415,16 +444,19 @@ class TestPatientTimelineAPI:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="Outpatient visit",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=timeline_sample_patient,
             encounter_type="IPD",
             chief_complaint="Inpatient admission",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=timeline_sample_patient,
             encounter_type="EMERGENCY",
             chief_complaint="Emergency visit",
+            facility=sample_facility,
         )
 
         # Filter OPD and EMERGENCY
@@ -442,7 +474,8 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_vitals_summary_includes_status(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test vitals_summary includes status for each vital (normal/warning/critical)."""
         from hmis.apps.encounters.models import Encounter
@@ -453,7 +486,8 @@ class TestPatientTimelineAPI:
             chief_complaint="Mixed vitals",
             temperature=Decimal("37.8"),  # Warning high (low-grade fever)
             pulse=75,  # Normal
-            spo2=Decimal("88"),  # Critical low
+            spo2=Decimal("88"),  # Critical low,
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -480,7 +514,8 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_statistics_includes_most_common_diagnosis(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test statistics includes most_common_diagnosis code."""
         from hmis.apps.encounters.models import Diagnosis, Encounter, ICD10Code
@@ -506,6 +541,7 @@ class TestPatientTimelineAPI:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i * 5),
                 chief_complaint=f"Fever episode {i + 1}",
+                facility=sample_facility,
             )
             Diagnosis.objects.create(
                 encounter=enc,
@@ -518,6 +554,7 @@ class TestPatientTimelineAPI:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="Cough",
+            facility=sample_facility,
         )
         Diagnosis.objects.create(
             encounter=enc,
@@ -536,7 +573,8 @@ class TestPatientTimelineAPI:
         assert stats["most_common_diagnosis"]["count"] == 3
 
     def test_timeline_statistics_most_common_diagnosis_none_if_no_diagnoses(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test most_common_diagnosis is null when patient has no diagnoses."""
         from hmis.apps.encounters.models import Encounter
@@ -545,6 +583,7 @@ class TestPatientTimelineAPI:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="No diagnosis",
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -586,7 +625,7 @@ class TestTimelinePermissions:
         assert response.status_code == 404
 
     def test_sensitive_patient_timeline_allowed_with_permission(
-        self, timeline_test_user, timeline_sample_patient
+        self, timeline_test_user, timeline_sample_patient, sample_organization, sample_facility
     ):
         """Test timeline for sensitive patient allowed with permission."""
         from django.contrib.auth.models import Permission
@@ -605,6 +644,9 @@ class TestTimelinePermissions:
             content_type=content_type,
         )
         timeline_test_user.user_permissions.add(permission)
+
+        # Ensure staff profile for tenant scoping
+        ensure_staff_profile(timeline_test_user, sample_organization, sample_facility)
 
         client = APIClient()
         client.force_authenticate(user=timeline_test_user)
@@ -648,7 +690,8 @@ class TestTimelinePerformance:
     """Test timeline endpoint performance characteristics."""
 
     def test_timeline_pagination_default_limit(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline has default pagination limit."""
         from hmis.apps.encounters.models import Encounter
@@ -660,6 +703,7 @@ class TestTimelinePerformance:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -673,7 +717,8 @@ class TestTimelinePerformance:
         assert response.data["statistics"]["total_encounters"] == 50
 
     def test_timeline_returns_all_encounters_without_pagination(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline returns all encounters (no pagination by default)."""
         from hmis.apps.encounters.models import Encounter
@@ -685,6 +730,7 @@ class TestTimelinePerformance:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -698,7 +744,8 @@ class TestTimelinePerformance:
         assert response.data["statistics"]["total_encounters"] == 30
 
     def test_timeline_select_related_optimization(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline uses select_related/prefetch_related for efficiency."""
         from django.test.utils import CaptureQueriesContext
@@ -713,6 +760,7 @@ class TestTimelinePerformance:
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
                 temperature=Decimal("37.0"),
+                facility=sample_facility,
             )
             code = ICD10Code.objects.create(
                 code=f"A0{i}.0",
@@ -767,7 +815,8 @@ class TestTimelineEdgeCases:
         assert response.data["statistics"]["total_encounters"] == 0
 
     def test_timeline_handles_incomplete_encounters(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline handles encounters with minimal/missing data gracefully."""
         from hmis.apps.encounters.models import Encounter
@@ -777,7 +826,8 @@ class TestTimelineEdgeCases:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="Minimal data",
-            # No vitals, no diagnoses, no treatment plan
+            # No vitals, no diagnoses, no treatment plan,
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -826,7 +876,8 @@ class TestTimelineEdgeCases:
         assert response.data["timeline"] == []
 
     def test_timeline_combined_filters(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test timeline with multiple filters combined."""
         from hmis.apps.encounters.models import Encounter
@@ -837,18 +888,21 @@ class TestTimelineEdgeCases:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=5),
             chief_complaint="Recent OPD",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=timeline_sample_patient,
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=60),
             chief_complaint="Old OPD",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=timeline_sample_patient,
             encounter_type="IPD",
             encounter_date=date.today() - timedelta(days=5),
             chief_complaint="Recent IPD",
+            facility=sample_facility,
         )
 
         # Filter: OPD only, last 30 days
@@ -874,7 +928,8 @@ class TestTimelinePagination:
     """Test timeline endpoint pagination features."""
 
     def test_timeline_pagination_returns_limited_results(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test ?page=1&page_size=5 returns limited results."""
         from hmis.apps.encounters.models import Encounter
@@ -886,6 +941,7 @@ class TestTimelinePagination:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -898,7 +954,8 @@ class TestTimelinePagination:
         assert response.data["statistics"]["total_encounters"] == 15
 
     def test_timeline_pagination_second_page(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test ?page=2 returns second page of results."""
         from hmis.apps.encounters.models import Encounter
@@ -910,6 +967,7 @@ class TestTimelinePagination:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -922,7 +980,8 @@ class TestTimelinePagination:
         assert response.data["timeline"][0]["chief_complaint"] == "Visit 6"
 
     def test_timeline_pagination_last_page_partial(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test last page returns remaining items when not full."""
         from hmis.apps.encounters.models import Encounter
@@ -934,6 +993,7 @@ class TestTimelinePagination:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -944,7 +1004,8 @@ class TestTimelinePagination:
         assert len(response.data["timeline"]) == 2  # 12 total, page 3 has 2
 
     def test_timeline_pagination_info_in_response(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test pagination info is included in response."""
         from hmis.apps.encounters.models import Encounter
@@ -956,6 +1017,7 @@ class TestTimelinePagination:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -972,7 +1034,8 @@ class TestTimelinePagination:
         assert response.data["pagination"]["has_previous"] is True
 
     def test_timeline_pagination_max_page_size_capped(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test page_size is capped at 100."""
         from hmis.apps.encounters.models import Encounter
@@ -984,6 +1047,7 @@ class TestTimelinePagination:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i % 365),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -996,7 +1060,8 @@ class TestTimelinePagination:
         assert response.data["pagination"]["page_size"] == 100
 
     def test_timeline_pagination_default_page_size(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test default page size is 20 when page param provided."""
         from hmis.apps.encounters.models import Encounter
@@ -1008,6 +1073,7 @@ class TestTimelinePagination:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -1019,7 +1085,8 @@ class TestTimelinePagination:
         assert response.data["pagination"]["page_size"] == 20
 
     def test_timeline_no_pagination_without_page_param(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test all encounters returned when page param not provided."""
         from hmis.apps.encounters.models import Encounter
@@ -1031,6 +1098,7 @@ class TestTimelinePagination:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -1042,7 +1110,8 @@ class TestTimelinePagination:
         assert "pagination" not in response.data
 
     def test_timeline_pagination_invalid_page_returns_empty(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test requesting page beyond range returns empty timeline."""
         from hmis.apps.encounters.models import Encounter
@@ -1054,6 +1123,7 @@ class TestTimelinePagination:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -1064,7 +1134,8 @@ class TestTimelinePagination:
         assert len(response.data["timeline"]) == 0
 
     def test_timeline_pagination_with_filters(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test pagination works with other filters."""
         from hmis.apps.encounters.models import Encounter
@@ -1076,12 +1147,14 @@ class TestTimelinePagination:
                 encounter_type="OPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"OPD Visit {i + 1}",
+                facility=sample_facility,
             )
             Encounter.objects.create(
                 patient=timeline_sample_patient,
                 encounter_type="IPD",
                 encounter_date=date.today() - timedelta(days=i),
                 chief_complaint=f"IPD Visit {i + 1}",
+                facility=sample_facility,
             )
 
         response = timeline_authenticated_client.get(
@@ -1107,7 +1180,7 @@ class TestTimelinePagination:
 class TestTimelineIncludeToggles:
     """Test timeline endpoint include/exclude toggle parameters."""
 
-    def test_timeline_exclude_vitals(self, timeline_authenticated_client, timeline_sample_patient):
+    def test_timeline_exclude_vitals(self, timeline_authenticated_client, timeline_sample_patient, sample_facility):
         """Test ?include_vitals=false omits vitals_summary."""
         from hmis.apps.encounters.models import Encounter
 
@@ -1117,6 +1190,7 @@ class TestTimelineIncludeToggles:
             chief_complaint="With vitals",
             temperature=Decimal("37.5"),
             pulse=80,
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1129,7 +1203,8 @@ class TestTimelineIncludeToggles:
         assert "has_critical_vitals" in response.data["timeline"][0]
 
     def test_timeline_exclude_diagnoses(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test ?include_diagnoses=false omits diagnoses."""
         from hmis.apps.encounters.models import Diagnosis, Encounter, ICD10Code
@@ -1138,6 +1213,7 @@ class TestTimelineIncludeToggles:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="With diagnosis",
+            facility=sample_facility,
         )
         code = ICD10Code.objects.create(
             code="J06.9",
@@ -1159,7 +1235,8 @@ class TestTimelineIncludeToggles:
         assert "diagnoses" not in response.data["timeline"][0]
 
     def test_timeline_exclude_treatment_plan(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test ?include_treatment=false omits treatment_plan."""
         from hmis.apps.encounters.models import Encounter, TreatmentPlan
@@ -1168,6 +1245,7 @@ class TestTimelineIncludeToggles:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="With treatment",
+            facility=sample_facility,
         )
         TreatmentPlan.objects.create(
             encounter=encounter,
@@ -1182,7 +1260,7 @@ class TestTimelineIncludeToggles:
         assert response.status_code == 200
         assert "treatment_plan" not in response.data["timeline"][0]
 
-    def test_timeline_exclude_alerts(self, timeline_authenticated_client, timeline_sample_patient):
+    def test_timeline_exclude_alerts(self, timeline_authenticated_client, timeline_sample_patient, sample_facility):
         """Test ?include_alerts=false omits alerts."""
         from hmis.apps.encounters.models import Encounter
 
@@ -1190,7 +1268,8 @@ class TestTimelineIncludeToggles:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="With alerts",
-            temperature=Decimal("39.5"),  # Critical - generates alert
+            temperature=Decimal("39.5"),  # Critical - generates alert,
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1201,7 +1280,8 @@ class TestTimelineIncludeToggles:
         assert "alerts" not in response.data["timeline"][0]
 
     def test_timeline_include_all_by_default(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test all fields included when no toggle params provided."""
         from hmis.apps.encounters.models import Encounter
@@ -1211,6 +1291,7 @@ class TestTimelineIncludeToggles:
             encounter_type="OPD",
             chief_complaint="Default test",
             temperature=Decimal("37.0"),
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1225,7 +1306,8 @@ class TestTimelineIncludeToggles:
         assert "alerts" in item
 
     def test_timeline_explicit_include_true(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test ?include_vitals=true explicitly includes vitals."""
         from hmis.apps.encounters.models import Encounter
@@ -1235,6 +1317,7 @@ class TestTimelineIncludeToggles:
             encounter_type="OPD",
             chief_complaint="Explicit include",
             temperature=Decimal("37.0"),
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1245,7 +1328,8 @@ class TestTimelineIncludeToggles:
         assert "vitals_summary" in response.data["timeline"][0]
 
     def test_timeline_multiple_excludes(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test multiple exclude params together."""
         from hmis.apps.encounters.models import Encounter
@@ -1255,6 +1339,7 @@ class TestTimelineIncludeToggles:
             encounter_type="OPD",
             chief_complaint="Multiple excludes",
             temperature=Decimal("37.0"),
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1271,7 +1356,8 @@ class TestTimelineIncludeToggles:
         assert "alerts" in item
 
     def test_timeline_exclude_all_optional_fields(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test excluding all optional fields leaves core fields."""
         from hmis.apps.encounters.models import Encounter
@@ -1281,6 +1367,7 @@ class TestTimelineIncludeToggles:
             encounter_type="OPD",
             chief_complaint="Minimal response",
             temperature=Decimal("37.0"),
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1313,7 +1400,8 @@ class TestTimelineFollowupCompliance:
     """Test follow-up compliance statistic in timeline."""
 
     def test_followup_compliance_in_statistics(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test follow_up_compliance field exists in statistics."""
         from hmis.apps.encounters.models import Encounter
@@ -1322,6 +1410,7 @@ class TestTimelineFollowupCompliance:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1332,7 +1421,8 @@ class TestTimelineFollowupCompliance:
         assert "follow_up_compliance" in response.data["statistics"]
 
     def test_followup_compliance_null_when_no_followups_scheduled(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test follow_up_compliance is null when no follow-ups scheduled."""
         from hmis.apps.encounters.models import Encounter, TreatmentPlan
@@ -1341,6 +1431,7 @@ class TestTimelineFollowupCompliance:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="No follow-up",
+            facility=sample_facility,
         )
         # Treatment plan without follow_up_date
         TreatmentPlan.objects.create(
@@ -1357,7 +1448,8 @@ class TestTimelineFollowupCompliance:
         assert response.data["statistics"]["follow_up_compliance"] is None
 
     def test_followup_compliance_100_percent(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test 100% compliance when all follow-ups attended."""
         from hmis.apps.encounters.models import Encounter, TreatmentPlan
@@ -1368,6 +1460,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=30),
             chief_complaint="Initial visit",
+            facility=sample_facility,
         )
         TreatmentPlan.objects.create(
             encounter=enc1,
@@ -1382,6 +1475,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=22),  # 1 day before scheduled
             chief_complaint="Follow-up visit",
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1396,7 +1490,8 @@ class TestTimelineFollowupCompliance:
         assert compliance["scheduled"] == 1
 
     def test_followup_compliance_zero_percent(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test 0% compliance when no follow-ups attended."""
         from hmis.apps.encounters.models import Encounter, TreatmentPlan
@@ -1407,6 +1502,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=60),
             chief_complaint="Initial visit",
+            facility=sample_facility,
         )
         TreatmentPlan.objects.create(
             encounter=enc1,
@@ -1428,7 +1524,8 @@ class TestTimelineFollowupCompliance:
         assert compliance["scheduled"] == 1
 
     def test_followup_compliance_partial(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test partial compliance calculation (e.g., 50%)."""
         from hmis.apps.encounters.models import Encounter, TreatmentPlan
@@ -1439,6 +1536,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=60),
             chief_complaint="Visit 1",
+            facility=sample_facility,
         )
         TreatmentPlan.objects.create(
             encounter=enc1,
@@ -1452,6 +1550,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=52),
             chief_complaint="Follow-up 1",
+            facility=sample_facility,
         )
 
         # Second encounter with follow-up - NOT ATTENDED
@@ -1460,6 +1559,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=30),
             chief_complaint="Visit 2",
+            facility=sample_facility,
         )
         TreatmentPlan.objects.create(
             encounter=enc2,
@@ -1481,7 +1581,8 @@ class TestTimelineFollowupCompliance:
         assert compliance["scheduled"] == 2
 
     def test_followup_compliance_within_window(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test follow-up within ±7 day window counts as completed."""
         from hmis.apps.encounters.models import Encounter, TreatmentPlan
@@ -1492,6 +1593,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=30),
             chief_complaint="Initial",
+            facility=sample_facility,
         )
         follow_up_date = date.today() - timedelta(days=23)
         TreatmentPlan.objects.create(
@@ -1507,6 +1609,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=follow_up_date + timedelta(days=6),
             chief_complaint="Late follow-up",
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1518,7 +1621,8 @@ class TestTimelineFollowupCompliance:
         assert compliance["completed"] == 1
 
     def test_followup_compliance_outside_window(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test follow-up outside ±7 day window does not count."""
         from hmis.apps.encounters.models import Encounter, TreatmentPlan
@@ -1529,6 +1633,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=30),
             chief_complaint="Initial",
+            facility=sample_facility,
         )
         follow_up_date = date.today() - timedelta(days=23)
         TreatmentPlan.objects.create(
@@ -1544,6 +1649,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=follow_up_date + timedelta(days=10),
             chief_complaint="Very late follow-up",
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1555,7 +1661,8 @@ class TestTimelineFollowupCompliance:
         assert compliance["completed"] == 0  # Outside window
 
     def test_followup_must_be_after_original_encounter(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
     ):
         """Test follow-up encounter must be after original encounter date."""
         from hmis.apps.encounters.models import Encounter, TreatmentPlan
@@ -1566,6 +1673,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=10),
             chief_complaint="Recent visit",
+            facility=sample_facility,
         )
         TreatmentPlan.objects.create(
             encounter=enc1,
@@ -1580,6 +1688,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=20),  # Before enc1
             chief_complaint="Old visit",
+            facility=sample_facility,
         )
 
         response = timeline_authenticated_client.get(
@@ -1591,7 +1700,9 @@ class TestTimelineFollowupCompliance:
         assert compliance["completed"] == 0  # Old visit doesn't count
 
     def test_followup_compliance_multiple_patients_isolated(
-        self, timeline_authenticated_client, timeline_sample_patient
+        self, timeline_authenticated_client, timeline_sample_patient,
+        sample_facility,
+        sample_organization,
     ):
         """Test compliance calculation is isolated to the specific patient."""
         from hmis.apps.encounters.models import Encounter, TreatmentPlan
@@ -1603,12 +1714,14 @@ class TestTimelineFollowupCompliance:
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         enc_other = Encounter.objects.create(
             patient=other_patient,
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=30),
             chief_complaint="Other patient",
+            facility=sample_facility,
         )
         TreatmentPlan.objects.create(
             encounter=enc_other,
@@ -1620,6 +1733,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=22),
             chief_complaint="Other follow-up",
+            facility=sample_facility,
         )
 
         # Our test patient has 0% compliance
@@ -1628,6 +1742,7 @@ class TestTimelineFollowupCompliance:
             encounter_type="OPD",
             encounter_date=date.today() - timedelta(days=30),
             chief_complaint="Test patient",
+            facility=sample_facility,
         )
         TreatmentPlan.objects.create(
             encounter=enc1,

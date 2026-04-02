@@ -315,7 +315,7 @@ class TestFEFODispenser:
         assert "Insufficient stock" in str(excinfo.value)
         assert "Test Drug 6" in str(excinfo.value)
 
-    def test_batch_quantity_reduced_after_dispense(self):
+    def test_batch_quantity_reduced_after_dispense(self, sample_organization):
         """Dispensing should reduce batch quantity."""
         from django.contrib.auth import get_user_model
 
@@ -337,6 +337,7 @@ class TestFEFODispenser:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(

@@ -47,24 +47,22 @@ def test_user(db):
 
 
 @pytest.fixture
-def sample_patient(db, test_user):
+def sample_patient(db, test_user, sample_organization, sample_county, sample_sub_county):
     """Create a sample patient."""
-    county = County.objects.create(code=1, name="Test County")
-    sub_county = SubCounty.objects.create(county=county, name="Test SubCounty")
-
     return Patient.objects.create(
         first_name="Michael",
         last_name="Johnson",
         date_of_birth="1975-08-15",
         gender="M",
-        county=county,
-        sub_county=sub_county,
+        county=sample_county,
+        sub_county=sample_sub_county,
         registered_by=test_user,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_ward(db):
+def sample_ward(db, sample_facility, sample_organization):
     """Create a sample ward."""
     return Ward.objects.create(
         name="Surgical Ward",
@@ -72,6 +70,8 @@ def sample_ward(db):
         ward_type="SURGICAL",
         capacity=15,
         daily_rate=Decimal("600.00"),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -87,13 +87,14 @@ def occupied_bed(db, sample_ward, test_user):
 
 
 @pytest.fixture
-def active_admission(db, sample_patient, sample_ward, occupied_bed, test_user):
+def active_admission(db, sample_patient, sample_ward, occupied_bed, test_user, sample_facility):
     """Create an active admission."""
     ipd_encounter = Encounter.objects.create(
         patient=sample_patient,
         encounter_type="IPD",
         encounter_date=timezone.now().date(),
         chief_complaint="Post-operative care",
+        facility=sample_facility,
     )
 
     admission_date = timezone.now() - timedelta(days=5)
@@ -485,7 +486,7 @@ class TestDischargeQueries:
         expected = f"Discharge: {active_admission.admission_number} - {discharge.discharge_type}"
         assert str(discharge) == expected
 
-    def test_filter_discharges_by_type(self, sample_patient, sample_ward, test_user):
+    def test_filter_discharges_by_type(self, sample_patient, sample_ward, test_user, sample_facility):
         """Should filter discharges by type."""
         # Get available beds from the ward (auto-generated)
         available_beds = list(sample_ward.beds.order_by("bed_number")[:3])
@@ -501,6 +502,7 @@ class TestDischargeQueries:
                 encounter_type="IPD",
                 encounter_date=timezone.now().date(),
                 chief_complaint=f"Case {i+1}",
+                facility=sample_facility,
             )
             admission = Admission.objects.create(
                 patient=sample_patient,

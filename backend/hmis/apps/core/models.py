@@ -2693,7 +2693,7 @@ class Facility(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         """Auto-apply default modules based on KEPH level on creation."""
-        if self._state.adding:
+        if self._state.adding and not getattr(self, "_skip_module_defaults", False):
             module_fields = [
                 "has_outpatient", "has_inpatient", "has_emergency", "has_pharmacy",
                 "has_laboratory", "has_imaging", "has_theatre", "has_dialysis",

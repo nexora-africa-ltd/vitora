@@ -31,7 +31,7 @@ def template_test_user(db):
 
 
 @pytest.fixture
-def template_sample_patient(db):
+def template_sample_patient(db, sample_organization):
     """Create a sample patient for template tests."""
     from hmis.apps.patients.models import Patient
 
@@ -40,11 +40,12 @@ def template_sample_patient(db):
         last_name="Test",
         date_of_birth=date(1985, 3, 20),
         gender="M",
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def template_sample_encounter(db, template_sample_patient):
+def template_sample_encounter(db, template_sample_patient, sample_facility):
     """Create a sample encounter for template tests."""
     from hmis.apps.encounters.models import Encounter
 
@@ -52,6 +53,7 @@ def template_sample_encounter(db, template_sample_patient):
         patient=template_sample_patient,
         encounter_type="OPD",
         chief_complaint="Template test complaint",
+        facility=sample_facility,
     )
 
 

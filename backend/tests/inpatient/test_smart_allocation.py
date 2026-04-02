@@ -35,6 +35,7 @@ from hmis.apps.inpatient.services.bed_smart import (
     SmartBedAllocationService,
     smart_bed_allocation_service,
 )
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -59,14 +60,15 @@ def test_user(db):
 
 
 @pytest.fixture
-def authenticated_client(test_user):
+def authenticated_client(test_user, sample_organization, sample_facility):
     client = APIClient()
+    ensure_staff_profile(test_user, sample_organization, sample_facility)
     client.force_authenticate(user=test_user)
     return client
 
 
 @pytest.fixture
-def general_ward(db):
+def general_ward(db, sample_facility, sample_organization):
     return Ward.objects.create(
         name="Smart General Ward",
         code="SG-01",
@@ -76,11 +78,13 @@ def general_ward(db):
         is_active=True,
         gender_restriction="ANY",
         oxygen_equipped=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def buffered_ward(db):
+def buffered_ward(db, sample_facility, sample_organization):
     """Ward with 20% emergency buffer."""
     return Ward.objects.create(
         name="Buffered Ward",
@@ -90,11 +94,13 @@ def buffered_ward(db):
         daily_rate=Decimal("1500.00"),
         is_active=True,
         emergency_buffer_percent=20,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def isolation_ward(db):
+def isolation_ward(db, sample_facility, sample_organization):
     return Ward.objects.create(
         name="Isolation Ward",
         code="ISO-01",
@@ -103,11 +109,13 @@ def isolation_ward(db):
         daily_rate=Decimal("3000.00"),
         is_active=True,
         isolation_capable=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def female_patient(db, sample_county, sample_sub_county):
+def female_patient(db, sample_county, sample_sub_county, sample_organization):
     from hmis.apps.patients.models import Patient
 
     return Patient.objects.create(
@@ -117,11 +125,12 @@ def female_patient(db, sample_county, sample_sub_county):
         gender="F",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def male_patient(db, sample_county, sample_sub_county):
+def male_patient(db, sample_county, sample_sub_county, sample_organization):
     from hmis.apps.patients.models import Patient
 
     return Patient.objects.create(
@@ -131,15 +140,19 @@ def male_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 def _create_admission(patient, ward, test_user, **kwargs):
     """Helper to create an admission with required linked encounter."""
+    facility = kwargs.pop("facility", ward.facility)
+    organization = kwargs.pop("organization", ward.organization)
     ipd_encounter = Encounter.objects.create(
         patient=patient,
         encounter_type="IPD",
         chief_complaint="Admitted for care",
+        facility=facility,
     )
     bed = (
         kwargs.pop("bed", None)
@@ -157,6 +170,8 @@ def _create_admission(patient, ward, test_user, **kwargs):
         ),
         "admitting_officer": test_user,
         "payer_type": "CASH",
+        "facility": facility,
+        "organization": organization,
     }
     defaults.update(kwargs)
     return Admission.objects.create(**defaults)
@@ -587,7 +602,8 @@ class TestSmartAssignBed:
         assert result.assigned_bed is not None
 
     def test_smart_assign_infection_auto_isolation(
-        self, smart_service, isolation_ward, female_patient, test_user
+        self, smart_service, isolation_ward, female_patient, test_user,
+        sample_organization,
     ):
         # Create an admission and update auto-created kardex
         admission = _create_admission(female_patient, isolation_ward, test_user)
@@ -606,6 +622,7 @@ class TestSmartAssignBed:
             gender="F",
             county=admission.patient.county,
             sub_county=admission.patient.sub_county,
+            organization=sample_organization,
         )
 
         result = smart_service.smart_assign_bed(

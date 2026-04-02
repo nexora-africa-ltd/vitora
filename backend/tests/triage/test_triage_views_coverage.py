@@ -21,7 +21,7 @@ class TestTriageAssessmentViewSetActions:
     """Tests for TriageAssessmentViewSet custom actions."""
 
     @pytest.fixture
-    def triage_assessment(self, sample_encounter, test_user):
+    def triage_assessment(self, sample_encounter, test_user, sample_facility, sample_organization):
         """Create a triage assessment for testing."""
         now = timezone.now()
         return TriageAssessment.objects.create(
@@ -36,6 +36,8 @@ class TestTriageAssessmentViewSetActions:
             arrival_time=now - timedelta(hours=1),
             triage_start_time=now - timedelta(minutes=55),
             triaged_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_calculate_category_endpoint(self, authenticated_client):

@@ -16,6 +16,7 @@ from datetime import date, timedelta
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db
 
@@ -40,15 +41,16 @@ def another_user(db):
 
 
 @pytest.fixture
-def authenticated_client(test_user):
+def authenticated_client(test_user, sample_organization, sample_facility):
     """Provide authenticated API client."""
     client = APIClient()
+    ensure_staff_profile(test_user, sample_organization, sample_facility)
     client.force_authenticate(user=test_user)
     return client
 
 
 @pytest.fixture
-def sample_patient(db):
+def sample_patient(db, sample_organization):
     """Create sample patient."""
     from hmis.apps.patients.models import Patient
 
@@ -57,11 +59,12 @@ def sample_patient(db):
         last_name="Patient",
         date_of_birth=date(1990, 5, 15),
         gender="M",
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_encounter(sample_patient):
+def sample_encounter(sample_patient, sample_facility):
     """Create sample encounter."""
     from hmis.apps.encounters.models import Encounter
 
@@ -69,6 +72,7 @@ def sample_encounter(sample_patient):
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Follow-up visit",
+        facility=sample_facility,
     )
 
 

@@ -26,7 +26,7 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def map_test_patient(db):
+def map_test_patient(db, sample_organization):
     """Create a patient for MAP testing."""
     from hmis.apps.patients.models import Patient
 
@@ -35,6 +35,7 @@ def map_test_patient(db):
         last_name="TestPatient",
         date_of_birth=date.today() - timedelta(days=10950),  # ~30 years old
         gender="M",
+        organization=sample_organization,
     )
 
 
@@ -47,7 +48,7 @@ def map_test_patient(db):
 class TestGetMAPStatusMethod:
     """Test get_map_status() method for MAP status classification."""
 
-    def test_get_map_status_method_exists(self, map_test_patient):
+    def test_get_map_status_method_exists(self, map_test_patient, sample_facility):
         """Test that get_map_status method exists on Encounter."""
         from hmis.apps.encounters.models import Encounter
 
@@ -55,12 +56,13 @@ class TestGetMAPStatusMethod:
             patient=map_test_patient,
             encounter_type="OPD",
             chief_complaint="BP check",
+            facility=sample_facility,
         )
 
         assert hasattr(encounter, "get_map_status")
         assert callable(encounter.get_map_status)
 
-    def test_map_status_normal_range(self, map_test_patient):
+    def test_map_status_normal_range(self, map_test_patient, sample_facility):
         """Test MAP status is 'normal' for 70-100 mmHg range."""
         from hmis.apps.encounters.models import Encounter
 
@@ -70,11 +72,12 @@ class TestGetMAPStatusMethod:
             encounter_type="OPD",
             chief_complaint="Routine BP",
             blood_pressure="120/80",
+            facility=sample_facility,
         )
 
         assert encounter.get_map_status() == "normal"
 
-    def test_map_status_normal_low_boundary(self, map_test_patient):
+    def test_map_status_normal_low_boundary(self, map_test_patient, sample_facility):
         """Test MAP status at lower normal boundary (70 mmHg)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -86,11 +89,12 @@ class TestGetMAPStatusMethod:
             encounter_type="OPD",
             chief_complaint="Low-normal BP",
             blood_pressure="90/60",
+            facility=sample_facility,
         )
 
         assert encounter.get_map_status() == "normal"
 
-    def test_map_status_normal_high_boundary(self, map_test_patient):
+    def test_map_status_normal_high_boundary(self, map_test_patient, sample_facility):
         """Test MAP status at upper normal boundary (100 mmHg)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -101,12 +105,13 @@ class TestGetMAPStatusMethod:
             encounter_type="OPD",
             chief_complaint="High-normal BP",
             blood_pressure="135/82",
+            facility=sample_facility,
         )
 
         status = encounter.get_map_status()
         assert status == "normal"
 
-    def test_map_status_low(self, map_test_patient):
+    def test_map_status_low(self, map_test_patient, sample_facility):
         """Test MAP status is 'warning' when below 70 mmHg (warning_low range)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -117,11 +122,12 @@ class TestGetMAPStatusMethod:
             encounter_type="EMERGENCY",
             chief_complaint="Hypotension",
             blood_pressure="85/55",
+            facility=sample_facility,
         )
 
         assert encounter.get_map_status() == "warning"
 
-    def test_map_status_high(self, map_test_patient):
+    def test_map_status_high(self, map_test_patient, sample_facility):
         """Test MAP status is 'warning' when above 100 mmHg (warning_high range)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -132,11 +138,12 @@ class TestGetMAPStatusMethod:
             encounter_type="EMERGENCY",
             chief_complaint="Hypertensive crisis",
             blood_pressure="145/85",
+            facility=sample_facility,
         )
 
         assert encounter.get_map_status() == "warning"
 
-    def test_map_status_critical_low(self, map_test_patient):
+    def test_map_status_critical_low(self, map_test_patient, sample_facility):
         """Test MAP status is 'critical' when severely low (< 60 mmHg)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -147,11 +154,12 @@ class TestGetMAPStatusMethod:
             encounter_type="EMERGENCY",
             chief_complaint="Severe hypotension / shock",
             blood_pressure="70/50",
+            facility=sample_facility,
         )
 
         assert encounter.get_map_status() == "critical"
 
-    def test_map_status_critical_high(self, map_test_patient):
+    def test_map_status_critical_high(self, map_test_patient, sample_facility):
         """Test MAP status is 'emergency' when severely high (> 130 mmHg)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -162,11 +170,12 @@ class TestGetMAPStatusMethod:
             encounter_type="EMERGENCY",
             chief_complaint="Hypertensive emergency",
             blood_pressure="200/130",
+            facility=sample_facility,
         )
 
         assert encounter.get_map_status() == "emergency"
 
-    def test_map_status_unknown_without_bp(self, map_test_patient):
+    def test_map_status_unknown_without_bp(self, map_test_patient, sample_facility):
         """Test MAP status is None when BP not recorded."""
         from hmis.apps.encounters.models import Encounter
 
@@ -174,11 +183,12 @@ class TestGetMAPStatusMethod:
             patient=map_test_patient,
             encounter_type="OPD",
             chief_complaint="No BP taken",
+            facility=sample_facility,
         )
 
         assert encounter.get_map_status() is None
 
-    def test_map_status_unknown_with_empty_bp(self, map_test_patient):
+    def test_map_status_unknown_with_empty_bp(self, map_test_patient, sample_facility):
         """Test MAP status is None when BP is empty string."""
         from hmis.apps.encounters.models import Encounter
 
@@ -187,6 +197,7 @@ class TestGetMAPStatusMethod:
             encounter_type="OPD",
             chief_complaint="Empty BP",
             blood_pressure="",
+            facility=sample_facility,
         )
 
         assert encounter.get_map_status() is None
@@ -231,7 +242,7 @@ class TestMAPStatusRanges:
 class TestMAPInVitalsSummary:
     """Test MAP inclusion in vitals summary and timeline."""
 
-    def test_map_included_in_all_vital_statuses(self, map_test_patient):
+    def test_map_included_in_all_vital_statuses(self, map_test_patient, sample_facility):
         """Test that get_all_vital_statuses includes MAP."""
         from hmis.apps.encounters.models import Encounter
 
@@ -242,6 +253,7 @@ class TestMAPInVitalsSummary:
             blood_pressure="120/80",
             temperature=37.0,
             pulse=80,
+            facility=sample_facility,
         )
 
         statuses = encounter.get_all_vital_statuses()
@@ -251,7 +263,7 @@ class TestMAPInVitalsSummary:
         assert statuses["map"]["status"] == encounter.get_map_status()
         assert statuses["map"]["unit"] == "mmHg"
 
-    def test_map_null_in_statuses_when_no_bp(self, map_test_patient):
+    def test_map_null_in_statuses_when_no_bp(self, map_test_patient, sample_facility):
         """Test MAP is None in statuses when BP not recorded."""
         from hmis.apps.encounters.models import Encounter
 
@@ -260,6 +272,7 @@ class TestMAPInVitalsSummary:
             encounter_type="OPD",
             chief_complaint="No BP",
             temperature=37.0,
+            facility=sample_facility,
         )
 
         statuses = encounter.get_all_vital_statuses()
@@ -276,7 +289,7 @@ class TestMAPInVitalsSummary:
 class TestMAPCriticalAlerts:
     """Test MAP contribution to critical vitals alerts."""
 
-    def test_critical_map_triggers_has_critical_vitals(self, map_test_patient):
+    def test_critical_map_triggers_has_critical_vitals(self, map_test_patient, sample_facility):
         """Test that critical MAP triggers has_critical_vitals()."""
         from hmis.apps.encounters.models import Encounter
 
@@ -286,11 +299,12 @@ class TestMAPCriticalAlerts:
             encounter_type="EMERGENCY",
             chief_complaint="Shock",
             blood_pressure="70/50",
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
 
-    def test_critical_map_generates_alert(self, map_test_patient):
+    def test_critical_map_generates_alert(self, map_test_patient, sample_facility):
         """Test that critical MAP is included in get_alerts()."""
         from hmis.apps.encounters.models import Encounter
 
@@ -300,6 +314,7 @@ class TestMAPCriticalAlerts:
             encounter_type="EMERGENCY",
             chief_complaint="Hypertensive emergency",
             blood_pressure="200/130",
+            facility=sample_facility,
         )
 
         alerts = encounter.get_alerts()
@@ -317,7 +332,7 @@ class TestMAPCriticalAlerts:
 class TestPediatricMAPStatus:
     """Test MAP status for pediatric patients (different ranges)."""
 
-    def test_pediatric_map_uses_age_appropriate_ranges(self, db):
+    def test_pediatric_map_uses_age_appropriate_ranges(self, db, sample_organization, sample_facility):
         """Test that pediatric patients use age-appropriate MAP ranges."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -328,6 +343,7 @@ class TestPediatricMAPStatus:
             last_name="Test",
             date_of_birth=date.today() - timedelta(days=180),
             gender="F",
+            organization=sample_organization,
         )
 
         # Infant normal MAP is lower (around 45-75 mmHg)
@@ -337,6 +353,7 @@ class TestPediatricMAPStatus:
             encounter_type="OPD",
             chief_complaint="Well baby check",
             blood_pressure="80/50",
+            facility=sample_facility,
         )
 
         # This should be normal for an infant, but would be low for adult
@@ -345,7 +362,7 @@ class TestPediatricMAPStatus:
         # If not implemented, may be 'low' (still valid to test)
         assert status in ("normal", "low", None)
 
-    def test_newborn_map_status(self, db):
+    def test_newborn_map_status(self, db, sample_organization, sample_facility):
         """Test MAP status for newborn with different normal range."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -356,6 +373,7 @@ class TestPediatricMAPStatus:
             last_name="Test",
             date_of_birth=date.today() - timedelta(days=14),
             gender="M",
+            organization=sample_organization,
         )
 
         # Newborn normal MAP is even lower
@@ -365,6 +383,7 @@ class TestPediatricMAPStatus:
             encounter_type="OPD",
             chief_complaint="Newborn check",
             blood_pressure="70/40",
+            facility=sample_facility,
         )
 
         status = encounter.get_map_status()
@@ -381,7 +400,7 @@ class TestPediatricMAPStatus:
 class TestMAPEdgeCases:
     """Test MAP calculation and status edge cases."""
 
-    def test_map_with_wide_pulse_pressure(self, map_test_patient):
+    def test_map_with_wide_pulse_pressure(self, map_test_patient, sample_facility):
         """Test MAP with wide pulse pressure (e.g., 160/50)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -391,13 +410,14 @@ class TestMAPEdgeCases:
             encounter_type="OPD",
             chief_complaint="Wide pulse pressure",
             blood_pressure="160/50",
+            facility=sample_facility,
         )
 
         map_value = encounter.get_map()
         assert map_value is not None
         assert 85 <= map_value <= 90  # Around 87
 
-    def test_map_with_narrow_pulse_pressure(self, map_test_patient):
+    def test_map_with_narrow_pulse_pressure(self, map_test_patient, sample_facility):
         """Test MAP with narrow pulse pressure (e.g., 100/90)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -407,13 +427,14 @@ class TestMAPEdgeCases:
             encounter_type="EMERGENCY",
             chief_complaint="Narrow pulse pressure",
             blood_pressure="100/90",
+            facility=sample_facility,
         )
 
         map_value = encounter.get_map()
         assert map_value is not None
         assert 92 <= map_value <= 94
 
-    def test_map_with_invalid_bp_format(self, map_test_patient):
+    def test_map_with_invalid_bp_format(self, map_test_patient, sample_facility):
         """Test MAP returns None with invalid BP format."""
         from hmis.apps.encounters.models import Encounter
 
@@ -421,6 +442,7 @@ class TestMAPEdgeCases:
             patient=map_test_patient,
             encounter_type="OPD",
             chief_complaint="Invalid BP format",
+            facility=sample_facility,
         )
         # Set invalid BP directly (bypassing validation)
         encounter.blood_pressure = "invalid"

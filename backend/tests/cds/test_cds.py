@@ -142,7 +142,7 @@ def lab_rule(db):
 
 
 @pytest.fixture
-def cds_alert(cds_rule, sample_patient, sample_encounter):
+def cds_alert(cds_rule, sample_patient, sample_encounter, sample_organization, sample_facility):
     """A pending CDS alert."""
     return CDSAlert.objects.create(
         rule=cds_rule,
@@ -153,6 +153,8 @@ def cds_alert(cds_rule, sample_patient, sample_encounter):
         message="Test alert message",
         suggestion="Take action",
         details={"vital": "temperature", "value": 39.0},
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -266,7 +268,7 @@ class TestCDSAlertModel:
         assert cds_alert.status == CDSAlertStatus.AUTO_RESOLVED
         assert cds_alert.is_resolved is True
 
-    def test_is_critical(self, cds_rule, sample_patient, sample_encounter):
+    def test_is_critical(self, cds_rule, sample_patient, sample_encounter, sample_organization, sample_facility):
         """Should correctly identify critical alerts."""
         alert = CDSAlert.objects.create(
             rule=cds_rule,
@@ -274,6 +276,8 @@ class TestCDSAlertModel:
             encounter=sample_encounter,
             priority=CDSRulePriority.CRITICAL,
             message="Critical test",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         assert alert.is_critical is True
 

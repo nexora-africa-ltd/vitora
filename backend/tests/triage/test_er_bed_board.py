@@ -46,13 +46,14 @@ def er_beds(db):
 
 
 @pytest.fixture
-def triage_assessment(db, sample_patient, test_user):
+def triage_assessment(db, sample_patient, test_user, sample_facility):
     """Create a triage assessment for bed assignment tests."""
     encounter = Encounter.objects.create(
         patient=sample_patient,
         encounter_type="EMERGENCY",
         encounter_date=timezone.now().date(),
         chief_complaint="Chest pain",
+        facility=sample_facility,
     )
     return TriageAssessment.objects.create(
         encounter=encounter,
@@ -119,7 +120,7 @@ class TestERBedModel:
         assert er_bed.current_triage_assessment == triage_assessment
         assert er_bed.triage_category == "RED"
 
-    def test_assign_patient_to_occupied_bed_fails(self, er_bed, sample_patient, test_user):
+    def test_assign_patient_to_occupied_bed_fails(self, er_bed, sample_patient, test_user, sample_organization):
         """Should raise ValueError when bed is not available."""
         er_bed.assign_patient(patient=sample_patient, user=test_user)
 
@@ -135,6 +136,7 @@ class TestERBedModel:
             gender="F",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         with pytest.raises(ValueError, match="must be AVAILABLE"):
@@ -530,7 +532,7 @@ class TestERBedAutoRelease:
     """Tests for automatic ER bed release when encounters are closed/cancelled."""
 
     @pytest.fixture
-    def occupied_bed_with_encounter(self, db, sample_patient, test_user):
+    def occupied_bed_with_encounter(self, db, sample_patient, test_user, sample_facility):
         """Create an occupied bed linked to a patient with an active encounter."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -538,6 +540,7 @@ class TestERBedAutoRelease:
             encounter_date=timezone.now().date(),
             chief_complaint="Trauma",
             status="IN_PROGRESS",
+            facility=sample_facility,
         )
         bed = ERBed.objects.create(
             zone="ER_RESUS",
@@ -581,7 +584,7 @@ class TestERBedAutoRelease:
         assert bed.status == "OCCUPIED"
         assert bed.current_patient is not None
 
-    def test_no_release_when_no_occupied_bed(self, db, sample_patient, test_user):
+    def test_no_release_when_no_occupied_bed(self, db, sample_patient, test_user, sample_facility):
         """Should gracefully do nothing if patient has no occupied ER bed."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -589,6 +592,7 @@ class TestERBedAutoRelease:
             encounter_date=timezone.now().date(),
             chief_complaint="Minor injury",
             status="IN_PROGRESS",
+            facility=sample_facility,
         )
 
         # Close without any bed — should not raise

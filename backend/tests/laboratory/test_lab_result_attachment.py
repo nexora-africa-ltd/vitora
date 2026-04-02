@@ -52,7 +52,7 @@ def sample_sub_county(sample_county):
 
 
 @pytest.fixture
-def sample_patient(sample_county, sample_sub_county):
+def sample_patient(sample_county, sample_sub_county, sample_organization):
     """Create a sample patient."""
     return Patient.objects.create(
         first_name="John",
@@ -61,28 +61,32 @@ def sample_patient(sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_encounter(sample_patient):
+def sample_encounter(sample_patient, sample_facility):
     """Create a sample encounter."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Lab test required",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def sample_lab_order(sample_encounter, test_user):
+def sample_lab_order(sample_encounter, test_user, sample_organization, sample_facility):
     """Create a sample lab order."""
     return LabOrder.objects.create(
         encounter=sample_encounter,
         patient=sample_encounter.patient,
         ordered_by=test_user,
         priority="ROUTINE",
-        order_type="EXTERNAL",  # External lab needs attachments
+        order_type="EXTERNAL",  # External lab needs attachments,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

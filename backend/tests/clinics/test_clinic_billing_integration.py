@@ -14,6 +14,7 @@ from rest_framework.test import APIClient
 from hmis.apps.billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
 from hmis.apps.patients.models import Patient
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -29,19 +30,16 @@ def test_user(db):
 
 
 @pytest.fixture
-def sample_patient(db):
+def sample_patient(db, sample_organization, sample_county, sample_sub_county):
     """Create a sample patient."""
-    from hmis.apps.core.models import County, SubCounty
-
-    county, _ = County.objects.get_or_create(code=1, defaults={"name": "Nairobi"})
-    sub_county, _ = SubCounty.objects.get_or_create(name="Westlands", defaults={"county": county})
     return Patient.objects.create(
         first_name="John",
         last_name="Smith",
         date_of_birth="1985-05-20",
         gender="M",
-        county=county,
-        sub_county=sub_county,
+        county=sample_county,
+        sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -68,7 +66,7 @@ def consultation_service(db, test_user):
 
 
 @pytest.fixture
-def sample_clinic(db):
+def sample_clinic(db, sample_facility, sample_organization):
     """Create a sample clinic with consultation fee."""
     return Clinic.objects.create(
         name="General OPD",
@@ -78,11 +76,13 @@ def sample_clinic(db):
         location="Ground Floor",
         default_service_fee=Decimal("500.00"),
         sha_service_code="CONS-OPD",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_clinic_visit(db, sample_patient, sample_clinic):
+def sample_clinic_visit(db, sample_patient, sample_clinic, sample_facility, sample_organization):
     """Create a sample clinic visit in WAITING status."""
     from datetime import date
 
@@ -96,6 +96,8 @@ def sample_clinic_visit(db, sample_patient, sample_clinic):
         patient=sample_patient,
         status="WAITING",
         chief_complaint="General checkup",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -207,7 +209,8 @@ class TestBillingWithEncounter:
         assert invoice.encounter == encounter
 
     def test_billing_uses_existing_encounter_invoice(
-        self, sample_clinic_visit, consultation_service, test_user
+        self, sample_clinic_visit, consultation_service, test_user,
+        sample_facility,
     ):
         """Should use existing encounter invoice if present."""
         from hmis.apps.encounters.models import Encounter
@@ -217,6 +220,7 @@ class TestBillingWithEncounter:
             patient=sample_clinic_visit.patient,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         # Get the signal-created invoice
@@ -331,8 +335,9 @@ class TestInvoiceAPIClinicFilters:
     """RED: Invoice list API should support filtering by clinic and clinic_type."""
 
     @pytest.fixture
-    def authenticated_client(self, test_user):
+    def authenticated_client(self, test_user, sample_organization, sample_facility):
         client = APIClient()
+        ensure_staff_profile(test_user, sample_organization, sample_facility)
         client.force_authenticate(user=test_user)
         return client
 

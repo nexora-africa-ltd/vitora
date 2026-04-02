@@ -28,6 +28,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -82,21 +83,23 @@ def clinic_nurse_user(db):
 
 
 @pytest.fixture
-def authenticated_client(api_client, clinic_doctor_user):
+def authenticated_client(api_client, clinic_doctor_user, sample_organization, sample_facility):
     """Return an authenticated API client."""
+    ensure_staff_profile(clinic_doctor_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=clinic_doctor_user)
     return api_client
 
 
 @pytest.fixture
-def admin_client(api_client, clinic_admin_user):
+def admin_client(api_client, clinic_admin_user, sample_organization, sample_facility):
     """Return an admin authenticated API client."""
+    ensure_staff_profile(clinic_admin_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=clinic_admin_user)
     return api_client
 
 
 @pytest.fixture
-def sample_clinic(db):
+def sample_clinic(db, sample_facility, sample_organization):
     """Create a sample clinic for testing."""
     from hmis.apps.clinics.models import Clinic
 
@@ -108,11 +111,13 @@ def sample_clinic(db):
         location="Block A, Room 1",
         capacity=3,
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def eye_clinic(db):
+def eye_clinic(db, sample_facility, sample_organization):
     """Create an eye clinic for testing."""
     from hmis.apps.clinics.models import Clinic
 
@@ -124,11 +129,13 @@ def eye_clinic(db):
         location="Block B, Room 5",
         capacity=2,
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def ccc_clinic(db):
+def ccc_clinic(db, sample_facility, sample_organization):
     """Create a CCC (HIV) clinic for sensitive access tests."""
     from hmis.apps.clinics.models import Clinic
 
@@ -140,11 +147,13 @@ def ccc_clinic(db):
         location="Block C, Room 10",
         is_sensitive=True,
         required_permission="clinics.view_ccc_clinic",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_clinic_session(db, sample_clinic, clinic_doctor_user):
+def sample_clinic_session(db, sample_clinic, clinic_doctor_user, sample_facility, sample_organization):
     """Create a sample clinic session for testing."""
     from hmis.apps.clinics.models import ClinicSession
 
@@ -154,11 +163,13 @@ def sample_clinic_session(db, sample_clinic, clinic_doctor_user):
         status="OPEN",
         opened_at=timezone.now(),
         opened_by=clinic_doctor_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_clinic_visit(db, sample_clinic_session, sample_patient, clinic_doctor_user):
+def sample_clinic_visit(db, sample_clinic_session, sample_patient, clinic_doctor_user, sample_facility, sample_organization):
     """Create a sample clinic visit for testing."""
     from hmis.apps.clinics.models import ClinicVisit
 
@@ -171,6 +182,8 @@ def sample_clinic_visit(db, sample_clinic_session, sample_patient, clinic_doctor
         source="TRIAGE",
         chief_complaint="Headache for 2 days",
         registered_by=clinic_doctor_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -475,6 +488,7 @@ class TestClinicQueueEndpoints:
         sample_patient,
         clinic_doctor_user,
         db,
+        sample_organization,
     ):
         """Queue is ordered by priority (emergency first)."""
         from hmis.apps.clinics.models import ClinicVisit
@@ -494,6 +508,7 @@ class TestClinicQueueEndpoints:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         # Create standard visit first

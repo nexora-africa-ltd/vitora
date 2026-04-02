@@ -55,7 +55,7 @@ def sha_member(db, sample_patient, test_user):
 
 
 @pytest.fixture
-def sha_patient_needs_check(db, test_user, sample_county, sample_sub_county):
+def sha_patient_needs_check(db, test_user, sample_county, sample_sub_county, sample_organization):
     """Create a separate patient for needs_check tests."""
     from hmis.apps.patients.models import Patient
 
@@ -66,6 +66,7 @@ def sha_patient_needs_check(db, test_user, sample_county, sample_sub_county):
         gender="F",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -86,7 +87,7 @@ def sha_member_needs_check(db, sha_patient_needs_check, test_user):
 
 
 @pytest.fixture
-def sha_patient_recent_check(db, test_user, sample_county, sample_sub_county):
+def sha_patient_recent_check(db, test_user, sample_county, sample_sub_county, sample_organization):
     """Create a separate patient for recent_check tests."""
     from hmis.apps.patients.models import Patient
 
@@ -97,6 +98,7 @@ def sha_patient_recent_check(db, test_user, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 

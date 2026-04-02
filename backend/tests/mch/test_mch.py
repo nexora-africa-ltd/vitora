@@ -15,7 +15,7 @@ User = get_user_model()
 
 
 @pytest.fixture
-def anc_clinic(db):
+def anc_clinic(db, sample_facility, sample_organization):
     """Create a sample ANC clinic."""
     from hmis.apps.clinics.models import Clinic
 
@@ -24,11 +24,13 @@ def anc_clinic(db):
         clinic_type="ANC",
         code="ANC-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def anc_enrollment(db, anc_clinic, sample_patient, test_user):
+def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, sample_organization):
     """Create a sample ANC clinic enrollment."""
     from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -112,7 +114,7 @@ class TestDelivery:
 class TestGrowthMeasurement:
     """Tests for growth measurement model."""
 
-    def test_growth_measurement_calculates_age_in_days(self, sample_county, sample_sub_county):
+    def test_growth_measurement_calculates_age_in_days(self, sample_county, sample_sub_county, sample_organization):
         """Should auto-calculate age in days from patient DOB."""
         from hmis.apps.mch.models import GrowthMeasurement
         from hmis.apps.patients.models import Patient
@@ -124,6 +126,7 @@ class TestGrowthMeasurement:
             gender="F",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         measurement = GrowthMeasurement.objects.create(
@@ -136,7 +139,7 @@ class TestGrowthMeasurement:
 
         assert measurement.age_in_days == 31
 
-    def test_muac_classification_sam(self, sample_county, sample_sub_county):
+    def test_muac_classification_sam(self, sample_county, sample_sub_county, sample_organization):
         """Should classify MUAC < 11.5 cm as SAM for 6-59 months."""
         from hmis.apps.mch.models import GrowthMeasurement
         from hmis.apps.patients.models import Patient
@@ -148,6 +151,7 @@ class TestGrowthMeasurement:
             gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         measurement = GrowthMeasurement.objects.create(
@@ -276,7 +280,7 @@ class TestANCVisit:
 class TestImmunizationSchedule:
     """Tests for immunization schedule generation."""
 
-    def test_generate_schedule_creates_records(self, sample_county, sample_sub_county):
+    def test_generate_schedule_creates_records(self, sample_county, sample_sub_county, sample_organization):
         """Should create scheduled immunization records based on KEPI data."""
         from hmis.apps.mch.models import ImmunizationRecord, Vaccine
         from hmis.apps.mch.services.immunization import generate_immunization_schedule
@@ -289,6 +293,7 @@ class TestImmunizationSchedule:
             gender="F",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         Vaccine.objects.create(
@@ -313,7 +318,7 @@ class TestImmunizationSchedule:
 class TestHEIFollowUp:
     """Tests for HIV-exposed infant follow-up."""
 
-    def test_create_hei_followup(self, sample_county, sample_sub_county, sample_patient, anc_enrollment):
+    def test_create_hei_followup(self, sample_county, sample_sub_county, sample_patient, anc_enrollment, sample_organization):
         """Should allow creating HEI follow-up for an infant."""
         from hmis.apps.mch.models import HEIFollowUp
         from hmis.apps.mch.models import MCHRegistration
@@ -326,6 +331,7 @@ class TestHEIFollowUp:
             gender="F",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         registration = MCHRegistration.objects.create(

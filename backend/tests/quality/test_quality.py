@@ -54,24 +54,28 @@ from hmis.apps.quality.tasks import (
 
 
 @pytest.fixture
-def sample_clinic(db):
+def sample_clinic(db, sample_facility, sample_organization):
     """Create a sample clinic for report tests."""
     return Clinic.objects.create(
         name="General OPD",
         clinic_type="GENERAL_OPD",
         code="GEN001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def second_clinic(db):
+def second_clinic(db, sample_facility, sample_organization):
     """Create a second clinic for multi-clinic tests."""
     return Clinic.objects.create(
         name="CCC Clinic",
         clinic_type="CCC",
         code="CCC001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

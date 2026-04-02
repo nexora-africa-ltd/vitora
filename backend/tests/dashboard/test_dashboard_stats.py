@@ -121,7 +121,8 @@ class TestDashboardStatsPatientCounts:
     """Test that patient counts are accurate."""
 
     def test_total_patients_count(
-        self, authenticated_client, sample_patient, sample_county, sample_sub_county
+        self, authenticated_client, sample_patient, sample_county, sample_sub_county,
+        sample_organization, sample_facility,
     ):
         """Total patients should reflect actual database count."""
         from django.core.cache import cache
@@ -140,17 +141,20 @@ class TestDashboardStatsPatientCounts:
             county=sample_county,
             sub_county=sample_sub_county,
             registered_by=sample_patient.registered_by,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
         )
 
         response = authenticated_client.get(DASHBOARD_STATS_URL)
         assert response.status_code == status.HTTP_200_OK
 
-        # Should count all patients (sample_patient + 1 we just created)
-        actual_count = Patient.objects.count()
+        # Should count patients in this facility (sample_patient + 1 we just created)
+        actual_count = Patient.objects.filter(registered_at_facility=sample_facility).count()
         assert response.data["patients"]["total"] == actual_count
 
     def test_today_patients_count(
-        self, authenticated_client, sample_county, sample_sub_county, test_user
+        self, authenticated_client, sample_county, sample_sub_county, test_user,
+        sample_organization, sample_facility,
     ):
         """Today's patients should only count patients created today."""
         from django.core.cache import cache
@@ -169,6 +173,8 @@ class TestDashboardStatsPatientCounts:
             county=sample_county,
             sub_county=sample_sub_county,
             registered_by=test_user,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
         )
 
         # Use refresh=true to bypass cache

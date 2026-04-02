@@ -146,7 +146,8 @@ class TestTemplateAutoPopulation:
         assert populated.get("temperature") is not None
 
     def test_populate_handles_null_values(
-        self, sample_patient, sample_template_with_vitals, test_user
+        self, sample_patient, sample_template_with_vitals, test_user,
+        sample_facility,
     ):
         """Should handle encounters with null vitals gracefully."""
         # Create encounter without vitals
@@ -154,6 +155,7 @@ class TestTemplateAutoPopulation:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         synchronizer = TemplateDataSynchronizer()

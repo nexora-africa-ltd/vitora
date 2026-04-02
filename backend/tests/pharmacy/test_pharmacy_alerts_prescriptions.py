@@ -432,7 +432,7 @@ class TestStockAlertModel:
 class TestPrescriptionModel:
     """Tests for Prescription model."""
 
-    def test_prescription_number_auto_generated(self):
+    def test_prescription_number_auto_generated(self, sample_organization, sample_facility):
         """Prescription number should be auto-generated with format RX-YYYYMMDD-XXXX."""
         from django.contrib.auth import get_user_model
 
@@ -454,12 +454,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -489,7 +491,7 @@ class TestPrescriptionModel:
         num2 = int(prescription2.prescription_number.split("-")[-1])
         assert num2 == num1 + 1
 
-    def test_prescription_creation_linked_to_encounter(self):
+    def test_prescription_creation_linked_to_encounter(self, sample_organization, sample_facility):
         """Prescription can be created and linked to encounter."""
         from django.contrib.auth import get_user_model
 
@@ -501,7 +503,7 @@ class TestPrescriptionModel:
         User = get_user_model()
         user = User.objects.create_user(username="prescriber1", password="test123")
 
-        county = County.objects.create(code=1, name="Test County")
+        county = County.objects.create(code=101, name="Test County")
         sub_county = SubCounty.objects.create(county=county, name="Test SubCounty")
 
         patient = Patient.objects.create(
@@ -511,12 +513,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -533,7 +537,7 @@ class TestPrescriptionModel:
         assert prescription.prescribed_by == user
         assert prescription.status == "PENDING"
 
-    def test_prescription_creation_linked_to_patient(self):
+    def test_prescription_creation_linked_to_patient(self, sample_organization, sample_facility):
         """Prescription must be linked to patient."""
         from django.contrib.auth import get_user_model
 
@@ -555,12 +559,14 @@ class TestPrescriptionModel:
             gender="F",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -574,7 +580,7 @@ class TestPrescriptionModel:
         assert patient.prescriptions.count() == 1
         assert patient.prescriptions.first() == prescription
 
-    def test_prescriber_must_be_authenticated_user(self):
+    def test_prescriber_must_be_authenticated_user(self, sample_organization, sample_facility):
         """Prescriber must be an authenticated user."""
         from django.contrib.auth import get_user_model
 
@@ -596,12 +602,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -614,7 +622,7 @@ class TestPrescriptionModel:
         assert prescription.prescribed_by == user
         assert prescription.prescribed_by.username == "prescriber3"
 
-    def test_valid_until_date_validation(self):
+    def test_valid_until_date_validation(self, sample_organization, sample_facility):
         """Prescription should have a valid_until date."""
         from django.contrib.auth import get_user_model
 
@@ -636,12 +644,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         # Valid date 30 days in future
@@ -656,7 +666,7 @@ class TestPrescriptionModel:
         assert prescription.valid_until == valid_date
         assert prescription.valid_until > date.today()
 
-    def test_prescription_item_creation(self):
+    def test_prescription_item_creation(self, sample_organization, sample_facility):
         """Prescription item can be created with drug linkage."""
         from django.contrib.auth import get_user_model
 
@@ -678,12 +688,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -719,7 +731,7 @@ class TestPrescriptionModel:
         assert item.quantity == 30
         assert item.quantity_dispensed == 0
 
-    def test_quantity_and_dosage_required(self):
+    def test_quantity_and_dosage_required(self, sample_organization, sample_facility):
         """Prescription item requires quantity and dosage."""
         from django.contrib.auth import get_user_model
 
@@ -741,12 +753,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -779,7 +793,7 @@ class TestPrescriptionModel:
         assert item.frequency == "2 times daily"
         assert item.duration == "5 days"
 
-    def test_dispensed_quantity_tracking(self):
+    def test_dispensed_quantity_tracking(self, sample_organization, sample_facility):
         """Prescription item tracks dispensed quantity."""
         from django.contrib.auth import get_user_model
 
@@ -801,12 +815,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -839,7 +855,7 @@ class TestPrescriptionModel:
         remaining = item.quantity - item.quantity_dispensed
         assert remaining == 15
 
-    def test_prescription_is_valid_check(self):
+    def test_prescription_is_valid_check(self, sample_organization, sample_facility):
         """Prescription is_valid method checks if not expired."""
         from django.contrib.auth import get_user_model
 
@@ -861,12 +877,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         # Valid prescription
@@ -879,7 +897,7 @@ class TestPrescriptionModel:
 
         assert valid_prescription.is_valid() is True
 
-    def test_prescription_expiry(self):
+    def test_prescription_expiry(self, sample_organization, sample_facility):
         """Prescription is_valid returns False if expired."""
         from django.contrib.auth import get_user_model
 
@@ -901,12 +919,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         # Expired prescription
@@ -920,7 +940,7 @@ class TestPrescriptionModel:
 
         assert expired_prescription.is_valid() is False
 
-    def test_partial_dispensing_status(self):
+    def test_partial_dispensing_status(self, sample_organization, sample_facility):
         """Prescription status updates to PARTIAL when some items dispensed."""
         from django.contrib.auth import get_user_model
 
@@ -942,12 +962,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -980,7 +1002,7 @@ class TestPrescriptionModel:
 
         assert prescription.status == "PARTIAL"
 
-    def test_full_dispensing_status(self):
+    def test_full_dispensing_status(self, sample_organization, sample_facility):
         """Prescription status updates to DISPENSED when all items dispensed."""
         from django.contrib.auth import get_user_model
 
@@ -1002,12 +1024,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -1040,7 +1064,7 @@ class TestPrescriptionModel:
 
         assert prescription.status == "DISPENSED"
 
-    def test_cancellation_with_reason(self):
+    def test_cancellation_with_reason(self, sample_organization, sample_facility):
         """Prescription can be cancelled with reason."""
         from django.contrib.auth import get_user_model
 
@@ -1062,12 +1086,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -1101,7 +1127,7 @@ class TestPrescriptionModel:
         assert item.is_cancelled is True
         assert item.cancellation_reason == "Patient allergy discovered"
 
-    def test_status_auto_update(self):
+    def test_status_auto_update(self, sample_organization, sample_facility):
         """Prescription status auto-updates based on items."""
         from django.contrib.auth import get_user_model
 
@@ -1123,12 +1149,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -1163,7 +1191,7 @@ class TestPrescriptionModel:
         prescription.update_status()
         assert prescription.status == "PENDING"
 
-    def test_substitution_flag(self):
+    def test_substitution_flag(self, sample_organization, sample_facility):
         """Prescription item can allow or disallow generic substitution."""
         from django.contrib.auth import get_user_model
 
@@ -1185,12 +1213,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -1235,7 +1265,7 @@ class TestPrescriptionModel:
 
         assert item2.is_substitutable is False
 
-    def test_clinical_notes_for_pharmacist(self):
+    def test_clinical_notes_for_pharmacist(self, sample_organization, sample_facility):
         """Prescription can include clinical notes for pharmacist."""
         from django.contrib.auth import get_user_model
 
@@ -1257,12 +1287,14 @@ class TestPrescriptionModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         notes = "Patient has history of penicillin allergy. Please counsel on side effects."

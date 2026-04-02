@@ -31,6 +31,7 @@ from hmis.apps.inpatient.models import (
     Ward,
 )
 from hmis.apps.patients.models import Patient
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -51,7 +52,7 @@ def discharge_user(db):
 
 
 @pytest.fixture
-def discharge_patient(db, discharge_user, sample_county, sample_sub_county):
+def discharge_patient(db, discharge_user, sample_county, sample_sub_county, sample_organization):
     """Create patient for discharge clearance tests."""
     return Patient.objects.create(
         first_name="Clearance",
@@ -61,11 +62,12 @@ def discharge_patient(db, discharge_user, sample_county, sample_sub_county):
         county=sample_county,
         sub_county=sample_sub_county,
         registered_by=discharge_user,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def discharge_ward(db):
+def discharge_ward(db, sample_facility, sample_organization):
     """Create a ward for discharge tests."""
     return Ward.objects.create(
         name="Clearance Test Ward",
@@ -73,6 +75,8 @@ def discharge_ward(db):
         ward_type="MEDICAL",
         capacity=10,
         daily_rate=Decimal("500.00"),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -88,13 +92,15 @@ def discharge_bed(db, discharge_ward, discharge_user):
 
 
 @pytest.fixture
-def clearance_admission(db, discharge_patient, discharge_ward, discharge_bed, discharge_user):
+def clearance_admission(db, discharge_patient, discharge_ward, discharge_bed, discharge_user, sample_facility, sample_organization):
     """Create an active admission with IPD encounter for clearance tests."""
     ipd_encounter = Encounter.objects.create(
         patient=discharge_patient,
         encounter_type="IPD",
         encounter_date=timezone.now().date(),
         chief_complaint="Admitted for treatment",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
     return Admission.objects.create(
@@ -107,15 +113,18 @@ def clearance_admission(db, discharge_patient, discharge_ward, discharge_bed, di
         ward=discharge_ward,
         bed=discharge_bed,
         payer_type="CASH",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def clearance_client(db, discharge_user):
+def clearance_client(db, discharge_user, sample_organization, sample_facility):
     """Authenticated client for clearance tests."""
     from rest_framework.test import APIClient
 
     client = APIClient()
+    ensure_staff_profile(discharge_user, sample_organization, sample_facility)
     client.force_authenticate(user=discharge_user)
     return client
 
@@ -242,7 +251,9 @@ class TestClearanceStatusEndpoint:
         assert response.data["pharmacy"]["cleared"] is True
 
     def test_lab_not_cleared_with_pending_orders(
-        self, clearance_client, clearance_admission, discharge_user
+        self, clearance_client, clearance_admission, discharge_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should report lab not cleared when lab orders are pending."""
         from hmis.apps.laboratory.models import LabOrder
@@ -253,6 +264,8 @@ class TestClearanceStatusEndpoint:
             admission=clearance_admission,
             ordered_by=discharge_user,
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         url = f"/api/inpatient/admissions/{clearance_admission.id}/clearance-status/"
@@ -264,7 +277,9 @@ class TestClearanceStatusEndpoint:
         assert response.data["all_cleared"] is False
 
     def test_lab_cleared_when_all_completed(
-        self, clearance_client, clearance_admission, discharge_user
+        self, clearance_client, clearance_admission, discharge_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should report lab cleared when all lab orders are completed."""
         from hmis.apps.laboratory.models import LabOrder
@@ -275,6 +290,8 @@ class TestClearanceStatusEndpoint:
             admission=clearance_admission,
             ordered_by=discharge_user,
             status="COMPLETED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         url = f"/api/inpatient/admissions/{clearance_admission.id}/clearance-status/"
@@ -332,7 +349,9 @@ class TestClearanceStatusEndpoint:
         assert response.data["nursing"]["cleared"] is True
 
     def test_mixed_clearance_status(
-        self, clearance_client, clearance_admission, discharge_user
+        self, clearance_client, clearance_admission, discharge_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should correctly report mixed statuses across departments."""
         from hmis.apps.laboratory.models import LabOrder
@@ -355,6 +374,8 @@ class TestClearanceStatusEndpoint:
             admission=clearance_admission,
             ordered_by=discharge_user,
             status="IN_PROGRESS",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         url = f"/api/inpatient/admissions/{clearance_admission.id}/clearance-status/"
@@ -439,7 +460,9 @@ class TestDischargeAutomatedClearance:
         assert "pharmacy_cleared" in response.data
 
     def test_discharge_blocked_by_pending_lab_order(
-        self, clearance_client, clearance_admission, discharge_user
+        self, clearance_client, clearance_admission, discharge_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should reject normal discharge when lab results pending."""
         from hmis.apps.laboratory.models import LabOrder
@@ -450,6 +473,8 @@ class TestDischargeAutomatedClearance:
             admission=clearance_admission,
             ordered_by=discharge_user,
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = clearance_client.post("/api/inpatient/discharges/", {

@@ -94,7 +94,7 @@ def claims_tariff(db, claims_service):
 
 
 @pytest.fixture
-def claims_patient(db, sample_county, sample_sub_county):
+def claims_patient(db, sample_county, sample_sub_county, sample_organization):
     """Create a patient for claims tests."""
     from hmis.apps.patients.models import Patient
 
@@ -105,6 +105,7 @@ def claims_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -125,7 +126,7 @@ def claims_sha_member(db, claims_patient, test_user):
 
 
 @pytest.fixture
-def claims_patient_no_sha(db, sample_county, sample_sub_county):
+def claims_patient_no_sha(db, sample_county, sample_sub_county, sample_organization):
     """Create a patient without SHA membership for error tests."""
     from hmis.apps.patients.models import Patient
 
@@ -136,6 +137,7 @@ def claims_patient_no_sha(db, sample_county, sample_sub_county):
         gender="F",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -153,7 +155,7 @@ def claims_icd10_code(db):
 
 
 @pytest.fixture
-def claims_encounter_opd(db, claims_patient, claims_icd10_code, test_user):
+def claims_encounter_opd(db, claims_patient, claims_icd10_code, test_user, sample_facility):
     """Create an OPD encounter for claims tests with diagnosis."""
     from hmis.apps.encounters.models import Diagnosis, Encounter
 
@@ -162,6 +164,7 @@ def claims_encounter_opd(db, claims_patient, claims_icd10_code, test_user):
         encounter_type="OPD",
         encounter_date=date.today(),
         chief_complaint="General checkup",
+        facility=sample_facility,
     )
     # Add primary diagnosis
     Diagnosis.objects.create(
@@ -174,7 +177,7 @@ def claims_encounter_opd(db, claims_patient, claims_icd10_code, test_user):
 
 
 @pytest.fixture
-def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user):
+def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user, sample_facility):
     """Create an IPD encounter for claims tests with diagnosis."""
     from hmis.apps.encounters.models import Diagnosis, Encounter
 
@@ -183,6 +186,7 @@ def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user):
         encounter_type="IPD",
         encounter_date=date.today(),
         chief_complaint="Admitted for observation",
+        facility=sample_facility,
     )
     # Set admission_date for IPD claims
     encounter.admission_date = date.today()
@@ -198,7 +202,7 @@ def claims_encounter_ipd(db, claims_patient, claims_icd10_code, test_user):
 
 
 @pytest.fixture
-def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user):
+def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user, sample_facility):
     """Create an EMERGENCY encounter for claims tests with diagnosis."""
     from hmis.apps.encounters.models import Diagnosis, Encounter
 
@@ -207,6 +211,7 @@ def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user)
         encounter_type="EMERGENCY",
         encounter_date=date.today(),
         chief_complaint="Emergency care needed",
+        facility=sample_facility,
     )
     # Add primary diagnosis
     Diagnosis.objects.create(
@@ -219,7 +224,7 @@ def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user)
 
 
 @pytest.fixture
-def claims_encounter_no_sha(db, claims_patient_no_sha, claims_icd10_code, test_user):
+def claims_encounter_no_sha(db, claims_patient_no_sha, claims_icd10_code, test_user, sample_facility):
     """Create an encounter for patient without SHA."""
     from hmis.apps.encounters.models import Diagnosis, Encounter
 
@@ -228,6 +233,7 @@ def claims_encounter_no_sha(db, claims_patient_no_sha, claims_icd10_code, test_u
         encounter_type="OPD",
         encounter_date=date.today(),
         chief_complaint="Regular visit",
+        facility=sample_facility,
     )
     # Add primary diagnosis
     Diagnosis.objects.create(
@@ -240,7 +246,7 @@ def claims_encounter_no_sha(db, claims_patient_no_sha, claims_icd10_code, test_u
 
 
 @pytest.fixture
-def claims_invoice(db, claims_patient, claims_encounter_opd, test_user):
+def claims_invoice(db, claims_patient, claims_encounter_opd, test_user, sample_facility, sample_organization):
     """Create an invoice for claims tests."""
     return Invoice.objects.create(
         patient=claims_patient,
@@ -250,6 +256,8 @@ def claims_invoice(db, claims_patient, claims_encounter_opd, test_user):
         status=Invoice.Status.PENDING,
         payment_type=Invoice.PaymentType.INSURANCE,
         created_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -326,7 +334,7 @@ def valid_claim(
 
 
 @pytest.fixture
-def clinic_visit_for_sha_claim_context(db, claims_patient, test_user):
+def clinic_visit_for_sha_claim_context(db, claims_patient, test_user, sample_facility, sample_organization):
     """Create a clinic visit to attach to an encounter for clinic-context tests."""
 
     from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
@@ -336,6 +344,8 @@ def clinic_visit_for_sha_claim_context(db, claims_patient, test_user):
         clinic_type="EYE",
         code="EYE-CLINIC",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     session = ClinicSession.objects.create(
         clinic=clinic,
@@ -343,6 +353,8 @@ def clinic_visit_for_sha_claim_context(db, claims_patient, test_user):
         status="OPEN",
         opened_at=timezone.now(),
         opened_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     visit = ClinicVisit.objects.create(
         session=session,
@@ -353,6 +365,8 @@ def clinic_visit_for_sha_claim_context(db, claims_patient, test_user):
         source="DIRECT",
         chief_complaint="Eye pain",
         registered_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     return visit
 

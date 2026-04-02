@@ -28,7 +28,7 @@ User = get_user_model()
 
 
 @pytest.fixture
-def anc_clinic(db):
+def anc_clinic(db, sample_facility, sample_organization):
     """Create a sample ANC clinic."""
     from hmis.apps.clinics.models import Clinic
 
@@ -37,11 +37,13 @@ def anc_clinic(db):
         clinic_type="ANC",
         code="ANC-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def ccc_clinic(db):
+def ccc_clinic(db, sample_facility, sample_organization):
     """Create a sample CCC clinic."""
     from hmis.apps.clinics.models import Clinic
 
@@ -50,11 +52,13 @@ def ccc_clinic(db):
         clinic_type="CCC",
         code="CCC-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def anc_enrollment(db, anc_clinic, sample_patient, test_user):
+def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, sample_organization):
     """Create a sample ANC clinic enrollment."""
     from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -70,7 +74,7 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user):
 
 
 @pytest.fixture
-def mch_registration(db, sample_patient, anc_enrollment):
+def mch_registration(db, sample_patient, anc_enrollment, sample_facility, sample_organization):
     """Create a sample MCH registration."""
     from hmis.apps.mch.models import MCHRegistration
 
@@ -79,11 +83,13 @@ def mch_registration(db, sample_patient, anc_enrollment):
         anc_enrollment=anc_enrollment,
         registration_date=date.today(),
         linda_jamii_beneficiary=False,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def mch_registration_linda_jamii(db, sample_patient, anc_enrollment):
+def mch_registration_linda_jamii(db, sample_patient, anc_enrollment, sample_facility, sample_organization):
     """Create a Linda Jamii MCH registration."""
     from hmis.apps.mch.models import MCHRegistration
 
@@ -92,11 +98,13 @@ def mch_registration_linda_jamii(db, sample_patient, anc_enrollment):
         anc_enrollment=anc_enrollment,
         registration_date=date.today(),
         linda_jamii_beneficiary=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def infant_patient(db, sample_county, sample_sub_county):
+def infant_patient(db, sample_county, sample_sub_county, sample_organization):
     """Create a sample infant patient."""
     from hmis.apps.patients.models import Patient
 
@@ -107,11 +115,12 @@ def infant_patient(db, sample_county, sample_sub_county):
         gender="F",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def child_patient(db, sample_county, sample_sub_county):
+def child_patient(db, sample_county, sample_sub_county, sample_organization):
     """Create a child patient under 5 years."""
     from hmis.apps.patients.models import Patient
 
@@ -122,6 +131,7 @@ def child_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -389,7 +399,8 @@ class TestMCHSignals:
     """Tests for MCH signal handlers."""
 
     def test_auto_generate_immunization_schedule_for_newborn(
-        self, db, sample_county, sample_sub_county
+        self, db, sample_county, sample_sub_county,
+        sample_organization,
     ):
         """Should auto-generate immunization schedule for newborn patients."""
         from hmis.apps.mch.models import ImmunizationRecord, Vaccine
@@ -407,6 +418,7 @@ class TestMCHSignals:
             gender="F",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         # Check immunization records were created
@@ -414,7 +426,8 @@ class TestMCHSignals:
         assert records.count() == 2
 
     def test_auto_generate_immunization_schedule_skips_older_children(
-        self, db, sample_county, sample_sub_county
+        self, db, sample_county, sample_sub_county,
+        sample_organization,
     ):
         """Should not generate schedule for children over 5 years."""
         from hmis.apps.mch.models import ImmunizationRecord, Vaccine
@@ -430,6 +443,7 @@ class TestMCHSignals:
             gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         records = ImmunizationRecord.objects.filter(patient=patient)

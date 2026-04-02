@@ -107,7 +107,7 @@ def pharmacy_service(db, pharmacy_category, test_user):
 
 
 @pytest.fixture
-def sample_invoice(db, sample_patient, test_user):
+def sample_invoice(db, sample_patient, test_user, sample_facility, sample_organization):
     """Create a sample invoice for testing."""
     from hmis.apps.billing.models import Invoice
 
@@ -117,6 +117,8 @@ def sample_invoice(db, sample_patient, test_user):
         invoice_date=date.today(),
         due_date=date.today() + timedelta(days=30),
         created_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     return invoice
 

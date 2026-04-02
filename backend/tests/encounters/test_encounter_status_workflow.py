@@ -45,7 +45,7 @@ class TestEncounterStatusField:
         """Encounter model should have a status field."""
         assert hasattr(sample_encounter, "status")
 
-    def test_new_encounter_defaults_to_created(self, sample_patient):
+    def test_new_encounter_defaults_to_created(self, sample_patient, sample_facility):
         """New encounters should default to CREATED status."""
         from hmis.apps.encounters.models import Encounter
 
@@ -53,6 +53,7 @@ class TestEncounterStatusField:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         assert encounter.status == "CREATED"
 
@@ -91,7 +92,7 @@ class TestEncounterStatusField:
         """Encounter should have finalized_at timestamp field."""
         assert hasattr(sample_encounter, "finalized_at")
 
-    def test_finalized_fields_are_null_for_created(self, sample_patient):
+    def test_finalized_fields_are_null_for_created(self, sample_patient, sample_facility):
         """Finalized fields should be null for newly created encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -99,6 +100,7 @@ class TestEncounterStatusField:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         assert encounter.finalized_by is None
         assert encounter.finalized_at is None
@@ -112,7 +114,7 @@ class TestEncounterStatusField:
 class TestEncounterStatusTransitions:
     """Tests for status transition methods."""
 
-    def test_can_edit_returns_true_for_created(self, sample_patient):
+    def test_can_edit_returns_true_for_created(self, sample_patient, sample_facility):
         """can_edit() should return True for CREATED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -121,10 +123,11 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="CREATED",
+            facility=sample_facility,
         )
         assert encounter.can_edit() is True
 
-    def test_can_edit_returns_true_for_in_progress(self, sample_patient):
+    def test_can_edit_returns_true_for_in_progress(self, sample_patient, sample_facility):
         """can_edit() should return True for IN_PROGRESS encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -133,10 +136,11 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="IN_PROGRESS",
+            facility=sample_facility,
         )
         assert encounter.can_edit() is True
 
-    def test_can_edit_returns_false_for_closed(self, sample_patient):
+    def test_can_edit_returns_false_for_closed(self, sample_patient, sample_facility):
         """can_edit() should return False for CLOSED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -145,10 +149,11 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="CLOSED",
+            facility=sample_facility,
         )
         assert encounter.can_edit() is False
 
-    def test_can_edit_returns_false_for_cancelled(self, sample_patient):
+    def test_can_edit_returns_false_for_cancelled(self, sample_patient, sample_facility):
         """can_edit() should return False for CANCELLED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -157,10 +162,11 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="CANCELLED",
+            facility=sample_facility,
         )
         assert encounter.can_edit() is False
 
-    def test_start_progress_transitions_checked_in_to_in_progress(self, sample_patient):
+    def test_start_progress_transitions_checked_in_to_in_progress(self, sample_patient, sample_facility):
         """start_progress() should transition CHECKED_IN to IN_PROGRESS."""
         from hmis.apps.encounters.models import Encounter
 
@@ -169,11 +175,12 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="CHECKED_IN",
+            facility=sample_facility,
         )
         encounter.start_progress()
         assert encounter.status == "IN_PROGRESS"
 
-    def test_start_progress_fails_for_closed(self, sample_patient):
+    def test_start_progress_fails_for_closed(self, sample_patient, sample_facility):
         """start_progress() should raise error for CLOSED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -182,12 +189,13 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="CLOSED",
+            facility=sample_facility,
         )
         with pytest.raises(ValidationError) as exc_info:
             encounter.start_progress()
         assert "Cannot start progress" in str(exc_info.value)
 
-    def test_finalize_sets_closed_status(self, sample_patient, test_user):
+    def test_finalize_sets_closed_status(self, sample_patient, test_user, sample_facility):
         """finalize() should set status to CLOSED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -198,11 +206,12 @@ class TestEncounterStatusTransitions:
             status="READY_TO_CLOSE",
             disposition="ADVICE_ONLY",
             disposition_notes="Test completed - no further action needed.",
+            facility=sample_facility,
         )
         encounter.finalize(test_user)
         assert encounter.status == "CLOSED"
 
-    def test_finalize_sets_finalized_by(self, sample_patient, test_user):
+    def test_finalize_sets_finalized_by(self, sample_patient, test_user, sample_facility):
         """finalize() should set finalized_by to the user."""
         from hmis.apps.encounters.models import Encounter
 
@@ -213,11 +222,12 @@ class TestEncounterStatusTransitions:
             status="READY_TO_CLOSE",
             disposition="ADVICE_ONLY",
             disposition_notes="Test completed - no further action needed.",
+            facility=sample_facility,
         )
         encounter.finalize(test_user)
         assert encounter.finalized_by == test_user
 
-    def test_finalize_sets_finalized_at(self, sample_patient, test_user):
+    def test_finalize_sets_finalized_at(self, sample_patient, test_user, sample_facility):
         """finalize() should set finalized_at timestamp."""
         from hmis.apps.encounters.models import Encounter
 
@@ -228,6 +238,7 @@ class TestEncounterStatusTransitions:
             status="READY_TO_CLOSE",
             disposition="ADVICE_ONLY",
             disposition_notes="Test completed - no further action needed.",
+            facility=sample_facility,
         )
         before = timezone.now()
         encounter.finalize(test_user)
@@ -236,7 +247,7 @@ class TestEncounterStatusTransitions:
         assert encounter.finalized_at is not None
         assert before <= encounter.finalized_at <= after
 
-    def test_finalize_from_ready_to_close_works(self, sample_patient, test_user):
+    def test_finalize_from_ready_to_close_works(self, sample_patient, test_user, sample_facility):
         """finalize() should work from READY_TO_CLOSE status."""
         from hmis.apps.encounters.models import Encounter
 
@@ -247,11 +258,12 @@ class TestEncounterStatusTransitions:
             status="READY_TO_CLOSE",
             disposition="ADVICE_ONLY",
             disposition_notes="Test completed - no further action needed.",
+            facility=sample_facility,
         )
         encounter.finalize(test_user)
         assert encounter.status == "CLOSED"
 
-    def test_finalize_fails_for_already_closed(self, sample_patient, test_user):
+    def test_finalize_fails_for_already_closed(self, sample_patient, test_user, sample_facility):
         """finalize() should raise error for already CLOSED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -262,12 +274,13 @@ class TestEncounterStatusTransitions:
             status="CLOSED",
             finalized_by=test_user,
             finalized_at=timezone.now(),
+            facility=sample_facility,
         )
         with pytest.raises(ValidationError) as exc_info:
             encounter.finalize(test_user)
         assert "already closed" in str(exc_info.value).lower()
 
-    def test_finalize_fails_for_cancelled(self, sample_patient, test_user):
+    def test_finalize_fails_for_cancelled(self, sample_patient, test_user, sample_facility):
         """finalize() should raise error for CANCELLED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -276,12 +289,13 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="CANCELLED",
+            facility=sample_facility,
         )
         with pytest.raises(ValidationError) as exc_info:
             encounter.finalize(test_user)
         assert "cancelled" in str(exc_info.value).lower()
 
-    def test_cancel_sets_cancelled_status(self, sample_patient):
+    def test_cancel_sets_cancelled_status(self, sample_patient, sample_facility):
         """cancel() should set status to CANCELLED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -290,11 +304,12 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="CREATED",
+            facility=sample_facility,
         )
         encounter.cancel(reason="Patient left")
         assert encounter.status == "CANCELLED"
 
-    def test_cancel_fails_for_closed(self, sample_patient, test_user):
+    def test_cancel_fails_for_closed(self, sample_patient, test_user, sample_facility):
         """cancel() should raise error for CLOSED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -305,6 +320,7 @@ class TestEncounterStatusTransitions:
             status="CLOSED",
             finalized_by=test_user,
             finalized_at=timezone.now(),
+            facility=sample_facility,
         )
         with pytest.raises(ValidationError) as exc_info:
             encounter.cancel(reason="Error")
@@ -367,7 +383,7 @@ class TestValidStatusTransitionPaths:
             ("CANCELLED", "CLOSED", False),
         ],
     )
-    def test_status_transition_validity(self, sample_patient, from_status, to_status, valid):
+    def test_status_transition_validity(self, sample_patient, from_status, to_status, valid, sample_facility):
         """Test that status transitions follow valid paths."""
         from hmis.apps.encounters.models import Encounter
 
@@ -376,6 +392,7 @@ class TestValidStatusTransitionPaths:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status=from_status,
+            facility=sample_facility,
         )
 
         result = encounter.is_valid_transition(to_status)
@@ -403,7 +420,7 @@ class TestEncounterStatusAPI:
         assert response.status_code == http_status.HTTP_201_CREATED
         assert response.data["status"] == "CREATED"
 
-    def test_update_created_encounter_succeeds(self, authenticated_client, sample_patient):
+    def test_update_created_encounter_succeeds(self, authenticated_client, sample_patient, sample_facility):
         """PATCH /api/encounters/{id}/ should succeed for CREATED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -412,6 +429,7 @@ class TestEncounterStatusAPI:
             encounter_type="OPD",
             chief_complaint="Original complaint",
             status="CREATED",
+            facility=sample_facility,
         )
 
         response = authenticated_client.patch(
@@ -421,7 +439,7 @@ class TestEncounterStatusAPI:
         assert response.status_code == http_status.HTTP_200_OK
         assert response.data["chief_complaint"] == "Updated complaint"
 
-    def test_update_closed_encounter_fails(self, authenticated_client, sample_patient, test_user):
+    def test_update_closed_encounter_fails(self, authenticated_client, sample_patient, test_user, sample_facility):
         """PATCH /api/encounters/{id}/ should fail for CLOSED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -432,6 +450,7 @@ class TestEncounterStatusAPI:
             status="CLOSED",
             finalized_by=test_user,
             finalized_at=timezone.now(),
+            facility=sample_facility,
         )
 
         response = authenticated_client.patch(
@@ -444,7 +463,7 @@ class TestEncounterStatusAPI:
             or "cannot be edited" in str(response.data).lower()
         )
 
-    def test_start_progress_action(self, authenticated_client, sample_patient):
+    def test_start_progress_action(self, authenticated_client, sample_patient, sample_facility):
         """POST /api/encounters/{id}/start_progress/ should transition to IN_PROGRESS."""
         from hmis.apps.encounters.models import Encounter
 
@@ -453,13 +472,14 @@ class TestEncounterStatusAPI:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="CHECKED_IN",
+            facility=sample_facility,
         )
 
         response = authenticated_client.post(f"/api/encounters/{encounter.id}/start_progress/")
         assert response.status_code == http_status.HTTP_200_OK
         assert response.data["status"] == "IN_PROGRESS"
 
-    def test_finalize_action(self, authenticated_client, sample_patient):
+    def test_finalize_action(self, authenticated_client, sample_patient, sample_facility):
         """POST /api/encounters/{id}/finalize/ should transition to CLOSED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -470,6 +490,7 @@ class TestEncounterStatusAPI:
             status="READY_TO_CLOSE",
             disposition="ADVICE_ONLY",
             disposition_notes="Test completed - no further action needed.",
+            facility=sample_facility,
         )
 
         response = authenticated_client.post(f"/api/encounters/{encounter.id}/finalize/")
@@ -478,7 +499,7 @@ class TestEncounterStatusAPI:
         assert response.data["finalized_by"] is not None
         assert response.data["finalized_at"] is not None
 
-    def test_cancel_action(self, authenticated_client, sample_patient):
+    def test_cancel_action(self, authenticated_client, sample_patient, sample_facility):
         """POST /api/encounters/{id}/cancel/ should transition to CANCELLED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -487,6 +508,7 @@ class TestEncounterStatusAPI:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="CREATED",
+            facility=sample_facility,
         )
 
         response = authenticated_client.post(
@@ -496,7 +518,7 @@ class TestEncounterStatusAPI:
         assert response.status_code == http_status.HTTP_200_OK
         assert response.data["status"] == "CANCELLED"
 
-    def test_finalize_closed_fails(self, authenticated_client, sample_patient, test_user):
+    def test_finalize_closed_fails(self, authenticated_client, sample_patient, test_user, sample_facility):
         """POST /api/encounters/{id}/finalize/ should fail for already CLOSED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -507,6 +529,7 @@ class TestEncounterStatusAPI:
             status="CLOSED",
             finalized_by=test_user,
             finalized_at=timezone.now(),
+            facility=sample_facility,
         )
 
         response = authenticated_client.post(f"/api/encounters/{encounter.id}/finalize/")
@@ -521,7 +544,7 @@ class TestEncounterStatusAPI:
 class TestEncounterStatusFiltering:
     """Tests for filtering encounters by status."""
 
-    def test_filter_by_status_created(self, authenticated_client, sample_patient):
+    def test_filter_by_status_created(self, authenticated_client, sample_patient, sample_facility):
         """GET /api/encounters/?status=CREATED should return only created encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -530,12 +553,14 @@ class TestEncounterStatusFiltering:
             encounter_type="OPD",
             chief_complaint="Created encounter",
             status="CREATED",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Closed encounter",
             status="CLOSED",
+            facility=sample_facility,
         )
 
         response = authenticated_client.get("/api/encounters/?status=CREATED")
@@ -543,7 +568,7 @@ class TestEncounterStatusFiltering:
         results = response.data.get("results", response.data)
         assert all(e["status"] == "CREATED" for e in results)
 
-    def test_filter_by_multiple_statuses(self, authenticated_client, sample_patient):
+    def test_filter_by_multiple_statuses(self, authenticated_client, sample_patient, sample_facility):
         """GET /api/encounters/?status=CREATED,IN_PROGRESS should return both."""
         from hmis.apps.encounters.models import Encounter
 
@@ -552,18 +577,21 @@ class TestEncounterStatusFiltering:
             encounter_type="OPD",
             chief_complaint="Created",
             status="CREATED",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="In Progress",
             status="IN_PROGRESS",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Closed",
             status="CLOSED",
+            facility=sample_facility,
         )
 
         response = authenticated_client.get("/api/encounters/?status=CREATED")
@@ -640,7 +668,7 @@ class TestEncounterStatusSerializer:
 class TestEncounterStatusAuditTrail:
     """Tests for audit logging of status changes."""
 
-    def test_finalize_creates_audit_log(self, sample_patient, test_user):
+    def test_finalize_creates_audit_log(self, sample_patient, test_user, sample_facility):
         """finalize() should create an audit log entry."""
         from hmis.apps.core.models import AuditLog
         from hmis.apps.encounters.models import Encounter
@@ -652,6 +680,7 @@ class TestEncounterStatusAuditTrail:
             status="READY_TO_CLOSE",
             disposition="ADVICE_ONLY",
             disposition_notes="Test completed - no further action needed.",
+            facility=sample_facility,
         )
 
         initial_count = AuditLog.objects.filter(action="encounter_finalize").count()
@@ -660,7 +689,7 @@ class TestEncounterStatusAuditTrail:
 
         assert final_count == initial_count + 1
 
-    def test_status_change_audit_includes_old_and_new_status(self, sample_patient, test_user):
+    def test_status_change_audit_includes_old_and_new_status(self, sample_patient, test_user, sample_facility):
         """Status change audit log should include old and new status."""
         from hmis.apps.core.models import AuditLog
         from hmis.apps.encounters.models import Encounter
@@ -672,6 +701,7 @@ class TestEncounterStatusAuditTrail:
             status="READY_TO_CLOSE",
             disposition="ADVICE_ONLY",
             disposition_notes="Test completed - no further action needed.",
+            facility=sample_facility,
         )
         encounter.finalize(test_user)
 

@@ -18,7 +18,7 @@ class TestEncounterClinicalSnapshotAPI:
 
     def test_requires_authentication(self, api_client, sample_encounter):
         """Unauthenticated requests should be rejected."""
-        response = api_client.get(f"/api/encounters/{sample_encounter.id}/clinical_snapshot/")
+        response = api_client.get(f"/api/encounters/{sample_encounter.id}/clinical-snapshot/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_returns_clinical_snapshot_for_encounter(
@@ -35,7 +35,7 @@ class TestEncounterClinicalSnapshotAPI:
         )
         assert encounter is not None
 
-        response = authenticated_client.get(f"/api/encounters/{encounter.id}/clinical_snapshot/")
+        response = authenticated_client.get(f"/api/encounters/{encounter.id}/clinical-snapshot/")
 
         assert response.status_code == status.HTTP_200_OK
         data = response.data

@@ -35,7 +35,7 @@ def alert_test_user(db):
 
 
 @pytest.fixture
-def ccc_clinic_for_alerts(db):
+def ccc_clinic_for_alerts(db, sample_facility, sample_organization):
     """Create a CCC clinic for alert tests."""
     from hmis.apps.clinics.models import Clinic
 
@@ -44,11 +44,13 @@ def ccc_clinic_for_alerts(db):
         clinic_type="CCC",
         code="CCC-ALERT-TEST",
         description="CCC clinic for alert testing",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def anc_clinic_for_alerts(db):
+def anc_clinic_for_alerts(db, sample_facility, sample_organization):
     """Create an ANC clinic for alert tests."""
     from hmis.apps.clinics.models import Clinic
 
@@ -57,11 +59,13 @@ def anc_clinic_for_alerts(db):
         clinic_type="ANC",
         code="ANC-ALERT-TEST",
         description="ANC clinic for alert testing",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_patient_for_alerts(db):
+def sample_patient_for_alerts(db, sample_organization):
     """Create a sample patient for alert tests."""
     from hmis.apps.core.models import County, SubCounty
     from hmis.apps.patients.models import Patient
@@ -78,6 +82,7 @@ def sample_patient_for_alerts(db):
         gender="F",
         county=county,
         sub_county=sub_county,
+        organization=sample_organization,
     )
 
 

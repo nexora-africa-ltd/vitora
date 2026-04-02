@@ -113,7 +113,7 @@ def sample_sub_county(db, sample_county):
 
 
 @pytest.fixture
-def sample_patient(db, sample_county, sample_sub_county):
+def sample_patient(db, sample_county, sample_sub_county, sample_organization):
     """Create a sample patient."""
     return Patient.objects.create(
         first_name="Test",
@@ -122,11 +122,12 @@ def sample_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_clinic(db):
+def sample_clinic(db, sample_facility, sample_organization):
     """Create a sample clinic."""
     return Clinic.objects.create(
         name="General OPD",
@@ -134,6 +135,8 @@ def sample_clinic(db):
         clinic_type="GENERAL_OPD",
         status="ACTIVE",
         location="Ground Floor",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -149,13 +152,15 @@ def sample_session(db, sample_clinic):
 
 
 @pytest.fixture
-def sample_visit(db, sample_session, sample_patient):
+def sample_visit(db, sample_session, sample_patient, sample_facility, sample_organization):
     """Create a sample clinic visit."""
     return ClinicVisit.objects.create(
         session=sample_session,
         patient=sample_patient,
         status="WAITING",
         chief_complaint="Test complaint",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

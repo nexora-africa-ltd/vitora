@@ -17,7 +17,7 @@ pytestmark = pytest.mark.django_db
 class TestEncounterModel:
     """Test Encounter model functionality."""
 
-    def test_encounter_creation_with_required_fields(self):
+    def test_encounter_creation_with_required_fields(self, sample_organization, sample_facility):
         """Test creating an encounter with all required fields."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -27,10 +27,12 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Headache"
+            patient=patient, encounter_type="OPD", chief_complaint="Headache",
+            facility=sample_facility,
         )
 
         assert encounter.id is not None
@@ -39,7 +41,7 @@ class TestEncounterModel:
         assert encounter.chief_complaint == "Headache"
         assert encounter.encounter_date is not None
 
-    def test_encounter_type_validation(self):
+    def test_encounter_type_validation(self, sample_organization):
         """Test that encounter_type field only accepts valid choices."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -49,6 +51,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Valid encounter types should work
@@ -58,7 +61,7 @@ class TestEncounterModel:
             )
             encounter.full_clean()  # Should not raise
 
-    def test_invalid_encounter_type_raises_error(self):
+    def test_invalid_encounter_type_raises_error(self, sample_organization):
         """Test that invalid encounter type raises validation error."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -68,6 +71,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         encounter = Encounter(patient=patient, encounter_type="INVALID", chief_complaint="Test")
@@ -75,7 +79,7 @@ class TestEncounterModel:
         with pytest.raises(ValidationError):
             encounter.full_clean()
 
-    def test_vitals_temperature_validation(self):
+    def test_vitals_temperature_validation(self, sample_organization):
         """Test temperature vital sign validation."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -85,6 +89,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Normal temperature should be valid
@@ -116,7 +121,7 @@ class TestEncounterModel:
         with pytest.raises(ValidationError):
             encounter_high.full_clean()
 
-    def test_vitals_pulse_validation(self):
+    def test_vitals_pulse_validation(self, sample_organization):
         """Test pulse vital sign validation."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -126,6 +131,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Normal pulse should be valid
@@ -148,7 +154,7 @@ class TestEncounterModel:
         with pytest.raises(ValidationError):
             encounter_high.full_clean()
 
-    def test_vitals_blood_pressure_validation(self):
+    def test_vitals_blood_pressure_validation(self, sample_organization):
         """Test blood pressure vital sign validation."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -158,6 +164,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Valid blood pressure formats
@@ -183,7 +190,7 @@ class TestEncounterModel:
             with pytest.raises(ValidationError):
                 encounter.full_clean()
 
-    def test_has_critical_vitals(self):
+    def test_has_critical_vitals(self, sample_organization, sample_facility):
         """Test the has_critical_vitals method."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -193,6 +200,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Normal vitals - not critical
@@ -202,6 +210,7 @@ class TestEncounterModel:
             chief_complaint="Checkup",
             temperature=37.0,
             pulse=80,
+            facility=sample_facility,
         )
         assert encounter_normal.has_critical_vitals() is False
 
@@ -212,6 +221,7 @@ class TestEncounterModel:
             chief_complaint="Fever",
             temperature=40.0,
             pulse=80,
+            facility=sample_facility,
         )
         assert encounter_fever.has_critical_vitals() is True
 
@@ -222,10 +232,11 @@ class TestEncounterModel:
             chief_complaint="Palpitations",
             temperature=37.0,
             pulse=130,
+            facility=sample_facility,
         )
         assert encounter_tachycardia.has_critical_vitals() is True
 
-    def test_get_alerts(self):
+    def test_get_alerts(self, sample_organization, sample_facility):
         """Test the get_alerts method."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -235,6 +246,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # High temperature should trigger fever alert
@@ -244,6 +256,7 @@ class TestEncounterModel:
             chief_complaint="Fever",
             temperature=40.0,
             pulse=80,
+            facility=sample_facility,
         )
         alerts = encounter_fever.get_alerts()
         assert "fever" in alerts or "high temperature" in alerts.lower()
@@ -255,11 +268,12 @@ class TestEncounterModel:
             chief_complaint="Palpitations",
             temperature=37.0,
             pulse=130,
+            facility=sample_facility,
         )
         alerts = encounter_tachycardia.get_alerts()
         assert "tachycardia" in alerts.lower() or "high pulse" in alerts.lower()
 
-    def test_encounter_timestamps(self):
+    def test_encounter_timestamps(self, sample_organization, sample_facility):
         """Test that created_at and updated_at are set automatically."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -269,17 +283,19 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Headache"
+            patient=patient, encounter_type="OPD", chief_complaint="Headache",
+            facility=sample_facility,
         )
 
         assert encounter.created_at is not None
         assert encounter.updated_at is not None
         assert encounter.created_at <= encounter.updated_at
 
-    def test_encounter_str_representation(self):
+    def test_encounter_str_representation(self, sample_organization, sample_facility):
         """Test the string representation of encounter."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -289,17 +305,19 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Headache"
+            patient=patient, encounter_type="OPD", chief_complaint="Headache",
+            facility=sample_facility,
         )
 
         str_repr = str(encounter)
         assert patient.mrn in str_repr
         assert "OPD" in str_repr
 
-    def test_optional_vitals_fields(self):
+    def test_optional_vitals_fields(self, sample_organization, sample_facility):
         """Test that vitals fields are optional."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -309,11 +327,13 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Should be able to create encounter without vitals
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Consultation"
+            patient=patient, encounter_type="OPD", chief_complaint="Consultation",
+            facility=sample_facility,
         )
 
         assert encounter.temperature is None
@@ -323,7 +343,7 @@ class TestEncounterModel:
         assert encounter.weight is None
         assert encounter.height is None
 
-    def test_encounter_with_all_vitals(self):
+    def test_encounter_with_all_vitals(self, sample_organization, sample_facility):
         """Test creating encounter with all vital signs."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -333,6 +353,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
@@ -345,6 +366,7 @@ class TestEncounterModel:
             respiratory_rate=18,
             weight=70.5,
             height=175.0,
+            facility=sample_facility,
         )
 
         assert encounter.temperature == 37.5
@@ -354,7 +376,7 @@ class TestEncounterModel:
         assert encounter.weight == 70.5
         assert encounter.height == 175.0
 
-    def test_encounter_date_auto_set(self):
+    def test_encounter_date_auto_set(self, sample_organization, sample_facility):
         """Test that encounter_date is set automatically to today."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -364,15 +386,17 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Checkup"
+            patient=patient, encounter_type="OPD", chief_complaint="Checkup",
+            facility=sample_facility,
         )
 
         assert encounter.encounter_date == date.today()
 
-    def test_multiple_encounters_for_patient(self):
+    def test_multiple_encounters_for_patient(self, sample_organization, sample_facility):
         """Test that a patient can have multiple encounters."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -382,20 +406,23 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         encounter1 = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Headache"
+            patient=patient, encounter_type="OPD", chief_complaint="Headache",
+            facility=sample_facility,
         )
 
         encounter2 = Encounter.objects.create(
-            patient=patient, encounter_type="IPD", chief_complaint="Fever"
+            patient=patient, encounter_type="IPD", chief_complaint="Fever",
+            facility=sample_facility,
         )
 
         assert encounter1.patient == encounter2.patient
         assert Encounter.objects.filter(patient=patient).count() == 2
 
-    def test_vitals_respiratory_rate_validation(self):
+    def test_vitals_respiratory_rate_validation(self, sample_organization):
         """Test respiratory rate validation."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -405,6 +432,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Valid respiratory rate
@@ -436,7 +464,7 @@ class TestEncounterModel:
         with pytest.raises(ValidationError):
             encounter_high.full_clean()
 
-    def test_vitals_weight_validation(self):
+    def test_vitals_weight_validation(self, sample_organization):
         """Test weight validation."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -446,6 +474,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Valid weight
@@ -467,7 +496,7 @@ class TestEncounterModel:
         with pytest.raises(ValidationError):
             encounter_high.full_clean()
 
-    def test_vitals_height_validation(self):
+    def test_vitals_height_validation(self, sample_organization):
         """Test height validation."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -477,6 +506,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Valid height
@@ -498,7 +528,7 @@ class TestEncounterModel:
         with pytest.raises(ValidationError):
             encounter_high.full_clean()
 
-    def test_critical_respiratory_rate_alerts(self):
+    def test_critical_respiratory_rate_alerts(self, sample_organization, sample_facility):
         """Test alerts for critical respiratory rate."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -508,6 +538,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # High respiratory rate
@@ -516,6 +547,7 @@ class TestEncounterModel:
             encounter_type="OPD",
             chief_complaint="Breathing difficulty",
             respiratory_rate=30,
+            facility=sample_facility,
         )
         assert encounter_high.has_critical_vitals() is True
         alerts = encounter_high.get_alerts()
@@ -527,12 +559,13 @@ class TestEncounterModel:
             encounter_type="OPD",
             chief_complaint="Sedation",
             respiratory_rate=10,
+            facility=sample_facility,
         )
         assert encounter_low.has_critical_vitals() is True
         alerts = encounter_low.get_alerts()
         assert "respiratory" in alerts.lower()
 
-    def test_low_temperature_alert(self):
+    def test_low_temperature_alert(self, sample_organization, sample_facility):
         """Test alert for severe hypothermia (<32°C is critical)."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -542,19 +575,21 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="EMERGENCY",
             chief_complaint="Exposure",
-            temperature=31.5,  # <32°C is severe hypothermia (critical)
+            temperature=31.5,  # <32°C is severe hypothermia (critical),
+            facility=sample_facility,
         )
         assert encounter.has_critical_vitals() is True
         alerts = encounter.get_alerts()
         assert "hypothermia" in alerts.lower() or "low temperature" in alerts.lower()
 
-    def test_low_pulse_alert(self):
+    def test_low_pulse_alert(self, sample_organization, sample_facility):
         """Test alert for bradycardia."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -564,6 +599,7 @@ class TestEncounterModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
@@ -571,6 +607,7 @@ class TestEncounterModel:
             encounter_type="OPD",
             chief_complaint="Weakness",
             pulse=45,
+            facility=sample_facility,
         )
         assert encounter.has_critical_vitals() is True
         alerts = encounter.get_alerts()
@@ -581,7 +618,7 @@ class TestEncounterModel:
 class TestBeginConsultation:
     """Test Encounter.begin_consultation() method."""
 
-    def test_begin_consultation_sets_status_to_in_progress(self):
+    def test_begin_consultation_sets_status_to_in_progress(self, sample_organization, sample_facility):
         """Should set consultation_status to IN_PROGRESS."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -591,6 +628,7 @@ class TestBeginConsultation:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         encounter = Encounter.objects.create(
             patient=patient,
@@ -598,6 +636,7 @@ class TestBeginConsultation:
             chief_complaint="Test",
             triage_status="COMPLETED",
             consultation_status="WAITING",
+            facility=sample_facility,
         )
 
         result = encounter.begin_consultation()
@@ -605,7 +644,7 @@ class TestBeginConsultation:
         assert result == encounter  # Returns self for chaining
         assert encounter.consultation_status == "IN_PROGRESS"
 
-    def test_begin_consultation_sets_started_at_timestamp(self):
+    def test_begin_consultation_sets_started_at_timestamp(self, sample_organization, sample_facility):
         """Should record consultation_started_at timestamp."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -615,6 +654,7 @@ class TestBeginConsultation:
             last_name="Doe",
             date_of_birth=date(1985, 5, 15),
             gender="F",
+            organization=sample_organization,
         )
         encounter = Encounter.objects.create(
             patient=patient,
@@ -622,6 +662,7 @@ class TestBeginConsultation:
             chief_complaint="Check-up",
             triage_status="NOT_APPLICABLE",
             consultation_status="CALLED",
+            facility=sample_facility,
         )
 
         assert encounter.consultation_started_at is None
@@ -629,7 +670,7 @@ class TestBeginConsultation:
 
         assert encounter.consultation_started_at is not None
 
-    def test_begin_consultation_raises_error_when_triage_pending(self):
+    def test_begin_consultation_raises_error_when_triage_pending(self, sample_organization, sample_facility):
         """Should raise ValueError if triage is still pending."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -639,6 +680,7 @@ class TestBeginConsultation:
             last_name="Patient",
             date_of_birth=date(2000, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         encounter = Encounter.objects.create(
             patient=patient,
@@ -646,6 +688,7 @@ class TestBeginConsultation:
             chief_complaint="Fever",
             triage_status="PENDING",
             consultation_status="WAITING",
+            facility=sample_facility,
         )
 
         with pytest.raises(ValueError) as exc_info:
@@ -653,7 +696,7 @@ class TestBeginConsultation:
 
         assert "triage" in str(exc_info.value).lower()
 
-    def test_begin_consultation_raises_error_when_already_in_progress(self):
+    def test_begin_consultation_raises_error_when_already_in_progress(self, sample_organization, sample_facility):
         """Should raise ValueError if consultation is already in progress."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -663,6 +706,7 @@ class TestBeginConsultation:
             last_name="Patient",
             date_of_birth=date(1995, 6, 15),
             gender="F",
+            organization=sample_organization,
         )
         encounter = Encounter.objects.create(
             patient=patient,
@@ -670,6 +714,7 @@ class TestBeginConsultation:
             chief_complaint="Follow-up",
             triage_status="COMPLETED",
             consultation_status="IN_PROGRESS",
+            facility=sample_facility,
         )
 
         with pytest.raises(ValueError) as exc_info:
@@ -677,7 +722,7 @@ class TestBeginConsultation:
 
         assert "already in progress" in str(exc_info.value).lower()
 
-    def test_begin_consultation_raises_error_when_completed(self):
+    def test_begin_consultation_raises_error_when_completed(self, sample_organization, sample_facility):
         """Should raise ValueError if consultation is already completed."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -687,6 +732,7 @@ class TestBeginConsultation:
             last_name="Patient",
             date_of_birth=date(1988, 12, 1),
             gender="M",
+            organization=sample_organization,
         )
         encounter = Encounter.objects.create(
             patient=patient,
@@ -694,6 +740,7 @@ class TestBeginConsultation:
             chief_complaint="Review",
             triage_status="COMPLETED",
             consultation_status="COMPLETED",
+            facility=sample_facility,
         )
 
         with pytest.raises(ValueError) as exc_info:
@@ -701,7 +748,7 @@ class TestBeginConsultation:
 
         assert "already completed" in str(exc_info.value).lower()
 
-    def test_begin_consultation_works_with_bypassed_triage(self):
+    def test_begin_consultation_works_with_bypassed_triage(self, sample_organization, sample_facility):
         """Should work when triage is BYPASSED."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -711,6 +758,7 @@ class TestBeginConsultation:
             last_name="Patient",
             date_of_birth=date(1975, 3, 20),
             gender="F",
+            organization=sample_organization,
         )
         encounter = Encounter.objects.create(
             patient=patient,
@@ -718,13 +766,14 @@ class TestBeginConsultation:
             chief_complaint="Routine check",
             triage_status="BYPASSED",
             consultation_status="WAITING",
+            facility=sample_facility,
         )
 
         encounter.begin_consultation()
 
         assert encounter.consultation_status == "IN_PROGRESS"
 
-    def test_begin_consultation_persists_changes(self):
+    def test_begin_consultation_persists_changes(self, sample_organization, sample_facility):
         """Should persist changes to database."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -734,6 +783,7 @@ class TestBeginConsultation:
             last_name="Patient",
             date_of_birth=date(1990, 7, 10),
             gender="M",
+            organization=sample_organization,
         )
         encounter = Encounter.objects.create(
             patient=patient,
@@ -741,6 +791,7 @@ class TestBeginConsultation:
             chief_complaint="Checkup",
             triage_status="COMPLETED",
             consultation_status="WAITING",
+            facility=sample_facility,
         )
 
         encounter.begin_consultation()

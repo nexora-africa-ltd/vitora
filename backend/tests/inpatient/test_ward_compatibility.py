@@ -19,7 +19,7 @@ def female_patient(sample_patient):
 
 
 @pytest.fixture
-def male_only_ward(db):
+def male_only_ward(db, sample_facility, sample_organization):
     from decimal import Decimal
 
     from hmis.apps.inpatient.models import Ward
@@ -32,11 +32,13 @@ def male_only_ward(db):
         daily_rate=Decimal("500.00"),
         is_active=True,
         gender_restriction="MALE_ONLY",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def pediatric_ward(db):
+def pediatric_ward(db, sample_facility, sample_organization):
     from decimal import Decimal
 
     from hmis.apps.inpatient.models import Ward
@@ -48,11 +50,13 @@ def pediatric_ward(db):
         capacity=10,
         daily_rate=Decimal("500.00"),
         is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def maternity_ward(db):
+def maternity_ward(db, sample_facility, sample_organization):
     from decimal import Decimal
 
     from hmis.apps.inpatient.models import Ward
@@ -64,11 +68,13 @@ def maternity_ward(db):
         capacity=10,
         daily_rate=Decimal("500.00"),
         is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def non_isolation_ward(db):
+def non_isolation_ward(db, sample_facility, sample_organization):
     from decimal import Decimal
 
     from hmis.apps.inpatient.models import Ward
@@ -81,6 +87,8 @@ def non_isolation_ward(db):
         daily_rate=Decimal("500.00"),
         is_active=True,
         isolation_capable=False,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -90,7 +98,7 @@ def isolation_required_patient(sample_patient):
 
 
 @pytest.fixture
-def child_patient(db, sample_county, sample_sub_county):
+def child_patient(db, sample_county, sample_sub_county, sample_organization):
     from hmis.apps.patients.models import Patient
 
     return Patient.objects.create(
@@ -100,11 +108,12 @@ def child_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def adult_patient(db, sample_county, sample_sub_county):
+def adult_patient(db, sample_county, sample_sub_county, sample_organization):
     from hmis.apps.patients.models import Patient
 
     return Patient.objects.create(
@@ -114,6 +123,7 @@ def adult_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 

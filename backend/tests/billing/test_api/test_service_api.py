@@ -10,6 +10,7 @@ from decimal import Decimal
 import pytest  # type: ignore
 from rest_framework import status
 from rest_framework.test import APIClient
+from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db
 
@@ -21,8 +22,9 @@ def api_client():
 
 
 @pytest.fixture
-def authenticated_client(api_client, test_user):
+def authenticated_client(api_client, test_user, sample_organization, sample_facility):
     """Provide authenticated API client."""
+    ensure_staff_profile(test_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=test_user)
     return api_client
 

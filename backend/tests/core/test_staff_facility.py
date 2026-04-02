@@ -12,6 +12,7 @@ Covers:
 
 import pytest  # type: ignore  # noqa: I001
 from rest_framework import status
+from tests.conftest import ensure_staff_profile
 
 
 # ============================================================================
@@ -36,7 +37,7 @@ def sf_sub_county(db, sf_county):
 
 
 @pytest.fixture
-def primary_facility(db, sf_county, sf_sub_county):
+def primary_facility(db, sf_county, sf_sub_county, sample_organization):
     """Create a primary facility for staff assignment."""
     from hmis.apps.core.models import Facility
 
@@ -48,12 +49,13 @@ def primary_facility(db, sf_county, sf_sub_county):
             "ownership": "GOK",
             "county": sf_county,
             "sub_county": sf_sub_county,
+            "organization": sample_organization,
         },
     )[0]
 
 
 @pytest.fixture
-def secondary_facility(db, sf_county, sf_sub_county):
+def secondary_facility(db, sf_county, sf_sub_county, sample_organization):
     """Create a secondary facility for multi-site assignment."""
     from hmis.apps.core.models import Facility
 
@@ -65,6 +67,7 @@ def secondary_facility(db, sf_county, sf_sub_county):
             "ownership": "FBO",
             "county": sf_county,
             "sub_county": sf_sub_county,
+            "organization": sample_organization,
         },
     )[0]
 
@@ -116,6 +119,7 @@ def staff_with_facility(db, sf_role, sf_department, primary_facility, secondary_
         primary_role=sf_role,
         primary_department=sf_department,
         primary_facility=primary_facility,
+        organization=primary_facility.organization,
         date_joined="2026-01-01",
     )
     profile.secondary_facilities.add(secondary_facility)
@@ -160,8 +164,9 @@ def admin_user_sf(db):
 
 
 @pytest.fixture
-def admin_client_sf(api_client, admin_user_sf):
+def admin_client_sf(api_client, admin_user_sf, sample_organization, sample_facility):
     """Return an APIClient authenticated as an admin user."""
+    ensure_staff_profile(admin_user_sf, sample_organization, sample_facility)
     api_client.force_authenticate(user=admin_user_sf)
     return api_client
 

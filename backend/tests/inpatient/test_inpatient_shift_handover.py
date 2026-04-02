@@ -16,7 +16,7 @@ from hmis.apps.inpatient.models import ShiftHandover, Ward
 
 
 @pytest.fixture
-def inpatient_ward(db):
+def inpatient_ward(db, sample_facility, sample_organization):
     """Create an inpatient ward for testing."""
     return Ward.objects.create(
         name="Medical Ward 1",
@@ -24,6 +24,8 @@ def inpatient_ward(db):
         ward_type="MEDICAL",
         capacity=20,
         daily_rate=Decimal("500.00"),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

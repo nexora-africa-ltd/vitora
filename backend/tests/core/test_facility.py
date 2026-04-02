@@ -12,6 +12,7 @@ Covers:
 
 import pytest  # type: ignore  # noqa: I001
 from rest_framework import status
+from tests.conftest import ensure_staff_profile
 
 
 # ============================================================================
@@ -117,8 +118,9 @@ def admin_user(db):
 
 
 @pytest.fixture
-def admin_client(api_client, admin_user):
+def admin_client(api_client, admin_user, sample_organization, sample_facility):
     """Return an APIClient authenticated as an admin user."""
+    ensure_staff_profile(admin_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=admin_user)
     return api_client
 
@@ -412,6 +414,9 @@ class TestFacilityAPI:
 
     def test_delete_facility(self, admin_client, sample_facility):
         """Admin can delete a facility."""
+        from hmis.apps.core.models import StaffProfile
+        # Remove StaffProfiles referencing this facility to avoid ProtectedError
+        StaffProfile.objects.filter(primary_facility=sample_facility).update(primary_facility=None)
         facility_id = sample_facility.id
         response = admin_client.delete(f"/api/facilities/{facility_id}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -510,8 +515,9 @@ class TestFacilityAPI:
 
     def test_delete_logs_audit_entry(self, admin_client, sample_facility):
         """Deleting a facility should produce an audit log entry."""
-        from hmis.apps.core.models import AuditLog
-
+        from hmis.apps.core.models import AuditLog, StaffProfile
+        # Remove StaffProfiles referencing this facility to avoid ProtectedError
+        StaffProfile.objects.filter(primary_facility=sample_facility).update(primary_facility=None)
         initial_count = AuditLog.objects.filter(action="facility_deleted").count()
         admin_client.delete(f"/api/facilities/{sample_facility.id}/")
         assert (

@@ -20,7 +20,7 @@ class TestOfflineToOnlineTransition:
     """Tests for transitioning from offline to online state."""
 
     @pytest.mark.django_db
-    def test_queued_creates_sync_on_reconnect(self):
+    def test_queued_creates_sync_on_reconnect(self, sample_organization):
         """CREATE operations queued offline should sync when online."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import SyncManager
@@ -32,6 +32,7 @@ class TestOfflineToOnlineTransition:
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Manually queue (in real implementation this would be automatic)
@@ -60,7 +61,7 @@ class TestOfflineToOnlineTransition:
             # assert queue_entry.status == "SYNCED"
 
     @pytest.mark.django_db
-    def test_queued_updates_sync_on_reconnect(self):
+    def test_queued_updates_sync_on_reconnect(self, sample_organization):
         """UPDATE operations queued offline should sync when online."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import SyncManager
@@ -72,6 +73,7 @@ class TestOfflineToOnlineTransition:
             last_name="Name",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Simulate offline update
@@ -91,7 +93,7 @@ class TestOfflineToOnlineTransition:
             SyncManager.process_pending_entries()
 
     @pytest.mark.django_db
-    def test_queued_deletes_sync_on_reconnect(self):
+    def test_queued_deletes_sync_on_reconnect(self, sample_organization):
         """DELETE operations queued offline should sync when online."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.core.sync import SyncManager
@@ -103,6 +105,7 @@ class TestOfflineToOnlineTransition:
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         patient_id = patient.id
         patient.delete()
@@ -125,7 +128,7 @@ class TestOnlineToOfflineTransition:
     """Tests for transitioning from online to offline state."""
 
     @pytest.mark.django_db
-    def test_operations_continue_when_going_offline(self):
+    def test_operations_continue_when_going_offline(self, sample_organization):
         """Operations should continue to work when going offline."""
         from hmis.apps.core.sync import ConnectivityMonitor
         from hmis.apps.patients.models import Patient
@@ -137,6 +140,7 @@ class TestOnlineToOfflineTransition:
                 last_name="Patient",
                 date_of_birth=date(1990, 1, 1),
                 gender="M",
+                organization=sample_organization,
             )
             assert patient1.id is not None
 
@@ -147,6 +151,7 @@ class TestOnlineToOfflineTransition:
                 last_name="Patient",
                 date_of_birth=date(1990, 1, 1),
                 gender="F",
+                organization=sample_organization,
             )
             assert patient2.id is not None
 
@@ -190,7 +195,7 @@ class TestMultipleTransitions:
     """Tests for multiple connectivity state transitions."""
 
     @pytest.mark.django_db
-    def test_offline_online_offline_cycle(self):
+    def test_offline_online_offline_cycle(self, sample_organization):
         """System should handle offline → online → offline cycle."""
         from hmis.apps.core.sync import ConnectivityMonitor
         from hmis.apps.patients.models import Patient
@@ -202,6 +207,7 @@ class TestMultipleTransitions:
                 last_name="Offline",
                 date_of_birth=date(1990, 1, 1),
                 gender="M",
+                organization=sample_organization,
             )
 
         # Phase 2: Online - sync happens
@@ -216,6 +222,7 @@ class TestMultipleTransitions:
                 last_name="Offline",
                 date_of_birth=date(1990, 1, 1),
                 gender="F",
+                organization=sample_organization,
             )
 
         # Both patients should exist locally
@@ -251,7 +258,7 @@ class TestDataConsistencyAcrossTransitions:
     """Tests for data consistency across connectivity transitions."""
 
     @pytest.mark.django_db
-    def test_no_duplicate_creates_on_sync(self):
+    def test_no_duplicate_creates_on_sync(self, sample_organization):
         """Syncing should not create duplicate records."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.patients.models import Patient
@@ -262,6 +269,7 @@ class TestDataConsistencyAcrossTransitions:
             last_name="Test",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         original_mrn = patient.mrn
 
@@ -279,7 +287,7 @@ class TestDataConsistencyAcrossTransitions:
         assert Patient.objects.filter(mrn=original_mrn).count() == 1
 
     @pytest.mark.django_db
-    def test_updates_applied_in_order(self):
+    def test_updates_applied_in_order(self, sample_organization):
         """Multiple updates should be applied in correct order."""
         import time
 
@@ -291,6 +299,7 @@ class TestDataConsistencyAcrossTransitions:
             last_name="Name",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Simulate multiple offline updates
@@ -314,7 +323,7 @@ class TestDataConsistencyAcrossTransitions:
         assert last_entry.data["first_name"] == "Final Update"
 
     @pytest.mark.django_db
-    def test_delete_after_update_handled_correctly(self):
+    def test_delete_after_update_handled_correctly(self, sample_organization):
         """Delete after update should result in deletion."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.patients.models import Patient
@@ -324,6 +333,7 @@ class TestDataConsistencyAcrossTransitions:
             last_name="After Update",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         patient_id = patient.id
 
@@ -477,7 +487,7 @@ class TestEdgeCases:
         # SyncManager.process_pending_entries()
 
     @pytest.mark.django_db
-    def test_concurrent_local_and_sync_operations(self):
+    def test_concurrent_local_and_sync_operations(self, sample_organization):
         """Should handle concurrent local writes during sync."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.patients.models import Patient
@@ -496,6 +506,7 @@ class TestEdgeCases:
             last_name="Creation",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # New changes should be queued (when auto-queue is implemented)

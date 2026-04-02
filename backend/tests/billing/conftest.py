@@ -69,7 +69,7 @@ def sample_invoice_data(sample_patient, billing_user):
 
 
 @pytest.fixture
-def sample_invoice(db, sample_patient, billing_user):
+def sample_invoice(db, sample_patient, billing_user, sample_facility, sample_organization):
     """Create a sample invoice."""
     return Invoice.objects.create(
         patient=sample_patient,
@@ -78,6 +78,8 @@ def sample_invoice(db, sample_patient, billing_user):
         status=Invoice.Status.DRAFT,
         payment_type=Invoice.PaymentType.CASH,
         created_by=billing_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

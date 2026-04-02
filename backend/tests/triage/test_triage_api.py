@@ -117,14 +117,15 @@ class TestTriageAssessmentAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data or isinstance(response.data, list)
 
-    def test_filter_by_triage_category(self, authenticated_client, sample_patient, test_user):
+    def test_filter_by_triage_category(self, authenticated_client, sample_patient, test_user, sample_facility, sample_organization):
         """Should filter assessments by triage category."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment
 
         # Create RED assessment
         encounter1 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Test 1"
+            patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Test 1",
+            facility=sample_facility,
         )
         TriageAssessment.objects.create(
             encounter=encounter1,
@@ -138,11 +139,14 @@ class TestTriageAssessmentAPI:
             arrival_time=timezone.now(),
             triage_start_time=timezone.now(),
             triaged_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Create GREEN assessment
         encounter2 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2"
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2",
+            facility=sample_facility,
         )
         TriageAssessment.objects.create(
             encounter=encounter2,
@@ -156,6 +160,8 @@ class TestTriageAssessmentAPI:
             arrival_time=timezone.now(),
             triage_start_time=timezone.now(),
             triaged_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get("/api/triage/assessments/?triage_category=RED")
@@ -164,7 +170,7 @@ class TestTriageAssessmentAPI:
         assert len(data) == 1
         assert data[0]["triage_category"] == "RED"
 
-    def test_retrieve_triage_assessment(self, authenticated_client, sample_encounter, test_user):
+    def test_retrieve_triage_assessment(self, authenticated_client, sample_encounter, test_user, sample_facility, sample_organization):
         """Should retrieve specific triage assessment."""
         from hmis.apps.triage.models import TriageAssessment
 
@@ -180,6 +186,8 @@ class TestTriageAssessmentAPI:
             arrival_time=timezone.now(),
             triage_start_time=timezone.now(),
             triaged_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(f"/api/triage/assessments/{assessment.id}/")
@@ -399,7 +407,7 @@ class TestQueueEndpoints:
 class TestReportEndpoints:
     """Tests for report endpoints."""
 
-    def test_wait_times_report(self, authenticated_client, test_user, sample_patient):
+    def test_wait_times_report(self, authenticated_client, test_user, sample_patient, sample_facility):
         """Should return wait time statistics."""
         from datetime import timedelta
 
@@ -409,7 +417,8 @@ class TestReportEndpoints:
         # Create some assessments with different wait times
         for i in range(3):
             encounter = Encounter.objects.create(
-                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {i}"
+                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {i}",
+                facility=sample_facility,
             )
             TriageAssessment.objects.create(
                 encounter=encounter,
@@ -435,7 +444,7 @@ class TestReportEndpoints:
         assert "completion_time" in response.data
         assert "triage_duration" in response.data
 
-    def test_volume_report(self, authenticated_client, test_user, sample_patient):
+    def test_volume_report(self, authenticated_client, test_user, sample_patient, sample_facility):
         """Should return volume counts by category."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment
@@ -443,7 +452,8 @@ class TestReportEndpoints:
         # Create assessments of different categories
         for category in ["RED", "YELLOW", "GREEN"]:
             encounter = Encounter.objects.create(
-                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {category}"
+                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {category}",
+                facility=sample_facility,
             )
             TriageAssessment.objects.create(
                 encounter=encounter,
@@ -509,7 +519,8 @@ class TestEmergencyModuleEndpoints:
         assert response.data["patients"] == []
 
     def test_critical_patients_returns_red_patients_in_er(
-        self, authenticated_client, test_user, sample_patient
+        self, authenticated_client, test_user, sample_patient,
+        sample_facility,
     ):
         """Should return RED category patients in ER areas."""
         from hmis.apps.encounters.models import Encounter
@@ -520,7 +531,8 @@ class TestEmergencyModuleEndpoints:
 
         # Create an encounter and RED triage assessment in ER_RESUS
         encounter = Encounter.objects.create(
-            patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Chest Pain"
+            patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Chest Pain",
+            facility=sample_facility,
         )
         assessment = TriageAssessment.objects.create(
             encounter=encounter,
@@ -574,7 +586,8 @@ class TestEmergencyModuleEndpoints:
         assert "by_category" in zone
 
     def test_zones_summary_counts_patients_correctly(
-        self, authenticated_client, test_user, sample_patient
+        self, authenticated_client, test_user, sample_patient,
+        sample_facility,
     ):
         """Should correctly count patients per zone and category."""
         from hmis.apps.encounters.models import Encounter
@@ -589,6 +602,7 @@ class TestEmergencyModuleEndpoints:
                 patient=sample_patient,
                 encounter_type="EMERGENCY",
                 chief_complaint=f"Pain {i}",
+                facility=sample_facility,
             )
             assessment = TriageAssessment.objects.create(
                 encounter=encounter,

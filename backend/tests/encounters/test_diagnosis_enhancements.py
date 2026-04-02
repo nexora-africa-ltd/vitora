@@ -37,7 +37,7 @@ def another_user(db):
 
 
 @pytest.fixture
-def gap_sample_patient(db):
+def gap_sample_patient(db, sample_organization):
     """Create a sample patient for gap testing."""
     from hmis.apps.patients.models import Patient
 
@@ -46,11 +46,12 @@ def gap_sample_patient(db):
         last_name="Test",
         date_of_birth=date(1985, 3, 20),
         gender="F",
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def gap_sample_encounter(db, gap_sample_patient):
+def gap_sample_encounter(db, gap_sample_patient, sample_facility):
     """Create a sample encounter for gap testing."""
     from hmis.apps.encounters.models import Encounter
 
@@ -58,6 +59,7 @@ def gap_sample_encounter(db, gap_sample_patient):
         patient=gap_sample_patient,
         encounter_type="OPD",
         chief_complaint="Gap test complaint",
+        facility=sample_facility,
     )
 
 

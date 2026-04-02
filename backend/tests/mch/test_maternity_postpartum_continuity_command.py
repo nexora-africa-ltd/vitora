@@ -9,7 +9,7 @@ from django.utils import timezone
 
 
 @pytest.fixture
-def anc_clinic(db):
+def anc_clinic(db, sample_facility, sample_organization):
     from hmis.apps.clinics.models import Clinic
 
     return Clinic.objects.create(
@@ -17,11 +17,13 @@ def anc_clinic(db):
         clinic_type="ANC",
         code="ANC-BF-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def pnc_clinic(db):
+def pnc_clinic(db, sample_facility, sample_organization):
     from hmis.apps.clinics.models import Clinic
 
     return Clinic.objects.create(
@@ -29,11 +31,13 @@ def pnc_clinic(db):
         clinic_type="PNC",
         code="PNC-BF-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def anc_enrollment(db, anc_clinic, sample_patient, test_user):
+def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, sample_organization):
     from hmis.apps.clinics.models import ClinicEnrollment
 
     return ClinicEnrollment.objects.create(
@@ -48,7 +52,7 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user):
 
 
 @pytest.fixture
-def mch_registration(db, sample_patient, anc_enrollment, test_user):
+def mch_registration(db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization):
     from hmis.apps.mch.models import MCHRegistration
 
     return MCHRegistration.objects.create(
@@ -57,6 +61,8 @@ def mch_registration(db, sample_patient, anc_enrollment, test_user):
         registration_date=date.today() - timedelta(days=200),
         registered_by=test_user,
         status="DELIVERED",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -73,7 +79,7 @@ def maternity_resource(db):
 
 
 @pytest.fixture
-def maternity_admission(db, sample_patient, sample_encounter, sample_inpatient_ward, sample_bed, test_user, mch_registration):
+def maternity_admission(db, sample_patient, sample_encounter, sample_inpatient_ward, sample_bed, test_user, mch_registration, sample_facility):
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.inpatient.models import Admission
 
@@ -85,6 +91,7 @@ def maternity_admission(db, sample_patient, sample_encounter, sample_inpatient_w
         patient=sample_patient,
         encounter_type="IPD",
         chief_complaint="Postpartum observation",
+        facility=sample_facility,
     )
 
     return Admission.objects.create(

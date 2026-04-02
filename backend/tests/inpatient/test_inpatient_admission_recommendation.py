@@ -50,30 +50,29 @@ def second_user(db):
 
 
 @pytest.fixture
-def sample_patient(db, test_user):
+def sample_patient(db, test_user, sample_organization, sample_county, sample_sub_county):
     """Create a sample patient."""
-    county = County.objects.create(code=1, name="Test County")
-    sub_county = SubCounty.objects.create(county=county, name="Test SubCounty")
-
     return Patient.objects.create(
         first_name="John",
         last_name="Doe",
         date_of_birth="1990-01-01",
         gender="M",
-        county=county,
-        sub_county=sub_county,
+        county=sample_county,
+        sub_county=sample_sub_county,
         registered_by=test_user,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def opd_encounter(db, sample_patient):
+def opd_encounter(db, sample_patient, sample_facility):
     """Create an OPD encounter."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="OPD",
         encounter_date=timezone.now().date(),
         chief_complaint="Severe abdominal pain",
+        facility=sample_facility,
     )
 
 
@@ -300,7 +299,8 @@ class TestAdmissionRecommendationQueries:
     """Tests for recommendation query operations."""
 
     def test_filter_pending_recommendations(
-        self, opd_encounter, test_user, second_user, sample_patient
+        self, opd_encounter, test_user, second_user, sample_patient,
+        sample_facility,
     ):
         """Should filter recommendations by status."""
         # Create pending recommendation
@@ -319,6 +319,7 @@ class TestAdmissionRecommendationQueries:
             encounter_type="OPD",
             encounter_date=timezone.now().date(),
             chief_complaint="Other complaint",
+            facility=sample_facility,
         )
         rec2 = AdmissionRecommendation.objects.create(
             encounter=encounter2,
@@ -336,7 +337,7 @@ class TestAdmissionRecommendationQueries:
         assert pending.count() == 1
         assert accepted.count() == 1
 
-    def test_filter_by_urgency(self, sample_patient, test_user):
+    def test_filter_by_urgency(self, sample_patient, test_user, sample_facility):
         """Should filter recommendations by urgency level."""
         # Create encounters
         enc1 = Encounter.objects.create(
@@ -344,12 +345,14 @@ class TestAdmissionRecommendationQueries:
             encounter_type="OPD",
             encounter_date=timezone.now().date(),
             chief_complaint="Emergency case",
+            facility=sample_facility,
         )
         enc2 = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             encounter_date=timezone.now().date(),
             chief_complaint="Routine case",
+            facility=sample_facility,
         )
 
         AdmissionRecommendation.objects.create(

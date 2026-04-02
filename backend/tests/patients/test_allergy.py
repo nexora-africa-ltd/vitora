@@ -21,7 +21,7 @@ from rest_framework import status
 class TestAllergyModel:
     """Tests for the Allergy model."""
 
-    def test_allergy_creation(self, db, sample_patient):
+    def test_allergy_creation(self, db, sample_patient, sample_organization):
         """Should create an allergy with valid data."""
         from hmis.apps.patients.models import Allergy
 
@@ -32,6 +32,7 @@ class TestAllergyModel:
             reaction_type="rash",
             severity="moderate",
             status="active",
+            organization=sample_organization,
         )
 
         assert allergy.id is not None
@@ -39,7 +40,7 @@ class TestAllergyModel:
         assert allergy.substance_type == "medication"
         assert allergy.is_active is True
 
-    def test_allergy_str_representation(self, db, sample_patient):
+    def test_allergy_str_representation(self, db, sample_patient, sample_organization):
         """Should have a meaningful string representation."""
         from hmis.apps.patients.models import Allergy
 
@@ -48,13 +49,14 @@ class TestAllergyModel:
             substance="Amoxicillin",
             severity="severe",
             status="active",
+            organization=sample_organization,
         )
 
         assert "Amoxicillin" in str(allergy)
         assert "Severe" in str(allergy)
         assert sample_patient.mrn in str(allergy)
 
-    def test_allergy_is_high_risk_severe(self, db, sample_patient):
+    def test_allergy_is_high_risk_severe(self, db, sample_patient, sample_organization):
         """Should mark severe allergies as high risk."""
         from hmis.apps.patients.models import Allergy
 
@@ -63,11 +65,12 @@ class TestAllergyModel:
             substance="Aspirin",
             severity="severe",
             status="active",
+            organization=sample_organization,
         )
 
         assert allergy.is_high_risk is True
 
-    def test_allergy_is_high_risk_life_threatening(self, db, sample_patient):
+    def test_allergy_is_high_risk_life_threatening(self, db, sample_patient, sample_organization):
         """Should mark life-threatening allergies as high risk."""
         from hmis.apps.patients.models import Allergy
 
@@ -76,11 +79,12 @@ class TestAllergyModel:
             substance="Shellfish",
             severity="life_threatening",
             status="active",
+            organization=sample_organization,
         )
 
         assert allergy.is_high_risk is True
 
-    def test_allergy_is_high_risk_criticality_high(self, db, sample_patient):
+    def test_allergy_is_high_risk_criticality_high(self, db, sample_patient, sample_organization):
         """Should mark high criticality allergies as high risk."""
         from hmis.apps.patients.models import Allergy
 
@@ -90,11 +94,12 @@ class TestAllergyModel:
             severity="moderate",
             criticality="high",
             status="active",
+            organization=sample_organization,
         )
 
         assert allergy.is_high_risk is True
 
-    def test_allergy_is_not_high_risk_mild(self, db, sample_patient):
+    def test_allergy_is_not_high_risk_mild(self, db, sample_patient, sample_organization):
         """Should not mark mild allergies as high risk."""
         from hmis.apps.patients.models import Allergy
 
@@ -104,6 +109,7 @@ class TestAllergyModel:
             severity="mild",
             criticality="low",
             status="active",
+            organization=sample_organization,
         )
 
         assert allergy.is_high_risk is False
@@ -151,7 +157,7 @@ class TestAllergyModel:
             allergy.clean()
         assert "last_occurrence" in str(exc_info.value)
 
-    def test_allergy_unique_active_constraint(self, db, sample_patient):
+    def test_allergy_unique_active_constraint(self, db, sample_patient, sample_organization):
         """Should prevent duplicate active allergies for same substance."""
         from hmis.apps.patients.models import Allergy
         from django.db import IntegrityError
@@ -160,6 +166,7 @@ class TestAllergyModel:
             patient=sample_patient,
             substance="Penicillin",
             status="active",
+            organization=sample_organization,
         )
 
         # Second active allergy with same substance should fail
@@ -168,9 +175,10 @@ class TestAllergyModel:
                 patient=sample_patient,
                 substance="Penicillin",
                 status="active",
+                organization=sample_organization,
             )
 
-    def test_allergy_allows_resolved_duplicate(self, db, sample_patient):
+    def test_allergy_allows_resolved_duplicate(self, db, sample_patient, sample_organization):
         """Should allow resolved allergy with same substance as active."""
         from hmis.apps.patients.models import Allergy
 
@@ -178,6 +186,7 @@ class TestAllergyModel:
             patient=sample_patient,
             substance="Penicillin",
             status="active",
+            organization=sample_organization,
         )
 
         # Resolved allergy with same substance should work
@@ -185,11 +194,12 @@ class TestAllergyModel:
             patient=sample_patient,
             substance="Penicillin",
             status="resolved",
+            organization=sample_organization,
         )
 
         assert resolved.id is not None
 
-    def test_get_active_allergies_for_patient(self, db, sample_patient):
+    def test_get_active_allergies_for_patient(self, db, sample_patient, sample_organization):
         """Should return only active allergies."""
         from hmis.apps.patients.models import Allergy
 
@@ -197,16 +207,19 @@ class TestAllergyModel:
             patient=sample_patient,
             substance="Penicillin",
             status="active",
+            organization=sample_organization,
         )
         Allergy.objects.create(
             patient=sample_patient,
             substance="Sulfa",
             status="active",
+            organization=sample_organization,
         )
         Allergy.objects.create(
             patient=sample_patient,
             substance="Aspirin",
             status="resolved",
+            organization=sample_organization,
         )
 
         active = Allergy.get_active_allergies_for_patient(sample_patient.id)
@@ -217,7 +230,7 @@ class TestAllergyModel:
 class TestAllergyDrugInteraction:
     """Tests for drug-allergy interaction checking."""
 
-    def test_check_drug_allergy_by_id(self, db, sample_patient, sample_drug):
+    def test_check_drug_allergy_by_id(self, db, sample_patient, sample_drug, sample_organization):
         """Should detect allergy by linked drug ID."""
         from hmis.apps.patients.models import Allergy
 
@@ -227,13 +240,14 @@ class TestAllergyDrugInteraction:
             drug=sample_drug,
             substance_type="medication",
             status="active",
+            organization=sample_organization,
         )
 
         allergies = Allergy.check_drug_allergy(sample_patient.id, sample_drug.id)
         assert len(allergies) == 1
         assert allergies[0].substance == sample_drug.generic_name
 
-    def test_check_drug_allergy_no_match(self, db, sample_patient, sample_drug):
+    def test_check_drug_allergy_no_match(self, db, sample_patient, sample_drug, sample_organization):
         """Should return empty list when no allergy match."""
         from hmis.apps.patients.models import Allergy
         from hmis.apps.pharmacy.models import Drug
@@ -251,12 +265,13 @@ class TestAllergyDrugInteraction:
             substance="Ibuprofen",
             drug=other_drug,
             status="active",
+            organization=sample_organization,
         )
 
         allergies = Allergy.check_drug_allergy(sample_patient.id, sample_drug.id)
         assert len(allergies) == 0
 
-    def test_check_drug_name_allergy(self, db, sample_patient):
+    def test_check_drug_name_allergy(self, db, sample_patient, sample_organization):
         """Should detect allergy by drug name (case-insensitive)."""
         from hmis.apps.patients.models import Allergy
 
@@ -265,12 +280,13 @@ class TestAllergyDrugInteraction:
             substance="Penicillin",
             substance_type="medication",
             status="active",
+            organization=sample_organization,
         )
 
         allergies = Allergy.check_drug_name_allergy(sample_patient.id, "PENICILLIN")
         assert len(allergies) == 1
 
-    def test_check_drug_name_allergy_partial_match(self, db, sample_patient):
+    def test_check_drug_name_allergy_partial_match(self, db, sample_patient, sample_organization):
         """Should detect allergy by partial drug name match."""
         from hmis.apps.patients.models import Allergy
 
@@ -279,6 +295,7 @@ class TestAllergyDrugInteraction:
             substance="Penicillin V",
             substance_type="medication",
             status="active",
+            organization=sample_organization,
         )
 
         allergies = Allergy.check_drug_name_allergy(sample_patient.id, "Penicillin")
@@ -288,7 +305,7 @@ class TestAllergyDrugInteraction:
 class TestAllergyAPI:
     """Tests for the Allergy API endpoints."""
 
-    def test_list_allergies_for_patient(self, authenticated_client, sample_patient, db):
+    def test_list_allergies_for_patient(self, authenticated_client, sample_patient, db, sample_organization):
         """Should list allergies for a specific patient."""
         from hmis.apps.patients.models import Allergy
 
@@ -297,6 +314,7 @@ class TestAllergyAPI:
             substance="Penicillin",
             severity="severe",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(
@@ -347,7 +365,7 @@ class TestAllergyAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["recorded_by"] == test_user.id
 
-    def test_update_allergy(self, authenticated_client, sample_patient, db):
+    def test_update_allergy(self, authenticated_client, sample_patient, db, sample_organization):
         """Should update allergy status."""
         from hmis.apps.patients.models import Allergy
 
@@ -355,6 +373,7 @@ class TestAllergyAPI:
             patient=sample_patient,
             substance="Penicillin",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.patch(
@@ -365,7 +384,7 @@ class TestAllergyAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "resolved"
 
-    def test_delete_allergy(self, authenticated_client, sample_patient, db):
+    def test_delete_allergy(self, authenticated_client, sample_patient, db, sample_organization):
         """Should delete an allergy."""
         from hmis.apps.patients.models import Allergy
 
@@ -373,6 +392,7 @@ class TestAllergyAPI:
             patient=sample_patient,
             substance="Penicillin",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.delete(
@@ -382,7 +402,7 @@ class TestAllergyAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Allergy.objects.filter(id=allergy.id).exists()
 
-    def test_standalone_allergies_endpoint(self, authenticated_client, sample_patient, db):
+    def test_standalone_allergies_endpoint(self, authenticated_client, sample_patient, db, sample_organization):
         """Should access allergies via standalone endpoint."""
         from hmis.apps.patients.models import Allergy
 
@@ -390,6 +410,7 @@ class TestAllergyAPI:
             patient=sample_patient,
             substance="Aspirin",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(f"/api/allergies/{allergy.id}/")
@@ -435,7 +456,7 @@ class TestAllergyLookup:
 class TestDrugAllergyInteractionCheckAPI:
     """Tests for the drug-allergy interaction checking endpoint."""
 
-    def test_check_interactions_by_drug_id(self, authenticated_client, sample_patient, sample_drug, db):
+    def test_check_interactions_by_drug_id(self, authenticated_client, sample_patient, sample_drug, db, sample_organization):
         """Should find interactions when checking by drug ID."""
         from hmis.apps.patients.models import Allergy
 
@@ -445,6 +466,7 @@ class TestDrugAllergyInteractionCheckAPI:
             drug=sample_drug,
             severity="severe",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.post(
@@ -460,7 +482,7 @@ class TestDrugAllergyInteractionCheckAPI:
         assert response.data["has_high_risk"] is True
         assert len(response.data["interactions"]) == 1
 
-    def test_check_interactions_by_drug_name(self, authenticated_client, sample_patient, db):
+    def test_check_interactions_by_drug_name(self, authenticated_client, sample_patient, db, sample_organization):
         """Should find interactions when checking by drug name."""
         from hmis.apps.patients.models import Allergy
 
@@ -470,6 +492,7 @@ class TestDrugAllergyInteractionCheckAPI:
             substance_type="medication",
             severity="moderate",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.post(
@@ -510,7 +533,7 @@ class TestDrugAllergyInteractionCheckAPI:
 class TestFHIRAllergyIntolerance:
     """Tests for FHIR AllergyIntolerance resource mapping."""
 
-    def test_fhir_allergy_intolerance_get(self, authenticated_client, sample_patient, db):
+    def test_fhir_allergy_intolerance_get(self, authenticated_client, sample_patient, db, sample_organization):
         """Should return valid FHIR AllergyIntolerance resource."""
         from hmis.apps.patients.models import Allergy
 
@@ -523,6 +546,7 @@ class TestFHIRAllergyIntolerance:
             status="active",
             verification_status="confirmed",
             criticality="high",
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(f"/fhir/AllergyIntolerance/{allergy.id}")
@@ -541,7 +565,7 @@ class TestFHIRAllergyIntolerance:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data["resourceType"] == "OperationOutcome"
 
-    def test_fhir_allergy_with_reaction(self, authenticated_client, sample_patient, db):
+    def test_fhir_allergy_with_reaction(self, authenticated_client, sample_patient, db, sample_organization):
         """Should include reaction details in FHIR resource."""
         from hmis.apps.patients.models import Allergy
 
@@ -552,6 +576,7 @@ class TestFHIRAllergyIntolerance:
             severity="moderate",
             reaction_description="Red itchy welts on arms and chest",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(f"/fhir/AllergyIntolerance/{allergy.id}")
@@ -565,7 +590,8 @@ class TestPrescriptionAllergyCheck:
     """Tests for drug-allergy checking during prescription creation."""
 
     def test_prescription_blocks_without_acknowledgment(
-        self, authenticated_client, sample_patient, sample_drug, sample_encounter, db
+        self, authenticated_client, sample_patient, sample_drug, sample_encounter, db,
+        sample_organization,
     ):
         """Should block prescription when allergy exists and not acknowledged."""
         from hmis.apps.patients.models import Allergy
@@ -576,6 +602,7 @@ class TestPrescriptionAllergyCheck:
             drug=sample_drug,
             severity="severe",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.post(
@@ -600,7 +627,8 @@ class TestPrescriptionAllergyCheck:
         assert "allergy_warnings" in response.data
 
     def test_prescription_proceeds_with_acknowledgment(
-        self, authenticated_client, sample_patient, sample_drug, sample_encounter, db
+        self, authenticated_client, sample_patient, sample_drug, sample_encounter, db,
+        sample_organization,
     ):
         """Should allow prescription when allergy acknowledged."""
         from hmis.apps.patients.models import Allergy
@@ -611,6 +639,7 @@ class TestPrescriptionAllergyCheck:
             drug=sample_drug,
             severity="moderate",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.post(
@@ -664,7 +693,7 @@ class TestAllergyAuditLogging:
         assert log is not None
         assert log.patient_id == sample_patient.id
 
-    def test_allergy_view_logged(self, authenticated_client, sample_patient, db):
+    def test_allergy_view_logged(self, authenticated_client, sample_patient, db, sample_organization):
         """Should log allergy view."""
         from hmis.apps.core.models import AuditLog
         from hmis.apps.patients.models import Allergy
@@ -673,6 +702,7 @@ class TestAllergyAuditLogging:
             patient=sample_patient,
             substance="Aspirin",
             status="active",
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(
@@ -693,7 +723,7 @@ class TestAllergyAuditLogging:
 class TestAllergySerializers:
     """Tests for Allergy serializers."""
 
-    def test_allergy_serializer_fields(self, sample_patient, db):
+    def test_allergy_serializer_fields(self, sample_patient, db, sample_organization):
         """Should serialize all expected fields."""
         from hmis.apps.patients.models import Allergy
         from hmis.apps.patients.serializers import AllergySerializer
@@ -705,6 +735,7 @@ class TestAllergySerializers:
             reaction_type="rash",
             severity="moderate",
             status="active",
+            organization=sample_organization,
         )
 
         serializer = AllergySerializer(allergy)
@@ -716,7 +747,7 @@ class TestAllergySerializers:
         assert "severity_display" in data
         assert "is_high_risk" in data
 
-    def test_allergy_list_serializer(self, sample_patient, db):
+    def test_allergy_list_serializer(self, sample_patient, db, sample_organization):
         """Should use lightweight list serializer."""
         from hmis.apps.patients.models import Allergy
         from hmis.apps.patients.serializers import AllergyListSerializer
@@ -726,6 +757,7 @@ class TestAllergySerializers:
             substance="Penicillin",
             severity="severe",
             status="active",
+            organization=sample_organization,
         )
 
         serializer = AllergyListSerializer(allergy)

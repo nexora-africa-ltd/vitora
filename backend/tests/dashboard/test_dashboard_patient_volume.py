@@ -221,7 +221,8 @@ class TestPatientVolumeDataAccuracy:
     """Test data accuracy for patient volume endpoint."""
 
     def test_counts_patient_registrations(
-        self, authenticated_client, sample_county, sample_sub_county
+        self, authenticated_client, sample_county, sample_sub_county,
+        sample_organization,
     ):
         """Should accurately count patient registrations per day."""
         from hmis.apps.patients.models import Patient
@@ -237,6 +238,7 @@ class TestPatientVolumeDataAccuracy:
                 gender="M",
                 county=sample_county,
                 sub_county=sample_sub_county,
+                organization=sample_organization,
             )
 
         response = authenticated_client.get(
@@ -250,7 +252,7 @@ class TestPatientVolumeDataAccuracy:
         assert today_data is not None
         assert today_data["registrations"] >= 3
 
-    def test_counts_encounters_by_type(self, authenticated_client, sample_patient):
+    def test_counts_encounters_by_type(self, authenticated_client, sample_patient, sample_facility):
         """Should accurately count encounters by type."""
         from django.core.cache import cache
 
@@ -267,12 +269,14 @@ class TestPatientVolumeDataAccuracy:
             encounter_type="OPD",
             encounter_date=today,
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=sample_patient,
             encounter_type="EMERGENCY",
             encounter_date=today,
             chief_complaint="Emergency complaint",
+            facility=sample_facility,
         )
 
         response = authenticated_client.get(
@@ -392,7 +396,7 @@ class TestPatientVolumeCaching:
         response2 = authenticated_client.get(PATIENT_VOLUME_URL, params)
         assert response2.data == response1.data
 
-    def test_cache_bypass_with_refresh_param(self, authenticated_client, sample_patient):
+    def test_cache_bypass_with_refresh_param(self, authenticated_client, sample_patient, sample_facility):
         """refresh=true should bypass cache."""
         from hmis.apps.encounters.models import Encounter
 
@@ -410,6 +414,7 @@ class TestPatientVolumeCaching:
             encounter_type="OPD",
             encounter_date=today,
             chief_complaint="New complaint",
+            facility=sample_facility,
         )
 
         # Request with refresh=true should get new data

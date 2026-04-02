@@ -51,7 +51,7 @@ def non_ihr_disease(db):
 
 
 @pytest.fixture
-def sample_notifiable_case(db, ihr_disease, sample_patient, sample_encounter):
+def sample_notifiable_case(db, ihr_disease, sample_patient, sample_encounter, sample_facility, sample_organization):
     """Create a sample notifiable case for IHR testing."""
     from hmis.apps.surveillance.models import NotifiableCase
 
@@ -61,11 +61,13 @@ def sample_notifiable_case(db, ihr_disease, sample_patient, sample_encounter):
         encounter=sample_encounter,
         severity="SEVERE",
         outcome="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def ihr_notification(db, ihr_disease, sample_notifiable_case, sample_patient, test_user):
+def ihr_notification(db, ihr_disease, sample_notifiable_case, sample_patient, test_user, sample_facility, sample_organization):
     """Create a sample IHR notification."""
     from hmis.apps.surveillance.models import IHRNotification
 
@@ -82,6 +84,8 @@ def ihr_notification(db, ihr_disease, sample_notifiable_case, sample_patient, te
         reported_by=test_user,
         risk_assessment="High risk of spread due to poor water sanitation",
         response_measures="Water sampling initiated, contact tracing ongoing",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -562,7 +566,7 @@ class TestIHRNotificationAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_list_overdue_notifications(self, authenticated_client, ihr_disease, test_user):
+    def test_list_overdue_notifications(self, authenticated_client, ihr_disease, test_user, sample_facility, sample_organization):
         """Should list overdue IHR notifications."""
         from hmis.apps.surveillance.models import IHRNotification
 
@@ -573,6 +577,8 @@ class TestIHRNotificationAPI:
             event_date=date.today() - timedelta(days=2),
             reported_by=test_user,
             report_date=timezone.now() - timedelta(hours=30),
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get("/api/surveillance/ihr/overdue/")

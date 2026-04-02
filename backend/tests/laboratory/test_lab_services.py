@@ -25,24 +25,28 @@ class TestLabWorkflowService:
     """Tests for LabWorkflowService."""
 
     @pytest.fixture
-    def sample_order(self):
+    def sample_order(self, sample_organization, sample_facility):
         """Create a sample lab order."""
         patient = Patient.objects.create(
             first_name="Test",
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="testuser", password="testpass")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         return LabOrder.objects.create(
             patient=patient,
             encounter=encounter,
             ordered_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     @pytest.fixture
@@ -205,24 +209,28 @@ class TestLabAlertService:
     """Tests for LabAlertService."""
 
     @pytest.fixture
-    def sample_order_with_result(self):
+    def sample_order_with_result(self, sample_organization, sample_facility):
         """Create a sample order with critical result."""
         patient = Patient.objects.create(
             first_name="Test",
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="testuser", password="testpass")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         order = LabOrder.objects.create(
             patient=patient,
             encounter=encounter,
             ordered_by=user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         test = TestCatalog.objects.create(
             code="HB",
@@ -252,19 +260,21 @@ class TestLabAlertService:
         assert len(alerts) > 0
         assert "critical" in alerts[0].lower() or "low" in alerts[0].lower()
 
-    def test_overdue_order_detection(self):
+    def test_overdue_order_detection(self, sample_organization, sample_facility):
         """Should detect overdue orders."""
         patient = Patient.objects.create(
             first_name="Test",
             last_name="Patient",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="testuser", password="testpass")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         # Create an old order
@@ -273,6 +283,8 @@ class TestLabAlertService:
             encounter=encounter,
             ordered_by=user,
             status="IN_PROGRESS",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Manually set ordered_at to 48 hours ago

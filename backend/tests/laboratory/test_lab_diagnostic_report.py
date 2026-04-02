@@ -64,7 +64,7 @@ class TestDiagnosticReportModel:
         assert report.report_number.startswith("RPT-")
         assert len(report.report_number) == 17  # RPT-YYYYMMDD-XXXX
 
-    def test_report_number_uniqueness(self, sample_lab_order, test_user, sample_patient, sample_encounter):
+    def test_report_number_uniqueness(self, sample_lab_order, test_user, sample_patient, sample_encounter, sample_organization, sample_facility):
         """Report number should be unique."""
         report1 = DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
@@ -79,6 +79,8 @@ class TestDiagnosticReportModel:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         report2 = DiagnosticReport.objects.create(
             lab_order=lab_order2,
@@ -316,7 +318,7 @@ class TestDiagnosticReportListAPI:
         assert len(results) == 1
         assert results[0]["status"] == "FINAL"
 
-    def test_filter_by_lab_order(self, authenticated_client, sample_lab_order, test_user, sample_patient, sample_encounter):
+    def test_filter_by_lab_order(self, authenticated_client, sample_lab_order, test_user, sample_patient, sample_encounter, sample_organization, sample_facility):
         """Should filter reports by lab order."""
         DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
@@ -331,6 +333,8 @@ class TestDiagnosticReportListAPI:
             order_type="IN_HOUSE",
             status="ORDERED",
             priority="ROUTINE",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         DiagnosticReport.objects.create(
             lab_order=lab_order2,

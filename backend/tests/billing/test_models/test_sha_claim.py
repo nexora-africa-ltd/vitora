@@ -101,7 +101,7 @@ def sha_tariff(db):
 
 
 @pytest.fixture
-def sample_invoice(db, sample_patient, test_user):
+def sample_invoice(db, sample_patient, test_user, sample_facility, sample_organization):
     """Create a sample invoice for testing claims."""
     from hmis.apps.billing.models import Invoice
 
@@ -112,6 +112,8 @@ def sample_invoice(db, sample_patient, test_user):
         status=Invoice.Status.DRAFT,
         payment_type=Invoice.PaymentType.INSURANCE,
         created_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -182,7 +184,9 @@ class TestSHAClaimModel:
         assert len(parts[2]) == 4  # Sequence number padded to 4 digits
 
     def test_claim_number_sequential_generation(
-        self, valid_claim_data, sample_county, sample_sub_county, test_user
+        self, valid_claim_data, sample_county, sample_sub_county, test_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should generate sequential claim numbers for same day."""
         from hmis.apps.billing.models import SHAClaim, SHAMember
@@ -200,6 +204,7 @@ class TestSHAClaimModel:
             gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
         member2 = SHAMember.objects.create(
             patient=patient2,
@@ -215,6 +220,7 @@ class TestSHAClaimModel:
             patient=patient2,
             encounter_type="OPD",
             chief_complaint="Follow-up visit",
+            facility=sample_facility,
         )
 
         claim2_data = valid_claim_data.copy()
@@ -250,7 +256,9 @@ class TestSHAClaimModel:
     # Test 4: Patient must have SHA membership
     # =========================================================================
     def test_patient_must_have_sha_membership(
-        self, sample_patient, sample_encounter, test_user, sample_county, sample_sub_county
+        self, sample_patient, sample_encounter, test_user, sample_county, sample_sub_county,
+        sample_facility,
+        sample_organization,
     ):
         """Should reject claims for patients without SHA membership."""
         from hmis.apps.billing.models import SHAClaim
@@ -265,11 +273,13 @@ class TestSHAClaimModel:
             gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
         encounter = Encounter.objects.create(
             patient=patient_no_sha,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         with pytest.raises(ValidationError) as exc_info:
@@ -1251,7 +1261,9 @@ class TestSHAClaimModelMeta:
         assert "Draft" in str_repr  # Default status display
 
     def test_claim_ordering_by_created_at_desc(
-        self, valid_claim_data, sample_county, sample_sub_county, test_user
+        self, valid_claim_data, sample_county, sample_sub_county, test_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should order claims by created_at descending."""
         from hmis.apps.billing.models import SHAClaim, SHAMember
@@ -1269,6 +1281,7 @@ class TestSHAClaimModelMeta:
             gender="F",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
         member2 = SHAMember.objects.create(
             patient=patient2,
@@ -1284,6 +1297,7 @@ class TestSHAClaimModelMeta:
             patient=patient2,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         claim2 = SHAClaim.objects.create(

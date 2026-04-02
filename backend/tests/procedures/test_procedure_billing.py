@@ -37,7 +37,7 @@ class TestProcedureBillingIntegration:
         )
 
     @pytest.fixture
-    def linked_catalog_entry(self, proc_billing_service):
+    def linked_catalog_entry(self, proc_billing_service, sample_facility, sample_organization):
         """Procedure catalog entry linked to a billing service."""
         return ProcedureCatalog.objects.create(
             code="PROC-WC-TEST",
@@ -46,16 +46,20 @@ class TestProcedureBillingIntegration:
             body_system=ProcedureCatalog.BodySystem.INTEGUMENTARY,
             base_fee=Decimal("500.00"),
             billing_service=proc_billing_service,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     @pytest.fixture
-    def unlinked_catalog_entry(self):
+    def unlinked_catalog_entry(self, sample_facility, sample_organization):
         """Procedure catalog entry WITHOUT billing service (base_fee fallback)."""
         return ProcedureCatalog.objects.create(
             code="PROC-FB-001",
             name="Fallback Procedure",
             category=ProcedureCatalog.Category.MINOR,
             base_fee=Decimal("3000.00"),
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_complete_creates_invoice_item_via_billing_service(

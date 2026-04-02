@@ -18,7 +18,7 @@ pytestmark = pytest.mark.django_db
 class TestPatientModel:
     """Test Patient model functionality."""
 
-    def test_patient_creation_with_required_fields(self):
+    def test_patient_creation_with_required_fields(self, sample_organization):
         """Test creating a patient with all required fields."""
         from hmis.apps.patients.models import Patient
 
@@ -27,6 +27,7 @@ class TestPatientModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         assert patient.id is not None
@@ -36,7 +37,7 @@ class TestPatientModel:
         assert patient.gender == "M"
         assert patient.mrn is not None  # MRN should be auto-generated
 
-    def test_mrn_auto_generation(self):
+    def test_mrn_auto_generation(self, sample_organization):
         """Test that MRN is automatically generated for new patients."""
         from hmis.apps.patients.models import Patient
 
@@ -45,6 +46,7 @@ class TestPatientModel:
             last_name="Smith",
             date_of_birth=date(1985, 5, 15),
             gender="F",
+            organization=sample_organization,
         )
 
         assert patient.mrn is not None
@@ -52,7 +54,7 @@ class TestPatientModel:
         # MRN should follow format: MRN-YYYYMMDD-XXXX
         assert patient.mrn.startswith("MRN-")
 
-    def test_mrn_uniqueness(self):
+    def test_mrn_uniqueness(self, sample_organization):
         """Test that MRN must be unique."""
         from hmis.apps.patients.models import Patient
 
@@ -61,6 +63,7 @@ class TestPatientModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Trying to create another patient with the same MRN should fail
@@ -71,9 +74,10 @@ class TestPatientModel:
                 date_of_birth=date(1985, 5, 15),
                 gender="F",
                 mrn=patient1.mrn,
+                organization=sample_organization,
             )
 
-    def test_patient_full_name(self):
+    def test_patient_full_name(self, sample_organization):
         """Test the full_name property."""
         from hmis.apps.patients.models import Patient
 
@@ -82,11 +86,12 @@ class TestPatientModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         assert patient.full_name == "John Doe"
 
-    def test_patient_age_calculation(self):
+    def test_patient_age_calculation(self, sample_organization):
         """Test the age property calculates age correctly."""
         from hmis.apps.patients.models import Patient
 
@@ -97,6 +102,7 @@ class TestPatientModel:
             last_name="Doe",
             date_of_birth=birth_date,
             gender="M",
+            organization=sample_organization,
         )
 
         assert patient.age == 30
@@ -133,7 +139,7 @@ class TestPatientModel:
         with pytest.raises(ValidationError):
             patient.full_clean()
 
-    def test_optional_fields(self):
+    def test_optional_fields(self, sample_organization):
         """Test that optional fields can be null/blank."""
         from hmis.apps.patients.models import Patient
 
@@ -142,7 +148,8 @@ class TestPatientModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
-            # Optional fields not provided
+            # Optional fields not provided,
+            organization=sample_organization,
         )
 
         assert patient.middle_name is None or patient.middle_name == ""
@@ -151,7 +158,7 @@ class TestPatientModel:
         assert patient.address is None or patient.address == ""
         assert patient.national_id is None or patient.national_id == ""
 
-    def test_patient_with_optional_fields(self):
+    def test_patient_with_optional_fields(self, sample_organization):
         """Test creating patient with all optional fields."""
         from hmis.apps.patients.models import Patient
 
@@ -165,6 +172,7 @@ class TestPatientModel:
             email="john.doe@example.com",
             address="123 Main St, Nairobi",
             national_id="12345678",
+            organization=sample_organization,
         )
 
         assert patient.middle_name == "Michael"
@@ -173,7 +181,7 @@ class TestPatientModel:
         assert patient.address == "123 Main St, Nairobi"
         assert patient.national_id == "12345678"
 
-    def test_patient_str_representation(self):
+    def test_patient_str_representation(self, sample_organization):
         """Test the string representation of patient."""
         from hmis.apps.patients.models import Patient
 
@@ -182,11 +190,12 @@ class TestPatientModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         assert str(patient) == f"{patient.mrn} - John Doe"
 
-    def test_patient_timestamps(self):
+    def test_patient_timestamps(self, sample_organization):
         """Test that created_at and updated_at are set automatically."""
         from hmis.apps.patients.models import Patient
 
@@ -195,13 +204,14 @@ class TestPatientModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         assert patient.created_at is not None
         assert patient.updated_at is not None
         assert patient.created_at <= patient.updated_at
 
-    def test_patient_update_timestamps(self):
+    def test_patient_update_timestamps(self, sample_organization):
         """Test that updated_at changes when patient is updated."""
         from hmis.apps.patients.models import Patient
 
@@ -210,6 +220,7 @@ class TestPatientModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         original_updated_at = patient.updated_at
@@ -250,7 +261,7 @@ class TestPatientModel:
         with pytest.raises(ValidationError):
             patient.full_clean()
 
-    def test_multiple_patients_different_mrns(self):
+    def test_multiple_patients_different_mrns(self, sample_organization):
         """Test that multiple patients get different MRNs."""
         from hmis.apps.patients.models import Patient
 
@@ -259,6 +270,7 @@ class TestPatientModel:
             last_name="Doe",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         patient2 = Patient.objects.create(
@@ -266,6 +278,7 @@ class TestPatientModel:
             last_name="Smith",
             date_of_birth=date(1985, 5, 15),
             gender="F",
+            organization=sample_organization,
         )
 
         assert patient1.mrn != patient2.mrn

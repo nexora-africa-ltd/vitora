@@ -18,6 +18,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.pharmacy.models import Prescription
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -28,8 +29,9 @@ def rx_user(db):
 
 
 @pytest.fixture
-def rx_client(rx_user):
+def rx_client(rx_user, sample_organization, sample_facility):
     client = APIClient()
+    ensure_staff_profile(rx_user, sample_organization, sample_facility)
     client.force_authenticate(user=rx_user)
     return client
 
@@ -125,7 +127,7 @@ class TestPrescriptionDispensingTypeAPI:
         assert response.data["is_discharge_medication"] is True
         assert response.data["dispensing_type"] == "EXTERNAL"
 
-    def test_filter_by_admission(self, rx_client, sample_admission, sample_patient, rx_user):
+    def test_filter_by_admission(self, rx_client, sample_admission, sample_patient, rx_user, sample_facility, sample_organization):
         """Should be able to filter prescriptions by admission."""
         rx = Prescription.objects.create(
             patient=sample_patient,
@@ -133,6 +135,8 @@ class TestPrescriptionDispensingTypeAPI:
             prescribed_by=rx_user,
             valid_until=date.today() + timedelta(days=30),
             status="PENDING",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         # Create another prescription without admission
         Prescription.objects.create(
@@ -140,25 +144,31 @@ class TestPrescriptionDispensingTypeAPI:
             prescribed_by=rx_user,
             valid_until=date.today() + timedelta(days=30),
             status="PENDING",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         response = rx_client.get(f"/api/pharmacy/prescriptions/?admission={sample_admission.id}")
         assert response.status_code == status.HTTP_200_OK
         ids = [r["id"] for r in response.data["results"]]
         assert rx.id in ids
 
-    def test_filter_by_dispensing_type(self, rx_client, sample_patient, rx_user):
+    def test_filter_by_dispensing_type(self, rx_client, sample_patient, rx_user, sample_facility, sample_organization):
         """Should filter prescriptions by dispensing_type."""
         internal = Prescription.objects.create(
             patient=sample_patient,
             prescribed_by=rx_user,
             valid_until=date.today() + timedelta(days=30),
             dispensing_type="INTERNAL",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         external = Prescription.objects.create(
             patient=sample_patient,
             prescribed_by=rx_user,
             valid_until=date.today() + timedelta(days=30),
             dispensing_type="EXTERNAL",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         response = rx_client.get("/api/pharmacy/prescriptions/?dispensing_type=EXTERNAL")
         assert response.status_code == status.HTTP_200_OK
@@ -166,19 +176,23 @@ class TestPrescriptionDispensingTypeAPI:
         assert external.id in ids
         assert internal.id not in ids
 
-    def test_filter_by_is_discharge_medication(self, rx_client, sample_patient, rx_user):
+    def test_filter_by_is_discharge_medication(self, rx_client, sample_patient, rx_user, sample_facility, sample_organization):
         """Should filter prescriptions by is_discharge_medication."""
         regular = Prescription.objects.create(
             patient=sample_patient,
             prescribed_by=rx_user,
             valid_until=date.today() + timedelta(days=30),
             is_discharge_medication=False,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         discharge = Prescription.objects.create(
             patient=sample_patient,
             prescribed_by=rx_user,
             valid_until=date.today() + timedelta(days=30),
             is_discharge_medication=True,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         response = rx_client.get("/api/pharmacy/prescriptions/?is_discharge_medication=true")
         assert response.status_code == status.HTTP_200_OK
