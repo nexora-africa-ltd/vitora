@@ -496,11 +496,30 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
 
                 if mfa_required and not mfa_enabled:
                     # MFA is required but not set up - user needs to set it up
+                    # Start the grace period if not already started
+                    from hmis.apps.core.mfa.utils import (
+                        is_mfa_grace_period_expired,
+                        set_mfa_grace_deadline,
+                    )
+
+                    set_mfa_grace_deadline(user)
+
+                    # Check if grace period already expired
+                    grace_expired = is_mfa_grace_period_expired(user)
+
                     # Still return the tokens but flag that setup is needed
                     user_logged_in.send(sender=self.__class__, request=request, user=user)
 
                     response.data["mfa_setup_required"] = True
                     response.data["mfa_required"] = False
+                    response.data["mfa_grace_expired"] = grace_expired
+
+                    # Include deadline for frontend countdown
+                    profile = getattr(user, "staff_profile", None)
+                    if profile and profile.mfa_grace_deadline:
+                        response.data["mfa_grace_deadline"] = (
+                            profile.mfa_grace_deadline.isoformat()
+                        )
                 else:
                     # No MFA - proceed normally
                     user_logged_in.send(sender=self.__class__, request=request, user=user)

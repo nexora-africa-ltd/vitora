@@ -12,19 +12,27 @@ This document describes the current backend Multi‑Factor Authentication (MFA) 
 - Role-based MFA requirement enforcement (blocks disabling MFA for required roles)
 - Audit logging for MFA lifecycle events
 - **Brute-force protection** via rate limiting and failed attempt tracking
+- **Django admin restricted to Nexora superusers** (`AdminAccessMiddleware`)
+- **Admin MFA enforcement** — TOTP verification required before accessing `/admin/` (session-based)
+- **MFA onboarding grace period** — 72h (configurable) for new users before mandatory setup
+- **Grace period enforcement middleware** — blocks API access after deadline expires
 - 53 comprehensive unit tests (`backend/tests/test_mfa.py`)
 - 16 rate limiting tests (`backend/tests/test_rate_limiting.py`)
+- 21 admin security tests (`backend/tests/test_admin_security.py`)
 
 ### Implemented (Frontend)
 - MFA setup wizard (`web-app/components/auth/mfa-setup-wizard.tsx`)
 - MFA verification during login (`web-app/components/auth/mfa-verification.tsx`)
 - MFA API client (`web-app/lib/api/mfa.ts`)
 - Zod schemas for type-safe API responses (`web-app/lib/schemas/mfa.schema.ts`)
+- **MFA grace period banner** (`web-app/components/auth/mfa-grace-banner.tsx`) — dismissible countdown
+- **403 `mfa_setup_required` interceptor** (`web-app/lib/api/client.ts`) — redirects to setup
+- **Login flow** passes `mfa_grace_deadline` and `mfa_grace_expired` through auth context
 - 37 UI component tests
 
 ### Not implemented yet
 - E2E MFA tests (Playwright)
-- MFA settings page in user profile
+- MFA settings page in user profile (currently via Settings > Security tab)
 
 ## Dependencies
 
@@ -140,7 +148,43 @@ Login view: [backend/hmis/apps/core/views.py](backend/hmis/apps/core/views.py) (
   - `{ "mfa_required": true, "mfa_token": "..." }`
   - (No `access`/`refresh` yet)
 - If MFA is required but not enabled:
-  - Tokens are still returned, plus `mfa_setup_required=true` to drive the UI flow
+  - Tokens are still returned, plus:
+    - `mfa_setup_required=true` to drive the UI flow
+    - `mfa_grace_deadline` (ISO 8601) — when the setup grace period expires
+    - `mfa_grace_expired` (bool) — true if deadline has already passed
+  - On first login, `StaffProfile.mfa_grace_deadline` is set (now + `MFA_GRACE_PERIOD_HOURS`, default 72h)
+  - The deadline is set once and never extended
+
+## Django Admin Access Control
+
+Middleware: [backend/hmis/apps/core/middleware.py](backend/hmis/apps/core/middleware.py) (`AdminAccessMiddleware`)
+
+- **Superuser-only**: Only `is_superuser=True` users can access `/admin/`. Tenant staff (`is_staff=True` but not superuser) receive 403.
+- **Admin MFA**: If the superuser has a confirmed TOTP device, they must verify TOTP at `/admin/mfa-verify/` before accessing any admin page. Verification is stored in `request.session['admin_mfa_verified']`.
+- **Template**: [backend/hmis/templates/admin/mfa_verify.html](backend/hmis/templates/admin/mfa_verify.html)
+
+## MFA Onboarding Grace Period
+
+Utilities: [backend/hmis/apps/core/mfa/utils.py](backend/hmis/apps/core/mfa/utils.py)
+Middleware: [backend/hmis/apps/core/middleware.py](backend/hmis/apps/core/middleware.py) (`MFAGraceEnforcementMiddleware`)
+
+**Flow:**
+1. User with MFA-required role logs in without TOTP configured
+2. `set_mfa_grace_deadline()` sets `StaffProfile.mfa_grace_deadline = now + 72h`
+3. During grace period: full API access; frontend shows dismissible banner with countdown
+4. After grace period: `MFAGraceEnforcementMiddleware` returns 403 `{code: "mfa_setup_required"}` on all API routes except `/api/token/`, `/api/mfa/`, `/api/auth/change-password/`, `/api/me/`
+5. Frontend interceptor catches this 403 and redirects to `/settings?tab=security`
+
+**Settings:**
+- `MFA_ENFORCEMENT` — master toggle (default `True`; `False` in dev/test)
+- `MFA_GRACE_PERIOD_HOURS` — configurable, default `72` (set to `0` for immediate enforcement)
+
+**Model field:** `StaffProfile.mfa_grace_deadline` (DateTimeField, nullable)
+
+**Frontend components:**
+- `MFAGraceBanner` (`web-app/components/auth/mfa-grace-banner.tsx`) — amber alert shown inside dashboard layout
+- Axios 403 interceptor (`web-app/lib/api/client.ts`) — catches `mfa_setup_required` and redirects
+- Login page redirects to setup when `mfa_grace_expired=true`
 
 ## Audit Logging
 
@@ -214,3 +258,5 @@ When implementing the `web-app/` MFA UI:
   - allow regeneration (with TOTP confirmation)
   - allow disable (with password) where permitted
 - Update Zod schemas / API client wiring as needed for MFA status and login responses.
+- E2E Playwright tests for: login → MFA verify, grace period banner, grace expired redirect
+- Clear `vitora_mfa_grace_deadline` from localStorage when MFA setup is completed

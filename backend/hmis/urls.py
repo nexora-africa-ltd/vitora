@@ -80,6 +80,36 @@ def health_check(request):
     )
 
 
+@never_cache
+def admin_mfa_verify(request):
+    """Admin MFA verification page — TOTP check before accessing /admin/."""
+    from django.shortcuts import redirect
+    from django.template.response import TemplateResponse
+    from django.utils import timezone as tz
+
+    if not request.user.is_authenticated:
+        return redirect("/admin/login/")
+
+    error = None
+    if request.method == "POST":
+        totp_code = request.POST.get("totp_code", "").strip()
+        from hmis.apps.core.mfa.models import UserTOTPDevice
+
+        device = (
+            UserTOTPDevice.objects.filter(user=request.user, confirmed=True)
+            .order_by("-last_used_at")
+            .first()
+        )
+        if device and device.verify_token(totp_code):
+            request.session["admin_mfa_verified"] = True
+            device.last_used_at = tz.now()
+            device.save(update_fields=["last_used_at"])
+            return redirect("/admin/")
+        error = "Invalid verification code. Please try again."
+
+    return TemplateResponse(request, "admin/mfa_verify.html", {"error": error})
+
+
 # Create a router for API endpoints
 router = routers.DefaultRouter()
 
@@ -120,6 +150,7 @@ terminology_router.register(r"codesystems", CodeSystemViewSet, basename="codesys
 urlpatterns = [
     path("", health_check, name="health_check"),
     path("api/health/", health_check, name="api_health_check"),
+    path("admin/mfa-verify/", admin_mfa_verify, name="admin-mfa-verify"),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/me/permissions/", me_permissions, name="me-permissions"),

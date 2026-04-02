@@ -44,6 +44,10 @@ def _send(
     sender = from_email or getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@vitora.health")
     resend_key = getattr(settings, "RESEND_API_KEY", "") or ""
 
+    # Safety: never use Resend SDK when running under the test runner.
+    if getattr(settings, "TESTING", False):
+        resend_key = ""
+
     if resend_key:
         # Production path — Resend SDK
         try:

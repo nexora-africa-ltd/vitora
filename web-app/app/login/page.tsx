@@ -107,6 +107,12 @@ export default function LoginPage() {
         return;
       }
 
+      // MFA setup required and grace period already expired — force setup
+      if (result.mfaGraceExpired) {
+        router.push('/settings?tab=security');
+        return;
+      }
+
       // Check if setup wizard needs to run before entering the app
       if (process.env.NEXT_PUBLIC_SETUP_WIZARD_ENABLED === 'true') {
         try {

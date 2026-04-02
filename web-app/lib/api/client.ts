@@ -101,6 +101,18 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // Handle 403 with mfa_setup_required — grace period expired
+    if (error.response?.status === 403) {
+      const data = error.response.data as Record<string, unknown> | undefined;
+      if (data && data.code === 'mfa_setup_required') {
+        // Redirect to MFA setup (only once, avoid loops)
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/settings')) {
+          window.location.href = '/settings?tab=security&reason=mfa_required';
+        }
+        return Promise.reject(error);
+      }
+    }
+
     // Handle 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {

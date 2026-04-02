@@ -83,6 +83,9 @@ Only after the web app implementation is complete should we shift focus to offli
 - ✅ ICD-10 diagnosis codes with search
 - ✅ Treatment plan templates
 - ✅ Sensitive patient filtering (HIV, GBV, Mental Health)
+- ✅ Django admin restricted to Nexora superusers (tenant staff use web-app admin)
+- ✅ Admin MFA enforcement (TOTP verification before accessing `/admin/`)
+- ✅ MFA onboarding grace period (72h configurable, then mandatory for required roles)
 
 ---
 
@@ -945,6 +948,45 @@ class SensitiveAccessPermission(permissions.BasePermission):
     """
 ```
 
+### Django Admin Access Control
+
+```python
+# Django admin is restricted to Nexora platform staff (superusers only).
+# Tenant org-admins use the web-app admin pages, NOT /admin/.
+# See: hmis/apps/core/middleware.AdminAccessMiddleware
+
+# Access matrix:
+# | User Type              | is_staff | is_superuser | /admin/ access |
+# |------------------------|----------|--------------|----------------|
+# | Nexora platform staff  | True     | True         | ✅ Allowed      |
+# | Tenant org-admin       | False    | False        | ❌ 403          |
+# | Tenant clinical staff  | False    | False        | ❌ 403          |
+
+# MFA is enforced on admin login when the superuser has a TOTP device.
+# Flow: /admin/login/ → TOTP verify at /admin/mfa-verify/ → admin dashboard
+```
+
+### MFA Onboarding Grace Period
+
+```python
+# Roles requiring MFA: ADMIN, CLINICAL_SENIOR, MANAGEMENT, superusers
+# See: hmis/apps/core/mfa/utils.py → is_mfa_required()
+
+# Grace period flow:
+# 1. First login with MFA-required role → mfa_grace_deadline set (now + 72h)
+# 2. Login response includes: mfa_setup_required=True, mfa_grace_deadline=ISO8601
+# 3. During grace period: full API access + dismissible frontend banner
+# 4. After grace period: API returns 403 {code: "mfa_setup_required"}
+#    Only /api/token/, /api/mfa/, /api/auth/change-password/ remain accessible
+
+# Settings:
+MFA_ENFORCEMENT = True              # Master toggle (False in dev/test)
+MFA_GRACE_PERIOD_HOURS = 72         # Configurable, 0 = immediate
+
+# Model field:
+# StaffProfile.mfa_grace_deadline   # DateTimeField, set once, never extended
+```
+
 ### Audit Log Actions
 
 ```python
@@ -1557,4 +1599,4 @@ Every commit must follow these rules:
 
 **Last Updated**: April 3, 2026
 **Maintainer**: Engineering Lead
-**Version**: 2.7 (Added email-or-username login with unique email enforcement)
+**Version**: 2.8 (Admin access restriction, admin MFA, MFA onboarding grace period)
