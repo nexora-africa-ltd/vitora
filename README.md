@@ -1162,6 +1162,8 @@ See Section 5 for detailed model definitions. Core tables:
 - JWT-based authentication with 30-min access / 7-day refresh tokens
 - **Login by username or email** (case-insensitive email, unique email enforced at DB + app level)
 - **MFA / Two-Factor Authentication**: TOTP devices, backup codes, MFA tokens
+- **MFA onboarding grace period**: 72h (configurable) for new users before mandatory setup
+- **Django admin restricted to Nexora superusers** with MFA verification on admin login
 - Role-Based Access Control (RBAC) with permission matrix
 - **Emergency Access Override**: Break-glass access with reason tracking and auto-review
 - Session timeout and management

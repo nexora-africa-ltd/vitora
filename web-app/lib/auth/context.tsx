@@ -72,6 +72,8 @@ export interface LoginResult {
   mfaRequired?: boolean;
   mfaToken?: string;
   mfaSetupRequired?: boolean;
+  mfaGraceDeadline?: string;    // ISO 8601 — when MFA setup grace period expires
+  mfaGraceExpired?: boolean;    // true if grace period already passed
   mustChangePassword?: boolean;
   error?: string;
 }
@@ -87,6 +89,8 @@ const USER_KEY = 'vitora_user';
 const AUTH_COOKIE_NAME = 'vitora_authenticated';
 // Idle timer activity key (must match use-idle-timer.ts)
 const IDLE_ACTIVITY_KEY = 'vitora_last_activity';
+// MFA grace period deadline (ISO 8601)
+const MFA_GRACE_KEY = 'vitora_mfa_grace_deadline';
 
 /**
  * Auth provider component
@@ -209,6 +213,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
+      // MFA setup required but tokens still issued (grace period)
+      if (data.mfa_setup_required && data.mfa_grace_deadline) {
+        // Persist grace deadline so the banner can read it
+        localStorage.setItem(MFA_GRACE_KEY, data.mfa_grace_deadline);
+      }
+
       // MFA not required - proceed with normal login
       const tokens: AuthTokens = { access: data.access, refresh: data.refresh };
 
@@ -242,7 +252,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
       });
 
-      return { success: true, mustChangePassword: !!data.must_change_password };
+      return {
+        success: true,
+        mustChangePassword: !!data.must_change_password,
+        mfaSetupRequired: !!data.mfa_setup_required,
+        mfaGraceDeadline: data.mfa_grace_deadline || undefined,
+        mfaGraceExpired: !!data.mfa_grace_expired,
+      };
     } catch (error) {
       setState((prev) => ({ ...prev, isLoading: false }));
       return {
@@ -331,6 +347,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(MFA_GRACE_KEY);
 
     // Clear auth cookie
     document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;

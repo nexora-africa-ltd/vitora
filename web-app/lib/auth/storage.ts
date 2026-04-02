@@ -1,6 +1,7 @@
 const ACCESS_TOKEN_KEY = 'vitora_access_token';
 const REFRESH_TOKEN_KEY = 'vitora_refresh_token';
 const USER_KEY = 'vitora_user';
+const MFA_GRACE_KEY = 'vitora_mfa_grace_deadline';
 
 /**
  * Token storage utilities using localStorage.
@@ -57,5 +58,6 @@ export const tokenStorage = {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(MFA_GRACE_KEY);
   },
 };

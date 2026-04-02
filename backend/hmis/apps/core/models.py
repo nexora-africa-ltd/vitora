@@ -1502,6 +1502,15 @@ class StaffProfile(models.Model):
         default=False,
         help_text="When True the user must set a new password on next login.",
     )
+    mfa_grace_deadline = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Deadline by which MFA must be configured for roles that require it. "
+            "Set on first login; after this deadline, API access is blocked until "
+            "MFA is set up. Default grace period: 72 hours."
+        ),
+    )
 
     # Employment
     employment_status = models.CharField(

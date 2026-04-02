@@ -96,6 +96,8 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "hmis.apps.core.middleware.TenantMiddleware",  # Resolves organization + facility from X-Facility-Id
+    "hmis.apps.core.middleware.AdminAccessMiddleware",  # Restrict /admin/ to Nexora superusers
+    "hmis.apps.core.middleware.MFAGraceEnforcementMiddleware",  # Block API after MFA grace period
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",  # Tracks request user for history
@@ -214,6 +216,10 @@ REST_FRAMEWORK = {
 # MFA enforcement — default True (production-safe).
 # Override to False in development/test/staging settings.
 MFA_ENFORCEMENT = True
+
+# Grace period (hours) for new users to set up MFA before it becomes mandatory.
+# Set to 0 to require immediate MFA setup (no grace period).
+MFA_GRACE_PERIOD_HOURS = 72
 
 
 # drf-spectacular settings

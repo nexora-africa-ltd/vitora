@@ -17,6 +17,7 @@ import os
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
+TESTING = True
 
 # MFA enforcement — disabled in tests by default
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
@@ -48,6 +49,10 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 # Email backend for tests
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# CRITICAL: Disable Resend SDK so tests never send real emails,
+# regardless of what's in the environment.
+RESEND_API_KEY = ""
 
 # Sync settings for tests
 SYNC_ENABLED = False
