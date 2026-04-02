@@ -859,8 +859,11 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         """Soft-delete: deactivate user and terminate employment."""
+        from django.utils import timezone
+
         instance.employment_status = "TERMINATED"
-        instance.save(update_fields=["employment_status"])
+        instance.date_left = timezone.now().date()
+        instance.save(update_fields=["employment_status", "date_left"])
         instance.user.is_active = False
         instance.user.save(update_fields=["is_active"])
 

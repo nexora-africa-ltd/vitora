@@ -161,7 +161,7 @@ class TestStaffUsernameSuggestion:
 class TestStaffDeactivation:
     """Tests for staff soft deletion (deactivation)."""
 
-    def test_delete_staff_deactivates(self, authenticated_client, test_user):
+    def test_delete_staff_deactivates(self, authenticated_client, test_user, sample_organization):
         """DELETE should deactivate staff, not hard delete."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
@@ -189,7 +189,8 @@ class TestStaffDeactivation:
             employment_status="ACTIVE",
             date_joined="2024-01-01",
             primary_department=dept,
-            primary_role=role,  # ✅ Add this
+            primary_role=role,
+            organization=sample_organization,
         )
 
         # Promote test_user to allow deletion (admin permission)

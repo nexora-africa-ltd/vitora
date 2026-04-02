@@ -79,6 +79,8 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
             status=Invoice.Status.DRAFT,
             payment_type=Invoice.PaymentType.CASH,
             created_by=system_user,
+            facility=getattr(instance, "facility", None),
+            organization=getattr(instance, "organization", None),
         )
 
 
