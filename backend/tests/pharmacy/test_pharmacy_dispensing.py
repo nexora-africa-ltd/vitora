@@ -19,7 +19,7 @@ from django.core.exceptions import ValidationError
 class TestDispensingModel:
     """Tests for Dispensing model."""
 
-    def test_dispensing_from_prescription(self):
+    def test_dispensing_from_prescription(self, sample_organization, sample_facility):
         """Dispensing can be created from prescription item."""
         from django.contrib.auth import get_user_model
 
@@ -47,12 +47,14 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -110,7 +112,7 @@ class TestDispensingModel:
         assert dispensing.batch == batch
         assert dispensing.quantity_dispensed == 30
 
-    def test_direct_dispensing_otc(self):
+    def test_direct_dispensing_otc(self, sample_organization):
         """OTC drugs can be dispensed without prescription."""
         from django.contrib.auth import get_user_model
 
@@ -131,6 +133,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -171,7 +174,7 @@ class TestDispensingModel:
         assert dispensing.prescription_item is None
         assert dispensing.drug.schedule == "OTC"
 
-    def test_batch_linkage_required(self):
+    def test_batch_linkage_required(self, sample_organization):
         """Dispensing must be linked to a batch for traceability."""
         from django.contrib.auth import get_user_model
 
@@ -192,6 +195,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -228,7 +232,7 @@ class TestDispensingModel:
         assert dispensing.batch == batch
         assert dispensing.batch.batch_number == "DISP003"
 
-    def test_quantity_validation_against_stock(self):
+    def test_quantity_validation_against_stock(self, sample_organization):
         """Dispensing quantity should not exceed available stock."""
         from django.contrib.auth import get_user_model
 
@@ -249,6 +253,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -287,7 +292,7 @@ class TestDispensingModel:
         with pytest.raises(ValidationError):
             dispensing.clean()
 
-    def test_dispense_reduces_batch_stock(self):
+    def test_dispense_reduces_batch_stock(self, sample_organization):
         """Dispensing should reduce batch available quantity."""
         from django.contrib.auth import get_user_model
 
@@ -308,6 +313,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -346,7 +352,7 @@ class TestDispensingModel:
         batch.refresh_from_db()
         assert batch.quantity_available == initial_quantity - 30
 
-    def test_price_calculation(self):
+    def test_price_calculation(self, sample_organization):
         """Total price should be calculated correctly."""
         from django.contrib.auth import get_user_model
 
@@ -367,6 +373,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -403,7 +410,7 @@ class TestDispensingModel:
         calculated_total = dispensing.calculate_total()
         assert calculated_total == Decimal("250.00")
 
-    def test_discount_application(self):
+    def test_discount_application(self, sample_organization):
         """Discount should be applied to total price."""
         from django.contrib.auth import get_user_model
 
@@ -424,6 +431,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -461,7 +469,7 @@ class TestDispensingModel:
         calculated_total = dispensing.calculate_total()
         assert calculated_total == Decimal("150.00")  # (20 * 10) - 50
 
-    def test_return_processing(self):
+    def test_return_processing(self, sample_organization):
         """Returns should be tracked on dispensing record."""
         from django.contrib.auth import get_user_model
 
@@ -482,6 +490,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -522,7 +531,7 @@ class TestDispensingModel:
         assert dispensing.quantity_returned == 10
         assert "adverse reaction" in dispensing.notes.lower()
 
-    def test_return_restores_batch_stock(self):
+    def test_return_restores_batch_stock(self, sample_organization):
         """Returning drugs should restore batch stock."""
         from django.contrib.auth import get_user_model
 
@@ -543,6 +552,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -585,7 +595,7 @@ class TestDispensingModel:
         batch.refresh_from_db()
         assert batch.quantity_available == initial_available + 15
 
-    def test_controlled_drug_verification_required(self):
+    def test_controlled_drug_verification_required(self, sample_organization):
         """Controlled drugs require verification."""
         from django.contrib.auth import get_user_model
 
@@ -606,6 +616,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -643,7 +654,7 @@ class TestDispensingModel:
 
         assert dispensing.requires_verification() is True
 
-    def test_verification_by_different_user(self):
+    def test_verification_by_different_user(self, sample_organization):
         """Controlled drug verification must be by different user."""
         from django.contrib.auth import get_user_model
 
@@ -665,6 +676,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -706,7 +718,7 @@ class TestDispensingModel:
         assert dispensing.verified_by == user2
         assert dispensing.verified_at is not None
 
-    def test_instructions_documentation(self):
+    def test_instructions_documentation(self, sample_organization):
         """Dispensing instructions should be documented."""
         from django.contrib.auth import get_user_model
 
@@ -727,6 +739,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -766,7 +779,7 @@ class TestDispensingModel:
         assert dispensing.instructions_given == instructions
         assert "after meals" in dispensing.instructions_given.lower()
 
-    def test_counseling_flag(self):
+    def test_counseling_flag(self, sample_organization):
         """Patient counseling completion should be tracked."""
         from django.contrib.auth import get_user_model
 
@@ -787,6 +800,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -823,7 +837,7 @@ class TestDispensingModel:
 
         assert dispensing.patient_counseled is True
 
-    def test_fefo_batch_selection(self):
+    def test_fefo_batch_selection(self, sample_organization):
         """Dispensing should use batch with earliest expiry (FEFO)."""
         from django.contrib.auth import get_user_model
 
@@ -844,6 +858,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -889,7 +904,7 @@ class TestDispensingModel:
         assert batches.first() == batch1
         assert batches.first().batch_number == "DISP014A"
 
-    def test_audit_trail_creation(self):
+    def test_audit_trail_creation(self, sample_organization):
         """Dispensing should create audit trail."""
         from django.contrib.auth import get_user_model
 
@@ -910,6 +925,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -948,7 +964,7 @@ class TestDispensingModel:
         assert dispensing.dispensed_at is not None
         assert dispensing.created_at is not None
 
-    def test_multiple_batches_for_single_dispense(self):
+    def test_multiple_batches_for_single_dispense(self, sample_organization):
         """Dispensing large quantity should work across multiple batches (FEFO)."""
         from django.contrib.auth import get_user_model
 
@@ -969,6 +985,7 @@ class TestDispensingModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(

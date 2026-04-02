@@ -13,6 +13,7 @@ Following TDD methodology - these tests are written BEFORE implementation.
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework import status
+from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db
 
@@ -57,28 +58,31 @@ def admin_user(db):
 
 
 @pytest.fixture
-def authenticated_api_client(api_client, api_user):
+def authenticated_api_client(api_client, api_user, sample_organization, sample_facility):
     """Provide authenticated API client."""
+    ensure_staff_profile(api_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=api_user)
     return api_client
 
 
 @pytest.fixture
-def authenticated_api_client2(api_client, api_user2):
+def authenticated_api_client2(api_client, api_user2, sample_organization, sample_facility):
     """Provide authenticated API client for second user."""
     from rest_framework.test import APIClient
 
     client = APIClient()
+    ensure_staff_profile(api_user2, sample_organization, sample_facility)
     client.force_authenticate(user=api_user2)
     return client
 
 
 @pytest.fixture
-def admin_api_client(api_client, admin_user):
+def admin_api_client(api_client, admin_user, sample_organization, sample_facility):
     """Provide authenticated admin API client."""
     from rest_framework.test import APIClient
 
     client = APIClient()
+    ensure_staff_profile(admin_user, sample_organization, sample_facility)
     client.force_authenticate(user=admin_user)
     return client
 
@@ -208,7 +212,7 @@ def template_with_sections(db, api_user):
 
 
 @pytest.fixture
-def sample_patient(db, sample_county, sample_sub_county):
+def sample_patient(db, sample_county, sample_sub_county, sample_organization):
     """Create a sample patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -219,11 +223,12 @@ def sample_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_encounter(db, sample_patient):
+def sample_encounter(db, sample_patient, sample_facility):
     """Create a sample encounter for template application."""
     from hmis.apps.encounters.models import Encounter
 
@@ -231,6 +236,7 @@ def sample_encounter(db, sample_patient):
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Testing template application",
+        facility=sample_facility,
     )
 
 

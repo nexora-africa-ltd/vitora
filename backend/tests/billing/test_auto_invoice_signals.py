@@ -43,7 +43,7 @@ def sample_sub_county(db, sample_county):
 
 
 @pytest.fixture
-def sample_patient_for_billing(db, sample_county, sample_sub_county):
+def sample_patient_for_billing(db, sample_county, sample_sub_county, sample_organization):
     """Create a patient for billing tests."""
     return Patient.objects.create(
         first_name="Billing",
@@ -52,6 +52,7 @@ def sample_patient_for_billing(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -66,12 +67,13 @@ def sample_user(db):
 
 
 @pytest.fixture
-def sample_encounter_with_invoice(db, sample_patient_for_billing, sample_user):
+def sample_encounter_with_invoice(db, sample_patient_for_billing, sample_user, sample_facility):
     """Create an encounter that triggers auto-invoice creation via signal."""
     encounter = Encounter.objects.create(
         patient=sample_patient_for_billing,
         encounter_type="OPD",
         chief_complaint="Test for billing signals",
+        facility=sample_facility,
     )
     # Draft invoice should be auto-created by existing encounter signal
     return encounter
@@ -107,7 +109,7 @@ def sample_drug(db):
 
 
 @pytest.fixture
-def sample_stock_batch(db, sample_drug, sample_user):
+def sample_stock_batch(db, sample_drug, sample_user, sample_facility, sample_organization):
     """Create a stock batch for dispensing."""
     from hmis.apps.pharmacy.models import StockBatch
 
@@ -121,6 +123,8 @@ def sample_stock_batch(db, sample_drug, sample_user):
         cost_price=Decimal("50.00"),
         selling_price=Decimal("100.00"),
         received_by=sample_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -608,7 +612,8 @@ class TestAutoBillingEdgeCases:
     """Tests for edge cases in auto-billing signals."""
 
     def test_dispensing_without_encounter_invoice_logs_warning(
-        self, sample_patient_for_billing, sample_drug, sample_stock_batch, sample_user
+        self, sample_patient_for_billing, sample_drug, sample_stock_batch, sample_user,
+        sample_organization,
     ):
         """Dispensing without linked encounter/invoice should not crash.
 
@@ -624,6 +629,7 @@ class TestAutoBillingEdgeCases:
             gender="F",
             county=sample_patient_for_billing.county,
             sub_county=sample_patient_for_billing.sub_county,
+            organization=sample_organization,
         )
 
         # Should not raise exception, but log warning

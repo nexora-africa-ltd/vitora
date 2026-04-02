@@ -31,7 +31,7 @@ def sample_sub_county(sample_county):
 
 
 @pytest.fixture
-def adult_male_patient(sample_county, sample_sub_county):
+def adult_male_patient(sample_county, sample_sub_county, sample_organization):
     """Create an adult male patient."""
     return Patient.objects.create(
         first_name="John",
@@ -40,11 +40,12 @@ def adult_male_patient(sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def adult_female_patient(sample_county, sample_sub_county):
+def adult_female_patient(sample_county, sample_sub_county, sample_organization):
     """Create an adult female patient."""
     return Patient.objects.create(
         first_name="Jane",
@@ -53,11 +54,12 @@ def adult_female_patient(sample_county, sample_sub_county):
         gender="F",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def pediatric_patient(sample_county, sample_sub_county):
+def pediatric_patient(sample_county, sample_sub_county, sample_organization):
     """Create a pediatric patient."""
     return Patient.objects.create(
         first_name="Tommy",
@@ -66,6 +68,7 @@ def pediatric_patient(sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 

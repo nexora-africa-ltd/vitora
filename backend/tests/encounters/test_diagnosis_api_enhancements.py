@@ -12,6 +12,7 @@ from datetime import date
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db
 
@@ -30,7 +31,7 @@ def diagnosis_api_test_user(db):
 
 
 @pytest.fixture
-def diagnosis_api_sample_patient(db):
+def diagnosis_api_sample_patient(db, sample_organization):
     """Create a sample patient for diagnosis API tests."""
     from hmis.apps.patients.models import Patient
 
@@ -39,11 +40,12 @@ def diagnosis_api_sample_patient(db):
         last_name="Test",
         date_of_birth=date(1985, 3, 20),
         gender="M",
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def diagnosis_api_sample_encounter(db, diagnosis_api_sample_patient):
+def diagnosis_api_sample_encounter(db, diagnosis_api_sample_patient, sample_facility):
     """Create a sample encounter for diagnosis API tests."""
     from hmis.apps.encounters.models import Encounter
 
@@ -51,6 +53,7 @@ def diagnosis_api_sample_encounter(db, diagnosis_api_sample_patient):
         patient=diagnosis_api_sample_patient,
         encounter_type="OPD",
         chief_complaint="Diagnosis API test complaint",
+        facility=sample_facility,
     )
 
 
@@ -68,9 +71,10 @@ def diagnosis_api_sample_icd10_code(db):
 
 
 @pytest.fixture
-def diagnosis_api_authenticated_client(db, diagnosis_api_test_user):
+def diagnosis_api_authenticated_client(db, diagnosis_api_test_user, sample_organization, sample_facility):
     """Provide authenticated API client for diagnosis API tests."""
     client = APIClient()
+    ensure_staff_profile(diagnosis_api_test_user, sample_organization, sample_facility)
     client.force_authenticate(user=diagnosis_api_test_user)
     return client
 

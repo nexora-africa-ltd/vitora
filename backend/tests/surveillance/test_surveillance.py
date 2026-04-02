@@ -314,7 +314,8 @@ class TestOutbreakThresholdModel:
         assert count == 0
 
     def test_check_threshold_exceeded(
-        self, db, cholera_disease, sample_patient, sample_encounter
+        self, db, cholera_disease, sample_patient, sample_encounter,
+        sample_facility,
     ):
         """Should return True when threshold exceeded."""
         from hmis.apps.surveillance.models import NotifiableCase, OutbreakThreshold
@@ -335,6 +336,7 @@ class TestOutbreakThresholdModel:
                 patient=patient,
                 encounter_type="EMERGENCY",
                 chief_complaint=f"Cholera symptoms {i}",
+                facility=sample_facility,
             )
             NotifiableCase.objects.create(
                 disease=cholera_disease,
@@ -356,7 +358,7 @@ class TestSurveillanceAlertModel:
     """Tests for SurveillanceAlert model."""
 
     @pytest.fixture
-    def sample_case(self, db, sample_patient, sample_encounter):
+    def sample_case(self, db, sample_patient, sample_encounter, sample_facility, sample_organization):
         """Create sample notifiable case."""
         from hmis.apps.surveillance.models import NotifiableCase, NotifiableDisease
 
@@ -370,6 +372,8 @@ class TestSurveillanceAlertModel:
             disease=disease,
             patient=sample_patient,
             encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_create_alert(self, db, sample_case):
@@ -725,7 +729,7 @@ class TestSurveillanceAlertAPI:
     """Tests for SurveillanceAlert API endpoints."""
 
     @pytest.fixture
-    def sample_alert(self, db, sample_patient, sample_encounter):
+    def sample_alert(self, db, sample_patient, sample_encounter, sample_facility, sample_organization):
         """Create sample alert."""
         from hmis.apps.surveillance.models import (
             NotifiableCase,
@@ -743,11 +747,15 @@ class TestSurveillanceAlertAPI:
             disease=disease,
             patient=sample_patient,
             encounter=sample_encounter,
+            facility=sample_facility,
+            organization=sample_organization,
         )
         return SurveillanceAlert.objects.create(
             case=case,
             alert_type="NEW_CASE",
             message="New measles case",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_list_alerts(self, authenticated_client, sample_alert):

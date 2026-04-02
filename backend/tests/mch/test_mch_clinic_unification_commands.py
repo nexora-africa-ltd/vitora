@@ -9,7 +9,7 @@ from django.core.management import call_command
 
 
 @pytest.fixture
-def anc_clinic(db):
+def anc_clinic(db, sample_facility, sample_organization):
     from hmis.apps.clinics.models import Clinic
 
     return Clinic.objects.create(
@@ -17,11 +17,13 @@ def anc_clinic(db):
         clinic_type="ANC",
         code="ANCCMD001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def pnc_clinic(db):
+def pnc_clinic(db, sample_facility, sample_organization):
     from hmis.apps.clinics.models import Clinic
 
     return Clinic.objects.create(
@@ -29,11 +31,13 @@ def pnc_clinic(db):
         clinic_type="PNC",
         code="PNCCMD001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def anc_enrollment(db, anc_clinic, sample_patient, test_user):
+def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, sample_organization):
     from hmis.apps.clinics.models import ClinicEnrollment
 
     return ClinicEnrollment.objects.create(
@@ -49,7 +53,7 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user):
 
 
 @pytest.fixture
-def mch_registration(db, sample_patient, anc_enrollment, test_user):
+def mch_registration(db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization):
     from hmis.apps.mch.models import MCHRegistration
 
     return MCHRegistration.objects.create(
@@ -57,6 +61,8 @@ def mch_registration(db, sample_patient, anc_enrollment, test_user):
         anc_enrollment=anc_enrollment,
         registration_date=date.today(),
         registered_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

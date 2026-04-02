@@ -11,6 +11,7 @@ from hmis.apps.hl7.models import (
     HL7MessageDirection,
     HL7MessageStatus,
 )
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -26,9 +27,10 @@ def admin_user(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def admin_client(admin_user):  # type: ignore[no-untyped-def]
+def admin_client(admin_user, sample_organization, sample_facility):  # type: ignore[no-untyped-def]
     """Authenticated API client with admin privileges."""
     client = APIClient()
+    ensure_staff_profile(admin_user, sample_organization, sample_facility)
     client.force_authenticate(user=admin_user)
     return client
 

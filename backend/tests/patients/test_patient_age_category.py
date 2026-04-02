@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def patient_factory(db):
+def patient_factory(db, sample_organization):
     """Factory for creating patients with specific ages."""
     from hmis.apps.patients.models import Patient
 
@@ -33,6 +33,7 @@ def patient_factory(db):
             last_name="Patient",
             date_of_birth=date.today() - timedelta(days=days_old),
             gender="M",
+            organization=sample_organization,
         )
 
     return _create_patient
@@ -152,7 +153,7 @@ class TestAgeCalculationAccuracy:
         category = patient.get_age_category()
         assert category in ("infant", "toddler")
 
-    def test_handles_leap_year_birthday(self, db):
+    def test_handles_leap_year_birthday(self, db, sample_organization):
         """Test handling of leap year birthdays."""
         from hmis.apps.patients.models import Patient
 
@@ -164,6 +165,7 @@ class TestAgeCalculationAccuracy:
             last_name="Baby",
             date_of_birth=leap_birthday,
             gender="F",
+            organization=sample_organization,
         )
 
         # Should not raise error
@@ -213,7 +215,7 @@ class TestAgeCategoryDisplay:
 class TestAgeCategoryEdgeCases:
     """Test edge cases in age category determination."""
 
-    def test_newborn_day_0(self, db):
+    def test_newborn_day_0(self, db, sample_organization):
         """Test newborn born today (0 days old)."""
         from hmis.apps.patients.models import Patient
 
@@ -222,6 +224,7 @@ class TestAgeCategoryEdgeCases:
             last_name="New",
             date_of_birth=date.today(),
             gender="M",
+            organization=sample_organization,
         )
 
         assert patient.get_age_category() == "newborn"
@@ -249,7 +252,7 @@ class TestAgeCategoryEdgeCases:
 class TestAgeCategoryVitalsIntegration:
     """Test age category integration with encounter vitals."""
 
-    def test_encounter_can_access_patient_age_category(self, patient_factory):
+    def test_encounter_can_access_patient_age_category(self, patient_factory, sample_facility):
         """Test that Encounter can access patient's age category."""
         from hmis.apps.encounters.models import Encounter
 
@@ -259,12 +262,13 @@ class TestAgeCategoryVitalsIntegration:
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Well baby check",
+            facility=sample_facility,
         )
 
         # Access via encounter.patient
         assert encounter.patient.get_age_category() == "newborn"
 
-    def test_vital_ranges_use_age_category(self, patient_factory):
+    def test_vital_ranges_use_age_category(self, patient_factory, sample_facility):
         """Test that vital sign ranges consider age category."""
         from hmis.apps.encounters.models import Encounter
 
@@ -275,7 +279,8 @@ class TestAgeCategoryVitalsIntegration:
             patient=infant,
             encounter_type="OPD",
             chief_complaint="Checkup",
-            pulse=140,  # High for adult, normal for infant
+            pulse=140,  # High for adult, normal for infant,
+            facility=sample_facility,
         )
 
         # If pediatric ranges are working, this should be normal

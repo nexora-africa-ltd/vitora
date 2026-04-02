@@ -18,12 +18,33 @@ from unittest.mock import MagicMock, patch
 import pytest  # type: ignore
 from django.test import override_settings
 from rest_framework import status
+from tests.conftest import ensure_staff_profile
 
 
 @pytest.fixture
-def authenticated_client(api_client, test_user):
+def authenticated_client(api_client, test_user, sample_organization, sample_facility):
     """Authenticated AI client with an allowed conversational AI role."""
-    test_user.role = "DOCTOR"
+    from datetime import date
+
+    from hmis.apps.core.models import Department, Role, StaffProfile
+
+    dept, _ = Department.objects.get_or_create(
+        code="MED", defaults={"name": "Medical", "is_active": True}
+    )
+    role, _ = Role.objects.get_or_create(
+        code="DOCTOR", defaults={"name": "Doctor", "hierarchy_level": 5, "is_active": True}
+    )
+    StaffProfile.objects.get_or_create(
+        user=test_user,
+        defaults={
+            "employee_id": f"AI-{test_user.pk}",
+            "organization": sample_organization,
+            "primary_facility": sample_facility,
+            "primary_department": dept,
+            "primary_role": role,
+            "date_joined": date.today(),
+        },
+    )
     api_client.force_authenticate(user=test_user)
     return api_client
 

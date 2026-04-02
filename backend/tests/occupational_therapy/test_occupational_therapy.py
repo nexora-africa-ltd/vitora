@@ -66,7 +66,7 @@ def ot_treatment_type_cognitive(db):
 
 
 @pytest.fixture
-def ot_order(db, sample_patient, sample_encounter, test_user, ot_treatment_type):
+def ot_order(db, sample_patient, sample_encounter, test_user, ot_treatment_type, sample_facility, sample_organization):
     """Create a sample OT order."""
     return OccupationalTherapyOrder.objects.create(
         patient=sample_patient,
@@ -81,6 +81,8 @@ def ot_order(db, sample_patient, sample_encounter, test_user, ot_treatment_type)
         frequency="2x per week",
         priority="ROUTINE",
         status="DRAFT",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

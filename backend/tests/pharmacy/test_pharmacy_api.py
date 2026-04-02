@@ -22,13 +22,6 @@ def api_client():
 
 
 @pytest.fixture
-def authenticated_client(api_client, test_user):
-    """Authenticated API client."""
-    api_client.force_authenticate(user=test_user)
-    return api_client
-
-
-@pytest.fixture
 def test_user():
     """Create test user."""
     return User.objects.create_user(
@@ -37,14 +30,26 @@ def test_user():
 
 
 @pytest.fixture
-def sample_drug_data():
+def authenticated_client(api_client, test_user, sample_organization, sample_facility):
+    """Authenticated API client."""
+    from tests.conftest import ensure_staff_profile
+    ensure_staff_profile(test_user, sample_organization, sample_facility)
+    api_client.force_authenticate(user=test_user)
+    return api_client
+
+
+@pytest.fixture
+def sample_drug_data(db):
     """Sample drug data for API tests."""
+    from hmis.apps.pharmacy.models import DrugCategory
+
+    DrugCategory.objects.get_or_create(code="OTHER", defaults={"name": "Other", "is_active": True})
     return {
         "code": "API001",
         "generic_name": "Test Drug API",
         "strength": "100mg",
         "form": "TABLET",
-        "category": "OTHER",
+        "categories": ["OTHER"],
         "unit": "tablet",
     }
 
@@ -101,7 +106,7 @@ class TestDrugAPI:
 
     def test_create_drug(self, authenticated_client, sample_drug_data):
         """Creating a drug should work."""
-        response = authenticated_client.post("/api/pharmacy/drugs/", sample_drug_data)
+        response = authenticated_client.post("/api/pharmacy/drugs/", sample_drug_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["code"] == "API001"
 
@@ -167,6 +172,12 @@ class TestDrugAPI:
 class TestDrugCategoryAPI:
     """Tests for Drug category registry endpoints."""
 
+    @pytest.fixture(autouse=True)
+    def _seed_categories(self, db):
+        from hmis.apps.pharmacy.models import DrugCategory
+
+        DrugCategory.objects.get_or_create(code="OTHER", defaults={"name": "Other", "is_active": True})
+
     def test_list_drug_categories_requires_auth(self, api_client):
         response = api_client.get("/api/pharmacy/drug-categories/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -215,7 +226,7 @@ class TestDrugCategoryAPI:
 class TestStockAPI:
     """Tests for Stock Batch API endpoints."""
 
-    def test_list_stock_batches(self, authenticated_client, test_user):
+    def test_list_stock_batches(self, authenticated_client, test_user, sample_facility, sample_organization):
         """Listing stock batches should work."""
         from hmis.apps.pharmacy.models import Drug, StockBatch
 
@@ -238,6 +249,8 @@ class TestStockAPI:
             cost_price=Decimal("5.00"),
             selling_price=Decimal("10.00"),
             received_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get("/api/pharmacy/stock/")
@@ -301,7 +314,7 @@ class TestStockAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["batch_number"] == "BATCH003"
 
-    def test_stock_batch_includes_computed_fields(self, authenticated_client, test_user):
+    def test_stock_batch_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):
         """Stock batch should include computed fields."""
         from hmis.apps.pharmacy.models import Drug, StockBatch
 
@@ -324,6 +337,8 @@ class TestStockAPI:
             cost_price=Decimal("5.00"),
             selling_price=Decimal("10.00"),
             received_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(f"/api/pharmacy/stock/{batch.id}/")
@@ -342,7 +357,7 @@ class TestStockAPI:
 class TestPrescriptionAPI:
     """Tests for Prescription API endpoints."""
 
-    def test_list_prescriptions(self, authenticated_client, test_user):
+    def test_list_prescriptions(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Listing prescriptions should work."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.encounters.models import Encounter
@@ -359,12 +374,14 @@ class TestPrescriptionAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         Prescription.objects.create(
@@ -372,13 +389,15 @@ class TestPrescriptionAPI:
             patient=patient,
             prescribed_by=test_user,
             valid_until=date.today() + timedelta(days=30),
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get("/api/pharmacy/prescriptions/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
 
-    def test_create_prescription(self, authenticated_client, test_user):
+    def test_create_prescription(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Creating a prescription should work."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.encounters.models import Encounter
@@ -394,12 +413,14 @@ class TestPrescriptionAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         data = {
@@ -413,7 +434,7 @@ class TestPrescriptionAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["status"] == "PENDING"
 
-    def test_create_prescription_with_items(self, authenticated_client, test_user):
+    def test_create_prescription_with_items(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Creating a prescription with nested items should work."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.encounters.models import Encounter
@@ -430,12 +451,14 @@ class TestPrescriptionAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test with items",
+            facility=sample_facility,
         )
 
         drug = Drug.objects.create(
@@ -479,7 +502,7 @@ class TestPrescriptionAPI:
         assert response.data["items"][0]["quantity"] == 30
         assert response.data["items"][0]["dosage"] == "500mg (1 tablet)"
 
-    def test_get_prescription_detail(self, authenticated_client, test_user):
+    def test_get_prescription_detail(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Getting prescription details should include items."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.encounters.models import Encounter
@@ -496,12 +519,14 @@ class TestPrescriptionAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -509,6 +534,8 @@ class TestPrescriptionAPI:
             patient=patient,
             prescribed_by=test_user,
             valid_until=date.today() + timedelta(days=30),
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -534,7 +561,7 @@ class TestPrescriptionAPI:
         assert "items" in response.data
         assert len(response.data["items"]) == 1
 
-    def test_cancel_prescription(self, authenticated_client, test_user):
+    def test_cancel_prescription(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Cancelling a prescription should work."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.encounters.models import Encounter
@@ -551,12 +578,14 @@ class TestPrescriptionAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -564,6 +593,8 @@ class TestPrescriptionAPI:
             patient=patient,
             prescribed_by=test_user,
             valid_until=date.today() + timedelta(days=30),
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.post(
@@ -573,7 +604,7 @@ class TestPrescriptionAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "CANCELLED"
 
-    def test_get_prescriptions_by_patient(self, authenticated_client, test_user):
+    def test_get_prescriptions_by_patient(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Getting prescriptions by patient should work."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.encounters.models import Encounter
@@ -590,12 +621,14 @@ class TestPrescriptionAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         Prescription.objects.create(
@@ -603,6 +636,8 @@ class TestPrescriptionAPI:
             patient=patient,
             prescribed_by=test_user,
             valid_until=date.today() + timedelta(days=30),
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(
@@ -611,7 +646,7 @@ class TestPrescriptionAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1
 
-    def test_prescription_includes_computed_fields(self, authenticated_client, test_user):
+    def test_prescription_includes_computed_fields(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Prescription should include computed fields."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.encounters.models import Encounter
@@ -628,12 +663,14 @@ class TestPrescriptionAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Test",
+            facility=sample_facility,
         )
 
         prescription = Prescription.objects.create(
@@ -641,6 +678,8 @@ class TestPrescriptionAPI:
             patient=patient,
             prescribed_by=test_user,
             valid_until=date.today() + timedelta(days=30),
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(f"/api/pharmacy/prescriptions/{prescription.id}/")
@@ -659,7 +698,7 @@ class TestPrescriptionAPI:
 class TestDispensingAPI:
     """Tests for Dispensing API endpoints."""
 
-    def test_list_dispensings(self, authenticated_client, test_user):
+    def test_list_dispensings(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Listing dispensings should work."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.patients.models import Patient
@@ -675,6 +714,7 @@ class TestDispensingAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -706,13 +746,15 @@ class TestDispensingAPI:
             unit_price=Decimal("10.00"),
             total_price=Decimal("300.00"),
             dispensed_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get("/api/pharmacy/dispensings/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
 
-    def test_dispense_using_fefo(self, authenticated_client, test_user):
+    def test_dispense_using_fefo(self, authenticated_client, test_user, sample_organization):
         """Dispensing using FEFO should work."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.patients.models import Patient
@@ -728,6 +770,7 @@ class TestDispensingAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -829,7 +872,7 @@ class TestDispensingAPI:
         assert prescription_item.quantity_dispensed == 10
         assert prescription.status == "DISPENSED"
 
-    def test_dispense_insufficient_stock(self, authenticated_client, test_user):
+    def test_dispense_insufficient_stock(self, authenticated_client, test_user, sample_organization):
         """Dispensing with insufficient stock should fail."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.patients.models import Patient
@@ -845,6 +888,7 @@ class TestDispensingAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -878,7 +922,7 @@ class TestDispensingAPI:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Insufficient stock" in response.data["error"]
 
-    def test_process_return(self, authenticated_client, test_user):
+    def test_process_return(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Processing a return should work."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.patients.models import Patient
@@ -894,6 +938,7 @@ class TestDispensingAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -926,6 +971,8 @@ class TestDispensingAPI:
             unit_price=Decimal("10.00"),
             total_price=Decimal("300.00"),
             dispensed_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         data = {
@@ -939,7 +986,7 @@ class TestDispensingAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["quantity_returned"] == 10
 
-    def test_verify_controlled_drug(self, authenticated_client, test_user):
+    def test_verify_controlled_drug(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Verifying a controlled drug dispensing should work."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.patients.models import Patient
@@ -955,6 +1002,7 @@ class TestDispensingAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -985,6 +1033,8 @@ class TestDispensingAPI:
         verifier = User.objects.create_user(
             username="verifier", password="password123", email="verifier@example.com"
         )
+        from tests.conftest import ensure_staff_profile
+        ensure_staff_profile(verifier, sample_organization, sample_facility, employee_id="VERIFIER-001")
 
         dispensing = Dispensing.objects.create(
             patient=patient,
@@ -994,6 +1044,8 @@ class TestDispensingAPI:
             unit_price=Decimal("100.00"),
             total_price=Decimal("500.00"),
             dispensed_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Use verifier client
@@ -1004,7 +1056,7 @@ class TestDispensingAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["verified_by"] == verifier.id
 
-    def test_dispensing_includes_computed_fields(self, authenticated_client, test_user):
+    def test_dispensing_includes_computed_fields(self, authenticated_client, test_user, sample_organization, sample_facility):
         """Dispensing should include computed fields."""
         from hmis.apps.core.models import County, SubCounty
         from hmis.apps.patients.models import Patient
@@ -1020,6 +1072,7 @@ class TestDispensingAPI:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         drug = Drug.objects.create(
@@ -1051,6 +1104,8 @@ class TestDispensingAPI:
             unit_price=Decimal("10.00"),
             total_price=Decimal("300.00"),
             dispensed_by=test_user,
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(f"/api/pharmacy/dispensings/{dispensing.id}/")

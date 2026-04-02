@@ -39,7 +39,7 @@ def history_user(db):
 
 
 @pytest.fixture
-def test_patient(db, sample_county, sample_sub_county, history_user):
+def test_patient(db, sample_county, sample_sub_county, history_user, sample_organization):
     """Create a patient for testing history."""
     return Patient.objects.create(
         first_name="John",
@@ -50,11 +50,12 @@ def test_patient(db, sample_county, sample_sub_county, history_user):
         sub_county=sample_sub_county,
         phone_number="0712345678",
         registered_by=history_user,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def test_encounter(db, test_patient, history_user):
+def test_encounter(db, test_patient, history_user, sample_facility):
     """Create an encounter for testing history."""
     return Encounter.objects.create(
         patient=test_patient,
@@ -64,6 +65,7 @@ def test_encounter(db, test_patient, history_user):
         temperature=37.5,
         pulse=80,
         created_by=history_user,
+        facility=sample_facility,
     )
 
 
@@ -325,7 +327,7 @@ class TestPrescriptionHistory:
     """Test history tracking on Prescription model."""
 
     @pytest.fixture
-    def test_prescription(self, test_patient, test_encounter, history_user):
+    def test_prescription(self, test_patient, test_encounter, history_user, sample_facility, sample_organization):
         """Create a prescription for testing."""
         return Prescription.objects.create(
             patient=test_patient,
@@ -334,6 +336,8 @@ class TestPrescriptionHistory:
             valid_until=date.today() + timedelta(days=30),
             status="PENDING",
             clinical_notes="Take with food",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_prescription_history_created(self, test_prescription):

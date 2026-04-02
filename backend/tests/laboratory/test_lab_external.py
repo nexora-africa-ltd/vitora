@@ -24,19 +24,21 @@ class TestExternalLabRequisition:
     """Tests for external lab requisition generation."""
 
     @pytest.fixture
-    def sample_order(self):
+    def sample_order(self, sample_organization, sample_facility):
         """Create a sample lab order with items."""
         patient = Patient.objects.create(
             first_name="John",
             last_name="Doe",
             date_of_birth=date(1990, 1, 15),
             gender="M",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="testdoc", first_name="Dr", last_name="Smith")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Fever and malaise",
+            facility=sample_facility,
         )
         order = LabOrder.objects.create(
             patient=patient,
@@ -46,6 +48,8 @@ class TestExternalLabRequisition:
             external_lab="KEMRI",
             priority="URGENT",
             clinical_notes="Patient has persistent fever for 5 days. Suspected malaria or typhoid.",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Add test items
@@ -139,19 +143,21 @@ class TestExternalResultImporter:
     """Tests for importing results from external labs."""
 
     @pytest.fixture
-    def sample_order_for_import(self):
+    def sample_order_for_import(self, sample_organization, sample_facility):
         """Create a lab order ready for result import."""
         patient = Patient.objects.create(
             first_name="Jane",
             last_name="Smith",
             date_of_birth=date(1985, 5, 20),
             gender="F",
+            organization=sample_organization,
         )
         user = User.objects.create_user(username="labuser", password="password123")
         encounter = Encounter.objects.create(
             patient=patient,
             encounter_type="OPD",
             chief_complaint="Routine checkup",
+            facility=sample_facility,
         )
         order = LabOrder.objects.create(
             patient=patient,
@@ -159,6 +165,8 @@ class TestExternalResultImporter:
             ordered_by=user,
             order_type="EXTERNAL",
             status="IN_PROGRESS",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         # Create test items

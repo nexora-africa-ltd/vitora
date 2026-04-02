@@ -60,7 +60,7 @@ def another_clinic_user(db):
 
 
 @pytest.fixture
-def sample_clinic(db):
+def sample_clinic(db, sample_facility, sample_organization):
     """Create a sample clinic for testing."""
     from hmis.apps.clinics.models import Clinic
 
@@ -73,11 +73,13 @@ def sample_clinic(db):
         floor="Ground Floor",
         capacity=3,
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def ccc_clinic(db):
+def ccc_clinic(db, sample_facility, sample_organization):
     """Create a CCC (HIV) clinic for sensitive access tests."""
     from hmis.apps.clinics.models import Clinic
 
@@ -89,11 +91,13 @@ def ccc_clinic(db):
         location="Block B, Room 5",
         is_sensitive=True,
         required_permission="clinics.view_ccc_clinic",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_clinic_session(db, sample_clinic, clinic_user):
+def sample_clinic_session(db, sample_clinic, clinic_user, sample_facility, sample_organization):
     """Create a sample clinic session for testing."""
     from hmis.apps.clinics.models import ClinicSession
 
@@ -103,11 +107,13 @@ def sample_clinic_session(db, sample_clinic, clinic_user):
         status="OPEN",
         opened_at=timezone.now(),
         opened_by=clinic_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_clinic_visit(db, sample_clinic_session, sample_patient, clinic_user):
+def sample_clinic_visit(db, sample_clinic_session, sample_patient, clinic_user, sample_facility, sample_organization):
     """Create a sample clinic visit for testing."""
     from hmis.apps.clinics.models import ClinicVisit
 
@@ -120,6 +126,8 @@ def sample_clinic_visit(db, sample_clinic_session, sample_patient, clinic_user):
         source="TRIAGE",
         chief_complaint="Headache for 2 days",
         registered_by=clinic_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -818,7 +826,8 @@ class TestClinicVisitModel:
         assert visit.queue_number is not None  # Auto-assigned
 
     def test_clinic_visit_auto_queue_number(
-        self, sample_clinic_session, sample_patient, clinic_user
+        self, sample_clinic_session, sample_patient, clinic_user,
+        sample_organization,
     ):
         """ClinicVisit should auto-assign queue number if not set."""
         from hmis.apps.clinics.models import ClinicVisit
@@ -846,6 +855,7 @@ class TestClinicVisitModel:
             gender="M",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         visit2 = ClinicVisit.objects.create(
@@ -859,7 +869,8 @@ class TestClinicVisitModel:
         assert visit2.queue_number > visit1.queue_number
 
     def test_clinic_visit_unique_queue_number_per_session(
-        self, sample_clinic_session, sample_patient, clinic_user
+        self, sample_clinic_session, sample_patient, clinic_user,
+        sample_organization,
     ):
         """Queue number must be unique within a session."""
         from hmis.apps.clinics.models import ClinicVisit
@@ -887,6 +898,7 @@ class TestClinicVisitModel:
             gender="F",
             county=county,
             sub_county=sub_county,
+            organization=sample_organization,
         )
 
         with pytest.raises(IntegrityError):
@@ -1526,7 +1538,7 @@ class TestANCEnrollmentFeatures:
     """Tests for ANC (Antenatal) specific enrollment features."""
 
     @pytest.fixture
-    def anc_clinic(self, db):
+    def anc_clinic(self, db, sample_facility, sample_organization):
         """Create an ANC clinic for testing."""
         from hmis.apps.clinics.models import Clinic
 
@@ -1535,6 +1547,8 @@ class TestANCEnrollmentFeatures:
             clinic_type="ANC",
             code="ANC-001",
             description="Antenatal care clinic",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_anc_enrollment_fields(self, anc_clinic, sample_patient, clinic_user):
@@ -1716,7 +1730,7 @@ class TestDiabeticEnrollmentFeatures:
     """Tests for Diabetic clinic specific enrollment features."""
 
     @pytest.fixture
-    def diabetic_clinic(self, db):
+    def diabetic_clinic(self, db, sample_facility, sample_organization):
         """Create a Diabetic clinic for testing."""
         from hmis.apps.clinics.models import Clinic
 
@@ -1725,6 +1739,8 @@ class TestDiabeticEnrollmentFeatures:
             clinic_type="DIABETIC",
             code="DM-001",
             description="Diabetes management clinic",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_diabetic_enrollment_fields(self, diabetic_clinic, sample_patient, clinic_user):

@@ -29,6 +29,7 @@ from hmis.apps.core.oauth.permissions import (
 )
 from hmis.apps.core.oauth.scopes import SCOPE_CATEGORIES, SMARTScopes
 from hmis.apps.core.oauth.validators import SMARTClientAuthenticationValidator, SMARTOAuth2Validator
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -519,12 +520,13 @@ class TestSMARTEndpoints:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.fixture
-    def authenticated_client(self, api_client, db):
+    def authenticated_client(self, api_client, db, sample_organization, sample_facility):
         """Return an authenticated API client."""
         user = User.objects.create_user(
             username="testuser",
             password="testpass123",
         )
+        ensure_staff_profile(user, sample_organization, sample_facility)
         api_client.force_authenticate(user=user)
         return api_client
 

@@ -11,6 +11,7 @@ from datetime import date
 import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
+from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db
 
@@ -580,7 +581,7 @@ class TestICD10CodeExtended:
 
 
 @pytest.fixture
-def sample_patient(db):
+def sample_patient(db, sample_organization):
     """Create a sample patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -589,11 +590,12 @@ def sample_patient(db):
         last_name="Patient",
         date_of_birth=date(1990, 5, 15),
         gender="M",
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_encounter(db, sample_patient):
+def sample_encounter(db, sample_patient, sample_facility):
     """Create a sample encounter for testing."""
     from hmis.apps.encounters.models import Encounter
 
@@ -601,6 +603,7 @@ def sample_encounter(db, sample_patient):
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Fever and cough",
+        facility=sample_facility,
     )
 
 
@@ -619,7 +622,7 @@ def sample_icd10_code(db):
 
 
 @pytest.fixture
-def authenticated_client(db):
+def authenticated_client(db, sample_organization, sample_facility):
     """Provide authenticated API client."""
     from django.contrib.auth import get_user_model
     from rest_framework.test import APIClient
@@ -627,5 +630,6 @@ def authenticated_client(db):
     User = get_user_model()
     user = User.objects.create_user(username="icd10testuser", password="testpass123")
     client = APIClient()
+    ensure_staff_profile(user, sample_organization, sample_facility)
     client.force_authenticate(user=user)
     return client

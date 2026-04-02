@@ -95,6 +95,38 @@ class TestCodeSystemModel:
         assert str(code_system) == "String Test (str-test)"
 
 
+
+
+@pytest.fixture(autouse=True)
+def _seed_code_systems(request, db):
+    """Seed the CodeSystem entries that data migrations would create."""
+    if request.cls and request.cls.__name__ in (
+        "TestPrePopulatedCodeSystems",
+        "TestExternalCodeMappingCodeSystemRef",
+        "TestCodeSystemAPI",
+    ):
+        from hmis.apps.core.models import CodeSystem
+
+        entries = [
+            ("vitora-lab", "Vitora Laboratory Codes", "https://vitora.health/fhir/CodeSystem/laboratory", True),
+            ("icd-10", "ICD-10", "http://hl7.org/fhir/sid/icd-10", False),
+            ("loinc", "LOINC", "http://loinc.org", False),
+            ("sha-tariff-2025", "SHA Tariff 2025", "https://sha.go.ke/tariff/2025", False),
+            ("snomed-ct", "SNOMED CT", "http://snomed.info/sct", False),
+            ("khis", "KHIS", "https://hiskenya.org/khis", False),
+            ("ndc", "NDC", "https://www.accessdata.fda.gov/scripts/cder/ndc", False),
+        ]
+        for slug, name, uri, internal in entries:
+            CodeSystem.objects.get_or_create(
+                slug=slug,
+                defaults={
+                    "name": name,
+                    "uri": uri,
+                    "is_internal": internal,
+                    "is_active": True,
+                },
+            )
+
 @pytest.mark.unit
 class TestPrePopulatedCodeSystems:
     """Tests for pre-populated code systems from migrations."""

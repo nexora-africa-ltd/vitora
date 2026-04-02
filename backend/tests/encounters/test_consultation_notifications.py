@@ -64,7 +64,7 @@ def sample_notification(db, notification_user):
 
 
 @pytest.fixture
-def consultation_ready_encounter(db, sample_patient, test_user):
+def consultation_ready_encounter(db, sample_patient, test_user, sample_facility):
     """Create an encounter ready for consultation."""
     return Encounter.objects.create(
         patient=sample_patient,
@@ -72,6 +72,7 @@ def consultation_ready_encounter(db, sample_patient, test_user):
         chief_complaint="Follow-up visit",
         triage_status="COMPLETED",
         consultation_status="WAITING",
+        facility=sample_facility,
     )
 
 

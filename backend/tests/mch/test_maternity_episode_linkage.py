@@ -8,7 +8,7 @@ from django.utils import timezone
 
 
 @pytest.fixture
-def anc_clinic(db):
+def anc_clinic(db, sample_facility, sample_organization):
     from hmis.apps.clinics.models import Clinic
 
     return Clinic.objects.create(
@@ -16,11 +16,13 @@ def anc_clinic(db):
         clinic_type="ANC",
         code="ANC-MAT-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def anc_enrollment(db, anc_clinic, sample_patient, test_user):
+def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, sample_organization):
     from hmis.apps.clinics.models import ClinicEnrollment
 
     return ClinicEnrollment.objects.create(
@@ -35,7 +37,7 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user):
 
 
 @pytest.fixture
-def pnc_clinic(db):
+def pnc_clinic(db, sample_facility, sample_organization):
     from hmis.apps.clinics.models import Clinic
 
     return Clinic.objects.create(
@@ -43,6 +45,8 @@ def pnc_clinic(db):
         clinic_type="PNC",
         code="PNC-MAT-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -59,18 +63,20 @@ def pnc_resource(db):
 
 
 @pytest.fixture
-def mch_registration(db, sample_patient, anc_enrollment):
+def mch_registration(db, sample_patient, anc_enrollment, sample_facility, sample_organization):
     from hmis.apps.mch.models import MCHRegistration
 
     return MCHRegistration.objects.create(
         mother=sample_patient,
         anc_enrollment=anc_enrollment,
         registration_date=date.today(),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def maternity_ward(db):
+def maternity_ward(db, sample_facility, sample_organization):
     from decimal import Decimal
 
     from hmis.apps.inpatient.models import Ward
@@ -82,6 +88,8 @@ def maternity_ward(db):
         capacity=10,
         daily_rate=Decimal("750.00"),
         is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -98,7 +106,7 @@ def maternity_bed(db, maternity_ward):
 
 
 @pytest.fixture
-def postpartum_ward(db):
+def postpartum_ward(db, sample_facility, sample_organization):
     from decimal import Decimal
 
     from hmis.apps.inpatient.models import Ward
@@ -110,6 +118,8 @@ def postpartum_ward(db):
         capacity=8,
         daily_rate=Decimal("650.00"),
         is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -198,6 +208,8 @@ class TestMaternityEpisodeLinkage:
         mch_registration,
         maternity_ward,
         maternity_bed,
+        sample_facility,
+        sample_organization,
     ):
         from hmis.apps.clinics.models import Clinic, ClinicEnrollment
         from hmis.apps.mch.models import MCHRegistration
@@ -212,6 +224,7 @@ class TestMaternityEpisodeLinkage:
             gender="F",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
         other_clinic = Clinic.objects.create(
             name="ANC Secondary Clinic",
@@ -237,11 +250,13 @@ class TestMaternityEpisodeLinkage:
             patient=other_patient,
             encounter_type="OPD",
             chief_complaint="Labour pains",
+            facility=sample_facility,
         )
         other_ipd = Encounter.objects.create(
             patient=other_patient,
             encounter_type="IPD",
             chief_complaint="Maternity admission",
+            facility=sample_facility,
         )
         admission = Admission.objects.create(
             patient=other_patient,
@@ -283,6 +298,7 @@ class TestMaternityEpisodeLinkage:
         mch_registration,
         maternity_ward,
         maternity_bed,
+        sample_facility,
     ):
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.inpatient.models import Admission
@@ -292,6 +308,7 @@ class TestMaternityEpisodeLinkage:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Labour admission",
+            facility=sample_facility,
         )
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -346,6 +363,7 @@ class TestMaternityEpisodeLinkage:
         mch_registration,
         maternity_ward,
         maternity_bed,
+        sample_facility,
     ):
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.inpatient.models import Admission
@@ -354,6 +372,7 @@ class TestMaternityEpisodeLinkage:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Post-delivery care",
+            facility=sample_facility,
         )
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -403,6 +422,7 @@ class TestMaternityEpisodeLinkage:
         maternity_ward,
         maternity_bed,
         pnc_resource,
+        sample_facility,
     ):
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.inpatient.models import Admission, Discharge
@@ -412,6 +432,7 @@ class TestMaternityEpisodeLinkage:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Post-delivery care",
+            facility=sample_facility,
         )
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -476,6 +497,7 @@ class TestMaternityEpisodeLinkage:
         maternity_ward,
         maternity_bed,
         pnc_clinic,
+        sample_facility,
     ):
         from hmis.apps.clinics.models import ClinicVisit
         from hmis.apps.encounters.models import Encounter
@@ -485,6 +507,7 @@ class TestMaternityEpisodeLinkage:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Post-delivery care",
+            facility=sample_facility,
         )
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -547,6 +570,7 @@ class TestMaternityEpisodeLinkage:
         mch_registration,
         maternity_ward,
         maternity_bed,
+        sample_facility,
     ):
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.inpatient.models import Admission, Discharge
@@ -556,6 +580,7 @@ class TestMaternityEpisodeLinkage:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Post-delivery admission",
+            facility=sample_facility,
         )
         admission = Admission.objects.create(
             patient=sample_patient,
@@ -618,6 +643,7 @@ class TestMaternityEpisodeLinkage:
         maternity_bed,
         postpartum_ward,
         postpartum_bed,
+        sample_facility,
     ):
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.inpatient.models import Admission, Bed
@@ -626,6 +652,7 @@ class TestMaternityEpisodeLinkage:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Labour and postpartum care",
+            facility=sample_facility,
         )
         admission = Admission.objects.create(
             patient=sample_patient,

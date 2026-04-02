@@ -35,7 +35,7 @@ def lab_test_catalog(db):
 
 
 @pytest.fixture
-def report_data(sample_patient, sample_encounter, test_user, another_user, lab_test_catalog):
+def report_data(sample_patient, sample_encounter, test_user, another_user, lab_test_catalog, sample_organization, sample_facility):
     now = timezone.now()
     start_date = (now - timedelta(days=7)).date()
     end_date = now.date()
@@ -46,6 +46,8 @@ def report_data(sample_patient, sample_encounter, test_user, another_user, lab_t
         ordered_by=test_user,
         priority="ROUTINE",
         status="ORDERED",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     item1 = LabOrderItem.objects.create(
         lab_order=order1,
@@ -75,6 +77,8 @@ def report_data(sample_patient, sample_encounter, test_user, another_user, lab_t
         ordered_by=another_user,
         priority="STAT",
         status="ORDERED",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     item2 = LabOrderItem.objects.create(
         lab_order=order2,
@@ -105,6 +109,8 @@ def report_data(sample_patient, sample_encounter, test_user, another_user, lab_t
         ordered_by=test_user,
         priority="ROUTINE",
         status="ORDERED",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
     order_dates = now - timedelta(days=6)

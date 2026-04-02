@@ -17,6 +17,7 @@ from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 from hmis.apps.triage.models import TriageAssessment
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -38,63 +39,66 @@ def test_user(db):
 
 
 @pytest.fixture
-def authenticated_client(api_client, test_user):
+def authenticated_client(api_client, test_user, sample_organization, sample_facility):
     """Create authenticated API client."""
+    ensure_staff_profile(test_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=test_user)
     return api_client
 
 
 @pytest.fixture
-def sample_patient(db):
+def sample_patient(db, sample_organization, sample_county, sample_sub_county):
     """Create a sample patient."""
-    from hmis.apps.core.models import County, SubCounty
-
-    county, _ = County.objects.get_or_create(code=1, defaults={"name": "Nairobi"})
-    sub_county, _ = SubCounty.objects.get_or_create(name="Westlands", defaults={"county": county})
     return Patient.objects.create(
         first_name="Jane",
         last_name="Wanjiku",
         date_of_birth="1990-03-15",
         gender="F",
-        county=county,
-        sub_county=sub_county,
+        county=sample_county,
+        sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_encounter(db, sample_patient):
+def sample_encounter(db, sample_patient, sample_facility):
     """Create a sample encounter for triage."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Eye pain and blurred vision",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def sample_clinic(db):
+def sample_clinic(db, sample_facility, sample_organization):
     """Create a sample clinic."""
     return Clinic.objects.create(
         name="General OPD",
         code="GEN-OPD-001",
         clinic_type="GENERAL_OPD",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def eye_clinic(db):
+def eye_clinic(db, sample_facility, sample_organization):
     """Create an eye clinic for referral testing."""
     return Clinic.objects.create(
         name="Eye Clinic",
         code="EYE-001",
         clinic_type="EYE",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_triage(db, sample_encounter, test_user):
+def sample_triage(db, sample_encounter, test_user, sample_facility, sample_organization):
     """Create a completed triage assessment."""
     now = timezone.now()
     return TriageAssessment.objects.create(
@@ -111,6 +115,8 @@ def sample_triage(db, sample_encounter, test_user):
         triage_start_time=now,
         triage_end_time=now,
         triaged_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

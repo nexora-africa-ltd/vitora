@@ -38,12 +38,12 @@ def org(db):
 
 @pytest.fixture
 def county(db):
-    return County.objects.create(code=1, name="Mombasa")
+    return County.objects.create(code=100, name="Kisumu")
 
 
 @pytest.fixture
 def sub_county(db, county):
-    return SubCounty.objects.create(county=county, name="Mvita")
+    return SubCounty.objects.create(county=county, name="Kisumu Central")
 
 
 @pytest.fixture

@@ -22,20 +22,16 @@ User = get_user_model()
 
 
 @pytest.fixture
-def sample_patient(db):
+def sample_patient(db, sample_organization, sample_county, sample_sub_county):
     """Create a sample patient for testing."""
-    from hmis.apps.core.models import County, SubCounty
-
-    county = County.objects.create(code=1, name="Mombasa")
-    sub_county = SubCounty.objects.create(county=county, name="Mvita")
-
     return Patient.objects.create(
         first_name="Jane",
         last_name="Doe",
         date_of_birth="1985-05-20",
         gender="F",
-        county=county,
-        sub_county=sub_county,
+        county=sample_county,
+        sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -60,12 +56,13 @@ def lab_technician(db):
 
 
 @pytest.fixture
-def sample_encounter(sample_patient, sample_user):
+def sample_encounter(sample_patient, sample_user, sample_facility):
     """Create a sample encounter."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Routine checkup",
+        facility=sample_facility,
     )
 
 
@@ -84,7 +81,7 @@ def sample_test(db):
 
 
 @pytest.fixture
-def sample_lab_order(sample_patient, sample_encounter, sample_user, sample_test):
+def sample_lab_order(sample_patient, sample_encounter, sample_user, sample_test, sample_organization, sample_facility):
     """Create a sample lab order with an item."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -93,6 +90,8 @@ def sample_lab_order(sample_patient, sample_encounter, sample_user, sample_test)
         order_type="IN_HOUSE",
         priority="ROUTINE",
         status="ORDERED",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     LabOrderItem.objects.create(
         lab_order=order,
@@ -132,7 +131,9 @@ class TestLabQueueModel:
         assert len(queue.queue_number) == 17  # LAB-YYYYMMDD-XXXX
 
     def test_queue_number_uniqueness(
-        self, sample_lab_order, sample_patient, sample_encounter, sample_user, sample_test
+        self, sample_lab_order, sample_patient, sample_encounter, sample_user, sample_test,
+        sample_facility,
+        sample_organization,
     ):
         """Each queue number must be unique."""
         from hmis.apps.laboratory.models import LabQueue
@@ -147,6 +148,8 @@ class TestLabQueueModel:
             ordered_by=sample_user,
             order_type="IN_HOUSE",
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         LabOrderItem.objects.create(
             lab_order=order2,
@@ -159,7 +162,7 @@ class TestLabQueueModel:
 
         assert queue1.queue_number != queue2.queue_number
 
-    def test_priority_ordering(self, sample_patient, sample_encounter, sample_user, sample_test):
+    def test_priority_ordering(self, sample_patient, sample_encounter, sample_user, sample_test, sample_organization, sample_facility):
         """STAT > Urgent > Routine priority ordering."""
         from hmis.apps.laboratory.models import LabQueue
 
@@ -172,6 +175,8 @@ class TestLabQueueModel:
                 order_type="IN_HOUSE",
                 priority=priority,
                 status="ORDERED",
+                facility=sample_facility,
+                organization=sample_organization,
             )
             LabOrderItem.objects.create(
                 lab_order=order,
@@ -312,7 +317,9 @@ class TestLabQueueModel:
         assert tat.total_seconds() > 0
 
     def test_queue_filtering_by_status(
-        self, sample_patient, sample_encounter, sample_user, sample_test
+        self, sample_patient, sample_encounter, sample_user, sample_test,
+        sample_facility,
+        sample_organization,
     ):
         """Should be able to filter queue by status."""
         from hmis.apps.laboratory.models import LabQueue
@@ -327,6 +334,8 @@ class TestLabQueueModel:
                 ordered_by=sample_user,
                 order_type="IN_HOUSE",
                 status="ORDERED",
+                facility=sample_facility,
+                organization=sample_organization,
             )
             LabOrderItem.objects.create(
                 lab_order=order,
@@ -346,7 +355,9 @@ class TestLabQueueModel:
         assert processing.count() == 1
 
     def test_queue_filtering_by_technician(
-        self, sample_patient, sample_encounter, sample_user, sample_test, lab_technician
+        self, sample_patient, sample_encounter, sample_user, sample_test, lab_technician,
+        sample_facility,
+        sample_organization,
     ):
         """Should be able to filter queue by assigned technician."""
         from hmis.apps.laboratory.models import LabQueue
@@ -358,6 +369,8 @@ class TestLabQueueModel:
             ordered_by=sample_user,
             order_type="IN_HOUSE",
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         LabOrderItem.objects.create(
             lab_order=order1,
@@ -376,6 +389,8 @@ class TestLabQueueModel:
             ordered_by=sample_user,
             order_type="IN_HOUSE",
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         LabOrderItem.objects.create(
             lab_order=order2,

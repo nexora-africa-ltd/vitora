@@ -107,7 +107,7 @@ def family_planning_type(db):
 
 
 @pytest.fixture
-def counselling_referral(db, sample_patient, sample_encounter, test_user, counselling_type):
+def counselling_referral(db, sample_patient, sample_encounter, test_user, counselling_type, sample_facility, sample_organization):
     """Create a sample counselling referral (non-sensitive)."""
     referral = CounsellingReferral.objects.create(
         patient=sample_patient,
@@ -122,12 +122,14 @@ def counselling_referral(db, sample_patient, sample_encounter, test_user, counse
         status="DRAFT",
         total_sessions=4,
         is_sensitive=False,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     return referral
 
 
 @pytest.fixture
-def hiv_referral(db, sample_patient, sample_encounter, test_user, hiv_counselling_type):
+def hiv_referral(db, sample_patient, sample_encounter, test_user, hiv_counselling_type, sample_facility, sample_organization):
     """Create an HIV counselling referral (sensitive)."""
     return CounsellingReferral.objects.create(
         patient=sample_patient,
@@ -141,11 +143,13 @@ def hiv_referral(db, sample_patient, sample_encounter, test_user, hiv_counsellin
         goals="Emotional processing, adherence support, partner notification",
         status="PENDING",
         total_sessions=3,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def crisis_referral(db, sample_patient, sample_encounter, test_user):
+def crisis_referral(db, sample_patient, sample_encounter, test_user, sample_facility, sample_organization):
     """Create a crisis/suicidal ideation referral."""
     return CounsellingReferral.objects.create(
         patient=sample_patient,
@@ -159,6 +163,8 @@ def crisis_referral(db, sample_patient, sample_encounter, test_user):
         goals="Crisis intervention, safety planning",
         status="PENDING",
         total_sessions=6,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

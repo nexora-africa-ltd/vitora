@@ -38,7 +38,7 @@ class TestSensitiveFieldEncryption:
     """Tests for encryption of sensitive patient data fields."""
 
     @pytest.mark.django_db
-    def test_national_id_is_encrypted_in_database(self):
+    def test_national_id_is_encrypted_in_database(self, sample_organization):
         """National ID should be encrypted when stored in the database."""
         from hmis.apps.patients.models import Patient
 
@@ -49,6 +49,7 @@ class TestSensitiveFieldEncryption:
             date_of_birth=date(1990, 1, 15),
             gender="M",
             national_id="12345678",
+            organization=sample_organization,
         )
 
         # Refresh from database to ensure we're reading stored data
@@ -70,7 +71,7 @@ class TestSensitiveFieldEncryption:
                 pass  # Implementation will determine exact assertion
 
     @pytest.mark.django_db
-    def test_phone_number_is_encrypted_in_database(self):
+    def test_phone_number_is_encrypted_in_database(self, sample_organization):
         """Phone number should be encrypted when stored in the database."""
         from hmis.apps.patients.models import Patient
 
@@ -80,13 +81,14 @@ class TestSensitiveFieldEncryption:
             date_of_birth=date(1985, 5, 20),
             gender="F",
             phone_number="+254712345678",
+            organization=sample_organization,
         )
 
         patient.refresh_from_db()
         assert patient.phone_number == "+254712345678"
 
     @pytest.mark.django_db
-    def test_encrypted_fields_are_searchable_when_indexed(self):
+    def test_encrypted_fields_are_searchable_when_indexed(self, sample_organization):
         """Encrypted fields should support searching if indexed."""
         from hmis.apps.patients.models import Patient
 
@@ -97,6 +99,7 @@ class TestSensitiveFieldEncryption:
             date_of_birth=date(1990, 1, 1),
             gender="M",
             national_id="11111111",
+            organization=sample_organization,
         )
         Patient.objects.create(
             first_name="Patient",
@@ -104,6 +107,7 @@ class TestSensitiveFieldEncryption:
             date_of_birth=date(1990, 1, 1),
             gender="F",
             national_id="22222222",
+            organization=sample_organization,
         )
 
         # Should be able to search by national_id
@@ -113,7 +117,7 @@ class TestSensitiveFieldEncryption:
         assert found.last_name == "One"
 
     @pytest.mark.django_db
-    def test_empty_encrypted_fields_are_handled(self):
+    def test_empty_encrypted_fields_are_handled(self, sample_organization):
         """Empty or null encrypted fields should be handled correctly."""
         from hmis.apps.patients.models import Patient
 
@@ -124,6 +128,7 @@ class TestSensitiveFieldEncryption:
             gender="M",
             national_id=None,
             phone_number=None,
+            organization=sample_organization,
         )
 
         patient.refresh_from_db()
@@ -136,7 +141,7 @@ class TestEncryptedFieldIntegrity:
     """Tests for data integrity of encrypted fields."""
 
     @pytest.mark.django_db
-    def test_encrypted_data_survives_update(self):
+    def test_encrypted_data_survives_update(self, sample_organization):
         """Encrypted data should remain intact after updates."""
         from hmis.apps.patients.models import Patient
 
@@ -146,6 +151,7 @@ class TestEncryptedFieldIntegrity:
             date_of_birth=date(1990, 1, 1),
             gender="M",
             national_id="12345678",
+            organization=sample_organization,
         )
 
         # Update non-encrypted field
@@ -158,7 +164,7 @@ class TestEncryptedFieldIntegrity:
         assert patient.first_name == "Updated"
 
     @pytest.mark.django_db
-    def test_encrypted_field_update(self):
+    def test_encrypted_field_update(self, sample_organization):
         """Encrypted fields should be updateable."""
         from hmis.apps.patients.models import Patient
 
@@ -168,6 +174,7 @@ class TestEncryptedFieldIntegrity:
             date_of_birth=date(1990, 1, 1),
             gender="M",
             national_id="11111111",
+            organization=sample_organization,
         )
 
         # Update the encrypted field
@@ -179,7 +186,7 @@ class TestEncryptedFieldIntegrity:
         assert patient.national_id == "99999999"
 
     @pytest.mark.django_db
-    def test_special_characters_in_encrypted_fields(self):
+    def test_special_characters_in_encrypted_fields(self, sample_organization):
         """Encrypted fields should handle special characters correctly."""
         from hmis.apps.patients.models import Patient
 
@@ -190,6 +197,7 @@ class TestEncryptedFieldIntegrity:
             date_of_birth=date(1990, 1, 1),
             gender="M",
             phone_number=special_phone,
+            organization=sample_organization,
         )
 
         patient.refresh_from_db()
@@ -201,7 +209,7 @@ class TestDatabaseEncryptionAtRest:
     """Tests for database-level encryption at rest."""
 
     @pytest.mark.django_db
-    def test_database_file_is_not_plaintext_readable(self, settings):
+    def test_database_file_is_not_plaintext_readable(self, settings, sample_organization):
         """
         Database file should not contain plaintext sensitive data.
 
@@ -223,6 +231,7 @@ class TestDatabaseEncryptionAtRest:
             date_of_birth=date(1990, 1, 1),
             gender="M",
             national_id="SECRET123",
+            organization=sample_organization,
         )
 
         # Get database file path
@@ -245,7 +254,7 @@ class TestEncryptionWithSync:
     """Tests for encryption behavior during sync operations."""
 
     @pytest.mark.django_db
-    def test_encrypted_data_syncs_correctly(self):
+    def test_encrypted_data_syncs_correctly(self, sample_organization):
         """Encrypted data should sync without corruption."""
         from hmis.apps.patients.models import Patient
 
@@ -256,6 +265,7 @@ class TestEncryptionWithSync:
             date_of_birth=date(1990, 1, 1),
             gender="M",
             national_id="SYNCTEST123",
+            organization=sample_organization,
         )
 
         original_id = patient.national_id

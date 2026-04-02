@@ -268,7 +268,8 @@ class TestPatientSearchAPI:
     """Tests for patient search endpoint (returns multiple matches)."""
 
     def test_search_returns_multiple_matches(
-        self, authenticated_client, sample_patient, db
+        self, authenticated_client, sample_patient, db,
+        sample_organization,
     ):
         """
         GIVEN multiple patients with similar names
@@ -285,6 +286,7 @@ class TestPatientSearchAPI:
             gender="F",
             county=sample_patient.county,
             sub_county=sample_patient.sub_county,
+            organization=sample_organization,
         )
         Patient.objects.create(
             first_name="Janet",
@@ -293,6 +295,7 @@ class TestPatientSearchAPI:
             gender="F",
             county=sample_patient.county,
             sub_county=sample_patient.sub_county,
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(
@@ -375,7 +378,7 @@ class TestPatientSearchAPI:
         # Should NOT have clinical snapshot (that's loaded separately)
         assert "clinical_snapshot" not in patient
 
-    def test_search_respects_limit(self, authenticated_client, sample_patient, db):
+    def test_search_respects_limit(self, authenticated_client, sample_patient, db, sample_organization):
         """
         GIVEN many matching patients
         WHEN searching with limit
@@ -392,6 +395,7 @@ class TestPatientSearchAPI:
                 gender="M",
                 county=sample_patient.county,
                 sub_county=sample_patient.sub_county,
+                organization=sample_organization,
             )
 
         response = authenticated_client.get(

@@ -990,7 +990,11 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             for module_name, enabled in defaults.items():
                 validated_data[f"has_{module_name}"] = enabled
 
-        return super().create(validated_data)
+        facility = Facility(**validated_data)
+        if any_module_set:
+            facility._skip_module_defaults = True
+        facility.save()
+        return facility
 
 
 # =============================================================================

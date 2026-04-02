@@ -329,7 +329,7 @@ class TestPhysiotherapySession:
         )
 
     @pytest.fixture
-    def physio_order(self, sample_patient, sample_encounter, test_user, treatment_type):
+    def physio_order(self, sample_patient, sample_encounter, test_user, treatment_type, sample_facility, sample_organization):
         """Create a physiotherapy order for testing."""
         from hmis.apps.physiotherapy.models import PhysiotherapyOrder
 
@@ -340,6 +340,8 @@ class TestPhysiotherapySession:
             ordered_by=test_user,
             clinical_indication="Test indication",
             status="APPROVED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         return order
 
@@ -643,7 +645,7 @@ class TestPhysiotherapySessionAPI:
         )
 
     @pytest.fixture
-    def physio_order(self, sample_patient, sample_encounter, test_user, treatment_type):
+    def physio_order(self, sample_patient, sample_encounter, test_user, treatment_type, sample_facility, sample_organization):
         """Create a physiotherapy order for testing."""
         from hmis.apps.physiotherapy.models import PhysiotherapyOrder
 
@@ -654,6 +656,8 @@ class TestPhysiotherapySessionAPI:
             ordered_by=test_user,
             clinical_indication="Test",
             status="APPROVED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
     def test_create_session(self, authenticated_client, physio_order, test_user):

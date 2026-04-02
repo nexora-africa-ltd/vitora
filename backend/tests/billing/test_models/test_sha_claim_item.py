@@ -87,7 +87,7 @@ def sha_tariff_with_low_max_quantity(db):
 
 
 @pytest.fixture
-def sample_invoice(db, sample_patient, test_user):
+def sample_invoice(db, sample_patient, test_user, sample_facility, sample_organization):
     """Create a sample invoice for testing."""
     from hmis.apps.billing.models import Invoice
 
@@ -98,6 +98,8 @@ def sample_invoice(db, sample_patient, test_user):
         status=Invoice.Status.DRAFT,
         payment_type=Invoice.PaymentType.INSURANCE,
         created_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

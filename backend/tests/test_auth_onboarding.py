@@ -30,6 +30,7 @@ from hmis.apps.core.models import (
     StaffInvitation,
     StaffProfile,
 )
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -52,9 +53,10 @@ def admin_user(db):
 
 
 @pytest.fixture
-def admin_client(admin_user):
+def admin_client(admin_user, sample_organization, sample_facility):
     """Authenticated client with admin privileges."""
     client = APIClient()
+    ensure_staff_profile(admin_user, sample_organization, sample_facility)
     client.force_authenticate(user=admin_user)
     return client
 
@@ -71,9 +73,10 @@ def regular_user(db):
 
 
 @pytest.fixture
-def regular_client(regular_user):
+def regular_client(regular_user, sample_organization, sample_facility):
     """Authenticated client without admin privileges."""
     client = APIClient()
+    ensure_staff_profile(regular_user, sample_organization, sample_facility)
     client.force_authenticate(user=regular_user)
     return client
 
@@ -82,8 +85,8 @@ def regular_client(regular_user):
 def test_org(db):
     """Create a test organization."""
     return Organization.objects.create(
-        name="Test Hospital Group",
-        slug="test-hospital-group",
+        name="Onboarding Test Hospital",
+        slug="onboarding-test-hospital",
         is_active=True,
     )
 

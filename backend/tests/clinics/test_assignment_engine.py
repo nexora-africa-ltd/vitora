@@ -918,7 +918,7 @@ class TestAssignmentEngineIntegration:
     """Integration tests for the full assignment flow."""
 
     @pytest.fixture
-    def setup_assignment_scenario(self, db, sample_county, sample_sub_county):
+    def setup_assignment_scenario(self, db, sample_county, sample_sub_county, sample_organization):
         """Set up a complete assignment scenario."""
         from hmis.apps.patients.models import Patient
         from hmis.apps.scheduling.models import AssignmentRule, Resource
@@ -931,6 +931,7 @@ class TestAssignmentEngineIntegration:
             gender="M",
             county=sample_county,
             sub_county=sample_sub_county,
+            organization=sample_organization,
         )
 
         # Create doctors

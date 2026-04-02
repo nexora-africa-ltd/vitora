@@ -66,78 +66,101 @@ def second_user(db):
 
 
 @pytest.fixture
-def auth_client(api_client, auth_user):
-    """Provide authenticated API client."""
+def auth_client(
+    api_client, auth_user, sample_organization, sample_facility, sample_department, sample_role
+):
+    """Provide authenticated API client with multitenancy context."""
+    from datetime import date as date_cls
+
+    from hmis.apps.core.models import StaffProfile
+
+    StaffProfile.objects.get_or_create(
+        user=auth_user,
+        defaults={
+            "employee_id": "QUEUE-0001",
+            "organization": sample_organization,
+            "primary_facility": sample_facility,
+            "primary_department": sample_department,
+            "primary_role": sample_role,
+            "date_joined": date_cls.today(),
+        },
+    )
     api_client.force_authenticate(user=auth_user)
     return api_client
 
 
 @pytest.fixture
-def sample_patient(db):
+def sample_patient(db, sample_organization):
     """Create a sample patient."""
     return Patient.objects.create(
         first_name="Jane",
         last_name="Doe",
         date_of_birth=date(1985, 5, 20),
         gender="F",
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def second_patient(db):
+def second_patient(db, sample_organization):
     """Create a second patient for queue testing."""
     return Patient.objects.create(
         first_name="John",
         last_name="Smith",
         date_of_birth=date(1990, 3, 15),
         gender="M",
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def mandatory_encounter(sample_patient):
+def mandatory_encounter(sample_patient, sample_facility):
     """Create an OPD encounter (MANDATORY triage)."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Fever and headache",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def optional_encounter(sample_patient):
+def optional_encounter(sample_patient, sample_facility):
     """Create a FOLLOW_UP encounter (OPTIONAL triage)."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="FOLLOW_UP",
         chief_complaint="Follow-up visit",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def not_required_encounter(sample_patient):
+def not_required_encounter(sample_patient, sample_facility):
     """Create a PROCEDURE encounter (NOT_REQUIRED triage)."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="PROCEDURE",
         chief_complaint="Scheduled minor procedure",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def triaged_encounter(sample_patient):
+def triaged_encounter(sample_patient, sample_facility):
     """Create an encounter with completed triage."""
     encounter = Encounter.objects.create(
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Chest pain",
         triage_status="COMPLETED",
+        facility=sample_facility,
     )
     return encounter
 
 
 @pytest.fixture
-def bypassed_encounter(sample_patient, auth_user):
+def bypassed_encounter(sample_patient, auth_user, sample_facility):
     """Create an encounter with bypassed triage."""
     encounter = Encounter.objects.create(
         patient=sample_patient,
@@ -147,6 +170,7 @@ def bypassed_encounter(sample_patient, auth_user):
         triage_bypass_reason="STABLE_FOLLOW_UP",
         triage_bypassed_by=auth_user,
         triage_bypassed_at=timezone.now(),
+        facility=sample_facility,
     )
     return encounter
 
@@ -556,7 +580,7 @@ class TestConsultationQueueEndpoint:
         assert triaged_encounter.id not in encounter_ids
 
     def test_consultation_queue_includes_waiting_and_called(
-        self, auth_client, sample_patient, second_patient
+        self, auth_client, sample_patient, second_patient, sample_facility
     ):
         """Should include both WAITING and CALLED encounters."""
         waiting = Encounter.objects.create(
@@ -565,6 +589,7 @@ class TestConsultationQueueEndpoint:
             chief_complaint="Waiting",
             triage_status="COMPLETED",
             consultation_status="WAITING",
+            facility=sample_facility,
         )
         called = Encounter.objects.create(
             patient=second_patient,
@@ -572,6 +597,7 @@ class TestConsultationQueueEndpoint:
             chief_complaint="Called",
             triage_status="COMPLETED",
             consultation_status="CALLED",
+            facility=sample_facility,
         )
 
         response = auth_client.get("/api/encounters/consultation_queue/")
@@ -604,7 +630,7 @@ class TestConsultationQueueEndpoint:
         assert "wait_time_minutes" in encounter_data or "created_at" in encounter_data
 
     def test_consultation_queue_sorted_by_priority(
-        self, auth_client, sample_patient, second_patient
+        self, auth_client, sample_patient, second_patient, sample_facility
     ):
         """Should sort by triage priority (RED before GREEN)."""
         # Create encounters with different priorities
@@ -616,6 +642,7 @@ class TestConsultationQueueEndpoint:
             chief_complaint="Green priority",
             triage_status="COMPLETED",
             consultation_status="WAITING",
+            facility=sample_facility,
         )
         # Sleep briefly to ensure different timestamps
         import time
@@ -628,6 +655,7 @@ class TestConsultationQueueEndpoint:
             chief_complaint="Emergency - Red priority",
             triage_status="COMPLETED",
             consultation_status="WAITING",
+            facility=sample_facility,
         )
 
         response = auth_client.get("/api/encounters/consultation_queue/")
@@ -655,7 +683,7 @@ class TestConsultationQueueEndpoint:
         assert triaged_encounter.id in encounter_ids
         assert bypassed_encounter.id not in encounter_ids
 
-    def test_consultation_queue_filter_by_consultation_status(self, auth_client, sample_patient):
+    def test_consultation_queue_filter_by_consultation_status(self, auth_client, sample_patient, sample_facility):
         """Should support filtering by consultation_status."""
         waiting = Encounter.objects.create(
             patient=sample_patient,
@@ -663,6 +691,7 @@ class TestConsultationQueueEndpoint:
             chief_complaint="Waiting",
             triage_status="COMPLETED",
             consultation_status="WAITING",
+            facility=sample_facility,
         )
 
         response = auth_client.get(

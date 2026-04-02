@@ -49,7 +49,7 @@ def sample_sub_county(sample_county):
 
 
 @pytest.fixture
-def sample_patient(sample_county, sample_sub_county):
+def sample_patient(sample_county, sample_sub_county, sample_organization):
     """Create a sample patient."""
     return Patient.objects.create(
         first_name="John",
@@ -58,6 +58,7 @@ def sample_patient(sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -74,7 +75,7 @@ def sample_test(db):
 
 
 @pytest.fixture
-def sample_encounter(sample_patient, test_user):
+def sample_encounter(sample_patient, test_user, sample_facility):
     """Create a sample encounter."""
     from hmis.apps.encounters.models import Encounter
 
@@ -82,11 +83,12 @@ def sample_encounter(sample_patient, test_user):
         patient=sample_patient,
         encounter_type="OPD",
         chief_complaint="Routine checkup",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def sample_lab_order(sample_encounter, test_user):
+def sample_lab_order(sample_encounter, test_user, sample_organization, sample_facility):
     """Create a sample lab order."""
     return LabOrder.objects.create(
         encounter=sample_encounter,
@@ -94,6 +96,8 @@ def sample_lab_order(sample_encounter, test_user):
         ordered_by=test_user,
         priority="ROUTINE",
         order_type="IN_HOUSE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

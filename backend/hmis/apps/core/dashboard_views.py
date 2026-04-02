@@ -502,7 +502,10 @@ def _get_emergency_stats(facility=None, organization=None) -> dict:
     try:
         from hmis.apps.core.emergency_access.models import EmergencyAccess
 
-        scope = _build_scope_filter(facility, organization)
+        # EmergencyAccess has no facility FK; scope through patient
+        scope = _build_scope_filter(
+            facility, organization, facility_field="patient__registered_at_facility"
+        )
 
         active_overrides = EmergencyAccess.objects.filter(
             status="ACTIVE", **scope

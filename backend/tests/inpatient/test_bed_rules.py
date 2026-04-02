@@ -35,7 +35,7 @@ def evaluator():
 
 
 @pytest.fixture
-def female_patient(db, sample_county, sample_sub_county):
+def female_patient(db, sample_county, sample_sub_county, sample_organization):
     """Create a female patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -46,11 +46,12 @@ def female_patient(db, sample_county, sample_sub_county):
         gender="F",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def male_patient(db, sample_county, sample_sub_county):
+def male_patient(db, sample_county, sample_sub_county, sample_organization):
     """Create a male patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -61,11 +62,12 @@ def male_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def child_patient(db, sample_county, sample_sub_county):
+def child_patient(db, sample_county, sample_sub_county, sample_organization):
     """Create a child patient (age 10) for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -76,11 +78,12 @@ def child_patient(db, sample_county, sample_sub_county):
         gender="M",
         county=sample_county,
         sub_county=sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def general_ward(db):
+def general_ward(db, sample_facility, sample_organization):
     """Create a general ward with beds."""
     ward = Ward.objects.create(
         name="General Ward 1",
@@ -91,13 +94,15 @@ def general_ward(db):
         is_active=True,
         gender_restriction="ANY",
         oxygen_equipped=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     # Beds are auto-created by Ward.save()
     return ward
 
 
 @pytest.fixture
-def maternity_ward(db):
+def maternity_ward(db, sample_facility, sample_organization):
     """Create a maternity ward (female-only)."""
     ward = Ward.objects.create(
         name="Maternity Ward",
@@ -106,13 +111,15 @@ def maternity_ward(db):
         capacity=3,
         daily_rate=Decimal("2000.00"),
         is_active=True,
-        # Should auto-set to FEMALE_ONLY and age range
+        # Should auto-set to FEMALE_ONLY and age range,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     return ward
 
 
 @pytest.fixture
-def pediatric_ward(db):
+def pediatric_ward(db, sample_facility, sample_organization):
     """Create a pediatric ward (age-restricted)."""
     ward = Ward.objects.create(
         name="Pediatric Ward",
@@ -121,12 +128,14 @@ def pediatric_ward(db):
         capacity=4,
         daily_rate=Decimal("1800.00"),
         is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     return ward
 
 
 @pytest.fixture
-def icu_ward(db):
+def icu_ward(db, sample_facility, sample_organization):
     """Create an ICU ward with equipment."""
     ward = Ward.objects.create(
         name="ICU",
@@ -137,12 +146,14 @@ def icu_ward(db):
         is_active=True,
         oxygen_equipped=True,
         ventilator_capable=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     return ward
 
 
 @pytest.fixture
-def isolation_ward(db):
+def isolation_ward(db, sample_facility, sample_organization):
     """Create an isolation ward."""
     ward = Ward.objects.create(
         name="Isolation Ward",
@@ -152,12 +163,14 @@ def isolation_ward(db):
         daily_rate=Decimal("3000.00"),
         is_active=True,
         isolation_capable=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     return ward
 
 
 @pytest.fixture
-def ward_with_no_beds(db):
+def ward_with_no_beds(db, sample_facility, sample_organization):
     """Create a ward with no available beds (all occupied)."""
     ward = Ward.objects.create(
         name="Full Ward",
@@ -166,6 +179,8 @@ def ward_with_no_beds(db):
         capacity=2,
         daily_rate=Decimal("1500.00"),
         is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
     # Mark all beds as occupied
     ward.beds.update(status="OCCUPIED")

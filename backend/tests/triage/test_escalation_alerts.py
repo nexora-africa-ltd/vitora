@@ -43,7 +43,7 @@ def triage_permission(db, test_user):
 
 
 @pytest.fixture
-def triage_setup(db, sample_patient, test_user, triage_permission):
+def triage_setup(db, sample_patient, test_user, triage_permission, sample_facility):
     """
     Create a complete triage setup: encounter → assessment → queue entry.
     Returns dict with all created objects.
@@ -57,6 +57,7 @@ def triage_setup(db, sample_patient, test_user, triage_permission):
         patient=sample_patient,
         encounter_type="EMERGENCY",
         chief_complaint="Chest pain",
+        facility=sample_facility,
     )
 
     assessment = TriageAssessment.objects.create(
@@ -89,7 +90,7 @@ def triage_setup(db, sample_patient, test_user, triage_permission):
 
 
 @pytest.fixture
-def orange_triage_setup(db, sample_county, sample_sub_county, test_user, triage_permission):
+def orange_triage_setup(db, sample_county, sample_sub_county, test_user, triage_permission, sample_organization, sample_facility):
     """Create ORANGE category triage setup with 15-min wait (breached)."""
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.patients.models import Patient
@@ -105,12 +106,14 @@ def orange_triage_setup(db, sample_county, sample_sub_county, test_user, triage_
         county=sample_county,
         sub_county=sample_sub_county,
         registered_by=test_user,
+        organization=sample_organization,
     )
 
     encounter = Encounter.objects.create(
         patient=patient,
         encounter_type="EMERGENCY",
         chief_complaint="Difficulty breathing",
+        facility=sample_facility,
     )
 
     assessment = TriageAssessment.objects.create(
@@ -375,7 +378,7 @@ class TestWaitTimeBreachTask:
         assert WaitTimeBreach.objects.count() == 1
 
     @patch("hmis.apps.triage.tasks._broadcast_breach_alerts")
-    def test_no_breach_for_within_target(self, mock_broadcast, db, sample_patient, test_user, triage_permission):
+    def test_no_breach_for_within_target(self, mock_broadcast, db, sample_patient, test_user, triage_permission, sample_facility):
         """Should not create breach if wait time is within target."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment, TriageQueue, WaitTimeBreach
@@ -387,6 +390,7 @@ class TestWaitTimeBreachTask:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Mild headache",
+            facility=sample_facility,
         )
 
         assessment = TriageAssessment.objects.create(

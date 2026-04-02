@@ -34,17 +34,21 @@ def api_client():
 
 
 @pytest.fixture
-def test_user(db):
+def test_user(db, sample_organization, sample_facility):
     """Create a test user."""
-    return User.objects.create_user(
+    from tests.conftest import ensure_staff_profile
+
+    user = User.objects.create_user(
         username="audituser",
         email="audit@example.com",
         password="auditpassword123",
     )
+    ensure_staff_profile(user, sample_organization, sample_facility, employee_id="AUDIT-001")
+    return user
 
 
 @pytest.fixture
-def sample_patient(db):
+def sample_patient(db, sample_organization, sample_facility):
     """Create a sample patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -53,6 +57,8 @@ def sample_patient(db):
         last_name="TestPatient",
         date_of_birth="1990-01-15",
         gender="M",
+        organization=sample_organization,
+        registered_at_facility=sample_facility,
     )
 
 
@@ -533,6 +539,8 @@ class TestAuditLogAPI:
         """
         from hmis.apps.core.models import AuditLog
 
+        org = test_user.staff_profile.organization
+
         other_user = User.objects.create_user(
             username="otheraudituser",
             email="otheraudit@example.com",
@@ -542,11 +550,13 @@ class TestAuditLogAPI:
             user=test_user,
             action="patient_view",
             resource_type="Patient",
+            organization=org,
         )
         AuditLog.objects.create(
             user=other_user,
             action="patient_update",
             resource_type="Patient",
+            organization=org,
         )
 
         api_client.force_authenticate(user=test_user)

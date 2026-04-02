@@ -9,7 +9,7 @@ from django.urls import reverse
 
 
 @pytest.fixture
-def anc_clinic(db):
+def anc_clinic(db, sample_facility, sample_organization):
     """Create a sample ANC clinic for partograph tests."""
     from hmis.apps.clinics.models import Clinic
 
@@ -18,11 +18,13 @@ def anc_clinic(db):
         clinic_type="ANC",
         code="ANC-PTG-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def anc_enrollment(db, anc_clinic, sample_patient, test_user):
+def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, sample_organization):
     """Create an ANC enrollment for partograph tests."""
     from datetime import timedelta
 
@@ -40,7 +42,7 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user):
 
 
 @pytest.fixture
-def sample_mch_registration(sample_patient, anc_enrollment):
+def sample_mch_registration(sample_patient, anc_enrollment, sample_facility, sample_organization):
     """Create a sample MCH registration for labour monitoring tests."""
     from hmis.apps.mch.models import MCHRegistration
 
@@ -48,6 +50,8 @@ def sample_mch_registration(sample_patient, anc_enrollment):
         mother=sample_patient,
         anc_enrollment=anc_enrollment,
         registration_date=date.today(),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

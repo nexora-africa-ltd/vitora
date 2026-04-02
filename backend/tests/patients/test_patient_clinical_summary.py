@@ -16,15 +16,30 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def auth_client(db):
-    """Provide authenticated API client."""
+def auth_client(db, sample_organization, sample_facility, sample_department, sample_role):
+    """Provide authenticated API client with multitenancy context."""
+    from datetime import date
+
     from django.contrib.auth import get_user_model
+
+    from hmis.apps.core.models import StaffProfile
 
     User = get_user_model()
     user = User.objects.create_user(
         username="clinicalsummaryuser",
         password="testpass123",
         email="clinical@test.com",
+    )
+    StaffProfile.objects.get_or_create(
+        user=user,
+        defaults={
+            "employee_id": "CS-0001",
+            "organization": sample_organization,
+            "primary_facility": sample_facility,
+            "primary_department": sample_department,
+            "primary_role": sample_role,
+            "date_joined": date.today(),
+        },
     )
     client = APIClient()
     client.force_authenticate(user=user)
@@ -43,7 +58,8 @@ class TestPatientAllergySummary:
         assert response.data["allergy_summary"] == []
 
     def test_patient_with_active_allergies_returns_substances(
-        self, auth_client, sample_patient
+        self, auth_client, sample_patient,
+        sample_organization,
     ):
         """Should return list of active allergy substances."""
         from hmis.apps.patients.models import Allergy
@@ -55,6 +71,7 @@ class TestPatientAllergySummary:
             reaction_type="rash",
             severity="moderate",
             status="active",
+            organization=sample_organization,
         )
         Allergy.objects.create(
             patient=sample_patient,
@@ -63,6 +80,7 @@ class TestPatientAllergySummary:
             reaction_type="anaphylaxis",
             severity="severe",
             status="active",
+            organization=sample_organization,
         )
 
         response = auth_client.get(f"/api/patients/{sample_patient.id}/")
@@ -72,7 +90,7 @@ class TestPatientAllergySummary:
         assert "Penicillin" in summary
         assert "Peanuts" in summary
 
-    def test_inactive_allergies_are_excluded(self, auth_client, sample_patient):
+    def test_inactive_allergies_are_excluded(self, auth_client, sample_patient, sample_organization):
         """Should only include active allergies in summary."""
         from hmis.apps.patients.models import Allergy
 
@@ -83,6 +101,7 @@ class TestPatientAllergySummary:
             reaction_type="rash",
             severity="moderate",
             status="active",
+            organization=sample_organization,
         )
         Allergy.objects.create(
             patient=sample_patient,
@@ -91,6 +110,7 @@ class TestPatientAllergySummary:
             reaction_type="hives",
             severity="mild",
             status="resolved",
+            organization=sample_organization,
         )
 
         response = auth_client.get(f"/api/patients/{sample_patient.id}/")
@@ -100,7 +120,8 @@ class TestPatientAllergySummary:
         assert "Aspirin" not in summary
 
     def test_allergy_summary_appears_in_list_view(
-        self, auth_client, sample_patient
+        self, auth_client, sample_patient,
+        sample_organization,
     ):
         """Should include allergy_summary in list endpoint too."""
         from hmis.apps.patients.models import Allergy
@@ -112,6 +133,7 @@ class TestPatientAllergySummary:
             reaction_type="rash",
             severity="moderate",
             status="active",
+            organization=sample_organization,
         )
 
         response = auth_client.get("/api/patients/")
@@ -128,7 +150,7 @@ class TestPatientChronicConditionsSummary:
     """Tests for the chronic_conditions_summary computed field."""
 
     def test_patient_with_no_encounters_returns_empty_string(
-        self, auth_client, sample_patient
+        self, auth_client, sample_patient, sample_facility
     ):
         """Should return empty string when patient has no encounters."""
         response = auth_client.get(f"/api/patients/{sample_patient.id}/")
@@ -136,7 +158,7 @@ class TestPatientChronicConditionsSummary:
         assert response.data["chronic_conditions_summary"] == ""
 
     def test_patient_returns_latest_encounter_chronic_conditions(
-        self, auth_client, sample_patient
+        self, auth_client, sample_patient, sample_facility
     ):
         """Should return chronic conditions from the most recent encounter."""
         from hmis.apps.encounters.models import Encounter
@@ -147,6 +169,7 @@ class TestPatientChronicConditionsSummary:
             encounter_type="OPD",
             chief_complaint="Checkup",
             chronic_conditions="Hypertension",
+            facility=sample_facility,
         )
         # Newer encounter
         Encounter.objects.create(
@@ -154,6 +177,7 @@ class TestPatientChronicConditionsSummary:
             encounter_type="OPD",
             chief_complaint="Follow-up",
             chronic_conditions="Hypertension, Type 2 Diabetes",
+            facility=sample_facility,
         )
 
         response = auth_client.get(f"/api/patients/{sample_patient.id}/")
@@ -161,7 +185,7 @@ class TestPatientChronicConditionsSummary:
         assert response.data["chronic_conditions_summary"] == "Hypertension, Type 2 Diabetes"
 
     def test_empty_chronic_conditions_on_latest_encounter(
-        self, auth_client, sample_patient
+        self, auth_client, sample_patient, sample_facility
     ):
         """Should return empty string if latest encounter has no chronic conditions."""
         from hmis.apps.encounters.models import Encounter
@@ -171,19 +195,21 @@ class TestPatientChronicConditionsSummary:
             encounter_type="OPD",
             chief_complaint="Checkup",
             chronic_conditions="Asthma",
+            facility=sample_facility,
         )
         Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Minor issue",
             chronic_conditions="",
+            facility=sample_facility,
         )
 
         response = auth_client.get(f"/api/patients/{sample_patient.id}/")
         # Latest encounter has empty — return that (point-in-time accuracy)
         assert response.data["chronic_conditions_summary"] == ""
 
-    def test_allergy_summary_is_read_only(self, auth_client, sample_patient):
+    def test_allergy_summary_is_read_only(self, auth_client, sample_patient, sample_facility):
         """Should not allow setting allergy_summary via PATCH."""
         response = auth_client.patch(
             f"/api/patients/{sample_patient.id}/",

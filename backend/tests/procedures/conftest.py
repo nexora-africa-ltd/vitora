@@ -4,7 +4,7 @@ from hmis.apps.procedures.models import ProcedureCatalog, ProcedureOrder
 
 
 @pytest.fixture
-def procedure_catalog_entry(db):
+def procedure_catalog_entry(db, sample_facility, sample_organization):
     """Create a sample procedure catalog entry."""
     return ProcedureCatalog.objects.create(
         code="PROC-WC-001",
@@ -15,11 +15,13 @@ def procedure_catalog_entry(db):
         typical_duration_minutes=15,
         consent_required=True,
         base_fee=500,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def no_consent_procedure(db):
+def no_consent_procedure(db, sample_facility, sample_organization):
     """Create a procedure that does not require consent."""
     return ProcedureCatalog.objects.create(
         code="PROC-INJ-001",
@@ -30,11 +32,13 @@ def no_consent_procedure(db):
         typical_duration_minutes=5,
         consent_required=False,
         base_fee=200,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def procedure_order(db, procedure_catalog_entry, sample_patient, test_user):
+def procedure_order(db, procedure_catalog_entry, sample_patient, test_user, sample_facility, sample_organization):
     """Create a sample procedure order."""
     return ProcedureOrder.objects.create(
         procedure=procedure_catalog_entry,
@@ -42,6 +46,8 @@ def procedure_order(db, procedure_catalog_entry, sample_patient, test_user):
         ordered_by=test_user,
         indication="Wound on right forearm",
         priority=ProcedureOrder.Priority.ROUTINE,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

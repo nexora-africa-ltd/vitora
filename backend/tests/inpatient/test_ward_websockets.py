@@ -65,7 +65,7 @@ def create_test_bed(ward, bed_number="B-001"):
 
 
 @database_sync_to_async
-def create_test_patient(first_name="Test", last_name="Patient", gender="M"):
+def create_test_patient(sample_organization, first_name="Test", last_name="Patient", gender="M"):
     """Create a test patient (async-safe)."""
     county, _ = County.objects.get_or_create(code=1, defaults={"name": "Nairobi"})
     sub_county, _ = SubCounty.objects.get_or_create(name="Westlands", defaults={"county": county})
@@ -76,6 +76,7 @@ def create_test_patient(first_name="Test", last_name="Patient", gender="M"):
         gender=gender,
         county=county,
         sub_county=sub_county,
+        organization=sample_organization,
     )
 
 
@@ -152,7 +153,7 @@ def sample_sub_county(db, sample_county):
 
 
 @pytest.fixture
-def inpatient_ward(db):
+def inpatient_ward(db, sample_facility, sample_organization):
     """Create an inpatient ward."""
     return Ward.objects.create(
         name="Test Medical Ward",
@@ -161,11 +162,13 @@ def inpatient_ward(db):
         capacity=10,
         daily_rate=Decimal("500.00"),
         is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def male_only_ward_ws(db):
+def male_only_ward_ws(db, sample_facility, sample_organization):
     """Create a male-only ward for WebSocket tests."""
     return Ward.objects.create(
         name="Male Only Ward WS",
@@ -175,11 +178,13 @@ def male_only_ward_ws(db):
         daily_rate=Decimal("500.00"),
         is_active=True,
         gender_restriction="MALE_ONLY",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def isolation_ward(db):
+def isolation_ward(db, sample_facility, sample_organization):
     """Create an isolation-capable ward."""
     return Ward.objects.create(
         name="Isolation Ward",
@@ -189,11 +194,13 @@ def isolation_ward(db):
         daily_rate=Decimal("1500.00"),
         is_active=True,
         isolation_capable=True,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def non_isolation_ward_ws(db):
+def non_isolation_ward_ws(db, sample_facility, sample_organization):
     """Create a non-isolation ward for testing CRITICAL violations."""
     return Ward.objects.create(
         name="Non-Isolation Ward WS",
@@ -203,6 +210,8 @@ def non_isolation_ward_ws(db):
         daily_rate=Decimal("500.00"),
         is_active=True,
         isolation_capable=False,
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -546,6 +555,7 @@ class TestAdmissionViolationSignalHandler:
         male_only_ward_ws,
         sample_patient,
         test_user,
+        sample_facility,
     ):
         """Should broadcast to ward when admission has WARNING violation."""
         bed = Bed.objects.create(
@@ -559,6 +569,7 @@ class TestAdmissionViolationSignalHandler:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Admitted for management",
+            facility=sample_facility,
         )
 
         # Create admission with WARNING violation
@@ -594,6 +605,7 @@ class TestAdmissionViolationSignalHandler:
         non_isolation_ward_ws,
         sample_patient,
         test_user,
+        sample_facility,
     ):
         """Should escalate to supervisors when admission has CRITICAL violation."""
         bed = Bed.objects.create(
@@ -607,6 +619,7 @@ class TestAdmissionViolationSignalHandler:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Emergency admission",
+            facility=sample_facility,
         )
 
         # Create admission with CRITICAL violation
@@ -643,7 +656,8 @@ class TestNonCriticalViolationNoSupervisorEscalation:
     @patch("hmis.apps.inpatient.signals.broadcast_ward_event_sync")
     @patch("hmis.apps.inpatient.signals.notify_supervisors_critical_violation.delay")
     def test_warning_violation_does_not_trigger_supervisor_task(
-        self, mock_celery_task, mock_broadcast, male_only_ward_ws, sample_patient, test_user
+        self, mock_celery_task, mock_broadcast, male_only_ward_ws, sample_patient, test_user,
+        sample_facility,
     ):
         """WARNING (non-critical) violation should NOT trigger supervisor escalation."""
         bed = Bed.objects.create(
@@ -657,6 +671,7 @@ class TestNonCriticalViolationNoSupervisorEscalation:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Gender exception admission",
+            facility=sample_facility,
         )
 
         # Create admission with only WARNING violations
@@ -700,6 +715,7 @@ class TestNotifySupervisorsCriticalViolationTask:
         non_isolation_ward_ws,
         sample_patient,
         test_user,
+        sample_facility,
     ):
         """Should send email notification to users with receive_critical_alerts permission."""
         from hmis.apps.inpatient.tasks import notify_supervisors_critical_violation
@@ -715,6 +731,7 @@ class TestNotifySupervisorsCriticalViolationTask:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Critical isolation admission",
+            facility=sample_facility,
         )
 
         admission = Admission.objects.create(
@@ -757,6 +774,7 @@ class TestNotifySupervisorsCriticalViolationTask:
         non_isolation_ward_ws,
         sample_patient,
         test_user,
+        sample_facility,
     ):
         """Email should include full violation details."""
         from hmis.apps.inpatient.tasks import notify_supervisors_critical_violation
@@ -772,6 +790,7 @@ class TestNotifySupervisorsCriticalViolationTask:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="Violation details test",
+            facility=sample_facility,
         )
 
         admission = Admission.objects.create(
@@ -816,6 +835,7 @@ class TestNotifySupervisorsCriticalViolationTask:
         non_isolation_ward_ws,
         sample_patient,
         test_user,
+        sample_facility,
     ):
         """Should not fail if no users have receive_critical_alerts permission."""
         from hmis.apps.inpatient.tasks import notify_supervisors_critical_violation
@@ -834,6 +854,7 @@ class TestNotifySupervisorsCriticalViolationTask:
             patient=sample_patient,
             encounter_type="IPD",
             chief_complaint="No supervisors test",
+            facility=sample_facility,
         )
 
         admission = Admission.objects.create(

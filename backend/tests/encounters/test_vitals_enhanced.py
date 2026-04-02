@@ -24,7 +24,7 @@ pytestmark = pytest.mark.django_db
 class TestBloodPressureParsing:
     """Test blood pressure systolic/diastolic parsing and validation."""
 
-    def test_parse_blood_pressure_valid(self, sample_patient):
+    def test_parse_blood_pressure_valid(self, sample_patient, sample_facility):
         """Test parsing valid blood pressure format."""
         from hmis.apps.encounters.models import Encounter
 
@@ -33,12 +33,13 @@ class TestBloodPressureParsing:
             encounter_type="OPD",
             chief_complaint="Routine checkup",
             blood_pressure="120/80",
+            facility=sample_facility,
         )
 
         assert encounter.get_systolic_bp() == 120
         assert encounter.get_diastolic_bp() == 80
 
-    def test_parse_blood_pressure_high(self, sample_patient):
+    def test_parse_blood_pressure_high(self, sample_patient, sample_facility):
         """Test parsing high blood pressure values."""
         from hmis.apps.encounters.models import Encounter
 
@@ -47,12 +48,13 @@ class TestBloodPressureParsing:
             encounter_type="OPD",
             chief_complaint="Routine checkup",
             blood_pressure="180/110",
+            facility=sample_facility,
         )
 
         assert encounter.get_systolic_bp() == 180
         assert encounter.get_diastolic_bp() == 110
 
-    def test_parse_blood_pressure_empty(self, sample_patient):
+    def test_parse_blood_pressure_empty(self, sample_patient, sample_facility):
         """Test parsing empty blood pressure returns None."""
         from hmis.apps.encounters.models import Encounter
 
@@ -61,12 +63,13 @@ class TestBloodPressureParsing:
             encounter_type="OPD",
             chief_complaint="Routine checkup",
             blood_pressure="",
+            facility=sample_facility,
         )
 
         assert encounter.get_systolic_bp() is None
         assert encounter.get_diastolic_bp() is None
 
-    def test_blood_pressure_critical_high_systolic(self, sample_patient):
+    def test_blood_pressure_critical_high_systolic(self, sample_patient, sample_facility):
         """Test critical alert for high systolic BP (>=180 mmHg - Hypertensive Crisis)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -75,12 +78,13 @@ class TestBloodPressureParsing:
             encounter_type="OPD",
             chief_complaint="Dizziness",
             blood_pressure="185/95",
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "hypertensive crisis" in encounter.get_alerts().lower()
 
-    def test_blood_pressure_critical_high_diastolic(self, sample_patient):
+    def test_blood_pressure_critical_high_diastolic(self, sample_patient, sample_facility):
         """Test critical alert for high diastolic BP (>=120 mmHg)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -89,12 +93,13 @@ class TestBloodPressureParsing:
             encounter_type="OPD",
             chief_complaint="Headache",
             blood_pressure="150/125",
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "hypertensive" in encounter.get_alerts().lower()
 
-    def test_blood_pressure_critical_low(self, sample_patient):
+    def test_blood_pressure_critical_low(self, sample_patient, sample_facility):
         """Test critical alert for low BP (Hypotension - systolic <90 or diastolic <60)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -103,12 +108,13 @@ class TestBloodPressureParsing:
             encounter_type="EMERGENCY",
             chief_complaint="Fainting",
             blood_pressure="85/55",
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "hypotension" in encounter.get_alerts().lower()
 
-    def test_blood_pressure_normal_no_alert(self, sample_patient):
+    def test_blood_pressure_normal_no_alert(self, sample_patient, sample_facility):
         """Test normal blood pressure does not trigger critical alert."""
         from hmis.apps.encounters.models import Encounter
 
@@ -117,6 +123,7 @@ class TestBloodPressureParsing:
             encounter_type="OPD",
             chief_complaint="Routine checkup",
             blood_pressure="120/80",
+            facility=sample_facility,
         )
 
         # Normal BP should not be flagged as critical (unless other vitals are critical)
@@ -147,7 +154,7 @@ class TestEnhancedVitalsValidation:
         )
         encounter.full_clean()  # Should not raise
 
-    def test_temperature_hypothermia_alert(self, sample_patient):
+    def test_temperature_hypothermia_alert(self, sample_patient, sample_facility):
         """Test severe hypothermia alert for temperature < 32°C."""
         from hmis.apps.encounters.models import Encounter
 
@@ -155,13 +162,14 @@ class TestEnhancedVitalsValidation:
             patient=sample_patient,
             encounter_type="EMERGENCY",
             chief_complaint="Found unresponsive",
-            temperature=Decimal("31.5"),  # <32°C = severe hypothermia (critical)
+            temperature=Decimal("31.5"),  # <32°C = severe hypothermia (critical),
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "hypothermia" in encounter.get_alerts().lower()
 
-    def test_temperature_high_fever_alert(self, sample_patient):
+    def test_temperature_high_fever_alert(self, sample_patient, sample_facility):
         """Test high fever alert for temperature >= 40°C."""
         from hmis.apps.encounters.models import Encounter
 
@@ -169,13 +177,14 @@ class TestEnhancedVitalsValidation:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="High fever",
-            temperature=Decimal("40.5"),  # >=40°C = high fever / hyperpyrexia (critical)
+            temperature=Decimal("40.5"),  # >=40°C = high fever / hyperpyrexia (critical),
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "fever" in encounter.get_alerts().lower() or "hyperpyrexia" in encounter.get_alerts().lower()
 
-    def test_pulse_bradycardia_alert(self, sample_patient):
+    def test_pulse_bradycardia_alert(self, sample_patient, sample_facility):
         """Test bradycardia alert for pulse < 50 bpm."""
         from hmis.apps.encounters.models import Encounter
 
@@ -184,12 +193,13 @@ class TestEnhancedVitalsValidation:
             encounter_type="OPD",
             chief_complaint="Feeling faint",
             pulse=45,
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "bradycardia" in encounter.get_alerts().lower()
 
-    def test_pulse_tachycardia_alert(self, sample_patient):
+    def test_pulse_tachycardia_alert(self, sample_patient, sample_facility):
         """Test tachycardia alert for pulse > 120 bpm."""
         from hmis.apps.encounters.models import Encounter
 
@@ -198,12 +208,13 @@ class TestEnhancedVitalsValidation:
             encounter_type="EMERGENCY",
             chief_complaint="Palpitations",
             pulse=150,
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "tachycardia" in encounter.get_alerts().lower()
 
-    def test_respiratory_rate_bradypnea_alert(self, sample_patient):
+    def test_respiratory_rate_bradypnea_alert(self, sample_patient, sample_facility):
         """Test bradypnea alert for respiratory rate < 12/min."""
         from hmis.apps.encounters.models import Encounter
 
@@ -212,12 +223,13 @@ class TestEnhancedVitalsValidation:
             encounter_type="EMERGENCY",
             chief_complaint="Drowsy",
             respiratory_rate=10,
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "bradypnea" in encounter.get_alerts().lower()
 
-    def test_respiratory_rate_tachypnea_alert(self, sample_patient):
+    def test_respiratory_rate_tachypnea_alert(self, sample_patient, sample_facility):
         """Test tachypnea alert for respiratory rate > 25/min."""
         from hmis.apps.encounters.models import Encounter
 
@@ -226,12 +238,13 @@ class TestEnhancedVitalsValidation:
             encounter_type="EMERGENCY",
             chief_complaint="Difficulty breathing",
             respiratory_rate=30,
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "tachypnea" in encounter.get_alerts().lower()
 
-    def test_spo2_severe_hypoxemia_alert(self, sample_patient):
+    def test_spo2_severe_hypoxemia_alert(self, sample_patient, sample_facility):
         """Test severe hypoxemia alert for SpO2 < 90%."""
         from hmis.apps.encounters.models import Encounter
 
@@ -240,12 +253,13 @@ class TestEnhancedVitalsValidation:
             encounter_type="EMERGENCY",
             chief_complaint="Respiratory distress",
             spo2=Decimal("85.0"),
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
         assert "severe hypoxemia" in encounter.get_alerts().lower()
 
-    def test_spo2_hypoxemia_alert(self, sample_patient):
+    def test_spo2_hypoxemia_alert(self, sample_patient, sample_facility):
         """Test hypoxemia alert for SpO2 90-94% (warning level, not critical)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -254,6 +268,7 @@ class TestEnhancedVitalsValidation:
             encounter_type="OPD",
             chief_complaint="Shortness of breath",
             spo2=Decimal("92.0"),
+            facility=sample_facility,
         )
 
         # SpO2 90-94% is warning (mild hypoxemia), not critical
@@ -261,7 +276,7 @@ class TestEnhancedVitalsValidation:
         # But get_alerts() includes warnings for SpO2
         assert encounter.get_vital_status("spo2") == "warning"
 
-    def test_all_vitals_normal_no_alerts(self, sample_patient):
+    def test_all_vitals_normal_no_alerts(self, sample_patient, sample_facility):
         """Test normal vitals produce no alerts."""
         from hmis.apps.encounters.models import Encounter
 
@@ -274,6 +289,7 @@ class TestEnhancedVitalsValidation:
             blood_pressure="120/80",
             respiratory_rate=16,
             spo2=Decimal("98.0"),
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is False
@@ -289,7 +305,7 @@ class TestEnhancedVitalsValidation:
 class TestBMICalculation:
     """Test BMI calculation and classification."""
 
-    def test_bmi_calculation(self, sample_patient):
+    def test_bmi_calculation(self, sample_patient, sample_facility):
         """Test BMI is calculated correctly from weight and height."""
         from hmis.apps.encounters.models import Encounter
 
@@ -299,12 +315,13 @@ class TestBMICalculation:
             chief_complaint="Weight check",
             weight=Decimal("70.0"),
             height=Decimal("175.0"),
+            facility=sample_facility,
         )
 
         # BMI = 70 / (1.75^2) = 22.86
         assert encounter.calculate_bmi() == pytest.approx(22.9, 0.1)
 
-    def test_bmi_underweight_classification(self, sample_patient):
+    def test_bmi_underweight_classification(self, sample_patient, sample_facility):
         """Test BMI classification for underweight (< 18.5)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -314,12 +331,13 @@ class TestBMICalculation:
             chief_complaint="Weight concern",
             weight=Decimal("45.0"),
             height=Decimal("170.0"),
+            facility=sample_facility,
         )
 
         # BMI = 45 / (1.70^2) = 15.57
         assert encounter.get_bmi_classification() == "Underweight"
 
-    def test_bmi_normal_classification(self, sample_patient):
+    def test_bmi_normal_classification(self, sample_patient, sample_facility):
         """Test BMI classification for normal weight (18.5-24.9)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -329,12 +347,13 @@ class TestBMICalculation:
             chief_complaint="Routine checkup",
             weight=Decimal("65.0"),
             height=Decimal("170.0"),
+            facility=sample_facility,
         )
 
         # BMI = 65 / (1.70^2) = 22.49
         assert encounter.get_bmi_classification() == "Normal"
 
-    def test_bmi_overweight_classification(self, sample_patient):
+    def test_bmi_overweight_classification(self, sample_patient, sample_facility):
         """Test BMI classification for overweight (25-29.9)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -344,12 +363,13 @@ class TestBMICalculation:
             chief_complaint="Weight management",
             weight=Decimal("85.0"),
             height=Decimal("175.0"),
+            facility=sample_facility,
         )
 
         # BMI = 85 / (1.75^2) = 27.76
         assert encounter.get_bmi_classification() == "Overweight"
 
-    def test_bmi_obese_classification(self, sample_patient):
+    def test_bmi_obese_classification(self, sample_patient, sample_facility):
         """Test BMI classification for obese (>= 30)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -359,12 +379,13 @@ class TestBMICalculation:
             chief_complaint="Weight management",
             weight=Decimal("100.0"),
             height=Decimal("170.0"),
+            facility=sample_facility,
         )
 
         # BMI = 100 / (1.70^2) = 34.60
         assert encounter.get_bmi_classification() == "Obese"
 
-    def test_bmi_missing_weight_returns_none(self, sample_patient):
+    def test_bmi_missing_weight_returns_none(self, sample_patient, sample_facility):
         """Test BMI returns None when weight is missing."""
         from hmis.apps.encounters.models import Encounter
 
@@ -373,12 +394,13 @@ class TestBMICalculation:
             encounter_type="OPD",
             chief_complaint="Checkup",
             height=Decimal("175.0"),
+            facility=sample_facility,
         )
 
         assert encounter.calculate_bmi() is None
         assert encounter.get_bmi_classification() is None
 
-    def test_bmi_missing_height_returns_none(self, sample_patient):
+    def test_bmi_missing_height_returns_none(self, sample_patient, sample_facility):
         """Test BMI returns None when height is missing."""
         from hmis.apps.encounters.models import Encounter
 
@@ -387,6 +409,7 @@ class TestBMICalculation:
             encounter_type="OPD",
             chief_complaint="Checkup",
             weight=Decimal("70.0"),
+            facility=sample_facility,
         )
 
         assert encounter.calculate_bmi() is None
@@ -402,7 +425,7 @@ class TestBMICalculation:
 class TestCombinedCriticalVitals:
     """Test multiple critical vitals detection."""
 
-    def test_multiple_critical_vitals(self, sample_patient):
+    def test_multiple_critical_vitals(self, sample_patient, sample_facility):
         """Test patient with multiple critical vitals generates multiple alerts."""
         from hmis.apps.encounters.models import Encounter
 
@@ -413,7 +436,8 @@ class TestCombinedCriticalVitals:
             temperature=Decimal("40.0"),  # Fever
             pulse=140,  # Tachycardia
             blood_pressure="85/50",  # Hypotension
-            spo2=Decimal("88.0"),  # Severe hypoxemia
+            spo2=Decimal("88.0"),  # Severe hypoxemia,
+            facility=sample_facility,
         )
 
         assert encounter.has_critical_vitals() is True
@@ -423,7 +447,7 @@ class TestCombinedCriticalVitals:
         assert "hypotension" in alerts.lower()
         assert "hypoxemia" in alerts.lower()
 
-    def test_get_vitals_summary(self, sample_patient):
+    def test_get_vitals_summary(self, sample_patient, sample_facility):
         """Test get_vitals_summary returns formatted vitals string."""
         from hmis.apps.encounters.models import Encounter
 
@@ -438,6 +462,7 @@ class TestCombinedCriticalVitals:
             spo2=Decimal("98.0"),
             weight=Decimal("70.0"),
             height=Decimal("175.0"),
+            facility=sample_facility,
         )
 
         summary = encounter.get_vitals_summary()
@@ -454,7 +479,7 @@ class TestCombinedCriticalVitals:
 
 
 @pytest.fixture
-def sample_patient(db):
+def sample_patient(db, sample_organization):
     """Create a sample patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -463,4 +488,5 @@ def sample_patient(db):
         last_name="Patient",
         date_of_birth=date(1990, 5, 15),
         gender="M",
+        organization=sample_organization,
     )

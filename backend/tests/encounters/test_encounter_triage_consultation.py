@@ -229,7 +229,7 @@ class TestTriageRequirementField:
             Encounter, "triage_requirement"
         ), "Encounter should have triage_requirement field"
 
-    def test_triage_requirement_auto_set_for_opd(self, sample_patient):
+    def test_triage_requirement_auto_set_for_opd(self, sample_patient, sample_facility):
         """OPD encounter should auto-set triage_requirement to MANDATORY."""
         from hmis.apps.encounters.models import Encounter
 
@@ -237,10 +237,11 @@ class TestTriageRequirementField:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         assert encounter.triage_requirement == "MANDATORY"
 
-    def test_triage_requirement_auto_set_for_emergency(self, sample_patient):
+    def test_triage_requirement_auto_set_for_emergency(self, sample_patient, sample_facility):
         """EMERGENCY encounter should auto-set triage_requirement to MANDATORY."""
         from hmis.apps.encounters.models import Encounter
 
@@ -248,10 +249,11 @@ class TestTriageRequirementField:
             patient=sample_patient,
             encounter_type="EMERGENCY",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         assert encounter.triage_requirement == "MANDATORY"
 
-    def test_triage_requirement_auto_set_for_scheduled_opd(self, sample_patient):
+    def test_triage_requirement_auto_set_for_scheduled_opd(self, sample_patient, sample_facility):
         """SCHEDULED_OPD encounter should auto-set triage_requirement to OPTIONAL."""
         from hmis.apps.encounters.models import Encounter
 
@@ -259,10 +261,11 @@ class TestTriageRequirementField:
             patient=sample_patient,
             encounter_type="SCHEDULED_OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         assert encounter.triage_requirement == "OPTIONAL"
 
-    def test_triage_requirement_auto_set_for_follow_up(self, sample_patient):
+    def test_triage_requirement_auto_set_for_follow_up(self, sample_patient, sample_facility):
         """FOLLOW_UP encounter should auto-set triage_requirement to OPTIONAL."""
         from hmis.apps.encounters.models import Encounter
 
@@ -270,10 +273,11 @@ class TestTriageRequirementField:
             patient=sample_patient,
             encounter_type="FOLLOW_UP",
             chief_complaint="Follow-up visit",
+            facility=sample_facility,
         )
         assert encounter.triage_requirement == "OPTIONAL"
 
-    def test_triage_requirement_auto_set_for_procedure(self, sample_patient):
+    def test_triage_requirement_auto_set_for_procedure(self, sample_patient, sample_facility):
         """PROCEDURE encounter should auto-set triage_requirement to NOT_REQUIRED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -281,10 +285,11 @@ class TestTriageRequirementField:
             patient=sample_patient,
             encounter_type="PROCEDURE",
             chief_complaint="Scheduled procedure",
+            facility=sample_facility,
         )
         assert encounter.triage_requirement == "NOT_REQUIRED"
 
-    def test_triage_requirement_auto_set_for_day_case(self, sample_patient):
+    def test_triage_requirement_auto_set_for_day_case(self, sample_patient, sample_facility):
         """DAY_CASE encounter should auto-set triage_requirement to NOT_REQUIRED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -292,6 +297,7 @@ class TestTriageRequirementField:
             patient=sample_patient,
             encounter_type="DAY_CASE",
             chief_complaint="Day case procedure",
+            facility=sample_facility,
         )
         assert encounter.triage_requirement == "NOT_REQUIRED"
 
@@ -311,7 +317,7 @@ class TestTriageStatusField:
 
         assert hasattr(Encounter, "triage_status"), "Encounter should have triage_status field"
 
-    def test_triage_status_default_pending_for_mandatory(self, sample_patient):
+    def test_triage_status_default_pending_for_mandatory(self, sample_patient, sample_facility):
         """Mandatory triage encounters should default to PENDING status."""
         from hmis.apps.encounters.models import Encounter
 
@@ -319,10 +325,11 @@ class TestTriageStatusField:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         assert encounter.triage_status == "PENDING"
 
-    def test_triage_status_default_pending_for_optional(self, sample_patient):
+    def test_triage_status_default_pending_for_optional(self, sample_patient, sample_facility):
         """Optional triage encounters should default to PENDING status."""
         from hmis.apps.encounters.models import Encounter
 
@@ -330,10 +337,11 @@ class TestTriageStatusField:
             patient=sample_patient,
             encounter_type="SCHEDULED_OPD",
             chief_complaint="Follow-up visit",
+            facility=sample_facility,
         )
         assert encounter.triage_status == "PENDING"
 
-    def test_triage_status_default_not_applicable_for_not_required(self, sample_patient):
+    def test_triage_status_default_not_applicable_for_not_required(self, sample_patient, sample_facility):
         """NOT_REQUIRED triage encounters should default to NOT_APPLICABLE status."""
         from hmis.apps.encounters.models import Encounter
 
@@ -341,6 +349,7 @@ class TestTriageStatusField:
             patient=sample_patient,
             encounter_type="PROCEDURE",
             chief_complaint="Scheduled procedure",
+            facility=sample_facility,
         )
         assert encounter.triage_status == "NOT_APPLICABLE"
 
@@ -410,7 +419,7 @@ class TestTriageBypassFields:
         # Should not raise
         encounter.full_clean()
 
-    def test_bypass_fields_set_together(self, sample_patient, test_user):
+    def test_bypass_fields_set_together(self, sample_patient, test_user, sample_facility):
         """When bypassing, all bypass fields should be set."""
         from hmis.apps.encounters.models import Encounter
 
@@ -418,6 +427,7 @@ class TestTriageBypassFields:
             patient=sample_patient,
             encounter_type="SCHEDULED_OPD",
             chief_complaint="Follow-up visit",
+            facility=sample_facility,
         )
 
         # Bypass the triage
@@ -467,7 +477,7 @@ class TestConsultationStatusFields:
             Encounter, "consultation_started_at"
         ), "Encounter should have consultation_started_at field"
 
-    def test_consultation_status_default_waiting(self, sample_patient):
+    def test_consultation_status_default_waiting(self, sample_patient, sample_facility):
         """New encounters should default to WAITING consultation status."""
         from hmis.apps.encounters.models import Encounter
 
@@ -475,6 +485,7 @@ class TestConsultationStatusFields:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         assert encounter.consultation_status == "WAITING"
 
@@ -499,7 +510,7 @@ class TestCanEnterConsultationMethod:
             Encounter.can_enter_consultation
         ), "can_enter_consultation should be callable"
 
-    def test_cannot_enter_consultation_when_mandatory_pending(self, sample_patient):
+    def test_cannot_enter_consultation_when_mandatory_pending(self, sample_patient, sample_facility):
         """Cannot enter consultation when mandatory triage is PENDING."""
         from hmis.apps.encounters.models import Encounter
 
@@ -507,11 +518,12 @@ class TestCanEnterConsultationMethod:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         # triage_requirement = MANDATORY, triage_status = PENDING
         assert encounter.can_enter_consultation() is False
 
-    def test_can_enter_consultation_when_mandatory_completed(self, sample_patient):
+    def test_can_enter_consultation_when_mandatory_completed(self, sample_patient, sample_facility):
         """Can enter consultation when mandatory triage is COMPLETED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -519,13 +531,14 @@ class TestCanEnterConsultationMethod:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         encounter.triage_status = "COMPLETED"
         encounter.save()
 
         assert encounter.can_enter_consultation() is True
 
-    def test_can_enter_consultation_when_optional_bypassed(self, sample_patient, test_user):
+    def test_can_enter_consultation_when_optional_bypassed(self, sample_patient, test_user, sample_facility):
         """Can enter consultation when optional triage is BYPASSED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -533,6 +546,7 @@ class TestCanEnterConsultationMethod:
             patient=sample_patient,
             encounter_type="SCHEDULED_OPD",
             chief_complaint="Follow-up visit",
+            facility=sample_facility,
         )
         encounter.triage_status = "BYPASSED"
         encounter.triage_bypass_reason = "STABLE_FOLLOW_UP"
@@ -542,7 +556,7 @@ class TestCanEnterConsultationMethod:
 
         assert encounter.can_enter_consultation() is True
 
-    def test_can_enter_consultation_when_not_applicable(self, sample_patient):
+    def test_can_enter_consultation_when_not_applicable(self, sample_patient, sample_facility):
         """Can enter consultation when triage is NOT_APPLICABLE."""
         from hmis.apps.encounters.models import Encounter
 
@@ -550,11 +564,12 @@ class TestCanEnterConsultationMethod:
             patient=sample_patient,
             encounter_type="PROCEDURE",
             chief_complaint="Scheduled procedure",
+            facility=sample_facility,
         )
         # triage_status should be NOT_APPLICABLE automatically
         assert encounter.can_enter_consultation() is True
 
-    def test_cannot_enter_consultation_when_mandatory_in_progress(self, sample_patient):
+    def test_cannot_enter_consultation_when_mandatory_in_progress(self, sample_patient, sample_facility):
         """Cannot enter consultation when mandatory triage is IN_PROGRESS."""
         from hmis.apps.encounters.models import Encounter
 
@@ -562,13 +577,14 @@ class TestCanEnterConsultationMethod:
             patient=sample_patient,
             encounter_type="EMERGENCY",
             chief_complaint="Chest pain",
+            facility=sample_facility,
         )
         encounter.triage_status = "IN_PROGRESS"
         encounter.save()
 
         assert encounter.can_enter_consultation() is False
 
-    def test_can_enter_consultation_when_optional_pending(self, sample_patient):
+    def test_can_enter_consultation_when_optional_pending(self, sample_patient, sample_facility):
         """Can enter consultation when optional triage is PENDING (bypass allowed)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -578,6 +594,7 @@ class TestCanEnterConsultationMethod:
             patient=sample_patient,
             encounter_type="FOLLOW_UP",
             chief_complaint="Follow-up visit",
+            facility=sample_facility,
         )
         # When triage is optional and pending, we need to either complete or bypass
         # So PENDING alone shouldn't allow consultation
@@ -594,7 +611,8 @@ class TestTriageAssessmentSignal:
     """Test signal to auto-set triage_status when TriageAssessment is created."""
 
     def test_triage_status_set_to_completed_when_assessment_created(
-        self, sample_patient, test_user
+        self, sample_patient, test_user,
+        sample_facility,
     ):
         """Creating TriageAssessment should auto-set encounter triage_status to COMPLETED."""
         from hmis.apps.encounters.models import Encounter
@@ -604,6 +622,7 @@ class TestTriageAssessmentSignal:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         assert encounter.triage_status == "PENDING"
 
@@ -630,7 +649,7 @@ class TestTriageAssessmentSignal:
         encounter.refresh_from_db()
         assert encounter.triage_status == "COMPLETED"
 
-    def test_triage_status_not_changed_for_not_required_encounters(self, sample_patient, test_user):
+    def test_triage_status_not_changed_for_not_required_encounters(self, sample_patient, test_user, sample_facility):
         """TriageAssessment on NOT_REQUIRED encounters keeps NOT_APPLICABLE status."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment
@@ -639,6 +658,7 @@ class TestTriageAssessmentSignal:
             patient=sample_patient,
             encounter_type="PROCEDURE",
             chief_complaint="Scheduled procedure",
+            facility=sample_facility,
         )
         assert encounter.triage_status == "NOT_APPLICABLE"
 
@@ -672,7 +692,7 @@ class TestTriageAssessmentSignal:
 class TestEncounterTriageWorkflow:
     """Integration tests for complete triage workflow."""
 
-    def test_opd_encounter_full_workflow(self, sample_patient, test_user):
+    def test_opd_encounter_full_workflow(self, sample_patient, test_user, sample_facility):
         """Test complete OPD encounter workflow from creation to consultation."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment
@@ -682,6 +702,7 @@ class TestEncounterTriageWorkflow:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Headache for 3 days",
+            facility=sample_facility,
         )
 
         # Verify initial state
@@ -714,7 +735,7 @@ class TestEncounterTriageWorkflow:
         assert encounter.triage_status == "COMPLETED"
         assert encounter.can_enter_consultation() is True
 
-    def test_scheduled_opd_bypass_workflow(self, sample_patient, test_user):
+    def test_scheduled_opd_bypass_workflow(self, sample_patient, test_user, sample_facility):
         """Test scheduled OPD encounter with triage bypass."""
         from hmis.apps.encounters.models import Encounter
 
@@ -723,6 +744,7 @@ class TestEncounterTriageWorkflow:
             patient=sample_patient,
             encounter_type="SCHEDULED_OPD",
             chief_complaint="Scheduled follow-up",
+            facility=sample_facility,
         )
 
         # Verify initial state
@@ -741,7 +763,7 @@ class TestEncounterTriageWorkflow:
         # 3. Verify can now enter consultation
         assert encounter.can_enter_consultation() is True
 
-    def test_procedure_direct_to_consultation(self, sample_patient):
+    def test_procedure_direct_to_consultation(self, sample_patient, sample_facility):
         """Test procedure encounter going directly to consultation."""
         from hmis.apps.encounters.models import Encounter
 
@@ -750,6 +772,7 @@ class TestEncounterTriageWorkflow:
             patient=sample_patient,
             encounter_type="PROCEDURE",
             chief_complaint="Scheduled minor procedure",
+            facility=sample_facility,
         )
 
         # Verify state allows immediate consultation
@@ -785,7 +808,7 @@ class TestTriageEdgeCases:
         # Should indicate that mandatory triage cannot be bypassed
         assert "bypass" in str(exc_info.value).lower() or "mandatory" in str(exc_info.value).lower()
 
-    def test_triage_requirement_cannot_be_manually_changed(self, sample_patient):
+    def test_triage_requirement_cannot_be_manually_changed(self, sample_patient, sample_facility):
         """triage_requirement should be read-only (based on encounter_type)."""
         from hmis.apps.encounters.models import Encounter
 
@@ -793,6 +816,7 @@ class TestTriageEdgeCases:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Test complaint",
+            facility=sample_facility,
         )
         assert encounter.triage_requirement == "MANDATORY"
 
@@ -888,7 +912,8 @@ class TestChiefComplaintEditAuditTrail:
         assert hasattr(encounter, "chief_complaint_edited_at")
 
     def test_edit_chief_complaint_stores_original(
-        self, authenticated_client, test_user, sample_patient
+        self, authenticated_client, test_user, sample_patient,
+        sample_facility,
     ):
         """Test that editing chief complaint stores the original value."""
         from hmis.apps.encounters.models import Encounter
@@ -900,6 +925,7 @@ class TestChiefComplaintEditAuditTrail:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Original headache complaint",
+            facility=sample_facility,
         )
 
         # Edit via API
@@ -922,7 +948,8 @@ class TestChiefComplaintEditAuditTrail:
         assert encounter.chief_complaint_edited_at is not None
 
     def test_edit_chief_complaint_requires_reason(
-        self, authenticated_client, test_user, sample_patient
+        self, authenticated_client, test_user, sample_patient,
+        sample_facility,
     ):
         """Test that editing chief complaint requires a reason."""
         from hmis.apps.encounters.models import Encounter
@@ -933,6 +960,7 @@ class TestChiefComplaintEditAuditTrail:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Initial complaint",
+            facility=sample_facility,
         )
 
         # Try without reason
@@ -948,7 +976,8 @@ class TestChiefComplaintEditAuditTrail:
         assert "reason" in response.data.get("detail", "").lower()
 
     def test_edit_chief_complaint_other_requires_details(
-        self, authenticated_client, test_user, sample_patient
+        self, authenticated_client, test_user, sample_patient,
+        sample_facility,
     ):
         """Test that 'OTHER' reason requires specification."""
         from hmis.apps.encounters.models import Encounter
@@ -959,6 +988,7 @@ class TestChiefComplaintEditAuditTrail:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Initial complaint",
+            facility=sample_facility,
         )
 
         # Try with OTHER but no details
@@ -978,7 +1008,8 @@ class TestChiefComplaintEditAuditTrail:
         )
 
     def test_edit_chief_complaint_other_with_details_succeeds(
-        self, authenticated_client, test_user, sample_patient
+        self, authenticated_client, test_user, sample_patient,
+        sample_facility,
     ):
         """Test that 'OTHER' reason with details succeeds."""
         from hmis.apps.encounters.models import Encounter
@@ -989,6 +1020,7 @@ class TestChiefComplaintEditAuditTrail:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Initial complaint",
+            facility=sample_facility,
         )
 
         response = authenticated_client.post(
@@ -1007,7 +1039,8 @@ class TestChiefComplaintEditAuditTrail:
         assert "trust" in encounter.chief_complaint_edit_reason_other
 
     def test_edit_chief_complaint_preserves_first_original(
-        self, authenticated_client, test_user, sample_patient
+        self, authenticated_client, test_user, sample_patient,
+        sample_facility,
     ):
         """Test that multiple edits preserve the first original value."""
         from hmis.apps.encounters.models import Encounter
@@ -1018,6 +1051,7 @@ class TestChiefComplaintEditAuditTrail:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="First original complaint",
+            facility=sample_facility,
         )
 
         # First edit
@@ -1046,7 +1080,8 @@ class TestChiefComplaintEditAuditTrail:
         assert encounter.chief_complaint_edit_reason == "CLARIFICATION"
 
     def test_edit_chief_complaint_requires_change_encounter_permission(
-        self, authenticated_client, sample_patient
+        self, authenticated_client, sample_patient,
+        sample_facility,
     ):
         """Users without change_encounter permission should not edit chief complaint."""
         from hmis.apps.encounters.models import Encounter
@@ -1055,6 +1090,7 @@ class TestChiefComplaintEditAuditTrail:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Original complaint",
+            facility=sample_facility,
         )
 
         response = authenticated_client.post(

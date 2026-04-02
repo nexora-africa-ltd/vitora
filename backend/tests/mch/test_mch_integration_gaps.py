@@ -24,7 +24,7 @@ User = get_user_model()
 
 
 @pytest.fixture
-def anc_clinic(db):
+def anc_clinic(db, sample_facility, sample_organization):
     """Create a sample ANC clinic."""
     from hmis.apps.clinics.models import Clinic
 
@@ -33,6 +33,8 @@ def anc_clinic(db):
         clinic_type="ANC",
         code="ANC-001",
         status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -63,7 +65,7 @@ def immunization_resource(db):
 
 
 @pytest.fixture
-def anc_enrollment(db, anc_clinic, sample_patient, test_user):
+def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, sample_organization):
     """Create a sample ANC clinic enrollment."""
     from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -79,7 +81,7 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user):
 
 
 @pytest.fixture
-def mch_registration_with_enrollment(db, sample_patient, anc_enrollment):
+def mch_registration_with_enrollment(db, sample_patient, anc_enrollment, sample_facility, sample_organization):
     """Create MCH registration with existing ANC enrollment (signal won't auto-create)."""
     from hmis.apps.mch.models import MCHRegistration
 
@@ -87,6 +89,8 @@ def mch_registration_with_enrollment(db, sample_patient, anc_enrollment):
         mother=sample_patient,
         anc_enrollment=anc_enrollment,
         registration_date=date.today(),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 

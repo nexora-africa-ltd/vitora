@@ -59,24 +59,22 @@ def doctor_user(db):
 
 
 @pytest.fixture
-def sample_patient(db, test_user):
+def sample_patient(db, test_user, sample_organization, sample_county, sample_sub_county):
     """Create a sample patient."""
-    county = County.objects.create(code=1, name="Test County")
-    sub_county = SubCounty.objects.create(county=county, name="Test SubCounty")
-
     return Patient.objects.create(
         first_name="Jane",
         last_name="Smith",
         date_of_birth="1985-05-20",
         gender="F",
-        county=county,
-        sub_county=sub_county,
+        county=sample_county,
+        sub_county=sample_sub_county,
         registered_by=test_user,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sample_ward(db):
+def sample_ward(db, sample_facility, sample_organization):
     """Create a sample ward."""
     return Ward.objects.create(
         name="Medical Ward",
@@ -84,6 +82,8 @@ def sample_ward(db):
         ward_type="MEDICAL",
         capacity=20,
         daily_rate=Decimal("500.00"),
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
 
@@ -99,24 +99,26 @@ def available_bed(db, sample_ward, test_user):
 
 
 @pytest.fixture
-def opd_encounter(db, sample_patient):
+def opd_encounter(db, sample_patient, sample_facility):
     """Create an OPD encounter."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="OPD",
         encounter_date=timezone.now().date(),
         chief_complaint="Severe chest pain",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def ipd_encounter(db, sample_patient):
+def ipd_encounter(db, sample_patient, sample_facility):
     """Create an IPD encounter."""
     return Encounter.objects.create(
         patient=sample_patient,
         encounter_type="IPD",
         encounter_date=timezone.now().date(),
         chief_complaint="Admission for observation",
+        facility=sample_facility,
     )
 
 
@@ -208,7 +210,7 @@ class TestAdmissionCreation:
         assert len(parts[1]) == 8  # YYYYMMDD
         assert len(parts[2]) == 4  # XXXX (sequence)
 
-    def test_unique_admission_number(self, sample_patient, sample_ward, available_bed, test_user):
+    def test_unique_admission_number(self, sample_patient, sample_ward, available_bed, test_user, sample_organization, sample_facility):
         """Should generate unique admission numbers."""
         from hmis.apps.patients.models import Patient
 
@@ -220,6 +222,7 @@ class TestAdmissionCreation:
             gender="M",
             county=sample_patient.county,
             sub_county=sample_patient.sub_county,
+            organization=sample_organization,
         )
 
         # Create IPD encounters
@@ -228,12 +231,14 @@ class TestAdmissionCreation:
             encounter_type="IPD",
             encounter_date=timezone.now().date(),
             chief_complaint="Test 1",
+            facility=sample_facility,
         )
         enc2 = Encounter.objects.create(
             patient=patient2,
             encounter_type="IPD",
             encounter_date=timezone.now().date(),
             chief_complaint="Test 2",
+            facility=sample_facility,
         )
 
         # Create second bed
@@ -472,7 +477,8 @@ class TestAdmissionBusinessLogic:
         assert admission.length_of_stay == 4
 
     def test_prevent_duplicate_active_admission(
-        self, sample_patient, sample_ward, available_bed, test_user
+        self, sample_patient, sample_ward, available_bed, test_user,
+        sample_facility,
     ):
         """Should prevent multiple active admissions for same patient."""
         # Create first active admission
@@ -481,6 +487,7 @@ class TestAdmissionBusinessLogic:
             encounter_type="IPD",
             encounter_date=timezone.now().date(),
             chief_complaint="First admission",
+            facility=sample_facility,
         )
 
         Admission.objects.create(
@@ -502,6 +509,7 @@ class TestAdmissionBusinessLogic:
             encounter_type="IPD",
             encounter_date=timezone.now().date(),
             chief_complaint="Second admission",
+            facility=sample_facility,
         )
 
         bed2 = Bed.objects.create(
@@ -531,7 +539,7 @@ class TestAdmissionBusinessLogic:
 class TestAdmissionQueries:
     """Tests for Admission query operations."""
 
-    def test_patient_admission_history(self, sample_patient, sample_ward, test_user):
+    def test_patient_admission_history(self, sample_patient, sample_ward, test_user, sample_facility):
         """Should retrieve patient admission history."""
         # Use auto-generated beds from the ward
         beds = list(sample_ward.beds.filter(status="AVAILABLE").order_by("bed_number")[:3])
@@ -543,6 +551,7 @@ class TestAdmissionQueries:
                 encounter_type="IPD",
                 encounter_date=timezone.now().date(),
                 chief_complaint=f"Admission {i+1}",
+                facility=sample_facility,
             )
             bed.status = "OCCUPIED"
             bed.save()
@@ -562,7 +571,7 @@ class TestAdmissionQueries:
         patient_admissions = sample_patient.admissions.all()
         assert patient_admissions.count() == 3
 
-    def test_filter_active_admissions(self, sample_patient, sample_ward, test_user):
+    def test_filter_active_admissions(self, sample_patient, sample_ward, test_user, sample_organization, sample_facility):
         """Should filter active admissions."""
         from hmis.apps.patients.models import Patient
 
@@ -576,6 +585,7 @@ class TestAdmissionQueries:
                 gender="M",
                 county=sample_patient.county,
                 sub_county=sample_patient.sub_county,
+                organization=sample_organization,
             )
             patients.append(p)
 
@@ -592,6 +602,7 @@ class TestAdmissionQueries:
                 encounter_type="IPD",
                 encounter_date=timezone.now().date(),
                 chief_complaint=f"Admission {i+1}",
+                facility=sample_facility,
             )
             bed = available_beds[i]
             bed.status = "OCCUPIED"

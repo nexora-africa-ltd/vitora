@@ -240,20 +240,23 @@ class TestTriageAssessmentModel:
         assert len(alerts) > 0
         assert any("SpO2" in alert or "oxygen" in alert.lower() for alert in alerts)
 
-    def test_ordering_by_arrival_time_descending(self, sample_patient, test_user):
+    def test_ordering_by_arrival_time_descending(self, sample_patient, test_user, sample_facility):
         """Should order assessments by arrival_time descending."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment
 
         # Create three encounters and assessments
         encounter1 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 1"
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 1",
+            facility=sample_facility,
         )
         encounter2 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2"
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2",
+            facility=sample_facility,
         )
         encounter3 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 3"
+            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 3",
+            facility=sample_facility,
         )
 
         # Create assessments with different arrival times

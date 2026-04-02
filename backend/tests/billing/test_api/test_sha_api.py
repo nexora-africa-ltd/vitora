@@ -35,6 +35,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -61,9 +62,10 @@ def test_user(db):
 
 
 @pytest.fixture
-def authenticated_client(test_user):
+def authenticated_client(test_user, sample_organization, sample_facility):
     """Authenticated API client."""
     client = APIClient()
+    ensure_staff_profile(test_user, sample_organization, sample_facility)
     client.force_authenticate(user=test_user)
     return client
 
@@ -111,9 +113,10 @@ def user_with_sha_permissions(db):
 
 
 @pytest.fixture
-def sha_client(user_with_sha_permissions):
+def sha_client(user_with_sha_permissions, sample_organization, sample_facility):
     """Authenticated client with SHA permissions."""
     client = APIClient()
+    ensure_staff_profile(user_with_sha_permissions, sample_organization, sample_facility)
     client.force_authenticate(user=user_with_sha_permissions)
     return client
 
@@ -230,7 +233,7 @@ def sample_claim_with_items(db, sample_sha_claim, sample_sha_tariff, test_user):
 
 
 @pytest.fixture
-def multiple_sha_members(db, test_user):
+def multiple_sha_members(db, test_user, sample_organization):
     """Create multiple SHA members for pagination testing."""
     from hmis.apps.billing.models import SHAMember
     from hmis.apps.core.models import County, SubCounty
@@ -251,6 +254,7 @@ def multiple_sha_members(db, test_user):
             county=county,
             sub_county=sub_county,
             registered_by=test_user,
+            organization=sample_organization,
         )
         member = SHAMember.objects.create(
             patient=patient,
@@ -647,7 +651,7 @@ class TestSHAAPIErrorResponses:
         response = sha_client.post("/api/sha/members/", {})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_400_for_duplicate_sha_number(self, sha_client, sample_sha_member, sample_patient):
+    def test_400_for_duplicate_sha_number(self, sha_client, sample_sha_member, sample_patient, sample_organization):
         """Should return 400 for duplicate SHA number."""
         # Create another patient for the new member
         from hmis.apps.core.models import County, SubCounty
@@ -664,6 +668,7 @@ class TestSHAAPIErrorResponses:
             county=county,
             sub_county=sub_county,
             registered_by=sha_client.handler._force_user,
+            organization=sample_organization,
         )
 
         data = {
@@ -700,7 +705,7 @@ class TestSHAMemberRegistration:
         assert response.data["patient"] == sample_patient.id
         assert response.data["status"] == "pending_verification"
 
-    def test_create_dependent_member(self, sha_client, sample_patient, sample_sha_member):
+    def test_create_dependent_member(self, sha_client, sample_patient, sample_sha_member, sample_organization):
         """Should create dependent member with principal reference."""
         # Create another patient for dependent
         from hmis.apps.core.models import County, SubCounty
@@ -717,6 +722,7 @@ class TestSHAMemberRegistration:
             county=county,
             sub_county=sub_county,
             registered_by=sha_client.handler._force_user,
+            organization=sample_organization,
         )
 
         data = {

@@ -28,8 +28,10 @@ def api_client():
 
 
 @pytest.fixture
-def receptionist_user(db):
+def receptionist_user(db, sample_organization, sample_facility):
     """Create a receptionist user with limited permissions."""
+    from tests.conftest import ensure_staff_profile
+
     user = User.objects.create_user(
         username="receptionist",
         email="receptionist@example.com",
@@ -38,12 +40,15 @@ def receptionist_user(db):
     # Create receptionist group and assign
     group, _ = Group.objects.get_or_create(name="Receptionist")
     user.groups.add(group)
+    ensure_staff_profile(user, sample_organization, sample_facility, employee_id="AUTH-REC")
     return user
 
 
 @pytest.fixture
-def nurse_user(db):
+def nurse_user(db, sample_organization, sample_facility):
     """Create a nurse user with clinical permissions."""
+    from tests.conftest import ensure_staff_profile
+
     user = User.objects.create_user(
         username="nurse",
         email="nurse@example.com",
@@ -51,12 +56,15 @@ def nurse_user(db):
     )
     group, _ = Group.objects.get_or_create(name="Nurse")
     user.groups.add(group)
+    ensure_staff_profile(user, sample_organization, sample_facility, employee_id="AUTH-NRS")
     return user
 
 
 @pytest.fixture
-def doctor_user(db):
+def doctor_user(db, sample_organization, sample_facility):
     """Create a doctor user with full clinical permissions."""
+    from tests.conftest import ensure_staff_profile
+
     user = User.objects.create_user(
         username="doctor",
         email="doctor@example.com",
@@ -64,17 +72,22 @@ def doctor_user(db):
     )
     group, _ = Group.objects.get_or_create(name="Doctor")
     user.groups.add(group)
+    ensure_staff_profile(user, sample_organization, sample_facility, employee_id="AUTH-DOC")
     return user
 
 
 @pytest.fixture
-def admin_user(db):
+def admin_user(db, sample_organization, sample_facility):
     """Create an admin user with all permissions."""
-    return User.objects.create_superuser(
+    from tests.conftest import ensure_staff_profile
+
+    user = User.objects.create_superuser(
         username="admin",
         email="admin@example.com",
         password="adminpassword123",
     )
+    ensure_staff_profile(user, sample_organization, sample_facility, employee_id="AUTH-ADM")
+    return user
 
 
 @pytest.fixture
@@ -94,7 +107,7 @@ def auth_sample_sub_county(db, auth_sample_county):
 
 
 @pytest.fixture
-def sample_patient(db, auth_sample_county, auth_sample_sub_county):
+def sample_patient(db, auth_sample_county, auth_sample_sub_county, sample_organization):
     """Create a sample patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -106,11 +119,12 @@ def sample_patient(db, auth_sample_county, auth_sample_sub_county):
         phone_number="+254712345678",
         county=auth_sample_county,
         sub_county=auth_sample_sub_county,
+        organization=sample_organization,
     )
 
 
 @pytest.fixture
-def sensitive_patient(db, auth_sample_county, auth_sample_sub_county):
+def sensitive_patient(db, auth_sample_county, auth_sample_sub_county, sample_organization):
     """Create a patient marked as sensitive (HIV/GBV case)."""
     from hmis.apps.patients.models import Patient
 
@@ -123,6 +137,7 @@ def sensitive_patient(db, auth_sample_county, auth_sample_sub_county):
         is_sensitive=True,  # This field needs to be added to model
         county=auth_sample_county,
         sub_county=auth_sample_sub_county,
+        organization=sample_organization,
     )
 
 
@@ -200,7 +215,7 @@ class TestRoleBasedAccess:
 
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_doctor_can_update_diagnosis(self, api_client, doctor_user, sample_patient):
+    def test_doctor_can_update_diagnosis(self, api_client, doctor_user, sample_patient, sample_facility):
         """
         Test that doctor can update encounter diagnosis.
 
@@ -214,6 +229,7 @@ class TestRoleBasedAccess:
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="Headache",
+            facility=sample_facility,
         )
 
         api_client.force_authenticate(user=doctor_user)

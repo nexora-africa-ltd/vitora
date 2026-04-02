@@ -147,14 +147,14 @@ class TestPatientLocationFields:
 
         assert hasattr(Patient, "village")
 
-    def test_create_patient_with_location(self, test_user):
+    def test_create_patient_with_location(self, test_user, sample_organization):
         """Test creating patient with full location."""
         from hmis.apps.core.models import County, SubCounty, Ward
         from hmis.apps.patients.models import Patient
 
-        county = County.objects.create(code=1, name="Mombasa")
-        sub_county = SubCounty.objects.create(county=county, name="Changamwe")
-        ward = Ward.objects.create(sub_county=sub_county, name="Port Reitz")
+        county = County.objects.create(code=100, name="Kisumu")
+        sub_county = SubCounty.objects.create(county=county, name="Kisumu Central")
+        ward = Ward.objects.create(sub_county=sub_county, name="Railways")
 
         patient = Patient.objects.create(
             first_name="John",
@@ -165,6 +165,7 @@ class TestPatientLocationFields:
             sub_county=sub_county,
             ward=ward,
             village="Mikindani Estate",
+            organization=sample_organization,
         )
 
         assert patient.county == county
@@ -238,8 +239,8 @@ class TestLocationAPI:
         """Test listing all counties."""
         from hmis.apps.core.models import County
 
-        County.objects.create(code=1, name="Mombasa")
-        County.objects.create(code=2, name="Kwale")
+        County.objects.create(code=100, name="Kisumu")
+        County.objects.create(code=101, name="Kwale")
 
         response = authenticated_client.get("/api/locations/counties/")
 
@@ -250,7 +251,7 @@ class TestLocationAPI:
         """Test listing sub-counties filtered by county."""
         from hmis.apps.core.models import County, SubCounty
 
-        county = County.objects.create(code=1, name="Mombasa")
+        county = County.objects.create(code=100, name="Kisumu")
         SubCounty.objects.create(county=county, name="Changamwe")
         SubCounty.objects.create(county=county, name="Jomvu")
 
@@ -263,7 +264,7 @@ class TestLocationAPI:
         """Test listing wards filtered by sub-county."""
         from hmis.apps.core.models import County, SubCounty, Ward
 
-        county = County.objects.create(code=1, name="Mombasa")
+        county = County.objects.create(code=100, name="Kisumu")
         sub_county = SubCounty.objects.create(county=county, name="Changamwe")
         Ward.objects.create(sub_county=sub_county, name="Port Reitz")
         Ward.objects.create(sub_county=sub_county, name="Kipevu")
@@ -277,7 +278,7 @@ class TestLocationAPI:
         """Test searching counties by name."""
         from hmis.apps.core.models import County
 
-        County.objects.create(code=1, name="Mombasa")
+        County.objects.create(code=100, name="Kisumu")
         County.objects.create(code=47, name="Nairobi")
 
         response = authenticated_client.get("/api/locations/counties/?search=Nai")
@@ -286,14 +287,14 @@ class TestLocationAPI:
         assert len(response.data) == 1
         assert response.data[0]["name"] == "Nairobi"
 
-    def test_patient_location_in_response(self, authenticated_client):
+    def test_patient_location_in_response(self, authenticated_client, sample_organization):
         """Test patient location info in API response."""
         from hmis.apps.core.models import County, SubCounty, Ward
         from hmis.apps.patients.models import Patient
 
-        county = County.objects.create(code=1, name="Mombasa")
-        sub_county = SubCounty.objects.create(county=county, name="Changamwe")
-        ward = Ward.objects.create(sub_county=sub_county, name="Port Reitz")
+        county = County.objects.create(code=100, name="Kisumu")
+        sub_county = SubCounty.objects.create(county=county, name="Kisumu Central")
+        ward = Ward.objects.create(sub_county=sub_county, name="Railways")
 
         patient = Patient.objects.create(
             first_name="Test",
@@ -304,25 +305,26 @@ class TestLocationAPI:
             sub_county=sub_county,
             ward=ward,
             village="Test Village",
+            organization=sample_organization,
         )
 
         response = authenticated_client.get(f"/api/patients/{patient.id}/")
 
         assert response.status_code == 200
         assert response.data["county"] == county.id
-        assert response.data["county_name"] == "Mombasa"
+        assert response.data["county_name"] == "Kisumu"
         assert response.data["sub_county"] == sub_county.id
-        assert response.data["sub_county_name"] == "Changamwe"
+        assert response.data["sub_county_name"] == "Kisumu Central"
         assert response.data["ward"] == ward.id
-        assert response.data["ward_name"] == "Port Reitz"
+        assert response.data["ward_name"] == "Railways"
         assert response.data["village"] == "Test Village"
 
     def test_create_patient_with_location_via_api(self, authenticated_client):
         """Test creating patient with location via API."""
         from hmis.apps.core.models import County, SubCounty
 
-        county = County.objects.create(code=1, name="Mombasa")
-        sub_county = SubCounty.objects.create(county=county, name="Changamwe")
+        county = County.objects.create(code=100, name="Kisumu")
+        sub_county = SubCounty.objects.create(county=county, name="Kisumu Central")
 
         data = {
             "first_name": "API",

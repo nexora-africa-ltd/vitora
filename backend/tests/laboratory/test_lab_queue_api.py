@@ -46,7 +46,7 @@ def lab_technician(db):
 
 
 @pytest.fixture
-def sample_lab_order(db, sample_patient, sample_encounter, test_user, test_catalog):
+def sample_lab_order(db, sample_patient, sample_encounter, test_user, test_catalog, sample_organization, sample_facility):
     """Create a lab order for testing."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -55,6 +55,8 @@ def sample_lab_order(db, sample_patient, sample_encounter, test_user, test_catal
         order_type="IN_HOUSE",
         priority="ROUTINE",
         status="ORDERED",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     LabOrderItem.objects.create(
         lab_order=order,
@@ -601,7 +603,9 @@ class TestLabQueueAutoCreation:
     """Tests for automatic LabQueue creation via signals."""
 
     def test_queue_created_for_in_house_order(
-        self, db, sample_patient, sample_encounter, test_user, test_catalog
+        self, db, sample_patient, sample_encounter, test_user, test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """Should auto-create LabQueue when in-house order is created."""
         # Create a lab order - queue should be auto-created
@@ -612,6 +616,8 @@ class TestLabQueueAutoCreation:
             order_type="IN_HOUSE",
             priority="ROUTINE",
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         LabOrderItem.objects.create(
             lab_order=order,
@@ -629,7 +635,9 @@ class TestLabQueueAutoCreation:
         assert queue.sample_type == test_catalog.specimen_type
 
     def test_no_queue_for_external_order(
-        self, db, sample_patient, sample_encounter, test_user, test_catalog
+        self, db, sample_patient, sample_encounter, test_user, test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """Should NOT create LabQueue for external lab orders."""
         order = LabOrder.objects.create(
@@ -640,6 +648,8 @@ class TestLabQueueAutoCreation:
             external_lab="Lancet Labs",
             priority="ROUTINE",
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         LabOrderItem.objects.create(
             lab_order=order,
@@ -655,7 +665,9 @@ class TestLabOrderQueueSync:
     """Tests for LabOrder and LabQueue synchronization."""
 
     def test_order_collect_specimen_updates_queue(
-        self, db, sample_patient, sample_encounter, test_user, test_catalog
+        self, db, sample_patient, sample_encounter, test_user, test_catalog,
+        sample_facility,
+        sample_organization,
     ):
         """When collecting specimen via LabOrder, LabQueue should also be updated."""
         order = LabOrder.objects.create(
@@ -665,6 +677,8 @@ class TestLabOrderQueueSync:
             order_type="IN_HOUSE",
             priority="ROUTINE",
             status="ORDERED",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         LabOrderItem.objects.create(
             lab_order=order,

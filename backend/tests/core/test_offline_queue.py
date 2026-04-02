@@ -237,7 +237,7 @@ class TestAutoQueueOnModelChange:
     """Tests for automatic queue creation on model changes."""
 
     @pytest.mark.django_db
-    def test_patient_create_is_queued(self, settings):
+    def test_patient_create_is_queued(self, settings, sample_organization):
         """Creating a patient should add entry to sync queue."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.patients.models import Patient
@@ -250,6 +250,7 @@ class TestAutoQueueOnModelChange:
             last_name="Test",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         # Check if queue entry was created
@@ -258,7 +259,7 @@ class TestAutoQueueOnModelChange:
         # assert new_count == initial_count + 1  # Uncomment when implemented
 
     @pytest.mark.django_db
-    def test_patient_update_is_queued(self):
+    def test_patient_update_is_queued(self, sample_organization):
         """Updating a patient should add entry to sync queue."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.patients.models import Patient
@@ -268,6 +269,7 @@ class TestAutoQueueOnModelChange:
             last_name="Test",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
 
         initial_count = SyncQueue.objects.filter(operation="UPDATE").count()
@@ -280,7 +282,7 @@ class TestAutoQueueOnModelChange:
         # assert new_count == initial_count + 1
 
     @pytest.mark.django_db
-    def test_patient_delete_is_queued(self):
+    def test_patient_delete_is_queued(self, sample_organization):
         """Deleting a patient should add entry to sync queue."""
         from hmis.apps.core.models import SyncQueue
         from hmis.apps.patients.models import Patient
@@ -290,6 +292,7 @@ class TestAutoQueueOnModelChange:
             last_name="Test",
             date_of_birth=date(1990, 1, 1),
             gender="M",
+            organization=sample_organization,
         )
         patient_id = patient.id
 

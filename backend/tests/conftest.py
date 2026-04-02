@@ -185,6 +185,36 @@ def test_staff_profile(db, test_user, sample_organization, sample_facility, samp
     )
 
 
+def ensure_staff_profile(user, organization, facility, employee_id=None):
+    """Helper to create a StaffProfile for any user (call from test fixtures).
+
+    Returns the created or existing StaffProfile.
+    """
+    from datetime import date
+
+    from hmis.apps.core.models import Department, Role, StaffProfile
+
+    dept, _ = Department.objects.get_or_create(
+        code="TST", defaults={"name": "Test Department", "is_active": True}
+    )
+    role, _ = Role.objects.get_or_create(
+        code="TST", defaults={"name": "Test Role", "hierarchy_level": 5, "is_active": True}
+    )
+    emp_id = employee_id or f"SP-{user.pk or user.username}"
+    profile, _ = StaffProfile.objects.get_or_create(
+        user=user,
+        defaults={
+            "employee_id": emp_id,
+            "organization": organization,
+            "primary_facility": facility,
+            "primary_department": dept,
+            "primary_role": role,
+            "date_joined": date.today(),
+        },
+    )
+    return profile
+
+
 # ============================================================================
 # API Client Fixtures
 # ============================================================================
@@ -345,7 +375,7 @@ def sample_icd10_code(db):
 
 
 @pytest.fixture
-def sample_inpatient_ward(db):
+def sample_inpatient_ward(db, sample_organization, sample_facility):
     """Create a sample inpatient ward for testing."""
     from decimal import Decimal
 
@@ -358,6 +388,8 @@ def sample_inpatient_ward(db):
         capacity=20,
         daily_rate=Decimal("500.00"),
         is_active=True,
+        organization=sample_organization,
+        facility=sample_facility,
     )
 
 
@@ -450,7 +482,7 @@ def sample_test_catalog(db):
 
 
 @pytest.fixture
-def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_test_catalog):
+def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_test_catalog, sample_facility, sample_organization):
     """Create a sample lab order for testing."""
     from hmis.apps.laboratory.models import LabOrder, LabOrderItem
 
@@ -461,6 +493,8 @@ def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_tes
         order_type="IN_HOUSE",
         status="ORDERED",
         priority="ROUTINE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
     # Create order item (this will trigger signal to auto-create LabQueue entry)
@@ -498,7 +532,8 @@ def sample_lab_result(db, sample_lab_order, test_user):
 
 @pytest.fixture
 def sample_admission(
-    db, sample_patient, sample_encounter, test_user, sample_inpatient_ward, sample_bed
+    db, sample_patient, sample_encounter, test_user, sample_inpatient_ward, sample_bed,
+    sample_organization, sample_facility,
 ):
     """Create a sample admission for testing."""
     from django.utils import timezone
@@ -512,6 +547,8 @@ def sample_admission(
     ipd_encounter = sample_patient.encounters.create(
         encounter_type="IPD",
         chief_complaint="Admitted for further management",
+        organization=sample_organization,
+        facility=sample_facility,
     )
 
     # Create admission
@@ -527,6 +564,8 @@ def sample_admission(
         ward=ward,
         bed=bed,
         payer_type="CASH",
+        organization=sample_organization,
+        facility=sample_facility,
     )
 
     return admission
@@ -1209,7 +1248,7 @@ def sample_treatment_plan(db, sample_encounter):
 
 
 @pytest.fixture
-def sample_prescription(db, sample_patient, sample_encounter, test_user):
+def sample_prescription(db, sample_patient, sample_encounter, test_user, sample_organization, sample_facility):
     """Create a sample prescription for testing."""
     from datetime import timedelta
 
@@ -1222,4 +1261,6 @@ def sample_prescription(db, sample_patient, sample_encounter, test_user):
         valid_until=date.today() + timedelta(days=30),
         status="PENDING",
         clinical_notes="For URTI treatment",
+        organization=sample_organization,
+        facility=sample_facility,
     )

@@ -18,6 +18,7 @@ from hmis.apps.laboratory.models import (
     ResultValidation,
     TestCatalog,
 )
+from tests.conftest import ensure_staff_profile
 
 User = get_user_model()
 
@@ -77,7 +78,7 @@ def complex_test(db):
 
 
 @pytest.fixture
-def lab_result_simple(db, sample_patient, sample_encounter, simple_test, lab_technician):
+def lab_result_simple(db, sample_patient, sample_encounter, simple_test, lab_technician, sample_organization, sample_facility):
     """Create a lab result for a simple test."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -85,6 +86,8 @@ def lab_result_simple(db, sample_patient, sample_encounter, simple_test, lab_tec
         ordered_by=lab_technician,
         order_type="IN_HOUSE",
         priority="ROUTINE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     item = LabOrderItem.objects.create(
         lab_order=order,
@@ -100,7 +103,7 @@ def lab_result_simple(db, sample_patient, sample_encounter, simple_test, lab_tec
 
 
 @pytest.fixture
-def lab_result_complex(db, sample_patient, sample_encounter, complex_test, lab_technician):
+def lab_result_complex(db, sample_patient, sample_encounter, complex_test, lab_technician, sample_organization, sample_facility):
     """Create a lab result for a complex test requiring clinical sign-off."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -108,6 +111,8 @@ def lab_result_complex(db, sample_patient, sample_encounter, complex_test, lab_t
         ordered_by=lab_technician,
         order_type="IN_HOUSE",
         priority="ROUTINE",
+        facility=sample_facility,
+        organization=sample_organization,
     )
     item = LabOrderItem.objects.create(
         lab_order=order,
@@ -342,17 +347,19 @@ class TestLabResultValidationSummary:
 
 
 @pytest.fixture
-def authenticated_tech_client(lab_technician):
+def authenticated_tech_client(lab_technician, sample_organization, sample_facility):
     """API client authenticated as lab technician."""
     client = APIClient()
+    ensure_staff_profile(lab_technician, sample_organization, sample_facility)
     client.force_authenticate(user=lab_technician)
     return client
 
 
 @pytest.fixture
-def authenticated_pathologist_client(pathologist):
+def authenticated_pathologist_client(pathologist, sample_organization, sample_facility):
     """API client authenticated as pathologist."""
     client = APIClient()
+    ensure_staff_profile(pathologist, sample_organization, sample_facility)
     client.force_authenticate(user=pathologist)
     return client
 

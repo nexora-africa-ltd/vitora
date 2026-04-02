@@ -109,7 +109,7 @@ class TestSensitiveAccessPermission:
         )
 
     @pytest.fixture
-    def sensitive_patient(self):
+    def sensitive_patient(self, sample_organization):
         """Create a sensitive patient."""
         return Patient.objects.create(
             first_name="Sensitive",
@@ -117,10 +117,11 @@ class TestSensitiveAccessPermission:
             date_of_birth="1990-01-01",
             gender="F",
             is_sensitive=True,
+            organization=sample_organization,
         )
 
     @pytest.fixture
-    def normal_patient(self):
+    def normal_patient(self, sample_organization):
         """Create a normal patient."""
         return Patient.objects.create(
             first_name="Normal",
@@ -128,6 +129,7 @@ class TestSensitiveAccessPermission:
             date_of_birth="1990-01-01",
             gender="M",
             is_sensitive=False,
+            organization=sample_organization,
         )
 
     def test_has_permission_requires_authentication(self, user):
@@ -369,7 +371,7 @@ class TestPatientPermission:
     """Tests for PatientPermission."""
 
     @pytest.fixture
-    def sensitive_patient(self):
+    def sensitive_patient(self, sample_organization):
         """Create a sensitive patient."""
         return Patient.objects.create(
             first_name="Sensitive",
@@ -377,10 +379,11 @@ class TestPatientPermission:
             date_of_birth="1990-01-01",
             gender="F",
             is_sensitive=True,
+            organization=sample_organization,
         )
 
     @pytest.fixture
-    def normal_patient(self):
+    def normal_patient(self, sample_organization):
         """Create a normal patient."""
         return Patient.objects.create(
             first_name="Normal",
@@ -388,6 +391,7 @@ class TestPatientPermission:
             date_of_birth="1990-01-01",
             gender="M",
             is_sensitive=False,
+            organization=sample_organization,
         )
 
     def test_denies_anonymous_user(self):
