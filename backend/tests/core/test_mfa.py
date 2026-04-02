@@ -14,6 +14,7 @@ import re
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework import status
 
 User = get_user_model()
@@ -409,10 +410,11 @@ class TestMFADisableAPI:
         BackupCode.generate_codes(user=admin_user, count=10)
 
         api_client.force_authenticate(user=admin_user)
-        response = api_client.post(
-            "/api/mfa/disable/",
-            {"password": "testpassword123"},
-        )
+        with override_settings(MFA_ENFORCEMENT=True):
+            response = api_client.post(
+                "/api/mfa/disable/",
+                {"password": "testpassword123"},
+            )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert "required" in response.data.get("error", "").lower()
@@ -598,6 +600,11 @@ class TestMFALoginFlow:
 
 class TestMFARoleEnforcement:
     """Tests for role-based MFA requirements."""
+
+    @pytest.fixture(autouse=True)
+    def _enforce_mfa(self, settings):
+        """Enable MFA enforcement for these tests."""
+        settings.MFA_ENFORCEMENT = True
 
     @pytest.fixture
     def admin_role(self, db):

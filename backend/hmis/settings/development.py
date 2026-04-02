@@ -86,6 +86,9 @@ LOGGING["loggers"]["django"]["level"] = "DEBUG"  # noqa: F405
 # MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
 # INTERNAL_IPS = ["127.0.0.1"]
 
+# MFA enforcement — disabled in development for convenience
+MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
+
 # Email backend for development (console)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

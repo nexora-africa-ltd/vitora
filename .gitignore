@@ -143,6 +143,8 @@ backend/vitora.db-journal
 # Security
 .env.local
 .env.*.local
+.env.production
+.env.staging
 secrets/
 *.pem
 *.key

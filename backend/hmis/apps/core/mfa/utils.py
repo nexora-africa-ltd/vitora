@@ -44,12 +44,20 @@ def is_mfa_required(user: "AbstractUser") -> bool:
     - Users with CLINICAL_SENIOR role
     - Users with MANAGEMENT role category
 
+    Respects the ``MFA_ENFORCEMENT`` setting — when ``False`` (dev/test),
+    MFA is never required regardless of role.
+
     Args:
         user: User to check
 
     Returns:
         bool: True if MFA is required for this user
     """
+    from django.conf import settings
+
+    if not getattr(settings, "MFA_ENFORCEMENT", True):
+        return False
+
     # Superusers always require MFA
     if user.is_superuser:
         return True
