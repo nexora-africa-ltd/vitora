@@ -54,6 +54,11 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 # regardless of what's in the environment.
 RESEND_API_KEY = ""
 
+# CRITICAL: Disable Africa's Talking SMS so tests never send real messages.
+SMS_ENABLED = False
+AT_USERNAME = ""
+AT_API_KEY = ""
+
 # Sync settings for tests
 SYNC_ENABLED = False
 SYNC_SERVER_URL = "http://test-server.example.com"
