@@ -207,6 +207,10 @@ REST_FRAMEWORK = {
     },
 }
 
+# MFA enforcement — default True (production-safe).
+# Override to False in development/test/staging settings.
+MFA_ENFORCEMENT = True
+
 
 # drf-spectacular settings
 def _model_attr(dotted_path: str, attr: str):
@@ -816,7 +820,8 @@ SMS_SENDER_ID = os.getenv("SMS_SENDER_ID", "VitoraHMIS")
 SMS_BACKEND = os.getenv("SMS_BACKEND", "hmis.apps.core.sms.backends.MockSMSBackend")
 
 # DHIS2 API Configuration (Sprint 1.3-1.4 Track A)
-DHIS2_BASE_URL = os.getenv("DHIS2_BASE_URL", "")
+DHIS2_BASE_URL = os.getenv("DHIS2_BASE_URL", os.getenv("DHIS2_API_URL", ""))
+DHIS2_API_URL = DHIS2_BASE_URL  # Alias for backward compatibility (surveillance service)
 DHIS2_USERNAME = os.getenv("DHIS2_USERNAME", "")
 DHIS2_PASSWORD = os.getenv("DHIS2_PASSWORD", "")
-DHIS2_ORG_UNIT=os.getenv("DHIS2_ORG_UNIT", "")
+DHIS2_ORG_UNIT = os.getenv("DHIS2_ORG_UNIT", "")

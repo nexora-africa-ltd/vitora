@@ -18,6 +18,9 @@ from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
+# MFA enforcement — disabled in tests by default
+MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
+
 # In-memory SQLite for speed — migrations run once per pytest session (~2-4s).
 # WebSocket / Channels tests that need cross-thread visibility should use a
 # file-backed override (see conftest.py `ws_db` fixture).

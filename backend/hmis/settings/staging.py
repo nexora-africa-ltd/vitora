@@ -104,6 +104,11 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # =============================================================================
+# MFA — Disabled for staging demos by default, enable via env var
+# =============================================================================
+MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
+
+# =============================================================================
 # Demo Mode Flag
 # =============================================================================
 # This flag can be checked in views/serializers to show demo-specific behavior
