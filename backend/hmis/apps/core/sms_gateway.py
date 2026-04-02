@@ -37,6 +37,11 @@ def _get_sms_client():
 
     _initialized = True
 
+    # Safety: never use real SMS client during tests.
+    if getattr(settings, "TESTING", False):
+        logger.info("SMS sending disabled (TESTING=True)")
+        return None
+
     # Check if SMS is enabled
     if not getattr(settings, "SMS_ENABLED", True):
         logger.info("SMS sending is disabled (SMS_ENABLED=False)")
