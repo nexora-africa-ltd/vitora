@@ -2,6 +2,7 @@
 Views for core app.
 """
 
+from django.conf import settings as django_settings
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.utils.dateparse import parse_date, parse_datetime
@@ -473,8 +474,11 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                 # Check if MFA is enabled for this user
                 mfa_enabled = is_mfa_enabled(user)
                 mfa_required = is_mfa_required(user)
+                mfa_enforcement = getattr(
+                    django_settings, "MFA_ENFORCEMENT", True
+                )
 
-                if mfa_enabled:
+                if mfa_enabled and mfa_enforcement:
                     # MFA is enabled - don't return tokens yet
                     # Create temporary MFA token
                     mfa_token = MFAToken.create_for_user(

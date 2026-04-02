@@ -149,6 +149,11 @@ class TestMFAVerificationRateLimiting:
 class TestMFATokenFailedAttempts:
     """Tests for MFA token failed attempt tracking and lockout."""
 
+    @pytest.fixture(autouse=True)
+    def _enforce_mfa(self, settings):
+        """Enable MFA enforcement for these tests."""
+        settings.MFA_ENFORCEMENT = True
+
     def test_mfa_token_has_failed_attempts_field(self, db, test_user):
         """MFAToken should have failed_attempts field."""
         from hmis.apps.core.mfa.models import MFAToken

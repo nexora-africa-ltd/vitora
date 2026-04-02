@@ -484,8 +484,9 @@ class TestMFALoginFlow:
         assert "refresh" in response.data
         assert response.data.get("mfa_required") is False or "mfa_required" not in response.data
 
-    def test_login_with_mfa_returns_mfa_required(self, api_client, test_user, db):
+    def test_login_with_mfa_returns_mfa_required(self, api_client, test_user, db, settings):
         """Should return MFA required when user has MFA enabled."""
+        settings.MFA_ENFORCEMENT = True
         from hmis.apps.core.mfa.models import UserTOTPDevice
 
         UserTOTPDevice.objects.create(user=test_user, name="Phone", confirmed=True)
@@ -500,8 +501,9 @@ class TestMFALoginFlow:
         assert "mfa_token" in response.data  # Temporary token for MFA step
         assert "access" not in response.data  # No access token yet
 
-    def test_mfa_verify_with_valid_totp(self, api_client, test_user, db):
+    def test_mfa_verify_with_valid_totp(self, api_client, test_user, db, settings):
         """Should complete login with valid TOTP token."""
+        settings.MFA_ENFORCEMENT = True
         from hmis.apps.core.mfa.models import UserTOTPDevice
 
         device = UserTOTPDevice.objects.create(user=test_user, name="Phone", confirmed=True)
@@ -530,8 +532,9 @@ class TestMFALoginFlow:
         assert "last_name" in response.data["user"]
         assert "permissions" in response.data["user"]
 
-    def test_mfa_verify_with_backup_code(self, api_client, test_user, db):
+    def test_mfa_verify_with_backup_code(self, api_client, test_user, db, settings):
         """Should complete login with valid backup code."""
+        settings.MFA_ENFORCEMENT = True
         from hmis.apps.core.mfa.models import BackupCode, UserTOTPDevice
 
         UserTOTPDevice.objects.create(user=test_user, name="Phone", confirmed=True)
@@ -557,8 +560,9 @@ class TestMFALoginFlow:
         assert "user" in response.data
         assert response.data["user"]["username"] == "testuser"
 
-    def test_mfa_verify_rejects_invalid_totp(self, api_client, test_user, db):
+    def test_mfa_verify_rejects_invalid_totp(self, api_client, test_user, db, settings):
         """Should reject invalid TOTP token."""
+        settings.MFA_ENFORCEMENT = True
         from hmis.apps.core.mfa.models import UserTOTPDevice
 
         UserTOTPDevice.objects.create(user=test_user, name="Phone", confirmed=True)
@@ -742,6 +746,11 @@ class TestMFARoleEnforcement:
 class TestMFAAuditLogging:
     """Tests for MFA-related audit logging."""
 
+    @pytest.fixture(autouse=True)
+    def _enforce_mfa(self, settings):
+        """Enable MFA enforcement for these tests."""
+        settings.MFA_ENFORCEMENT = True
+
     def test_mfa_enrollment_logged(self, authenticated_client, test_user, db):
         """Should log MFA enrollment."""
         from hmis.apps.core.models import AuditLog
@@ -924,8 +933,9 @@ class TestMFAAwareTokenRefresh:
         assert refresh_response.status_code == status.HTTP_401_UNAUTHORIZED
         assert refresh_response.data["code"] == "MFA_ENABLED_RE_AUTH_REQUIRED"
 
-    def test_refresh_token_works_after_mfa_login(self, api_client, test_user, db):
+    def test_refresh_token_works_after_mfa_login(self, api_client, test_user, db, settings):
         """Should allow token refresh when token was issued AFTER MFA was enabled."""
+        settings.MFA_ENFORCEMENT = True
         from datetime import timedelta
 
         from django.utils import timezone
