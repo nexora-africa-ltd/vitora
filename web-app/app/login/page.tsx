@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { MFAVerification } from '@/components/auth/mfa-verification';
 import { APP_NAME } from '@/lib/utils/constants';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
-import { SHALogo } from '@/components/ui/sha-logo';
+import { DhaLogo } from '@/components/ui/dha-logo';
 import { setupApi } from '@/lib/api/onboarding';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import Link from 'next/link';
@@ -144,7 +144,7 @@ export default function LoginPage() {
       <AnimatedThemeToggle className="absolute top-4 right-4 z-50" />
 
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-burgundy-900 via-brand-burgundy-900 to-brand-teal-600 p-12 flex-col justify-between">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-burgundy-900 via-brand-burgundy-900 to-brand-teal-600 p-12 flex-col">
         <div className="w-64">
           <VitoraLogo
             tone="burgundy-teal"
@@ -154,7 +154,7 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="mt-8 space-y-6">
           <h1 className="text-4xl font-bold text-white leading-tight">
             Healthcare Management<br />
             <span className="text-brand-gold-400">Made Simple</span>
@@ -168,8 +168,8 @@ export default function LoginPage() {
               KHIS/DHIS2 Ready
             </div>
             <div className="flex items-center gap-2">
-              <SHALogo size="xs" className="opacity-80" />
-              SHA Compliant
+              <DhaLogo size="xs" className="opacity-80" />
+              DHA Compliant
             </div>
             <div className="flex items-center gap-2">
               <WifiOff className="h-3.5 w-3.5 opacity-80" />
@@ -178,7 +178,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-sm text-white/40">
+        <p className="mt-auto text-sm text-white/40">
           © {new Date().getFullYear()} Vitora HMIS. Powered by{' '}
           <a
             href="https://nexora.africa"
