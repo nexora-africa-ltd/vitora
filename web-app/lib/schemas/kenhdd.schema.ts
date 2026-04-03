@@ -99,6 +99,7 @@ export const KENHDDFailedRecordSchema = z.object({
   fail_count: z.number(),
   warning_count: z.number(),
   violation_details: z.array(KENHDDViolationDetailSchema),
+  record_exists: z.boolean().optional().default(true),
 });
 
 export const KENHDDValidationRunDetailSchema = KENHDDValidationRunSchema.extend({

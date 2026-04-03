@@ -101,10 +101,10 @@ export const PatientSchema = z.object({
   address: z.string().optional().nullable(),
 
   // Location
-  county: z.number(),
-  county_name: z.string().optional(),
-  sub_county: z.number(),
-  sub_county_name: z.string().optional(),
+  county: z.number().nullable(),
+  county_name: z.string().optional().nullable(),
+  sub_county: z.number().nullable(),
+  sub_county_name: z.string().optional().nullable(),
   ward: z.number().optional().nullable(),
   ward_name: z.string().optional().nullable(),
   village: z.string().optional().nullable(),

@@ -256,10 +256,14 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
 
         record_ids = list(failed_records.values_list("record_id", flat=True))
         instances = list(model_cls.objects.filter(pk__in=record_ids))
+        deleted_count = len(record_ids) - len(instances)
 
         if not instances:
             return Response(
-                {"error": "None of the previously failed records exist anymore"},
+                {
+                    "error": "None of the previously failed records exist anymore",
+                    "deleted_count": deleted_count,
+                },
                 status=status.HTTP_404_NOT_FOUND,
             )
 
