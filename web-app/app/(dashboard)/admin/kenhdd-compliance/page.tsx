@@ -29,6 +29,7 @@ import {
   Clock,
   User,
   BarChart3,
+  ChevronDown,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
@@ -85,6 +86,8 @@ const RESOURCE_TYPE_CONFIG: Record<
 };
 
 const ALL_RESOURCE_TYPES = Object.keys(RESOURCE_TYPE_CONFIG) as KENHDDResourceType[];
+
+const ITEMS_PER_PAGE = 10;
 
 function getScoreColor(score: number | null): string {
   if (score === null) return 'text-muted-foreground';
@@ -174,6 +177,12 @@ export default function KENHDDCompliancePage() {
   const [runDetailOpen, setRunDetailOpen] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [resourcesSectionOpen, setResourcesSectionOpen] = useState(true);
+  const [violationsSectionOpen, setViolationsSectionOpen] = useState(true);
+  const [historySectionOpen, setHistorySectionOpen] = useState(true);
+  const [changesSectionOpen, setChangesSectionOpen] = useState(true);
+  const [violationsPage, setViolationsPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
 
   // --- Data fetching ---
   const {
@@ -373,7 +382,7 @@ export default function KENHDDCompliancePage() {
           return (new Date(a.run_at).getTime() - new Date(b.run_at).getTime()) * dir;
       }
     });
-    return filtered.slice(0, 30);
+    return filtered;
   }, [runs, historyFilter, sortColumn, sortDirection]);
 
   const toggleSort = (column: string) => {
@@ -405,6 +414,36 @@ export default function KENHDDCompliancePage() {
     const entry = (summary ?? []).find((s) => s.run_at === latestRunAt);
     return entry?.run_by ?? null;
   }, [summary, latestRunAt]);
+
+  const latestRunByResource = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const run of (runs ?? [])) {
+      if (!map[run.resource_type]) {
+        map[run.resource_type] = run.id;
+      }
+    }
+    return map;
+  }, [runs]);
+
+  const totalViolationsPages = Math.ceil(enrichedViolations.length / ITEMS_PER_PAGE);
+  const paginatedViolations = enrichedViolations.slice(
+    (violationsPage - 1) * ITEMS_PER_PAGE,
+    violationsPage * ITEMS_PER_PAGE
+  );
+
+  const totalHistoryPages = Math.ceil(filteredRuns.length / ITEMS_PER_PAGE);
+  const paginatedRuns = filteredRuns.slice(
+    (historyPage - 1) * ITEMS_PER_PAGE,
+    historyPage * ITEMS_PER_PAGE
+  );
+
+  const openLatestRunForResource = (resourceType: string) => {
+    const runId = latestRunByResource[resourceType];
+    if (runId) {
+      setSelectedRunId(runId);
+      setRunDetailOpen(true);
+    }
+  };
 
   const hasNeverRun = checkedEntries.length === 0 && !summaryLoading;
 
@@ -597,47 +636,61 @@ export default function KENHDDCompliancePage() {
         {/* What Changed Since Last Run */}
         {changes.length > 0 && (
           <Card>
-            <CardHeader>
+            <CardHeader
+              className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+              onClick={() => setChangesSectionOpen((o) => !o)}
+            >
               <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                 <Activity className="h-4 w-4 text-muted-foreground" />
                 What Changed
+                <Badge variant="secondary" className="ml-1 text-xs">{changes.length}</Badge>
+                <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${changesSectionOpen ? '' : '-rotate-90'}`} />
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {changes.map((change) => (
-                  <div
-                    key={change.resource}
-                    className="flex items-center gap-3 text-sm p-2 rounded-md bg-muted/30"
-                  >
-                    {change.delta < 0 ? (
-                      <ArrowDownRight className="h-4 w-4 text-red-500 shrink-0" />
-                    ) : (
-                      <ArrowUpRight className="h-4 w-4 text-green-500 shrink-0" />
-                    )}
-                    <span className="font-medium">{change.label}</span>
-                    <span className="text-muted-foreground">
-                      {change.delta < 0 ? 'dropped' : 'improved'}{' '}
-                      <span className={change.delta < 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
-                        {Math.abs(change.delta)} point{Math.abs(change.delta) !== 1 ? 's' : ''}
+            {changesSectionOpen && (
+              <CardContent>
+                <div className="space-y-2">
+                  {changes.map((change) => (
+                    <div
+                      key={change.resource}
+                      className="flex items-center gap-3 text-sm p-2 rounded-md bg-muted/30 cursor-pointer hover:bg-muted/60 transition-colors"
+                      onClick={() => openLatestRunForResource(change.resource)}
+                      title={`View latest ${change.label} run details`}
+                    >
+                      {change.delta < 0 ? (
+                        <ArrowDownRight className="h-4 w-4 text-red-500 shrink-0" />
+                      ) : (
+                        <ArrowUpRight className="h-4 w-4 text-green-500 shrink-0" />
+                      )}
+                      <span className="font-medium">{change.label}</span>
+                      <span className="text-muted-foreground">
+                        {change.delta < 0 ? 'dropped' : 'improved'}{' '}
+                        <span className={change.delta < 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                          {Math.abs(change.delta)} point{Math.abs(change.delta) !== 1 ? 's' : ''}
+                        </span>
+                        {' '}to {change.curr}%
                       </span>
-                      {' '}to {change.curr}%
-                    </span>
-                    {getScoreBadge(change.curr)}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
+                      {getScoreBadge(change.curr)}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            )}
           </Card>
         )}
 
         {/* Compliance by Resource Type — Actionable Cards */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
+          <CardHeader
+            className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+            onClick={() => setResourcesSectionOpen((o) => !o)}
+          >
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
               Compliance by Resource Type
+              <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${resourcesSectionOpen ? '' : '-rotate-90'}`} />
             </CardTitle>
           </CardHeader>
+          {resourcesSectionOpen && (
           <CardContent>
             {summaryLoading ? (
               <div className="space-y-3">
@@ -660,7 +713,9 @@ export default function KENHDDCompliancePage() {
                   return (
                     <div
                       key={entry.resource_type}
-                      className="flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer sm:flex-row sm:items-center sm:justify-between"
+                      onClick={() => openLatestRunForResource(entry.resource_type)}
+                      title={`View latest ${config.label} validation details`}
                     >
                       {/* Left: icon + label + meta */}
                       <div className="flex items-center gap-3 min-w-0">
@@ -746,17 +801,24 @@ export default function KENHDDCompliancePage() {
               </div>
             ) : null}
           </CardContent>
+          )}
         </Card>
 
         {/* Prioritized Blockers Panel */}
         {enrichedViolations.length > 0 && (
           <Card>
-            <CardHeader>
+            <CardHeader
+              className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+              onClick={() => setViolationsSectionOpen((o) => !o)}
+            >
               <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-destructive" />
                 {reportScores ? 'Violations from Latest Check' : 'Outstanding Violations'}
+                <Badge variant="secondary" className="ml-1 text-xs">{enrichedViolations.length}</Badge>
+                <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${violationsSectionOpen ? '' : '-rotate-90'}`} />
               </CardTitle>
             </CardHeader>
+            {violationsSectionOpen && (
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="min-w-[550px] w-full text-sm">
@@ -770,10 +832,12 @@ export default function KENHDDCompliancePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {enrichedViolations.map((v) => (
+                    {paginatedViolations.map((v) => (
                       <tr
                         key={`${v.resourceType}-${v.elementId}`}
-                        className="border-b last:border-0"
+                        className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => openLatestRunForResource(v.resourceType)}
+                        title={`View latest ${v.resourceLabel} run details`}
                       >
                         <td className="py-2">{v.resourceLabel}</td>
                         <td className="py-2">
@@ -808,18 +872,41 @@ export default function KENHDDCompliancePage() {
                   </tbody>
                 </table>
               </div>
+              {totalViolationsPages > 1 && (
+                <div className="flex items-center justify-between pt-3 border-t mt-3">
+                  <span className="text-xs text-muted-foreground">
+                    Page {violationsPage} of {totalViolationsPages} ({enrichedViolations.length} violations)
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={violationsPage <= 1} onClick={() => setViolationsPage((p) => p - 1)}>
+                      Previous
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={violationsPage >= totalViolationsPages} onClick={() => setViolationsPage((p) => p + 1)}>
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
+            )}
           </Card>
         )}
 
         {/* Run History */}
         <Card>
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CardTitle
+              className="text-base sm:text-lg flex items-center gap-2 cursor-pointer select-none"
+              onClick={() => setHistorySectionOpen((o) => !o)}
+            >
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
               Run History
+              {filteredRuns.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">{filteredRuns.length}</Badge>
+              )}
+              <ChevronDown className={`h-4 w-4 transition-transform ${historySectionOpen ? '' : '-rotate-90'}`} />
             </CardTitle>
-            <Select value={historyFilter} onValueChange={setHistoryFilter}>
+            <Select value={historyFilter} onValueChange={(v) => { setHistoryFilter(v); setHistoryPage(1); }}>
               <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
@@ -833,6 +920,7 @@ export default function KENHDDCompliancePage() {
               </SelectContent>
             </Select>
           </CardHeader>
+          {historySectionOpen && (
           <CardContent>
             {runsLoading ? (
               <div className="space-y-3">
@@ -840,7 +928,8 @@ export default function KENHDDCompliancePage() {
                   <Skeleton key={i} className="h-10 w-full" />
                 ))}
               </div>
-            ) : filteredRuns.length > 0 ? (
+            ) : paginatedRuns.length > 0 ? (
+              <>
               <div className="overflow-x-auto">
                 <table className="min-w-[600px] w-full text-sm">
                   <thead>
@@ -879,7 +968,7 @@ export default function KENHDDCompliancePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRuns.map((run) => {
+                    {paginatedRuns.map((run) => {
                       const score = parseFloat(run.compliance_score);
                       return (
                         <tr
@@ -938,6 +1027,22 @@ export default function KENHDDCompliancePage() {
                   </tbody>
                 </table>
               </div>
+              {totalHistoryPages > 1 && (
+                <div className="flex items-center justify-between pt-3 border-t mt-3">
+                  <span className="text-xs text-muted-foreground">
+                    Page {historyPage} of {totalHistoryPages} ({filteredRuns.length} runs)
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={historyPage <= 1} onClick={() => setHistoryPage((p) => p - 1)}>
+                      Previous
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" disabled={historyPage >= totalHistoryPages} onClick={() => setHistoryPage((p) => p + 1)}>
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+              </>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -950,6 +1055,7 @@ export default function KENHDDCompliancePage() {
               </div>
             )}
           </CardContent>
+          )}
         </Card>
         {/* Run Detail Dialog */}
         <KENHDDRunDetailDialog

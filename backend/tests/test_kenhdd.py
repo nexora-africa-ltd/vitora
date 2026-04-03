@@ -645,3 +645,147 @@ class TestKENHDDRunDetailAPI:
         """Should reject unauthenticated requests to revalidate."""
         response = api_client.post("/api/kenhdd/compliance/runs/1/revalidate/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_revalidate_skips_deleted_records(
+        self, kenhdd_elements, authenticated_client, sample_patient, test_user
+    ):
+        """Should gracefully skip deleted records during revalidation."""
+        from decimal import Decimal
+
+        from hmis.apps.kenhdd.models import KENHDDFailedRecord, KENHDDValidationRun
+
+        run = KENHDDValidationRun.objects.create(
+            resource_type="PATIENT",
+            records_checked=2,
+            records_compliant=0,
+            compliance_score=Decimal("0.00"),
+            mandatory_pass_rate=Decimal("0.00"),
+            violations={"KENHDD-PAT-006": 2},
+            run_by=test_user,
+        )
+        # Create two failed records: one that still exists, one that will be deleted
+        KENHDDFailedRecord.objects.create(
+            run=run,
+            record_id=str(sample_patient.pk),
+            is_compliant=False,
+            fail_count=1,
+            violation_details=[
+                {
+                    "element_id": "KENHDD-PAT-006",
+                    "element_name": "Phone Number",
+                    "field_name": "phone_number",
+                    "status": "FAIL",
+                    "message": "Mandatory field is empty",
+                    "requirement_level": "MANDATORY",
+                    "value": "",
+                }
+            ],
+        )
+        KENHDDFailedRecord.objects.create(
+            run=run,
+            record_id="999999",  # Non-existent record
+            is_compliant=False,
+            fail_count=1,
+            violation_details=[
+                {
+                    "element_id": "KENHDD-PAT-006",
+                    "element_name": "Phone Number",
+                    "field_name": "phone_number",
+                    "status": "FAIL",
+                    "message": "Mandatory field is empty",
+                    "requirement_level": "MANDATORY",
+                    "value": "",
+                }
+            ],
+        )
+
+        response = authenticated_client.post(
+            f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/"
+        )
+        # Should succeed — only the existing record is revalidated
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["records_checked"] == 1
+
+    def test_revalidate_all_records_deleted(
+        self, kenhdd_elements, authenticated_client, test_user
+    ):
+        """Should return 404 when all failed records were deleted."""
+        from decimal import Decimal
+
+        from hmis.apps.kenhdd.models import KENHDDFailedRecord, KENHDDValidationRun
+
+        run = KENHDDValidationRun.objects.create(
+            resource_type="PATIENT",
+            records_checked=1,
+            records_compliant=0,
+            compliance_score=Decimal("0.00"),
+            mandatory_pass_rate=Decimal("0.00"),
+            violations={"KENHDD-PAT-006": 1},
+            run_by=test_user,
+        )
+        KENHDDFailedRecord.objects.create(
+            run=run,
+            record_id="999999",  # Non-existent record
+            is_compliant=False,
+            fail_count=1,
+            violation_details=[
+                {
+                    "element_id": "KENHDD-PAT-006",
+                    "element_name": "Phone Number",
+                    "field_name": "phone_number",
+                    "status": "FAIL",
+                    "message": "Mandatory field is empty",
+                    "requirement_level": "MANDATORY",
+                    "value": "",
+                }
+            ],
+        )
+
+        response = authenticated_client.post(
+            f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data["deleted_count"] == 1
+
+    def test_run_detail_shows_record_exists(
+        self, kenhdd_elements, authenticated_client, sample_patient, test_user
+    ):
+        """Should include record_exists field in run detail failed records."""
+        from decimal import Decimal
+
+        from hmis.apps.kenhdd.models import KENHDDFailedRecord, KENHDDValidationRun
+
+        run = KENHDDValidationRun.objects.create(
+            resource_type="PATIENT",
+            records_checked=2,
+            records_compliant=0,
+            compliance_score=Decimal("0.00"),
+            mandatory_pass_rate=Decimal("0.00"),
+            violations={},
+            run_by=test_user,
+        )
+        KENHDDFailedRecord.objects.create(
+            run=run,
+            record_id=str(sample_patient.pk),
+            is_compliant=False,
+            fail_count=1,
+            violation_details=[],
+        )
+        KENHDDFailedRecord.objects.create(
+            run=run,
+            record_id="999999",
+            is_compliant=False,
+            fail_count=1,
+            violation_details=[],
+        )
+
+        response = authenticated_client.get(
+            f"/api/kenhdd/compliance/runs/{run.pk}/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        records = response.data["failed_records"]
+        assert len(records) == 2
+
+        exists_map = {r["record_id"]: r["record_exists"] for r in records}
+        assert exists_map[str(sample_patient.pk)] is True
+        assert exists_map["999999"] is False

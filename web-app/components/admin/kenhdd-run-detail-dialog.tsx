@@ -11,6 +11,7 @@ import {
   Loader2,
   RefreshCw,
   ShieldAlert,
+  Trash2,
   XCircle,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -136,7 +137,8 @@ function FailedRecordRow({
   resourceType: string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const href = getRecordHref(resourceType, record.record_id);
+  const href = record.record_exists !== false ? getRecordHref(resourceType, record.record_id) : null;
+  const isDeleted = record.record_exists === false;
 
   return (
     <div className="border rounded-lg">
@@ -154,7 +156,12 @@ function FailedRecordRow({
           <span className="text-sm font-medium font-mono">
             Record #{record.record_id}
           </span>
-          {record.is_compliant ? (
+          {isDeleted ? (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex items-center gap-0.5">
+              <Trash2 className="h-2.5 w-2.5" />
+              Deleted
+            </Badge>
+          ) : record.is_compliant ? (
             <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5 py-0">
               Compliant
             </Badge>

@@ -159,6 +159,8 @@ class KENHDDComplianceReportInputSerializer(serializers.Serializer):
 class KENHDDFailedRecordSerializer(serializers.ModelSerializer):
     """Serializer for a single failed record within a validation run."""
 
+    record_exists = serializers.SerializerMethodField()
+
     class Meta:
         model = KENHDDFailedRecord
         fields = [
@@ -169,14 +171,32 @@ class KENHDDFailedRecordSerializer(serializers.ModelSerializer):
             "fail_count",
             "warning_count",
             "violation_details",
+            "record_exists",
         ]
+
+    def get_record_exists(self, obj: KENHDDFailedRecord) -> bool:
+        """Check whether the referenced record still exists in the database."""
+        # Use cached lookup from context if available (avoids N+1 queries)
+        existing_ids: set[str] | None = self.context.get("existing_record_ids")
+        if existing_ids is not None:
+            return str(obj.record_id) in existing_ids
+
+        # Fallback: per-record query
+        from .services.validation import KENHDDValidationService
+
+        service = KENHDDValidationService()
+        resource_type = obj.run.resource_type
+        model_cls = service.get_model_class(resource_type)
+        if model_cls is None:
+            return False
+        return model_cls.objects.filter(pk=obj.record_id).exists()
 
 
 class KENHDDValidationRunDetailSerializer(serializers.ModelSerializer):
     """Serializer for validation run detail including failed records."""
 
     run_by_name = serializers.SerializerMethodField()
-    failed_records = KENHDDFailedRecordSerializer(many=True, read_only=True)
+    failed_records = serializers.SerializerMethodField()
     total_failed = serializers.SerializerMethodField()
 
     class Meta:
@@ -203,6 +223,31 @@ class KENHDDValidationRunDetailSerializer(serializers.ModelSerializer):
 
     def get_total_failed(self, obj: KENHDDValidationRun) -> int:
         return obj.failed_records.count()
+
+    def get_failed_records(self, obj: KENHDDValidationRun) -> list[dict]:
+        """Serialize failed records with batch existence check."""
+        from .services.validation import KENHDDValidationService
+
+        records = obj.failed_records.all()
+        record_ids = [str(r.record_id) for r in records]
+
+        # Batch-check which records still exist
+        existing_ids: set[str] = set()
+        if record_ids:
+            service = KENHDDValidationService()
+            model_cls = service.get_model_class(obj.resource_type)
+            if model_cls is not None:
+                existing_pks = model_cls.objects.filter(
+                    pk__in=record_ids
+                ).values_list("pk", flat=True)
+                existing_ids = {str(pk) for pk in existing_pks}
+
+        serializer = KENHDDFailedRecordSerializer(
+            records,
+            many=True,
+            context={"existing_record_ids": existing_ids},
+        )
+        return serializer.data  # type: ignore[return-value]
 
 
 class KENHDDRevalidateInputSerializer(serializers.Serializer):
