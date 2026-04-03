@@ -185,7 +185,17 @@ class ProcedureOrderListSerializer(serializers.ModelSerializer):
 
 
 class ProcedureOrderCreateSerializer(serializers.ModelSerializer):
-    """Used for POST /api/procedures/orders/."""
+    """Used for POST /api/procedures/orders/.
+
+    ``encounter`` is optional — if omitted, the view auto-creates a
+    PROCEDURE-type encounter for the patient before saving the order.
+    """
+
+    encounter = serializers.PrimaryKeyRelatedField(
+        queryset=ProcedureOrder.encounter.field.related_model.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = ProcedureOrder

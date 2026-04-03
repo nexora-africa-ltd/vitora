@@ -95,11 +95,12 @@ def catalog_with_clinics(db, sample_catalog, procedure_clinic, procedure_clinic_
 
 
 @pytest.fixture
-def sample_order(db, sample_catalog, sample_patient, test_user, sample_facility, sample_organization):
+def sample_order(db, sample_catalog, sample_patient, sample_encounter, test_user, sample_facility, sample_organization):
     """Create a sample ORDERED procedure order."""
     return ProcedureOrder.objects.create(
         procedure=sample_catalog,
         patient=sample_patient,
+        encounter=sample_encounter,
         indication="Laceration on left forearm",
         ordered_by=test_user,
         facility=sample_facility,
@@ -403,6 +404,7 @@ class TestAvailableSlotsEndpoint:
         procedure_clinic,
         procedure_clinic_schedule,
         sample_patient,
+        sample_encounter,
         test_user,
     ):
         """Already booked slot should be marked as available=False."""
@@ -411,6 +413,7 @@ class TestAvailableSlotsEndpoint:
         ProcedureOrder.objects.create(
             procedure=catalog_with_clinics,
             patient=sample_patient,
+            encounter=sample_encounter,
             indication="Test booking",
             ordered_by=test_user,
             status=ProcedureOrder.Status.SCHEDULED,

@@ -314,11 +314,9 @@ class ProcedureOrder(TimeStampedModel):
     # Context (where order originated)
     encounter = models.ForeignKey(
         "encounters.Encounter",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE,
         related_name="procedure_orders",
-        help_text="Encounter where procedure was ordered",
+        help_text="Encounter for this procedure (auto-created if not provided)",
     )
     clinic_visit = models.ForeignKey(
         "clinics.ClinicVisit",

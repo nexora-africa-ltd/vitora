@@ -63,12 +63,13 @@ class TestProcedureBillingIntegration:
         )
 
     def test_complete_creates_invoice_item_via_billing_service(
-        self, linked_catalog_entry, sample_patient, test_user
+        self, linked_catalog_entry, sample_patient, sample_encounter, test_user
     ):
         """Completing a procedure with billing_service should create InvoiceItem using service price."""
         order = ProcedureOrder.objects.create(
             procedure=linked_catalog_entry,
             patient=sample_patient,
+            encounter=sample_encounter,
             ordered_by=test_user,
             indication="Test wound",
             priority=ProcedureOrder.Priority.ROUTINE,
@@ -99,12 +100,13 @@ class TestProcedureBillingIntegration:
         assert "Wound Dressing" in item.description
 
     def test_complete_creates_invoice_item_via_base_fee_fallback(
-        self, unlinked_catalog_entry, sample_patient, test_user
+        self, unlinked_catalog_entry, sample_patient, sample_encounter, test_user
     ):
         """Completing a procedure without billing_service uses base_fee."""
         order = ProcedureOrder.objects.create(
             procedure=unlinked_catalog_entry,
             patient=sample_patient,
+            encounter=sample_encounter,
             ordered_by=test_user,
             indication="Test procedure",
             priority=ProcedureOrder.Priority.ROUTINE,

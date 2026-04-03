@@ -314,12 +314,13 @@ class TestProcedureDashboard:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_dashboard_counts(
-        self, authenticated_client, procedure_catalog_entry, sample_patient, test_user
+        self, authenticated_client, procedure_catalog_entry, sample_patient, sample_encounter, test_user
     ):
         # Create orders in various states
         order1 = ProcedureOrder.objects.create(
             procedure=procedure_catalog_entry,
             patient=sample_patient,
+            encounter=sample_encounter,
             ordered_by=test_user,
             indication="Test 1",
             status=ProcedureOrder.Status.SCHEDULED,
@@ -328,6 +329,7 @@ class TestProcedureDashboard:
         order2 = ProcedureOrder.objects.create(
             procedure=procedure_catalog_entry,
             patient=sample_patient,
+            encounter=sample_encounter,
             ordered_by=test_user,
             indication="Test 2",
             status=ProcedureOrder.Status.CONSENT_PENDING,
@@ -335,6 +337,7 @@ class TestProcedureDashboard:
         order3 = ProcedureOrder.objects.create(
             procedure=procedure_catalog_entry,
             patient=sample_patient,
+            encounter=sample_encounter,
             ordered_by=test_user,
             indication="Test 3",
             status=ProcedureOrder.Status.IN_PROGRESS,
