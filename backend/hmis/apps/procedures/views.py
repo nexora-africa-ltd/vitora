@@ -207,8 +207,25 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return ProcedureOrderDetailSerializer
 
     def perform_create(self, serializer):
+        encounter = serializer.validated_data.get("encounter")
+        if not encounter:
+            # Auto-create a PROCEDURE encounter for the patient
+            from hmis.apps.encounters.models import Encounter
+
+            tenant_kwargs = self.get_tenant_save_kwargs()
+            patient = serializer.validated_data["patient"]
+            procedure = serializer.validated_data["procedure"]
+            encounter = Encounter.objects.create(
+                patient=patient,
+                encounter_type="PROCEDURE",
+                chief_complaint=f"Procedure: {procedure.name}",
+                visit_reason="SCHEDULED_PROCEDURE",
+                created_by=self.request.user,
+                **tenant_kwargs,
+            )
         serializer.save(
             ordered_by=self.request.user,
+            encounter=encounter,
             **self.get_tenant_save_kwargs(),
         )
 

@@ -38,11 +38,12 @@ def no_consent_procedure(db, sample_facility, sample_organization):
 
 
 @pytest.fixture
-def procedure_order(db, procedure_catalog_entry, sample_patient, test_user, sample_facility, sample_organization):
+def procedure_order(db, procedure_catalog_entry, sample_patient, sample_encounter, test_user, sample_facility, sample_organization):
     """Create a sample procedure order."""
     return ProcedureOrder.objects.create(
         procedure=procedure_catalog_entry,
         patient=sample_patient,
+        encounter=sample_encounter,
         ordered_by=test_user,
         indication="Wound on right forearm",
         priority=ProcedureOrder.Priority.ROUTINE,

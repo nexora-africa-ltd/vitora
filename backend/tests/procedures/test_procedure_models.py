@@ -77,17 +77,19 @@ class TestProcedureOrder:
         assert procedure_order.order_number.startswith(expected_prefix)
 
     def test_sequential_order_numbers(
-        self, db, procedure_catalog_entry, sample_patient, test_user
+        self, db, procedure_catalog_entry, sample_patient, sample_encounter, test_user
     ):
         order1 = ProcedureOrder.objects.create(
             procedure=procedure_catalog_entry,
             patient=sample_patient,
+            encounter=sample_encounter,
             ordered_by=test_user,
             indication="First order",
         )
         order2 = ProcedureOrder.objects.create(
             procedure=procedure_catalog_entry,
             patient=sample_patient,
+            encounter=sample_encounter,
             ordered_by=test_user,
             indication="Second order",
         )
@@ -148,11 +150,12 @@ class TestProcedureOrder:
         assert procedure_order.is_overdue is False
 
     def test_is_overdue_true_when_past(
-        self, db, procedure_catalog_entry, sample_patient, test_user
+        self, db, procedure_catalog_entry, sample_patient, sample_encounter, test_user
     ):
         order = ProcedureOrder.objects.create(
             procedure=procedure_catalog_entry,
             patient=sample_patient,
+            encounter=sample_encounter,
             ordered_by=test_user,
             indication="Test overdue",
             status=ProcedureOrder.Status.SCHEDULED,
