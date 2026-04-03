@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { EmptyState } from '@/components/shared/empty-state';
 import {
-  Activity,
+  SquareDashedTopSolid,
   Users,
   Clock,
   CheckCircle,
@@ -130,21 +130,19 @@ export default function PhysiotherapyDashboardPage() {
 
       {/* Tabs for Queue and Orders */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="queue" className="gap-2">
-            <Users className="h-4 w-4" />
+        <TabsList className="w-full grid grid-cols-2">
+          <TabsTrigger value="queue" className="gap-1.5 px-2 sm:px-4">
+            <Users className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Today&apos;s Queue</span>
-            <span className="sm:hidden">Queue</span>
             {(queueStats?.waiting_count || 0) > 0 && (
               <Badge variant="secondary" className="ml-1">
                 {queueStats?.waiting_count}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="orders" className="gap-2">
-            <Activity className="h-4 w-4" />
+          <TabsTrigger value="orders" className="gap-1.5 px-2 sm:px-4">
+            <SquareDashedTopSolid className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Treatment Orders</span>
-            <span className="sm:hidden">Orders</span>
           </TabsTrigger>
         </TabsList>
 

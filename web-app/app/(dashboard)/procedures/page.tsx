@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   CalendarDays,
-  ClipboardList,
+  SquareDashedTopSolid,
   Clock,
   CheckCircle2,
   AlertTriangle,
@@ -117,7 +117,7 @@ export default function ProceduresDashboardPage() {
           helpContent="Monitor scheduled procedures, consent status, and performance. Manage procedure orders and track outcomes."
           actions={
             <Button onClick={() => router.push('/procedures/orders')}>
-              <ClipboardList className="h-4 w-4 mr-2" />
+              <SquareDashedTopSolid className="h-4 w-4 mr-2" />
               All Orders
             </Button>
           }

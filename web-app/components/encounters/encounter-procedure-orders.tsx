@@ -198,8 +198,115 @@ export function EncounterProcedureOrders({
   );
 }
 
-/** Also export as EncounterProcedureOrdersContent for use inside existing Card wrappers */
-export const EncounterProcedureOrdersContent = EncounterProcedureOrders;
+/**
+ * Content-only version of Procedure Orders (no Card wrapper).
+ * Used in the encounter edit orders tabs and accordion layouts.
+ */
+export function EncounterProcedureOrdersContent({
+  encounterId,
+  clinicVisitId,
+  admissionId,
+  patientId,
+  disabled = false,
+  onBeforeNavigate,
+}: EncounterProcedureOrdersProps) {
+  const router = useRouter();
+
+  const filterParams: Record<string, string> = {};
+  if (encounterId) filterParams.encounter = String(encounterId);
+  if (clinicVisitId) filterParams.clinic_visit = String(clinicVisitId);
+  if (admissionId) filterParams.admission = String(admissionId);
+
+  const { data: ordersData, isLoading, error } = useQuery({
+    queryKey: ['procedure-orders-content', filterParams],
+    queryFn: () => proceduresApi.listOrders({ ...filterParams, page_size: '50' }),
+    enabled: !!(encounterId || clinicVisitId || admissionId),
+  });
+
+  const orders = (ordersData?.results ?? []) as ProcedureOrderListItem[];
+
+  const handleNewOrder = useCallback(async () => {
+    if (onBeforeNavigate) {
+      await onBeforeNavigate();
+    }
+    const params = new URLSearchParams();
+    params.set('patient', String(patientId));
+    if (encounterId) params.set('encounter', String(encounterId));
+    if (clinicVisitId) params.set('clinic_visit', String(clinicVisitId));
+    if (admissionId) params.set('admission', String(admissionId));
+    router.push(`/procedures/orders/new?${params.toString()}`);
+  }, [onBeforeNavigate, router, patientId, encounterId, clinicVisitId, admissionId]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="text-sm text-muted-foreground">Failed to load procedure orders.</p>;
+  }
+
+  const activeOrders = orders.filter(
+    (o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED',
+  );
+  const completedOrders = orders.filter((o) => o.status === 'COMPLETED');
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Minor procedures, wound care, and surgical procedures
+      </p>
+
+      {/* Action button */}
+      {!disabled && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={handleNewOrder}>
+            <Plus className="h-4 w-4 mr-1" />
+            Order Procedure
+          </Button>
+        </div>
+      )}
+
+      {orders.length === 0 ? (
+        <div className="text-center py-4 text-muted-foreground">
+          <Syringe className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No procedure orders for this {encounterId ? 'encounter' : clinicVisitId ? 'visit' : 'admission'}</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {activeOrders.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Active ({activeOrders.length})
+              </h4>
+              <div className="space-y-2">
+                {activeOrders.map((order) => (
+                  <ProcedureOrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            </div>
+          )}
+          {completedOrders.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Completed ({completedOrders.length})
+              </h4>
+              <div className="space-y-2">
+                {completedOrders.map((order) => (
+                  <ProcedureOrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ProcedureOrderCard({ order }: { order: ProcedureOrderListItem }) {
   const StatusIcon = STATUS_ICONS[order.status] ?? Clock;

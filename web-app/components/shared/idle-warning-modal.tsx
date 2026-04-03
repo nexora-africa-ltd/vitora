@@ -96,7 +96,7 @@ export function IdleWarningModal({
           </p>
         </div>
 
-        <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
           <Button 
             onClick={onContinue}
             className="w-full"

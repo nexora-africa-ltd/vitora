@@ -20,6 +20,7 @@ import {
   Building2,
   ClipboardList,
   Microscope,
+  SquareDashedTopSolid,
   ScanLine,
   Scissors,
   CalendarDays,
@@ -207,7 +208,7 @@ const _allNavItems: NavItemType[] = [
     facilityModule: 'outpatient',
     children: [
       { label: 'Dashboard', href: '/procedures', icon: LayoutDashboard, actionKey: 'procedures.view_dashboard' },
-      { label: 'Orders', href: '/procedures/orders', icon: ClipboardList, actionKey: 'procedures.view_orders' },
+      { label: 'Orders', href: '/procedures/orders', icon: SquareDashedTopSolid, actionKey: 'procedures.view_orders' },
       { label: 'Catalog', href: '/procedures/catalog', icon: Syringe, actionKey: 'procedures.view_catalog' },
       { label: 'Room Assignments', href: '/procedures/catalog/clinic-mappings', icon: Network, actionKey: 'procedures.view_catalog' },
     ],
@@ -260,7 +261,7 @@ const _allNavItems: NavItemType[] = [
     facilityModule: 'laboratory',
     children: [
       { label: 'Dashboard', href: '/laboratory', icon: LayoutDashboard, actionKey: 'laboratory.view_dashboard' },
-      { label: 'Orders', href: '/laboratory/orders', icon: ClipboardList, actionKey: 'laboratory.view_orders' },
+      { label: 'Orders', href: '/laboratory/orders', icon: SquareDashedTopSolid, actionKey: 'laboratory.view_orders' },
       { label: 'Validations', href: '/laboratory/validations', icon: CheckSquare, actionKey: 'laboratory.verify_results' },
       { label: 'Test Catalog', href: '/laboratory/tests', icon: TestTubes, actionKey: 'laboratory.view_dashboard' },
       { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText, actionKey: 'laboratory.view_reports' },
@@ -275,7 +276,7 @@ const _allNavItems: NavItemType[] = [
     children: [
       { label: 'Dashboard', href: '/imaging', icon: LayoutDashboard, actionKey: 'imaging.view_dashboard' },
       { label: 'Worklist', href: '/imaging/worklist', icon: ListOrdered, actionKey: 'imaging.view_orders' },
-      { label: 'Imaging Orders', href: '/imaging/orders', icon: ClipboardList, actionKey: 'imaging.view_orders' },
+      { label: 'Imaging Orders', href: '/imaging/orders', icon: SquareDashedTopSolid, actionKey: 'imaging.view_orders' },
       { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon, actionKey: 'imaging.view_studies' },
     ],
   },
@@ -301,7 +302,7 @@ const _allNavItems: NavItemType[] = [
     children: [
       { label: 'Schedule', href: '/theatre/schedule', icon: CalendarDays, actionKey: 'theatre.view_schedule' },
       { label: 'Checklists', href: '/theatre/checklists', icon: CheckSquare, actionKey: 'theatre.view_checklists' },
-      { label: 'Cases', href: '/theatre/cases', icon: ClipboardList, actionKey: 'theatre.schedule_case' },
+      { label: 'Cases', href: '/theatre/cases', icon: SquareDashedTopSolid, actionKey: 'theatre.schedule_case' },
       { label: 'Reports', href: '/theatre/reports', icon: BarChart3, actionKey: 'theatre.view_reports' },
     ],
   },

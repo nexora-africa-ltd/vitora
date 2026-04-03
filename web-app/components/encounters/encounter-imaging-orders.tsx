@@ -261,7 +261,10 @@ function ImagingOrderCard({ order }: { order: ImagingOrder }) {
   );
 }
 
-// Content wrapper for accordion/tabs usage
+/**
+ * Content-only version of Imaging Orders (no Card wrapper).
+ * Used in the encounter edit orders tabs and accordion layouts.
+ */
 export function EncounterImagingOrdersContent({
   encounterId,
   patientId,
@@ -269,14 +272,94 @@ export function EncounterImagingOrdersContent({
   disabled = false,
   onBeforeNavigate,
 }: EncounterImagingOrdersProps) {
+  const router = useRouter();
+  const { data: orders, isLoading, error } = useEncounterImagingOrders(encounterId);
+
+  const handleNewImagingOrder = useCallback(async () => {
+    if (onBeforeNavigate) {
+      await onBeforeNavigate();
+    }
+    const params = new URLSearchParams({
+      encounter: String(encounterId),
+      patient: String(patientId),
+    });
+    if (patientName) {
+      params.set('patientName', patientName);
+    }
+    router.push(`/imaging/orders/new?${params.toString()}`);
+  }, [onBeforeNavigate, router, encounterId, patientId, patientName]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="text-sm text-muted-foreground">Failed to load imaging orders.</p>;
+  }
+
+  const ordersList = Array.isArray(orders) ? orders : [];
+  const pendingOrders = ordersList.filter(
+    (o) => o.status !== 'COMPLETED' && o.status !== 'REPORTED' && o.status !== 'CANCELLED'
+  );
+  const completedOrders = ordersList.filter(
+    (o) => o.status === 'COMPLETED' || o.status === 'REPORTED'
+  );
+
   return (
-    <EncounterImagingOrders
-      encounterId={encounterId}
-      patientId={patientId}
-      patientName={patientName}
-      disabled={disabled}
-      onBeforeNavigate={onBeforeNavigate}
-    />
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        X-ray, ultrasound, CT, MRI and other diagnostic imaging
+      </p>
+
+      {/* Action button */}
+      {!disabled && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={handleNewImagingOrder}>
+            <Plus className="h-4 w-4 mr-1" />
+            Order Imaging
+          </Button>
+        </div>
+      )}
+
+      {ordersList.length === 0 ? (
+        <div className="text-center py-4 text-muted-foreground">
+          <ScanLine className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No imaging orders for this encounter</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {pendingOrders.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Pending ({pendingOrders.length})
+              </h4>
+              <div className="space-y-2">
+                {pendingOrders.map((order) => (
+                  <ImagingOrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            </div>
+          )}
+          {completedOrders.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Completed ({completedOrders.length})
+              </h4>
+              <div className="space-y-2">
+                {completedOrders.map((order) => (
+                  <ImagingOrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
