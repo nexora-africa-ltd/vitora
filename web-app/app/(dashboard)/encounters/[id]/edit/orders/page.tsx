@@ -16,9 +16,9 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/page-header';
-import { EncounterLabOrdersContent } from '@/components/encounters/encounter-lab-orders';
-import { EncounterImagingOrdersContent } from '@/components/encounters/encounter-imaging-orders';
-import { EncounterPrescriptionsContent } from '@/components/encounters/encounter-prescriptions';
+import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders';
+import { EncounterImagingOrders } from '@/components/encounters/encounter-imaging-orders';
+import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import { EncounterProcedureOrders } from '@/components/encounters/encounter-procedure-orders';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterEditStore } from '@/lib/stores/encounter-edit-store';
@@ -92,83 +92,79 @@ export default function EncounterEditOrdersPage() {
       )}
 
       {/* Orders Tabs */}
-      <Card>
-        <CardContent className="pt-6">
-          <Tabs defaultValue="lab" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="lab" className="gap-1.5">
-                <Beaker className="h-4 w-4" />
-                <span className="hidden sm:inline">Lab</span>
-                {labCount > 0 && (
-                  <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                    {labCount}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="imaging" className="gap-1.5">
-                <ScanLine className="h-4 w-4" />
-                <span className="hidden sm:inline">Imaging</span>
-                {imagingCount > 0 && (
-                  <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                    {imagingCount}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="pharmacy" className="gap-1.5">
-                <Pill className="h-4 w-4" />
-                <span className="hidden sm:inline">Rx</span>
-                {rxCount > 0 && (
-                  <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                    {rxCount}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="procedures" className="gap-1.5">
-                <Syringe className="h-4 w-4" />
-                <span className="hidden sm:inline">Proc</span>
-                {procCount > 0 && (
-                  <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                    {procCount}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
+      <Tabs defaultValue="lab" className="space-y-4">
+        <TabsList className="w-full grid grid-cols-4">
+          <TabsTrigger value="lab" className="gap-1.5 px-2 sm:px-4">
+            <Beaker className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Lab</span>
+            {labCount > 0 && (
+              <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                {labCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="imaging" className="gap-1.5 px-2 sm:px-4">
+            <ScanLine className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Imaging</span>
+            {imagingCount > 0 && (
+              <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                {imagingCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="pharmacy" className="gap-1.5 px-2 sm:px-4">
+            <Pill className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Rx</span>
+            {rxCount > 0 && (
+              <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                {rxCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="procedures" className="gap-1.5 px-2 sm:px-4">
+            <Syringe className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Proc</span>
+            {procCount > 0 && (
+              <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                {procCount}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-            <TabsContent value="lab">
-              <EncounterLabOrdersContent
-                encounterId={encounterId}
-                patientId={session.patientId}
-                disabled={!isEditable}
-              />
-            </TabsContent>
+        <TabsContent value="lab">
+          <EncounterLabOrders
+            encounterId={encounterId}
+            patientId={session.patientId}
+            disabled={!isEditable}
+          />
+        </TabsContent>
 
-            <TabsContent value="imaging">
-              <EncounterImagingOrdersContent
-                encounterId={encounterId}
-                patientId={session.patientId}
-                patientName={encounter?.patient_name ?? undefined}
-                disabled={!isEditable}
-              />
-            </TabsContent>
+        <TabsContent value="imaging">
+          <EncounterImagingOrders
+            encounterId={encounterId}
+            patientId={session.patientId}
+            patientName={encounter?.patient_name ?? undefined}
+            disabled={!isEditable}
+          />
+        </TabsContent>
 
-            <TabsContent value="pharmacy">
-              <EncounterPrescriptionsContent
-                encounterId={encounterId}
-                patientId={session.patientId}
-                disabled={!isEditable}
-              />
-            </TabsContent>
+        <TabsContent value="pharmacy">
+          <EncounterPrescriptions
+            encounterId={encounterId}
+            patientId={session.patientId}
+            disabled={!isEditable}
+          />
+        </TabsContent>
 
-            <TabsContent value="procedures">
-              <EncounterProcedureOrders
-                encounterId={encounterId}
-                patientId={session.patientId}
-                disabled={!isEditable}
-              />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+        <TabsContent value="procedures">
+          <EncounterProcedureOrders
+            encounterId={encounterId}
+            patientId={session.patientId}
+            disabled={!isEditable}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Navigation */}
       <Card>

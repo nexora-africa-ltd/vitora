@@ -28,7 +28,7 @@ import {
   Image as ImageIcon,
   Eye,
   Plus,
-  ClipboardList,
+  SquareDashedTopSolid,
   RefreshCw,
   ExternalLink,
 } from 'lucide-react';
@@ -120,13 +120,13 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
         ) : (
           <Tabs defaultValue="orders" className="space-y-4">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="orders" className="gap-1.5">
-                <ClipboardList className="h-4 w-4" />
-                Orders ({orders.length})
+              <TabsTrigger value="orders" className="gap-1.5 px-2 sm:px-4">
+                <SquareDashedTopSolid className="h-5 w-5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Orders ({orders.length})</span>
               </TabsTrigger>
-              <TabsTrigger value="images" className="gap-1.5">
-                <ImageIcon className="h-4 w-4" />
-                Images ({studies.length})
+              <TabsTrigger value="images" className="gap-1.5 px-2 sm:px-4">
+                <ImageIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Images ({studies.length})</span>
               </TabsTrigger>
             </TabsList>
 

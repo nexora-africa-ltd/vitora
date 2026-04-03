@@ -1,6 +1,6 @@
 'use client';
 
-import { ClipboardList, Construction, FileText } from 'lucide-react';
+import { SquareDashedTopSolid, Construction, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,7 @@ export default function TheatreCasesPage() {
             intra-op notes, post-op follow-up, and structured operative documentation.
           </p>
           <Badge variant="secondary" className="mt-4">
-            <ClipboardList className="h-3 w-3 mr-1" />
+            <SquareDashedTopSolid className="h-3 w-3 mr-1" />
             Planned Phase 2 Feature
           </Badge>
         </CardContent>

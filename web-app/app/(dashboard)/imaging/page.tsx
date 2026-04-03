@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/table';
 import {
   Plus,
-  ClipboardList,
+  SquareDashedTopSolid,
   Activity,
   BookOpen,
   CalendarDays,
@@ -93,7 +93,7 @@ export default function ImagingPage() {
       <Tabs defaultValue="orders" className="space-y-4">
         <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="orders" className="gap-1.5 px-2 sm:px-4">
-            <ClipboardList className="h-5 w-5 sm:h-4 sm:w-4" />
+            <SquareDashedTopSolid className="h-5 w-5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Orders</span>
           </TabsTrigger>
           <TabsTrigger value="worklist" className="gap-1.5 px-2 sm:px-4">

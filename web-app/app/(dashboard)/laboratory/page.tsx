@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ClipboardList, Beaker, FileText, ClipboardClock, Shield, ExternalLink } from 'lucide-react';
+import { Plus, SquareDashedTopSolid, Beaker, FileText, ClipboardClock, Shield, ExternalLink } from 'lucide-react';
 import { LabOrderTable } from '@/components/laboratory/lab-order-table';
 import { LabQueueView } from '@/components/laboratory/lab-queue-view';
 import { PageHeader } from '@/components/shared/page-header';
@@ -51,24 +51,21 @@ export default function LaboratoryPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="orders" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="orders" className="gap-2">
-              <ClipboardList className="h-4 w-4" />
-              <span className="sm:hidden">Orders</span>
+          <TabsList className="w-full grid grid-cols-4">
+            <TabsTrigger value="orders" className="gap-1.5 px-2 sm:px-4">
+              <SquareDashedTopSolid className="h-5 w-5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Lab Orders</span>
             </TabsTrigger>
-            <TabsTrigger value="queue" className="gap-2">
-              <Beaker className="h-4 w-4" />
-              Lab Queue
+            <TabsTrigger value="queue" className="gap-1.5 px-2 sm:px-4">
+              <Beaker className="h-5 w-5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Lab Queue</span>
             </TabsTrigger>
-            <TabsTrigger value="results" className="gap-2">
-              <ClipboardClock className="h-4 w-4" />
-              <span className="sm:hidden">Pending</span>
+            <TabsTrigger value="results" className="gap-1.5 px-2 sm:px-4">
+              <ClipboardClock className="h-5 w-5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Pending Verification</span>
             </TabsTrigger>
-            <TabsTrigger value="validations" className="gap-2">
-              <Shield className="h-4 w-4" />
-              <span className="sm:hidden">Review</span>
+            <TabsTrigger value="validations" className="gap-1.5 px-2 sm:px-4">
+              <Shield className="h-5 w-5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Two-Stage Review</span>
             </TabsTrigger>
           </TabsList>
