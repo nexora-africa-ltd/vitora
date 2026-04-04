@@ -318,8 +318,8 @@ export interface Delivery {
   neonatal_complications: string;
   blood_loss_ml: number | null;
   placenta_complete: boolean;
-  is_low_birth_weight: boolean;
-  is_macrosomia: boolean;
+  is_low_birth_weight: boolean | null;
+  is_macrosomia: boolean | null;
   alerts: string[];
   notes: string;
   created_at: string;

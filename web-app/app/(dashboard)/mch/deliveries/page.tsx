@@ -8,20 +8,16 @@ import {
   Search,
   AlertTriangle,
   Calendar,
-  Activity,
   Heart,
-  Building2,
   Clock,
   TrendingUp,
-  Stethoscope,
-  Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
-import { HelpPopover } from '@/components/shared/help-popover';
 import { StatsCard } from '@/components/dashboard/stats-card';
+import { DeliveryStatsCharts } from '@/components/mch/delivery-stats-charts';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -525,136 +521,7 @@ export default function DeliveriesDashboardPage() {
                 ))}
               </div>
             ) : dashboard ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {/* Outcomes breakdown */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base">Delivery Outcomes</CardTitle>
-                      <HelpPopover content="Breakdown of all delivery outcomes across all time." />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <OutcomeBar label="Live Births" value={dashboard.outcomes_breakdown.LIVE_BIRTH} total={stats?.total_deliveries || 1} color="bg-green-500" />
-                    <OutcomeBar label="Stillbirths" value={dashboard.outcomes_breakdown.STILLBIRTH} total={stats?.total_deliveries || 1} color="bg-red-500" />
-                    <OutcomeBar label="Neonatal Deaths" value={dashboard.outcomes_breakdown.NEONATAL_DEATH} total={stats?.total_deliveries || 1} color="bg-red-400" />
-                    <OutcomeBar label="Maternal Deaths" value={dashboard.outcomes_breakdown.MATERNAL_DEATH} total={stats?.total_deliveries || 1} color="bg-red-600" />
-                  </CardContent>
-                </Card>
-
-                {/* Types breakdown */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base">Delivery Types</CardTitle>
-                      <HelpPopover content="Breakdown of delivery methods. WHO recommends a C-section rate of 10-15%." />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <OutcomeBar label="SVD" value={dashboard.types_breakdown.SVD} total={stats?.total_deliveries || 1} color="bg-blue-500" />
-                    <OutcomeBar label="Assisted Vaginal" value={dashboard.types_breakdown.ASSISTED_VAGINAL} total={stats?.total_deliveries || 1} color="bg-blue-400" />
-                    <OutcomeBar label="Elective C/S" value={dashboard.types_breakdown.ELECTIVE_CS} total={stats?.total_deliveries || 1} color="bg-purple-500" />
-                    <OutcomeBar label="Emergency C/S" value={dashboard.types_breakdown.EMERGENCY_CS} total={stats?.total_deliveries || 1} color="bg-purple-600" />
-                    <OutcomeBar label="Vacuum" value={dashboard.types_breakdown.VACUUM} total={stats?.total_deliveries || 1} color="bg-indigo-400" />
-                    <OutcomeBar label="Forceps" value={dashboard.types_breakdown.FORCEPS} total={stats?.total_deliveries || 1} color="bg-indigo-500" />
-                  </CardContent>
-                </Card>
-
-                {/* Place of delivery */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base">Place of Delivery</CardTitle>
-                      <HelpPopover content="Where deliveries occurred. Facility deliveries are tracked for skilled birth attendance KPIs." />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <OutcomeBar label="Facility" value={dashboard.places_breakdown.FACILITY} total={stats?.total_deliveries || 1} color="bg-green-500" />
-                    <OutcomeBar label="Home" value={dashboard.places_breakdown.HOME} total={stats?.total_deliveries || 1} color="bg-orange-500" />
-                    <OutcomeBar label="En Route" value={dashboard.places_breakdown.EN_ROUTE} total={stats?.total_deliveries || 1} color="bg-yellow-500" />
-                  </CardContent>
-                </Card>
-
-                {/* Monthly trend */}
-                {dashboard.monthly_trend.length > 0 && (
-                  <Card className="md:col-span-2 lg:col-span-3">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-base">Monthly Delivery Trend</CardTitle>
-                        <HelpPopover content="Deliveries per month over the last 6 months, broken down by live births, stillbirths, and C-section deliveries." />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b text-muted-foreground">
-                              <th className="text-left py-2 pr-4 font-medium">Month</th>
-                              <th className="text-right py-2 px-4 font-medium">Total</th>
-                              <th className="text-right py-2 px-4 font-medium">Live Births</th>
-                              <th className="text-right py-2 px-4 font-medium">Stillbirths</th>
-                              <th className="text-right py-2 px-4 font-medium">C-Sections</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {dashboard.monthly_trend.map((m) => (
-                              <tr key={m.month} className="border-b last:border-0">
-                                <td className="py-2 pr-4 font-medium">{m.month}</td>
-                                <td className="text-right py-2 px-4">{m.total}</td>
-                                <td className="text-right py-2 px-4 text-green-600 dark:text-green-400">{m.live_births}</td>
-                                <td className="text-right py-2 px-4 text-red-600 dark:text-red-400">
-                                  {m.stillbirths > 0 ? m.stillbirths : '—'}
-                                </td>
-                                <td className="text-right py-2 px-4 text-purple-600 dark:text-purple-400">{m.cs_deliveries}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Summary card */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Key Indicators</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Total Deliveries</span>
-                      <span className="font-semibold">{stats?.total_deliveries ?? 0}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Live Birth Rate</span>
-                      <span className="font-semibold text-green-600 dark:text-green-400">{stats?.live_birth_rate ?? 0}%</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">C-Section Rate</span>
-                      <Badge
-                        variant="outline"
-                        className={
-                          stats && stats.cs_rate > 15
-                            ? 'border-orange-500 text-orange-700 dark:text-orange-400'
-                            : ''
-                        }
-                      >
-                        {stats?.cs_rate ?? 0}%
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">With Complications</span>
-                      <span className="font-semibold">{stats?.with_complications ?? 0}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">High-Risk Due ≤30d</span>
-                      <Badge variant={stats && stats.high_risk_due_soon > 0 ? 'destructive' : 'outline'}>
-                        {stats?.high_risk_due_soon ?? 0}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              <DeliveryStatsCharts dashboard={dashboard} />
             ) : (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
@@ -721,31 +588,5 @@ function UpcomingDeliveryCard({ delivery, urgency, onClick }: UpcomingDeliveryCa
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-interface OutcomeBarProps {
-  label: string;
-  value: number;
-  total: number;
-  color: string;
-}
-
-function OutcomeBar({ label, value, total, color }: OutcomeBarProps) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">
-          {value} <span className="text-muted-foreground text-xs">({pct}%)</span>
-        </span>
-      </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        {/* Using inline style for dynamic width as Tailwind cannot handle dynamic percentages */}
-        {/* eslint-disable-next-line react/forbid-dom-props */}
-        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
   );
 }

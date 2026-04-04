@@ -119,10 +119,11 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
       });
       setDialogOpen(false);
     },
-    onError: () => {
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Failed to record delivery.';
       toast({
         title: 'Error',
-        description: 'Failed to record delivery.',
+        description: message.length > 200 ? message.slice(0, 200) + '…' : message,
         variant: 'destructive',
       });
     },
