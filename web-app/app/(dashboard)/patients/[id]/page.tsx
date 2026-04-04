@@ -25,12 +25,18 @@ import {
   XCircle,
   Eye,
   Activity,
+  HeartPulse,
+  MoreHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useQuery } from '@tanstack/react-query';
@@ -355,100 +361,185 @@ export default function PatientDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Tabs for encounters and more */}
+        {/* Tabs — grouped: Encounters | Clinical | Orders | More */}
         <Tabs defaultValue="encounters" className="space-y-4">
-          <TabsList className="h-auto flex-wrap gap-1">
-            <TabsTrigger value="encounters" className="gap-1.5">
-              <Clipboard className="h-4 w-4" />
-              <span className="hidden sm:inline">Encounters</span>
-            </TabsTrigger>
-            <TabsTrigger value="vitals" className="gap-1.5">
-              <Activity className="h-4 w-4" />
-              <span className="hidden sm:inline">Vitals</span>
-            </TabsTrigger>
-            <TabsTrigger value="emergency-contacts" className="gap-1.5">
-              <Phone className="h-4 w-4" />
-              <span className="hidden sm:inline">Emergency Contacts</span>
-              <span className="sm:hidden">Contacts</span>
-            </TabsTrigger>
-            <TabsTrigger value="imaging" className="gap-1.5">
-              <ScanLine className="h-4 w-4" />
-              <span className="hidden sm:inline">Imaging</span>
-            </TabsTrigger>
-            <TabsTrigger value="allergies" className="gap-1.5">
-              <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Allergies</span>
-            </TabsTrigger>
-            <TabsTrigger value="prescriptions" className="gap-1.5">
-              <Pill className="h-4 w-4" />
-              <span className="hidden sm:inline">Prescriptions</span>
-              <span className="sm:hidden">Rx</span>
-            </TabsTrigger>
-            <TabsTrigger value="lab-results" className="gap-1.5">
-              <TestTube2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Lab Results</span>
-              <span className="sm:hidden">Labs</span>
-            </TabsTrigger>
-            <TabsTrigger value="allied-health" className="gap-1.5">
-              <Activity className="h-4 w-4" />
-              <span className="hidden sm:inline">Allied Health</span>
-              <span className="sm:hidden">Allied</span>
-            </TabsTrigger>
-            <TabsTrigger value="audit-trail" className="gap-1.5">
-              <Clock className="h-4 w-4" />
-              <span className="hidden sm:inline">Audit Trail</span>
-              <span className="sm:hidden">Audit</span>
-            </TabsTrigger>
+          <TooltipProvider delayDuration={400}>
+          <TabsList className="flex h-auto flex-wrap gap-1 justify-start p-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="encounters" className="text-xs sm:text-sm gap-1.5">
+                  <Clipboard className="h-4 w-4" />
+                  Encounters
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent><p>Visit history and encounter records</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="clinical" className="text-xs sm:text-sm gap-1.5">
+                  <HeartPulse className="h-4 w-4" />
+                  Clinical
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent><p>Vitals trends, allergies & emergency contacts</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="orders" className="text-xs sm:text-sm gap-1.5">
+                  Orders ({(prescriptions?.length || 0) + (labOrders?.length || 0)})
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent><p>Prescriptions, lab results & imaging orders</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="more" className="text-xs sm:text-sm gap-1.5">
+                  <MoreHorizontal className="h-4 w-4" />
+                  More
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent><p>Allied health services & audit trail</p></TooltipContent>
+            </Tooltip>
           </TabsList>
+          </TooltipProvider>
 
+          {/* Encounters */}
           <TabsContent value="encounters">
             <PatientEncounters patientId={patientId} />
           </TabsContent>
 
-          <TabsContent value="vitals">
-            <VitalsTrendChart
-              data={vitalsHistory ?? []}
-              isLoading={isLoadingVitals}
-              title="Vitals History"
-              helpContent="All recorded vital signs across encounters, triage assessments, and inpatient observations. Select a time range to focus on a specific period."
-              defaultRange="all"
-            />
+          {/* Clinical — Vitals | Allergies | Emergency Contacts */}
+          <TabsContent value="clinical">
+            <Accordion type="multiple" defaultValue={['vitals', 'allergies', 'emergency-contacts']}>
+              <AccordionItem value="vitals">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                    <span>Vitals Trends</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <VitalsTrendChart
+                    data={vitalsHistory ?? []}
+                    isLoading={isLoadingVitals}
+                    title="Vitals History"
+                    helpContent="All recorded vital signs across encounters, triage assessments, and inpatient observations. Select a time range to focus on a specific period."
+                    defaultRange="all"
+                  />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="allergies">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    <span>Allergies</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientAllergiesTab patientId={patientId} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="emergency-contacts" className="border-b-0">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>Emergency Contacts</span>
+                    {(emergencyContacts?.length || 0) > 0 && (
+                      <Badge variant="secondary" className="text-xs">{emergencyContacts?.length}</Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <EmergencyContactsList contacts={emergencyContacts || []} />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </TabsContent>
 
-          <TabsContent value="emergency-contacts">
-            <EmergencyContactsList contacts={emergencyContacts || []} />
+          {/* Orders — Prescriptions | Lab Results | Imaging */}
+          <TabsContent value="orders">
+            <Accordion type="multiple" defaultValue={['prescriptions', 'lab-results', 'imaging']}>
+              <AccordionItem value="prescriptions">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Pill className="h-4 w-4 text-muted-foreground" />
+                    <span>Prescriptions</span>
+                    {(prescriptions?.length || 0) > 0 && (
+                      <Badge variant="secondary" className="text-xs">{prescriptions?.length}</Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientPrescriptionsSection
+                    prescriptions={prescriptions}
+                    isLoading={loadingPrescriptions}
+                    patientId={patientId}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="lab-results">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <TestTube2 className="h-4 w-4 text-muted-foreground" />
+                    <span>Lab Results</span>
+                    {(labOrders?.length || 0) > 0 && (
+                      <Badge variant="secondary" className="text-xs">{labOrders?.length}</Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientLabResultsSection
+                    labOrders={labOrders}
+                    isLoading={loadingLabOrders}
+                    patientId={patientId}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="imaging" className="border-b-0">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <ScanLine className="h-4 w-4 text-muted-foreground" />
+                    <span>Imaging</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientImagingSection patientId={patientId} />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </TabsContent>
 
-          <TabsContent value="imaging">
-            <PatientImagingSection patientId={patientId} />
-          </TabsContent>
+          {/* More — Allied Health | Audit Trail */}
+          <TabsContent value="more">
+            <Accordion type="multiple" defaultValue={['allied-health', 'audit-trail']}>
+              <AccordionItem value="allied-health">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                    <span>Allied Health</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientAlliedHealthTab patientId={patientId} />
+                </AccordionContent>
+              </AccordionItem>
 
-          <TabsContent value="allergies">
-            <PatientAllergiesTab patientId={patientId} />
-          </TabsContent>
-
-          <TabsContent value="prescriptions">
-            <PatientPrescriptionsSection
-              prescriptions={prescriptions}
-              isLoading={loadingPrescriptions}
-              patientId={patientId}
-            />
-          </TabsContent>
-
-          <TabsContent value="lab-results">
-            <PatientLabResultsSection
-              labOrders={labOrders}
-              isLoading={loadingLabOrders}
-              patientId={patientId}
-            />
-          </TabsContent>
-
-          <TabsContent value="allied-health">
-            <PatientAlliedHealthTab patientId={patientId} />
-          </TabsContent>
-
-          <TabsContent value="audit-trail">
-            <PatientAuditTrail patientId={patientId} />
+              <AccordionItem value="audit-trail" className="border-b-0">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>Audit Trail</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientAuditTrail patientId={patientId} />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </TabsContent>
         </Tabs>
       </div>
