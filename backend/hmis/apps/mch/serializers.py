@@ -663,7 +663,7 @@ class DeliveryListSerializer(serializers.ModelSerializer):
 class LabourPartographObservationSerializer(serializers.ModelSerializer):
     """Serializer for labour partograph observations."""
 
-    recorded_by_name = serializers.CharField(source="recorded_by.username", read_only=True)
+    recorded_by_name = serializers.SerializerMethodField()
     alerts = serializers.SerializerMethodField()
 
     class Meta:
@@ -679,6 +679,7 @@ class LabourPartographObservationSerializer(serializers.ModelSerializer):
             "descent_fifths",
             "contractions_per_10_min",
             "contraction_duration_seconds",
+            "contraction_intensity",
             "moulding",
             "maternal_pulse",
             "maternal_blood_pressure",
@@ -695,6 +696,11 @@ class LabourPartographObservationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["recorded_by", "recorded_by_name", "alerts"]
 
+    def get_recorded_by_name(self, obj):
+        user = obj.recorded_by
+        full = user.get_full_name()
+        return full if full else user.username
+
     def get_alerts(self, obj):
         return obj.get_alerts()
 
@@ -706,7 +712,7 @@ class LabourPartographSerializer(serializers.ModelSerializer):
         source="registration.mch_number", read_only=True
     )
     mother_name = serializers.SerializerMethodField()
-    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    created_by_name = serializers.SerializerMethodField()
     observation_count = serializers.IntegerField(read_only=True)
     latest_observation = serializers.SerializerMethodField()
 
@@ -745,6 +751,13 @@ class LabourPartographSerializer(serializers.ModelSerializer):
     def get_mother_name(self, obj):
         mother = obj.registration.mother
         return f"{mother.first_name} {mother.last_name}"
+
+    def get_created_by_name(self, obj):
+        user = obj.created_by
+        if not user:
+            return None
+        full = user.get_full_name()
+        return full if full else user.username
 
     def get_latest_observation(self, obj):
         latest = getattr(obj, "latest_observation", None)

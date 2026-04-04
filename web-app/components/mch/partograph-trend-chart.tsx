@@ -218,6 +218,8 @@ interface ChartDataPoint {
   diastolic_bp: number | null;
   maternal_temp: number | null;
   oxytocin: number | null;
+  who_alert_line?: number | null;
+  who_action_line?: number | null;
 }
 
 function observationsToChartData(observations: LabourPartographObservation[]): ChartDataPoint[] {
@@ -244,6 +246,40 @@ function observationsToChartData(observations: LabourPartographObservation[]): C
 }
 
 // =============================================================================
+// WHO Alert & Action Line Helpers
+// =============================================================================
+
+/**
+ * Compute WHO alert line and action line values for cervical dilation chart.
+ * Alert line: starts at 4 cm when cervix first reaches 4 cm, rises at 1 cm/hr.
+ * Action line: 4 hours to the right of the alert line.
+ */
+function computeWHOLines(data: ChartDataPoint[]): ChartDataPoint[] {
+  // Find the first data point with dilation >= 4 cm
+  const firstActiveIdx = data.findIndex(
+    (d) => d.cervical_dilation != null && d.cervical_dilation >= 4,
+  );
+  if (firstActiveIdx === -1) return data;
+
+  const firstActivePoint = data[firstActiveIdx]!;
+  const firstActiveTime = new Date(firstActivePoint.timestamp).getTime();
+
+  return data.map((point) => {
+    const t = new Date(point.timestamp).getTime();
+    const hoursElapsed = (t - firstActiveTime) / (1000 * 60 * 60);
+
+    const alertValue = hoursElapsed >= 0 ? Math.min(4 + hoursElapsed, 10) : null;
+    const actionValue = hoursElapsed >= 4 ? Math.min(4 + (hoursElapsed - 4), 10) : null;
+
+    return {
+      ...point,
+      who_alert_line: alertValue,
+      who_action_line: actionValue,
+    } as ChartDataPoint;
+  });
+}
+
+// =============================================================================
 // Sub-components
 // =============================================================================
 
@@ -254,10 +290,12 @@ function SingleMetricChart({
   data: ChartDataPoint[];
   config: PartographMetricConfig;
 }) {
-  const chartData = useMemo(
-    () => data.filter((d) => d[config.key] != null),
-    [data, config.key],
-  );
+  const isDilation = config.key === 'cervical_dilation';
+
+  const chartData = useMemo(() => {
+    const filtered = data.filter((d) => d[config.key] != null);
+    return isDilation ? computeWHOLines(filtered) : filtered;
+  }, [data, config.key, isDilation]);
 
   if (chartData.length === 0) return null;
 
@@ -367,6 +405,41 @@ function SingleMetricChart({
               activeDot={{ r: 5 }}
               connectNulls
             />
+            {isDilation && (
+              <>
+                <Line
+                  type="monotone"
+                  dataKey="who_alert_line"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  connectNulls
+                  name="Alert Line"
+                  legendType="line"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="who_action_line"
+                  stroke="#dc2626"
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  connectNulls
+                  name="Action Line"
+                  legendType="line"
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 10 }}
+                  formatter={(value: string) => {
+                    if (value === 'who_alert_line') return 'Alert Line';
+                    if (value === 'who_action_line') return 'Action Line';
+                    if (value === config.key) return config.label;
+                    return value;
+                  }}
+                />
+              </>
+            )}
           </LineChart>
         </ResponsiveContainer>
       </CardContent>
