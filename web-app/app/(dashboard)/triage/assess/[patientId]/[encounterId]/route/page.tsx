@@ -56,6 +56,7 @@ import {
   type AssignedArea,
   type TriageCategory,
 } from '@/lib/types/triage';
+import { ZONE_ROUTES } from '@/lib/config/emergency';
 
 // =============================================================================
 // Schema
@@ -143,6 +144,7 @@ export default function TriageRoutePage() {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RoutingFormData>({
     resolver: zodResolver(routingSchema),
@@ -156,6 +158,26 @@ export default function TriageRoutePage() {
   const routingType = watch('routing_type');
   const selectedArea = watch('assigned_area');
   const selectedClinic = watch('assigned_clinic');
+
+  // Auto-select General OPD clinic when clinics load and no clinic is pre-selected
+  useEffect(() => {
+    if (routingType === 'clinic' && !selectedClinic && clinicsData?.results?.length) {
+      // Priority 1: Match by name containing "general opd" (most specific)
+      const byName = clinicsData.results.find(
+        (c) => c.name.toLowerCase().includes('general opd')
+      );
+      // Priority 2: Match by clinic_type, preferring non-test clinics
+      const byType = !byName
+        ? clinicsData.results.find(
+            (c) => c.clinic_type === 'GENERAL_OPD' && !c.name.toLowerCase().includes('test')
+          )
+        : undefined;
+      const match = byName || byType;
+      if (match) {
+        setValue('assigned_clinic', match.id);
+      }
+    }
+  }, [routingType, selectedClinic, clinicsData, setValue]);
 
   const onSubmit = useCallback(
     async (data: RoutingFormData) => {
@@ -241,6 +263,13 @@ export default function TriageRoutePage() {
         } else if (data.routing_type === 'emergency' && data.assigned_area) {
           const areaConfig = ASSIGNED_AREA_CONFIG[data.assigned_area as Exclude<AssignedArea, ''>];
           destinationName = areaConfig?.label || data.assigned_area;
+          // Route to the emergency zone page
+          const zoneRoute = ZONE_ROUTES[data.assigned_area];
+          if (zoneRoute) {
+            destinationUrl = `/emergency/${zoneRoute}`;
+          } else {
+            destinationUrl = '/emergency';
+          }
         }
 
         // Show success modal
@@ -549,22 +578,27 @@ export default function TriageRoutePage() {
                             onClick={() => field.onChange(option.value)}
                             className={`flex items-center justify-between rounded-lg border-2 p-3 cursor-pointer transition-all duration-200 ${
                               isSelected
-                                ? 'border-red-500 bg-white dark:bg-red-950/50 ring-2 ring-red-500/20 shadow-md'
+                                ? 'border-red-500 bg-white dark:bg-red-950/50 ring-2 ring-red-500/30 shadow-lg shadow-red-500/10 scale-[1.03]'
                                 : 'border-red-200 dark:border-red-800 bg-white/50 dark:bg-red-950/10 hover:bg-white dark:hover:bg-red-950/30'
                             }`}
                           >
                             <span className={`text-sm font-medium ${isSelected ? 'text-red-700 dark:text-red-300' : ''}`}>
                               {option.label}
                             </span>
-                            <Badge
-                              className="text-xs"
-                              style={{
-                                backgroundColor: categoryConfig.bgColor,
-                                color: categoryConfig.textColor,
-                              }}
-                            >
-                              {option.category}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              {isSelected && (
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                              )}
+                              <Badge
+                                className="text-xs"
+                                style={{
+                                  backgroundColor: categoryConfig.bgColor,
+                                  color: categoryConfig.textColor,
+                                }}
+                              >
+                                {option.category}
+                              </Badge>
+                            </div>
                           </button>
                         );
                       })}
@@ -635,6 +669,7 @@ export default function TriageRoutePage() {
         onOpenChange={setShowSuccessModal}
         checkInResult={successData}
         onDismiss={handleSuccessClose}
+        dismissLabel="Go to Queue"
       />
     </div>
   );

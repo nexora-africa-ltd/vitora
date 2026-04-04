@@ -166,7 +166,7 @@ export const encountersApi = {
    */
   async getClinicalSnapshot(id: number): Promise<ClinicalSnapshot> {
     const response = await apiClient.get<ClinicalSnapshot>(
-      `/api/encounters/${id}/clinical_snapshot/`
+      `/api/encounters/${id}/clinical-snapshot/`
     );
     return parseResponse(ClinicalSnapshotSchema, response.data, {
       context: 'encountersApi.getClinicalSnapshot',

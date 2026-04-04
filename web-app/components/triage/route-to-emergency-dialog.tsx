@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Siren, ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
+import { Siren, ArrowRight, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -165,10 +165,10 @@ export function RouteToEmergencyDialog({
                   <Label
                     htmlFor={area.value}
                     className={cn(
-                      'flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all',
+                      'flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all duration-200',
                       'hover:border-primary/50 hover:bg-accent/50',
                       'peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5',
-                      selectedArea === area.value && 'ring-2 ring-primary ring-offset-2'
+                      selectedArea === area.value && 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-md border-primary'
                     )}
                   >
                     <div className="flex flex-col gap-0.5">
@@ -179,17 +179,22 @@ export function RouteToEmergencyDialog({
                         </span>
                       )}
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'text-xs shrink-0',
-                        categoryColors?.bg,
-                        categoryColors?.border,
-                        categoryColors?.text
+                    <div className="flex items-center gap-2">
+                      {selectedArea === area.value && (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                       )}
-                    >
-                      {area.category}
-                    </Badge>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-xs shrink-0',
+                          categoryColors?.bg,
+                          categoryColors?.border,
+                          categoryColors?.text
+                        )}
+                      >
+                        {area.category}
+                      </Badge>
+                    </div>
                   </Label>
                 </div>
               );
