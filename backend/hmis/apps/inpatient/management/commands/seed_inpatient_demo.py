@@ -69,6 +69,7 @@ from hmis.apps.laboratory.models import (
 )
 from hmis.apps.patients.models import Allergy, Patient
 from hmis.apps.pharmacy.models import Drug, Prescription, PrescriptionItem
+from hmis.apps.mch.models import LabourPartograph, LabourPartographObservation, MCHRegistration
 
 User = get_user_model()
 
@@ -657,6 +658,37 @@ SCENARIOS = [
         "complaint": "Term pregnancy in labour, regular contractions",
         "payer": "SHA",
         "status": "ACTIVE",
+        "mch_data": {
+            "status": "DELIVERED",
+            "is_high_risk": False,
+            "risk_factors": "",
+            "sha_claimable": True,
+            "linda_jamii_beneficiary": False,
+            "notes": "Normal ANC ×6. HIV negative. Blood group O+. No complications.",
+        },
+        "partograph": {
+            "parity": 1,
+            "gestation_weeks": 39,
+            "membrane_status": "RUPTURED",
+            "liquor": "CLEAR",
+            "notes": "Active labour, good progress. ARM at 6cm — clear liquor. FHR reassuring throughout.",
+            "observations": [
+                # Admission to labour ward — active first stage
+                {"hour_offset": 0, "fetal_heart_rate": 140, "cervical_dilation": Decimal("4.0"), "descent_fifths": 4, "contractions_per_10_min": 3, "contraction_duration_seconds": 30, "moulding": "0", "maternal_pulse": 82, "maternal_bp": "118/72", "maternal_temp": Decimal("37.0"), "urine_volume_ml": None, "urine_protein": "", "urine_acetone": "", "oxytocin_drops": None, "medications": "", "notes": "Admitted in active labour. Membranes intact. Cervix 4cm, well-effaced."},
+                # 1 hour
+                {"hour_offset": 1, "fetal_heart_rate": 142, "cervical_dilation": Decimal("5.0"), "descent_fifths": 4, "contractions_per_10_min": 3, "contraction_duration_seconds": 35, "moulding": "0", "maternal_pulse": 84, "maternal_bp": "120/74", "maternal_temp": Decimal("37.0"), "urine_volume_ml": None, "urine_protein": "", "urine_acetone": "", "oxytocin_drops": None, "medications": "", "notes": "Good progress. Encouraged oral fluids."},
+                # 2 hours — SROM
+                {"hour_offset": 2, "fetal_heart_rate": 138, "cervical_dilation": Decimal("6.0"), "descent_fifths": 3, "contractions_per_10_min": 4, "contraction_duration_seconds": 40, "moulding": "0", "maternal_pulse": 86, "maternal_bp": "116/70", "maternal_temp": Decimal("37.1"), "urine_volume_ml": 150, "urine_protein": "NEGATIVE", "urine_acetone": "NEGATIVE", "oxytocin_drops": None, "medications": "", "notes": "SROM — clear liquor. Cervix 6cm, station -1. FHR reassuring."},
+                # 3 hours
+                {"hour_offset": 3, "fetal_heart_rate": 144, "cervical_dilation": Decimal("7.0"), "descent_fifths": 2, "contractions_per_10_min": 4, "contraction_duration_seconds": 45, "moulding": "+", "maternal_pulse": 88, "maternal_bp": "118/72", "maternal_temp": Decimal("37.0"), "urine_volume_ml": None, "urine_protein": "", "urine_acetone": "", "oxytocin_drops": None, "medications": "", "notes": "Good descent. Mother coping well, using breathing techniques."},
+                # 4 hours — transition
+                {"hour_offset": 4, "fetal_heart_rate": 146, "cervical_dilation": Decimal("8.0"), "descent_fifths": 2, "contractions_per_10_min": 5, "contraction_duration_seconds": 50, "moulding": "+", "maternal_pulse": 90, "maternal_bp": "120/74", "maternal_temp": Decimal("37.0"), "urine_volume_ml": None, "urine_protein": "", "urine_acetone": "", "oxytocin_drops": None, "medications": "", "notes": "Transition phase. Mother feeling urge to push. Encouraged to wait."},
+                # 4.5 hours
+                {"hour_offset": 4.5, "fetal_heart_rate": 148, "cervical_dilation": Decimal("9.0"), "descent_fifths": 1, "contractions_per_10_min": 5, "contraction_duration_seconds": 55, "moulding": "+", "maternal_pulse": 92, "maternal_bp": "122/76", "maternal_temp": Decimal("37.1"), "urine_volume_ml": None, "urine_protein": "", "urine_acetone": "", "oxytocin_drops": None, "medications": "", "notes": "Almost fully dilated. Head at spines."},
+                # 5 hours — fully dilated, active second stage
+                {"hour_offset": 5, "fetal_heart_rate": 150, "cervical_dilation": Decimal("10.0"), "descent_fifths": 0, "contractions_per_10_min": 5, "contraction_duration_seconds": 60, "moulding": "+", "maternal_pulse": 94, "maternal_bp": "124/78", "maternal_temp": Decimal("37.1"), "urine_volume_ml": 100, "urine_protein": "NEGATIVE", "urine_acetone": "NEGATIVE", "oxytocin_drops": None, "medications": "", "notes": "Fully dilated, head on perineum. Active pushing. FHR reassuring. SVD at 2145h — baby girl 3.2kg, Apgar 9/10."},
+            ],
+        },
         "days_ago": 1,
         "gender": "F",
         "age_range": (22, 35),
@@ -1426,6 +1458,9 @@ class Command(BaseCommand):
                 "patients": 0,
                 "allergies": 0,
                 "admissions": 0,
+                "mch_registrations": 0,
+                "partographs": 0,
+                "partograph_observations": 0,
                 "rounds": 0,
                 "transfers": 0,
                 "discharges": 0,
@@ -1544,6 +1579,67 @@ class Command(BaseCommand):
                 )
                 admission.save()
                 created["admissions"] += 1
+
+                # --- MCH registration + Partograph (maternity cases) ---
+                mch_data = scenario.get("mch_data")
+                if mch_data:
+                    mch_reg = MCHRegistration.objects.create(
+                        mother=patient,
+                        registration_date=admission_date.date() - timedelta(days=180),
+                        status=mch_data.get("status", "ACTIVE"),
+                        is_high_risk=mch_data.get("is_high_risk", False),
+                        risk_factors=mch_data.get("risk_factors", ""),
+                        sha_claimable=mch_data.get("sha_claimable", True),
+                        linda_jamii_beneficiary=mch_data.get("linda_jamii_beneficiary", False),
+                        notes=mch_data.get("notes", ""),
+                        registered_by=user,
+                    )
+                    admission.mch_registration = mch_reg
+                    admission.save(update_fields=["mch_registration"])
+                    created["mch_registrations"] += 1
+
+                    partograph_data = scenario.get("partograph")
+                    if partograph_data:
+                        labour_start = admission_date
+                        partograph = LabourPartograph.objects.create(
+                            registration=mch_reg,
+                            encounter=ipd_encounter,
+                            admission=admission,
+                            started_at=labour_start,
+                            status="COMPLETED",
+                            parity=partograph_data.get("parity"),
+                            gestation_weeks=partograph_data.get("gestation_weeks"),
+                            membrane_status=partograph_data.get("membrane_status", ""),
+                            liquor=partograph_data.get("liquor", ""),
+                            notes=partograph_data.get("notes", ""),
+                            created_by=user,
+                            completed_at=labour_start + timedelta(hours=5, minutes=45),
+                        )
+                        created["partographs"] += 1
+
+                        for obs_def in partograph_data.get("observations", []):
+                            obs_time = labour_start + timedelta(hours=obs_def["hour_offset"])
+                            LabourPartographObservation.objects.create(
+                                partograph=partograph,
+                                observation_time=obs_time,
+                                recorded_by=user,
+                                fetal_heart_rate=obs_def.get("fetal_heart_rate"),
+                                cervical_dilation_cm=obs_def.get("cervical_dilation"),
+                                descent_fifths=obs_def.get("descent_fifths"),
+                                contractions_per_10_min=obs_def.get("contractions_per_10_min"),
+                                contraction_duration_seconds=obs_def.get("contraction_duration_seconds"),
+                                moulding=obs_def.get("moulding", ""),
+                                maternal_pulse=obs_def.get("maternal_pulse"),
+                                maternal_blood_pressure=obs_def.get("maternal_bp", ""),
+                                maternal_temperature=obs_def.get("maternal_temp"),
+                                urine_volume_ml=obs_def.get("urine_volume_ml"),
+                                urine_protein=obs_def.get("urine_protein", ""),
+                                urine_acetone=obs_def.get("urine_acetone", ""),
+                                oxytocin_drops_per_min=obs_def.get("oxytocin_drops"),
+                                medications=obs_def.get("medications", ""),
+                                notes=obs_def.get("notes", ""),
+                            )
+                            created["partograph_observations"] += 1
 
                 # --- Lab orders with items & results ---
                 for lab_def in scenario.get("lab_orders", []):
@@ -1916,6 +2012,12 @@ class Command(BaseCommand):
         created["patients"] += 1
         created["admissions"] += 1
         created["allergies"] += len(scenario.get("allergies", []))
+        if scenario.get("mch_data"):
+            created["mch_registrations"] += 1
+        partograph_data = scenario.get("partograph")
+        if partograph_data:
+            created["partographs"] += 1
+            created["partograph_observations"] += len(partograph_data.get("observations", []))
         created["rounds"] += len([
             rd for rd in scenario.get("rounds", [])
             if (timezone.now() - timedelta(days=scenario["days_ago"]) + timedelta(days=rd["day_offset"])).date() <= date.today()

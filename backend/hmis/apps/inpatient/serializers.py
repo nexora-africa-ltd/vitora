@@ -201,6 +201,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
         source="attending_doctor.username", read_only=True
     )
     ward_name = serializers.CharField(source="ward.name", read_only=True)
+    ward_type = serializers.CharField(source="ward.ward_type", read_only=True)
     bed_number = serializers.CharField(source="bed.bed_number", read_only=True)
     admission_status_display = serializers.CharField(
         source="get_admission_status_display", read_only=True
@@ -240,6 +241,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
             "attending_doctor_username",
             "ward",
             "ward_name",
+            "ward_type",
             "bed",
             "bed_number",
             "admission_status",
