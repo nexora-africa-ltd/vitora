@@ -44,7 +44,11 @@ from hmis.apps.imaging.models import (
 from hmis.apps.inpatient.models import (
     Admission,
     Bed,
+    BloodTransfusionObservation,
+    BPMonitoringReading,
     Discharge,
+    FluidBalanceEntry,
+    FluidBalanceSheet,
     KardexHandoverNote,
     KardexShiftNote,
     NursingCarePlanEntry,
@@ -52,6 +56,7 @@ from hmis.apps.inpatient.models import (
     ShiftHandover,
     SupervisorAlertAcknowledgment,
     TemperatureReading,
+    TransfusionObservationEntry,
     Transfer,
     Ward,
     WardRound,
@@ -220,12 +225,60 @@ SCENARIOS = [
             {"shift": "DAY", "day_offset": 2, "content": "Patient afebrile. Taking full diet. Ambulating to bathroom independently. Switched to oral augmentin per doctor's order. DC IV cannula."},
         ],
         "tpr": [
-            {"day_offset": 0, "hour": 8, "temp": "38.2", "pulse": 98, "rr": 22},
-            {"day_offset": 0, "hour": 14, "temp": "37.8", "pulse": 92, "rr": 20},
-            {"day_offset": 1, "hour": 8, "temp": "37.4", "pulse": 86, "rr": 20},
-            {"day_offset": 1, "hour": 20, "temp": "37.1", "pulse": 80, "rr": 18},
-            {"day_offset": 2, "hour": 8, "temp": "36.8", "pulse": 78, "rr": 18},
+            {"day_offset": 0, "hour": 6, "temp": "38.4", "pulse": 100, "rr": 24, "notes": "On admission; febrile, tachypnoeic"},
+            {"day_offset": 0, "hour": 10, "temp": "38.2", "pulse": 98, "rr": 22, "notes": "IV ceftriaxone started"},
+            {"day_offset": 0, "hour": 14, "temp": "37.8", "pulse": 92, "rr": 20, "notes": "Tepid sponge given for fever"},
+            {"day_offset": 0, "hour": 18, "temp": "38.0", "pulse": 94, "rr": 20, "notes": "Paracetamol 1g given"},
+            {"day_offset": 0, "hour": 22, "temp": "37.6", "pulse": 88, "rr": 18, "notes": "Settling for night"},
+            {"day_offset": 1, "hour": 2, "temp": "37.3", "pulse": 84, "rr": 18, "notes": "Sleeping, comfortable"},
+            {"day_offset": 1, "hour": 6, "temp": "37.4", "pulse": 86, "rr": 20, "notes": "Morning obs; low-grade fever"},
+            {"day_offset": 1, "hour": 10, "temp": "37.2", "pulse": 82, "rr": 18, "notes": "Post-ward round; afebrile trend"},
+            {"day_offset": 1, "hour": 14, "temp": "37.0", "pulse": 80, "rr": 18, "notes": "Eating full diet"},
+            {"day_offset": 1, "hour": 18, "temp": "37.1", "pulse": 80, "rr": 18, "notes": "Comfortable"},
+            {"day_offset": 1, "hour": 22, "temp": "36.9", "pulse": 78, "rr": 16, "notes": "Afebrile; step-down decision in morning"},
+            {"day_offset": 2, "hour": 6, "temp": "36.8", "pulse": 78, "rr": 18, "notes": "Afebrile ×12h; plan oral switch"},
+            {"day_offset": 2, "hour": 14, "temp": "36.7", "pulse": 76, "rr": 16, "notes": "IV cannula removed; oral augmentin started"},
         ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 6, "systolic": 138, "diastolic": 82, "pulse": 100, "position": "LYING", "notes": "On admission; known HTN"},
+            {"day_offset": 0, "hour": 14, "systolic": 134, "diastolic": 80, "pulse": 92, "position": "SITTING", "notes": ""},
+            {"day_offset": 1, "hour": 8, "systolic": 128, "diastolic": 78, "pulse": 86, "position": "SITTING", "notes": "BP improving"},
+            {"day_offset": 1, "hour": 20, "systolic": 126, "diastolic": 76, "pulse": 80, "position": "SITTING", "notes": ""},
+            {"day_offset": 2, "hour": 8, "systolic": 124, "diastolic": 76, "pulse": 78, "position": "SITTING", "notes": "BP controlled"},
+        ],
+        "fluid_balance": {
+            "days": [
+                {
+                    "day_offset": 0,
+                    "weight_kg": "78.5",
+                    "iv_notes": "NS 1L over 8h",
+                    "entries": [
+                        {"hour": 8, "type": "INTRAVENOUS", "item": "Normal Saline 0.9%", "amount_ml": 500, "notes": "Running at 63ml/hr"},
+                        {"hour": 10, "type": "ALIMENTARY", "item": "Tea with milk", "amount_ml": 200, "notes": ""},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 350, "notes": ""},
+                        {"hour": 13, "type": "ALIMENTARY", "item": "Lunch — soup and rice", "amount_ml": 300, "notes": ""},
+                        {"hour": 16, "type": "INTRAVENOUS", "item": "Normal Saline 0.9%", "amount_ml": 500, "notes": "Second bag"},
+                        {"hour": 17, "type": "URINE", "item": "Urine", "amount_ml": 400, "notes": "Good output"},
+                        {"hour": 20, "type": "ALIMENTARY", "item": "Supper — ugali and vegetables", "amount_ml": 250, "notes": ""},
+                        {"hour": 22, "type": "URINE", "item": "Urine", "amount_ml": 300, "notes": ""},
+                    ],
+                },
+                {
+                    "day_offset": 1,
+                    "weight_kg": "78.0",
+                    "iv_notes": "DC IV if tolerating oral fluids well",
+                    "entries": [
+                        {"hour": 7, "type": "ALIMENTARY", "item": "Porridge", "amount_ml": 300, "notes": "Good appetite"},
+                        {"hour": 8, "type": "URINE", "item": "Urine", "amount_ml": 450, "notes": ""},
+                        {"hour": 10, "type": "ALIMENTARY", "item": "Water", "amount_ml": 250, "notes": ""},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 400, "notes": ""},
+                        {"hour": 13, "type": "ALIMENTARY", "item": "Lunch", "amount_ml": 350, "notes": "Full diet tolerated"},
+                        {"hour": 17, "type": "URINE", "item": "Urine", "amount_ml": 500, "notes": "Output excellent"},
+                        {"hour": 19, "type": "ALIMENTARY", "item": "Supper", "amount_ml": 300, "notes": ""},
+                    ],
+                },
+            ],
+        },
     },
     {
         "ward_type": "SURGICAL",
@@ -288,10 +341,53 @@ SCENARIOS = [
             {"shift": "DAY", "day_offset": 1, "content": "Patient sat up and walked to bathroom with assistance. Tolerating sips of water. Wound clean and dry. Drain removed. Pain well controlled on oral analgesics."},
         ],
         "tpr": [
-            {"day_offset": 0, "hour": 21, "temp": "37.2", "pulse": 84, "rr": 16},
-            {"day_offset": 1, "hour": 6, "temp": "36.9", "pulse": 76, "rr": 16},
-            {"day_offset": 1, "hour": 14, "temp": "37.0", "pulse": 78, "rr": 16},
+            {"day_offset": 0, "hour": 18, "temp": "37.5", "pulse": 88, "rr": 18, "notes": "Pre-op; in theatre prep"},
+            {"day_offset": 0, "hour": 21, "temp": "37.2", "pulse": 84, "rr": 16, "notes": "Post-op 1h; conscious, oriented"},
+            {"day_offset": 0, "hour": 22, "temp": "37.1", "pulse": 82, "rr": 16, "notes": "Post-op 2h; stable"},
+            {"day_offset": 0, "hour": 23, "temp": "37.0", "pulse": 80, "rr": 16, "notes": "Post-op 3h; resting"},
+            {"day_offset": 1, "hour": 0, "temp": "37.0", "pulse": 78, "rr": 16, "notes": "Post-op 4h; Q4H now"},
+            {"day_offset": 1, "hour": 4, "temp": "36.9", "pulse": 76, "rr": 16, "notes": "Sleeping comfortably"},
+            {"day_offset": 1, "hour": 8, "temp": "36.9", "pulse": 76, "rr": 16, "notes": "Morning; wound dry, no drain output"},
+            {"day_offset": 1, "hour": 12, "temp": "37.0", "pulse": 78, "rr": 16, "notes": "Drain removed; ambulating"},
+            {"day_offset": 1, "hour": 16, "temp": "37.0", "pulse": 76, "rr": 16, "notes": "Tolerating oral fluids"},
+            {"day_offset": 1, "hour": 20, "temp": "36.8", "pulse": 74, "rr": 16, "notes": "Evening; eating light diet"},
         ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 18, "systolic": 118, "diastolic": 72, "pulse": 88, "position": "LYING", "notes": "Pre-op baseline"},
+            {"day_offset": 0, "hour": 21, "systolic": 110, "diastolic": 68, "pulse": 84, "position": "LYING", "notes": "Post-op 1h"},
+            {"day_offset": 0, "hour": 22, "systolic": 114, "diastolic": 70, "pulse": 82, "position": "LYING", "notes": "Post-op 2h"},
+            {"day_offset": 0, "hour": 23, "systolic": 116, "diastolic": 72, "pulse": 80, "position": "LYING", "notes": "Post-op 3h"},
+            {"day_offset": 1, "hour": 0, "systolic": 118, "diastolic": 72, "pulse": 78, "position": "LYING", "notes": "Post-op 4h; stable"},
+            {"day_offset": 1, "hour": 8, "systolic": 116, "diastolic": 74, "pulse": 76, "position": "SITTING", "notes": "Morning"},
+            {"day_offset": 1, "hour": 14, "systolic": 120, "diastolic": 74, "pulse": 78, "position": "SITTING", "notes": "Post-ambulation"},
+        ],
+        "fluid_balance": {
+            "days": [
+                {
+                    "day_offset": 0,
+                    "weight_kg": "62.0",
+                    "iv_notes": "RL 1L over 6h post-op",
+                    "entries": [
+                        {"hour": 21, "type": "INTRAVENOUS", "item": "Ringer's Lactate", "amount_ml": 500, "notes": "Post-op; running at 85ml/hr"},
+                        {"hour": 23, "type": "URINE", "item": "Urine", "amount_ml": 200, "notes": "Catheterised; output adequate"},
+                    ],
+                },
+                {
+                    "day_offset": 1,
+                    "weight_kg": "62.5",
+                    "iv_notes": "DC IV when tolerating oral",
+                    "entries": [
+                        {"hour": 3, "type": "INTRAVENOUS", "item": "Ringer's Lactate", "amount_ml": 500, "notes": "Second bag overnight"},
+                        {"hour": 6, "type": "URINE", "item": "Urine", "amount_ml": 450, "notes": "Catheter removed"},
+                        {"hour": 8, "type": "ALIMENTARY", "item": "Sips of water", "amount_ml": 100, "notes": "Tolerated well"},
+                        {"hour": 10, "type": "ALIMENTARY", "item": "Tea", "amount_ml": 200, "notes": "No nausea"},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 350, "notes": "Voiding spontaneously"},
+                        {"hour": 13, "type": "ALIMENTARY", "item": "Light soup", "amount_ml": 250, "notes": "Bowel sounds present"},
+                        {"hour": 17, "type": "URINE", "item": "Urine", "amount_ml": 400, "notes": ""},
+                    ],
+                },
+            ],
+        },
     },
     {
         "ward_type": "PEDIATRIC",
@@ -348,11 +444,57 @@ SCENARIOS = [
             {"shift": "NIGHT", "day_offset": 1, "content": "Slept well. 1 loose stool overnight. Nappy wet ×3 (good output). Mother giving ORS as instructed. Plan to DC IV if tolerating well in morning."},
         ],
         "tpr": [
-            {"day_offset": 0, "hour": 10, "temp": "37.8", "pulse": 120, "rr": 28},
-            {"day_offset": 0, "hour": 18, "temp": "37.4", "pulse": 110, "rr": 24},
-            {"day_offset": 1, "hour": 8, "temp": "37.0", "pulse": 100, "rr": 22},
-            {"day_offset": 1, "hour": 20, "temp": "36.8", "pulse": 96, "rr": 20},
+            {"day_offset": 0, "hour": 8, "temp": "38.0", "pulse": 128, "rr": 30, "notes": "Moderate dehydration; irritable"},
+            {"day_offset": 0, "hour": 10, "temp": "37.8", "pulse": 120, "rr": 28, "notes": "IV started; ORS given small sips"},
+            {"day_offset": 0, "hour": 14, "temp": "37.6", "pulse": 116, "rr": 26, "notes": "Vomiting stopped; taking ORS"},
+            {"day_offset": 0, "hour": 18, "temp": "37.4", "pulse": 110, "rr": 24, "notes": "More alert; playing briefly"},
+            {"day_offset": 0, "hour": 22, "temp": "37.2", "pulse": 106, "rr": 22, "notes": "Settling for sleep; mother at bedside"},
+            {"day_offset": 1, "hour": 2, "temp": "37.0", "pulse": 102, "rr": 22, "notes": "1 loose stool; nappy weighed"},
+            {"day_offset": 1, "hour": 6, "temp": "37.0", "pulse": 100, "rr": 22, "notes": "Eyes less sunken; skin turgor normal"},
+            {"day_offset": 1, "hour": 10, "temp": "36.9", "pulse": 98, "rr": 20, "notes": "Playing; taking ORS and BRAT diet"},
+            {"day_offset": 1, "hour": 14, "temp": "36.8", "pulse": 96, "rr": 20, "notes": "2 loose stools (improving)"},
+            {"day_offset": 1, "hour": 18, "temp": "36.8", "pulse": 94, "rr": 20, "notes": "Good oral intake"},
+            {"day_offset": 1, "hour": 22, "temp": "36.7", "pulse": 92, "rr": 18, "notes": "Plan DC IV in morning if stable"},
         ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 10, "systolic": 90, "diastolic": 55, "pulse": 120, "position": "LYING", "notes": "Dehydrated; low for age"},
+            {"day_offset": 1, "hour": 8, "systolic": 95, "diastolic": 60, "pulse": 100, "position": "LYING", "notes": "Improving with rehydration"},
+        ],
+        "fluid_balance": {
+            "days": [
+                {
+                    "day_offset": 0,
+                    "weight_kg": "14.5",
+                    "iv_notes": "Ringer's lactate at 60ml/hr per weight",
+                    "entries": [
+                        {"hour": 9, "type": "INTRAVENOUS", "item": "Ringer's Lactate", "amount_ml": 300, "notes": "Running at 60ml/hr; 5h initial plan"},
+                        {"hour": 10, "type": "ALIMENTARY", "item": "ORS (small sips)", "amount_ml": 100, "notes": "5ml spoons Q5min; mother giving"},
+                        {"hour": 11, "type": "VOMIT", "item": "Vomit", "amount_ml": 50, "notes": "Single episode; resumed ORS"},
+                        {"hour": 12, "type": "STOOL", "item": "Watery stool", "amount_ml": 80, "notes": "Nappy weighed; watery green"},
+                        {"hour": 13, "type": "ALIMENTARY", "item": "ORS", "amount_ml": 150, "notes": "Tolerating well now"},
+                        {"hour": 14, "type": "STOOL", "item": "Loose stool", "amount_ml": 60, "notes": "Less watery"},
+                        {"hour": 15, "type": "INTRAVENOUS", "item": "Ringer's Lactate", "amount_ml": 300, "notes": "Ongoing"},
+                        {"hour": 16, "type": "URINE", "item": "Urine", "amount_ml": 80, "notes": "First wet nappy; reassuring"},
+                        {"hour": 18, "type": "ALIMENTARY", "item": "ORS + banana mash", "amount_ml": 200, "notes": "BRAT diet started"},
+                        {"hour": 20, "type": "URINE", "item": "Urine", "amount_ml": 60, "notes": ""},
+                        {"hour": 21, "type": "STOOL", "item": "Loose stool", "amount_ml": 50, "notes": "Reduced volume"},
+                    ],
+                },
+                {
+                    "day_offset": 1,
+                    "weight_kg": "14.8",
+                    "iv_notes": "IV slowed to maintenance; plan DC if oral OK",
+                    "entries": [
+                        {"hour": 7, "type": "ALIMENTARY", "item": "Porridge", "amount_ml": 200, "notes": "Eating well"},
+                        {"hour": 8, "type": "URINE", "item": "Urine", "amount_ml": 100, "notes": "Wet nappy ×2 overnight"},
+                        {"hour": 10, "type": "ALIMENTARY", "item": "ORS", "amount_ml": 200, "notes": ""},
+                        {"hour": 11, "type": "STOOL", "item": "Semi-solid stool", "amount_ml": 40, "notes": "Improving consistency"},
+                        {"hour": 13, "type": "ALIMENTARY", "item": "Rice and soup", "amount_ml": 250, "notes": "Full BRAT meal"},
+                        {"hour": 15, "type": "URINE", "item": "Urine", "amount_ml": 120, "notes": "Good output"},
+                    ],
+                },
+            ],
+        },
     },
     {
         # ICU patient who will be TRANSFERRED to Medical ward (step-down)
@@ -435,12 +577,78 @@ SCENARIOS = [
             {"shift": "DAY", "day_offset": 2, "content": "Sat in chair for 30 min, tolerated well. O2 weaned to room air, SpO2 97%. Eating full cardiac diet. Ready for step-down transfer per consultant."},
         ],
         "tpr": [
-            {"day_offset": 0, "hour": 6, "temp": "37.0", "pulse": 88, "rr": 20},
-            {"day_offset": 0, "hour": 12, "temp": "37.2", "pulse": 82, "rr": 18},
-            {"day_offset": 1, "hour": 8, "temp": "36.9", "pulse": 80, "rr": 18},
-            {"day_offset": 1, "hour": 20, "temp": "36.8", "pulse": 76, "rr": 16},
-            {"day_offset": 2, "hour": 8, "temp": "36.7", "pulse": 74, "rr": 16},
+            {"day_offset": 0, "hour": 2, "temp": "36.8", "pulse": 90, "rr": 22, "notes": "ED arrival; diaphoretic, chest pain"},
+            {"day_offset": 0, "hour": 3, "temp": "37.0", "pulse": 88, "rr": 20, "notes": "Post-PCI; cath lab handover to ICU"},
+            {"day_offset": 0, "hour": 4, "temp": "37.0", "pulse": 86, "rr": 20, "notes": "ICU settle; arterial line placed"},
+            {"day_offset": 0, "hour": 5, "temp": "37.0", "pulse": 84, "rr": 18, "notes": "Heparin infusion running"},
+            {"day_offset": 0, "hour": 6, "temp": "37.0", "pulse": 88, "rr": 20, "notes": "Morning shift handover"},
+            {"day_offset": 0, "hour": 8, "temp": "37.1", "pulse": 84, "rr": 18, "notes": "Ward round; stable on monitor"},
+            {"day_offset": 0, "hour": 10, "temp": "37.2", "pulse": 82, "rr": 18, "notes": "Sat up in bed briefly"},
+            {"day_offset": 0, "hour": 12, "temp": "37.2", "pulse": 82, "rr": 18, "notes": "Taking clear fluids"},
+            {"day_offset": 0, "hour": 14, "temp": "37.0", "pulse": 80, "rr": 18, "notes": ""},
+            {"day_offset": 0, "hour": 18, "temp": "36.9", "pulse": 78, "rr": 16, "notes": "Evening; comfortable"},
+            {"day_offset": 0, "hour": 22, "temp": "36.8", "pulse": 76, "rr": 16, "notes": "Settled for night"},
+            {"day_offset": 1, "hour": 2, "temp": "36.8", "pulse": 76, "rr": 16, "notes": "Sleeping; monitor stable NSR"},
+            {"day_offset": 1, "hour": 6, "temp": "36.8", "pulse": 76, "rr": 16, "notes": "Morning shift"},
+            {"day_offset": 1, "hour": 8, "temp": "36.9", "pulse": 80, "rr": 18, "notes": "Ward round; echo today"},
+            {"day_offset": 1, "hour": 12, "temp": "37.0", "pulse": 78, "rr": 16, "notes": "Post-echo; EF 42%"},
+            {"day_offset": 1, "hour": 18, "temp": "36.8", "pulse": 76, "rr": 16, "notes": "Eating cardiac diet"},
+            {"day_offset": 1, "hour": 22, "temp": "36.7", "pulse": 74, "rr": 16, "notes": "Uneventful evening"},
+            {"day_offset": 2, "hour": 6, "temp": "36.7", "pulse": 74, "rr": 16, "notes": "O2 weaned to room air"},
+            {"day_offset": 2, "hour": 8, "temp": "36.7", "pulse": 74, "rr": 16, "notes": "Sat in chair 30 min; tolerated well"},
+            {"day_offset": 2, "hour": 14, "temp": "36.8", "pulse": 76, "rr": 16, "notes": "Ambulating to bathroom; transfer planned"},
         ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 2, "systolic": 88, "diastolic": 58, "pulse": 90, "position": "LYING", "notes": "ED arrival; hypotensive; pre-PCI"},
+            {"day_offset": 0, "hour": 3, "systolic": 92, "diastolic": 60, "pulse": 88, "position": "LYING", "notes": "Post-PCI; improving"},
+            {"day_offset": 0, "hour": 4, "systolic": 98, "diastolic": 62, "pulse": 86, "position": "LYING", "notes": "Arterial line transducer"},
+            {"day_offset": 0, "hour": 5, "systolic": 102, "diastolic": 64, "pulse": 84, "position": "LYING", "notes": "Haemodynamics stabilising"},
+            {"day_offset": 0, "hour": 6, "systolic": 106, "diastolic": 66, "pulse": 88, "position": "LYING", "notes": ""},
+            {"day_offset": 0, "hour": 8, "systolic": 110, "diastolic": 68, "pulse": 84, "position": "LYING", "notes": "Systolic >100; on track"},
+            {"day_offset": 0, "hour": 10, "systolic": 112, "diastolic": 70, "pulse": 82, "position": "LYING", "notes": "ACE-I started at low dose"},
+            {"day_offset": 0, "hour": 14, "systolic": 114, "diastolic": 72, "pulse": 80, "position": "LYING", "notes": "Tolerating enalapril"},
+            {"day_offset": 0, "hour": 18, "systolic": 112, "diastolic": 70, "pulse": 78, "position": "LYING", "notes": ""},
+            {"day_offset": 0, "hour": 22, "systolic": 110, "diastolic": 70, "pulse": 76, "position": "LYING", "notes": "Stable overnight plan"},
+            {"day_offset": 1, "hour": 6, "systolic": 114, "diastolic": 72, "pulse": 76, "position": "LYING", "notes": "Morning; art line intact"},
+            {"day_offset": 1, "hour": 8, "systolic": 118, "diastolic": 74, "pulse": 80, "position": "LYING", "notes": "Ward round BP"},
+            {"day_offset": 1, "hour": 14, "systolic": 116, "diastolic": 72, "pulse": 78, "position": "SITTING", "notes": "First time sitting; tolerated"},
+            {"day_offset": 1, "hour": 20, "systolic": 118, "diastolic": 74, "pulse": 76, "position": "LYING", "notes": ""},
+            {"day_offset": 2, "hour": 8, "systolic": 120, "diastolic": 76, "pulse": 74, "position": "SITTING", "notes": "Sitting in chair; SpO2 97% RA"},
+            {"day_offset": 2, "hour": 14, "systolic": 118, "diastolic": 74, "pulse": 76, "position": "SITTING", "notes": "Ready for step-down transfer"},
+        ],
+        "fluid_balance": {
+            "days": [
+                {
+                    "day_offset": 0,
+                    "weight_kg": "92.0",
+                    "iv_notes": "Heparin infusion via CVC; NS TKO",
+                    "entries": [
+                        {"hour": 3, "type": "INTRAVENOUS", "item": "NS 0.9% TKO", "amount_ml": 100, "notes": "Keep vein open rate"},
+                        {"hour": 6, "type": "URINE", "item": "Urine", "amount_ml": 200, "notes": "Catheterised; hourly output monitored"},
+                        {"hour": 8, "type": "ALIMENTARY", "item": "Sips of water", "amount_ml": 50, "notes": "Clear fluids only"},
+                        {"hour": 10, "type": "URINE", "item": "Urine", "amount_ml": 180, "notes": ""},
+                        {"hour": 12, "type": "ALIMENTARY", "item": "Tea", "amount_ml": 150, "notes": ""},
+                        {"hour": 14, "type": "URINE", "item": "Urine", "amount_ml": 200, "notes": ""},
+                        {"hour": 18, "type": "ALIMENTARY", "item": "Light cardiac diet", "amount_ml": 200, "notes": "Low sodium"},
+                        {"hour": 20, "type": "URINE", "item": "Urine", "amount_ml": 250, "notes": "Good output"},
+                    ],
+                },
+                {
+                    "day_offset": 1,
+                    "weight_kg": "91.5",
+                    "iv_notes": "Heparin stopped; IVF DC; oral intake adequate",
+                    "entries": [
+                        {"hour": 6, "type": "URINE", "item": "Urine", "amount_ml": 300, "notes": "Overnight total"},
+                        {"hour": 8, "type": "ALIMENTARY", "item": "Porridge (low salt)", "amount_ml": 300, "notes": "Cardiac diet"},
+                        {"hour": 10, "type": "ALIMENTARY", "item": "Water", "amount_ml": 200, "notes": ""},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 350, "notes": ""},
+                        {"hour": 13, "type": "ALIMENTARY", "item": "Lunch", "amount_ml": 350, "notes": ""},
+                        {"hour": 17, "type": "URINE", "item": "Urine", "amount_ml": 400, "notes": ""},
+                        {"hour": 19, "type": "ALIMENTARY", "item": "Supper", "amount_ml": 300, "notes": ""},
+                    ],
+                },
+            ],
+        },
     },
     {
         "ward_type": "MATERNITY",
@@ -498,9 +706,25 @@ SCENARIOS = [
             {"shift": "DAY", "day_offset": 1, "content": "Mother ambulatory. Breastfeeding well. Lochia reducing. Baby BCG and OPV-0 given. PNC counselling done. Plan for discharge if observations remain normal."},
         ],
         "tpr": [
-            {"day_offset": 0, "hour": 22, "temp": "37.0", "pulse": 82, "rr": 18},
-            {"day_offset": 1, "hour": 6, "temp": "36.8", "pulse": 76, "rr": 16},
-            {"day_offset": 1, "hour": 14, "temp": "36.7", "pulse": 74, "rr": 16},
+            {"day_offset": 0, "hour": 18, "temp": "37.2", "pulse": 86, "rr": 18, "notes": "Active first stage; 6cm dilated"},
+            {"day_offset": 0, "hour": 20, "temp": "37.0", "pulse": 84, "rr": 18, "notes": "8cm dilated; pushing urge"},
+            {"day_offset": 0, "hour": 21, "temp": "37.0", "pulse": 88, "rr": 20, "notes": "Second stage; actively pushing"},
+            {"day_offset": 0, "hour": 22, "temp": "37.0", "pulse": 82, "rr": 18, "notes": "SVD at 2145h; baby 3.2kg; Apgar 9/10"},
+            {"day_offset": 0, "hour": 22.25, "temp": "36.9", "pulse": 80, "rr": 18, "notes": "Immediate post-delivery; fundus firm; oxytocin given"},
+            {"day_offset": 0, "hour": 22.5, "temp": "36.9", "pulse": 78, "rr": 16, "notes": "15 min check; lochia moderate; baby latched"},
+            {"day_offset": 0, "hour": 23, "temp": "36.8", "pulse": 76, "rr": 16, "notes": "30 min check; fundus firm at umbilicus"},
+            {"day_offset": 1, "hour": 0, "temp": "36.8", "pulse": 76, "rr": 16, "notes": "1h check; fundus firm; blood loss <500ml total"},
+            {"day_offset": 1, "hour": 2, "temp": "36.7", "pulse": 74, "rr": 16, "notes": "2h check; mother resting; baby feeding"},
+            {"day_offset": 1, "hour": 6, "temp": "36.8", "pulse": 76, "rr": 16, "notes": "Morning; breastfeeding well; lochia reducing"},
+            {"day_offset": 1, "hour": 10, "temp": "36.7", "pulse": 74, "rr": 16, "notes": "Ambulatory; eating well"},
+            {"day_offset": 1, "hour": 14, "temp": "36.7", "pulse": 74, "rr": 16, "notes": "Baby immunised BCG/OPV-0; PNC counselling done"},
+        ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 18, "systolic": 118, "diastolic": 72, "pulse": 86, "position": "LYING", "notes": "In labour; pre-delivery"},
+            {"day_offset": 0, "hour": 22, "systolic": 116, "diastolic": 70, "pulse": 82, "position": "LYING", "notes": "Immediate postpartum"},
+            {"day_offset": 0, "hour": 23, "systolic": 114, "diastolic": 70, "pulse": 76, "position": "LYING", "notes": "30 min postpartum check"},
+            {"day_offset": 1, "hour": 6, "systolic": 112, "diastolic": 68, "pulse": 76, "position": "SITTING", "notes": "Morning; stable"},
+            {"day_offset": 1, "hour": 14, "systolic": 116, "diastolic": 72, "pulse": 74, "position": "SITTING", "notes": "Pre-discharge check"},
         ],
     },
     {
@@ -581,13 +805,52 @@ SCENARIOS = [
             {"shift": "DAY", "day_offset": 3, "content": "T 37.2°C for 24h now. Appetite improved. Doctor reviewed — plan to transfer to medical ward tomorrow if remains afebrile. Oral azithromycin started."},
         ],
         "tpr": [
-            {"day_offset": 0, "hour": 8, "temp": "39.2", "pulse": 102, "rr": 22},
-            {"day_offset": 0, "hour": 20, "temp": "38.8", "pulse": 98, "rr": 20},
-            {"day_offset": 1, "hour": 8, "temp": "38.9", "pulse": 96, "rr": 20},
-            {"day_offset": 2, "hour": 8, "temp": "38.0", "pulse": 88, "rr": 18},
-            {"day_offset": 3, "hour": 8, "temp": "37.6", "pulse": 82, "rr": 18},
-            {"day_offset": 4, "hour": 8, "temp": "37.0", "pulse": 76, "rr": 16},
+            {"day_offset": 0, "hour": 6, "temp": "39.4", "pulse": 104, "rr": 22, "notes": "Admission; stepladder fever pattern day 10; toxic"},
+            {"day_offset": 0, "hour": 10, "temp": "39.2", "pulse": 102, "rr": 22, "notes": "Ceftriaxone 1st dose given"},
+            {"day_offset": 0, "hour": 14, "temp": "39.0", "pulse": 100, "rr": 20, "notes": "Tepid sponge; paracetamol given"},
+            {"day_offset": 0, "hour": 18, "temp": "38.8", "pulse": 98, "rr": 20, "notes": "Still febrile; rigors noted"},
+            {"day_offset": 0, "hour": 22, "temp": "38.6", "pulse": 96, "rr": 20, "notes": "Overnight observation plan Q4H"},
+            {"day_offset": 1, "hour": 2, "temp": "38.4", "pulse": 92, "rr": 18, "notes": "Sweating; fluid intake encouraged"},
+            {"day_offset": 1, "hour": 6, "temp": "38.9", "pulse": 96, "rr": 20, "notes": "Morning spike; characteristic pattern"},
+            {"day_offset": 1, "hour": 10, "temp": "38.6", "pulse": 94, "rr": 20, "notes": "Blood culture positive - Salmonella typhi confirmed"},
+            {"day_offset": 1, "hour": 14, "temp": "38.4", "pulse": 90, "rr": 18, "notes": "Tepid sponge"},
+            {"day_offset": 1, "hour": 18, "temp": "38.2", "pulse": 88, "rr": 18, "notes": "Appetite slightly improved"},
+            {"day_offset": 1, "hour": 22, "temp": "38.0", "pulse": 86, "rr": 18, "notes": ""},
+            {"day_offset": 2, "hour": 6, "temp": "38.0", "pulse": 88, "rr": 18, "notes": "Fever plateau; ceftriaxone continuing"},
+            {"day_offset": 2, "hour": 14, "temp": "37.8", "pulse": 84, "rr": 18, "notes": "Trending down"},
+            {"day_offset": 2, "hour": 22, "temp": "37.6", "pulse": 82, "rr": 16, "notes": "Best temp so far"},
+            {"day_offset": 3, "hour": 6, "temp": "37.4", "pulse": 80, "rr": 16, "notes": "Defervescing; eating soft diet"},
+            {"day_offset": 3, "hour": 14, "temp": "37.2", "pulse": 78, "rr": 16, "notes": ""},
+            {"day_offset": 3, "hour": 22, "temp": "37.0", "pulse": 76, "rr": 16, "notes": "Afebrile! 24h count starts"},
+            {"day_offset": 4, "hour": 6, "temp": "36.9", "pulse": 76, "rr": 16, "notes": "Afebrile ×8h; transfer plan initiated"},
+            {"day_offset": 4, "hour": 14, "temp": "37.0", "pulse": 76, "rr": 16, "notes": "Afebrile ×16h; azithromycin oral started"},
+            {"day_offset": 4, "hour": 22, "temp": "36.8", "pulse": 74, "rr": 16, "notes": "Afebrile ×24h; transfer to medical ward approved"},
         ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 8, "systolic": 110, "diastolic": 68, "pulse": 102, "position": "LYING", "notes": "Relative hypotension; dehydrated"},
+            {"day_offset": 1, "hour": 8, "systolic": 108, "diastolic": 66, "pulse": 96, "position": "LYING", "notes": "IV fluids running"},
+            {"day_offset": 2, "hour": 8, "systolic": 112, "diastolic": 70, "pulse": 88, "position": "SITTING", "notes": "Improving"},
+            {"day_offset": 3, "hour": 8, "systolic": 116, "diastolic": 72, "pulse": 80, "position": "SITTING", "notes": "Normalising"},
+            {"day_offset": 4, "hour": 8, "systolic": 118, "diastolic": 74, "pulse": 76, "position": "SITTING", "notes": "Normal; plan transfer"},
+        ],
+        "fluid_balance": {
+            "days": [
+                {
+                    "day_offset": 0,
+                    "weight_kg": "58.0",
+                    "iv_notes": "NS 1L over 8h; ensure >2L oral/day",
+                    "entries": [
+                        {"hour": 8, "type": "INTRAVENOUS", "item": "Normal Saline 0.9%", "amount_ml": 500, "notes": "Rehydration"},
+                        {"hour": 10, "type": "ALIMENTARY", "item": "ORS", "amount_ml": 200, "notes": "Nausea controlled"},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 250, "notes": ""},
+                        {"hour": 14, "type": "ALIMENTARY", "item": "Light soup", "amount_ml": 200, "notes": "Soft diet"},
+                        {"hour": 16, "type": "INTRAVENOUS", "item": "Normal Saline 0.9%", "amount_ml": 500, "notes": ""},
+                        {"hour": 18, "type": "URINE", "item": "Urine", "amount_ml": 300, "notes": ""},
+                        {"hour": 20, "type": "ALIMENTARY", "item": "Tea and bread", "amount_ml": 250, "notes": ""},
+                    ],
+                },
+            ],
+        },
     },
     {
         "ward_type": "MEDICAL",
@@ -659,10 +922,84 @@ SCENARIOS = [
             {"shift": "NIGHT", "day_offset": 1, "content": "Urine output stable at 50ml/hr. IV running. Slept well. No oedema. Na 138, K 5.1 — rechecked per plan."},
         ],
         "tpr": [
-            {"day_offset": 0, "hour": 10, "temp": "36.8", "pulse": 88, "rr": 18},
-            {"day_offset": 1, "hour": 8, "temp": "36.6", "pulse": 82, "rr": 16},
-            {"day_offset": 2, "hour": 8, "temp": "36.5", "pulse": 76, "rr": 16},
+            {"day_offset": 0, "hour": 10, "temp": "36.8", "pulse": 88, "rr": 18, "notes": "On admission; afebrile, mildly tachycardic"},
+            {"day_offset": 0, "hour": 14, "temp": "36.7", "pulse": 86, "rr": 18, "notes": "IV NS started at 125ml/hr"},
+            {"day_offset": 0, "hour": 18, "temp": "36.8", "pulse": 84, "rr": 16, "notes": "Catheterised; strict I/O started"},
+            {"day_offset": 0, "hour": 22, "temp": "36.7", "pulse": 82, "rr": 16, "notes": "Output 35ml/hr — improving"},
+            {"day_offset": 1, "hour": 2, "temp": "36.6", "pulse": 80, "rr": 16, "notes": "Sleeping; output 40ml/hr"},
+            {"day_offset": 1, "hour": 6, "temp": "36.6", "pulse": 82, "rr": 16, "notes": "Morning; Cr result awaited"},
+            {"day_offset": 1, "hour": 10, "temp": "36.7", "pulse": 80, "rr": 16, "notes": "Cr 320 (improving from 380)"},
+            {"day_offset": 1, "hour": 14, "temp": "36.6", "pulse": 78, "rr": 16, "notes": "Taking small amounts of renal diet"},
+            {"day_offset": 1, "hour": 18, "temp": "36.6", "pulse": 78, "rr": 16, "notes": "Urine output 50ml/hr now"},
+            {"day_offset": 1, "hour": 22, "temp": "36.5", "pulse": 76, "rr": 16, "notes": "Comfortable; nausea settling"},
+            {"day_offset": 2, "hour": 6, "temp": "36.5", "pulse": 76, "rr": 16, "notes": "Morning; Cr 280; K+ normalised"},
+            {"day_offset": 2, "hour": 10, "temp": "36.5", "pulse": 74, "rr": 16, "notes": "Output 60ml/hr; catheter removal discussed"},
+            {"day_offset": 2, "hour": 14, "temp": "36.6", "pulse": 76, "rr": 16, "notes": "Eating well; ambulating"},
+            {"day_offset": 2, "hour": 18, "temp": "36.5", "pulse": 74, "rr": 16, "notes": "Catheter removed; voiding spontaneously"},
         ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 10, "systolic": 158, "diastolic": 92, "pulse": 88, "position": "LYING", "notes": "On admission; uncontrolled HTN; enalapril held"},
+            {"day_offset": 0, "hour": 14, "systolic": 152, "diastolic": 88, "pulse": 86, "position": "LYING", "notes": "IV fluids running"},
+            {"day_offset": 0, "hour": 18, "systolic": 148, "diastolic": 86, "pulse": 84, "position": "SITTING", "notes": "Improving with hydration"},
+            {"day_offset": 0, "hour": 22, "systolic": 144, "diastolic": 84, "pulse": 82, "position": "LYING", "notes": "Overnight plan"},
+            {"day_offset": 1, "hour": 8, "systolic": 142, "diastolic": 82, "pulse": 82, "position": "SITTING", "notes": "Morning; renal function improving"},
+            {"day_offset": 1, "hour": 14, "systolic": 138, "diastolic": 80, "pulse": 78, "position": "SITTING", "notes": ""},
+            {"day_offset": 1, "hour": 20, "systolic": 136, "diastolic": 78, "pulse": 78, "position": "SITTING", "notes": "Consider restarting enalapril if Cr <200"},
+            {"day_offset": 2, "hour": 8, "systolic": 134, "diastolic": 78, "pulse": 76, "position": "SITTING", "notes": "Cr 280; enalapril still held"},
+            {"day_offset": 2, "hour": 14, "systolic": 132, "diastolic": 76, "pulse": 74, "position": "SITTING", "notes": "BP trending down with diuresis"},
+        ],
+        "fluid_balance": {
+            "days": [
+                {
+                    "day_offset": 0,
+                    "weight_kg": "84.0",
+                    "iv_notes": "NS 0.9% at 125ml/hr; strict hourly I/O",
+                    "entries": [
+                        {"hour": 10, "type": "INTRAVENOUS", "item": "Normal Saline 0.9%", "amount_ml": 500, "notes": "Started at 125ml/hr"},
+                        {"hour": 11, "type": "URINE", "item": "Urine", "amount_ml": 20, "notes": "Catheterised; oliguric"},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 25, "notes": "Hourly measurement"},
+                        {"hour": 13, "type": "URINE", "item": "Urine", "amount_ml": 30, "notes": "Slowly improving"},
+                        {"hour": 14, "type": "ALIMENTARY", "item": "Tea", "amount_ml": 100, "notes": "Small sips; nauseous"},
+                        {"hour": 15, "type": "INTRAVENOUS", "item": "Normal Saline 0.9%", "amount_ml": 500, "notes": "2nd bag"},
+                        {"hour": 15, "type": "URINE", "item": "Urine", "amount_ml": 35, "notes": "Improving trend"},
+                        {"hour": 17, "type": "URINE", "item": "Urine", "amount_ml": 40, "notes": "Output >30ml/hr now"},
+                        {"hour": 18, "type": "ALIMENTARY", "item": "Light soup — renal diet", "amount_ml": 200, "notes": "Small amount tolerated"},
+                        {"hour": 20, "type": "URINE", "item": "Urine", "amount_ml": 45, "notes": ""},
+                        {"hour": 22, "type": "URINE", "item": "Urine", "amount_ml": 50, "notes": "Reaching target output"},
+                    ],
+                },
+                {
+                    "day_offset": 1,
+                    "weight_kg": "83.5",
+                    "iv_notes": "NS reduced to 80ml/hr; oral intake increasing",
+                    "entries": [
+                        {"hour": 2, "type": "URINE", "item": "Urine", "amount_ml": 150, "notes": "4h overnight total"},
+                        {"hour": 6, "type": "URINE", "item": "Urine", "amount_ml": 200, "notes": "4h total — 50ml/hr avg"},
+                        {"hour": 7, "type": "ALIMENTARY", "item": "Porridge (low K+)", "amount_ml": 250, "notes": "Renal diet"},
+                        {"hour": 8, "type": "INTRAVENOUS", "item": "Normal Saline 0.9%", "amount_ml": 500, "notes": "Ongoing at 80ml/hr"},
+                        {"hour": 10, "type": "ALIMENTARY", "item": "Water", "amount_ml": 200, "notes": ""},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 250, "notes": "Output improving; 50ml/hr"},
+                        {"hour": 13, "type": "ALIMENTARY", "item": "Lunch — renal diet", "amount_ml": 300, "notes": "Appetite returning"},
+                        {"hour": 17, "type": "URINE", "item": "Urine", "amount_ml": 300, "notes": "Excellent output"},
+                        {"hour": 19, "type": "ALIMENTARY", "item": "Supper", "amount_ml": 300, "notes": "Taking well"},
+                        {"hour": 22, "type": "URINE", "item": "Urine", "amount_ml": 280, "notes": "Output sustained >60ml/hr"},
+                    ],
+                },
+                {
+                    "day_offset": 2,
+                    "weight_kg": "82.5",
+                    "iv_notes": "IV discontinued; oral fluids >2L/day",
+                    "entries": [
+                        {"hour": 6, "type": "URINE", "item": "Urine", "amount_ml": 400, "notes": "Overnight total; good diuresis"},
+                        {"hour": 7, "type": "ALIMENTARY", "item": "Porridge and tea", "amount_ml": 350, "notes": "Eating well"},
+                        {"hour": 10, "type": "ALIMENTARY", "item": "Water", "amount_ml": 300, "notes": ""},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 350, "notes": "Catheter removed; voiding well"},
+                        {"hour": 13, "type": "ALIMENTARY", "item": "Lunch", "amount_ml": 350, "notes": "Full meal tolerated"},
+                        {"hour": 16, "type": "URINE", "item": "Urine", "amount_ml": 300, "notes": "Voiding spontaneously"},
+                    ],
+                },
+            ],
+        },
     },
     # ========== DISCHARGED (2 — normal) ==========
     {
@@ -700,11 +1037,78 @@ SCENARIOS = [
                 {"drug_code": "METO500", "quantity": 60, "dosage": "500mg", "frequency": "Twice daily", "duration": "Ongoing", "route": "Oral", "instructions": "Take with meals to reduce GI side effects. Maximum tolerated dose for this patient."},
             ]},
         ],
-        "handover_notes": [],
+        "handover_notes": [
+            {"shift_ending": "DAY", "day_offset": 1, "pending_tasks": "Insulin sliding scale running. Capillary blood glucose Q4H. RBS 13.2 at midday. No ketones. Diabetic educator referral in morning.", "escalations": "RBS was 28 on admission — critical. Monitor for DKA signs. Metformin allergy documented (GI intolerance at >1g/day)."},
+            {"shift_ending": "NIGHT", "day_offset": 2, "pending_tasks": "Sugars trending down to 10-12 range. Morning fasting glucose pending. Transition to premixed insulin if fasting <12.", "escalations": ""},
+            {"shift_ending": "DAY", "day_offset": 4, "pending_tasks": "Stable on Mixtard 30/20 IU. Fasting sugar 6.8 today. Patient demonstrated self-injection technique. Plan discharge tomorrow with OPD follow-up in 2 weeks.", "escalations": ""},
+        ],
         "rounds": [
             {"day_offset": 1, "condition": "STABLE", "subj": "Feeling better, blood sugars 12-15 mmol/L on insulin sliding scale", "obj": "RBS 13.2 mmol/L, no ketones, HbA1c 11.2%", "assess": "Uncontrolled T2DM admitted for stabilisation", "plan": "Initiate basal-bolus insulin, diabetic education, renal screen"},
             {"day_offset": 3, "condition": "IMPROVING", "subj": "Sugars 7-10 mmol/L, appetite good", "obj": "RBS 8.4 mmol/L, eGFR 72", "assess": "Glycaemia stabilising on insulin", "plan": "Switch to premixed insulin, plan discharge tomorrow"},
         ],
+        "kardex": {
+            "mobility_status": "Ambulatory",
+            "dietary_requirements": "Diabetic diet — 1800 kcal, controlled CHO",
+            "iv_access": "Right hand cannula (for insulin infusion)",
+            "fall_risk": "LOW",
+            "pressure_sore_risk": "LOW",
+        },
+        "care_plan": {
+            "assessment": "Newly diagnosed T2DM with RBS 28. BMI 34. No DKA. Acanthosis nigricans present. Strong family history.",
+            "nursing_diagnosis": "Deficient knowledge related to new diagnosis of diabetes mellitus as evidenced by inability to state disease process or self-management strategies",
+            "goal": "Patient will demonstrate insulin self-injection technique and verbalise sugar monitoring plan before discharge",
+            "plan": "Capillary BG monitoring Q4H, administer insulin per sliding scale, arrange diabetic education, teach injection technique, dietary counselling",
+            "rationale": "Structured diabetes education improves glycaemic control and self-management; insulin titration based on BG monitoring achieves target safely",
+            "implementation": "Sliding scale insulin days 1-2, transitioned to Mixtard day 3. Diabetic educator session done. Patient practised self-injection.",
+            "evaluation": "Patient correctly demonstrated injection technique. Fasting BG 6.8 on day 4. Discharge planned.",
+        },
+        "shift_notes": [
+            {"shift": "DAY", "day_offset": 1, "content": "RBS 13.2 at midday. Sliding scale insulin running. Patient very anxious about new diagnosis — spent time counselling. Diabetic diet explained. Checking BG Q4H."},
+            {"shift": "NIGHT", "day_offset": 1, "content": "BG 11.8 at 2200h, 10.4 at 0200h. No hypoglycaemia episodes. Patient slept well. IV insulin running per sliding scale."},
+            {"shift": "DAY", "day_offset": 3, "content": "Transitioned to SC Mixtard today (30 IU AM, 20 IU PM). Fasting BG 8.4. Patient seen by diabetic educator — injection technique taught. Family present for counselling session."},
+            {"shift": "DAY", "day_offset": 4, "content": "Fasting BG 6.8 — excellent. Patient demonstrated self-injection technique correctly. Discharge medications prepared. OPD follow-up card issued."},
+        ],
+        "tpr": [
+            {"day_offset": 0, "hour": 10, "temp": "36.8", "pulse": 86, "rr": 18, "notes": "Admission; afebrile; BMI 34"},
+            {"day_offset": 0, "hour": 14, "temp": "36.7", "pulse": 84, "rr": 18, "notes": "Insulin sliding scale started"},
+            {"day_offset": 0, "hour": 18, "temp": "36.8", "pulse": 82, "rr": 16, "notes": "BG 18.2 — insulin adjusted"},
+            {"day_offset": 0, "hour": 22, "temp": "36.7", "pulse": 80, "rr": 16, "notes": "BG 15.6; settling for night"},
+            {"day_offset": 1, "hour": 6, "temp": "36.7", "pulse": 80, "rr": 16, "notes": "Fasting BG 14.8"},
+            {"day_offset": 1, "hour": 10, "temp": "36.8", "pulse": 82, "rr": 16, "notes": "BG 13.2; ward round"},
+            {"day_offset": 1, "hour": 14, "temp": "36.7", "pulse": 80, "rr": 16, "notes": "BG 12.0; trending down"},
+            {"day_offset": 1, "hour": 18, "temp": "36.8", "pulse": 80, "rr": 16, "notes": "BG 11.4"},
+            {"day_offset": 1, "hour": 22, "temp": "36.7", "pulse": 78, "rr": 16, "notes": "BG 10.4"},
+            {"day_offset": 2, "hour": 6, "temp": "36.7", "pulse": 78, "rr": 16, "notes": "Fasting BG 10.8"},
+            {"day_offset": 2, "hour": 14, "temp": "36.6", "pulse": 78, "rr": 16, "notes": "BG 9.6"},
+            {"day_offset": 3, "hour": 6, "temp": "36.7", "pulse": 76, "rr": 16, "notes": "Fasting BG 8.4; switching to Mixtard"},
+            {"day_offset": 3, "hour": 14, "temp": "36.6", "pulse": 76, "rr": 16, "notes": "Post-Mixtard BG 9.2; good"},
+            {"day_offset": 4, "hour": 6, "temp": "36.7", "pulse": 76, "rr": 16, "notes": "Fasting BG 6.8; discharge day"},
+        ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 10, "systolic": 132, "diastolic": 84, "pulse": 86, "position": "SITTING", "notes": "On admission; borderline HTN"},
+            {"day_offset": 1, "hour": 8, "systolic": 128, "diastolic": 80, "pulse": 80, "position": "SITTING", "notes": "Morning"},
+            {"day_offset": 2, "hour": 8, "systolic": 126, "diastolic": 78, "pulse": 78, "position": "SITTING", "notes": ""},
+            {"day_offset": 3, "hour": 8, "systolic": 124, "diastolic": 78, "pulse": 76, "position": "SITTING", "notes": "BP improving with glycaemic control"},
+            {"day_offset": 4, "hour": 8, "systolic": 122, "diastolic": 76, "pulse": 76, "position": "SITTING", "notes": "Discharge day; BP OK"},
+        ],
+        "fluid_balance": {
+            "days": [
+                {
+                    "day_offset": 0,
+                    "weight_kg": "88.0",
+                    "iv_notes": "Insulin infusion via pump; NS TKO",
+                    "entries": [
+                        {"hour": 10, "type": "INTRAVENOUS", "item": "NS 0.9% with insulin infusion", "amount_ml": 200, "notes": "Running via pump"},
+                        {"hour": 12, "type": "ALIMENTARY", "item": "Diabetic lunch", "amount_ml": 300, "notes": "1800 kcal plan"},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 500, "notes": "Polyuria — osmotic diuresis"},
+                        {"hour": 15, "type": "ALIMENTARY", "item": "Water", "amount_ml": 400, "notes": "Polydipsia"},
+                        {"hour": 17, "type": "URINE", "item": "Urine", "amount_ml": 400, "notes": "Still polyuric"},
+                        {"hour": 19, "type": "ALIMENTARY", "item": "Diabetic supper", "amount_ml": 300, "notes": ""},
+                        {"hour": 22, "type": "URINE", "item": "Urine", "amount_ml": 350, "notes": "Output reducing as BG drops"},
+                    ],
+                },
+            ],
+        },
         "discharge": {
             "type": "NORMAL",
             "final_icd": "E11.65",
@@ -747,10 +1151,75 @@ SCENARIOS = [
                 {"drug_code": "PCM1G", "quantity": 15, "dosage": "1g", "frequency": "Three times daily", "duration": "5 days", "route": "Oral", "instructions": "Discharge analgesia. Take regularly for first 3 days, then as needed."},
             ]},
         ],
-        "handover_notes": [],
+        "handover_notes": [
+            {"shift_ending": "NIGHT", "day_offset": 0, "pending_tasks": "Admitted for elective lap chole tomorrow 0800h. NPO from midnight. Pre-op bloods done. Surgical antibiotic prophylaxis due 30 min before incision.", "escalations": ""},
+            {"shift_ending": "DAY", "day_offset": 1, "pending_tasks": "Post-op day 0: vitals Q1H ×4 then Q4H. Check port sites. Advance diet when awake and bowel sounds present. Due paracetamol 1g at 2200h.", "escalations": ""},
+        ],
         "rounds": [
             {"day_offset": 1, "condition": "STABLE", "subj": "Post-op day 1, mild wound pain, passed flatus", "obj": "T 36.9°C, abdomen soft, laparoscopy ports clean", "assess": "Uncomplicated post-laparoscopic cholecystectomy", "plan": "Start sips, advance diet, early ambulation"},
+            {"day_offset": 2, "condition": "IMPROVING", "subj": "Eating light diet, mobilising, minimal pain", "obj": "T 36.8°C, all 4 ports clean and dry, passing flatus and stool", "assess": "Post-lap chole day 2 — fit for discharge", "plan": "Discharge today with paracetamol. Follow-up in 2 weeks. Low-fat diet for 2 weeks."},
         ],
+        "kardex": {
+            "mobility_status": "Pre-op: ambulatory; Post-op: bedrest → ambulate day 1",
+            "dietary_requirements": "NPO pre-op, sips → light diet post-op",
+            "iv_access": "Left hand cannula",
+            "fall_risk": "LOW",
+            "pressure_sore_risk": "LOW",
+        },
+        "care_plan": {
+            "assessment": "Elective laparoscopic cholecystectomy. No comorbidities. Pre-op workup normal.",
+            "nursing_diagnosis": "Risk for infection related to surgical incision sites (4 laparoscopy ports)",
+            "goal": "Patient will remain afebrile with clean, dry port sites throughout admission; discharged by day 3",
+            "plan": "Wound inspection daily, vital signs Q4H post-op, early ambulation, DVT prophylaxis via mobilisation, advance diet as tolerated",
+            "rationale": "Early wound assessment detects infection; early mobilisation reduces DVT risk and promotes bowel recovery after laparoscopy",
+            "implementation": "Pre-op checklist completed. Ceftriaxone given pre-op. Post-op vitals per protocol. Ports inspected — all clean.",
+            "evaluation": "No surgical site infection. Discharged day 3 with no complications.",
+        },
+        "shift_notes": [
+            {"shift": "NIGHT", "day_offset": 0, "content": "Patient admitted for tomorrow's elective lap chole. Pre-op workup complete, consent signed. NPO from midnight. Anxious — reassured about laparoscopic approach."},
+            {"shift": "DAY", "day_offset": 1, "content": "Returned from theatre at 1030h. Conscious, oriented. Ports clean and dry. BP 118/72, PR 74. Taking sips. Paracetamol given for mild wound pain."},
+            {"shift": "NIGHT", "day_offset": 1, "content": "Comfortable overnight. Bowel sounds present. Passed flatus. Tolerating sips well. No fever."},
+            {"shift": "DAY", "day_offset": 2, "content": "Eating light breakfast. Walking to bathroom independently. Ports clean and dry. Discharge paperwork prepared. Low-fat diet counselling done."},
+        ],
+        "tpr": [
+            {"day_offset": 0, "hour": 14, "temp": "36.9", "pulse": 76, "rr": 16, "notes": "Admission; elective pre-op"},
+            {"day_offset": 0, "hour": 22, "temp": "36.8", "pulse": 74, "rr": 16, "notes": "NPO from midnight"},
+            {"day_offset": 1, "hour": 6, "temp": "36.8", "pulse": 76, "rr": 16, "notes": "Pre-op morning; fasted"},
+            {"day_offset": 1, "hour": 11, "temp": "37.0", "pulse": 78, "rr": 16, "notes": "Post-op 30min; conscious, oriented"},
+            {"day_offset": 1, "hour": 12, "temp": "37.0", "pulse": 76, "rr": 16, "notes": "Post-op 1h; stable"},
+            {"day_offset": 1, "hour": 13, "temp": "36.9", "pulse": 76, "rr": 16, "notes": "Post-op 2h; ports clean"},
+            {"day_offset": 1, "hour": 14, "temp": "36.9", "pulse": 74, "rr": 16, "notes": "Post-op 3h; taking sips"},
+            {"day_offset": 1, "hour": 18, "temp": "36.9", "pulse": 74, "rr": 16, "notes": "Bowel sounds present"},
+            {"day_offset": 1, "hour": 22, "temp": "36.8", "pulse": 72, "rr": 16, "notes": "Comfortable for night"},
+            {"day_offset": 2, "hour": 6, "temp": "36.8", "pulse": 72, "rr": 16, "notes": "Morning; eating light diet"},
+            {"day_offset": 2, "hour": 10, "temp": "36.7", "pulse": 72, "rr": 16, "notes": "Discharge day; all ports clean"},
+        ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 14, "systolic": 120, "diastolic": 74, "pulse": 76, "position": "SITTING", "notes": "Pre-op baseline"},
+            {"day_offset": 1, "hour": 11, "systolic": 116, "diastolic": 72, "pulse": 78, "position": "LYING", "notes": "Post-op 30min"},
+            {"day_offset": 1, "hour": 12, "systolic": 118, "diastolic": 72, "pulse": 76, "position": "LYING", "notes": "Post-op 1h"},
+            {"day_offset": 1, "hour": 14, "systolic": 120, "diastolic": 74, "pulse": 74, "position": "SITTING", "notes": "Post-op 3h; sat up"},
+            {"day_offset": 2, "hour": 8, "systolic": 118, "diastolic": 72, "pulse": 72, "position": "SITTING", "notes": "Discharge day"},
+        ],
+        "fluid_balance": {
+            "days": [
+                {
+                    "day_offset": 1,
+                    "weight_kg": "74.0",
+                    "iv_notes": "RL 1L over 8h post-op; DC when tolerating oral",
+                    "entries": [
+                        {"hour": 11, "type": "INTRAVENOUS", "item": "Ringer's Lactate", "amount_ml": 500, "notes": "Post-op; running at 125ml/hr"},
+                        {"hour": 13, "type": "URINE", "item": "Urine", "amount_ml": 200, "notes": "Voiding spontaneously post-op"},
+                        {"hour": 14, "type": "ALIMENTARY", "item": "Sips of water", "amount_ml": 100, "notes": "Tolerated well"},
+                        {"hour": 16, "type": "INTRAVENOUS", "item": "Ringer's Lactate", "amount_ml": 500, "notes": "2nd bag"},
+                        {"hour": 17, "type": "ALIMENTARY", "item": "Tea", "amount_ml": 200, "notes": "No nausea"},
+                        {"hour": 18, "type": "URINE", "item": "Urine", "amount_ml": 300, "notes": "Good output"},
+                        {"hour": 20, "type": "ALIMENTARY", "item": "Light soup", "amount_ml": 250, "notes": "Bowel sounds active"},
+                        {"hour": 22, "type": "URINE", "item": "Urine", "amount_ml": 250, "notes": "IV discontinued; oral intake good"},
+                    ],
+                },
+            ],
+        },
         "discharge": {
             "type": "NORMAL",
             "final_icd": "K80.2",
@@ -802,6 +1271,106 @@ SCENARIOS = [
         "rounds": [
             {"day_offset": 1, "condition": "CRITICAL", "subj": "Intubated, sedated, on vasopressor support", "obj": "GCS 3T, BP 90/60 on noradrenaline 0.3mcg/kg/min, mech ventilated FiO2 60%, pH 7.18, lactate 8.2", "assess": "Post-cardiac arrest, multi-organ dysfunction. Poor neurological prognosis.", "plan": "Continue organ support, family meeting for goals of care discussion"},
         ],
+        "kardex": {
+            "mobility_status": "Complete bed rest — intubated and sedated",
+            "dietary_requirements": "NPO — intubated, NG on free drainage",
+            "iv_access": "Right subclavian CVC, left radial arterial line, right hand peripheral",
+            "fall_risk": "HIGH",
+            "pressure_sore_risk": "HIGH",
+        },
+        "care_plan": {
+            "assessment": "Post-cardiac arrest with ROSC. GCS 3. Mechanically ventilated. On vasopressor support. Multi-organ dysfunction (cardiac, renal, neurological). Fixed dilated pupils.",
+            "nursing_diagnosis": "Ineffective tissue perfusion related to cardiac arrest and vasopressor dependency as evidenced by hypotension, mottled extremities, and anuria",
+            "goal": "Maintain MAP ≥65 mmHg, adequate urine output, stable ventilator parameters. Family counselled on prognosis.",
+            "plan": "Hourly vitals and neuro obs, titrate noradrenaline to MAP ≥65, monitor ventilator settings, strict I/O with catheter, CVC and arterial line care, pressure area care Q2H, family support and goals of care discussions",
+            "rationale": "Continuous hemodynamic monitoring and vasopressor titration maximise end-organ perfusion; regular repositioning prevents pressure injuries in immobilised patient",
+            "implementation": "Norad infusion titrated. Hourly neuro obs GCS 3 unchanged. 2-hourly turns with pressure care. Family meeting done day 1 — goals of care discussed. Chaplain offered.",
+            "evaluation": "Despite maximal support, progressive multi-organ failure. Patient pronounced dead day 2 at 0847h. Family at bedside.",
+        },
+        "shift_notes": [
+            {"shift": "NIGHT", "day_offset": 0, "content": "Post-ROSC admission to ICU. Intubated, on norad 0.2mcg/kg/min. GCS 3. Pupils fixed dilated. CVC and arterial line placed. Catheter draining minimal urine. Initial ABG: pH 7.12, lactate 12.4. Calcium gluconate given for K+ 6.8."},
+            {"shift": "DAY", "day_offset": 1, "content": "GCS remains 3. Pupils fixed. Norad increased to 0.3mcg/kg/min. Anuric last 6 hours. ABG: pH 7.18, lactate 8.2. Packed cells transfused (Hb 9.8). Family meeting at 1600h — poor prognosis communicated. Palliative care team consulted."},
+            {"shift": "NIGHT", "day_offset": 1, "content": "Progressive deterioration. Norad at 0.5mcg/kg/min. BP 80/50 despite support. Anuric. Family at bedside through night. Pronounced dead at 0847h after asystole on monitor. Body care done. Family supported by chaplain."},
+        ],
+        "tpr": [
+            {"day_offset": 0, "hour": 20, "temp": "35.2", "pulse": 0, "rr": 0, "notes": "ED arrival; PEA arrest; CPR in progress"},
+            {"day_offset": 0, "hour": 20.5, "temp": "35.4", "pulse": 110, "rr": 14, "notes": "ROSC achieved; intubated; vent rate 14"},
+            {"day_offset": 0, "hour": 21, "temp": "35.6", "pulse": 108, "rr": 14, "notes": "Transferred to ICU; on norad"},
+            {"day_offset": 0, "hour": 22, "temp": "35.8", "pulse": 106, "rr": 14, "notes": "CVC placed; K+ 6.8 treated"},
+            {"day_offset": 0, "hour": 23, "temp": "36.0", "pulse": 104, "rr": 14, "notes": "Warming blanket applied"},
+            {"day_offset": 1, "hour": 0, "temp": "36.2", "pulse": 102, "rr": 14, "notes": "Hourly obs; GCS 3; pupils fixed"},
+            {"day_offset": 1, "hour": 2, "temp": "36.4", "pulse": 100, "rr": 14, "notes": "Temperature normalising; anuric"},
+            {"day_offset": 1, "hour": 4, "temp": "36.6", "pulse": 104, "rr": 14, "notes": "Norad increased to 0.3; BP 90/60"},
+            {"day_offset": 1, "hour": 6, "temp": "36.8", "pulse": 106, "rr": 14, "notes": "Morning bloods drawn; GCS 3 unchanged"},
+            {"day_offset": 1, "hour": 8, "temp": "37.0", "pulse": 110, "rr": 14, "notes": "Ward round; poor prognosis confirmed"},
+            {"day_offset": 1, "hour": 10, "temp": "37.2", "pulse": 112, "rr": 14, "notes": "Packed cells transfusion started (Hb 9.8)"},
+            {"day_offset": 1, "hour": 12, "temp": "37.4", "pulse": 114, "rr": 14, "notes": "Transfusion complete; low-grade temp — monitor"},
+            {"day_offset": 1, "hour": 14, "temp": "37.6", "pulse": 116, "rr": 14, "notes": "Norad 0.4; worsening; family meeting"},
+            {"day_offset": 1, "hour": 18, "temp": "37.8", "pulse": 118, "rr": 14, "notes": "Deteriorating; norad 0.5; anuric"},
+            {"day_offset": 1, "hour": 22, "temp": "38.0", "pulse": 120, "rr": 14, "notes": "Tachycardic; refractory shock; family at bedside"},
+        ],
+        "bp_readings": [
+            {"day_offset": 0, "hour": 20.5, "systolic": 70, "diastolic": 40, "pulse": 110, "position": "LYING", "notes": "Post-ROSC; profoundly hypotensive"},
+            {"day_offset": 0, "hour": 21, "systolic": 78, "diastolic": 48, "pulse": 108, "position": "LYING", "notes": "Norad started; art line in situ"},
+            {"day_offset": 0, "hour": 22, "systolic": 84, "diastolic": 52, "pulse": 106, "position": "LYING", "notes": "Norad 0.2; BP improving slightly"},
+            {"day_offset": 0, "hour": 23, "systolic": 88, "diastolic": 56, "pulse": 104, "position": "LYING", "notes": "Still hypotensive; cold peripheries"},
+            {"day_offset": 1, "hour": 0, "systolic": 90, "diastolic": 58, "pulse": 102, "position": "LYING", "notes": "MAP just >65"},
+            {"day_offset": 1, "hour": 2, "systolic": 88, "diastolic": 56, "pulse": 100, "position": "LYING", "notes": "Borderline; anuric"},
+            {"day_offset": 1, "hour": 4, "systolic": 84, "diastolic": 54, "pulse": 104, "position": "LYING", "notes": "Norad increased to 0.3"},
+            {"day_offset": 1, "hour": 6, "systolic": 90, "diastolic": 60, "pulse": 106, "position": "LYING", "notes": "Responding transiently to norad"},
+            {"day_offset": 1, "hour": 8, "systolic": 88, "diastolic": 58, "pulse": 110, "position": "LYING", "notes": "Ward round; further escalation limited"},
+            {"day_offset": 1, "hour": 12, "systolic": 86, "diastolic": 54, "pulse": 114, "position": "LYING", "notes": "Post-transfusion; no sustained improvement"},
+            {"day_offset": 1, "hour": 14, "systolic": 82, "diastolic": 50, "pulse": 116, "position": "LYING", "notes": "Norad 0.4; refractory"},
+            {"day_offset": 1, "hour": 18, "systolic": 78, "diastolic": 48, "pulse": 118, "position": "LYING", "notes": "Norad 0.5; worsening"},
+            {"day_offset": 1, "hour": 22, "systolic": 72, "diastolic": 44, "pulse": 120, "position": "LYING", "notes": "Refractory shock; family informed"},
+        ],
+        "fluid_balance": {
+            "days": [
+                {
+                    "day_offset": 0,
+                    "weight_kg": "82.0",
+                    "iv_notes": "Norad infusion via CVC; NS TKO; calcium gluconate for K+ 6.8",
+                    "entries": [
+                        {"hour": 21, "type": "INTRAVENOUS", "item": "NS 0.9% TKO + Noradrenaline", "amount_ml": 100, "notes": "Norad via CVC syringe driver"},
+                        {"hour": 21, "type": "INTRAVENOUS", "item": "Calcium Gluconate 10%", "amount_ml": 100, "notes": "For K+ 6.8; given over 10min"},
+                        {"hour": 22, "type": "INTRAVENOUS", "item": "50% Dextrose + 10U Actrapid", "amount_ml": 100, "notes": "Insulin-dextrose for hyperkalaemia"},
+                        {"hour": 23, "type": "URINE", "item": "Urine", "amount_ml": 10, "notes": "Catheterised; oliguric"},
+                    ],
+                },
+                {
+                    "day_offset": 1,
+                    "weight_kg": "83.0",
+                    "iv_notes": "Norad infusion escalating; packed cells ordered; fluid restricted",
+                    "entries": [
+                        {"hour": 6, "type": "URINE", "item": "Urine", "amount_ml": 20, "notes": "6h overnight total — anuric"},
+                        {"hour": 10, "type": "INTRAVENOUS", "item": "Packed Red Cells", "amount_ml": 300, "notes": "Unit 1 — for Hb 9.8; transfused over 2h"},
+                        {"hour": 12, "type": "URINE", "item": "Urine", "amount_ml": 5, "notes": "Virtually anuric; AKI on CKD"},
+                        {"hour": 18, "type": "URINE", "item": "Urine", "amount_ml": 0, "notes": "Anuric; renal failure"},
+                    ],
+                },
+            ],
+        },
+        "blood_transfusion": {
+            "blood_product": "PACKED_RED_CELLS",
+            "blood_unit_number": "KNH-2026-04812",
+            "blood_group": "O+",
+            "amount_ml": 300,
+            "day_offset": 1,
+            "start_hour": 10,
+            "end_hour": 12,
+            "diagnosis": "Anaemia (Hb 9.8) in post-cardiac arrest with multi-organ dysfunction",
+            "status": "COMPLETED",
+            "reaction_occurred": False,
+            "observations": [
+                {"interval": "BEFORE", "hour": 9, "minute": 45, "bp": "88/56", "temp": "37.0", "pulse": 108, "rr": 14, "remarks": "Pre-transfusion baseline; on ventilator"},
+                {"interval": "00_MIN", "hour": 10, "minute": 0, "bp": "88/58", "temp": "37.0", "pulse": 110, "rr": 14, "remarks": "Transfusion started at 10 drops/min for 15 min"},
+                {"interval": "15_MIN", "hour": 10, "minute": 15, "bp": "90/58", "temp": "37.0", "pulse": 108, "rr": 14, "remarks": "No reaction; rate increased"},
+                {"interval": "45_MIN", "hour": 10, "minute": 45, "bp": "90/60", "temp": "37.2", "pulse": 112, "rr": 14, "remarks": "Mild temp rise — monitoring closely"},
+                {"interval": "1HR_15MIN", "hour": 11, "minute": 15, "bp": "88/56", "temp": "37.3", "pulse": 112, "rr": 14, "remarks": "Temp stable; no rigors; continuing"},
+                {"interval": "1HR_45MIN", "hour": 11, "minute": 45, "bp": "86/54", "temp": "37.4", "pulse": 114, "rr": 14, "remarks": "Transfusion nearing completion"},
+                {"interval": "4HR_AFTER", "hour": 12, "minute": 0, "bp": "86/54", "temp": "37.4", "pulse": 114, "rr": 14, "remarks": "Transfusion completed; no acute reaction; Hb recheck in 4h"},
+            ],
+        },
         "discharge": {
             "type": "DECEASED",
             "final_icd": "I46.9",
@@ -864,6 +1433,11 @@ class Command(BaseCommand):
                 "care_plans": 0,
                 "shift_notes": 0,
                 "tpr_readings": 0,
+                "bp_readings": 0,
+                "fluid_sheets": 0,
+                "fluid_entries": 0,
+                "blood_transfusions": 0,
+                "transfusion_entries": 0,
                 "lab_orders": 0,
                 "lab_results": 0,
                 "imaging_orders": 0,
@@ -1172,8 +1746,96 @@ class Command(BaseCommand):
                         temperature=Decimal(tpr["temp"]),
                         pulse=tpr.get("pulse"),
                         respiratory_rate=tpr.get("rr"),
+                        notes=tpr.get("notes", ""),
                     )
                     created["tpr_readings"] += 1
+
+                # --- BP monitoring readings ---
+                for bp in scenario.get("bp_readings", []):
+                    bp_time = admission_date + timedelta(days=bp["day_offset"], hours=bp["hour"])
+                    if bp_time.date() > date.today():
+                        continue
+                    BPMonitoringReading.objects.create(
+                        admission=admission,
+                        recorded_at=bp_time,
+                        recorded_by=user,
+                        systolic=bp["systolic"],
+                        diastolic=bp["diastolic"],
+                        pulse=bp.get("pulse"),
+                        position=bp.get("position", "SITTING"),
+                        notes=bp.get("notes", ""),
+                    )
+                    created["bp_readings"] += 1
+
+                # --- Fluid balance sheets & entries ---
+                fb_data = scenario.get("fluid_balance")
+                if fb_data:
+                    for day_def in fb_data.get("days", []):
+                        chart_date = (admission_date + timedelta(days=day_def["day_offset"])).date()
+                        if chart_date > date.today():
+                            continue
+                        sheet = FluidBalanceSheet.objects.create(
+                            admission=admission,
+                            chart_date=chart_date,
+                            recorded_by=user,
+                            patient_weight_kg=Decimal(day_def["weight_kg"]) if day_def.get("weight_kg") else None,
+                            intravenous_infusion_notes=day_def.get("iv_notes", ""),
+                        )
+                        created["fluid_sheets"] += 1
+                        for entry_def in day_def.get("entries", []):
+                            entry_time = admission_date + timedelta(
+                                days=day_def["day_offset"], hours=entry_def["hour"]
+                            )
+                            FluidBalanceEntry.objects.create(
+                                fluid_balance_sheet=sheet,
+                                recorded_at=entry_time,
+                                recorded_by=user,
+                                entry_type=entry_def["type"],
+                                item_type=entry_def.get("item", ""),
+                                amount_ml=entry_def.get("amount_ml"),
+                                notes=entry_def.get("notes", ""),
+                            )
+                            created["fluid_entries"] += 1
+
+                # --- Blood transfusion observations ---
+                bt_data = scenario.get("blood_transfusion")
+                if bt_data:
+                    tx_date = admission_date + timedelta(days=bt_data["day_offset"])
+                    if tx_date.date() <= date.today():
+                        from datetime import time as dt_time
+
+                        transfusion = BloodTransfusionObservation.objects.create(
+                            admission=admission,
+                            blood_product=bt_data["blood_product"],
+                            blood_unit_number=bt_data["blood_unit_number"],
+                            blood_group=bt_data.get("blood_group", ""),
+                            amount_ml=bt_data["amount_ml"],
+                            transfusion_date=tx_date.date(),
+                            time_started=dt_time(bt_data["start_hour"], 0),
+                            time_ended=dt_time(bt_data["end_hour"], 0),
+                            started_by=user,
+                            counter_checked_by=incoming_nurse,
+                            diagnosis=bt_data.get("diagnosis", ""),
+                            status=bt_data.get("status", "COMPLETED"),
+                            reaction_occurred=bt_data.get("reaction_occurred", False),
+                            reaction_type=bt_data.get("reaction_type", ""),
+                            reaction_action_taken=bt_data.get("reaction_action_taken", ""),
+                        )
+                        created["blood_transfusions"] += 1
+
+                        for obs_def in bt_data.get("observations", []):
+                            TransfusionObservationEntry.objects.create(
+                                transfusion=transfusion,
+                                observation_interval=obs_def["interval"],
+                                exact_time=dt_time(obs_def["hour"], obs_def.get("minute", 0)),
+                                recorded_by=user,
+                                blood_pressure=obs_def.get("bp", ""),
+                                temperature=Decimal(str(obs_def["temp"])) if obs_def.get("temp") is not None else None,
+                                pulse=obs_def.get("pulse"),
+                                respiratory_rate=obs_def.get("rr"),
+                                remarks=obs_def.get("remarks", ""),
+                            )
+                            created["transfusion_entries"] += 1
 
                 # --- Transfer ---
                 transfer_data = scenario.get("transfer")
@@ -1268,6 +1930,17 @@ class Command(BaseCommand):
             created["care_plans"] += 1
         created["shift_notes"] += len(scenario.get("shift_notes", []))
         created["tpr_readings"] += len(scenario.get("tpr", []))
+        created["bp_readings"] += len(scenario.get("bp_readings", []))
+        fb_data = scenario.get("fluid_balance")
+        if fb_data:
+            days = fb_data.get("days", [])
+            created["fluid_sheets"] += len(days)
+            for day_def in days:
+                created["fluid_entries"] += len(day_def.get("entries", []))
+        bt_data = scenario.get("blood_transfusion")
+        if bt_data:
+            created["blood_transfusions"] += 1
+            created["transfusion_entries"] += len(bt_data.get("observations", []))
         for lab_def in scenario.get("lab_orders", []):
             created["lab_orders"] += 1
             for item_def in lab_def.get("items", []):
@@ -1500,44 +2173,34 @@ class Command(BaseCommand):
 
     def _clear_demo_data(self):
         """Remove demo inpatient records created by previous runs."""
-        from django.db import connection
+        from collections import defaultdict
+
+        from django.db.models.deletion import ProtectedError
 
         demo_patients = Patient.objects.filter(phone_number__startswith="demo-ipd-")
         count = demo_patients.count()
-        if count:
-            patient_ids = list(demo_patients.values_list("id", flat=True))
-
-            # Collect all models that reference Patient via PROTECT.
-            # Delete in reverse-dependency order to avoid ProtectedError.
-            # We import lazily so the command works even if some apps
-            # aren't installed yet.
-            protect_deletions: list[tuple[str, object]] = []
-            models_to_try = [
-                ("billing.Invoice", lambda pids: __import__("hmis.apps.billing.models", fromlist=["Invoice"]).Invoice.objects.filter(encounter__patient_id__in=pids)),
-                ("billing.Receipt", lambda pids: __import__("hmis.apps.billing.models", fromlist=["Receipt"]).Receipt.objects.filter(patient_id__in=pids)),
-                ("billing.CreditNote", lambda pids: __import__("hmis.apps.billing.models", fromlist=["CreditNote"]).CreditNote.objects.filter(patient_id__in=pids)),
-                ("billing.SHAClaim", lambda pids: __import__("hmis.apps.billing.models", fromlist=["SHAClaim"]).SHAClaim.objects.filter(patient_id__in=pids)),
-                ("mch.ImmunizationRecord", lambda pids: __import__("hmis.apps.mch.models", fromlist=["ImmunizationRecord"]).ImmunizationRecord.objects.filter(patient_id__in=pids)),
-                ("pharmacy.Dispensing", lambda pids: __import__("hmis.apps.pharmacy.models", fromlist=["Dispensing"]).Dispensing.objects.filter(patient_id__in=pids)),
-            ]
-            for label, qs_fn in models_to_try:
-                try:
-                    qs_fn(patient_ids).delete()
-                except Exception:
-                    pass  # Model may not exist or table missing
-
-            # Standard direct-FK deletions
-            CDSAlert.objects.filter(patient_id__in=patient_ids).delete()
-            Prescription.objects.filter(patient_id__in=patient_ids).delete()
-            LabOrder.objects.filter(patient_id__in=patient_ids).delete()
-            ImagingOrder.objects.filter(patient_id__in=patient_ids).delete()
-            Allergy.objects.filter(patient_id__in=patient_ids).delete()
-            Admission.objects.filter(patient_id__in=patient_ids).delete()
-            Encounter.objects.filter(patient_id__in=patient_ids).delete()
-            demo_patients.delete()
-            self.stdout.write(self.style.WARNING(f"Cleared {count} demo patients and related data"))
-        else:
+        if not count:
             self.stdout.write("No existing demo data to clear")
+            return
+
+        def _force_delete(qs):
+            """Delete queryset, recursively removing PROTECT blockers."""
+            for _ in range(30):
+                try:
+                    qs.delete()
+                    return
+                except ProtectedError as exc:
+                    blocking = exc.protected_objects
+                    if not blocking:
+                        raise
+                    by_model: dict[type, list] = defaultdict(list)
+                    for obj in blocking:
+                        by_model[type(obj)].append(obj.pk)
+                    for model_cls, pks in by_model.items():
+                        _force_delete(model_cls.objects.filter(pk__in=pks))
+
+        _force_delete(demo_patients)
+        self.stdout.write(self.style.WARNING(f"Cleared {count} demo patients and related data"))
 
     def _get_or_create_user(self):
         return User.objects.filter(is_staff=True).first() or User.objects.create_user(
