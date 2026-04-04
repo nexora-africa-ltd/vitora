@@ -550,6 +550,18 @@ class DeliverySerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         registration = attrs.get("registration") or getattr(self.instance, "registration", None)
+
+        # Idempotency: prevent duplicate delivery for the same registration
+        if self.instance is None and registration:
+            if Delivery.objects.filter(registration=registration).exists():
+                raise serializers.ValidationError(
+                    {"registration": "A delivery has already been recorded for this MCH registration."}
+                )
+            if registration.status not in ("ACTIVE", "DELIVERED"):
+                raise serializers.ValidationError(
+                    {"registration": f"Cannot record delivery for a registration with status '{registration.status}'."}
+                )
+
         partograph = (
             attrs.get("partograph") if "partograph" in attrs else getattr(self.instance, "partograph", None)
         )

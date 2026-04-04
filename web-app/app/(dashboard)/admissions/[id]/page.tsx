@@ -68,6 +68,7 @@ import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useMCHRegistration } from '@/lib/hooks/use-mch';
 import { PartographTab } from '@/components/mch/partograph-tab';
+import { DeliveryTab } from '@/components/mch/delivery-tab';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
@@ -697,7 +698,7 @@ export default function AdmissionDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className={`w-full grid h-auto ${isMaternityCase ? 'grid-cols-6' : 'grid-cols-5'}`}>
+        <TabsList className={`w-full grid h-auto ${isMaternityCase ? 'grid-cols-7' : 'grid-cols-5'}`}>
           <TabsTrigger value="overview" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Info</span>
             <span className="hidden sm:inline">Overview</span>
@@ -719,6 +720,12 @@ export default function AdmissionDetailPage() {
             <TabsTrigger value="partograph" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
               <span className="sm:hidden">Parto</span>
               <span className="hidden sm:inline">Partograph</span>
+            </TabsTrigger>
+          )}
+          {isMaternityCase && (
+            <TabsTrigger value="delivery" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+              <span className="sm:hidden">Delivery</span>
+              <span className="hidden sm:inline">Delivery</span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -1193,6 +1200,30 @@ export default function AdmissionDetailPage() {
                   <p className="font-medium">MCH Registration Required</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     A partograph requires a linked MCH registration. Create an MCH registration for this patient and link it to this admission.
+                  </p>
+                  <Button variant="outline" className="mt-4" asChild>
+                    <Link href={`/mch/new?patient=${admission.patient}`}>
+                      Create MCH Registration
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
+
+        {/* Delivery Tab (maternity cases only) */}
+        {isMaternityCase && (
+          <TabsContent value="delivery" className="space-y-4">
+            {admission.mch_registration ? (
+              <DeliveryTab registrationId={admission.mch_registration} />
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="font-medium">MCH Registration Required</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    A delivery record requires a linked MCH registration. Create an MCH registration for this patient first.
                   </p>
                   <Button variant="outline" className="mt-4" asChild>
                     <Link href={`/mch/new?patient=${admission.patient}`}>
