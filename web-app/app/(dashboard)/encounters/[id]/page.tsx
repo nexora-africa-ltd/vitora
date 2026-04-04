@@ -51,6 +51,8 @@ import { EncounterAlliedHealthContent } from '@/components/encounters/encounter-
 import { EncounterReferralsContent } from '@/components/encounters/encounter-referrals-content';
 import { EncounterProcedureOrders } from '@/components/encounters/encounter-procedure-orders';
 import { EncounterChiefComplaintCard } from '@/components/encounters/encounter-chief-complaint-card';
+import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
+import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
@@ -147,6 +149,11 @@ export default function EncounterDetailPage() {
   // Referrals data (for tab badge count)
   const { data: referralsList } = useEncounterReferrals(encounterId);
   const referralsCount = referralsList?.length || 0;
+
+  // Vitals history for trend chart
+  const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(
+    encounter?.patient ?? 0, '24h'
+  );
 
   // Computed counts for grouped tabs
   const procedureOrdersCount = procedureOrdersData?.results?.length || 0;
@@ -354,6 +361,14 @@ export default function EncounterDetailPage() {
 
       {/* Vitals */}
       <VitalsDisplay encounter={encounter} />
+
+      {/* Vitals Trends */}
+      <VitalsTrendChart
+        data={vitalsHistory ?? []}
+        isLoading={isLoadingVitals}
+        defaultRange="24h"
+        compact
+      />
 
       {/* CDS Alerts Panel — tiered advisory alerts from clinical rules */}
       <CDSAlertsPanel encounterId={encounterId} />

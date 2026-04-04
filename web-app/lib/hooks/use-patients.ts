@@ -10,6 +10,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients';
 import type { PatientListParams, PatientCreateData, PatientUpdateData, DuplicateCheckParams } from '@/lib/types/patient';
+import type { TimeRange } from '@/components/shared/vitals-trend-chart';
 
 // =============================================================================
 // QUERY KEYS
@@ -29,6 +30,7 @@ export const patientKeys = {
   encounters: (id: number) => [...patientKeys.detail(id), 'encounters'] as const,
   qrCode: (id: number) => [...patientKeys.detail(id), 'qr-code'] as const,
   duplicateCheck: (params: DuplicateCheckParams) => [...patientKeys.all, 'duplicate-check', params] as const,
+  vitalsHistory: (id: number, range: string) => [...patientKeys.detail(id), 'vitals-history', range] as const,
 };
 
 // =============================================================================
@@ -183,5 +185,18 @@ export function usePatientQRCode(patientId: number, enabled = false) {
     queryFn: () => patientsApi.getQRCode(patientId),
     enabled: !!patientId && enabled,
     staleTime: Infinity, // QR is deterministic from MRN, never changes
+  });
+}
+
+/**
+ * Hook for fetching aggregated vitals history for a patient.
+ * Merges data from triage, encounters, and inpatient nursing sources.
+ */
+export function usePatientVitalsHistory(patientId: number, range: TimeRange = 'all') {
+  return useQuery({
+    queryKey: patientKeys.vitalsHistory(patientId, range),
+    queryFn: () => patientsApi.getVitalsHistory(patientId, range),
+    enabled: !!patientId,
+    staleTime: 30_000, // 30s — vitals can change frequently for inpatients
   });
 }

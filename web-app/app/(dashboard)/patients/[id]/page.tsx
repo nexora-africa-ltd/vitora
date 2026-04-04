@@ -53,6 +53,8 @@ import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { EmptyState } from '@/components/shared/empty-state';
+import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
+import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { shaApi } from '@/lib/api/sha';
 import { cn } from '@/lib/utils';
 import type { Prescription, PrescriptionStatus } from '@/lib/types/pharmacy';
@@ -63,6 +65,9 @@ export default function PatientDetailPage() {
   const router = useRouter();
   const patientId = Number(params.id);
   const [showDependents, setShowDependents] = useState(false);
+
+  // Vitals history for trend chart
+  const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(patientId, 'all');
 
   // Use patient context instead of independent fetch
   const { patient, isLoading, error } = usePatientContext();
@@ -357,6 +362,10 @@ export default function PatientDetailPage() {
               <Clipboard className="h-4 w-4" />
               <span className="hidden sm:inline">Encounters</span>
             </TabsTrigger>
+            <TabsTrigger value="vitals" className="gap-1.5">
+              <Activity className="h-4 w-4" />
+              <span className="hidden sm:inline">Vitals</span>
+            </TabsTrigger>
             <TabsTrigger value="emergency-contacts" className="gap-1.5">
               <Phone className="h-4 w-4" />
               <span className="hidden sm:inline">Emergency Contacts</span>
@@ -394,6 +403,16 @@ export default function PatientDetailPage() {
 
           <TabsContent value="encounters">
             <PatientEncounters patientId={patientId} />
+          </TabsContent>
+
+          <TabsContent value="vitals">
+            <VitalsTrendChart
+              data={vitalsHistory ?? []}
+              isLoading={isLoadingVitals}
+              title="Vitals History"
+              helpContent="All recorded vital signs across encounters, triage assessments, and inpatient observations. Select a time range to focus on a specific period."
+              defaultRange="all"
+            />
           </TabsContent>
 
           <TabsContent value="emergency-contacts">

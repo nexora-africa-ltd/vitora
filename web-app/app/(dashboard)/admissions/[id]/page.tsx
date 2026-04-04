@@ -63,6 +63,8 @@ import { FluidBalanceSheet } from '@/components/inpatient/fluid-balance-sheet';
 import { PermissionGate } from '@/components/shared/permission-gate';
 import { BloodTransfusionChart } from '@/components/inpatient/blood-transfusion-chart';
 import { BPMonitoringChart } from '@/components/inpatient/bp-monitoring-chart';
+import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
+import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -152,6 +154,9 @@ export default function AdmissionDetailPage() {
   const { data: kardex, isLoading: kardexLoading } = useKardexByAdmission(admissionId);
   const { data: reviewRequests, isLoading: reviewRequestsLoading } = useAdmissionReviewRequests(admissionId);
   const { data: availableBeds } = useBeds({ ward: admission?.ward, status: 'AVAILABLE' });
+  const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(
+    admission?.patient ?? 0, '72h'
+  );
   const createReviewRequest = useCreateReviewRequest();
   const setExpectedDischarge = useSetExpectedDischarge();
   const overrideBed = useOverrideBed();
@@ -1130,6 +1135,13 @@ export default function AdmissionDetailPage() {
 
         {/* Observation Charts Tab */}
         <TabsContent value="charts" className="space-y-6">
+          <VitalsTrendChart
+            data={vitalsHistory ?? []}
+            isLoading={isLoadingVitals}
+            title="Vitals Trends"
+            defaultRange="72h"
+          />
+          <Separator />
           <TPRChart
             admissionId={admission.id}
             isActive={admission.admission_status === 'ACTIVE'}
