@@ -14,9 +14,11 @@ import {
   EmergencyContactArrayResponseSchema,
   PatientEncounterArrayResponseSchema,
   PatientQRCodeSchema,
+  VitalsHistoryResponseSchema,
 } from '@/lib/schemas/patient.schema';
 import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter, DuplicateCheckResult, DuplicateCheckParams } from '@/lib/types/patient';
 import type { PaginatedResponse } from '@/lib/types';
+import type { VitalsDataPoint, TimeRange } from '@/components/shared/vitals-trend-chart';
 
 export const patientsApi = {
   /**
@@ -169,6 +171,23 @@ export const patientsApi = {
     const response = await apiClient.get(`/api/patients/${id}/qr-code/`);
     return parseResponse(PatientQRCodeSchema, response.data, {
       context: 'patientsApi.getQRCode',
+    });
+  },
+
+  /**
+   * Get aggregated vitals history for a patient from all sources
+   * (triage, encounters, inpatient nursing).
+   */
+  async getVitalsHistory(
+    id: number,
+    range: TimeRange = 'all',
+  ): Promise<VitalsDataPoint[]> {
+    const response = await apiClient.get<VitalsDataPoint[]>(
+      `/api/patients/${id}/vitals-history/`,
+      { params: { range } },
+    );
+    return parseResponse(VitalsHistoryResponseSchema, response.data, {
+      context: 'patientsApi.getVitalsHistory',
     });
   },
 };

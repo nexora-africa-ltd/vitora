@@ -615,3 +615,18 @@ class DeathRecordVoidSerializer(serializers.Serializer):
     """Serializer for the void action."""
 
     reason = serializers.CharField(min_length=10)
+
+
+class VitalsDataPointSerializer(serializers.Serializer):
+    """Serializer for a single vitals data point in the aggregate history."""
+
+    timestamp = serializers.CharField()
+    source = serializers.CharField(allow_null=True, required=False)
+    temperature = serializers.FloatField(allow_null=True, required=False)
+    heart_rate = serializers.IntegerField(allow_null=True, required=False)
+    spo2 = serializers.FloatField(allow_null=True, required=False)
+    respiratory_rate = serializers.IntegerField(allow_null=True, required=False)
+    systolic_bp = serializers.IntegerField(allow_null=True, required=False)
+    diastolic_bp = serializers.IntegerField(allow_null=True, required=False)
+    weight = serializers.FloatField(allow_null=True, required=False)
+    height = serializers.FloatField(allow_null=True, required=False)

@@ -2,7 +2,7 @@
 Views for the patients app.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db import transaction
 from django.db.models import Count, Max, Min
@@ -32,6 +32,7 @@ from .serializers import (
     DeathRecordVoidSerializer,
     EmergencyContactSerializer,
     PatientSerializer,
+    VitalsDataPointSerializer,
 )
 
 
@@ -1430,3 +1431,173 @@ class DeathRecordViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
             },
         )
         return Response(DeathRecordDetailSerializer(record).data)
+
+    # =========================================================================
+    # Vitals History (Aggregate Endpoint)
+    # =========================================================================
+
+    TIME_RANGE_MAP = {
+        "1h": timedelta(hours=1),
+        "6h": timedelta(hours=6),
+        "12h": timedelta(hours=12),
+        "24h": timedelta(hours=24),
+        "72h": timedelta(hours=72),
+        "7d": timedelta(days=7),
+        "1mo": timedelta(days=30),
+        "1y": timedelta(days=365),
+    }
+
+    @action(detail=True, methods=["get"], url_path="vitals-history")
+    def vitals_history(self, request, pk=None):
+        """
+        Aggregate vitals history for a patient from all sources.
+
+        Merges vitals from:
+        - Triage assessments (heart_rate, spo2, temperature, etc.)
+        - Encounter vitals (temperature, pulse, blood_pressure, spo2, etc.)
+        - Inpatient temperature readings (temperature, pulse, respiratory_rate)
+        - Inpatient BP monitoring (systolic, diastolic, pulse)
+
+        Query params:
+            range: Time range filter (1h, 6h, 12h, 24h, 72h, 7d, 1mo, 1y, all)
+                   Default: all
+
+        Returns:
+            List of vitals data points sorted by timestamp (ascending).
+            Each point: {timestamp, source, temperature, heart_rate, spo2,
+                         respiratory_rate, systolic_bp, diastolic_bp, weight, height}
+        """
+        patient = self.get_object()
+        range_param = request.query_params.get("range", "all")
+
+        from django.utils import timezone
+
+        cutoff = None
+        if range_param != "all" and range_param in self.TIME_RANGE_MAP:
+            cutoff = timezone.now() - self.TIME_RANGE_MAP[range_param]
+
+        data_points = []
+
+        # --- Source 1: Triage Assessments ---
+        try:
+            from hmis.apps.triage.models import TriageAssessment
+
+            triage_qs = TriageAssessment.objects.filter(
+                encounter__patient=patient,
+            ).select_related("encounter")
+            if cutoff:
+                triage_qs = triage_qs.filter(created_at__gte=cutoff)
+
+            for t in triage_qs:
+                ts = t.arrival_time if t.arrival_time else t.created_at
+                data_points.append({
+                    "timestamp": ts.isoformat(),
+                    "source": "Triage",
+                    "temperature": float(t.temperature) if t.temperature is not None else None,
+                    "heart_rate": t.heart_rate,
+                    "spo2": float(t.spo2) if t.spo2 is not None else None,
+                    "respiratory_rate": t.respiratory_rate,
+                    "systolic_bp": t.systolic_bp,
+                    "diastolic_bp": t.diastolic_bp,
+                    "weight": float(t.weight) if t.weight is not None else None,
+                    "height": float(t.height) if t.height is not None else None,
+                })
+        except ImportError:
+            pass
+
+        # --- Source 2: Encounter Vitals ---
+        encounter_qs = Encounter.objects.filter(patient=patient).exclude(
+            temperature__isnull=True,
+            pulse__isnull=True,
+            spo2__isnull=True,
+            respiratory_rate__isnull=True,
+            blood_pressure="",
+        )
+        if cutoff:
+            encounter_qs = encounter_qs.filter(created_at__gte=cutoff)
+
+        for enc in encounter_qs:
+            ts = enc.vitals_recorded_at or enc.created_at
+            systolic = None
+            diastolic = None
+            if enc.blood_pressure:
+                parts = enc.blood_pressure.split("/")
+                if len(parts) == 2:
+                    try:
+                        systolic = int(parts[0].strip())
+                        diastolic = int(parts[1].strip())
+                    except (ValueError, TypeError):
+                        pass
+
+            data_points.append({
+                "timestamp": ts.isoformat(),
+                "source": enc.vitals_source or "Encounter",
+                "temperature": float(enc.temperature) if enc.temperature is not None else None,
+                "heart_rate": enc.pulse,
+                "spo2": float(enc.spo2) if enc.spo2 is not None else None,
+                "respiratory_rate": enc.respiratory_rate,
+                "systolic_bp": systolic,
+                "diastolic_bp": diastolic,
+                "weight": float(enc.weight) if enc.weight is not None else None,
+                "height": float(enc.height) if enc.height is not None else None,
+            })
+
+        # --- Source 3: Inpatient Temperature Readings ---
+        try:
+            from hmis.apps.inpatient.models import TemperatureReading
+
+            temp_qs = TemperatureReading.objects.filter(
+                admission__patient=patient,
+            )
+            if cutoff:
+                temp_qs = temp_qs.filter(recorded_at__gte=cutoff)
+
+            for tr in temp_qs:
+                data_points.append({
+                    "timestamp": tr.recorded_at.isoformat(),
+                    "source": "Nursing",
+                    "temperature": float(tr.temperature) if tr.temperature is not None else None,
+                    "heart_rate": tr.pulse,
+                    "spo2": None,
+                    "respiratory_rate": tr.respiratory_rate,
+                    "systolic_bp": None,
+                    "diastolic_bp": None,
+                    "weight": None,
+                    "height": None,
+                })
+        except ImportError:
+            pass
+
+        # --- Source 4: Inpatient BP Monitoring ---
+        try:
+            from hmis.apps.inpatient.models import BPMonitoringReading
+
+            bp_qs = BPMonitoringReading.objects.filter(
+                admission__patient=patient,
+            )
+            if cutoff:
+                bp_qs = bp_qs.filter(recorded_at__gte=cutoff)
+
+            for bp in bp_qs:
+                data_points.append({
+                    "timestamp": bp.recorded_at.isoformat(),
+                    "source": "Nursing",
+                    "temperature": None,
+                    "heart_rate": bp.pulse,
+                    "spo2": None,
+                    "respiratory_rate": None,
+                    "systolic_bp": bp.systolic,
+                    "diastolic_bp": bp.diastolic,
+                    "weight": None,
+                    "height": None,
+                })
+        except ImportError:
+            pass
+
+        # Sort by timestamp ascending
+        data_points.sort(key=lambda x: x["timestamp"])
+
+        serializer = VitalsDataPointSerializer(
+            data_points, many=True
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)

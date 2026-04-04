@@ -293,6 +293,25 @@ export const PatientQRCodeSchema = z.object({
 });
 
 // =============================================================================
+// VITALS HISTORY
+// =============================================================================
+
+export const VitalsDataPointSchema = z.object({
+  timestamp: z.string(),
+  source: z.string().nullable().optional(),
+  temperature: z.number().nullable().optional(),
+  heart_rate: z.number().nullable().optional(),
+  spo2: z.number().nullable().optional(),
+  respiratory_rate: z.number().nullable().optional(),
+  systolic_bp: z.number().nullable().optional(),
+  diastolic_bp: z.number().nullable().optional(),
+  weight: z.number().nullable().optional(),
+  height: z.number().nullable().optional(),
+});
+
+export const VitalsHistoryResponseSchema = z.array(VitalsDataPointSchema);
+
+// =============================================================================
 // TYPE EXPORTS (inferred from schemas)
 // =============================================================================
 
@@ -303,3 +322,4 @@ export type PatientCreateDataSchemaType = z.infer<typeof PatientCreateDataSchema
 export type PatientUpdateDataSchemaType = z.infer<typeof PatientUpdateDataSchema>;
 export type PatientEncounterSchemaType = z.infer<typeof PatientEncounterSchema>;
 export type PatientQRCodeSchemaType = z.infer<typeof PatientQRCodeSchema>;
+export type VitalsDataPointSchemaType = z.infer<typeof VitalsDataPointSchema>;
