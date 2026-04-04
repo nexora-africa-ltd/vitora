@@ -123,6 +123,9 @@ const PERMISSION_MAP: Record<string, string[]> = {
   'create_invoice': ['billing.add_invoice', 'add_invoice'],
   'edit_invoice': ['billing.change_invoice', 'change_invoice'],
   'view_invoice': ['billing.view_invoice', 'view_invoice'],
+  'submit_sha_claim': ['billing.submit_sha_claim'],
+  'approve_sha_claim': ['billing.approve_sha_claim'],
+  'appeal_sha_claim': ['billing.appeal_sha_claim'],
 
   // Pharmacy permissions
   'dispense_medication': ['pharmacy.add_dispensing', 'dispense_medication'],
@@ -135,6 +138,50 @@ const PERMISSION_MAP: Record<string, string[]> = {
   // Triage permissions
   'create_triage': ['triage.add_triageassessment', 'add_triageassessment'],
   'view_triage': ['triage.view_triageassessment', 'view_triageassessment'],
+  'perform_triage': ['triage.perform_triage'],
+  'view_triage_queue': ['triage.view_triage_queue'],
+  'override_triage_category': ['triage.override_triage_category'],
+  'escalate_patient': ['triage.escalate_patient'],
+
+  // Death record permissions
+  'certify_death': ['patients.certify_death'],
+  'release_body': ['patients.release_body'],
+  'void_death_record': ['patients.void_death_record'],
+
+  // Inpatient permissions
+  'receive_critical_alerts': ['inpatient.receive_critical_alerts'],
+
+  // Referral permissions
+  'accept_referral': ['referrals.accept_referral'],
+  'decline_referral': ['referrals.decline_referral'],
+  'view_sensitive_referral': ['referrals.view_sensitive_referral'],
+
+  // Clinic permissions
+  'manage_clinic_staff': ['clinics.manage_clinic_staff'],
+  'manage_clinic_schedule': ['clinics.manage_clinic_schedule'],
+  'view_ccc_clinic': ['clinics.view_ccc_clinic'],
+  'view_mental_health_clinic': ['clinics.view_mental_health_clinic'],
+
+  // Surveillance permissions
+  'escalate_ihr_to_county': ['surveillance.escalate_ihr_to_county'],
+  'escalate_ihr_to_national': ['surveillance.escalate_ihr_to_national'],
+  'notify_ihr_to_who': ['surveillance.notify_ihr_to_who'],
+
+  // MCH permissions
+  'view_sensitive_mch': ['mch.view_sensitive_mch_registration'],
+  'view_sensitive_hei': ['mch.view_sensitive_hei_followup'],
+
+  // Allied health permissions
+  'approve_physiotherapy_order': ['physiotherapy.approve_physiotherapy_order'],
+  'approve_ot_order': ['occupational_therapy.approve_ot_order'],
+  'view_sensitive_counselling_referral': ['counselling.view_sensitive_counselling_referral'],
+  'view_sensitive_counselling_session': ['counselling.view_sensitive_counselling_session'],
+  'accept_sw_referral': ['social_work.accept_sw_referral'],
+  'assign_social_worker': ['social_work.assign_social_worker'],
+  'view_sensitive_sw_referral': ['social_work.view_sensitive_sw_referral'],
+  'close_sw_case': ['social_work.close_sw_case'],
+  'view_sensitive_sw_case': ['social_work.view_sensitive_sw_case'],
+  'supervise_sw_case': ['social_work.supervise_sw_case'],
 };
 
 // =============================================================================
