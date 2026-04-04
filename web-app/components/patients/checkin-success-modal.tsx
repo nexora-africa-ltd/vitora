@@ -54,6 +54,8 @@ interface CheckinSuccessModalProps {
   checkInResult: CheckinSuccessData | CheckInResponse | null;
   /** Optional callback when modal is dismissed */
   onDismiss?: () => void;
+  /** Optional custom label for the dismiss button (defaults to "Stay Here") */
+  dismissLabel?: string;
 }
 
 /**
@@ -65,6 +67,7 @@ export function CheckinSuccessModal({
   onOpenChange,
   checkInResult,
   onDismiss,
+  dismissLabel,
 }: CheckinSuccessModalProps) {
   const router = useRouter();
 
@@ -149,7 +152,7 @@ export function CheckinSuccessModal({
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={handleDismiss} className="w-full sm:w-auto">
             <X className="mr-2 h-4 w-4" />
-            Stay Here
+            {dismissLabel || 'Stay Here'}
           </Button>
           <Button onClick={handleGoToDestination} className="w-full sm:w-auto">
             <ArrowRight className="mr-2 h-4 w-4" />
