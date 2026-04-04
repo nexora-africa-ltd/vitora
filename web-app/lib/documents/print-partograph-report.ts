@@ -104,6 +104,7 @@ const PARTOGRAPH_REPORT_TEMPLATE = `
           <th>FHR</th>
           <th>Dilation</th>
           <th>Descent</th>
+          <th>Moulding</th>
           <th>Contractions</th>
           <th>Maternal</th>
           <th>Urine</th>
@@ -125,6 +126,16 @@ const PARTOGRAPH_REPORT_TEMPLATE = `
       <div>
         <div class="signature-date">{{signature.datetime}}</div>
         <div class="electronic-signature">{{signature.status}}</div>
+      </div>
+    </div>
+    <div class="signature-line patient-signature">
+      <div>
+        <div class="signature-placeholder"></div>
+        <div class="signature-credentials">Patient / Guardian Signature</div>
+      </div>
+      <div>
+        <div class="signature-placeholder"></div>
+        <div class="signature-credentials">Date</div>
       </div>
     </div>
   </div>
@@ -195,9 +206,10 @@ body {
   border-radius: 6px;
   padding: 10px;
   margin-bottom: 14px;
+  page-break-inside: avoid;
 }
 
-.patient-info .row { display: flex; gap: 6px; }
+.patient-info .row { display: flex; gap: 6px; page-break-inside: avoid; }
 .label { font-weight: 600; color: #64748b; }
 .value { color: #0f172a; }
 
@@ -246,11 +258,14 @@ body {
 table { width: 100%; border-collapse: collapse; font-size: 10px; }
 th, td { border: 1px solid #dbe4ec; padding: 7px; vertical-align: top; }
 th { background: #eff6ff; text-align: left; font-weight: 700; color: #1e3a8a; }
+thead { display: table-header-group; }
+tbody { display: table-row-group; }
 
 .signature-block {
   margin-top: 20px;
   padding-top: 12px;
   border-top: 1px solid #dbe4ec;
+  page-break-inside: avoid;
 }
 
 .signature-line {
@@ -262,6 +277,8 @@ th { background: #eff6ff; text-align: left; font-weight: 700; color: #1e3a8a; }
 .signature-name { font-weight: 600; font-size: 11px; }
 .signature-credentials, .signature-date { font-size: 10px; color: #64748b; }
 .electronic-signature { font-size: 9px; color: #16a34a; font-style: italic; }
+.signature-placeholder { width: 160px; border-bottom: 1px solid #94a3b8; height: 24px; }
+.patient-signature { margin-top: 16px; }
 
 .footer {
   margin-top: 18px;
@@ -337,6 +354,7 @@ function buildObservationRows(observations: LabourPartographObservation[]): stri
           <td>${escapeHtml(observation.fetal_heart_rate != null ? String(observation.fetal_heart_rate) : '—')}</td>
           <td>${escapeHtml(observation.cervical_dilation_cm ? `${observation.cervical_dilation_cm} cm` : '—')}</td>
           <td>${escapeHtml(observation.descent_fifths != null ? `${observation.descent_fifths}/5` : '—')}</td>
+          <td>${escapeHtml(observation.moulding || '—')}</td>
           <td>${escapeHtml(contractionText)}</td>
           <td>${escapeHtml(maternalText)}</td>
           <td>${escapeHtml(urineText)}</td>

@@ -357,6 +357,7 @@ function SingleVitalChart({
             <ReferenceLine y={normalLow} stroke={config.color} strokeDasharray="3 3" opacity={0.3} />
             <ReferenceLine y={normalHigh} stroke={config.color} strokeDasharray="3 3" opacity={0.3} />
             <RechartsTooltip
+              cursor={false}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
                 const d = payload[0];
@@ -449,6 +450,7 @@ function CombinedVitalChart({
           axisLine={false}
         />
         <RechartsTooltip
+          cursor={false}
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const firstPayload = payload[0];
