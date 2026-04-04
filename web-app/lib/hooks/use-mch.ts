@@ -1,9 +1,10 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { labourPartographObservationsApi, labourPartographsApi, mchRegistrationsApi } from '@/lib/api/mch';
+import { labourPartographObservationsApi, labourPartographsApi, mchRegistrationsApi, deliveriesApi } from '@/lib/api/mch';
 import type { MCHRegistration,
   MCHRegistrationListParams,
+  Delivery,
   LabourPartographCreateData,
   LabourPartographObservationCreateData,
 } from '@/lib/types/mch';
@@ -64,5 +65,13 @@ export function useCreateLabourPartographObservation() {
         queryKey: ['mch-partograph-observations', variables.partograph],
       });
     },
+  });
+}
+
+export function useDelivery(deliveryId: number | undefined) {
+  return useQuery<Delivery>({
+    queryKey: ['delivery', deliveryId ?? null],
+    queryFn: () => deliveriesApi.get(deliveryId!),
+    enabled: typeof deliveryId === 'number',
   });
 }

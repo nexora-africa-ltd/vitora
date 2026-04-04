@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Baby, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -376,7 +377,8 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
       ) : (
         <div className="space-y-4">
           {deliveries.map((delivery) => (
-            <Card key={delivery.id}>
+            <Link key={delivery.id} href={`/mch/deliveries/${delivery.id}`} className="block">
+              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-base flex items-center gap-2">
@@ -422,6 +424,7 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
                 )}
               </CardContent>
             </Card>
+            </Link>
           ))}
         </div>
       )}
