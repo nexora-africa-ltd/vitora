@@ -15,10 +15,12 @@ echo "==> Seeding Vitora HMIS data..."
 
 python manage.py import_kenya_locations data/kenya_locations.csv
 python manage.py import_icd10 data/icd10_kenya_common.csv
+python manage.py import_loinc
 python manage.py import_drugs --file data/drug_catalog.csv
 python manage.py load_clinical_templates
 python manage.py load_lab_reference_ranges
 python manage.py load_default_roles
+python manage.py sync_role_permissions
 python manage.py seed_kepi_schedule
 echo "from hmis.apps.encounters.models import Encounter; Encounter.objects.filter(status__in=['DRAFT','COMPLETED']).update(status='CREATED')" | python manage.py shell
 python manage.py seed_facilities
@@ -37,6 +39,7 @@ python manage.py seed_kenhdd_elements
 python manage.py seed_bed_assignment_rules
 python manage.py seed_allied_health_demo
 python manage.py seed_inpatient_demo
+python manage.py generate_ward_beds
 python manage.py backfill_death_records --apply
 python manage.py init_pki_ca
 python manage.py backfill_org_facility

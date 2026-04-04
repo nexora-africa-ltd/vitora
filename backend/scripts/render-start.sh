@@ -17,6 +17,7 @@ else
   python manage.py load_clinical_templates
   python manage.py load_lab_reference_ranges
   python manage.py load_default_roles
+  python manage.py sync_role_permissions
   python manage.py seed_kepi_schedule
   echo "from hmis.apps.encounters.models import Encounter; Encounter.objects.filter(status__in=['DRAFT','COMPLETED']).update(status='CREATED')" | python manage.py shell
   python manage.py seed_facilities
