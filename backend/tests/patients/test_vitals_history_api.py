@@ -103,7 +103,7 @@ def vitals_encounter_no_vitals(db, vitals_patient, sample_facility):
 
 
 @pytest.fixture
-def vitals_triage(db, vitals_patient, sample_facility):
+def vitals_triage(db, vitals_patient, vitals_user, sample_facility):
     """Create a triage assessment with vitals."""
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.triage.models import TriageAssessment
@@ -124,6 +124,9 @@ def vitals_triage(db, vitals_patient, sample_facility):
         triage_category="YELLOW",
         auto_calculated_category="YELLOW",
         arrival_time=timezone.now(),
+        triage_start_time=timezone.now(),
+        triaged_by=vitals_user,
+        facility=sample_facility,
         temperature=Decimal("38.2"),
         heart_rate=95,
         systolic_bp=120,
