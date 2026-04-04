@@ -173,6 +173,37 @@ Rate limit headers returned on `429`:
 | `/feedback` | POST | Optional | Submit feedback for any service response |
 | `/feedback/stats` | GET | No | Feedback statistics (overall + per-service) |
 
+### Patient Platform
+
+> Full guide: [patient-platform-api-guide.md](patient-platform-api-guide.md)
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/patient` | POST | Optional | Create pseudonymous patient account |
+| `/patient/{id}` | GET | Optional | Look up patient by ID |
+| `/patient/{id}/journal` | POST | Optional | Log a symptom (encrypted) |
+| `/patient/{id}/vitals` | POST | Optional | Log a vital sign |
+| `/patient/{id}/event` | POST | Optional | Log a generic health event |
+| `/patient/{id}/timeline` | GET | Optional | Event timeline (filtered) |
+| `/patient/{id}/summary` | GET | Optional | Trend summary with alerts |
+| `/patient/{id}/reminders` | POST | Optional | Create medication reminder |
+| `/patient/{id}/reminders` | GET | Optional | Get active reminders |
+| `/patient/{id}/reminders/adherence` | POST / GET | Optional | Log / query medication adherence |
+| `/patient/{id}/goals` | POST / GET | Optional | Create / list health goals |
+| `/patient/{id}/goals/templates` | GET | Optional | WHO-aligned goal templates |
+| `/patient/{id}/caregivers` | POST / GET | Optional | Register / list caregivers |
+| `/patient/{id}/alerts` | GET | Optional | Get caregiver alerts |
+| `/patient/{id}/screenings/recommended` | GET | Optional | Age/sex/risk screening recommendations |
+| `/patient/{id}/screenings` | POST / GET | Optional | Log / query screening history |
+| `/patient/{id}/immunization/schedule` | POST | Optional | Full KEPI schedule with status |
+| `/patient/{id}/immunization/due` | POST | Optional | Due / catch-up vaccines only |
+| `/patient/{id}/immunization/summary` | POST | Optional | Completion statistics |
+| `/patient/{id}/immunization/log` | POST | Optional | Log administered vaccine |
+| `/patient/{id}/education` | GET | Optional | Bilingual health education snippets |
+| `/community/stats` | GET | Optional | Aggregate patient/event counts |
+| `/community/trends` | GET | Optional | Top symptom trends (anonymized) |
+| `/community/screening/coverage` | GET | Optional | Screening coverage summary |
+
 ### WhatsApp Webhooks
 
 | Endpoint | Method | Auth | Description |
@@ -253,6 +284,8 @@ Content-Type: application/json
   "mode": "auto",
   "include_disclaimer": true,
   "include_sources": false,
+  "provider_role": "clinical_officer",
+  "facility_level": 3,
   "history": []
 }
 ```
@@ -264,6 +297,8 @@ Content-Type: application/json
 | `mode` | string | No | `"chat"`, `"symptom-check"`, or `"auto"` (default) |
 | `include_disclaimer` | bool | No | Include medical disclaimer (default: true) |
 | `include_sources` | bool | No | Include source citations (default: false) |
+| `provider_role` | string | No | Provider role for profile-aware retrieval. Values: `"doctor"`, `"clinical_officer"`, `"nurse"`, `"chw"`. Adjusts reranking weights to surface the most relevant content for that role |
+| `facility_level` | int (1-6) | No | Kenya MOH facility level. Tailors KEML medicine recommendations to available formulary tier |
 | `history` | array | No | Previous conversation messages |
 
 **Response:**
@@ -290,10 +325,22 @@ Content-Type: application/json
 | `engine` | Response source: `rag`, `llm`, `demo`, `rules`, `safety`, `symptom-check` |
 | `risk_level` | `low`, `medium`, `high`, `emergency` |
 | `mode` | Which mode handled the request |
+| `confidence` | Retrieval confidence: `high`, `medium`, or `low`. Low-confidence queries return an insufficient-evidence response instead of calling the LLM |
+| `facility_level` | Facility level used for tailoring this response (1-6), if provided |
 | `triage_level` | Populated when `mode=symptom-check` |
 | `triage_result` | Full triage assessment (symptom-check mode) |
 | `progress_percentage` | Symptom-check conversation progress (0-100) |
 | `options` | Suggested user response options |
+
+**Cross-Store Reranking:**
+
+The `/chat` endpoint uses query-type-aware reranking to prioritize the most relevant sources:
+- **Clinical queries** (protocols, dosing, algorithms) → Kenya Clinical guidelines first
+- **Patient queries** ("I have a headache") → MedDialog conversational answers first
+- **Diagnostic queries** (ICD-10 coding) → ICD-10 codes first
+- **General queries** → Balanced across all stores
+
+When `provider_role` is set, additional role-specific boosts are applied (e.g., doctors see more international research, CHWs see more conversational guidance). Boost weights are configurable in `configs/reranking_weights.yaml`.
 
 **Risk Levels:**
 - `low` — General health information
@@ -488,6 +535,10 @@ X-API-Key: your-api-key
     "comorbidities": [],
     "current_medications": []
   },
+  "user_context": {
+    "role": "CLINICAL_OFFICER",
+    "seniority": "REGISTRAR"
+  },
   "include_citations": true,
   "include_icd10_codes": true,
   "verbosity": "standard"
@@ -498,9 +549,17 @@ X-API-Key: your-api-key
 |-------|------|----------|-------------|
 | `query` | string (5-2000) | Yes | Clinical question |
 | `context` | PatientContext | No | Patient demographics & clinical context |
+| `user_context` | UserContext | No | Provider context for role-aware retrieval. Contains `role` (`DOCTOR`, `CLINICAL_OFFICER`, `NURSE`, `CHW`, `STUDENT`), optional `seniority` and `specialization` |
 | `include_citations` | bool | No | Include source citations |
 | `include_icd10_codes` | bool | No | Suggest ICD-10 codes |
 | `verbosity` | string | No | `"concise"`, `"standard"`, or `"educational"` |
+
+**Role-Aware Retrieval:** When `user_context.role` is set, the guideline retrieval adjusts:
+- **Budget allocation** — CHWs get more Kenya results (65%), doctors get more international (65%)
+- **Distance boosting** — Kenya/International relevance scores are adjusted per role
+- **Prompt calibration** — Language complexity adapts (accessible for CHWs/students, technical for consultants)
+
+Boost weights are configurable in `configs/reranking_weights.yaml` under `clinical_provider_role_boosts`.
 
 **Response:**
 ```json
@@ -542,6 +601,10 @@ X-API-Key: your-api-key
   "patient_context": {
     "patient_age": 28,
     "facility_level": 4
+  },
+  "user_context": {
+    "role": "DOCTOR",
+    "specialization": "INTERNAL_MEDICINE"
   },
   "verbosity": "standard",
   "include_citations": true,

@@ -11,17 +11,73 @@ from hmis.apps.core.models import Role
 
 # Mapping from permissions_matrix model names to Django app_label.model
 MODEL_MAPPING = {
-    "Patient": ("patients", "patient"),
-    "Encounter": ("encounters", "encounter"),
+    # core
     "StaffProfile": ("core", "staffprofile"),
     "Role": ("core", "role"),
     "Department": ("core", "department"),
     "AuditLog": ("core", "auditlog"),
+    # patients
+    "Patient": ("patients", "patient"),
+    "Allergy": ("patients", "allergy"),
+    # encounters
+    "Encounter": ("encounters", "encounter"),
+    "Diagnosis": ("encounters", "diagnosis"),
+    "TreatmentPlan": ("encounters", "treatmentplan"),
+    # triage
+    "TriageAssessment": ("triage", "triageassessment"),
+    "TriageQueue": ("triage", "triagequeue"),
+    # laboratory
     "LabOrder": ("laboratory", "laborder"),
     "LabResult": ("laboratory", "labresult"),
+    "DiagnosticReport": ("laboratory", "diagnosticreport"),
+    # imaging
+    "ImagingOrder": ("imaging", "imagingorder"),
+    "RadiologyReport": ("imaging", "radiologyreport"),
+    # pharmacy
     "Prescription": ("pharmacy", "prescription"),
+    "Dispensing": ("pharmacy", "dispensing"),
     "DrugDispensing": ("pharmacy", "dispensing"),
     "PharmacyInventory": ("pharmacy", "drug"),
+    # inpatient
+    "Admission": ("inpatient", "admission"),
+    "Discharge": ("inpatient", "discharge"),
+    "WardRound": ("inpatient", "wardround"),
+    "Transfer": ("inpatient", "transfer"),
+    # clinics
+    "ClinicVisit": ("clinics", "clinicvisit"),
+    "ClinicEnrollment": ("clinics", "clinicenrollment"),
+    # billing
+    "Invoice": ("billing", "invoice"),
+    # procedures
+    "ProcedureOrder": ("procedures", "procedureorder"),
+    "ProcedureConsent": ("procedures", "procedureconsent"),
+    "ProcedureLog": ("procedures", "procedurelog"),
+    "ProcedureOutcome": ("procedures", "procedureoutcome"),
+    # referrals
+    "ClinicalReferral": ("referrals", "clinicalreferral"),
+    # mch
+    "MCHRegistration": ("mch", "mchregistration"),
+    "ANCVisit": ("mch", "ancvisit"),
+    "Delivery": ("mch", "delivery"),
+    "LabourPartograph": ("mch", "labourpartograph"),
+    "PNCVisit": ("mch", "pncvisit"),
+    "ImmunizationRecord": ("mch", "immunizationrecord"),
+    "HEIFollowUp": ("mch", "heifollowup"),
+    # cds
+    "CDSAlert": ("cds", "cdsalert"),
+    # surveillance
+    "NotifiableCase": ("surveillance", "notifiablecase"),
+    "IDSRWeeklyReport": ("surveillance", "idsrweeklyreport"),
+    "IHRNotification": ("surveillance", "ihrnotification"),
+    # allied health
+    "PhysiotherapyOrder": ("physiotherapy", "physiotherapyorder"),
+    "NutritionConsultation": ("nutrition", "nutritionconsultation"),
+    "OccupationalTherapyOrder": ("occupational_therapy", "occupationaltherapyorder"),
+    "CounsellingReferral": ("counselling", "counsellingreferral"),
+    "SocialWorkReferral": ("social_work", "socialworkreferral"),
+    # scheduling & checkin
+    "Appointment": ("scheduling", "appointment"),
+    "CheckIn": ("checkin", "checkin"),
 }
 
 # Mapping from permissions_matrix actions to Django permission codenames
