@@ -438,30 +438,33 @@ function CurrentPatientCard({ onMobileClose }: { onMobileClose: () => void }) {
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          <Button asChild size="sm" variant="outline" className="flex-1">
+        <div className="mt-3 space-y-2">
+          <Button asChild size="sm" variant="outline" className="w-full">
             <Link href={`/patients/${currentPatient.id}`} onClick={onMobileClose}>
-              View
+              <User className="h-3.5 w-3.5" />
+              View Patient
             </Link>
           </Button>
 
-          {currentPatient.encounter_id && (currentPatient.stage === 'AWAITING_TRIAGE' || currentPatient.stage === 'IN_TRIAGE') ? (
-            <Button asChild size="sm" variant="outline" className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30">
-              <Link href={`/triage/assess/${currentPatient.id}/${currentPatient.encounter_id}/vitals`} onClick={onMobileClose}>
-                <Activity className="h-3.5 w-3.5" />
-                Triage
-              </Link>
-            </Button>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {currentPatient.encounter_id && (currentPatient.stage === 'AWAITING_TRIAGE' || currentPatient.stage === 'IN_TRIAGE') ? (
+              <Button asChild size="sm" variant="outline" className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30">
+                <Link href={`/triage/assess/${currentPatient.id}/${currentPatient.encounter_id}/vitals`} onClick={onMobileClose}>
+                  <Activity className="h-3.5 w-3.5" />
+                  Triage
+                </Link>
+              </Button>
+            ) : null}
 
-          {currentPatient.encounter_id && canAccessModule('encounters' as never) ? (
-            <Button asChild size="sm" className="flex-1">
-              <Link href={`/encounters/${currentPatient.encounter_id}`} onClick={onMobileClose}>
-                <Stethoscope className="h-3.5 w-3.5" />
-                Encounter
-              </Link>
-            </Button>
-          ) : null}
+            {currentPatient.encounter_id && canAccessModule('encounters' as never) ? (
+              <Button asChild size="sm" className="flex-1">
+                <Link href={`/encounters/${currentPatient.encounter_id}`} onClick={onMobileClose}>
+                  <Stethoscope className="h-3.5 w-3.5" />
+                  Encounter
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
     </section>
