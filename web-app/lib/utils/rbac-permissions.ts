@@ -9,6 +9,46 @@ const ACTION_PREFIX_TO_MATRIX_ACTION: Record<string, string> = {
   delete: 'delete',
 };
 
+/**
+ * Custom permission codenames that are standalone (not prefixed with a CRUD action).
+ * These map directly to the matrix action key without model-name suffixing.
+ * Must stay in sync with backend CUSTOM_ACTIONS in sync_role_permissions.py.
+ */
+const CUSTOM_PERMISSION_CODENAMES = new Set([
+  'perform_triage',
+  'view_triage_queue',
+  'override_triage_category',
+  'escalate_patient',
+  'receive_critical_alerts',
+  'certify_death',
+  'release_body',
+  'void_death_record',
+  'accept_referral',
+  'decline_referral',
+  'submit_sha_claim',
+  'approve_sha_claim',
+  'appeal_sha_claim',
+  'manage_clinic_staff',
+  'manage_clinic_schedule',
+  'view_ccc_clinic',
+  'view_mental_health_clinic',
+  'approve_physiotherapy_order',
+  'approve_ot_order',
+  'accept_sw_referral',
+  'close_sw_case',
+  'escalate_ihr_to_county',
+  'escalate_ihr_to_national',
+  'notify_ihr_to_who',
+]);
+
+/**
+ * Action prefixes that include the model name in the codename but are NOT
+ * standard Django CRUD (add/view/change/delete). The matrix action is the
+ * prefix itself (e.g. 'view_sensitive') and the model is the suffix.
+ * Must stay in sync with backend MODEL_SUFFIXED_ACTIONS.
+ */
+const MODEL_SUFFIXED_ACTION_PREFIXES = ['view_sensitive'];
+
 function toResourceName(value: string): string {
   return value
     .split('_')
@@ -18,14 +58,38 @@ function toResourceName(value: string): string {
 }
 
 function parsePermission(permission: Permission) {
-  const separatorIndex = permission.codename.indexOf('_');
+  const { codename } = permission;
+
+  // Check if this is a custom standalone permission (no CRUD prefix)
+  if (CUSTOM_PERMISSION_CODENAMES.has(codename)) {
+    // Custom permissions use the codename as-is for the action key.
+    // The resource is derived from the model name.
+    const modelName = permission.model || codename;
+    return {
+      action: codename,
+      resource: toResourceName(modelName),
+    };
+  }
+
+  // Check for model-suffixed custom actions (e.g. view_sensitive_patient)
+  for (const prefix of MODEL_SUFFIXED_ACTION_PREFIXES) {
+    if (codename.startsWith(prefix + '_')) {
+      const modelSuffix = codename.slice(prefix.length + 1);
+      return {
+        action: prefix,
+        resource: toResourceName(permission.model || modelSuffix),
+      };
+    }
+  }
+
+  const separatorIndex = codename.indexOf('_');
   if (separatorIndex <= 0) {
     return null;
   }
 
-  const prefix = permission.codename.slice(0, separatorIndex);
-  const action = ACTION_PREFIX_TO_MATRIX_ACTION[prefix] ?? prefix;
-  const modelName = permission.model || permission.codename.slice(separatorIndex + 1);
+  const crudPrefix = codename.slice(0, separatorIndex);
+  const action = ACTION_PREFIX_TO_MATRIX_ACTION[crudPrefix] ?? crudPrefix;
+  const modelName = permission.model || codename.slice(separatorIndex + 1);
 
   return {
     action,
