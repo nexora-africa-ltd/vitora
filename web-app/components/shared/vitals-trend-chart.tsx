@@ -40,6 +40,9 @@ import {
   Droplets,
   TrendingUp,
   BarChart3,
+  Weight,
+  Ruler,
+  Calculator,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +88,8 @@ export interface VitalsDataPoint {
   weight?: number | null;
   /** Height cm */
   height?: number | null;
+  /** BMI kg/m² (computed from weight & height) */
+  bmi?: number | null;
 }
 
 export type TimeRange =
@@ -104,7 +109,10 @@ export type VitalKey =
   | 'spo2'
   | 'respiratory_rate'
   | 'systolic_bp'
-  | 'diastolic_bp';
+  | 'diastolic_bp'
+  | 'weight'
+  | 'height'
+  | 'bmi';
 
 interface VitalConfig {
   key: VitalKey;
@@ -182,6 +190,36 @@ const VITAL_CONFIGS: VitalConfig[] = [
     normalRange: [60, 90],
     yDomain: [30, 140],
   },
+  {
+    key: 'weight',
+    label: 'Weight',
+    shortLabel: 'Wt',
+    unit: 'kg',
+    color: '#0ea5e9', // sky
+    icon: Weight,
+    normalRange: [50, 90],
+    yDomain: [0, 200],
+  },
+  {
+    key: 'height',
+    label: 'Height',
+    shortLabel: 'Ht',
+    unit: 'cm',
+    color: '#64748b', // slate
+    icon: Ruler,
+    normalRange: [150, 185],
+    yDomain: [50, 220],
+  },
+  {
+    key: 'bmi',
+    label: 'BMI',
+    shortLabel: 'BMI',
+    unit: 'kg/m²',
+    color: '#14b8a6', // teal
+    icon: Calculator,
+    normalRange: [18.5, 24.9],
+    yDomain: [10, 50],
+  },
 ];
 
 const TIME_RANGE_OPTIONS: { value: TimeRange; label: string; shortLabel: string }[] = [
@@ -215,6 +253,9 @@ const VITAL_COLOR_CLASSES: Record<VitalKey, string> = {
   respiratory_rate: 'text-emerald-500',
   systolic_bp: 'text-violet-500',
   diastolic_bp: 'text-violet-400',
+  weight: 'text-sky-500',
+  height: 'text-slate-500',
+  bmi: 'text-teal-500',
 };
 
 // =============================================================================
@@ -498,7 +539,19 @@ export function VitalsTrendChart({
   const [range, setRange] = useState<TimeRange>(defaultRange);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
-  const filteredData = useMemo(() => filterByTimeRange(data, range), [data, range]);
+  // Compute BMI for each data point that has both weight and height
+  const dataWithBMI = useMemo(() => {
+    return data.map((d) => {
+      if (d.weight != null && d.height != null && d.height > 0) {
+        const heightM = d.height / 100;
+        const bmi = Math.round((d.weight / (heightM * heightM)) * 10) / 10;
+        return { ...d, bmi };
+      }
+      return d;
+    });
+  }, [data]);
+
+  const filteredData = useMemo(() => filterByTimeRange(dataWithBMI, range), [dataWithBMI, range]);
 
   // Determine which vitals have data
   const availableVitals = useMemo(() => {
