@@ -394,7 +394,7 @@ export default function DeliveriesDashboardPage() {
               data={deliveries}
               keyExtractor={(d) => d.id}
               isLoading={listLoading}
-              onRowClick={(d) => router.push(`/mch/${d.registration}`)}
+              onRowClick={(d) => router.push(`/mch/deliveries/${d.id}`)}
               columns={[
                 {
                   key: 'mother',
@@ -455,7 +455,7 @@ export default function DeliveriesDashboardPage() {
                 },
               ]}
               mobileCard={(d) => (
-                <Card className="p-3" onClick={() => router.push(`/mch/${d.registration}`)}>
+                <Card className="p-3" onClick={() => router.push(`/mch/deliveries/${d.id}`)}>
                   <div className="flex justify-between items-start gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate">{d.mother_name}</p>
