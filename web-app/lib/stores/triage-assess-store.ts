@@ -12,6 +12,7 @@
  * 5. Store is cleared after successful submission
  */
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { TriageCategory, AVPUStatus, MobilityStatus, ArrivalMode, ChiefComplaintCategory, AssignedArea } from '@/lib/types/triage';
 
 // =============================================================================
@@ -129,7 +130,9 @@ interface TriageAssessState {
 // Store
 // =============================================================================
 
-export const useTriageAssessStore = create<TriageAssessState>()((set, get) => ({
+export const useTriageAssessStore = create<TriageAssessState>()(
+  persist(
+    (set, get) => ({
   sessions: {},
   activeEncounterId: null,
 
@@ -363,7 +366,17 @@ export const useTriageAssessStore = create<TriageAssessState>()((set, get) => ({
   getCompleteAssessment: (encounterId) => {
     return get().sessions[encounterId] || null;
   },
-}));
+}),
+    {
+      name: 'vitora-triage-assess',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        sessions: state.sessions,
+        activeEncounterId: state.activeEncounterId,
+      }),
+    },
+  ),
+);
 
 // =============================================================================
 // Exports
