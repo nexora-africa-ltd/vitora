@@ -218,7 +218,14 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
   const currentChartDate = getChartDateKey(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedChartDate, setSelectedChartDate] = useState(currentChartDate);
-  const [entryType, setEntryType] = useState<Exclude<FluidBalanceEntryType, 'OTHER_INTAKE'>>('INTRAVENOUS');
+  const [entryType, setEntryTypeRaw] = useState<Exclude<FluidBalanceEntryType, 'OTHER_INTAKE'>>('INTRAVENOUS');
+  const setEntryType = (value: Exclude<FluidBalanceEntryType, 'OTHER_INTAKE'>) => {
+    setEntryTypeRaw(value);
+    // Clear type-specific fields when switching between intake/output
+    setItemType('');
+    setBottleNumber('');
+    setSpecificGravity('');
+  };
   const [recordedAt, setRecordedAt] = useState(getDefaultRecordedAt(currentChartDate));
   const [patientWeightKg, setPatientWeightKg] = useState('');
   const [intravenousInfusionNotes, setIntravenousInfusionNotes] = useState('');
@@ -429,11 +436,11 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
                 Record Fluids
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl text-sm">
               <DialogHeader>
-                <DialogTitle>Record Fluid Balance Entry</DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">Record Fluid Balance Entry</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4 pr-1">
+              <div className="space-y-3 py-3 pr-1 sm:space-y-4 sm:py-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="recorded-at">Recorded Time *</Label>
@@ -476,61 +483,68 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <div className={`rounded-lg border p-4 space-y-3 ${isIntakeEntry ? 'border-primary/40 bg-primary/5' : 'border-border/60'}`}>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">Intake</p>
-                      <HelpPopover content="Use this section for intravenous and alimentary intake entries. Select the intake category, then capture the fluid/feed type, bottle number where applicable, and the infused amount." />
+                  {isIntakeEntry ? (
+                    <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 space-y-3 lg:col-span-2">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Intake Details</p>
+                        <HelpPopover content="Capture fluid/feed type, bottle number (IV only), and the infused amount." />
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="item-type-intake">Type</Label>
+                          <Input
+                            id="item-type-intake"
+                            placeholder={entryType === 'INTRAVENOUS' ? 'Normal saline' : 'Oral feeds'}
+                            value={itemType}
+                            onChange={(e) => setItemType(e.target.value)}
+                          />
+                        </div>
+                        {entryType === 'INTRAVENOUS' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="bottle-number">Bottle Number</Label>
+                            <Input
+                              id="bottle-number"
+                              placeholder="Bottle 1"
+                              value={bottleNumber}
+                              onChange={(e) => setBottleNumber(e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="item-type-intake">Type</Label>
-                      <Input
-                        id="item-type-intake"
-                        placeholder={entryType === 'INTRAVENOUS' ? 'Normal saline' : 'Oral feeds'}
-                        value={isIntakeEntry ? itemType : ''}
-                        onChange={(e) => setItemType(e.target.value)}
-                        disabled={!isIntakeEntry}
-                      />
+                  ) : (
+                    <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 space-y-3 lg:col-span-2">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Output Details</p>
+                        <HelpPopover content="Describe the output and include urine specific gravity when applicable." />
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="item-type-output">Description</Label>
+                          <Input
+                            id="item-type-output"
+                            placeholder="Describe output"
+                            value={itemType}
+                            onChange={(e) => setItemType(e.target.value)}
+                          />
+                        </div>
+                        {entryType === 'URINE' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="specific-gravity">Specific Gravity</Label>
+                            <Input
+                              id="specific-gravity"
+                              type="number"
+                              step="0.001"
+                              min="0"
+                              placeholder="1.015"
+                              value={specificGravity}
+                              onChange={(e) => setSpecificGravity(e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bottle-number">Bottle Number</Label>
-                      <Input
-                        id="bottle-number"
-                        placeholder="Bottle 1"
-                        value={entryType === 'INTRAVENOUS' ? bottleNumber : ''}
-                        onChange={(e) => setBottleNumber(e.target.value)}
-                        disabled={entryType !== 'INTRAVENOUS'}
-                      />
-                    </div>
-                  </div>
-                  <div className={`rounded-lg border p-4 space-y-3 ${!isIntakeEntry ? 'border-primary/40 bg-primary/5' : 'border-border/60'}`}>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">Output</p>
-                      <HelpPopover content="Use this section for vomit, stool, nasogastric losses, other output, and urine. Capture the amount for each event and include urine specific gravity when the entry type is urine." />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="item-type-output">Description</Label>
-                      <Input
-                        id="item-type-output"
-                        placeholder="Describe output"
-                        value={!isIntakeEntry ? itemType : ''}
-                        onChange={(e) => setItemType(e.target.value)}
-                        disabled={isIntakeEntry}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="specific-gravity">Specific Gravity</Label>
-                      <Input
-                        id="specific-gravity"
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        placeholder="1.015"
-                        value={entryType === 'URINE' ? specificGravity : ''}
-                        onChange={(e) => setSpecificGravity(e.target.value)}
-                        disabled={entryType !== 'URINE'}
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -557,16 +571,18 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="iv-infusion-notes">Intravenous Infusion</Label>
-                    <Input
-                      id="iv-infusion-notes"
-                      placeholder={currentSheet?.intravenous_infusion_notes ?? 'IV infusion details'}
-                      value={intravenousInfusionNotes}
-                      onChange={(e) => setIntravenousInfusionNotes(e.target.value)}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                  {entryType === 'INTRAVENOUS' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="iv-infusion-notes">Intravenous Infusion</Label>
+                      <Input
+                        id="iv-infusion-notes"
+                        placeholder={currentSheet?.intravenous_infusion_notes ?? 'IV infusion details'}
+                        value={intravenousInfusionNotes}
+                        onChange={(e) => setIntravenousInfusionNotes(e.target.value)}
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="other-instructions">Other Instructions</Label>
                     <Input

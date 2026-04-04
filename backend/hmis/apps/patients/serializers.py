@@ -244,7 +244,9 @@ class AllergySerializer(serializers.ModelSerializer):
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
     drug_name = serializers.CharField(source="drug.generic_name", read_only=True, allow_null=True)
-    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True, allow_null=True
+    )
 
     # Make patient optional for nested routes (will be set in view)
     patient = serializers.PrimaryKeyRelatedField(
