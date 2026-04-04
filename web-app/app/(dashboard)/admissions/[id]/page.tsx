@@ -155,7 +155,7 @@ export default function AdmissionDetailPage() {
   const { data: reviewRequests, isLoading: reviewRequestsLoading } = useAdmissionReviewRequests(admissionId);
   const { data: availableBeds } = useBeds({ ward: admission?.ward, status: 'AVAILABLE' });
   const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(
-    admission?.patient ?? 0, '72h'
+    admission?.patient ?? 0, 'all'
   );
   const createReviewRequest = useCreateReviewRequest();
   const setExpectedDischarge = useSetExpectedDischarge();
