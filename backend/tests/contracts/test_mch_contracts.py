@@ -443,6 +443,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "alerts",
             "cervical_dilation_cm",
             "contraction_duration_seconds",
+            "contraction_intensity",
             "contractions_per_10_min",
             "created_at",
             "descent_fifths",

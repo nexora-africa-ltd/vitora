@@ -298,7 +298,7 @@ export const PatientQRCodeSchema = z.object({
 
 export const VitalsDataPointSchema = z.object({
   timestamp: z.string(),
-  source: z.string().nullable().optional(),
+  source: z.string().nullable().optional().transform((v) => v ?? undefined),
   temperature: z.number().nullable().optional(),
   heart_rate: z.number().nullable().optional(),
   spo2: z.number().nullable().optional(),

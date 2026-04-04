@@ -18,7 +18,7 @@ All models follow TDD approach and Kenya healthcare requirements.
 DHA Compliance Phase 2 - Sprint 2.B: MCH & Growth Charts.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.apps import apps
@@ -893,6 +893,27 @@ class Delivery(HistoryMixin, TimeStampedModel):
             if self.admission_id and self.partograph.admission_id and self.partograph.admission_id != self.admission_id:
                 errors["admission"] = "Delivery admission must match the linked labour partograph admission."
 
+            # Validate delivery time falls within partograph window
+            if self.delivery_date and self.delivery_time:
+                delivery_dt = timezone.make_aware(
+                    datetime.combine(self.delivery_date, self.delivery_time),
+                    timezone.get_current_timezone(),
+                ) if timezone.is_naive(datetime.combine(self.delivery_date, self.delivery_time)) else datetime.combine(self.delivery_date, self.delivery_time)
+                partograph_start = self.partograph.started_at
+                partograph_end = self.partograph.completed_at or timezone.now()
+                # Allow 1h buffer for documentation lag
+                buffer = timedelta(hours=1)
+                if delivery_dt < partograph_start - buffer:
+                    errors["delivery_time"] = (
+                        f"Delivery time ({delivery_dt:%H:%M}) is before the partograph "
+                        f"started ({partograph_start:%H:%M})."
+                    )
+                if delivery_dt > partograph_end + buffer:
+                    errors["delivery_time"] = (
+                        f"Delivery time ({delivery_dt:%H:%M}) is after the partograph "
+                        f"completed ({partograph_end:%H:%M})."
+                    )
+
         if self.admission_id:
             if self.admission.patient_id != self.registration.mother_id:
                 errors["admission"] = "Admission patient must match the MCH registration mother."
@@ -1073,7 +1094,14 @@ class LabourPartograph(HistoryMixin, TimeStampedModel):
             self.parity = self.registration.anc_enrollment.para
 
         if self.gestation_weeks is None and self.registration.anc_enrollment:
-            self.gestation_weeks = self.registration.anc_enrollment.gestation_weeks()
+            enrollment = self.registration.anc_enrollment
+            weeks = enrollment.gestation_weeks()
+            if weeks is None and enrollment.edd:
+                # Derive from EDD: gestation at labour start = 40 - weeks_until_edd
+                ref_date = (self.started_at or timezone.now()).date()
+                days_until_edd = (enrollment.edd - ref_date).days
+                weeks = max(0, (280 - days_until_edd) // 7)
+            self.gestation_weeks = weeks
 
         if self.status != "ACTIVE" and self.completed_at is None:
             self.completed_at = timezone.now()
@@ -1143,6 +1171,17 @@ class LabourPartographObservation(HistoryMixin, TimeStampedModel):
         blank=True,
         validators=[MinValueValidator(0), MaxValueValidator(180)],
         help_text="Approximate contraction duration in seconds",
+    )
+    contraction_intensity = models.CharField(
+        max_length=10,
+        choices=[
+            ("MILD", "Mild"),
+            ("MODERATE", "Moderate"),
+            ("STRONG", "Strong"),
+        ],
+        blank=True,
+        default="",
+        help_text="Contraction strength: mild, moderate, or strong",
     )
     moulding = models.CharField(
         max_length=3,
@@ -1220,6 +1259,21 @@ class LabourPartographObservation(HistoryMixin, TimeStampedModel):
             f"for {self.partograph.registration.mch_number}"
         )
 
+    @staticmethod
+    def _ensure_datetime(value):
+        """Coerce a string or datetime to a timezone-aware datetime, or return None."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            from django.utils.dateparse import parse_datetime as _parse
+
+            value = _parse(value)
+            if value is None:
+                return None
+        if isinstance(value, datetime) and timezone.is_naive(value):
+            value = timezone.make_aware(value, timezone.get_current_timezone())
+        return value
+
     def get_alerts(self) -> list[str]:
         alerts = []
         dilation_value = self.cervical_dilation_cm
@@ -1240,6 +1294,81 @@ class LabourPartographObservation(HistoryMixin, TimeStampedModel):
 
         if self.urine_protein and self.urine_protein not in ("", "NEGATIVE", "TRACE"):
             alerts.append(f"Proteinuria: {self.urine_protein}")
+
+        # WHO alert / action line check
+        if dilation_value is not None and dilation_value >= Decimal("4.0"):
+            self._check_who_lines(dilation_value, alerts)
+
+        # Urine completeness: flag if >4h since last urine assessment
+        self._check_urine_gap(alerts)
+
+        return alerts
+
+    def _check_urine_gap(self, alerts: list[str]) -> None:
+        """Flag if >4 hours have passed since last urine assessment."""
+        obs_time = self._ensure_datetime(self.observation_time)
+        if obs_time is None:
+            return
+
+        last_urine = (
+            self.partograph.observations.filter(
+                observation_time__lt=self.observation_time,
+                urine_volume_ml__isnull=False,
+            )
+            .order_by("-observation_time")
+            .values_list("observation_time", flat=True)
+            .first()
+        )
+        if last_urine is None:
+            # Check hours since partograph start
+            started = self._ensure_datetime(self.partograph.started_at)
+            if started is None:
+                return
+            hours = (obs_time - started).total_seconds() / 3600
+            if hours >= 4 and self.urine_volume_ml is None:
+                alerts.append("Urine assessment overdue (>4h since admission)")
+        elif self.urine_volume_ml is None:
+            hours = (obs_time - last_urine).total_seconds() / 3600
+            if hours >= 4:
+                alerts.append(f"Urine assessment overdue ({hours:.0f}h since last)")
+
+    def _check_who_lines(self, dilation_value: Decimal, alerts: list[str]) -> None:
+        """Check dilation progress against the WHO alert and action lines.
+
+        Alert line: starts at 4 cm at the time the first observation >= 4 cm
+        is recorded, then rises at 1 cm/hr.
+        Action line: 4 hours to the right of the alert line.
+        """
+        obs_time = self._ensure_datetime(self.observation_time)
+        if obs_time is None:
+            return
+
+        first_active = (
+            self.partograph.observations.filter(
+                cervical_dilation_cm__gte=Decimal("4.0"),
+            )
+            .order_by("observation_time")
+            .values_list("observation_time", flat=True)
+            .first()
+        )
+        if first_active is None:
+            return
+        hours_elapsed = (obs_time - first_active).total_seconds() / 3600
+        if hours_elapsed < 0:
+            return
+        expected_alert = Decimal("4.0") + Decimal(str(round(hours_elapsed, 2)))
+        expected_action = Decimal("4.0") + Decimal(str(round(max(0, hours_elapsed - 4), 2)))
+
+        if hours_elapsed >= 4 and dilation_value < min(expected_action, Decimal("10.0")):
+            alerts.append(
+                f"Crossed ACTION line: expected ≥{min(expected_action, Decimal('10.0')):.1f} cm, "
+                f"actual {dilation_value} cm"
+            )
+        elif dilation_value < min(expected_alert, Decimal("10.0")):
+            alerts.append(
+                f"Crossed ALERT line: expected ≥{min(expected_alert, Decimal('10.0')):.1f} cm, "
+                f"actual {dilation_value} cm"
+            )
 
         return alerts
 

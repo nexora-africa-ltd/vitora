@@ -394,6 +394,8 @@ export const LiquorStatusSchema = z.enum(['CLEAR', 'MECONIUM', 'BLOOD_STAINED', 
 
 export const MouldingGradeSchema = z.enum(['0', '+', '++', '+++', '']);
 
+export const ContractionIntensitySchema = z.enum(['MILD', 'MODERATE', 'STRONG', '']);
+
 export const LabourPartographObservationSchema = z.object({
   id: z.number(),
   partograph: z.number(),
@@ -405,6 +407,7 @@ export const LabourPartographObservationSchema = z.object({
   descent_fifths: z.number().nullable(),
   contractions_per_10_min: z.number().nullable(),
   contraction_duration_seconds: z.number().nullable(),
+  contraction_intensity: ContractionIntensitySchema,
   moulding: MouldingGradeSchema,
   maternal_pulse: z.number().nullable(),
   maternal_blood_pressure: z.string(),

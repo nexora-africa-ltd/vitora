@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Activity, Plus, Waves, HeartPulse, Baby, Loader2, Printer } from 'lucide-react';
+import { Activity, Plus, Waves, HeartPulse, Baby, Loader2, Printer, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -45,6 +46,20 @@ import type {
   MouldingGrade,
   UrineResult,
 } from '@/lib/types/mch';
+
+type ObservationType = 'routine' | 'intervention';
+
+const observationTypeOptions: { value: ObservationType; label: string; shortLabel: string; description: string }[] = [
+  { value: 'routine', label: 'Routine Observation', shortLabel: 'Routine', description: 'FHR, dilation, contractions, maternal vitals, urine' },
+  { value: 'intervention', label: 'Intervention', shortLabel: 'Intervention', description: 'Medications, oxytocin, procedures' },
+];
+
+const contractionIntensityOptions: { value: '' | 'MILD' | 'MODERATE' | 'STRONG'; label: string }[] = [
+  { value: '', label: 'Not recorded' },
+  { value: 'MILD', label: 'Mild' },
+  { value: 'MODERATE', label: 'Moderate' },
+  { value: 'STRONG', label: 'Strong' },
+];
 
 interface PartographTabProps {
   registrationId: number;
@@ -103,11 +118,13 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
   const [partographNotes, setPartographNotes] = useState('');
 
   const [observationTime, setObservationTime] = useState(new Date().toISOString().slice(0, 16));
+  const [observationType, setObservationType] = useState<ObservationType>('routine');
   const [fetalHeartRate, setFetalHeartRate] = useState('');
   const [cervicalDilation, setCervicalDilation] = useState('');
   const [descentFifths, setDescentFifths] = useState('');
   const [contractionsPer10Min, setContractionsPer10Min] = useState('');
   const [contractionDuration, setContractionDuration] = useState('');
+  const [contractionIntensity, setContractionIntensity] = useState<'' | 'MILD' | 'MODERATE' | 'STRONG'>('');
   const [moulding, setMoulding] = useState<MouldingGrade>('');
   const [maternalPulse, setMaternalPulse] = useState('');
   const [maternalBloodPressure, setMaternalBloodPressure] = useState('');
@@ -131,6 +148,8 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
   const createObservation = useCreateLabourPartographObservation();
 
   const latestObservation = observations.at(-1) ?? activePartograph?.latest_observation ?? null;
+  const latestDilation = latestObservation?.cervical_dilation_cm ? Number(latestObservation.cervical_dilation_cm) : 0;
+  const showDeliveryPrompt = latestDilation >= 8 && registration.status === 'ACTIVE';
 
   const resetPartographForm = () => {
     setParity(registration.parity != null ? String(registration.parity) : '');
@@ -142,11 +161,13 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
 
   const resetObservationForm = () => {
     setObservationTime(new Date().toISOString().slice(0, 16));
+    setObservationType('routine');
     setFetalHeartRate('');
     setCervicalDilation('');
     setDescentFifths('');
     setContractionsPer10Min('');
     setContractionDuration('');
+    setContractionIntensity('');
     setMoulding('');
     setMaternalPulse('');
     setMaternalBloodPressure('');
@@ -191,6 +212,7 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
         descent_fifths: descentFifths ? parseInt(descentFifths) : undefined,
         contractions_per_10_min: contractionsPer10Min ? parseInt(contractionsPer10Min) : undefined,
         contraction_duration_seconds: contractionDuration ? parseInt(contractionDuration) : undefined,
+        contraction_intensity: contractionIntensity || undefined,
         moulding: moulding || undefined,
         maternal_pulse: maternalPulse ? parseInt(maternalPulse) : undefined,
         maternal_blood_pressure: maternalBloodPressure || undefined,
@@ -373,101 +395,196 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                 <DialogTitle>Record Labour Observation</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Observation Time</Label>
-                  <Input type="datetime-local" value={observationTime} onChange={(e) => setObservationTime(e.target.value)} />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Fetal Heart Rate</Label>
-                    <Input type="number" value={fetalHeartRate} onChange={(e) => setFetalHeartRate(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Cervical Dilation (cm)</Label>
-                    <Input type="number" step="0.1" value={cervicalDilation} onChange={(e) => setCervicalDilation(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Descent (fifths)</Label>
-                    <Input type="number" min="0" max="5" value={descentFifths} onChange={(e) => setDescentFifths(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Contractions / 10 min</Label>
-                    <Input type="number" value={contractionsPer10Min} onChange={(e) => setContractionsPer10Min(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Contraction Duration (sec)</Label>
-                    <Input type="number" value={contractionDuration} onChange={(e) => setContractionDuration(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Moulding</Label>
-                    <Select value={moulding} onValueChange={(value) => setMoulding(value as MouldingGrade)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select moulding" />
+                    <Label>Observation Type</Label>
+                    <Select value={observationType} onValueChange={(value) => setObservationType(value as ObservationType)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue>
+                          <span className="sm:hidden">{observationTypeOptions.find((o) => o.value === observationType)?.shortLabel}</span>
+                          <span className="hidden sm:inline">{observationTypeOptions.find((o) => o.value === observationType)?.label}</span>
+                        </SelectValue>
                       </SelectTrigger>
-                      <SelectContent>
-                        {mouldingOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
+                      <SelectContent className="min-w-[250px]">
+                        {observationTypeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value} textValue={option.label}>
+                            <div>
+                              <span className="font-medium">{option.label}</span>
+                              <span className="block text-xs text-muted-foreground">{option.description}</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Maternal Pulse</Label>
-                    <Input type="number" value={maternalPulse} onChange={(e) => setMaternalPulse(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Maternal Blood Pressure</Label>
-                    <Input value={maternalBloodPressure} onChange={(e) => setMaternalBloodPressure(e.target.value)} placeholder="120/80" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Maternal Temperature (°C)</Label>
-                    <Input type="number" step="0.1" value={maternalTemperature} onChange={(e) => setMaternalTemperature(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Urine Volume (mL)</Label>
-                    <Input type="number" value={urineVolume} onChange={(e) => setUrineVolume(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Urine Protein</Label>
-                    <Select value={urineProtein} onValueChange={(value) => setUrineProtein(value as UrineResult)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select result" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {urineOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Urine Acetone</Label>
-                    <Select value={urineAcetone} onValueChange={(value) => setUrineAcetone(value as UrineResult)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select result" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {urineOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Oxytocin (drops/min)</Label>
-                    <Input type="number" value={oxytocinDrops} onChange={(e) => setOxytocinDrops(e.target.value)} />
+                    <Label>Observation Time</Label>
+                    <Input type="datetime-local" value={observationTime} onChange={(e) => setObservationTime(e.target.value)} />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Medications / Interventions</Label>
-                  <Textarea rows={2} value={medications} onChange={(e) => setMedications(e.target.value)} />
-                </div>
+
+                {/* Routine: Fetal & cervical progress */}
+                {observationType === 'routine' && (
+                  <>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fetal & Cervical Progress</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Fetal Heart Rate</Label>
+                        <Input type="number" value={fetalHeartRate} onChange={(e) => setFetalHeartRate(e.target.value)} placeholder="BPM" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cervical Dilation (cm)</Label>
+                        <Input type="number" step="0.1" min="0" max="10" value={cervicalDilation} onChange={(e) => setCervicalDilation(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Descent (fifths)</Label>
+                        <Input type="number" min="0" max="5" value={descentFifths} onChange={(e) => setDescentFifths(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Moulding</Label>
+                        <Select value={moulding} onValueChange={(value) => setMoulding(value as MouldingGrade)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select moulding" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {mouldingOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Contractions</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Per 10 min</Label>
+                        <Input type="number" value={contractionsPer10Min} onChange={(e) => setContractionsPer10Min(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Duration (sec)</Label>
+                        <Input type="number" value={contractionDuration} onChange={(e) => setContractionDuration(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Intensity</Label>
+                        <Select value={contractionIntensity} onValueChange={(value) => setContractionIntensity(value as '' | 'MILD' | 'MODERATE' | 'STRONG')}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select intensity" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {contractionIntensityOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Maternal Vitals</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Maternal Pulse</Label>
+                        <Input type="number" value={maternalPulse} onChange={(e) => setMaternalPulse(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Blood Pressure</Label>
+                        <Input value={maternalBloodPressure} onChange={(e) => setMaternalBloodPressure(e.target.value)} placeholder="120/80" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Temperature (°C)</Label>
+                        <Input type="number" step="0.1" value={maternalTemperature} onChange={(e) => setMaternalTemperature(e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Urine Assessment</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Volume (mL)</Label>
+                        <Input type="number" value={urineVolume} onChange={(e) => setUrineVolume(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Protein</Label>
+                        <Select value={urineProtein} onValueChange={(value) => setUrineProtein(value as UrineResult)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select result" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {urineOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Acetone</Label>
+                        <Select value={urineAcetone} onValueChange={(value) => setUrineAcetone(value as UrineResult)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select result" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {urineOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Intervention: Medications & procedures */}
+                {observationType === 'intervention' && (
+                  <>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Intervention Details</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Oxytocin (drops/min)</Label>
+                        <Input type="number" value={oxytocinDrops} onChange={(e) => setOxytocinDrops(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fetal Heart Rate (post-intervention)</Label>
+                        <Input type="number" value={fetalHeartRate} onChange={(e) => setFetalHeartRate(e.target.value)} placeholder="BPM" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Medications / Procedures</Label>
+                      <Textarea rows={3} value={medications} onChange={(e) => setMedications(e.target.value)} placeholder="e.g. ARM performed, epidural given, IV fluids started..." />
+                    </div>
+                  </>
+                )}
+
+                {/* Shared: Oxytocin (routine), Medications (routine), Notes */}
+                {observationType === 'routine' && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Oxytocin (drops/min)</Label>
+                      <Input type="number" value={oxytocinDrops} onChange={(e) => setOxytocinDrops(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Medications</Label>
+                      <Input value={medications} onChange={(e) => setMedications(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label>Notes</Label>
                   <Textarea rows={2} value={observationNotes} onChange={(e) => setObservationNotes(e.target.value)} />
@@ -491,6 +608,28 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
         <SummaryCard title="Contractions" icon={Activity} value={latestObservation?.contractions_per_10_min ? `${latestObservation.contractions_per_10_min}/10 min` : '—'} />
         <SummaryCard title="Maternal Pulse" icon={HeartPulse} value={latestObservation?.maternal_pulse ? `${latestObservation.maternal_pulse} BPM` : '—'} />
       </div>
+
+      {showDeliveryPrompt && (
+        <Card className="border-emerald-400 bg-emerald-50/70">
+          <CardContent className="py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-emerald-600 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-emerald-800">
+                  {latestDilation >= 10 ? 'Fully dilated — ready for delivery' : `Advanced labour: ${latestDilation} cm dilation`}
+                </p>
+                <p className="text-xs text-emerald-600">Record delivery details in the Delivery tab when ready.</p>
+              </div>
+            </div>
+            <Link href={`/mch/${registrationId}?tab=delivery`}>
+              <Button size="sm" variant="outline" className="border-emerald-400 text-emerald-700 hover:bg-emerald-100 w-full sm:w-auto">
+                <Baby className="h-4 w-4 mr-1" />
+                Record Delivery
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {latestObservation?.alerts?.length ? (
         <Card className="border-orange-300 bg-orange-50/70">

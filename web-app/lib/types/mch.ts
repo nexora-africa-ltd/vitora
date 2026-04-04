@@ -491,6 +491,7 @@ export interface LabourPartographObservation {
   descent_fifths: number | null;
   contractions_per_10_min: number | null;
   contraction_duration_seconds: number | null;
+  contraction_intensity: '' | 'MILD' | 'MODERATE' | 'STRONG';
   moulding: MouldingGrade;
   maternal_pulse: number | null;
   maternal_blood_pressure: string;
@@ -550,6 +551,7 @@ export interface LabourPartographObservationCreateData {
   descent_fifths?: number;
   contractions_per_10_min?: number;
   contraction_duration_seconds?: number;
+  contraction_intensity?: '' | 'MILD' | 'MODERATE' | 'STRONG';
   moulding?: MouldingGrade;
   maternal_pulse?: number;
   maternal_blood_pressure?: string;

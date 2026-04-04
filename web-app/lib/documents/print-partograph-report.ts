@@ -95,6 +95,19 @@ const PARTOGRAPH_REPORT_TEMPLATE = `
     <div class="section-content secondary">{{registration.notes}}</div>
   </div>
 
+  <div class="section cervicograph-section" style="{{cervicograph.display}}">
+    <div class="section-title">Cervicograph</div>
+    <div class="cervicograph-container">
+      {{cervicograph.svg}}
+    </div>
+    <div class="cervicograph-legend">
+      <span class="legend-item"><svg width="18" height="6" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="3" x2="18" y2="3" stroke="#0d9488" stroke-width="2"/></svg> Dilation</span>
+      <span class="legend-item"><svg width="18" height="6" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="3" x2="18" y2="3" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="8 4"/></svg> Alert Line</span>
+      <span class="legend-item"><svg width="18" height="6" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="3" x2="18" y2="3" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="3 3"/></svg> Action Line</span>
+      <span class="legend-item"><svg width="18" height="6" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="3" x2="18" y2="3" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4 1 1 1"/><rect x="7" y="1" width="4" height="4" fill="#7c3aed"/></svg> Descent</span>
+    </div>
+  </div>
+
   <div class="section">
     <div class="section-title">Observation Timeline</div>
     <table>
@@ -303,6 +316,29 @@ tbody { display: table-row-group; }
 }
 
 .qr img { width: 70px; height: 70px; }
+
+.cervicograph-section { page-break-inside: avoid; }
+.cervicograph-container { text-align: center; margin: 8px 0; }
+.cervicograph-container svg { max-width: 100%; height: auto; }
+.cervicograph-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  font-size: 9px;
+  color: #475569;
+  margin-top: 4px;
+}
+.legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-item svg { display: inline-block; flex-shrink: 0; }
+
+@media print {
+  .cervicograph-container svg,
+  .cervicograph-legend svg {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+}
 `;
 
 function replaceTemplatePlaceholders(
@@ -330,12 +366,12 @@ function buildObservationRows(observations: LabourPartographObservation[]): stri
   return observations
     .map((observation) => {
       const contractionText = observation.contractions_per_10_min != null
-        ? `${observation.contractions_per_10_min}/10 min${observation.contraction_duration_seconds != null ? ` x ${observation.contraction_duration_seconds}s` : ''}`
+        ? `${observation.contractions_per_10_min}/10 min${observation.contraction_duration_seconds != null ? ` x ${observation.contraction_duration_seconds}s` : ''}${observation.contraction_intensity ? ` (${observation.contraction_intensity.toLowerCase()})` : ''}`
         : '—';
       const maternalText = [
         observation.maternal_pulse != null ? `P ${observation.maternal_pulse}` : null,
         observation.maternal_blood_pressure ? `BP ${observation.maternal_blood_pressure}` : null,
-        observation.maternal_temperature != null ? `T ${observation.maternal_temperature}` : null,
+        observation.maternal_temperature != null ? `T ${observation.maternal_temperature}°C` : null,
       ].filter(Boolean).join(' · ') || '—';
       const urineText = [
         observation.urine_volume_ml != null ? `${observation.urine_volume_ml} mL` : null,
@@ -371,6 +407,130 @@ function getPartographQRContent(data: PrintPartographReportData): QRContent {
     isVerifiable: Boolean(data.verificationUrl),
     label: `Partograph ${data.registration.mch_number}`,
   };
+}
+
+/**
+ * Build an inline SVG cervicograph: dilation & descent vs time with WHO lines.
+ */
+function buildCervicographSVG(observations: LabourPartographObservation[]): string {
+  const dilationObs = observations.filter(
+    (o) => o.cervical_dilation_cm != null || o.descent_fifths != null,
+  );
+  if (dilationObs.length < 2) return '';
+
+  const W = 520;
+  const H = 220;
+  const PAD = { top: 20, right: 20, bottom: 30, left: 40 };
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+
+  const times = dilationObs.map((o) => new Date(o.observation_time).getTime());
+  const tMin = times[0]!;
+  const tMax = times[times.length - 1]!;
+  const tRange = tMax - tMin || 1;
+
+  const x = (t: number) => PAD.left + ((t - tMin) / tRange) * plotW;
+  const yDil = (cm: number) => PAD.top + plotH - (cm / 10) * plotH;
+  const yDesc = (fifths: number) => PAD.top + (fifths / 5) * plotH;
+
+  // Grid lines & Y-axis labels for dilation (0-10 cm)
+  let gridLines = '';
+  for (let cm = 0; cm <= 10; cm += 2) {
+    const y = yDil(cm);
+    gridLines += `<line x1="${PAD.left}" y1="${y}" x2="${W - PAD.right}" y2="${y}" stroke="#e2e8f0" stroke-width="0.5"/>`;
+    gridLines += `<text x="${PAD.left - 4}" y="${y + 3}" text-anchor="end" font-size="8" fill="#64748b">${cm}</text>`;
+  }
+
+  // X-axis time labels
+  let xLabels = '';
+  const labelCount = Math.min(dilationObs.length, 8);
+  const step = Math.max(1, Math.floor(dilationObs.length / labelCount));
+  for (let i = 0; i < dilationObs.length; i += step) {
+    const t = times[i]!;
+    const xPos = x(t);
+    const label = new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    xLabels += `<text x="${xPos}" y="${H - 4}" text-anchor="middle" font-size="8" fill="#64748b">${label}</text>`;
+  }
+
+  // Dilation line
+  const dilPoints = dilationObs
+    .filter((o) => o.cervical_dilation_cm != null)
+    .map((o) => `${x(new Date(o.observation_time).getTime())},${yDil(Number(o.cervical_dilation_cm))}`)
+    .join(' ');
+  const dilationLine = dilPoints
+    ? `<polyline points="${dilPoints}" fill="none" stroke="#0d9488" stroke-width="2"/>`
+    + dilationObs
+        .filter((o) => o.cervical_dilation_cm != null)
+        .map((o) => {
+          const cx = x(new Date(o.observation_time).getTime());
+          const cy = yDil(Number(o.cervical_dilation_cm));
+          return `<circle cx="${cx}" cy="${cy}" r="3" fill="#0d9488"/>`;
+        })
+        .join('')
+    : '';
+
+  // Descent line (inverted: 5/5 at top, 0/5 at bottom)
+  const descPoints = dilationObs
+    .filter((o) => o.descent_fifths != null)
+    .map((o) => `${x(new Date(o.observation_time).getTime())},${yDesc(o.descent_fifths!)}`)
+    .join(' ');
+  const descentLine = descPoints
+    ? `<polyline points="${descPoints}" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4 1 1 1"/>`
+    + dilationObs
+        .filter((o) => o.descent_fifths != null)
+        .map((o) => {
+          const cx = x(new Date(o.observation_time).getTime());
+          const cy = yDesc(o.descent_fifths!);
+          return `<rect x="${cx - 2.5}" y="${cy - 2.5}" width="5" height="5" fill="#7c3aed"/>`;
+        })
+        .join('')
+    : '';
+
+  // WHO Alert & Action lines
+  const firstActive = dilationObs.find(
+    (o) => o.cervical_dilation_cm != null && Number(o.cervical_dilation_cm) >= 4,
+  );
+  let alertLine = '';
+  let actionLine = '';
+  if (firstActive) {
+    const t0 = new Date(firstActive.observation_time).getTime();
+    // Alert line: 4cm at t0, +1cm per hour
+    const alertPts: string[] = [];
+    const actionPts: string[] = [];
+    for (let h = 0; h <= 8; h += 0.5) {
+      const t = t0 + h * 3600000;
+      if (t > tMax + 3600000) break;
+      const alertCm = Math.min(4 + h, 10);
+      alertPts.push(`${x(t)},${yDil(alertCm)}`);
+      if (h >= 4) {
+        const actionCm = Math.min(4 + (h - 4), 10);
+        actionPts.push(`${x(t)},${yDil(actionCm)}`);
+      }
+    }
+    if (alertPts.length >= 2) {
+      alertLine = `<polyline points="${alertPts.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="8 4"/>`;
+    }
+    if (actionPts.length >= 2) {
+      actionLine = `<polyline points="${actionPts.join(' ')}" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+    }
+  }
+
+  // Axis labels
+  const yAxisLabel = `<text x="12" y="${PAD.top + plotH / 2}" transform="rotate(-90 12 ${PAD.top + plotH / 2})" text-anchor="middle" font-size="9" fill="#64748b">Dilation (cm) / Descent (/5)</text>`;
+  const xAxisLabel = `<text x="${PAD.left + plotW / 2}" y="${H - 0}" text-anchor="middle" font-size="9" fill="#64748b">Time</text>`;
+
+  // Right Y-axis for descent
+  let rightAxis = '';
+  for (let f = 0; f <= 5; f++) {
+    const y = yDesc(f);
+    rightAxis += `<text x="${W - PAD.right + 4}" y="${y + 3}" text-anchor="start" font-size="8" fill="#7c3aed">${f}/5</text>`;
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="background:#fafbfc;border:1px solid #e2e8f0;border-radius:4px;">
+    ${gridLines}${xLabels}${yAxisLabel}${xAxisLabel}${rightAxis}
+    ${alertLine}${actionLine}
+    ${dilationLine}${descentLine}
+  </svg>`;
 }
 
 function buildTemplateData(data: PrintPartographReportData): Record<string, unknown> {
@@ -418,6 +578,10 @@ function buildTemplateData(data: PrintPartographReportData): Record<string, unkn
     },
     registrationNotes: {
       display: data.registration.risk_factors || data.registration.notes ? '' : 'display:none;',
+    },
+    cervicograph: {
+      svg: buildCervicographSVG(data.observations),
+      display: data.observations.length >= 2 ? '' : 'display:none;',
     },
     observations: {
       rows: buildObservationRows(data.observations),
