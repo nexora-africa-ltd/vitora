@@ -221,6 +221,7 @@ export const AdmissionSchema = z.object({
   attending_doctor_username: z.string().nullable().optional(),
   ward: z.number(),
   ward_name: z.string().optional(),
+  ward_type: InpatientWardTypeSchema.optional(),
   bed: z.number().nullable(),
   bed_number: z.string().nullable().optional(),
   admission_status: AdmissionStatusSchema,

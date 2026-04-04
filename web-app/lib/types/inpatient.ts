@@ -113,6 +113,7 @@ export interface Admission {
   attending_doctor_username?: string | null;
   ward: number;
   ward_name?: string;
+  ward_type?: InpatientWardType;
   bed: number | null;
   bed_number?: string | null;
   admission_status: AdmissionStatus;

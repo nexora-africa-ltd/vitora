@@ -66,6 +66,8 @@ import { BPMonitoringChart } from '@/components/inpatient/bp-monitoring-chart';
 import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { useMCHRegistration } from '@/lib/hooks/use-mch';
+import { PartographTab } from '@/components/mch/partograph-tab';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
@@ -157,6 +159,13 @@ export default function AdmissionDetailPage() {
   const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(
     admission?.patient ?? 0, 'all'
   );
+
+  // Maternity case: show partograph tab for maternity ward OR linked MCH registration
+  const isMaternityCase = admission?.ward_type === 'MATERNITY' || Boolean(admission?.mch_registration);
+  const { data: mchRegistration } = useMCHRegistration(
+    admission?.mch_registration ?? undefined
+  );
+
   const createReviewRequest = useCreateReviewRequest();
   const setExpectedDischarge = useSetExpectedDischarge();
   const overrideBed = useOverrideBed();
@@ -688,7 +697,7 @@ export default function AdmissionDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-5 h-auto">
+        <TabsList className={`w-full grid h-auto ${isMaternityCase ? 'grid-cols-6' : 'grid-cols-5'}`}>
           <TabsTrigger value="overview" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Info</span>
             <span className="hidden sm:inline">Overview</span>
@@ -706,6 +715,12 @@ export default function AdmissionDetailPage() {
             <span className="hidden sm:inline">Nursing Kardex</span>
           </TabsTrigger>
           <TabsTrigger value="orders" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">Orders</TabsTrigger>
+          {isMaternityCase && (
+            <TabsTrigger value="partograph" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+              <span className="sm:hidden">Parto</span>
+              <span className="hidden sm:inline">Partograph</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Overview Tab */}
@@ -1162,6 +1177,33 @@ export default function AdmissionDetailPage() {
             isActive={admission.admission_status === 'ACTIVE'}
           />
         </TabsContent>
+
+        {/* Partograph Tab (maternity cases only) */}
+        {isMaternityCase && (
+          <TabsContent value="partograph" className="space-y-4">
+            {admission.mch_registration && mchRegistration ? (
+              <PartographTab
+                registrationId={admission.mch_registration}
+                registration={mchRegistration}
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="font-medium">MCH Registration Required</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    A partograph requires a linked MCH registration. Create an MCH registration for this patient and link it to this admission.
+                  </p>
+                  <Button variant="outline" className="mt-4" asChild>
+                    <Link href={`/mch/new?patient=${admission.patient}`}>
+                      Create MCH Registration
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={expectedDischargeDialogOpen} onOpenChange={setExpectedDischargeDialogOpen}>
