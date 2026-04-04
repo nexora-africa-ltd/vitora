@@ -289,6 +289,7 @@ function SingleMetricChart({
               <YAxis domain={config.yDomain} tick={{ fontSize: 10 }} width={30} tickLine={false} axisLine={false} />
               <ReferenceArea y1={normalLow} y2={normalHigh} fill={config.color} fillOpacity={0.06} strokeOpacity={0} />
               <RechartsTooltip
+                cursor={false}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
                   const d = payload[0];
@@ -296,7 +297,7 @@ function SingleMetricChart({
                   const p = d.payload as { timestamp?: string } | undefined;
                   return (
                     <div className="rounded-lg border bg-popover px-3 py-2 text-sm shadow-md">
-                      <p className="font-medium" style={{ color: config.color }}>
+                      <p className={cn('font-medium', METRIC_COLOR_CLASSES[config.key])}>
                         {config.label}: {d.value} {config.unit}
                       </p>
                       {p?.timestamp && (
@@ -339,6 +340,7 @@ function SingleMetricChart({
             <ReferenceLine y={normalLow} stroke={config.color} strokeDasharray="3 3" opacity={0.3} />
             <ReferenceLine y={normalHigh} stroke={config.color} strokeDasharray="3 3" opacity={0.3} />
             <RechartsTooltip
+              cursor={false}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
                 const d = payload[0];
@@ -346,7 +348,7 @@ function SingleMetricChart({
                 const p = d.payload as { timestamp?: string } | undefined;
                 return (
                   <div className="rounded-lg border bg-popover px-3 py-2 text-sm shadow-md">
-                    <p className="font-medium" style={{ color: config.color }}>
+                    <p className={cn('font-medium', METRIC_COLOR_CLASSES[config.key])}>
                       {config.label}: {d.value} {config.unit}
                     </p>
                     {p?.timestamp && (
@@ -400,6 +402,7 @@ function CombinedChart({
             <XAxis dataKey="time" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
             <YAxis tick={{ fontSize: 10 }} width={35} tickLine={false} axisLine={false} />
             <RechartsTooltip
+              cursor={false}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
                 const p = payload[0]?.payload as { timestamp?: string } | undefined;
@@ -452,6 +455,7 @@ function CombinedChart({
             <XAxis dataKey="time" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
             <YAxis tick={{ fontSize: 10 }} width={35} tickLine={false} axisLine={false} />
             <RechartsTooltip
+              cursor={false}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
                 const p = payload[0]?.payload as { timestamp?: string } | undefined;

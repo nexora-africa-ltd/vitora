@@ -3,18 +3,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Activity, Plus, Waves, HeartPulse, Baby, Loader2, Printer } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { WebSocketStatus } from '@/components/ui/websocket-status';
+import { PartographTrendChart } from '@/components/mch/partograph-trend-chart';
 import {
   useCreateLabourPartograph,
   useCreateLabourPartographObservation,
@@ -142,13 +131,6 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
   const createObservation = useCreateLabourPartographObservation();
 
   const latestObservation = observations.at(-1) ?? activePartograph?.latest_observation ?? null;
-  const chartData = observations.map((observation) => ({
-    time: formatDateTime(observation.observation_time),
-    fetalHeartRate: observation.fetal_heart_rate,
-    cervicalDilation: observation.cervical_dilation_cm ? Number(observation.cervical_dilation_cm) : null,
-    contractions: observation.contractions_per_10_min,
-    maternalPulse: observation.maternal_pulse,
-  }));
 
   const resetPartographForm = () => {
     setParity(registration.parity != null ? String(registration.parity) : '');
@@ -522,62 +504,10 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
         </Card>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Labour Progress</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-                <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="cervicalDilation" name="Cervical dilation (cm)" stroke="#0f766e" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Fetal and Maternal Monitoring</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="fetalHeartRate" name="Fetal heart rate" stroke="#b91c1c" strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="maternalPulse" name="Maternal pulse" stroke="#1d4ed8" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Contraction Pattern</CardTitle>
-        </CardHeader>
-        <CardContent className="h-[260px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="contractions" name="Contractions / 10 min" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <PartographTrendChart
+        observations={observations}
+        isLoading={observationsQuery.isLoading}
+      />
 
       <Card>
         <CardHeader>
