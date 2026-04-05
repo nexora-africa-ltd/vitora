@@ -124,6 +124,12 @@ export const ACTION_PERMISSIONS = {
   'clinics.view_ccc': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'COUNSELLOR', 'ADMIN'],
   'clinics.view_mental_health': ['DOCTOR', 'CLINICAL_OFFICER', 'COUNSELLOR', 'ADMIN'],
 
+  // === Immunizations Module ===
+  'immunizations.view_records': ['NURSE', 'MIDWIFE', 'CLINICAL_OFFICER', 'DOCTOR', 'PHARMACIST', 'CHW'],
+  'immunizations.administer': ['NURSE', 'MIDWIFE', 'CLINICAL_OFFICER', 'DOCTOR'],
+  'immunizations.manage_campaigns': ['NURSE', 'ADMIN', 'SURVEILLANCE_OFFICER'],
+  'immunizations.view_coverage': ['NURSE', 'MIDWIFE', 'CLINICAL_OFFICER', 'DOCTOR', 'ADMIN', 'SURVEILLANCE_OFFICER'],
+
   // === MCH Module ===
   'mch.register': ['NURSE', 'MIDWIFE', 'CLINICAL_OFFICER', 'DOCTOR'],
   'mch.record_delivery': ['NURSE', 'MIDWIFE', 'DOCTOR'],

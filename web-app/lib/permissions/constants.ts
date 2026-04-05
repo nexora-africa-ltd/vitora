@@ -80,6 +80,7 @@ export const MODULE_PERMISSIONS = {
     'referrals.decline_referral',
     'referrals.view_sensitive_referral',
   ],
+  immunizations: 'immunizations.view_immunizationrecord',
   quality: 'quality.view_qualitymeasure',
   cds: 'cds.view_cdsrule',
   ai: null, // Feature-flag gated, not permission gated
