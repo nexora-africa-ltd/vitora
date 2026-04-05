@@ -251,6 +251,8 @@ urlpatterns = [
     path("api/pharmacy/", include("hmis.apps.pharmacy.urls", namespace="pharmacy")),
     # MCH API
     path("api/mch/", include("hmis.apps.mch.urls", namespace="mch")),
+    # Immunizations API (facility-wide: KEPI + adult + campaigns)
+    path("api/immunizations/", include("hmis.apps.immunizations.urls", namespace="immunizations")),
     # Billing API
     path("api/billing/", include("hmis.apps.billing.urls", namespace="billing")),
     # SHA (Social Health Authority) API
