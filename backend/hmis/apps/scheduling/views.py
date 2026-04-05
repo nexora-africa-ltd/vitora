@@ -23,6 +23,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.scheduling.models import (
     Appointment,
     AssignmentDecision,
@@ -122,7 +123,7 @@ class AppointmentFilter(filters.FilterSet):
 # =============================================================================
 
 
-class ResourceViewSet(viewsets.ModelViewSet):
+class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing scheduling resources.
 
@@ -143,6 +144,7 @@ class ResourceViewSet(viewsets.ModelViewSet):
     serializer_class = ResourceSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = ResourceFilter
+    tenant_scope = "facility"
 
     def get_serializer_class(self):
         """Get appropriate serializer class."""
@@ -277,7 +279,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class AppointmentViewSet(viewsets.ModelViewSet):
+class AppointmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing appointments.
 
@@ -303,6 +305,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     serializer_class = AppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = AppointmentFilter
+    tenant_scope = "facility"
 
     def get_serializer_class(self):
         """Get appropriate serializer class."""
@@ -324,7 +327,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Create appointment and log audit."""
-        appointment = serializer.save()
+        appointment = serializer.save(**self.get_tenant_save_kwargs())
         self._log_action("appointment_create", appointment)
 
     def _log_action(self, action: str, appointment: Appointment, details: dict = None):
@@ -469,7 +472,7 @@ class AssignmentRuleFilter(filters.FilterSet):
         fields = ["applies_to", "is_active", "priority_gte", "rule_code"]
 
 
-class AssignmentRuleViewSet(viewsets.ModelViewSet):
+class AssignmentRuleViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing assignment rules.
 
@@ -479,6 +482,7 @@ class AssignmentRuleViewSet(viewsets.ModelViewSet):
     queryset = AssignmentRule.objects.all()
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = AssignmentRuleFilter
+    tenant_scope = "facility"
 
     def get_serializer_class(self):
         """Use list serializer for list action."""

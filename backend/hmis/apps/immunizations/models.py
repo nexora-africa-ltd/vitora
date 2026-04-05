@@ -719,7 +719,7 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         super().save(*args, **kwargs)
 
     def submit_to_authorities(self, user=None, notes: str = "") -> None:  # noqa: ARG002
-        """Mark as reported to authorities. DHIS2 submission is handled async."""
+        """Mark as reported to authorities. Enqueues async DHIS2 Tracker submission."""
         from django.utils import timezone as tz
 
         self.reported_to_authorities = True
@@ -729,6 +729,19 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
             self.investigation_notes = notes
             update_fields.append("investigation_notes")
         self.save(update_fields=update_fields)
+
+        # Enqueue async DHIS2 submission (fails silently if Celery/Redis unavailable)
+        try:
+            from hmis.apps.immunizations.tasks import submit_aefi_to_dhis2
+
+            submit_aefi_to_dhis2.delay(self.pk)
+        except Exception:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Could not enqueue DHIS2 submission for AEFI %s (Celery may be offline)",
+                self.pk,
+            )
 
     @property
     def is_severe_or_death(self) -> bool:

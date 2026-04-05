@@ -75,22 +75,53 @@ class TestResourceModel:
 
         assert resource.resource_type == "ASSET"
 
-    def test_resource_code_must_be_unique(self, db):
-        """Should enforce unique resource codes."""
+    def test_resource_code_must_be_unique_per_facility(self, db, sample_facility):
+        """Should enforce unique resource codes within the same facility."""
         from hmis.apps.scheduling.models import Resource
 
         Resource.objects.create(
             name="Resource 1",
             resource_type="PERSON",
             code="RES-001",
+            facility=sample_facility,
         )
 
         with pytest.raises(Exception):  # IntegrityError
             Resource.objects.create(
                 name="Resource 2",
                 resource_type="PERSON",
-                code="RES-001",  # Duplicate code
+                code="RES-001",  # Duplicate code in same facility
+                facility=sample_facility,
             )
+
+    def test_resource_code_can_repeat_across_facilities(
+        self, db, sample_facility, sample_organization, sample_county, sample_sub_county,
+    ):
+        """Same code is allowed in different facilities."""
+        from hmis.apps.core.models import Facility
+        from hmis.apps.scheduling.models import Resource
+
+        other_facility = Facility.objects.create(
+            name="Other Clinic",
+            mfl_code="88888",
+            organization=sample_organization,
+            county=sample_county,
+            sub_county=sample_sub_county,
+        )
+
+        Resource.objects.create(
+            name="Resource 1",
+            resource_type="PERSON",
+            code="RES-001",
+            facility=sample_facility,
+        )
+        r2 = Resource.objects.create(
+            name="Resource 2",
+            resource_type="PERSON",
+            code="RES-001",  # Same code, different facility
+            facility=other_facility,
+        )
+        assert r2.id is not None
 
     def test_resource_invalid_type_rejected(self, db):
         """Should reject invalid resource types."""
@@ -837,37 +868,8 @@ class TestAvailabilityQueries:
         assert len(availability["saturday"]["slots"]) == 0  # No Saturday schedule
 
 
-# =============================================================================
-# Test Fixtures
-# =============================================================================
-
-
-@pytest.fixture
-def sample_person_resource(db):
-    """Create a sample person resource for testing."""
-    from hmis.apps.scheduling.models import Resource
-
-    return Resource.objects.create(
-        name="Dr. Test Doctor",
-        resource_type="PERSON",
-        code="DOC-TEST-001",
-        is_active=True,
-        metadata={"specialty": "General Practice"},
-    )
-
-
-@pytest.fixture
-def sample_place_resource(db):
-    """Create a sample place resource for testing."""
-    from hmis.apps.scheduling.models import Resource
-
-    return Resource.objects.create(
-        name="Consultation Room 1",
-        resource_type="PLACE",
-        code="ROOM-001",
-        capacity=2,
-        is_active=True,
-    )
+# Fixtures for sample_person_resource, sample_place_resource, sample_schedule,
+# and sample_appointment are in tests/scheduling/conftest.py
 
 
 @pytest.fixture

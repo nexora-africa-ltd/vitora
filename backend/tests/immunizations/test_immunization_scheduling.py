@@ -59,6 +59,8 @@ def imm_clinic_resource(db, sample_facility):
         code="IMM-CLINIC",
         resource_type="PLACE",
         is_active=True,
+        facility=sample_facility,
+        organization=sample_facility.organization,
     )
 
 
@@ -121,6 +123,8 @@ class TestVaccinationAppointments:
             code="MCH-ROOM",
             resource_type="PLACE",
             is_active=True,
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
         apt = create_vaccination_appointment(
             scheduled_record, resource=resource, created_by=test_user,

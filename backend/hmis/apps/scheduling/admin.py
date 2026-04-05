@@ -31,10 +31,11 @@ class ScheduleBreakInline(admin.TabularInline):
 class ResourceAdmin(admin.ModelAdmin):
     """Admin for Resource model."""
 
-    list_display = ["code", "name", "resource_type", "is_active", "capacity"]
-    list_filter = ["resource_type", "is_active"]
+    list_display = ["code", "name", "resource_type", "is_active", "capacity", "facility"]
+    list_filter = ["resource_type", "is_active", "facility"]
     search_fields = ["name", "code"]
     ordering = ["resource_type", "name"]
+    raw_id_fields = ["facility", "organization"]
 
 
 @admin.register(Schedule)
@@ -65,8 +66,9 @@ class AppointmentAdmin(admin.ModelAdmin):
         "scheduled_start",
         "status",
         "priority",
+        "facility",
     ]
-    list_filter = ["status", "appointment_type", "priority"]
+    list_filter = ["status", "appointment_type", "priority", "facility"]
     search_fields = [
         "appointment_number",
         "patient__first_name",
@@ -76,6 +78,7 @@ class AppointmentAdmin(admin.ModelAdmin):
     ]
     date_hierarchy = "scheduled_start"
     readonly_fields = ["appointment_number", "created_at", "updated_at"]
+    raw_id_fields = ["facility", "organization"]
 
 
 @admin.register(TimeSlot)

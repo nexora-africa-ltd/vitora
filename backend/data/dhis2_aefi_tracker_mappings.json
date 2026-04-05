@@ -1,0 +1,45 @@
+{
+  "_description": "DHIS2 AEFI Tracker Program mappings for Kenya HMIS. AEFI events are submitted as Tracker Events to the national AEFI Tracker Program.",
+  "_dhis2_version": "2.40+",
+  "_program": "AEFI Tracker (MOH Kenya)",
+  "program": {
+    "id": "AEFI_PROGRAM_UID",
+    "programStage": "AEFI_STAGE_UID"
+  },
+  "trackedEntityType": "nEenWmSyUEp",
+  "attributes": {
+    "patient_name": "AEFI_ATTR_PATIENT_NAME",
+    "patient_dob": "AEFI_ATTR_DOB",
+    "patient_sex": "AEFI_ATTR_SEX",
+    "patient_id": "AEFI_ATTR_PATIENT_ID",
+    "guardian_name": "AEFI_ATTR_GUARDIAN"
+  },
+  "dataElements": {
+    "event_date": "AEFI_DE_EVENT_DATE",
+    "onset_time": "AEFI_DE_ONSET_TIME",
+    "event_types": "AEFI_DE_EVENT_TYPES",
+    "severity": "AEFI_DE_SEVERITY",
+    "outcome": "AEFI_DE_OUTCOME",
+    "description": "AEFI_DE_DESCRIPTION",
+    "vaccine_name": "AEFI_DE_VACCINE_NAME",
+    "vaccine_batch": "AEFI_DE_VACCINE_BATCH",
+    "vaccine_dose": "AEFI_DE_VACCINE_DOSE",
+    "vaccine_manufacturer": "AEFI_DE_MANUFACTURER",
+    "vaccination_date": "AEFI_DE_VACCINATION_DATE",
+    "vaccination_service_type": "AEFI_DE_SERVICE_TYPE",
+    "diluent_name": "AEFI_DE_DILUENT_NAME",
+    "diluent_batch_number": "AEFI_DE_DILUENT_BATCH",
+    "vaccination_centre_name": "AEFI_DE_CENTRE_NAME",
+    "vaccination_centre_mfl": "AEFI_DE_CENTRE_MFL",
+    "reporter_name": "AEFI_DE_REPORTER_NAME",
+    "reporter_designation": "AEFI_DE_REPORTER_DESIGNATION",
+    "reporter_phone": "AEFI_DE_REPORTER_PHONE",
+    "action_taken": "AEFI_DE_ACTION_TAKEN",
+    "specimen_collected": "AEFI_DE_SPECIMEN_COLLECTED",
+    "specimen_date": "AEFI_DE_SPECIMEN_DATE",
+    "national_classification": "AEFI_DE_NATIONAL_CLASS",
+    "national_causality": "AEFI_DE_CAUSALITY",
+    "report_type": "AEFI_DE_REPORT_TYPE"
+  },
+  "_note": "UIDs are placeholders. Replace with actual Kenya DHIS2 instance UIDs before production deployment. Use the DHIS2 API /api/programs and /api/dataElements to look up real UIDs."
+}

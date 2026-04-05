@@ -24,6 +24,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
 
 # =============================================================================
@@ -31,7 +32,7 @@ from hmis.apps.core.models import TimeStampedModel
 # =============================================================================
 
 
-class Resource(TimeStampedModel):
+class Resource(FacilityScopedModel, TimeStampedModel):
     """
     Represents a schedulable resource in the HMIS.
 
@@ -68,7 +69,6 @@ class Resource(TimeStampedModel):
     )
     code = models.CharField(
         max_length=50,
-        unique=True,
         db_index=True,
         help_text="Unique resource code (e.g., DOC-001, ROOM-001)",
     )
@@ -106,6 +106,12 @@ class Resource(TimeStampedModel):
         ordering = ["resource_type", "name"]
         verbose_name = "Scheduling Resource"
         verbose_name_plural = "Scheduling Resources"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="scheduling_resource_unique_code_per_facility",
+            ),
+        ]
 
     def __str__(self) -> str:
         """Return string representation."""
@@ -528,7 +534,7 @@ class ScheduleBreak(TimeStampedModel):
 # =============================================================================
 
 
-class Appointment(TimeStampedModel):
+class Appointment(FacilityScopedModel, TimeStampedModel):
     """
     Represents a scheduled appointment/booking.
 
@@ -1007,7 +1013,7 @@ class AssignmentRuleManager(models.Manager):
         )
 
 
-class AssignmentRule(TimeStampedModel):
+class AssignmentRule(FacilityScopedModel, TimeStampedModel):
     """
     Defines rules for automatic resource assignment.
 
@@ -1038,7 +1044,6 @@ class AssignmentRule(TimeStampedModel):
     )
     rule_code = models.CharField(
         max_length=100,
-        unique=True,
         db_index=True,
         help_text="Unique rule identifier (e.g., assign_doctor_to_opd)",
     )
@@ -1097,6 +1102,12 @@ class AssignmentRule(TimeStampedModel):
         ordering = ["-priority", "name"]
         verbose_name = "Assignment Rule"
         verbose_name_plural = "Assignment Rules"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "rule_code"],
+                name="scheduling_rule_unique_code_per_facility",
+            ),
+        ]
 
     def __str__(self) -> str:
         """Return string representation."""
