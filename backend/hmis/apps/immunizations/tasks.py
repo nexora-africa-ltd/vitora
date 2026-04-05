@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
     autoretry_for=(Exception,),
     retry_backoff=True,
 )
-def submit_aefi_to_dhis2(self, aefi_id: int) -> dict:
+def submit_aefi_to_dhis2(self, aefi_id: int) -> dict:  # noqa: ARG001
     """Submit an AEFI report to DHIS2 Tracker API.
 
     This task is enqueued after an AEFI is marked as reported via
