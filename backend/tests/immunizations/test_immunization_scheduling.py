@@ -162,3 +162,54 @@ class TestVaccinationAppointments:
         )
         assert len(appointments) == 3
         assert all(a.appointment_type == "VACCINATION" for a in appointments)
+
+    def test_resource_lookup_scoped_to_facility(
+        self, scheduled_record, test_user, sample_facility, sample_organization,
+        sample_county, sample_sub_county,
+    ):
+        """Resource lookup should only find IMM-CLINIC in the record's facility.
+
+        Prevents cross-tenant leakage where a resource from facility B
+        could be attached to an appointment at facility A.
+        """
+        from hmis.apps.core.models import Facility
+
+        # Create another facility with its own IMM-CLINIC resource
+        other_facility = Facility.objects.create(
+            name="Other Clinic",
+            mfl_code="OTHER-001",
+            organization=sample_organization,
+            county=sample_county,
+            sub_county=sample_sub_county,
+        )
+        Resource.objects.create(
+            name="Immunization Clinic (Other)",
+            code="IMM-CLINIC",
+            resource_type="PLACE",
+            is_active=True,
+            facility=other_facility,
+            organization=sample_organization,
+        )
+
+        # No IMM-CLINIC resource at sample_facility → should return None
+        apt = create_vaccination_appointment(
+            scheduled_record, created_by=test_user,
+        )
+        assert apt is None
+
+        # Now create the resource at the correct facility
+        correct_resource = Resource.objects.create(
+            name="Immunization Clinic",
+            code="IMM-CLINIC",
+            resource_type="PLACE",
+            is_active=True,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        apt = create_vaccination_appointment(
+            scheduled_record, created_by=test_user,
+        )
+        assert apt is not None
+        assert apt.resource == correct_resource
+        assert apt.resource.facility == sample_facility

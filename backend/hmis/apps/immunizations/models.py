@@ -223,6 +223,30 @@ class VaccineDefinition(TimeStampedModel):
         help_text="Whether this vaccine is currently active",
     )
 
+    # Billing & SHA
+    billing_service = models.ForeignKey(
+        "billing.Service",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vaccine_definitions",
+        help_text="Linked billing service for invoice generation. "
+        "When set, the service unit_price and SHA code are used for billing.",
+    )
+    base_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Base vaccine fee (KES). Used as fallback when billing_service is not set.",
+    )
+    sha_tariff_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="SHA intervention tariff code for vaccine billing",
+    )
+
     class Meta:
         ordering = ["standard_age_days", "code"]
         verbose_name = "Vaccine Definition"
@@ -230,6 +254,13 @@ class VaccineDefinition(TimeStampedModel):
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+    @property
+    def billing_price(self):
+        """Resolve the billable price: billing_service.unit_price → base_fee → None."""
+        if self.billing_service_id:
+            return self.billing_service.unit_price
+        return self.base_fee
 
 
 # =============================================================================
