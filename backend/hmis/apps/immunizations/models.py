@@ -498,3 +498,495 @@ class AEFI(HistoryMixin, TimeStampedModel):
             f"AEFI {self.get_event_type_display()} - "
             f"{self.immunization_record.vaccine.code} ({self.event_date})"
         )
+
+
+# =============================================================================
+# Stock Management Enums
+# =============================================================================
+
+
+class StockTransactionType(models.TextChoices):
+    RECEIVE = "RECEIVE", "Received"
+    ISSUE = "ISSUE", "Issued / Administered"
+    WASTAGE = "WASTAGE", "Wastage"
+    ADJUSTMENT = "ADJUSTMENT", "Adjustment"
+    TRANSFER_IN = "TRANSFER_IN", "Transfer In"
+    TRANSFER_OUT = "TRANSFER_OUT", "Transfer Out"
+    EXPIRED = "EXPIRED", "Expired"
+
+
+class ColdChainEquipmentType(models.TextChoices):
+    FRIDGE = "FRIDGE", "Refrigerator"
+    FREEZER = "FREEZER", "Freezer"
+    COLD_BOX = "COLD_BOX", "Cold Box"
+    VACCINE_CARRIER = "VACCINE_CARRIER", "Vaccine Carrier"
+    COLD_ROOM = "COLD_ROOM", "Cold Room"
+
+
+class ColdChainEquipmentStatus(models.TextChoices):
+    OPERATIONAL = "OPERATIONAL", "Operational"
+    FAULTY = "FAULTY", "Faulty"
+    DECOMMISSIONED = "DECOMMISSIONED", "Decommissioned"
+    UNDER_REPAIR = "UNDER_REPAIR", "Under Repair"
+
+
+class IncidentType(models.TextChoices):
+    POWER_OUTAGE = "POWER_OUTAGE", "Power Outage"
+    COLD_CHAIN_BREAK = "COLD_CHAIN_BREAK", "Cold Chain Break"
+    EQUIPMENT_FAILURE = "EQUIPMENT_FAILURE", "Equipment Failure"
+    STOCK_DAMAGE = "STOCK_DAMAGE", "Stock Damage"
+    THEFT = "THEFT", "Theft / Loss"
+    EXPIRED_STOCK = "EXPIRED_STOCK", "Expired Stock"
+    OTHER = "OTHER", "Other"
+
+
+class IncidentSeverity(models.TextChoices):
+    LOW = "LOW", "Low"
+    MEDIUM = "MEDIUM", "Medium"
+    HIGH = "HIGH", "High"
+    CRITICAL = "CRITICAL", "Critical"
+
+
+class IncidentStatus(models.TextChoices):
+    OPEN = "OPEN", "Open"
+    INVESTIGATING = "INVESTIGATING", "Investigating"
+    RESOLVED = "RESOLVED", "Resolved"
+    CLOSED = "CLOSED", "Closed"
+
+
+# =============================================================================
+# Vaccine Stock
+# =============================================================================
+
+
+class VaccineStock(TimeStampedModel):
+    """
+    Vaccine batch inventory tracking.
+
+    Each record represents a batch of a specific vaccine held at the facility.
+    Stock is decremented when vaccines are administered (linked to ImmunizationRecord).
+    """
+
+    vaccine = models.ForeignKey(
+        VaccineDefinition,
+        on_delete=models.PROTECT,
+        related_name="stock_batches",
+        help_text="Vaccine this batch belongs to",
+    )
+    batch_number = models.CharField(
+        max_length=50,
+        help_text="Manufacturer batch/lot number",
+    )
+    quantity_received = models.PositiveIntegerField(
+        help_text="Original quantity received (doses)",
+    )
+    quantity_on_hand = models.PositiveIntegerField(
+        help_text="Current quantity available (doses)",
+    )
+    expiry_date = models.DateField(
+        help_text="Batch expiry date",
+    )
+    manufacturer = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Manufacturer name",
+    )
+    supplier = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Supplier / source (e.g., KEMSA, WHO, direct)",
+    )
+    received_date = models.DateField(
+        help_text="Date batch was received at facility",
+    )
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vaccine_stock_received",
+    )
+    storage_location = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Storage location (e.g., Main Fridge, Cold Room A)",
+    )
+    vvm_status = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Vaccine Vial Monitor status at receipt (Stage 1-4)",
+    )
+    min_stock_level = models.PositiveIntegerField(
+        default=10,
+        help_text="Minimum stock level before alert",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    class Meta:
+        ordering = ["expiry_date"]
+        verbose_name = "Vaccine Stock Batch"
+        verbose_name_plural = "Vaccine Stock Batches"
+        unique_together = ["vaccine", "batch_number"]
+
+    def __str__(self):
+        return f"{self.vaccine.code} batch {self.batch_number} ({self.quantity_on_hand} doses)"
+
+    @property
+    def is_expired(self) -> bool:
+        return self.expiry_date < date.today()
+
+    @property
+    def is_low_stock(self) -> bool:
+        return self.quantity_on_hand <= self.min_stock_level
+
+    @property
+    def is_near_expiry(self) -> bool:
+        """Within 30 days of expiry."""
+        if self.is_expired:
+            return False
+        return (self.expiry_date - date.today()).days <= 30
+
+
+class StockTransaction(TimeStampedModel):
+    """
+    Individual stock transaction (receive, issue, wastage, adjust, transfer).
+
+    Every stock movement is recorded as a transaction for full audit trail.
+    """
+
+    stock = models.ForeignKey(
+        VaccineStock,
+        on_delete=models.PROTECT,
+        related_name="transactions",
+    )
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=StockTransactionType.choices,
+    )
+    quantity = models.IntegerField(
+        help_text="Positive for additions, negative for reductions",
+    )
+    balance_after = models.PositiveIntegerField(
+        help_text="Stock balance after this transaction",
+    )
+    reference = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Reference (e.g., immunization record ID, transfer doc number)",
+    )
+    immunization_record = models.ForeignKey(
+        ImmunizationRecord,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_transactions",
+        help_text="Linked immunization record (for ISSUE transactions)",
+    )
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_transactions",
+    )
+    reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for wastage/adjustment",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Stock Transaction"
+        verbose_name_plural = "Stock Transactions"
+
+    def __str__(self):
+        return (
+            f"{self.get_transaction_type_display()} {abs(self.quantity)} "
+            f"{self.stock.vaccine.code} ({self.stock.batch_number})"
+        )
+
+
+# =============================================================================
+# Cold Chain Equipment & Monitoring
+# =============================================================================
+
+
+class ColdChainEquipment(TimeStampedModel):
+    """
+    Cold chain equipment inventory (fridges, freezers, cold boxes).
+
+    Tracks equipment assets used for vaccine storage.
+    """
+
+    name = models.CharField(
+        max_length=200,
+        help_text="Equipment name/label (e.g., Main Fridge 1)",
+    )
+    equipment_type = models.CharField(
+        max_length=20,
+        choices=ColdChainEquipmentType.choices,
+    )
+    model_number = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+    )
+    serial_number = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Unique manufacturer serial number or asset tag",
+    )
+    manufacturer = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+    )
+    location = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Physical location in facility",
+    )
+    capacity_litres = models.DecimalField(
+        max_digits=6,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        help_text="Storage capacity in litres",
+    )
+    min_temp = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=2.0,
+        help_text="Minimum acceptable temperature (\u00b0C)",
+    )
+    max_temp = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=8.0,
+        help_text="Maximum acceptable temperature (\u00b0C)",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ColdChainEquipmentStatus.choices,
+        default=ColdChainEquipmentStatus.OPERATIONAL,
+    )
+    installation_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+    last_maintenance_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+    next_maintenance_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+    power_source = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Power source (e.g., Mains, Solar, Gas)",
+    )
+    has_backup_power = models.BooleanField(
+        default=False,
+        help_text="Equipment has backup power source",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Cold Chain Equipment"
+        verbose_name_plural = "Cold Chain Equipment"
+
+    def __str__(self):
+        return f"{self.name} ({self.get_equipment_type_display()})"
+
+
+class TemperatureLog(TimeStampedModel):
+    """
+    Temperature reading for cold chain equipment.
+
+    Should be recorded at regular intervals (e.g., twice daily).
+    Readings outside the min/max range trigger alerts.
+    """
+
+    equipment = models.ForeignKey(
+        ColdChainEquipment,
+        on_delete=models.CASCADE,
+        related_name="temperature_logs",
+    )
+    temperature = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        help_text="Temperature reading in \u00b0C",
+    )
+    recorded_at = models.DateTimeField(
+        help_text="When the reading was taken",
+    )
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="temperature_logs_recorded",
+    )
+    is_excursion = models.BooleanField(
+        default=False,
+        help_text="Temperature outside acceptable range",
+    )
+    action_taken = models.TextField(
+        blank=True,
+        default="",
+        help_text="Action taken if excursion detected",
+    )
+
+    class Meta:
+        ordering = ["-recorded_at"]
+        verbose_name = "Temperature Log"
+        verbose_name_plural = "Temperature Logs"
+
+    def __str__(self):
+        return f"{self.equipment.name}: {self.temperature}\u00b0C at {self.recorded_at}"
+
+    def save(self, *args, **kwargs):
+        """Auto-flag excursions based on equipment min/max temp."""
+        if self.equipment_id:
+            eq = self.equipment
+            self.is_excursion = (
+                self.temperature < eq.min_temp or self.temperature > eq.max_temp
+            )
+        super().save(*args, **kwargs)
+
+
+# =============================================================================
+# Vaccine Incident Reporting
+# =============================================================================
+
+
+class VaccineIncident(HistoryMixin, TimeStampedModel):
+    """
+    Incident report for vaccine-related events.
+
+    Captures power outages, cold chain breaks, stock damage, equipment failures,
+    and other events that may affect vaccine viability.
+    """
+
+    title = models.CharField(
+        max_length=200,
+        help_text="Brief description of the incident",
+    )
+    incident_type = models.CharField(
+        max_length=30,
+        choices=IncidentType.choices,
+    )
+    severity = models.CharField(
+        max_length=10,
+        choices=IncidentSeverity.choices,
+        default=IncidentSeverity.MEDIUM,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=IncidentStatus.choices,
+        default=IncidentStatus.OPEN,
+    )
+    description = models.TextField(
+        help_text="Detailed description of the incident",
+    )
+
+    # Timing
+    occurred_at = models.DateTimeField(
+        help_text="When the incident occurred",
+    )
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the incident was resolved",
+    )
+    duration_minutes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Duration of the incident in minutes",
+    )
+
+    # Affected assets
+    affected_equipment = models.ManyToManyField(
+        ColdChainEquipment,
+        blank=True,
+        related_name="incidents",
+        help_text="Cold chain equipment affected",
+    )
+    affected_batches = models.ManyToManyField(
+        VaccineStock,
+        blank=True,
+        related_name="incidents",
+        help_text="Vaccine batches affected",
+    )
+    doses_affected = models.PositiveIntegerField(
+        default=0,
+        help_text="Estimated number of vaccine doses affected",
+    )
+    doses_lost = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of vaccine doses lost/wasted due to incident",
+    )
+
+    # Corrective actions
+    corrective_actions = models.TextField(
+        blank=True,
+        default="",
+        help_text="Actions taken to resolve the incident",
+    )
+    preventive_actions = models.TextField(
+        blank=True,
+        default="",
+        help_text="Actions taken to prevent recurrence",
+    )
+
+    # Reporting
+    reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vaccine_incidents_reported",
+    )
+    investigated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vaccine_incidents_investigated",
+    )
+    reported_to_county = models.BooleanField(
+        default=False,
+        help_text="Reported to county health office",
+    )
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-occurred_at"]
+        verbose_name = "Vaccine Incident"
+        verbose_name_plural = "Vaccine Incidents"
+
+    def __str__(self):
+        return f"{self.get_incident_type_display()}: {self.title}"

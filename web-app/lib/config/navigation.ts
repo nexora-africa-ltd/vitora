@@ -71,6 +71,7 @@ import {
   Tag,
   Wallet,
   ShieldAlert,
+  Package,
 } from 'lucide-react';
 
 import {
@@ -186,6 +187,9 @@ const _allNavItems: NavItemType[] = [
       { label: 'Records', href: '/immunizations', icon: Syringe, actionKey: 'immunizations.view_records' },
       { label: 'Campaigns', href: '/immunizations/campaigns', icon: Target, actionKey: 'immunizations.manage_campaigns' },
       { label: 'AEFI Reports', href: '/immunizations/aefi', icon: ShieldAlert, actionKey: 'immunizations.view_records' },
+      { label: 'Stock', href: '/immunizations/stock', icon: Package, actionKey: 'immunizations.manage_stock' },
+      { label: 'Cold Chain', href: '/immunizations/cold-chain', icon: Thermometer, actionKey: 'immunizations.manage_cold_chain' },
+      { label: 'Incidents', href: '/immunizations/incidents', icon: AlertTriangle, actionKey: 'immunizations.report_incident' },
       { label: 'Coverage', href: '/immunizations/coverage', icon: BarChart3, actionKey: 'immunizations.view_coverage' },
     ],
   },

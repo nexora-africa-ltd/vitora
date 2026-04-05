@@ -220,3 +220,193 @@ export const CoverageStatsSchema = z.object({
   scheduled: z.number(),
   coverage_pct: z.number(),
 });
+
+// =============================================================================
+// VACCINE STOCK SCHEMAS
+// =============================================================================
+
+export const StockTransactionTypeSchema = z.enum([
+  'RECEIVE', 'ISSUE', 'WASTAGE', 'ADJUSTMENT',
+  'TRANSFER_IN', 'TRANSFER_OUT', 'EXPIRED',
+]);
+
+export const VaccineStockListItemSchema = z.object({
+  id: z.number(),
+  vaccine: z.number(),
+  vaccine_code: z.string(),
+  vaccine_name: z.string(),
+  batch_number: z.string(),
+  quantity_on_hand: z.number(),
+  expiry_date: z.string(),
+  storage_location: z.string(),
+  is_expired: z.boolean(),
+  is_low_stock: z.boolean(),
+  is_near_expiry: z.boolean(),
+  created_at: z.string(),
+});
+
+export const VaccineStockSchema = z.object({
+  id: z.number(),
+  vaccine: z.number(),
+  vaccine_code: z.string(),
+  vaccine_name: z.string(),
+  batch_number: z.string(),
+  quantity_received: z.number(),
+  quantity_on_hand: z.number(),
+  expiry_date: z.string(),
+  manufacturer: z.string(),
+  supplier: z.string(),
+  received_date: z.string(),
+  received_by: z.number().nullable(),
+  received_by_name: z.string().nullable(),
+  storage_location: z.string(),
+  vvm_status: z.string(),
+  min_stock_level: z.number(),
+  is_expired: z.boolean(),
+  is_low_stock: z.boolean(),
+  is_near_expiry: z.boolean(),
+  notes: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedVaccineStockListSchema = createPaginatedSchema(VaccineStockListItemSchema);
+
+export const StockTransactionSchema = z.object({
+  id: z.number(),
+  stock: z.number(),
+  vaccine_code: z.string(),
+  batch_number: z.string(),
+  transaction_type: StockTransactionTypeSchema,
+  quantity: z.number(),
+  balance_after: z.number(),
+  reference: z.string(),
+  immunization_record: z.number().nullable(),
+  performed_by: z.number().nullable(),
+  performed_by_name: z.string().nullable(),
+  reason: z.string(),
+  notes: z.string(),
+  created_at: z.string(),
+});
+
+export const StockTransactionArraySchema = z.array(StockTransactionSchema);
+
+// =============================================================================
+// COLD CHAIN EQUIPMENT SCHEMAS
+// =============================================================================
+
+export const ColdChainEquipmentTypeSchema = z.enum([
+  'FRIDGE', 'FREEZER', 'COLD_BOX', 'VACCINE_CARRIER', 'COLD_ROOM',
+]);
+
+export const ColdChainEquipmentStatusSchema = z.enum([
+  'OPERATIONAL', 'FAULTY', 'DECOMMISSIONED', 'UNDER_REPAIR',
+]);
+
+export const ColdChainEquipmentListItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  equipment_type: ColdChainEquipmentTypeSchema,
+  serial_number: z.string(),
+  location: z.string(),
+  status: ColdChainEquipmentStatusSchema,
+  min_temp: z.coerce.number(),
+  max_temp: z.coerce.number(),
+  created_at: z.string(),
+});
+
+export const ColdChainEquipmentSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  equipment_type: ColdChainEquipmentTypeSchema,
+  model_number: z.string(),
+  serial_number: z.string(),
+  manufacturer: z.string(),
+  location: z.string(),
+  capacity_litres: z.coerce.number().nullable(),
+  min_temp: z.coerce.number(),
+  max_temp: z.coerce.number(),
+  status: ColdChainEquipmentStatusSchema,
+  installation_date: z.string().nullable(),
+  last_maintenance_date: z.string().nullable(),
+  next_maintenance_date: z.string().nullable(),
+  power_source: z.string(),
+  has_backup_power: z.boolean(),
+  notes: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedColdChainEquipmentListSchema = createPaginatedSchema(
+  ColdChainEquipmentListItemSchema,
+);
+
+export const TemperatureLogSchema = z.object({
+  id: z.number(),
+  equipment: z.number(),
+  equipment_name: z.string(),
+  temperature: z.coerce.number(),
+  recorded_at: z.string(),
+  recorded_by: z.number().nullable(),
+  recorded_by_name: z.string().nullable(),
+  is_excursion: z.boolean(),
+  action_taken: z.string(),
+  created_at: z.string(),
+});
+
+export const PaginatedTemperatureLogListSchema = createPaginatedSchema(TemperatureLogSchema);
+
+// =============================================================================
+// VACCINE INCIDENT SCHEMAS
+// =============================================================================
+
+export const IncidentTypeSchema = z.enum([
+  'POWER_OUTAGE', 'COLD_CHAIN_BREAK', 'EQUIPMENT_FAILURE',
+  'STOCK_DAMAGE', 'THEFT', 'EXPIRED_STOCK', 'OTHER',
+]);
+
+export const IncidentSeveritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+
+export const IncidentStatusSchema = z.enum(['OPEN', 'INVESTIGATING', 'RESOLVED', 'CLOSED']);
+
+export const VaccineIncidentListItemSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  incident_type: IncidentTypeSchema,
+  severity: IncidentSeveritySchema,
+  status: IncidentStatusSchema,
+  occurred_at: z.string(),
+  doses_affected: z.number(),
+  doses_lost: z.number(),
+  reported_to_county: z.boolean(),
+  created_at: z.string(),
+});
+
+export const VaccineIncidentSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  incident_type: IncidentTypeSchema,
+  severity: IncidentSeveritySchema,
+  status: IncidentStatusSchema,
+  description: z.string(),
+  occurred_at: z.string(),
+  resolved_at: z.string().nullable(),
+  duration_minutes: z.number().nullable(),
+  affected_equipment: z.array(z.number()),
+  affected_batches: z.array(z.number()),
+  doses_affected: z.number(),
+  doses_lost: z.number(),
+  corrective_actions: z.string(),
+  preventive_actions: z.string(),
+  reported_by: z.number().nullable(),
+  reported_by_name: z.string().nullable(),
+  investigated_by: z.number().nullable(),
+  investigated_by_name: z.string().nullable(),
+  reported_to_county: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedVaccineIncidentListSchema = createPaginatedSchema(
+  VaccineIncidentListItemSchema,
+);

@@ -182,6 +182,14 @@ const config: Config = {
   				to: {
   					transform: 'translateY(0)'
   				}
+  			},
+  			'shrinkBar': {
+  				from: {
+  					transform: 'scaleX(1)'
+  				},
+  				to: {
+  					transform: 'scaleX(0)'
+  				}
   			}
   		},
   		animation: {
@@ -191,7 +199,8 @@ const config: Config = {
   			'fade-out': 'fade-out 0.2s ease-out',
   			'slide-in-from-top': 'slide-in-from-top 0.3s ease-out',
   			'slide-in-from-bottom': 'slide-in-from-bottom 0.3s ease-out',
-  			'pulse-text': 'pulse-text 0.6s ease-in-out'
+  			'pulse-text': 'pulse-text 0.6s ease-in-out',
+  			'shrinkBar': 'shrinkBar 30s linear forwards'
   		}
   	}
   },

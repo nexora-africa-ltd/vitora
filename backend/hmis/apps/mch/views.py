@@ -13,7 +13,6 @@ from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.mch.models import (
-    AEFI,
     ANCVisit,
     CommunityScreening,
     Delivery,
@@ -22,16 +21,17 @@ from hmis.apps.mch.models import (
     LabourPartographObservation,
     HEIFollowUp,
     HEIPCRTest,
-    ImmunizationRecord,
     MCHRegistration,
     PNCVisit,
-    Vaccine,
     VitaminASupplement,
 )
+# Immunization models now come from the unified immunizations app
+from hmis.apps.immunizations.models import (
+    AEFI as ImmunizationsAEFI,
+    ImmunizationRecord as ImmunizationsImmunizationRecord,
+    VaccineDefinition,
+)
 from hmis.apps.mch.serializers import (
-    AdministerVaccineSerializer,
-    AEFIListSerializer,
-    AEFISerializer,
     ANCVisitListSerializer,
     ANCVisitSerializer,
     CommunityScreeningListSerializer,
@@ -46,22 +46,28 @@ from hmis.apps.mch.serializers import (
     HEIFollowUpListSerializer,
     HEIFollowUpSerializer,
     HEIPCRTestSerializer,
-    ImmunizationRecordListSerializer,
-    ImmunizationRecordSerializer,
     MCHRegistrationCreateSerializer,
     MCHRegistrationListSerializer,
     MCHRegistrationSerializer,
     PregnancyHistorySerializer,
     PNCVisitListSerializer,
     PNCVisitSerializer,
-    VaccineSerializer,
     VitaminASupplementSerializer,
+)
+# MCH immunization serializers now delegate to the immunizations app
+from hmis.apps.immunizations.serializers import (
+    AEFIListSerializer as ImmAEFIListSerializer,
+    AEFISerializer as ImmAEFISerializer,
+    AdministerVaccineSerializer as ImmAdministerVaccineSerializer,
+    ImmunizationRecordListSerializer as ImmRecordListSerializer,
+    ImmunizationRecordSerializer as ImmRecordSerializer,
+    VaccineDefinitionSerializer as ImmVaccineSerializer,
 )
 from hmis.apps.mch.services.clinic_unification import (
     finalize_program_attendance_from_clinic_visit,
     link_or_create_clinic_visit_for_mch_visit,
 )
-from hmis.apps.mch.services.immunization import generate_immunization_schedule
+from hmis.apps.immunizations.services.schedule import generate_kepi_schedule
 
 # =============================================================================
 # Filters
@@ -181,25 +187,25 @@ class GrowthMeasurementFilter(django_filters.FilterSet):
 
 
 class ImmunizationRecordFilter(django_filters.FilterSet):
-    """Filter for immunization records."""
+    """Filter for immunization records (unified immunizations app)."""
 
     patient = django_filters.NumberFilter()
     vaccine = django_filters.NumberFilter()
     status = django_filters.CharFilter(lookup_expr="iexact")
 
     class Meta:
-        model = ImmunizationRecord
+        model = ImmunizationsImmunizationRecord
         fields = ["patient", "vaccine", "status"]
 
 
 class AEFIFilter(django_filters.FilterSet):
-    """Filter for AEFI reports."""
+    """Filter for AEFI reports (unified immunizations app)."""
 
     event_type = django_filters.CharFilter(lookup_expr="iexact")
     severity = django_filters.CharFilter(lookup_expr="iexact")
 
     class Meta:
-        model = AEFI
+        model = ImmunizationsAEFI
         fields = ["event_type", "severity"]
 
 
@@ -1171,11 +1177,15 @@ class GrowthMeasurementViewSet(viewsets.ModelViewSet):
 
 
 class VaccineViewSet(viewsets.ReadOnlyModelViewSet):
-    """Read-only viewset for vaccine reference data."""
+    """Read-only viewset for vaccine reference data.
 
-    queryset = Vaccine.objects.filter(is_active=True)
+    Delegates to the unified immunizations app VaccineDefinition model.
+    Filters to KEPI vaccines only for MCH context.
+    """
+
+    queryset = VaccineDefinition.objects.filter(is_active=True, program="KEPI")
     permission_classes = [IsAuthenticated]
-    serializer_class = VaccineSerializer
+    serializer_class = ImmVaccineSerializer
     pagination_class = None  # Small reference dataset, return flat array
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     ordering_fields = ["standard_age_days", "code"]
@@ -1183,9 +1193,14 @@ class VaccineViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ImmunizationRecordViewSet(viewsets.ModelViewSet):
-    """ViewSet for immunization records."""
+    """ViewSet for immunization records.
 
-    queryset = ImmunizationRecord.objects.select_related("patient", "vaccine", "administered_by")
+    Delegates to the unified immunizations app ImmunizationRecord model.
+    """
+
+    queryset = ImmunizationsImmunizationRecord.objects.select_related(
+        "patient", "vaccine", "administered_by"
+    )
     permission_classes = [IsAuthenticated]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = ImmunizationRecordFilter
@@ -1194,10 +1209,10 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == "list":
-            return ImmunizationRecordListSerializer
+            return ImmRecordListSerializer
         if self.action == "administer":
-            return AdministerVaccineSerializer
-        return ImmunizationRecordSerializer
+            return ImmAdministerVaccineSerializer
+        return ImmRecordSerializer
 
     def perform_create(self, serializer):
         instance = serializer.save()
@@ -1214,7 +1229,7 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
     def administer(self, request, pk=None):
         """Mark a vaccine as administered."""
         record = self.get_object()
-        serializer = AdministerVaccineSerializer(data=request.data)
+        serializer = ImmAdministerVaccineSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         record.administered_date = serializer.validated_data["administered_date"]
@@ -1227,11 +1242,11 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
         record.administered_by = request.user
         record.save()
 
-        return Response(ImmunizationRecordSerializer(record).data)
+        return Response(ImmRecordSerializer(record).data)
 
     @action(detail=False, methods=["post"], url_path="generate-schedule")
     def generate_schedule(self, request):
-        """Generate immunization schedule for a patient."""
+        """Generate KEPI immunization schedule for a patient."""
         patient_id = request.data.get("patient")
         if not patient_id:
             return Response({"detail": "patient is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1242,8 +1257,8 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
         if not patient:
             return Response({"detail": "patient not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        records = generate_immunization_schedule(patient)
-        serializer = ImmunizationRecordListSerializer(records, many=True)
+        records = generate_kepi_schedule(patient)
+        serializer = ImmRecordListSerializer(records, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=["post"], url_path="report-aefi")
@@ -1281,16 +1296,17 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Validate event_type
-        valid_event_types = [choice[0] for choice in AEFI.EVENT_TYPE_CHOICES]
+        from hmis.apps.immunizations.models import AEFIEventType
+
+        valid_event_types = [c.value for c in AEFIEventType]
         if event_type not in valid_event_types:
             return Response(
                 {"detail": f"Invalid event_type. Must be one of: {valid_event_types}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Create AEFI record
-        aefi = AEFI.objects.create(
+        # Create AEFI record in the unified immunizations app
+        aefi = ImmunizationsAEFI.objects.create(
             immunization_record=record,
             event_date=event_date,
             event_type=event_type,
@@ -1301,7 +1317,7 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
         )
 
         return Response(
-            AEFISerializer(aefi).data,
+            ImmAEFISerializer(aefi).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -1330,9 +1346,12 @@ class VitaminASupplementViewSet(viewsets.ModelViewSet):
 
 
 class AEFIViewSet(viewsets.ModelViewSet):
-    """ViewSet for AEFI reporting."""
+    """ViewSet for AEFI reporting.
 
-    queryset = AEFI.objects.select_related("immunization_record", "investigated_by")
+    Delegates to the unified immunizations app AEFI model.
+    """
+
+    queryset = ImmunizationsAEFI.objects.select_related("immunization_record", "investigated_by")
     permission_classes = [IsAuthenticated]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = AEFIFilter
@@ -1341,8 +1360,8 @@ class AEFIViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == "list":
-            return AEFIListSerializer
-        return AEFISerializer
+            return ImmAEFIListSerializer
+        return ImmAEFISerializer
 
     def perform_create(self, serializer):
         instance = serializer.save()

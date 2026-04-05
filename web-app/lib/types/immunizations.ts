@@ -216,9 +216,228 @@ export interface CoverageStats {
 }
 
 // =============================================================================
+// VACCINE STOCK
+// =============================================================================
+
+export type StockTransactionType =
+  | 'RECEIVE' | 'ISSUE' | 'WASTAGE' | 'ADJUSTMENT'
+  | 'TRANSFER_IN' | 'TRANSFER_OUT' | 'EXPIRED';
+
+export interface VaccineStockListItem {
+  id: number;
+  vaccine: number;
+  vaccine_code: string;
+  vaccine_name: string;
+  batch_number: string;
+  quantity_on_hand: number;
+  expiry_date: string;
+  storage_location: string;
+  is_expired: boolean;
+  is_low_stock: boolean;
+  is_near_expiry: boolean;
+  created_at: string;
+}
+
+export interface VaccineStock extends VaccineStockListItem {
+  quantity_received: number;
+  manufacturer: string;
+  supplier: string;
+  received_date: string;
+  received_by: number | null;
+  received_by_name: string | null;
+  vvm_status: string;
+  min_stock_level: number;
+  notes: string;
+  updated_at: string;
+}
+
+export interface StockTransaction {
+  id: number;
+  stock: number;
+  vaccine_code: string;
+  batch_number: string;
+  transaction_type: StockTransactionType;
+  quantity: number;
+  balance_after: number;
+  reference: string;
+  immunization_record: number | null;
+  performed_by: number | null;
+  performed_by_name: string | null;
+  reason: string;
+  notes: string;
+  created_at: string;
+}
+
+export interface StockReceiveData {
+  vaccine: number;
+  batch_number: string;
+  quantity_received: number;
+  expiry_date: string;
+  received_date: string;
+  manufacturer?: string;
+  supplier?: string;
+  storage_location?: string;
+  vvm_status?: string;
+  min_stock_level?: number;
+  notes?: string;
+}
+
+export interface StockIssueData {
+  quantity: number;
+  transaction_type: 'WASTAGE' | 'ADJUSTMENT' | 'TRANSFER_OUT' | 'EXPIRED';
+  reason?: string;
+  notes?: string;
+}
+
+export interface VaccineStockListParams {
+  page?: number;
+  page_size?: number;
+  vaccine?: number;
+  is_expired?: boolean;
+  is_low_stock?: boolean;
+  ordering?: string;
+}
+
+// =============================================================================
+// COLD CHAIN EQUIPMENT
+// =============================================================================
+
+export type ColdChainEquipmentType =
+  | 'FRIDGE' | 'FREEZER' | 'COLD_BOX' | 'VACCINE_CARRIER' | 'COLD_ROOM';
+
+export type ColdChainEquipmentStatus =
+  | 'OPERATIONAL' | 'FAULTY' | 'DECOMMISSIONED' | 'UNDER_REPAIR';
+
+export interface ColdChainEquipmentListItem {
+  id: number;
+  name: string;
+  equipment_type: ColdChainEquipmentType;
+  serial_number: string;
+  location: string;
+  status: ColdChainEquipmentStatus;
+  min_temp: number;
+  max_temp: number;
+  created_at: string;
+}
+
+export interface ColdChainEquipment extends ColdChainEquipmentListItem {
+  model_number: string;
+  manufacturer: string;
+  capacity_litres: number | null;
+  installation_date: string | null;
+  last_maintenance_date: string | null;
+  next_maintenance_date: string | null;
+  power_source: string;
+  has_backup_power: boolean;
+  notes: string;
+  updated_at: string;
+}
+
+export interface ColdChainEquipmentCreateData {
+  name: string;
+  equipment_type: ColdChainEquipmentType;
+  model_number?: string;
+  serial_number?: string;
+  manufacturer?: string;
+  location?: string;
+  capacity_litres?: number;
+  min_temp?: number;
+  max_temp?: number;
+  status?: ColdChainEquipmentStatus;
+  power_source?: string;
+  has_backup_power?: boolean;
+  notes?: string;
+}
+
+export interface TemperatureLog {
+  id: number;
+  equipment: number;
+  equipment_name: string;
+  temperature: number;
+  recorded_at: string;
+  recorded_by: number | null;
+  recorded_by_name: string | null;
+  is_excursion: boolean;
+  action_taken: string;
+  created_at: string;
+}
+
+export interface TemperatureLogCreateData {
+  equipment: number;
+  temperature: number;
+  recorded_at: string;
+  action_taken?: string;
+}
+
+// =============================================================================
+// VACCINE INCIDENTS
+// =============================================================================
+
+export type IncidentType =
+  | 'POWER_OUTAGE' | 'COLD_CHAIN_BREAK' | 'EQUIPMENT_FAILURE'
+  | 'STOCK_DAMAGE' | 'THEFT' | 'EXPIRED_STOCK' | 'OTHER';
+
+export type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export type IncidentStatus = 'OPEN' | 'INVESTIGATING' | 'RESOLVED' | 'CLOSED';
+
+export interface VaccineIncidentListItem {
+  id: number;
+  title: string;
+  incident_type: IncidentType;
+  severity: IncidentSeverity;
+  status: IncidentStatus;
+  occurred_at: string;
+  doses_affected: number;
+  doses_lost: number;
+  reported_to_county: boolean;
+  created_at: string;
+}
+
+export interface VaccineIncident extends VaccineIncidentListItem {
+  description: string;
+  resolved_at: string | null;
+  duration_minutes: number | null;
+  affected_equipment: number[];
+  affected_batches: number[];
+  corrective_actions: string;
+  preventive_actions: string;
+  reported_by: number | null;
+  reported_by_name: string | null;
+  investigated_by: number | null;
+  investigated_by_name: string | null;
+  updated_at: string;
+}
+
+export interface VaccineIncidentCreateData {
+  title: string;
+  incident_type: IncidentType;
+  severity: IncidentSeverity;
+  description: string;
+  occurred_at: string;
+  doses_affected?: number;
+  doses_lost?: number;
+  affected_equipment?: number[];
+  affected_batches?: number[];
+}
+
+export interface VaccineIncidentListParams {
+  page?: number;
+  page_size?: number;
+  incident_type?: IncidentType;
+  severity?: IncidentSeverity;
+  status?: IncidentStatus;
+  ordering?: string;
+}
+
+// =============================================================================
 // PAGINATED RESPONSE ALIASES
 // =============================================================================
 
 export type PaginatedImmunizationRecords = PaginatedResponse<ImmunizationRecordListItem>;
 export type PaginatedVaccineCampaigns = PaginatedResponse<VaccineCampaignListItem>;
 export type PaginatedAEFIReports = PaginatedResponse<AEFIListItem>;
+export type PaginatedVaccineStock = PaginatedResponse<VaccineStockListItem>;
+export type PaginatedColdChainEquipment = PaginatedResponse<ColdChainEquipmentListItem>;
+export type PaginatedTemperatureLogs = PaginatedResponse<TemperatureLog>;
+export type PaginatedVaccineIncidents = PaginatedResponse<VaccineIncidentListItem>;
