@@ -19,6 +19,7 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.mixins import FacilityScopedModel, resolve_tenant_from_related
 from hmis.apps.core.models import TimeStampedModel
 
 # =============================================================================
@@ -210,7 +211,7 @@ class VaccineDefinition(TimeStampedModel):
 # =============================================================================
 
 
-class VaccineCampaign(TimeStampedModel):
+class VaccineCampaign(FacilityScopedModel, TimeStampedModel):
     """
     Mass vaccination campaign (e.g., COVID-19, Polio mop-up).
 
@@ -276,7 +277,7 @@ class VaccineCampaign(TimeStampedModel):
 # =============================================================================
 
 
-class ImmunizationRecord(HistoryMixin, TimeStampedModel):
+class ImmunizationRecord(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     """
     Immunization record for any patient (child or adult).
 
@@ -284,6 +285,7 @@ class ImmunizationRecord(HistoryMixin, TimeStampedModel):
     - unique_together on (patient, vaccine, dose_number) instead of (patient, vaccine)
       to support multi-dose adult series and boosters
     - Optional link to encounter and campaign
+    - Facility/org auto-resolved from encounter or patient on save.
     """
 
     patient = models.ForeignKey(
@@ -402,6 +404,10 @@ class ImmunizationRecord(HistoryMixin, TimeStampedModel):
             f"{self.patient} ({self.get_status_display()})"
         )
 
+    def save(self, *args, **kwargs):
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        super().save(*args, **kwargs)
+
     @property
     def is_overdue(self) -> bool:
         """Check if vaccination is overdue."""
@@ -422,7 +428,7 @@ class ImmunizationRecord(HistoryMixin, TimeStampedModel):
 # =============================================================================
 
 
-class AEFI(HistoryMixin, TimeStampedModel):
+class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     """
     Adverse Event Following Immunization report.
 
@@ -559,7 +565,7 @@ class IncidentStatus(models.TextChoices):
 # =============================================================================
 
 
-class VaccineStock(TimeStampedModel):
+class VaccineStock(FacilityScopedModel, TimeStampedModel):
     """
     Vaccine batch inventory tracking.
 
@@ -724,7 +730,7 @@ class StockTransaction(TimeStampedModel):
 # =============================================================================
 
 
-class ColdChainEquipment(TimeStampedModel):
+class ColdChainEquipment(FacilityScopedModel, TimeStampedModel):
     """
     Cold chain equipment inventory (fridges, freezers, cold boxes).
 
@@ -881,7 +887,7 @@ class TemperatureLog(TimeStampedModel):
 # =============================================================================
 
 
-class VaccineIncident(HistoryMixin, TimeStampedModel):
+class VaccineIncident(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     """
     Incident report for vaccine-related events.
 

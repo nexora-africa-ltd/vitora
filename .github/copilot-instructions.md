@@ -896,6 +896,76 @@ POST /api/inpatient/wards/{id}/generate_beds/
 
 **Frontend:** The admission form shows a "Generate Beds" button when ward has capacity but no beds.
 
+### 11. Organization/Facility Scoping Is MANDATORY for All New Models
+
+> ⚠️ **CRITICAL**: Every new model that stores tenant-specific data **MUST** inherit from `OrganizationScopedModel` or `FacilityScopedModel`. Failure to enforce this causes **cross-tenant data leaks** and **data integrity corruption** that is extremely difficult to fix retroactively.
+
+**Why this matters:**
+- Without scoping, queries return data from ALL organizations/facilities.
+- A user at Facility A would see patients, stock, and records from Facility B.
+- Retroactively adding scoping to an existing model requires a data migration to backfill `organization`/`facility` for every existing row — risky and time-consuming.
+
+**Decision matrix:**
+
+| Scope Level | When to Use | Example Models |
+|-------------|-------------|----------------|
+| **`FacilityScopedModel`** | Data created at / belonging to a specific facility | `Encounter`, `Triage`, `Invoice`, `LabOrder`, `VaccineStock`, `ImmunizationRecord`, `ColdChainEquipment` |
+| **`OrganizationScopedModel`** | Data shared across all facilities in an org | `Patient`, `Allergy`, shared catalogues |
+| **No scoping** | Global reference data (read-only, not tenant-specific) | `VaccineDefinition`, `ICD10Code`, `DrugCatalogue` |
+| **`NestedTenantScopeMixin`** (view only) | Models with no direct facility FK but reachable via parent chain | `Diagnosis` (→ Encounter → Facility), `TemperatureLog` (→ Equipment → Facility) |
+
+**Model pattern:**
+
+```python
+from hmis.apps.core.mixins import FacilityScopedModel, resolve_tenant_from_related
+from hmis.apps.core.models import TimeStampedModel
+
+class MyModel(FacilityScopedModel, TimeStampedModel):
+    patient = models.ForeignKey("patients.Patient", on_delete=models.PROTECT)
+    encounter = models.ForeignKey("encounters.Encounter", on_delete=models.SET_NULL, null=True)
+    # ... other fields ...
+
+    def save(self, *args, **kwargs):
+        # Auto-resolve facility/org from encounter or patient if not already set
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        super().save(*args, **kwargs)
+```
+
+**ViewSet pattern:**
+
+```python
+from hmis.apps.core.mixins import TenantScopedViewMixin
+
+class MyModelViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    queryset = MyModel.objects.select_related("patient", "encounter")
+    tenant_scope = "facility"  # or "organization"
+
+    def perform_create(self, serializer):
+        instance = serializer.save(**self.get_tenant_save_kwargs())
+        # ... audit logging ...
+```
+
+**Test fixture pattern:**
+
+```python
+# ❌ WRONG - Missing facility, invisible to tenant-scoped queries
+@pytest.fixture
+def my_record(db, sample_patient):
+    return MyModel.objects.create(patient=sample_patient, ...)
+
+# ✅ CORRECT - Include sample_facility
+@pytest.fixture
+def my_record(db, sample_patient, sample_facility):
+    return MyModel.objects.create(patient=sample_patient, facility=sample_facility, ...)
+```
+
+**Checklist for every new model:**
+- [ ] Inherits from `FacilityScopedModel` or `OrganizationScopedModel`
+- [ ] ViewSet uses `TenantScopedViewMixin` with correct `tenant_scope`
+- [ ] `perform_create()` calls `self.get_tenant_save_kwargs()`
+- [ ] Test fixtures include `sample_facility` / `sample_organization`
+- [ ] Admin class includes `facility` in `list_display`, `list_filter`, and `raw_id_fields`
+
 ---
 
 ## 🔐 Security & Compliance

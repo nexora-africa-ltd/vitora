@@ -43,15 +43,16 @@ class ImmunizationRecordAdmin(admin.ModelAdmin):
         "status_badge",
         "scheduled_date",
         "administered_date",
+        "facility",
     ]
-    list_filter = ["status", "vaccine__program", "vaccine__target_population"]
+    list_filter = ["status", "vaccine__program", "vaccine__target_population", "facility"]
     search_fields = [
         "patient__first_name",
         "patient__last_name",
         "patient__mrn",
         "vaccine__code",
     ]
-    raw_id_fields = ["patient", "administered_by", "encounter", "campaign"]
+    raw_id_fields = ["patient", "administered_by", "encounter", "campaign", "facility", "organization"]
     ordering = ["-scheduled_date"]
 
     def vaccine_code(self, obj):
@@ -79,10 +80,11 @@ class ImmunizationRecordAdmin(admin.ModelAdmin):
 
 @admin.register(VaccineCampaign)
 class VaccineCampaignAdmin(admin.ModelAdmin):
-    list_display = ["name", "status", "start_date", "end_date", "target_population", "target_count"]
-    list_filter = ["status", "target_population"]
+    list_display = ["name", "status", "start_date", "end_date", "target_population", "target_count", "facility"]
+    list_filter = ["status", "target_population", "facility"]
     search_fields = ["name"]
     filter_horizontal = ["vaccines"]
+    raw_id_fields = ["facility", "organization"]
 
 
 @admin.register(AEFI)
@@ -95,9 +97,10 @@ class AEFIAdmin(admin.ModelAdmin):
         "outcome",
         "event_date",
         "reported_to_authorities",
+        "facility",
     ]
-    list_filter = ["event_type", "severity", "outcome", "reported_to_authorities"]
-    raw_id_fields = ["immunization_record", "investigated_by"]
+    list_filter = ["event_type", "severity", "outcome", "reported_to_authorities", "facility"]
+    raw_id_fields = ["immunization_record", "investigated_by", "facility", "organization"]
     ordering = ["-event_date"]
 
     def vaccine_code(self, obj):
@@ -115,10 +118,11 @@ class VaccineStockAdmin(admin.ModelAdmin):
         "quantity_received",
         "expiry_date",
         "storage_location",
+        "facility",
     ]
-    list_filter = ["vaccine__code"]
+    list_filter = ["vaccine__code", "facility"]
     search_fields = ["batch_number", "vaccine__code", "vaccine__name"]
-    raw_id_fields = ["vaccine", "received_by"]
+    raw_id_fields = ["vaccine", "received_by", "facility", "organization"]
 
     def vaccine_code(self, obj):
         return obj.vaccine.code
@@ -134,9 +138,10 @@ class StockTransactionInline(admin.TabularInline):
 
 @admin.register(ColdChainEquipment)
 class ColdChainEquipmentAdmin(admin.ModelAdmin):
-    list_display = ["name", "equipment_type", "serial_number", "location", "status"]
-    list_filter = ["equipment_type", "status"]
+    list_display = ["name", "equipment_type", "serial_number", "location", "status", "facility"]
+    list_filter = ["equipment_type", "status", "facility"]
     search_fields = ["name", "serial_number"]
+    raw_id_fields = ["facility", "organization"]
 
 
 @admin.register(TemperatureLog)
@@ -156,8 +161,9 @@ class VaccineIncidentAdmin(admin.ModelAdmin):
         "occurred_at",
         "doses_affected",
         "reported_to_county",
+        "facility",
     ]
-    list_filter = ["incident_type", "severity", "status", "reported_to_county"]
+    list_filter = ["incident_type", "severity", "status", "reported_to_county", "facility"]
     search_fields = ["title", "description"]
-    raw_id_fields = ["reported_by", "investigated_by"]
+    raw_id_fields = ["reported_by", "investigated_by", "facility", "organization"]
     filter_horizontal = ["affected_equipment", "affected_batches"]
