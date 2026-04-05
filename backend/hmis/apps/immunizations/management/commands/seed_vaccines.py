@@ -29,7 +29,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        data_dir = Path(__file__).resolve().parent.parent.parent.parent.parent / "data"
+        data_dir = Path(__file__).resolve().parent.parent.parent.parent.parent.parent / "data"
         created_count = 0
         updated_count = 0
 

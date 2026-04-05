@@ -70,6 +70,7 @@ import {
   Skull,
   Tag,
   Wallet,
+  ShieldAlert,
 } from 'lucide-react';
 
 import {
@@ -175,6 +176,17 @@ const _allNavItems: NavItemType[] = [
       { label: 'Chronic Care', href: '/clinics/chronic-care', icon: HeartPulse },
       { label: 'Immunization', href: '/clinics/immunization', icon: Syringe },
       { label: 'Enrollments', href: '/clinics/enrollments', icon: ClipboardList, actionKey: 'clinics.manage_queue' },
+    ],
+  },
+  {
+    label: 'Immunizations',
+    icon: Syringe,
+    moduleKey: 'immunizations',
+    children: [
+      { label: 'Records', href: '/immunizations', icon: Syringe, actionKey: 'immunizations.view_records' },
+      { label: 'Campaigns', href: '/immunizations/campaigns', icon: Target, actionKey: 'immunizations.manage_campaigns' },
+      { label: 'AEFI Reports', href: '/immunizations/aefi', icon: ShieldAlert, actionKey: 'immunizations.view_records' },
+      { label: 'Coverage', href: '/immunizations/coverage', icon: BarChart3, actionKey: 'immunizations.view_coverage' },
     ],
   },
   {
