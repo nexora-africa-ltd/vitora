@@ -81,6 +81,7 @@ export default function AEFIPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Form state
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [immunizationRecordId, setImmunizationRecordId] = useState('');
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]!);
   const [eventType, setEventType] = useState<AEFIEventType>('LOCAL_REACTION');
@@ -117,6 +118,7 @@ export default function AEFIPage() {
   });
 
   function resetForm() {
+    setTouched({});
     setImmunizationRecordId('');
     setEventDate(new Date().toISOString().split('T')[0]!);
     setEventType('LOCAL_REACTION');
@@ -234,27 +236,30 @@ export default function AEFIPage() {
                 <HelpPopover content="Report an adverse event following immunization. Provide the immunization record ID, event type, severity, and a detailed description." />
               </div>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
+            <div className="space-y-3 sm:space-y-4 pt-2">
               <div>
-                <Label>Immunization Record ID</Label>
+                <Label>Immunization Record ID <span className="text-destructive">*</span></Label>
                 <Input
                   type="number"
                   value={immunizationRecordId}
                   onChange={(e) => setImmunizationRecordId(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, recordId: true }))}
                   placeholder="Enter the immunization record ID"
+                  className={touched.recordId && !immunizationRecordId ? 'border-destructive focus-visible:ring-destructive' : ''}
                 />
+                {touched.recordId && !immunizationRecordId && <p className="text-xs text-destructive mt-1">Record ID is required</p>}
               </div>
               <div>
-                <Label>Event Date</Label>
+                <Label>Event Date <span className="text-destructive">*</span></Label>
                 <Input
                   type="date"
                   value={eventDate}
                   onChange={(e) => setEventDate(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <Label>Event Type</Label>
+                  <Label>Event Type <span className="text-destructive">*</span></Label>
                   <Select value={eventType} onValueChange={(v) => setEventType(v as AEFIEventType)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -267,7 +272,7 @@ export default function AEFIPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Severity</Label>
+                  <Label>Severity <span className="text-destructive">*</span></Label>
                   <Select value={severity} onValueChange={(v) => setSeverity(v as AEFISeverity)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -281,15 +286,18 @@ export default function AEFIPage() {
                 </div>
               </div>
               <div>
-                <Label>Description</Label>
+                <Label>Description <span className="text-destructive">*</span></Label>
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, description: true }))}
                   placeholder="Describe the adverse event..."
                   rows={3}
+                  className={touched.description && !description ? 'border-destructive focus-visible:ring-destructive' : ''}
                 />
+                {touched.description && !description && <p className="text-xs text-destructive mt-1">Description is required</p>}
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button
                   onClick={() => createMutation.mutate()}

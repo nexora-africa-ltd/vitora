@@ -128,6 +128,9 @@ export const ACTION_PERMISSIONS = {
   'immunizations.view_records': ['NURSE', 'MIDWIFE', 'CLINICAL_OFFICER', 'DOCTOR', 'PHARMACIST', 'CHW'],
   'immunizations.administer': ['NURSE', 'MIDWIFE', 'CLINICAL_OFFICER', 'DOCTOR'],
   'immunizations.manage_campaigns': ['NURSE', 'ADMIN', 'SURVEILLANCE_OFFICER'],
+  'immunizations.manage_stock': ['NURSE', 'PHARMACIST', 'PHARMACY_TECH', 'ADMIN', 'STORE_KEEPER'],
+  'immunizations.manage_cold_chain': ['NURSE', 'PHARMACIST', 'PHARMACY_TECH', 'ADMIN', 'STORE_KEEPER'],
+  'immunizations.report_incident': ['NURSE', 'PHARMACIST', 'PHARMACY_TECH', 'ADMIN', 'STORE_KEEPER', 'SURVEILLANCE_OFFICER'],
   'immunizations.view_coverage': ['NURSE', 'MIDWIFE', 'CLINICAL_OFFICER', 'DOCTOR', 'ADMIN', 'SURVEILLANCE_OFFICER'],
 
   // === MCH Module ===

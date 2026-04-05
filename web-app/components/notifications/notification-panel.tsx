@@ -436,9 +436,9 @@ export function NotificationPanel() {
                 data-testid="unread-badge"
                 className={cn(
                   'absolute -top-1 -right-1 flex items-center justify-center',
-                  'min-w-[18px] h-[18px] px-1 rounded-full',
+                  'min-w-4 h-4 px-1 rounded-full',
                   'bg-cyan-500 text-white',
-                  'text-[10px] font-medium animate-pulse'
+                  'text-[10px] font-medium leading-none animate-pulse'
                 )}
               >
                 {unreadCount > 99 ? '99+' : unreadCount}

@@ -199,6 +199,169 @@ export const coverageApi = {
 };
 
 // =============================================================================
+// VACCINE STOCK API
+// =============================================================================
+
+import {
+  PaginatedVaccineStockListSchema,
+  VaccineStockSchema,
+  StockTransactionArraySchema,
+  PaginatedColdChainEquipmentListSchema,
+  ColdChainEquipmentSchema,
+  PaginatedTemperatureLogListSchema,
+  TemperatureLogSchema,
+  PaginatedVaccineIncidentListSchema,
+  VaccineIncidentSchema,
+} from '@/lib/schemas/immunizations.schema';
+import type {
+  VaccineStock,
+  StockTransaction,
+  StockReceiveData,
+  StockIssueData,
+  VaccineStockListParams,
+  ColdChainEquipment as ColdChainEquipmentType,
+  ColdChainEquipmentCreateData,
+  TemperatureLog as TemperatureLogType,
+  TemperatureLogCreateData,
+  VaccineIncident as VaccineIncidentType,
+  VaccineIncidentCreateData,
+  VaccineIncidentListParams,
+  PaginatedVaccineStock,
+  PaginatedColdChainEquipment,
+  PaginatedTemperatureLogs,
+  PaginatedVaccineIncidents,
+} from '@/lib/types/immunizations';
+
+export const vaccineStockApi = {
+  list: async (params?: VaccineStockListParams): Promise<PaginatedVaccineStock> => {
+    const response = await apiClient.get(`${BASE_URL}/stock/`, { params });
+    return parseResponse(PaginatedVaccineStockListSchema, response.data, {
+      context: 'vaccineStockApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<VaccineStock> => {
+    const response = await apiClient.get(`${BASE_URL}/stock/${id}/`);
+    return parseResponse(VaccineStockSchema, response.data, {
+      context: 'vaccineStockApi.get',
+    });
+  },
+
+  create: async (data: StockReceiveData): Promise<VaccineStock> => {
+    const response = await apiClient.post(`${BASE_URL}/stock/`, data);
+    return parseResponse(VaccineStockSchema, response.data, {
+      context: 'vaccineStockApi.create',
+    });
+  },
+
+  issue: async (id: number, data: StockIssueData): Promise<VaccineStock> => {
+    const response = await apiClient.post(`${BASE_URL}/stock/${id}/issue/`, data);
+    return parseResponse(VaccineStockSchema, response.data, {
+      context: 'vaccineStockApi.issue',
+    });
+  },
+
+  transactions: async (id: number): Promise<StockTransaction[]> => {
+    const response = await apiClient.get(`${BASE_URL}/stock/${id}/transactions/`);
+    return parseResponse(StockTransactionArraySchema, response.data, {
+      context: 'vaccineStockApi.transactions',
+    });
+  },
+};
+
+// =============================================================================
+// COLD CHAIN EQUIPMENT API
+// =============================================================================
+
+export const coldChainApi = {
+  list: async (params?: { status?: string; equipment_type?: string }): Promise<PaginatedColdChainEquipment> => {
+    const response = await apiClient.get(`${BASE_URL}/cold-chain/`, { params });
+    return parseResponse(PaginatedColdChainEquipmentListSchema, response.data, {
+      context: 'coldChainApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<ColdChainEquipmentType> => {
+    const response = await apiClient.get(`${BASE_URL}/cold-chain/${id}/`);
+    return parseResponse(ColdChainEquipmentSchema, response.data, {
+      context: 'coldChainApi.get',
+    });
+  },
+
+  create: async (data: ColdChainEquipmentCreateData): Promise<ColdChainEquipmentType> => {
+    const response = await apiClient.post(`${BASE_URL}/cold-chain/`, data);
+    return parseResponse(ColdChainEquipmentSchema, response.data, {
+      context: 'coldChainApi.create',
+    });
+  },
+
+  update: async (id: number, data: Partial<ColdChainEquipmentCreateData>): Promise<ColdChainEquipmentType> => {
+    const response = await apiClient.patch(`${BASE_URL}/cold-chain/${id}/`, data);
+    return parseResponse(ColdChainEquipmentSchema, response.data, {
+      context: 'coldChainApi.update',
+    });
+  },
+};
+
+// =============================================================================
+// TEMPERATURE LOG API
+// =============================================================================
+
+export const temperatureLogApi = {
+  list: async (params?: { equipment?: number; is_excursion?: boolean }): Promise<PaginatedTemperatureLogs> => {
+    const response = await apiClient.get(`${BASE_URL}/temperature-logs/`, { params });
+    return parseResponse(PaginatedTemperatureLogListSchema, response.data, {
+      context: 'temperatureLogApi.list',
+    });
+  },
+
+  create: async (data: TemperatureLogCreateData): Promise<TemperatureLogType> => {
+    const response = await apiClient.post(`${BASE_URL}/temperature-logs/`, data);
+    return parseResponse(TemperatureLogSchema, response.data, {
+      context: 'temperatureLogApi.create',
+    });
+  },
+};
+
+// =============================================================================
+// VACCINE INCIDENT API
+// =============================================================================
+
+export const incidentApi = {
+  list: async (params?: VaccineIncidentListParams): Promise<PaginatedVaccineIncidents> => {
+    const response = await apiClient.get(`${BASE_URL}/incidents/`, { params });
+    return parseResponse(PaginatedVaccineIncidentListSchema, response.data, {
+      context: 'incidentApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<VaccineIncidentType> => {
+    const response = await apiClient.get(`${BASE_URL}/incidents/${id}/`);
+    return parseResponse(VaccineIncidentSchema, response.data, {
+      context: 'incidentApi.get',
+    });
+  },
+
+  create: async (data: VaccineIncidentCreateData): Promise<VaccineIncidentType> => {
+    const response = await apiClient.post(`${BASE_URL}/incidents/`, data);
+    return parseResponse(VaccineIncidentSchema, response.data, {
+      context: 'incidentApi.create',
+    });
+  },
+
+  resolve: async (id: number, data: {
+    corrective_actions: string;
+    preventive_actions?: string;
+    doses_lost?: number;
+  }): Promise<VaccineIncidentType> => {
+    const response = await apiClient.post(`${BASE_URL}/incidents/${id}/resolve/`, data);
+    return parseResponse(VaccineIncidentSchema, response.data, {
+      context: 'incidentApi.resolve',
+    });
+  },
+};
+
+// =============================================================================
 // COMBINED EXPORT
 // =============================================================================
 
@@ -208,4 +371,8 @@ export const immunizationsModule = {
   campaigns: vaccineCampaignsApi,
   aefi: aefiApi,
   coverage: coverageApi,
+  stock: vaccineStockApi,
+  coldChain: coldChainApi,
+  temperatureLogs: temperatureLogApi,
+  incidents: incidentApi,
 };

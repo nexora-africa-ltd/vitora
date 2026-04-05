@@ -5,9 +5,14 @@ from django.utils.html import format_html
 
 from hmis.apps.immunizations.models import (
     AEFI,
+    ColdChainEquipment,
     ImmunizationRecord,
+    StockTransaction,
+    TemperatureLog,
     VaccineCampaign,
     VaccineDefinition,
+    VaccineIncident,
+    VaccineStock,
 )
 
 
@@ -99,3 +104,60 @@ class AEFIAdmin(admin.ModelAdmin):
         return obj.immunization_record.vaccine.code
 
     vaccine_code.short_description = "Vaccine"
+
+
+@admin.register(VaccineStock)
+class VaccineStockAdmin(admin.ModelAdmin):
+    list_display = [
+        "vaccine_code",
+        "batch_number",
+        "quantity_on_hand",
+        "quantity_received",
+        "expiry_date",
+        "storage_location",
+    ]
+    list_filter = ["vaccine__code"]
+    search_fields = ["batch_number", "vaccine__code", "vaccine__name"]
+    raw_id_fields = ["vaccine", "received_by"]
+
+    def vaccine_code(self, obj):
+        return obj.vaccine.code
+
+    vaccine_code.short_description = "Vaccine"
+
+
+class StockTransactionInline(admin.TabularInline):
+    model = StockTransaction
+    extra = 0
+    readonly_fields = ["transaction_type", "quantity", "balance_after", "performed_by", "created_at"]
+
+
+@admin.register(ColdChainEquipment)
+class ColdChainEquipmentAdmin(admin.ModelAdmin):
+    list_display = ["name", "equipment_type", "serial_number", "location", "status"]
+    list_filter = ["equipment_type", "status"]
+    search_fields = ["name", "serial_number"]
+
+
+@admin.register(TemperatureLog)
+class TemperatureLogAdmin(admin.ModelAdmin):
+    list_display = ["equipment", "temperature", "recorded_at", "is_excursion"]
+    list_filter = ["is_excursion", "equipment"]
+    raw_id_fields = ["recorded_by"]
+
+
+@admin.register(VaccineIncident)
+class VaccineIncidentAdmin(admin.ModelAdmin):
+    list_display = [
+        "title",
+        "incident_type",
+        "severity",
+        "status",
+        "occurred_at",
+        "doses_affected",
+        "reported_to_county",
+    ]
+    list_filter = ["incident_type", "severity", "status", "reported_to_county"]
+    search_fields = ["title", "description"]
+    raw_id_fields = ["reported_by", "investigated_by"]
+    filter_horizontal = ["affected_equipment", "affected_batches"]

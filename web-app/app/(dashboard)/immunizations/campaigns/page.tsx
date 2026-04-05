@@ -72,6 +72,7 @@ export default function CampaignsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Form state
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startDateVal, setStartDateVal] = useState('');
@@ -118,6 +119,7 @@ export default function CampaignsPage() {
   });
 
   function resetForm() {
+    setTouched({});
     setName('');
     setDescription('');
     setStartDateVal('');
@@ -246,14 +248,17 @@ export default function CampaignsPage() {
                 <HelpPopover content="Create a new mass vaccination campaign. Set the target population, date range, and associated vaccines." />
               </div>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
+            <div className="space-y-3 sm:space-y-4 pt-2">
               <div>
-                <Label>Campaign Name</Label>
+                <Label>Campaign Name <span className="text-destructive">*</span></Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, name: true }))}
                   placeholder="e.g. COVID-19 Booster Campaign 2026"
+                  className={touched.name && !name ? 'border-destructive focus-visible:ring-destructive' : ''}
                 />
+                {touched.name && !name && <p className="text-xs text-destructive mt-1">Campaign name is required</p>}
               </div>
               <div>
                 <Label>Description</Label>
@@ -264,19 +269,33 @@ export default function CampaignsPage() {
                   rows={2}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <Label>Start Date</Label>
-                  <Input type="date" value={startDateVal} onChange={(e) => setStartDateVal(e.target.value)} />
+                  <Label>Start Date <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="date"
+                    value={startDateVal}
+                    onChange={(e) => setStartDateVal(e.target.value)}
+                    onBlur={() => setTouched((t) => ({ ...t, startDate: true }))}
+                    className={touched.startDate && !startDateVal ? 'border-destructive focus-visible:ring-destructive' : ''}
+                  />
+                  {touched.startDate && !startDateVal && <p className="text-xs text-destructive mt-1">Start date is required</p>}
                 </div>
                 <div>
-                  <Label>End Date</Label>
-                  <Input type="date" value={endDateVal} onChange={(e) => setEndDateVal(e.target.value)} />
+                  <Label>End Date <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="date"
+                    value={endDateVal}
+                    onChange={(e) => setEndDateVal(e.target.value)}
+                    onBlur={() => setTouched((t) => ({ ...t, endDate: true }))}
+                    className={touched.endDate && !endDateVal ? 'border-destructive focus-visible:ring-destructive' : ''}
+                  />
+                  {touched.endDate && !endDateVal && <p className="text-xs text-destructive mt-1">End date is required</p>}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <Label>Target Population</Label>
+                  <Label>Target Population <span className="text-destructive">*</span></Label>
                   <Select value={targetPopulation} onValueChange={(v) => setTargetPopulation(v as TargetPopulation)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -322,7 +341,7 @@ export default function CampaignsPage() {
                   </div>
                 </div>
               )}
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button
                   onClick={() => createMutation.mutate()}

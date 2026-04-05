@@ -50,7 +50,7 @@ function AlertCard({
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-3 min-w-0 flex-1">
           <div
-            className={`shrink-0 rounded-full p-2 ${
+            className={`shrink-0 size-8 rounded-full flex items-center justify-center ${
               config.variant === 'destructive'
                 ? 'bg-destructive/10'
                 : config.variant === 'warning'

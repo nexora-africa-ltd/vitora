@@ -486,7 +486,7 @@ export default function ImmunizationsPage() {
                 <HelpPopover content="Record vaccine administration with batch/lot details and injection site." />
               </div>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
+            <div className="space-y-3 sm:space-y-4 pt-2">
               <div>
                 <Label>Date Administered</Label>
                 <Input
@@ -495,7 +495,7 @@ export default function ImmunizationsPage() {
                   onChange={(e) => setAdminDate(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <Label>Batch Number</Label>
                   <Input
@@ -513,7 +513,7 @@ export default function ImmunizationsPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <Label>Expiry Date</Label>
                   <Input
@@ -547,7 +547,7 @@ export default function ImmunizationsPage() {
                   rows={2}
                 />
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <Button variant="outline" onClick={() => setAdministerDialogOpen(false)}>
                   Cancel
                 </Button>
@@ -572,7 +572,7 @@ export default function ImmunizationsPage() {
                 <HelpPopover content="Create a multi-dose schedule for an adult vaccine (e.g., Hep B 3-dose series). Doses will be spaced per the vaccine's configured interval." />
               </div>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
+            <div className="space-y-3 sm:space-y-4 pt-2">
               <div>
                 <Label>Vaccine</Label>
                 <Select
@@ -599,7 +599,7 @@ export default function ImmunizationsPage() {
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <Button variant="outline" onClick={() => setAdultScheduleDialogOpen(false)}>
                   Cancel
                 </Button>
