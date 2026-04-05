@@ -90,6 +90,8 @@ def create_vaccination_appointment(
         reason=f"{record.vaccine.code} dose {record.dose_number}",
         notes=f"Auto-generated for {record.vaccine.name}",
         created_by=created_by,
+        facility=record.facility,
+        organization=record.organization,
     )
 
     logger.info(

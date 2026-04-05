@@ -44,7 +44,7 @@ class TestResourceAPI:
         for resource in response.data["results"]:
             assert resource["resource_type"] == "PERSON"
 
-    def test_list_resources_filter_active_only(self, authenticated_client, db):
+    def test_list_resources_filter_active_only(self, authenticated_client, db, sample_facility):
         """Should filter active resources only."""
         from hmis.apps.scheduling.models import Resource
 
@@ -53,12 +53,14 @@ class TestResourceAPI:
             resource_type="PERSON",
             code="RES-ACTIVE",
             is_active=True,
+            facility=sample_facility,
         )
         Resource.objects.create(
             name="Inactive Resource",
             resource_type="PERSON",
             code="RES-INACTIVE",
             is_active=False,
+            facility=sample_facility,
         )
 
         response = authenticated_client.get("/api/scheduling/resources/?is_active=true")
@@ -586,70 +588,4 @@ class TestSchedulingAuditLog:
         assert log is not None
 
 
-# =============================================================================
-# Test Fixtures
-# =============================================================================
-
-
-@pytest.fixture
-def sample_person_resource(db):
-    """Create a sample person resource for testing."""
-    from hmis.apps.scheduling.models import Resource
-
-    return Resource.objects.create(
-        name="Dr. Test Doctor",
-        resource_type="PERSON",
-        code="DOC-TEST-API-001",
-        is_active=True,
-        metadata={"specialty": "General Practice"},
-    )
-
-
-@pytest.fixture
-def sample_place_resource(db):
-    """Create a sample place resource for testing."""
-    from hmis.apps.scheduling.models import Resource
-
-    return Resource.objects.create(
-        name="Consultation Room 1",
-        resource_type="PLACE",
-        code="ROOM-API-001",
-        capacity=2,
-        is_active=True,
-    )
-
-
-@pytest.fixture
-def sample_schedule(db, sample_person_resource):
-    """Create a sample schedule for testing."""
-    from hmis.apps.scheduling.models import Schedule
-
-    return Schedule.objects.create(
-        resource=sample_person_resource,
-        schedule_type="RECURRING",
-        day_of_week=0,  # Monday
-        start_time=time(9, 0),
-        end_time=time(17, 0),
-        slot_duration_minutes=30,
-        buffer_minutes=0,
-        effective_from=date.today(),
-        is_active=True,
-    )
-
-
-@pytest.fixture
-def sample_appointment(db, sample_patient, sample_person_resource):
-    """Create a sample appointment for testing."""
-    from hmis.apps.scheduling.models import Appointment
-
-    scheduled_start = timezone.now() + timedelta(hours=24)
-    scheduled_end = scheduled_start + timedelta(minutes=30)
-
-    return Appointment.objects.create(
-        patient=sample_patient,
-        resource=sample_person_resource,
-        appointment_type="CONSULTATION",
-        scheduled_start=scheduled_start,
-        scheduled_end=scheduled_end,
-        reason="Test appointment",
-    )
+# Fixtures are defined in tests/scheduling/conftest.py
