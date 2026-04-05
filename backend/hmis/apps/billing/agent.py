@@ -100,8 +100,9 @@ class BillingAgentService:
     def add_line_item(
         invoice: Invoice,
         *,
-        service: Service,
+        service: Service | None,
         quantity: int = 1,
+        unit_price=None,
         description: str = "",
         item_type: str = InvoiceItem.ItemType.SERVICE,
         lab_order=None,
@@ -111,8 +112,9 @@ class BillingAgentService:
 
         Args:
             invoice: Target Invoice.
-            service: Billing Service for pricing.
+            service: Billing Service for pricing (None when using unit_price override).
             quantity: Number of units.
+            unit_price: Explicit price override (used when service is None, e.g. base_fee).
             description: Line item description.
             item_type: InvoiceItem.ItemType value.
             lab_order: Optional LabOrder FK for lab items.
@@ -121,13 +123,15 @@ class BillingAgentService:
         Returns:
             Created InvoiceItem.
         """
+        resolved_price = unit_price if unit_price is not None else service.unit_price
+        resolved_description = description or (service.name if service else "")
         return InvoiceItem.objects.create(
             invoice=invoice,
             item_type=item_type,
             service=service,
-            description=description or service.name,
+            description=resolved_description,
             quantity=quantity,
-            unit_price=service.unit_price,
+            unit_price=resolved_price,
             lab_order=lab_order,
             immunization_record=immunization_record,
         )
@@ -219,7 +223,11 @@ class BillingAgentService:
         """Auto-bill vaccine administration when a dose is recorded.
 
         Called from immunizations signal when ImmunizationRecord.status → ADMINISTERED.
-        Resolves billing via: VaccineDefinition.code → Service.code match within IMM category.
+        Resolves billing via:
+          1) VaccineDefinition.billing_service FK (preferred)
+          2) VaccineDefinition.code → Service.code match
+          3) Fallback: name match within IMM category
+          4) VaccineDefinition.base_fee as last resort (no Service link)
         """
         patient = immunization_record.patient
         encounter = immunization_record.encounter
@@ -239,13 +247,19 @@ class BillingAgentService:
             )
             return
 
-        # Lookup: vaccine code → billing Service (e.g., Service.code == "BCG")
-        service = Service.objects.filter(
-            code=vaccine.code,
-            is_active=True,
+        # 1) Explicit billing_service FK on VaccineDefinition (preferred)
+        service = getattr(vaccine, "billing_service", None)
+        if service and not service.is_active:
+            service = None
+
+        # 2) Fallback: vaccine code → billing Service (e.g., Service.code == "BCG")
+        if not service:
+            service = Service.objects.filter(
+                code=vaccine.code,
+                is_active=True,
         ).first()
 
-        # Fallback: match by name within IMM category
+        # 3) Fallback: match by name within IMM category
         if not service:
             service = Service.objects.filter(
                 category__code="IMM",
@@ -263,14 +277,32 @@ class BillingAgentService:
                 immunization_record=immunization_record,
             )
             logger.info(
-                "Billing agent: added vaccination %s to invoice %s",
+                "Billing agent: added vaccination %s to invoice %s (service %s)",
                 vaccine.code,
                 invoice.invoice_number,
+                service.code,
+            )
+        elif vaccine.base_fee:
+            # 4) Last resort: use base_fee from VaccineDefinition (no Service link)
+            cls.add_line_item(
+                invoice,
+                service=None,
+                quantity=1,
+                unit_price=vaccine.base_fee,
+                description=f"Vaccination: {vaccine.name} (dose {immunization_record.dose_number})",
+                item_type=InvoiceItem.ItemType.VACCINATION,
+                immunization_record=immunization_record,
+            )
+            logger.info(
+                "Billing agent: added vaccination %s to invoice %s using base_fee %s",
+                vaccine.code,
+                invoice.invoice_number,
+                vaccine.base_fee,
             )
         else:
             logger.warning(
-                "Billing agent: no billing Service found for vaccine %s (code=%s). "
-                "Create a Service in the IMM category to enable auto-billing.",
+                "Billing agent: no billing Service or base_fee found for vaccine %s "
+                "(code=%s). Link a billing Service or set base_fee to enable auto-billing.",
                 vaccine.name,
                 vaccine.code,
             )

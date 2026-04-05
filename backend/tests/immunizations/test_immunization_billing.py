@@ -127,10 +127,10 @@ class TestImmunizationBilling:
         items = invoice.items.filter(immunization_record=scheduled_record)
         assert items.count() == 1
 
-    def test_no_billing_service_logs_warning(
+    def test_no_billing_service_or_base_fee_logs_warning(
         self, scheduled_record, caplog,
     ):
-        """Should log warning when no billing Service is found for a vaccine."""
+        """Should log warning when no billing Service or base_fee is found for a vaccine."""
         scheduled_record.status = "ADMINISTERED"
         scheduled_record.save()
 
@@ -139,7 +139,7 @@ class TestImmunizationBilling:
         with caplog.at_level(logging.WARNING):
             BillingAgentService.handle_immunization_administered(scheduled_record)
 
-        assert "no billing Service found for vaccine" in caplog.text
+        assert "no billing Service or base_fee found" in caplog.text
 
     def test_signal_triggers_on_administration(
         self, scheduled_record, bcg_billing_service,
@@ -175,3 +175,94 @@ class TestImmunizationBilling:
         """VACCINATION should be a valid InvoiceItem.ItemType choice."""
         assert hasattr(InvoiceItem.ItemType, "VACCINATION")
         assert InvoiceItem.ItemType.VACCINATION == "vaccination"
+
+    def test_billing_service_fk_preferred_over_code_lookup(
+        self, scheduled_record, bcg_billing_service, imm_service_category, test_user,
+    ):
+        """billing_service FK on VaccineDefinition should take priority over code lookup."""
+        # Create a different Service and link it explicitly via FK
+        explicit_service = Service.objects.create(
+            code="IMM-BCG-SPECIAL",
+            name="BCG Special Rate",
+            unit_price=Decimal("200.00"),
+            category=imm_service_category,
+            is_active=True,
+            created_by=test_user,
+        )
+        vaccine = scheduled_record.vaccine
+        vaccine.billing_service = explicit_service
+        vaccine.save()
+
+        scheduled_record.status = "ADMINISTERED"
+        scheduled_record.administered_date = date.today()
+        scheduled_record.save()
+
+        BillingAgentService.handle_immunization_administered(scheduled_record)
+
+        invoice = Invoice.objects.filter(patient=scheduled_record.patient).first()
+        item = invoice.items.get(immunization_record=scheduled_record)
+        # Should use the explicitly linked service, not the code-matched one
+        assert item.service == explicit_service
+        assert item.unit_price == Decimal("200.00")
+
+    def test_base_fee_fallback_when_no_service(
+        self, scheduled_record,
+    ):
+        """Should use VaccineDefinition.base_fee when no billing Service is found."""
+        vaccine = scheduled_record.vaccine
+        vaccine.base_fee = Decimal("100.00")
+        vaccine.save()
+
+        scheduled_record.status = "ADMINISTERED"
+        scheduled_record.administered_date = date.today()
+        scheduled_record.save()
+
+        BillingAgentService.handle_immunization_administered(scheduled_record)
+
+        invoice = Invoice.objects.filter(patient=scheduled_record.patient).first()
+        assert invoice is not None
+
+        item = invoice.items.get(immunization_record=scheduled_record)
+        assert item.service is None
+        assert item.unit_price == Decimal("100.00")
+        assert item.item_type == InvoiceItem.ItemType.VACCINATION
+
+
+@pytest.mark.django_db
+class TestVaccineDefinitionBilling:
+    """Tests for VaccineDefinition billing fields and billing_price property."""
+
+    def test_billing_price_from_billing_service(self, imm_service_category, test_user):
+        """billing_price should return billing_service.unit_price when linked."""
+        service = Service.objects.create(
+            code="IMM-TEST",
+            name="Test Vaccine Service",
+            unit_price=Decimal("250.00"),
+            category=imm_service_category,
+            is_active=True,
+            created_by=test_user,
+        )
+        vaccine = VaccineDefinition.objects.create(
+            code="TEST-VAX",
+            name="Test Vaccine",
+            billing_service=service,
+            base_fee=Decimal("100.00"),  # should be ignored
+        )
+        assert vaccine.billing_price == Decimal("250.00")
+
+    def test_billing_price_falls_back_to_base_fee(self):
+        """billing_price should return base_fee when no billing_service is set."""
+        vaccine = VaccineDefinition.objects.create(
+            code="TEST-VAX2",
+            name="Test Vaccine 2",
+            base_fee=Decimal("75.00"),
+        )
+        assert vaccine.billing_price == Decimal("75.00")
+
+    def test_billing_price_returns_none_when_nothing_set(self):
+        """billing_price should return None when neither billing_service nor base_fee is set."""
+        vaccine = VaccineDefinition.objects.create(
+            code="TEST-VAX3",
+            name="Test Vaccine 3",
+        )
+        assert vaccine.billing_price is None

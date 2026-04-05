@@ -27,6 +27,13 @@ from hmis.apps.immunizations.models import (
 class VaccineDefinitionSerializer(serializers.ModelSerializer):
     """Full serializer for vaccine definition reference data."""
 
+    billing_service_name = serializers.CharField(
+        source="billing_service.name", read_only=True, default=None
+    )
+    billing_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
+
     class Meta:
         model = VaccineDefinition
         fields = [
@@ -46,6 +53,11 @@ class VaccineDefinitionSerializer(serializers.ModelSerializer):
             "min_age_days",
             "max_age_days",
             "is_active",
+            "billing_service",
+            "billing_service_name",
+            "billing_price",
+            "base_fee",
+            "sha_tariff_code",
         ]
 
 

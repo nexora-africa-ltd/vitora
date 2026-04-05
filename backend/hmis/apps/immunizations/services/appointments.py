@@ -58,17 +58,20 @@ def create_vaccination_appointment(
         )
         return None
 
-    # Resolve resource
+    # Resolve resource — scoped to the record's facility to prevent
+    # cross-tenant leakage (each facility has its own IMM-CLINIC resource).
     if resource is None:
         resource = Resource.objects.filter(
             code="IMM-CLINIC",
+            facility=record.facility,
             is_active=True,
         ).first()
 
     if resource is None:
         logger.warning(
-            "No immunization clinic resource (code=IMM-CLINIC) found. "
-            "Skipping appointment creation for %s.",
+            "No immunization clinic resource (code=IMM-CLINIC) found "
+            "for facility %s. Skipping appointment creation for %s.",
+            record.facility_id,
             record,
         )
         return None
