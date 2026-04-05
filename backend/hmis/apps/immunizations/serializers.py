@@ -7,6 +7,8 @@ from rest_framework import serializers
 from hmis.apps.immunizations.models import (
     AEFI,
     AdministrationSite,
+    AEFIEventType,
+    AEFIReportType,
     ColdChainEquipment,
     ImmunizationRecord,
     StockTransaction,
@@ -83,6 +85,11 @@ class ImmunizationRecordSerializer(serializers.ModelSerializer):
             "lot_number",
             "expiry_date",
             "site",
+            "vaccine_manufacturer",
+            "diluent_batch_number",
+            "diluent_manufacturer",
+            "diluent_expiry_date",
+            "vaccination_service_type",
             "administered_by",
             "administered_by_name",
             "next_dose_date",
@@ -213,48 +220,211 @@ class VaccineCampaignListSerializer(serializers.ModelSerializer):
 
 
 class AEFISerializer(serializers.ModelSerializer):
-    """Full serializer for AEFI report."""
+    """Full serializer for AEFI report — aligned with MOH AEFI Reporting Form."""
 
+    # Vaccine context
     vaccine_code = serializers.CharField(
         source="immunization_record.vaccine.code", read_only=True
     )
     vaccine_name = serializers.CharField(
         source="immunization_record.vaccine.name", read_only=True
     )
+
+    # Patient context
     patient_name = serializers.SerializerMethodField()
+    patient_id = serializers.IntegerField(
+        source="immunization_record.patient_id", read_only=True
+    )
+    patient_mrn = serializers.CharField(
+        source="immunization_record.patient.mrn", read_only=True
+    )
+    patient_gender = serializers.CharField(
+        source="immunization_record.patient.gender", read_only=True
+    )
+    patient_date_of_birth = serializers.DateField(
+        source="immunization_record.patient.date_of_birth", read_only=True
+    )
+
+    # Vaccination details (auto-populated from record)
+    vaccination_details = serializers.SerializerMethodField()
+
+    # Reporter/investigator names
+    reported_by_name = serializers.SerializerMethodField()
     investigated_by_name = serializers.SerializerMethodField()
+
+    # Follow-up chain
+    follow_up_count = serializers.SerializerMethodField()
 
     class Meta:
         model = AEFI
         fields = [
             "id",
             "immunization_record",
+            # Report metadata
+            "report_type",
+            "parent_report",
+            # Vaccine context
             "vaccine_code",
             "vaccine_name",
+            # Patient context
+            "patient_id",
             "patient_name",
+            "patient_mrn",
+            "patient_gender",
+            "patient_date_of_birth",
+            "guardian_name",
+            # Vaccination centre
+            "vaccination_centre_name",
+            "vaccination_centre_county",
+            "institution_mfl_code",
+            "vaccination_service_type",
+            # Event details
             "event_date",
-            "event_type",
+            "onset_time",
+            "event_types",
+            "other_event_type_detail",
             "severity",
             "description",
+            # Vaccination details (from immunization record)
+            "vaccination_details",
+            # Outcome
             "outcome",
+            # Past medical history
+            "past_medical_history_notes",
+            # Action taken
+            "treatment_given",
+            "treatment_details",
+            "specimen_collected",
+            "specimen_type",
+            # Reporter
+            "reported_by",
+            "reported_by_name",
+            "reported_by_designation",
+            # Reporting to authorities
             "reported_to_authorities",
             "report_date",
+            # Investigation
             "investigated_by",
             "investigated_by_name",
             "investigation_notes",
+            # National classification
+            "national_classification",
+            # DHIS2
+            "dhis2_submitted_at",
+            "dhis2_response",
+            # Follow-ups
+            "follow_up_count",
+            # Timestamps
             "created_at",
             "updated_at",
+        ]
+        read_only_fields = [
+            "dhis2_submitted_at",
+            "dhis2_response",
+            "national_classification",
         ]
 
     def get_patient_name(self, obj):
         patient = obj.immunization_record.patient
         return f"{patient.first_name} {patient.last_name}"
 
+    def get_reported_by_name(self, obj):
+        if obj.reported_by:
+            name = f"{obj.reported_by.first_name} {obj.reported_by.last_name}".strip()
+            return name or obj.reported_by.username
+        return None
+
     def get_investigated_by_name(self, obj):
         if obj.investigated_by:
             name = f"{obj.investigated_by.first_name} {obj.investigated_by.last_name}".strip()
             return name or obj.investigated_by.username
         return None
+
+    def get_vaccination_details(self, obj):
+        """Return vaccine administration details from the immunization record."""
+        record = obj.immunization_record
+        return {
+            "dose_number": record.dose_number,
+            "administered_date": record.administered_date,
+            "batch_number": record.batch_number,
+            "lot_number": record.lot_number,
+            "expiry_date": record.expiry_date,
+            "vaccine_manufacturer": record.vaccine_manufacturer,
+            "route": record.vaccine.route if record.vaccine else "",
+            "site": record.site,
+            "diluent_batch_number": record.diluent_batch_number,
+            "diluent_manufacturer": record.diluent_manufacturer,
+            "diluent_expiry_date": record.diluent_expiry_date,
+        }
+
+    def get_follow_up_count(self, obj):
+        return obj.follow_ups.count()
+
+
+class AEFICreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating an AEFI report (initial or follow-up)."""
+
+    VALID_EVENT_TYPES = {choice.value for choice in AEFIEventType}
+
+    class Meta:
+        model = AEFI
+        fields = [
+            "immunization_record",
+            "report_type",
+            "parent_report",
+            "guardian_name",
+            "vaccination_service_type",
+            "event_date",
+            "onset_time",
+            "event_types",
+            "other_event_type_detail",
+            "severity",
+            "description",
+            "outcome",
+            "past_medical_history_notes",
+            "treatment_given",
+            "treatment_details",
+            "specimen_collected",
+            "specimen_type",
+            "reported_by_designation",
+        ]
+
+    def validate_event_types(self, value):
+        if not isinstance(value, list) or len(value) == 0:
+            raise serializers.ValidationError(
+                "At least one event type must be selected."
+            )
+        invalid = set(value) - self.VALID_EVENT_TYPES
+        if invalid:
+            raise serializers.ValidationError(
+                f"Invalid event type(s): {', '.join(sorted(invalid))}. "
+                f"Valid choices: {', '.join(sorted(self.VALID_EVENT_TYPES))}"
+            )
+        return value
+
+    def validate(self, attrs):
+        # Follow-up must reference a parent
+        report_type = attrs.get("report_type", AEFIReportType.INITIAL)
+        parent = attrs.get("parent_report")
+        if report_type == AEFIReportType.FOLLOW_UP and not parent:
+            raise serializers.ValidationError(
+                {"parent_report": "Follow-up reports must reference a parent report."}
+            )
+        if report_type == AEFIReportType.INITIAL and parent:
+            raise serializers.ValidationError(
+                {"parent_report": "Initial reports must not have a parent report."}
+            )
+        # If OTHER is selected, detail is required
+        event_types = attrs.get("event_types", [])
+        if AEFIEventType.OTHER in event_types and not attrs.get(
+            "other_event_type_detail", ""
+        ):
+            raise serializers.ValidationError(
+                {
+                    "other_event_type_detail": "Specify the event type when 'Other' is selected."
+                }
+            )
+        return attrs
 
 
 class AEFIListSerializer(serializers.ModelSerializer):
@@ -263,6 +433,7 @@ class AEFIListSerializer(serializers.ModelSerializer):
     vaccine_code = serializers.CharField(
         source="immunization_record.vaccine.code", read_only=True
     )
+    patient_name = serializers.SerializerMethodField()
 
     class Meta:
         model = AEFI
@@ -270,13 +441,25 @@ class AEFIListSerializer(serializers.ModelSerializer):
             "id",
             "immunization_record",
             "vaccine_code",
+            "patient_name",
+            "report_type",
             "event_date",
-            "event_type",
+            "event_types",
             "severity",
             "outcome",
             "reported_to_authorities",
             "created_at",
         ]
+
+    def get_patient_name(self, obj):
+        patient = obj.immunization_record.patient
+        return f"{patient.first_name} {patient.last_name}"
+
+
+class AEFISubmitToAuthoritiesSerializer(serializers.Serializer):
+    """Action serializer for submitting AEFI to national authorities."""
+
+    notes = serializers.CharField(required=False, default="")
 
 
 # =============================================================================

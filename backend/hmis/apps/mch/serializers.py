@@ -1211,7 +1211,7 @@ class VitaminASupplementSerializer(serializers.ModelSerializer):
 
 
 class AEFISerializer(serializers.ModelSerializer):
-    """Full serializer for AEFI report."""
+    """Full serializer for AEFI report (MCH compatibility layer)."""
 
     vaccine_code = serializers.CharField(
         source="immunization_record.vaccine.code", read_only=True
@@ -1255,7 +1255,7 @@ class AEFISerializer(serializers.ModelSerializer):
 
 
 class AEFIListSerializer(serializers.ModelSerializer):
-    """Lean serializer for AEFI list."""
+    """Lean serializer for AEFI list (MCH compatibility layer)."""
 
     vaccine_code = serializers.CharField(
         source="immunization_record.vaccine.code", read_only=True

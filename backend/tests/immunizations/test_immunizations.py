@@ -402,7 +402,7 @@ class TestAEFI:
         aefi = AEFI.objects.create(
             immunization_record=sample_immunization,
             event_date=date.today(),
-            event_type="LOCAL_REACTION",
+            event_types=["INJECTION_SITE_ABSCESS"],
             severity="MILD",
             description="Swelling at injection site",
         )
@@ -414,7 +414,7 @@ class TestAEFI:
         aefi = AEFI.objects.create(
             immunization_record=sample_immunization,
             event_date=date.today(),
-            event_type="SYSTEMIC_REACTION",
+            event_types=["HIGH_FEVER"],
             severity="MODERATE",
             description="Fever and malaise",
         )
@@ -690,11 +690,11 @@ class TestAEFIAPI:
         data = {
             "immunization_record": sample_immunization.id,
             "event_date": str(date.today()),
-            "event_type": "LOCAL_REACTION",
+            "event_types": ["INJECTION_SITE_ABSCESS"],
             "severity": "MILD",
             "description": "Redness at injection site",
         }
-        response = authenticated_client.post("/api/immunizations/aefi/", data)
+        response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_list_aefi(self, authenticated_client, sample_immunization):
@@ -702,7 +702,7 @@ class TestAEFIAPI:
         AEFI.objects.create(
             immunization_record=sample_immunization,
             event_date=date.today(),
-            event_type="LOCAL_REACTION",
+            event_types=["SEVERE_LOCAL_REACTION"],
             severity="MILD",
             description="Swelling",
         )

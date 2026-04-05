@@ -643,7 +643,7 @@ class TestReportAEFIAction:
         )
         payload = {
             "event_date": date.today().isoformat(),
-            "event_type": "LOCAL_REACTION",
+            "event_type": "INJECTION_SITE_ABSCESS",
             "description": "Swelling at injection site",
             "severity": "MILD",
         }
@@ -651,7 +651,7 @@ class TestReportAEFIAction:
         response = authenticated_client.post(url, payload)
 
         assert response.status_code == 201
-        assert response.data["event_type"] == "LOCAL_REACTION"
+        assert "INJECTION_SITE_ABSCESS" in response.data["event_types"]
         assert "id" in response.data
 
     def test_report_aefi_fails_for_unscheduled_vaccine(
@@ -673,7 +673,7 @@ class TestReportAEFIAction:
         url = reverse("mch:mch-immunization-report-aefi", args=[record.id])
         payload = {
             "event_date": date.today().isoformat(),
-            "event_type": "LOCAL_REACTION",
+            "event_type": "INJECTION_SITE_ABSCESS",
             "description": "Test",
         }
 
@@ -689,7 +689,7 @@ class TestReportAEFIAction:
             "mch:mch-immunization-report-aefi", args=[administered_immunization.id]
         )
 
-        response = authenticated_client.post(url, {"event_type": "LOCAL_REACTION"})
+        response = authenticated_client.post(url, {"event_type": "INJECTION_SITE_ABSCESS"})
 
         assert response.status_code == 400
 

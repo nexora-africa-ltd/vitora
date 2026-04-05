@@ -52,10 +52,18 @@ class VaccineCampaignFilter(django_filters.FilterSet):
 class AEFIFilter(django_filters.FilterSet):
     """Filter for AEFI reports."""
 
-    event_type = django_filters.CharFilter(lookup_expr="iexact")
     severity = django_filters.CharFilter(lookup_expr="iexact")
     immunization_record = django_filters.NumberFilter()
+    report_type = django_filters.CharFilter(lookup_expr="iexact")
+    reported_to_authorities = django_filters.BooleanFilter()
+    outcome = django_filters.CharFilter(lookup_expr="iexact")
 
     class Meta:
         model = AEFI
-        fields = ["event_type", "severity", "immunization_record"]
+        fields = [
+            "severity",
+            "immunization_record",
+            "report_type",
+            "reported_to_authorities",
+            "outcome",
+        ]
