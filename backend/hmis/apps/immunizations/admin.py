@@ -92,21 +92,117 @@ class AEFIAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "vaccine_code",
-        "event_type",
-        "severity",
+        "report_type",
+        "severity_badge",
         "outcome",
         "event_date",
         "reported_to_authorities",
         "facility",
     ]
-    list_filter = ["event_type", "severity", "outcome", "reported_to_authorities", "facility"]
-    raw_id_fields = ["immunization_record", "investigated_by", "facility", "organization"]
+    list_filter = [
+        "report_type",
+        "severity",
+        "outcome",
+        "reported_to_authorities",
+        "vaccination_service_type",
+        "facility",
+    ]
+    search_fields = [
+        "immunization_record__vaccine__code",
+        "immunization_record__patient__first_name",
+        "immunization_record__patient__last_name",
+        "description",
+    ]
+    raw_id_fields = [
+        "immunization_record",
+        "parent_report",
+        "reported_by",
+        "investigated_by",
+        "vaccination_centre_county",
+        "facility",
+        "organization",
+    ]
+    readonly_fields = ["dhis2_submitted_at", "dhis2_response", "national_classification"]
     ordering = ["-event_date"]
+    fieldsets = (
+        ("Report Metadata", {
+            "fields": ("report_type", "parent_report", "immunization_record"),
+        }),
+        ("Patient Context", {
+            "fields": ("guardian_name",),
+        }),
+        ("Vaccination Centre", {
+            "fields": (
+                "vaccination_centre_name",
+                "vaccination_centre_county",
+                "institution_mfl_code",
+                "vaccination_service_type",
+            ),
+        }),
+        ("Event Details", {
+            "fields": (
+                "event_date",
+                "onset_time",
+                "event_types",
+                "other_event_type_detail",
+                "severity",
+                "description",
+            ),
+        }),
+        ("Outcome", {
+            "fields": ("outcome",),
+        }),
+        ("Past Medical History", {
+            "fields": ("past_medical_history_notes",),
+        }),
+        ("Action Taken", {
+            "fields": (
+                "treatment_given",
+                "treatment_details",
+                "specimen_collected",
+                "specimen_type",
+            ),
+        }),
+        ("Reporter", {
+            "fields": ("reported_by", "reported_by_designation"),
+        }),
+        ("Reporting to Authorities", {
+            "fields": ("reported_to_authorities", "report_date"),
+        }),
+        ("Investigation", {
+            "fields": ("investigated_by", "investigation_notes"),
+        }),
+        ("National / DHIS2", {
+            "fields": (
+                "national_classification",
+                "dhis2_submitted_at",
+                "dhis2_response",
+            ),
+        }),
+        ("Tenant", {
+            "fields": ("facility", "organization"),
+        }),
+    )
 
     def vaccine_code(self, obj):
         return obj.immunization_record.vaccine.code
 
     vaccine_code.short_description = "Vaccine"
+
+    def severity_badge(self, obj):
+        colors = {
+            "MILD": "#22c55e",
+            "MODERATE": "#f59e0b",
+            "SEVERE": "#ef4444",
+        }
+        color = colors.get(obj.severity, "#6b7280")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_severity_display(),
+        )
+
+    severity_badge.short_description = "Severity"
 
 
 @admin.register(VaccineStock)

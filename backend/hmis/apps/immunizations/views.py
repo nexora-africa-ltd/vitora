@@ -8,8 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.models import AuditLog
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.immunizations.filters import (
     AEFIFilter,
@@ -30,8 +30,10 @@ from hmis.apps.immunizations.models import (
 )
 from hmis.apps.immunizations.serializers import (
     AdministerVaccineSerializer,
+    AEFICreateSerializer,
     AEFIListSerializer,
     AEFISerializer,
+    AEFISubmitToAuthoritiesSerializer,
     ColdChainEquipmentListSerializer,
     ColdChainEquipmentSerializer,
     GenerateAdultScheduleSerializer,
@@ -226,28 +228,38 @@ class VaccineCampaignViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
 
 class AEFIViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
-    """ViewSet for AEFI reporting."""
+    """ViewSet for AEFI reporting — aligned with MOH AEFI Reporting Form."""
 
     queryset = AEFI.objects.select_related(
         "immunization_record",
         "immunization_record__vaccine",
         "immunization_record__patient",
         "investigated_by",
+        "reported_by",
+        "parent_report",
+        "vaccination_centre_county",
     )
     permission_classes = [IsAuthenticated]
     tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = AEFIFilter
-    ordering_fields = ["event_date", "created_at"]
+    ordering_fields = ["event_date", "created_at", "severity"]
     ordering = ["-event_date"]
 
     def get_serializer_class(self):
         if self.action == "list":
             return AEFIListSerializer
+        if self.action == "create":
+            return AEFICreateSerializer
+        if self.action == "submit_to_authorities":
+            return AEFISubmitToAuthoritiesSerializer
         return AEFISerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save(**self.get_tenant_save_kwargs())
+        instance = serializer.save(
+            reported_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
         AuditLog.log(
             action="aefi_create",
             user=self.request.user,
@@ -256,9 +268,53 @@ class AEFIViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             details={
                 "immunization_record_id": instance.immunization_record_id,
                 "severity": instance.severity,
+                "event_types": instance.event_types,
+                "report_type": instance.report_type,
             },
             ip_address=get_client_ip(self.request),
         )
+        # Store for create() to return full detail serializer
+        self._created_instance = instance
+
+    def create(self, request, *args, **kwargs):
+        """Override to return full AEFISerializer (not the input serializer)."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        detail_serializer = AEFISerializer(self._created_instance)
+        return Response(detail_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="submit-to-authorities")
+    def submit_to_authorities(self, request, pk=None):
+        """Submit AEFI report to national authorities."""
+        aefi = self.get_object()
+        if aefi.reported_to_authorities:
+            return Response(
+                {"detail": "This AEFI has already been reported to authorities."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = AEFISubmitToAuthoritiesSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        aefi.submit_to_authorities(
+            user=request.user,
+            notes=serializer.validated_data.get("notes", ""),
+        )
+
+        AuditLog.log(
+            action="aefi_submit_to_authorities",
+            user=request.user,
+            resource_type="AEFI",
+            resource_id=aefi.id,
+            details={
+                "immunization_record_id": aefi.immunization_record_id,
+                "severity": aefi.severity,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(AEFISerializer(aefi).data)
 
 
 class CoverageView(APIView):

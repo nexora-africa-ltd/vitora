@@ -1309,7 +1309,7 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
         aefi = ImmunizationsAEFI.objects.create(
             immunization_record=record,
             event_date=event_date,
-            event_type=event_type,
+            event_types=[event_type],
             description=description,
             severity=request.data.get("severity", "MILD"),
             outcome=request.data.get("outcome", "UNKNOWN"),

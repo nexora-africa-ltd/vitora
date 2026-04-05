@@ -75,10 +75,25 @@ class CampaignStatus(models.TextChoices):
 
 
 class AEFIEventType(models.TextChoices):
-    LOCAL_REACTION = "LOCAL_REACTION", "Local Reaction"
-    SYSTEMIC_REACTION = "SYSTEMIC_REACTION", "Systemic Reaction"
-    SEVERE = "SEVERE", "Severe Adverse Event"
-    DEATH = "DEATH", "Death"
+    """
+    MOH AEFI Reporting Form — specific reaction types (checkbox-style).
+
+    The Ministry of Health form uses checkboxes for these specific types.
+    Multiple types can be selected per AEFI report, so the AEFI model stores
+    event_types as a JSONField list rather than a single CharField choice.
+    """
+
+    BCG_LYMPHADENITIS = "BCG_LYMPHADENITIS", "BCG Lymphadenitis"
+    INJECTION_SITE_ABSCESS = "INJECTION_SITE_ABSCESS", "Injection Site Abscess"
+    CONVULSION = "CONVULSION", "Convulsion"
+    HIGH_FEVER = "HIGH_FEVER", "High Fever"
+    SEVERE_LOCAL_REACTION = "SEVERE_LOCAL_REACTION", "Severe Local Reaction"
+    GENERALIZED_URTICARIA = "GENERALIZED_URTICARIA", "Generalized Urticaria (Hives)"
+    ANAPHYLAXIS = "ANAPHYLAXIS", "Anaphylaxis"
+    ENCEPHALOPATHY = "ENCEPHALOPATHY", "Encephalopathy / Encephalitis / Meningitis"
+    PARALYSIS = "PARALYSIS", "Paralysis"
+    TOXIC_SHOCK = "TOXIC_SHOCK", "Toxic Shock"
+    OTHER = "OTHER", "Other"
 
 
 class AEFISeverity(models.TextChoices):
@@ -94,6 +109,17 @@ class AEFIOutcome(models.TextChoices):
     SEQUELAE = "SEQUELAE", "Recovered with Sequelae"
     DEATH = "DEATH", "Death"
     UNKNOWN = "UNKNOWN", "Unknown"
+
+
+class AEFIReportType(models.TextChoices):
+    INITIAL = "INITIAL", "Initial Report"
+    FOLLOW_UP = "FOLLOW_UP", "Follow-up Report"
+
+
+class VaccinationServiceType(models.TextChoices):
+    STATIC = "STATIC", "Static"
+    MASS = "MASS", "Mass Campaign"
+    OUTREACH = "OUTREACH", "Outreach"
 
 
 # =============================================================================
@@ -348,6 +374,41 @@ class ImmunizationRecord(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         help_text="Administration site",
     )
 
+    # Vaccine manufacturer (captured at administration time)
+    vaccine_manufacturer = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Vaccine manufacturer name (from stock or manual entry)",
+    )
+
+    # Diluent details (MOH AEFI form — required for reconstituted vaccines)
+    diluent_batch_number = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Diluent batch/lot number",
+    )
+    diluent_manufacturer = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Diluent manufacturer name",
+    )
+    diluent_expiry_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Diluent expiry date",
+    )
+
+    # Service type (MOH AEFI form — static, mass, outreach)
+    vaccination_service_type = models.CharField(
+        max_length=10,
+        choices=VaccinationServiceType.choices,
+        default=VaccinationServiceType.STATIC,
+        help_text="Type of vaccination service (static, mass campaign, outreach)",
+    )
+
     # Staff
     administered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -406,6 +467,9 @@ class ImmunizationRecord(HistoryMixin, FacilityScopedModel, TimeStampedModel):
 
     def save(self, *args, **kwargs):
         resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        # Auto-set vaccination service type from campaign
+        if self.campaign_id and self.vaccination_service_type == VaccinationServiceType.STATIC:
+            self.vaccination_service_type = VaccinationServiceType.MASS
         super().save(*args, **kwargs)
 
     @property
@@ -432,8 +496,13 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     """
     Adverse Event Following Immunization report.
 
-    Standardized form for reporting vaccine adverse events
-    to national authorities per KEPI / pharmacovigilance guidelines.
+    Aligned with the Kenya Ministry of Health AEFI Reporting Form
+    (National Vaccines and Immunization Program). Supports:
+    - Multiple reaction types (checkboxes per MOH form)
+    - Initial and follow-up reports
+    - Vaccination centre details (auto-populated from facility)
+    - Action taken (treatment, specimen collection)
+    - DHIS2 AEFI Tracker submission
     """
 
     immunization_record = models.ForeignKey(
@@ -443,31 +512,140 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         help_text="The immunization that caused the adverse event",
     )
 
-    # Event details
+    # --- Report type (MOH: Initial Report / Follow-up Report) ---
+    report_type = models.CharField(
+        max_length=10,
+        choices=AEFIReportType.choices,
+        default=AEFIReportType.INITIAL,
+        help_text="Initial or follow-up report",
+    )
+    parent_report = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="follow_ups",
+        help_text="Parent AEFI report (for follow-up reports)",
+    )
+
+    # --- Patient context (MOH: Guardian name) ---
+    guardian_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Name of guardian (if patient is a child)",
+    )
+
+    # --- Vaccination centre (MOH: auto-populated from facility) ---
+    vaccination_centre_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Vaccination centre name (auto-populated from facility)",
+    )
+    vaccination_centre_county = models.ForeignKey(
+        "core.County",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text="County of vaccination centre",
+    )
+    institution_mfl_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Institution Master Facility List code",
+    )
+    vaccination_service_type = models.CharField(
+        max_length=10,
+        choices=VaccinationServiceType.choices,
+        blank=True,
+        default="",
+        help_text="Type of vaccination service (static, mass, outreach)",
+    )
+
+    # --- Event details (MOH: onset date + time, AEFI types as checkboxes) ---
     event_date = models.DateField(
         default=date.today,
         help_text="Date adverse event was observed",
     )
-    event_type = models.CharField(
-        max_length=30,
-        choices=AEFIEventType.choices,
+    onset_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Time of onset (if known)",
+    )
+    event_types = models.JSONField(
+        default=list,
+        help_text="List of AEFI event types (multi-select per MOH form checkboxes)",
+    )
+    other_event_type_detail = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Specify if 'Other' event type is selected",
     )
     severity = models.CharField(
         max_length=10,
         choices=AEFISeverity.choices,
     )
     description = models.TextField(
-        help_text="Description of the adverse event",
+        help_text="Brief details on the event including timeline of occurrence",
     )
 
-    # Outcome
+    # --- Outcome (MOH: Recovered / Recovering / Not recovered / Unknown / Died) ---
     outcome = models.CharField(
         max_length=20,
         choices=AEFIOutcome.choices,
         default=AEFIOutcome.UNKNOWN,
     )
 
-    # Reporting
+    # --- Past medical history (MOH: allergies, concomitant meds, pregnancy) ---
+    past_medical_history_notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Past medical history including allergies, concomitant medication/vaccine, "
+        "concomitant illness, other cases, pregnancy status",
+    )
+
+    # --- Action taken (MOH: treatment given, specimen collected) ---
+    treatment_given = models.BooleanField(
+        default=False,
+        help_text="Whether treatment was given",
+    )
+    treatment_details = models.TextField(
+        blank=True,
+        default="",
+        help_text="Treatment given (specify)",
+    )
+    specimen_collected = models.BooleanField(
+        default=False,
+        help_text="Whether specimen was collected for investigation",
+    )
+    specimen_type = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Type(s) of specimen collected",
+    )
+
+    # --- Reporter (MOH: Name of Person Reporting + Designation) ---
+    reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="aefi_reported",
+        help_text="Person who reported the AEFI",
+    )
+    reported_by_designation = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Designation of the person reporting",
+    )
+
+    # --- Reporting to authorities ---
     reported_to_authorities = models.BooleanField(
         default=False,
         help_text="Whether reported to national authorities",
@@ -478,7 +656,7 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         help_text="Date reported to authorities",
     )
 
-    # Investigation
+    # --- Investigation ---
     investigated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -491,6 +669,26 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         default="",
     )
 
+    # --- National classification (filled at national level, synced from DHIS2) ---
+    national_classification = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Final classification of AEFI (to be filled at national level)",
+    )
+
+    # --- DHIS2 integration ---
+    dhis2_submitted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of DHIS2 AEFI Tracker submission",
+    )
+    dhis2_response = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="DHIS2 API response from submission",
+    )
+
     # Audit trail
     history = HistoricalRecords()
 
@@ -500,9 +698,43 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
         verbose_name_plural = "AEFI Reports"
 
     def __str__(self):
+        types_display = ", ".join(self.event_types) if self.event_types else "Unknown"
         return (
-            f"AEFI {self.get_event_type_display()} - "
+            f"AEFI [{types_display}] - "
             f"{self.immunization_record.vaccine.code} ({self.event_date})"
+        )
+
+    def save(self, *args, **kwargs):
+        # Auto-populate facility info on first save
+        if not self.vaccination_centre_name and self.facility:
+            self.vaccination_centre_name = self.facility.name
+            self.institution_mfl_code = self.facility.mfl_code
+            if hasattr(self.facility, "county") and self.facility.county:
+                self.vaccination_centre_county = self.facility.county
+        # Default vaccination_service_type from the immunization record
+        if not self.vaccination_service_type and self.immunization_record_id:
+            self.vaccination_service_type = (
+                self.immunization_record.vaccination_service_type
+            )
+        super().save(*args, **kwargs)
+
+    def submit_to_authorities(self, user=None, notes: str = "") -> None:  # noqa: ARG002
+        """Mark as reported to authorities. DHIS2 submission is handled async."""
+        from django.utils import timezone as tz
+
+        self.reported_to_authorities = True
+        self.report_date = tz.now().date()
+        update_fields = ["reported_to_authorities", "report_date"]
+        if notes:
+            self.investigation_notes = notes
+            update_fields.append("investigation_notes")
+        self.save(update_fields=update_fields)
+
+    @property
+    def is_severe_or_death(self) -> bool:
+        """Whether this AEFI requires immediate escalation."""
+        return self.severity == AEFISeverity.SEVERE or AEFIOutcome.DEATH in (
+            self.outcome,
         )
 
 
