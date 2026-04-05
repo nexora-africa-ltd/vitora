@@ -47,7 +47,7 @@ def bcg_vaccine(db):
 
 
 @pytest.fixture
-def stock_batch(db, bcg_vaccine, test_user):
+def stock_batch(db, bcg_vaccine, test_user, sample_facility):
     return VaccineStock.objects.create(
         vaccine=bcg_vaccine,
         batch_number="BCG-2026-001",
@@ -61,11 +61,12 @@ def stock_batch(db, bcg_vaccine, test_user):
         storage_location="Main Fridge 1",
         vvm_status="Stage 1",
         min_stock_level=20,
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def expired_stock(db, bcg_vaccine, test_user):
+def expired_stock(db, bcg_vaccine, test_user, sample_facility):
     return VaccineStock.objects.create(
         vaccine=bcg_vaccine,
         batch_number="BCG-2025-OLD",
@@ -77,11 +78,12 @@ def expired_stock(db, bcg_vaccine, test_user):
         received_date=date.today() - timedelta(days=365),
         received_by=test_user,
         storage_location="Main Fridge 1",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def fridge(db):
+def fridge(db, sample_facility):
     return ColdChainEquipment.objects.create(
         name="Main Fridge 1",
         equipment_type="FRIDGE",
@@ -95,11 +97,12 @@ def fridge(db):
         status="OPERATIONAL",
         power_source="Mains + Solar backup",
         has_backup_power=True,
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def incident(db, test_user, fridge, stock_batch):
+def incident(db, test_user, fridge, stock_batch, sample_facility):
     inc = VaccineIncident.objects.create(
         title="Power outage in EPI room",
         incident_type="POWER_OUTAGE",
@@ -108,6 +111,7 @@ def incident(db, test_user, fridge, stock_batch):
         occurred_at=timezone.now() - timedelta(hours=6),
         doses_affected=80,
         reported_by=test_user,
+        facility=sample_facility,
     )
     inc.affected_equipment.add(fridge)
     inc.affected_batches.add(stock_batch)

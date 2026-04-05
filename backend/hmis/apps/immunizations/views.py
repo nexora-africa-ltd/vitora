@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.immunizations.filters import (
     AEFIFilter,
@@ -68,13 +69,14 @@ class VaccineDefinitionViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ["standard_age_days", "code"]
 
 
-class ImmunizationRecordViewSet(viewsets.ModelViewSet):
+class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for immunization records (all ages, all programs)."""
 
     queryset = ImmunizationRecord.objects.select_related(
         "patient", "vaccine", "administered_by", "campaign"
     )
     permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = ImmunizationRecordFilter
     ordering_fields = ["scheduled_date", "created_at", "status"]
@@ -90,7 +92,7 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
         return ImmunizationRecordSerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        instance = serializer.save(**self.get_tenant_save_kwargs())
         AuditLog.log(
             action="immunization_record_create",
             user=self.request.user,
@@ -195,11 +197,12 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
         )
 
 
-class VaccineCampaignViewSet(viewsets.ModelViewSet):
+class VaccineCampaignViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for vaccine campaigns."""
 
     queryset = VaccineCampaign.objects.prefetch_related("vaccines")
     permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = VaccineCampaignFilter
     ordering_fields = ["start_date", "created_at", "status"]
@@ -211,7 +214,7 @@ class VaccineCampaignViewSet(viewsets.ModelViewSet):
         return VaccineCampaignSerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        instance = serializer.save(**self.get_tenant_save_kwargs())
         AuditLog.log(
             action="vaccine_campaign_create",
             user=self.request.user,
@@ -222,7 +225,7 @@ class VaccineCampaignViewSet(viewsets.ModelViewSet):
         )
 
 
-class AEFIViewSet(viewsets.ModelViewSet):
+class AEFIViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for AEFI reporting."""
 
     queryset = AEFI.objects.select_related(
@@ -232,6 +235,7 @@ class AEFIViewSet(viewsets.ModelViewSet):
         "investigated_by",
     )
     permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = AEFIFilter
     ordering_fields = ["event_date", "created_at"]
@@ -243,7 +247,7 @@ class AEFIViewSet(viewsets.ModelViewSet):
         return AEFISerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        instance = serializer.save(**self.get_tenant_save_kwargs())
         AuditLog.log(
             action="aefi_create",
             user=self.request.user,
@@ -340,11 +344,12 @@ class VaccineStockFilter(django_filters.rest_framework.FilterSet):
         return queryset.filter(quantity_on_hand__gt=F("min_stock_level"))
 
 
-class VaccineStockViewSet(viewsets.ModelViewSet):
+class VaccineStockViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for vaccine stock batch management."""
 
     queryset = VaccineStock.objects.select_related("vaccine", "received_by")
     permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = VaccineStockFilter
     ordering_fields = ["expiry_date", "quantity_on_hand", "created_at"]
@@ -360,9 +365,11 @@ class VaccineStockViewSet(viewsets.ModelViewSet):
         return VaccineStockSerializer
 
     def perform_create(self, serializer):
+        tenant_kwargs = self.get_tenant_save_kwargs()
         instance = serializer.save(
             received_by=self.request.user,
             quantity_on_hand=serializer.validated_data["quantity_received"],
+            **tenant_kwargs,
         )
         # Create initial RECEIVE transaction
         StockTransaction.objects.create(
@@ -453,11 +460,12 @@ class ColdChainEquipmentFilter(django_filters.rest_framework.FilterSet):
         fields = ["equipment_type", "status"]
 
 
-class ColdChainEquipmentViewSet(viewsets.ModelViewSet):
+class ColdChainEquipmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for cold chain equipment management."""
 
     queryset = ColdChainEquipment.objects.all()
     permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = ColdChainEquipmentFilter
     ordering_fields = ["name", "status", "created_at"]
@@ -469,7 +477,7 @@ class ColdChainEquipmentViewSet(viewsets.ModelViewSet):
         return ColdChainEquipmentSerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        instance = serializer.save(**self.get_tenant_save_kwargs())
         AuditLog.log(
             action="cold_chain_equipment_create",
             user=self.request.user,
@@ -488,11 +496,13 @@ class ColdChainEquipmentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class TemperatureLogViewSet(viewsets.ModelViewSet):
+class TemperatureLogViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for temperature log entries."""
 
     queryset = TemperatureLog.objects.select_related("equipment", "recorded_by")
     permission_classes = [IsAuthenticated]
+    tenant_facility_chain = "equipment__facility"
+    tenant_org_chain = "equipment__organization"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     ordering_fields = ["recorded_at", "temperature"]
     ordering = ["-recorded_at"]
@@ -541,13 +551,14 @@ class VaccineIncidentFilter(django_filters.rest_framework.FilterSet):
         fields = ["incident_type", "severity", "status"]
 
 
-class VaccineIncidentViewSet(viewsets.ModelViewSet):
+class VaccineIncidentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for vaccine incident reporting."""
 
     queryset = VaccineIncident.objects.prefetch_related(
         "affected_equipment", "affected_batches"
     ).select_related("reported_by", "investigated_by")
     permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = VaccineIncidentFilter
     ordering_fields = ["occurred_at", "severity", "status", "created_at"]
@@ -559,7 +570,7 @@ class VaccineIncidentViewSet(viewsets.ModelViewSet):
         return VaccineIncidentSerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save(reported_by=self.request.user)
+        instance = serializer.save(reported_by=self.request.user, **self.get_tenant_save_kwargs())
         AuditLog.log(
             action="vaccine_incident_create",
             user=self.request.user,

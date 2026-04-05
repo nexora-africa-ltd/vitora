@@ -107,6 +107,13 @@ class Command(BaseCommand):
             ("procedures", "ProcedureConsent", "organization", "facility"),
             ("procedures", "ProcedureLog", "organization", "facility"),
             ("procedures", "ProcedureOutcome", "organization", "facility"),
+            # Immunizations
+            ("immunizations", "ImmunizationRecord", "organization", "facility"),
+            ("immunizations", "VaccineCampaign", "organization", "facility"),
+            ("immunizations", "AEFI", "organization", "facility"),
+            ("immunizations", "VaccineStock", "organization", "facility"),
+            ("immunizations", "ColdChainEquipment", "organization", "facility"),
+            ("immunizations", "VaccineIncident", "organization", "facility"),
             # Core
             ("core", "AuditLog", "organization", "facility"),
             ("core", "SyncQueue", "organization", "facility"),
