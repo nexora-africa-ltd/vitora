@@ -418,6 +418,75 @@
   .print-break-after {
     page-break-after: always;
   }
+
+  /* ---- MOH AEFI Reporting Form print layout ---- */
+
+  /* Hide sidebar, header, non-content elements */
+  nav,
+  aside,
+  header,
+  footer,
+  [data-sidebar],
+  [role="banner"],
+  [role="navigation"] {
+    display: none !important;
+  }
+
+  /* Remove page header actions (buttons) but keep title */
+  button,
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  /* Full-width content */
+  main,
+  .print-aefi-form {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* AEFI form title */
+  .print-aefi-form::before {
+    content: "MINISTRY OF HEALTH — AEFI REPORTING FORM";
+    display: block;
+    text-align: center;
+    font-size: 14pt;
+    font-weight: bold;
+    margin-bottom: 12pt;
+    border-bottom: 2px solid black;
+    padding-bottom: 6pt;
+  }
+
+  /* Cards → bordered sections with no shadow */
+  .print-aefi-form [data-slot="card"],
+  .print-aefi-form .rounded-lg {
+    border: 1px solid #333 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    margin-bottom: 8pt !important;
+    page-break-inside: avoid;
+  }
+
+  /* Badges in print → bordered text */
+  .print-aefi-form [data-slot="badge"],
+  .print-aefi-form .inline-flex {
+    border: 1px solid #666 !important;
+    background: white !important;
+    color: black !important;
+    font-weight: 600;
+  }
+
+  /* Ensure text is visible */
+  .print-aefi-form * {
+    color: black !important;
+  }
+
+  .print-aefi-form .text-muted-foreground {
+    color: #555 !important;
+  }
 }
 
 /* Critical alert animation */

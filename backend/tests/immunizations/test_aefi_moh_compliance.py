@@ -612,3 +612,258 @@ class TestAEFIAPIWorkflow:
         """Should reject unauthenticated requests."""
         response = api_client.get("/api/immunizations/aefi/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# =============================================================================
+# AEFI Follow-Up Action Tests
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestAEFIFollowUpAction:
+    """Tests for the follow-up AEFI creation via dedicated action endpoint."""
+
+    def test_create_follow_up_via_action(self, authenticated_client, sample_aefi):
+        """Should create a follow-up AEFI report linked to parent."""
+        response = authenticated_client.post(
+            f"/api/immunizations/aefi/{sample_aefi.id}/follow-up/",
+            {"notes": "Patient improving, lump reduced"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["report_type"] == "FOLLOW_UP"
+        assert response.data["parent_report"] == sample_aefi.id
+        assert response.data["immunization_record"] == sample_aefi.immunization_record_id
+
+    def test_follow_up_inherits_parent_context(self, authenticated_client, sample_aefi):
+        """Follow-up should inherit event_types, severity etc. from parent."""
+        response = authenticated_client.post(
+            f"/api/immunizations/aefi/{sample_aefi.id}/follow-up/",
+            {},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        # Should inherit from parent when not overridden
+        assert response.data["event_types"] == sample_aefi.event_types
+        assert response.data["severity"] == sample_aefi.severity
+
+    def test_follow_up_allows_overrides(self, authenticated_client, sample_aefi):
+        """Follow-up should allow overriding severity, outcome, etc."""
+        response = authenticated_client.post(
+            f"/api/immunizations/aefi/{sample_aefi.id}/follow-up/",
+            {
+                "severity": "SEVERE",
+                "outcome": "NOT_RECOVERED",
+                "treatment_given": True,
+                "treatment_details": "IV antibiotics started",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["severity"] == "SEVERE"
+        assert response.data["outcome"] == "NOT_RECOVERED"
+
+
+# =============================================================================
+# Scheduling Integration Tests
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestScheduleGenerationAppointments:
+    """Tests for schedule generation → appointment auto-creation."""
+
+    def test_kepi_schedule_creates_appointments(
+        self, child_patient, bcg_vaccine, test_user, sample_facility,
+    ):
+        """generate_kepi_schedule should auto-create vaccination appointments."""
+        from hmis.apps.immunizations.services.schedule import generate_kepi_schedule
+        from hmis.apps.scheduling.models import Appointment, Resource
+
+        # Create IMM-CLINIC resource at this facility
+        Resource.objects.create(
+            name="Immunization Clinic",
+            code="IMM-CLINIC",
+            resource_type="PLACE",
+            is_active=True,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        records = generate_kepi_schedule(
+            child_patient, created_by=test_user,
+        )
+        assert len(records) > 0
+
+        # Appointments should have been created for scheduled records
+        appointments = Appointment.objects.filter(
+            patient=child_patient,
+            appointment_type="VACCINATION",
+        )
+        assert appointments.count() > 0
+        assert appointments.count() <= len(records)
+
+    def test_kepi_schedule_without_resource_still_works(
+        self, child_patient, bcg_vaccine, test_user,
+    ):
+        """Schedule generation should succeed even without IMM-CLINIC resource."""
+        from hmis.apps.immunizations.services.schedule import generate_kepi_schedule
+
+        records = generate_kepi_schedule(
+            child_patient, created_by=test_user,
+        )
+        assert len(records) > 0  # Records created, just no appointments
+
+    def test_kepi_schedule_opt_out_appointments(
+        self, child_patient, bcg_vaccine, test_user,
+    ):
+        """Should be able to disable appointment creation."""
+        from hmis.apps.immunizations.services.schedule import generate_kepi_schedule
+
+        records = generate_kepi_schedule(
+            child_patient, create_appointments=False, created_by=test_user,
+        )
+        assert len(records) > 0
+
+        from hmis.apps.scheduling.models import Appointment
+
+        assert Appointment.objects.filter(
+            patient=child_patient,
+            appointment_type="VACCINATION",
+        ).count() == 0
+
+
+# =============================================================================
+# Appointment → ImmunizationRecord Sync Tests
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestAppointmentImmunizationSync:
+    """Tests for appointment status → immunization record sync signal."""
+
+    def test_no_show_marks_overdue_record_as_missed(
+        self, child_patient, bcg_vaccine, test_user, sample_facility,
+    ):
+        """Appointment NO_SHOW should mark overdue immunization records as MISSED."""
+        from hmis.apps.scheduling.models import Appointment, Resource
+
+        past_date = date.today() - timedelta(days=7)
+        record = ImmunizationRecord.objects.create(
+            patient=child_patient,
+            vaccine=bcg_vaccine,
+            dose_number=1,
+            scheduled_date=past_date,
+            status="SCHEDULED",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        resource = Resource.objects.create(
+            name="IMM Clinic",
+            code="IMM-CLINIC",
+            resource_type="PLACE",
+            is_active=True,
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        apt = Appointment.objects.create(
+            patient=child_patient,
+            resource=resource,
+            appointment_type="VACCINATION",
+            scheduled_start=datetime.combine(past_date, time(9, 0), tzinfo=ZoneInfo("Africa/Nairobi")),
+            scheduled_end=datetime.combine(past_date, time(9, 15), tzinfo=ZoneInfo("Africa/Nairobi")),
+            priority="ROUTINE",
+            reason=f"{bcg_vaccine.code} dose 1",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+            created_by=test_user,
+        )
+
+        # Transition appointment to NO_SHOW
+        apt.confirm(user=test_user)
+        apt.check_in(user=test_user)
+        # Manually set to NO_SHOW (bypassing normal transition for test)
+        apt.status = "NO_SHOW"
+        apt.save()
+
+        record.refresh_from_db()
+        assert record.status == "MISSED"
+
+
+# =============================================================================
+# Severe AEFI → Surveillance Alert Tests
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestAEFISurveillanceAlert:
+    """Tests for severe AEFI → SurveillanceAlert auto-creation."""
+
+    def test_severe_aefi_with_encounter_creates_alert(
+        self, administered_record, sample_facility, sample_encounter,
+    ):
+        """Severe AEFI with a linked encounter should create a surveillance alert."""
+        from hmis.apps.surveillance.models import NotifiableCase, SurveillanceAlert
+
+        # Link immunization to an encounter
+        administered_record.encounter = sample_encounter
+        administered_record.save()
+
+        AEFI.objects.create(
+            immunization_record=administered_record,
+            event_types=[AEFIEventType.ANAPHYLAXIS],
+            severity=AEFISeverity.SEVERE,
+            description="Anaphylactic reaction after BCG",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+
+        assert SurveillanceAlert.objects.filter(
+            facility=sample_facility,
+        ).exists()
+        alert = SurveillanceAlert.objects.filter(facility=sample_facility).first()
+        assert "SEVERE AEFI" in alert.message
+
+    def test_mild_aefi_does_not_create_alert(
+        self, administered_record, sample_facility,
+    ):
+        """Mild AEFI should not trigger a surveillance alert."""
+        from hmis.apps.surveillance.models import SurveillanceAlert
+
+        initial_count = SurveillanceAlert.objects.count()
+        AEFI.objects.create(
+            immunization_record=administered_record,
+            event_types=[AEFIEventType.HIGH_FEVER],
+            severity=AEFISeverity.MILD,
+            description="Low-grade fever",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        assert SurveillanceAlert.objects.count() == initial_count
+
+    def test_severe_aefi_without_encounter_skips_alert(
+        self, administered_record, sample_facility,
+    ):
+        """Severe AEFI without encounter should log but not crash."""
+        from hmis.apps.surveillance.models import SurveillanceAlert
+
+        # No encounter linked
+        administered_record.encounter = None
+        administered_record.save()
+
+        initial_count = SurveillanceAlert.objects.count()
+        AEFI.objects.create(
+            immunization_record=administered_record,
+            event_types=[AEFIEventType.ANAPHYLAXIS],
+            severity=AEFISeverity.SEVERE,
+            description="Anaphylactic reaction — campaign setting",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        # Should not create alert (no encounter = no NotifiableCase)
+        assert SurveillanceAlert.objects.count() == initial_count

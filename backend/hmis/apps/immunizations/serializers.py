@@ -8,7 +8,9 @@ from hmis.apps.immunizations.models import (
     AEFI,
     AdministrationSite,
     AEFIEventType,
+    AEFIOutcome,
     AEFIReportType,
+    AEFISeverity,
     ColdChainEquipment,
     ImmunizationRecord,
     StockTransaction,
@@ -151,9 +153,19 @@ class ImmunizationRecordListSerializer(serializers.ModelSerializer):
 
 
 class AdministerVaccineSerializer(serializers.Serializer):
-    """Action serializer for administering a vaccine."""
+    """Action serializer for administering a vaccine.
+
+    When stock_batch is provided, batch_number/manufacturer/expiry_date
+    are auto-populated from the stock record and 1 dose is deducted.
+    """
 
     administered_date = serializers.DateField(default=date_module.today)
+    stock_batch = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="VaccineStock ID to draw from — auto-fills batch details and deducts stock.",
+    )
     batch_number = serializers.CharField(required=False, default="")
     lot_number = serializers.CharField(required=False, default="")
     expiry_date = serializers.DateField(required=False, allow_null=True)
@@ -162,6 +174,10 @@ class AdministerVaccineSerializer(serializers.Serializer):
         required=False,
         default="",
     )
+    vaccine_manufacturer = serializers.CharField(required=False, default="")
+    diluent_batch_number = serializers.CharField(required=False, default="")
+    diluent_manufacturer = serializers.CharField(required=False, default="")
+    diluent_expiry_date = serializers.DateField(required=False, allow_null=True)
     notes = serializers.CharField(required=False, default="")
 
 
@@ -437,6 +453,29 @@ class AEFICreateSerializer(serializers.ModelSerializer):
                 }
             )
         return attrs
+
+
+class AEFIFollowUpSerializer(serializers.Serializer):
+    """Serializer for creating a follow-up AEFI report from an existing (initial) report."""
+
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    event_types = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list,
+    )
+    severity = serializers.ChoiceField(
+        choices=AEFISeverity.choices, required=False, allow_blank=True, default="",
+    )
+    outcome = serializers.ChoiceField(
+        choices=AEFIOutcome.choices, required=False, allow_blank=True, default="",
+    )
+    treatment_given = serializers.BooleanField(required=False, default=False)
+    treatment_details = serializers.CharField(
+        required=False, allow_blank=True, default="",
+    )
+    specimen_collected = serializers.BooleanField(required=False, default=False)
+    specimen_type = serializers.CharField(
+        required=False, allow_blank=True, default="",
+    )
 
 
 class AEFIListSerializer(serializers.ModelSerializer):

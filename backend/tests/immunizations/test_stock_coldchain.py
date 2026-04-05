@@ -463,3 +463,139 @@ class TestMCHUnification:
     def test_mch_immunizations_endpoint_works(self, authenticated_client):
         response = authenticated_client.get("/api/mch/immunizations/")
         assert response.status_code == status.HTTP_200_OK
+
+
+# =============================================================================
+# Stock-Linked Administration Tests
+# =============================================================================
+
+
+class TestStockLinkedAdministration:
+    """Tests for administering vaccines via stock batch selection."""
+
+    @pytest.fixture
+    def imm_record(self, db, bcg_vaccine, sample_patient, sample_facility):
+        from hmis.apps.immunizations.models import ImmunizationRecord
+
+        return ImmunizationRecord.objects.create(
+            patient=sample_patient,
+            vaccine=bcg_vaccine,
+            dose_number=1,
+            scheduled_date=date.today(),
+            facility=sample_facility,
+        )
+
+    def test_administer_with_stock_batch_deducts_and_fills(
+        self, authenticated_client, imm_record, stock_batch,
+    ):
+        """Selecting a stock batch auto-fills batch details and deducts 1 dose."""
+        initial_qty = stock_batch.quantity_on_hand
+        response = authenticated_client.post(
+            f"/api/immunizations/records/{imm_record.id}/administer/",
+            {"stock_batch": stock_batch.id, "site": "LEFT_THIGH"},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["batch_number"] == stock_batch.batch_number
+        assert response.data["status"] == "ADMINISTERED"
+
+        stock_batch.refresh_from_db()
+        assert stock_batch.quantity_on_hand == initial_qty - 1
+
+        # Verify StockTransaction was created
+        txn = StockTransaction.objects.filter(
+            stock=stock_batch, immunization_record=imm_record,
+        ).first()
+        assert txn is not None
+        assert txn.transaction_type == "ISSUE"
+        assert txn.quantity == -1
+        assert txn.balance_after == initial_qty - 1
+
+    def test_administer_with_wrong_vaccine_stock_fails(
+        self, authenticated_client, imm_record, sample_facility,
+    ):
+        """Stock batch for a different vaccine should be rejected."""
+        other_vaccine = VaccineDefinition.objects.create(
+            code="OPV_TEST", name="OPV (Test)", standard_age_days=0, program="KEPI",
+        )
+        wrong_stock = VaccineStock.objects.create(
+            vaccine=other_vaccine,
+            batch_number="OPV-2026-001",
+            quantity_received=50,
+            quantity_on_hand=50,
+            expiry_date=date.today() + timedelta(days=180),
+            received_date=date.today(),
+            facility=sample_facility,
+        )
+        response = authenticated_client.post(
+            f"/api/immunizations/records/{imm_record.id}/administer/",
+            {"stock_batch": wrong_stock.id},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "does not match" in str(response.data)
+
+    def test_administer_with_expired_stock_fails(
+        self, authenticated_client, imm_record, expired_stock,
+    ):
+        """Expired stock batch should be rejected."""
+        response = authenticated_client.post(
+            f"/api/immunizations/records/{imm_record.id}/administer/",
+            {"stock_batch": expired_stock.id},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "expired" in str(response.data).lower()
+
+    def test_administer_with_empty_stock_fails(
+        self, authenticated_client, imm_record, stock_batch,
+    ):
+        """Stock batch with 0 doses should be rejected."""
+        stock_batch.quantity_on_hand = 0
+        stock_batch.save(update_fields=["quantity_on_hand"])
+        response = authenticated_client.post(
+            f"/api/immunizations/records/{imm_record.id}/administer/",
+            {"stock_batch": stock_batch.id},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "0 doses" in str(response.data)
+
+    def test_administer_manual_entry_still_works(
+        self, authenticated_client, imm_record,
+    ):
+        """Manual batch entry (no stock_batch) should still work."""
+        response = authenticated_client.post(
+            f"/api/immunizations/records/{imm_record.id}/administer/",
+            {
+                "batch_number": "MANUAL-001",
+                "lot_number": "LOT-999",
+                "vaccine_manufacturer": "Test Pharma",
+            },
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["batch_number"] == "MANUAL-001"
+        assert response.data["status"] == "ADMINISTERED"
+
+
+class TestAvailableStockFilter:
+    """Tests for the `available` query filter on VaccineStock."""
+
+    def test_available_filter_excludes_expired_and_empty(
+        self, authenticated_client, stock_batch, expired_stock, sample_facility,
+    ):
+        """available=true returns only non-expired batches with qty > 0."""
+        # Create an empty batch
+        VaccineStock.objects.create(
+            vaccine=stock_batch.vaccine,
+            batch_number="BCG-EMPTY",
+            quantity_received=10,
+            quantity_on_hand=0,
+            expiry_date=date.today() + timedelta(days=90),
+            received_date=date.today(),
+            facility=sample_facility,
+        )
+        response = authenticated_client.get(
+            "/api/immunizations/stock/", {"available": "true"},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        batch_numbers = [r["batch_number"] for r in response.data["results"]]
+        assert stock_batch.batch_number in batch_numbers
+        assert expired_stock.batch_number not in batch_numbers
+        assert "BCG-EMPTY" not in batch_numbers
