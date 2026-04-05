@@ -46,7 +46,9 @@ export const CampaignStatusSchema = z.enum([
 ]);
 
 export const AEFIEventTypeSchema = z.enum([
-  'LOCAL_REACTION', 'SYSTEMIC_REACTION', 'SEVERE', 'DEATH',
+  'BCG_LYMPHADENITIS', 'INJECTION_SITE_ABSCESS', 'CONVULSION', 'HIGH_FEVER',
+  'SEVERE_LOCAL_REACTION', 'GENERALIZED_URTICARIA', 'ANAPHYLAXIS',
+  'ENCEPHALOPATHY', 'PARALYSIS', 'TOXIC_SHOCK', 'OTHER',
 ]);
 
 export const AEFISeveritySchema = z.enum(['MILD', 'MODERATE', 'SEVERE']);
@@ -54,6 +56,10 @@ export const AEFISeveritySchema = z.enum(['MILD', 'MODERATE', 'SEVERE']);
 export const AEFIOutcomeSchema = z.enum([
   'RECOVERED', 'RECOVERING', 'NOT_RECOVERED', 'SEQUELAE', 'DEATH', 'UNKNOWN',
 ]);
+
+export const AEFIReportTypeSchema = z.enum(['INITIAL', 'FOLLOW_UP']);
+
+export const VaccinationServiceTypeSchema = z.enum(['STATIC', 'MASS', 'OUTREACH']);
 
 // =============================================================================
 // VACCINE DEFINITION SCHEMAS
@@ -76,6 +82,11 @@ export const VaccineDefinitionSchema = z.object({
   min_age_days: z.number(),
   max_age_days: z.number(),
   is_active: z.boolean(),
+  billing_service: z.number().nullable(),
+  billing_service_name: z.string().nullable(),
+  billing_price: z.string().nullable(),
+  base_fee: z.string().nullable(),
+  sha_tariff_code: z.string(),
 });
 
 export const VaccineDefinitionArraySchema = z.array(VaccineDefinitionSchema);
@@ -174,12 +185,28 @@ export const PaginatedVaccineCampaignListSchema = createPaginatedSchema(
 // AEFI SCHEMAS
 // =============================================================================
 
+export const AEFIVaccinationDetailsSchema = z.object({
+  dose_number: z.number(),
+  administered_date: z.string().nullable(),
+  batch_number: z.string(),
+  lot_number: z.string(),
+  expiry_date: z.string().nullable(),
+  vaccine_manufacturer: z.string(),
+  route: z.string(),
+  site: z.string(),
+  diluent_batch_number: z.string(),
+  diluent_manufacturer: z.string(),
+  diluent_expiry_date: z.string().nullable(),
+});
+
 export const AEFIListItemSchema = z.object({
   id: z.number(),
   immunization_record: z.number(),
   vaccine_code: z.string(),
+  patient_name: z.string(),
+  report_type: AEFIReportTypeSchema,
   event_date: z.string(),
-  event_type: AEFIEventTypeSchema,
+  event_types: z.array(AEFIEventTypeSchema),
   severity: AEFISeveritySchema,
   outcome: AEFIOutcomeSchema,
   reported_to_authorities: z.boolean(),
@@ -189,19 +216,61 @@ export const AEFIListItemSchema = z.object({
 export const AEFIReportSchema = z.object({
   id: z.number(),
   immunization_record: z.number(),
+  // Report metadata
+  report_type: AEFIReportTypeSchema,
+  parent_report: z.number().nullable(),
+  // Vaccine context
   vaccine_code: z.string(),
   vaccine_name: z.string(),
+  // Patient context
+  patient_id: z.number(),
   patient_name: z.string(),
+  patient_mrn: z.string(),
+  patient_gender: z.string(),
+  patient_date_of_birth: z.string(),
+  guardian_name: z.string(),
+  // Vaccination centre
+  vaccination_centre_name: z.string(),
+  vaccination_centre_county: z.number().nullable(),
+  institution_mfl_code: z.string(),
+  vaccination_service_type: VaccinationServiceTypeSchema.or(z.literal('')),
+  // Event details
   event_date: z.string(),
-  event_type: AEFIEventTypeSchema,
+  onset_time: z.string().nullable(),
+  event_types: z.array(AEFIEventTypeSchema),
+  other_event_type_detail: z.string(),
   severity: AEFISeveritySchema,
   description: z.string(),
+  // Vaccination details
+  vaccination_details: AEFIVaccinationDetailsSchema,
+  // Outcome
   outcome: AEFIOutcomeSchema,
+  // Past medical history
+  past_medical_history_notes: z.string(),
+  // Action taken
+  treatment_given: z.boolean(),
+  treatment_details: z.string(),
+  specimen_collected: z.boolean(),
+  specimen_type: z.string(),
+  // Reporter
+  reported_by: z.number().nullable(),
+  reported_by_name: z.string().nullable(),
+  reported_by_designation: z.string(),
+  // Reporting to authorities
   reported_to_authorities: z.boolean(),
   report_date: z.string().nullable(),
+  // Investigation
   investigated_by: z.number().nullable(),
   investigated_by_name: z.string().nullable(),
   investigation_notes: z.string(),
+  // National classification
+  national_classification: z.string(),
+  // DHIS2
+  dhis2_submitted_at: z.string().nullable(),
+  dhis2_response: z.record(z.unknown()).nullable(),
+  // Follow-ups
+  follow_up_count: z.number(),
+  // Timestamps
   created_at: z.string(),
   updated_at: z.string(),
 });

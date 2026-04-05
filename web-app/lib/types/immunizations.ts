@@ -24,11 +24,26 @@ export type AdministrationSite = 'LEFT_ARM' | 'RIGHT_ARM' | 'LEFT_THIGH' | 'RIGH
 
 export type CampaignStatus = 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 
-export type AEFIEventType = 'LOCAL_REACTION' | 'SYSTEMIC_REACTION' | 'SEVERE' | 'DEATH';
+export type AEFIEventType =
+  | 'BCG_LYMPHADENITIS'
+  | 'INJECTION_SITE_ABSCESS'
+  | 'CONVULSION'
+  | 'HIGH_FEVER'
+  | 'SEVERE_LOCAL_REACTION'
+  | 'GENERALIZED_URTICARIA'
+  | 'ANAPHYLAXIS'
+  | 'ENCEPHALOPATHY'
+  | 'PARALYSIS'
+  | 'TOXIC_SHOCK'
+  | 'OTHER';
 
 export type AEFISeverity = 'MILD' | 'MODERATE' | 'SEVERE';
 
 export type AEFIOutcome = 'RECOVERED' | 'RECOVERING' | 'NOT_RECOVERED' | 'SEQUELAE' | 'DEATH' | 'UNKNOWN';
+
+export type AEFIReportType = 'INITIAL' | 'FOLLOW_UP';
+
+export type VaccinationServiceType = 'STATIC' | 'MASS' | 'OUTREACH';
 
 // =============================================================================
 // VACCINE DEFINITION
@@ -51,6 +66,11 @@ export interface VaccineDefinition {
   min_age_days: number;
   max_age_days: number;
   is_active: boolean;
+  billing_service: number | null;
+  billing_service_name: string | null;
+  billing_price: string | null;
+  base_fee: string | null;
+  sha_tariff_code: string;
 }
 
 // =============================================================================
@@ -91,10 +111,15 @@ export interface ImmunizationRecord extends ImmunizationRecordListItem {
 
 export interface AdministerVaccineData {
   administered_date?: string;
+  stock_batch?: number | null;
   batch_number?: string;
   lot_number?: string;
   expiry_date?: string;
   site?: AdministrationSite;
+  vaccine_manufacturer?: string;
+  diluent_batch_number?: string;
+  diluent_manufacturer?: string;
+  diluent_expiry_date?: string;
   notes?: string;
 }
 
@@ -161,12 +186,29 @@ export interface VaccineCampaignListParams {
 // AEFI
 // =============================================================================
 
+/** Vaccination details auto-populated from the ImmunizationRecord. */
+export interface AEFIVaccinationDetails {
+  dose_number: number;
+  administered_date: string | null;
+  batch_number: string;
+  lot_number: string;
+  expiry_date: string | null;
+  vaccine_manufacturer: string;
+  route: string;
+  site: string;
+  diluent_batch_number: string;
+  diluent_manufacturer: string;
+  diluent_expiry_date: string | null;
+}
+
 export interface AEFIListItem {
   id: number;
   immunization_record: number;
   vaccine_code: string;
+  patient_name: string;
+  report_type: AEFIReportType;
   event_date: string;
-  event_type: AEFIEventType;
+  event_types: AEFIEventType[];
   severity: AEFISeverity;
   outcome: AEFIOutcome;
   reported_to_authorities: boolean;
@@ -174,30 +216,98 @@ export interface AEFIListItem {
 }
 
 export interface AEFIReport extends AEFIListItem {
+  // Report metadata
+  parent_report: number | null;
+  // Vaccine context
   vaccine_name: string;
-  patient_name: string;
+  // Patient context
+  patient_id: number;
+  patient_mrn: string;
+  patient_gender: string;
+  patient_date_of_birth: string;
+  guardian_name: string;
+  // Vaccination centre
+  vaccination_centre_name: string;
+  vaccination_centre_county: number | null;
+  institution_mfl_code: string;
+  vaccination_service_type: VaccinationServiceType | '';
+  // Event details
+  onset_time: string | null;
+  other_event_type_detail: string;
   description: string;
+  // Vaccination details (from immunization record)
+  vaccination_details: AEFIVaccinationDetails;
+  // Past medical history
+  past_medical_history_notes: string;
+  // Action taken
+  treatment_given: boolean;
+  treatment_details: string;
+  specimen_collected: boolean;
+  specimen_type: string;
+  // Reporter
+  reported_by: number | null;
+  reported_by_name: string | null;
+  reported_by_designation: string;
+  // Reporting to authorities
   report_date: string | null;
+  // Investigation
   investigated_by: number | null;
   investigated_by_name: string | null;
   investigation_notes: string;
+  // National classification
+  national_classification: string;
+  // DHIS2
+  dhis2_submitted_at: string | null;
+  dhis2_response: Record<string, unknown> | null;
+  // Follow-ups
+  follow_up_count: number;
+  // Timestamps
   updated_at: string;
 }
 
 export interface AEFICreateData {
   immunization_record: number;
+  report_type?: AEFIReportType;
+  parent_report?: number | null;
+  guardian_name?: string;
+  vaccination_service_type?: VaccinationServiceType;
   event_date: string;
-  event_type: AEFIEventType;
+  onset_time?: string;
+  event_types: AEFIEventType[];
+  other_event_type_detail?: string;
   severity: AEFISeverity;
   description: string;
   outcome?: AEFIOutcome;
+  past_medical_history_notes?: string;
+  treatment_given?: boolean;
+  treatment_details?: string;
+  specimen_collected?: boolean;
+  specimen_type?: string;
+  reported_by_designation?: string;
+}
+
+export interface AEFIFollowUpData {
+  notes?: string;
+  event_types?: AEFIEventType[];
+  severity?: AEFISeverity;
+  outcome?: AEFIOutcome;
+  treatment_given?: boolean;
+  treatment_details?: string;
+  specimen_collected?: boolean;
+  specimen_type?: string;
+}
+
+export interface AEFISubmitToAuthoritiesData {
+  notes?: string;
 }
 
 export interface AEFIListParams {
   page?: number;
   page_size?: number;
-  event_type?: AEFIEventType;
+  event_types?: AEFIEventType;
   severity?: AEFISeverity;
+  report_type?: AEFIReportType;
+  reported_to_authorities?: boolean;
   immunization_record?: number;
   ordering?: string;
 }
@@ -295,6 +405,7 @@ export interface VaccineStockListParams {
   vaccine?: number;
   is_expired?: boolean;
   is_low_stock?: boolean;
+  available?: boolean;
   ordering?: string;
 }
 

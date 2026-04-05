@@ -11,7 +11,6 @@ import {
   ChevronUp,
   CalendarCheck,
   Users,
-  ShieldAlert,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -36,18 +35,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
-import { immunizationRecordsApi, vaccineDefinitionsApi } from '@/lib/api/immunizations';
-import { patientsApi } from '@/lib/api/patients';
+import { immunizationRecordsApi, vaccineDefinitionsApi, vaccineStockApi } from '@/lib/api/immunizations';
 import { PatientSearchInput } from '@/components/patients/patient-search-input';
 import type {
   ImmunizationStatus,
   ImmunizationRecordListItem,
   AdministrationSite,
   VaccineProgram,
+  VaccineStockListItem,
 } from '@/lib/types/immunizations';
 
 // =============================================================================
@@ -74,11 +73,11 @@ const PROGRAM_OPTIONS: { value: VaccineProgram | ''; label: string }[] = [
 ];
 
 const statusColors: Record<ImmunizationStatus, string> = {
-  ADMINISTERED: 'bg-green-100 text-green-800',
-  SCHEDULED: 'bg-blue-100 text-blue-800',
-  MISSED: 'bg-orange-100 text-orange-800',
-  CONTRAINDICATED: 'bg-gray-100 text-gray-800',
-  DEFERRED: 'bg-yellow-100 text-yellow-800',
+  ADMINISTERED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  SCHEDULED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  MISSED: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+  CONTRAINDICATED: 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-400',
+  DEFERRED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
 };
 
 const SITE_OPTIONS: { value: AdministrationSite; label: string }[] = [
@@ -106,16 +105,23 @@ export default function ImmunizationsPage() {
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(initialPatientId);
   const [statusFilter, setStatusFilter] = useState<ImmunizationStatus | ''>('');
   const [programFilter, setProgramFilter] = useState<VaccineProgram | ''>('');
-  const [activeTab, setActiveTab] = useState('records');
+
 
   // Administer dialog state
   const [administerDialogOpen, setAdministerDialogOpen] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
+  const [selectedRecordLabel, setSelectedRecordLabel] = useState('');
+  const [selectedVaccineForAdmin, setSelectedVaccineForAdmin] = useState<number | null>(null);
+  const [selectedStockBatchId, setSelectedStockBatchId] = useState<number | null>(null);
   const [adminDate, setAdminDate] = useState(new Date().toISOString().split('T')[0]!);
   const [batchNumber, setBatchNumber] = useState('');
   const [lotNumber, setLotNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [site, setSite] = useState<AdministrationSite>('');
+  const [vaccineManufacturer, setVaccineManufacturer] = useState('');
+  const [diluentBatchNumber, setDiluentBatchNumber] = useState('');
+  const [diluentManufacturer, setDiluentManufacturer] = useState('');
+  const [diluentExpiryDate, setDiluentExpiryDate] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
 
   // Adult schedule dialog state
@@ -125,13 +131,6 @@ export default function ImmunizationsPage() {
 
   // Expanded groups
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-
-  // Fetch patient info
-  const { data: patient } = useQuery({
-    queryKey: ['patient-detail', selectedPatientId],
-    queryFn: () => (selectedPatientId ? patientsApi.getPatient(selectedPatientId) : null),
-    enabled: !!selectedPatientId,
-  });
 
   // Fetch records
   const { data, isLoading, error } = useQuery({
@@ -190,10 +189,15 @@ export default function ImmunizationsPage() {
     mutationFn: () =>
       immunizationRecordsApi.administer(selectedRecordId!, {
         administered_date: adminDate,
-        batch_number: batchNumber || undefined,
+        stock_batch: selectedStockBatchId || undefined,
+        batch_number: selectedStockBatchId ? undefined : (batchNumber || undefined),
         lot_number: lotNumber || undefined,
-        expiry_date: expiryDate || undefined,
+        expiry_date: selectedStockBatchId ? undefined : (expiryDate || undefined),
         site: site || undefined,
+        vaccine_manufacturer: selectedStockBatchId ? undefined : (vaccineManufacturer || undefined),
+        diluent_batch_number: diluentBatchNumber || undefined,
+        diluent_manufacturer: diluentManufacturer || undefined,
+        diluent_expiry_date: diluentExpiryDate || undefined,
         notes: adminNotes || undefined,
       }),
     onSuccess: () => {
@@ -207,18 +211,62 @@ export default function ImmunizationsPage() {
     },
   });
 
+  // Fetch available stock batches for the selected vaccine
+  const { data: availableBatches } = useQuery({
+    queryKey: ['available-stock', selectedVaccineForAdmin],
+    queryFn: () =>
+      vaccineStockApi.list({
+        vaccine: selectedVaccineForAdmin!,
+        available: true,
+        ordering: 'expiry_date',
+        page_size: 50,
+      }),
+    enabled: !!selectedVaccineForAdmin && administerDialogOpen,
+  });
+
+  const usableBatches: VaccineStockListItem[] = availableBatches?.results?.filter(
+    (b) => b.quantity_on_hand > 0 && !b.is_expired,
+  ) || [];
+
+  function handleBatchSelect(stockId: string) {
+    if (stockId === '_manual') {
+      setSelectedStockBatchId(null);
+      setBatchNumber('');
+      setVaccineManufacturer('');
+      setExpiryDate('');
+      return;
+    }
+    const batch = usableBatches.find((b) => b.id === parseInt(stockId, 10));
+    if (batch) {
+      setSelectedStockBatchId(batch.id);
+      setBatchNumber(batch.batch_number);
+      setVaccineManufacturer(batch.vaccine_name); // Will be overridden if user edits
+      setExpiryDate(batch.expiry_date);
+    }
+  }
+
   function resetAdminForm() {
     setSelectedRecordId(null);
+    setSelectedRecordLabel('');
+    setSelectedVaccineForAdmin(null);
+    setSelectedStockBatchId(null);
     setAdminDate(new Date().toISOString().split('T')[0]!);
     setBatchNumber('');
     setLotNumber('');
     setExpiryDate('');
     setSite('');
+    setVaccineManufacturer('');
+    setDiluentBatchNumber('');
+    setDiluentManufacturer('');
+    setDiluentExpiryDate('');
     setAdminNotes('');
   }
 
-  function openAdministerDialog(recordId: number) {
+  function openAdministerDialog(recordId: number, vaccineId: number, label: string) {
     setSelectedRecordId(recordId);
+    setSelectedVaccineForAdmin(vaccineId);
+    setSelectedRecordLabel(label);
+    setSelectedStockBatchId(null);
     setAdminDate(new Date().toISOString().split('T')[0]!);
     setAdministerDialogOpen(true);
   }
@@ -261,25 +309,13 @@ export default function ImmunizationsPage() {
         {/* Patient selection */}
         <Card>
           <CardContent className="pt-4 pb-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                <Label className="text-sm text-muted-foreground mb-1 block">Select Patient</Label>
-                <PatientSearchInput
-                  value={selectedPatientId}
-                  onChange={(patientId) => {
-                    setSelectedPatientId(patientId);
-                  }}
-                />
-              </div>
-              {patient && (
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    {patient.first_name} {patient.last_name}
-                  </span>
-                  <span className="ml-2">{patient.mrn}</span>
-                </div>
-              )}
-            </div>
+            <Label className="text-sm text-muted-foreground mb-1 block">Select Patient</Label>
+            <PatientSearchInput
+              value={selectedPatientId}
+              onChange={(patientId) => {
+                setSelectedPatientId(patientId);
+              }}
+            />
           </CardContent>
         </Card>
 
@@ -306,7 +342,7 @@ export default function ImmunizationsPage() {
                   {administeredCount}/{records.length} administered
                 </Badge>
                 {scheduledCount > 0 && (
-                  <Badge className="bg-blue-100 text-blue-800 gap-1">
+                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 gap-1">
                     <CalendarCheck className="h-3 w-3" />
                     {scheduledCount} scheduled
                   </Badge>
@@ -321,13 +357,13 @@ export default function ImmunizationsPage() {
             )}
 
             {/* Filters + schedule actions */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid grid-cols-2 gap-2 sm:flex">
                 <Select
                   value={statusFilter}
                   onValueChange={(v) => setStatusFilter(v as ImmunizationStatus | '')}
                 >
-                  <SelectTrigger className="w-[160px]">
+                  <SelectTrigger className="w-full sm:w-[160px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -343,7 +379,7 @@ export default function ImmunizationsPage() {
                   value={programFilter}
                   onValueChange={(v) => setProgramFilter(v as VaccineProgram | '')}
                 >
-                  <SelectTrigger className="w-[160px]">
+                  <SelectTrigger className="w-full sm:w-[160px]">
                     <SelectValue placeholder="Program" />
                   </SelectTrigger>
                   <SelectContent>
@@ -356,10 +392,11 @@ export default function ImmunizationsPage() {
                 </Select>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 <Button
                   size="sm"
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => generateKepiMutation.mutate()}
                   disabled={generateKepiMutation.isPending}
                 >
@@ -371,6 +408,7 @@ export default function ImmunizationsPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => setAdultScheduleDialogOpen(true)}
                 >
                   <Users className="h-4 w-4 mr-1" />
@@ -457,7 +495,11 @@ export default function ImmunizationsPage() {
                                       variant="outline"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        openAdministerDialog(record.id);
+                                        openAdministerDialog(
+                                          record.id,
+                                          record.vaccine,
+                                          `${record.vaccine_name} — Dose ${record.dose_number}`,
+                                        );
                                       }}
                                     >
                                       Administer
@@ -479,47 +521,28 @@ export default function ImmunizationsPage() {
 
         {/* Administer Dialog */}
         <Dialog open={administerDialogOpen} onOpenChange={setAdministerDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <div className="flex items-center gap-2">
                 <DialogTitle>Administer Vaccine</DialogTitle>
-                <HelpPopover content="Record vaccine administration with batch/lot details and injection site." />
+                <HelpPopover content="Record vaccine administration with batch/lot details, manufacturer, injection site, and diluent information (if applicable). All fields except date are optional." />
               </div>
             </DialogHeader>
-            <div className="space-y-3 sm:space-y-4 pt-2">
-              <div>
-                <Label>Date Administered</Label>
-                <Input
-                  type="date"
-                  value={adminDate}
-                  onChange={(e) => setAdminDate(e.target.value)}
-                />
+            {/* Vaccine context banner */}
+            {selectedRecordLabel && (
+              <div className="rounded-md bg-muted/50 p-2.5 text-sm font-medium">
+                {selectedRecordLabel}
               </div>
+            )}
+            <div className="space-y-3 sm:space-y-4">
+              {/* Date & Site */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <Label>Batch Number</Label>
-                  <Input
-                    value={batchNumber}
-                    onChange={(e) => setBatchNumber(e.target.value)}
-                    placeholder="e.g. BCG-2026-001"
-                  />
-                </div>
-                <div>
-                  <Label>Lot Number</Label>
-                  <Input
-                    value={lotNumber}
-                    onChange={(e) => setLotNumber(e.target.value)}
-                    placeholder="e.g. LOT-123"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                <div>
-                  <Label>Expiry Date</Label>
+                  <Label>Date Administered <span className="text-destructive">*</span></Label>
                   <Input
                     type="date"
-                    value={expiryDate}
-                    onChange={(e) => setExpiryDate(e.target.value)}
+                    value={adminDate}
+                    onChange={(e) => setAdminDate(e.target.value)}
                   />
                 </div>
                 <div>
@@ -538,6 +561,116 @@ export default function ImmunizationsPage() {
                   </Select>
                 </div>
               </div>
+              {/* Stock Batch Selection (FEFO) */}
+              <div>
+                <Label>Stock Batch</Label>
+                <Select
+                  value={selectedStockBatchId?.toString() || '_manual'}
+                  onValueChange={handleBatchSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select batch from stock" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_manual">Enter manually</SelectItem>
+                    {usableBatches.map((b) => (
+                      <SelectItem key={b.id} value={b.id.toString()} textValue={b.batch_number}>
+                        <div className="flex flex-col">
+                          <span>{b.batch_number}{b.is_near_expiry ? ' ⚠️' : ''}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {b.quantity_on_hand} doses • exp {formatDate(b.expiry_date)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {usableBatches.length === 0 && selectedVaccineForAdmin && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No stock batches available. Enter details manually below.
+                  </p>
+                )}
+              </div>
+              {/* Auto-filled or manual batch/lot/expiry */}
+              {selectedStockBatchId ? (
+                <div className="rounded-md bg-muted/30 p-3 text-sm space-y-1">
+                  <p><span className="text-muted-foreground">Batch:</span> {batchNumber}</p>
+                  <p><span className="text-muted-foreground">Manufacturer:</span> {vaccineManufacturer}</p>
+                  <p><span className="text-muted-foreground">Expiry:</span> {formatDate(expiryDate)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">1 dose will be deducted from this batch on submission.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                    <div>
+                      <Label>Batch Number</Label>
+                      <Input
+                        value={batchNumber}
+                        onChange={(e) => setBatchNumber(e.target.value)}
+                        placeholder="e.g. BCG-2026-001"
+                      />
+                    </div>
+                    <div>
+                      <Label>Lot Number</Label>
+                      <Input
+                        value={lotNumber}
+                        onChange={(e) => setLotNumber(e.target.value)}
+                        placeholder="e.g. LOT-123"
+                      />
+                    </div>
+                    <div>
+                      <Label>Expiry Date</Label>
+                      <Input
+                        type="date"
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Vaccine Manufacturer</Label>
+                    <Input
+                      value={vaccineManufacturer}
+                      onChange={(e) => setVaccineManufacturer(e.target.value)}
+                      placeholder="e.g. Serum Institute of India"
+                    />
+                  </div>
+                </>
+              )}
+              {/* Diluent (collapsible for reconstituted vaccines) */}
+              <details className="group rounded-md border border-border">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  Diluent Details <span className="text-xs font-normal">(for reconstituted vaccines)</span>
+                </summary>
+                <div className="px-3 pb-3 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Batch No.</Label>
+                    <Input
+                      value={diluentBatchNumber}
+                      onChange={(e) => setDiluentBatchNumber(e.target.value)}
+                      placeholder="e.g. DIL-2026-01"
+                    />
+                  </div>
+                  <div>
+                    <Label>Manufacturer</Label>
+                    <Input
+                      value={diluentManufacturer}
+                      onChange={(e) => setDiluentManufacturer(e.target.value)}
+                      placeholder="e.g. Serum Institute"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label>Expiry Date</Label>
+                    <Input
+                      type="date"
+                      value={diluentExpiryDate}
+                      onChange={(e) => setDiluentExpiryDate(e.target.value)}
+                      className="w-full sm:w-1/2"
+                    />
+                  </div>
+                </div>
+              </details>
+              {/* Notes */}
               <div>
                 <Label>Notes</Label>
                 <Textarea
@@ -547,6 +680,7 @@ export default function ImmunizationsPage() {
                   rows={2}
                 />
               </div>
+              {/* Actions */}
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <Button variant="outline" onClick={() => setAdministerDialogOpen(false)}>
                   Cancel

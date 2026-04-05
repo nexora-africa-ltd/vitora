@@ -31,6 +31,8 @@ import type {
   VaccineCampaignListParams,
   AEFIReport,
   AEFICreateData,
+  AEFIFollowUpData,
+  AEFISubmitToAuthoritiesData,
   AEFIListParams,
   CoverageStats,
   PaginatedImmunizationRecords,
@@ -177,6 +179,20 @@ export const aefiApi = {
     const response = await apiClient.post(`${BASE_URL}/aefi/`, data);
     return parseResponse(AEFIReportSchema, response.data, {
       context: 'aefiApi.create',
+    });
+  },
+
+  followUp: async (id: number, data: AEFIFollowUpData): Promise<AEFIReport> => {
+    const response = await apiClient.post(`${BASE_URL}/aefi/${id}/follow-up/`, data);
+    return parseResponse(AEFIReportSchema, response.data, {
+      context: 'aefiApi.followUp',
+    });
+  },
+
+  submitToAuthorities: async (id: number, data?: AEFISubmitToAuthoritiesData): Promise<AEFIReport> => {
+    const response = await apiClient.post(`${BASE_URL}/aefi/${id}/submit-to-authorities/`, data || {});
+    return parseResponse(AEFIReportSchema, response.data, {
+      context: 'aefiApi.submitToAuthorities',
     });
   },
 };

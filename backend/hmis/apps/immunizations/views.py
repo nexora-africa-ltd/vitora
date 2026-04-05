@@ -19,6 +19,7 @@ from hmis.apps.immunizations.filters import (
 )
 from hmis.apps.immunizations.models import (
     AEFI,
+    AEFIReportType,
     ColdChainEquipment,
     ImmunizationRecord,
     StockTransaction,
@@ -31,6 +32,7 @@ from hmis.apps.immunizations.models import (
 from hmis.apps.immunizations.serializers import (
     AdministerVaccineSerializer,
     AEFICreateSerializer,
+    AEFIFollowUpSerializer,
     AEFIListSerializer,
     AEFISerializer,
     AEFISubmitToAuthoritiesSerializer,
@@ -110,20 +112,79 @@ class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def administer(self, request, pk=None):
-        """Mark a vaccine as administered."""
+        """Mark a vaccine as administered.
+
+        If stock_batch is provided, auto-fills batch details from stock
+        and deducts 1 dose with a ISSUE StockTransaction.
+        """
         record = self.get_object()
         serializer = AdministerVaccineSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        stock_batch_id = serializer.validated_data.get("stock_batch")
+        stock = None
+
+        if stock_batch_id:
+            try:
+                stock = VaccineStock.objects.get(pk=stock_batch_id)
+            except VaccineStock.DoesNotExist:
+                return Response(
+                    {"stock_batch": "Stock batch not found."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if stock.vaccine_id != record.vaccine_id:
+                return Response(
+                    {"stock_batch": "Stock batch does not match the vaccine being administered."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if stock.quantity_on_hand < 1:
+                return Response(
+                    {"stock_batch": "Insufficient stock. This batch has 0 doses remaining."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if stock.is_expired:
+                return Response(
+                    {"stock_batch": "This batch has expired."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         record.administered_date = serializer.validated_data["administered_date"]
-        record.batch_number = serializer.validated_data.get("batch_number", "")
-        record.lot_number = serializer.validated_data.get("lot_number", "")
-        record.expiry_date = serializer.validated_data.get("expiry_date")
         record.site = serializer.validated_data.get("site", "")
         record.notes = serializer.validated_data.get("notes", "")
+        record.diluent_batch_number = serializer.validated_data.get("diluent_batch_number", "")
+        record.diluent_manufacturer = serializer.validated_data.get("diluent_manufacturer", "")
+        record.diluent_expiry_date = serializer.validated_data.get("diluent_expiry_date")
+
+        # Auto-fill from stock batch if provided, otherwise use manual entry
+        if stock:
+            record.batch_number = stock.batch_number
+            record.lot_number = serializer.validated_data.get("lot_number", "") or stock.batch_number
+            record.expiry_date = stock.expiry_date
+            record.vaccine_manufacturer = stock.manufacturer
+        else:
+            record.batch_number = serializer.validated_data.get("batch_number", "")
+            record.lot_number = serializer.validated_data.get("lot_number", "")
+            record.expiry_date = serializer.validated_data.get("expiry_date")
+            record.vaccine_manufacturer = serializer.validated_data.get("vaccine_manufacturer", "")
+
         record.status = "ADMINISTERED"
         record.administered_by = request.user
         record.save()
+
+        # Deduct 1 dose from stock batch
+        if stock:
+            stock.quantity_on_hand -= 1
+            stock.save(update_fields=["quantity_on_hand"])
+            StockTransaction.objects.create(
+                stock=stock,
+                transaction_type="ISSUE",
+                quantity=-1,
+                balance_after=stock.quantity_on_hand,
+                performed_by=request.user,
+                immunization_record=record,
+                reason="Vaccine administration",
+                notes=f"Administered to patient {record.patient_id}, dose {record.dose_number}",
+            )
 
         AuditLog.log(
             action="immunization_administered",
@@ -134,6 +195,7 @@ class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "patient_id": record.patient_id,
                 "vaccine_code": record.vaccine.code,
                 "dose_number": record.dose_number,
+                "stock_batch_id": stock_batch_id,
             },
             ip_address=get_client_ip(request),
         )
@@ -253,6 +315,8 @@ class AEFIViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return AEFICreateSerializer
         if self.action == "submit_to_authorities":
             return AEFISubmitToAuthoritiesSerializer
+        if self.action == "follow_up":
+            return AEFIFollowUpSerializer
         return AEFISerializer
 
     def perform_create(self, serializer):
@@ -315,6 +379,57 @@ class AEFIViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
 
         return Response(AEFISerializer(aefi).data)
+
+    @action(detail=True, methods=["post"], url_path="follow-up")
+    def follow_up(self, request, pk=None):
+        """Create a follow-up AEFI report linked to this (parent) report.
+
+        Carries forward patient/vaccine/facility context from the parent.
+        Only updates fields provided in the request; inherits the rest.
+        """
+        parent = self.get_object()
+        serializer = AEFIFollowUpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        follow_up_report = AEFI.objects.create(
+            immunization_record=parent.immunization_record,
+            report_type=AEFIReportType.FOLLOW_UP,
+            parent_report=parent,
+            # Carry forward from parent
+            guardian_name=parent.guardian_name,
+            vaccination_service_type=parent.vaccination_service_type,
+            event_date=parent.event_date,
+            onset_time=parent.onset_time,
+            past_medical_history_notes=parent.past_medical_history_notes,
+            # Allow overrides from request
+            event_types=data.get("event_types") or parent.event_types,
+            severity=data.get("severity") or parent.severity,
+            outcome=data.get("outcome") or parent.outcome,
+            treatment_given=data.get("treatment_given", parent.treatment_given),
+            treatment_details=data.get("treatment_details") or parent.treatment_details,
+            specimen_collected=data.get("specimen_collected", parent.specimen_collected),
+            specimen_type=data.get("specimen_type") or parent.specimen_type,
+            description=data.get("notes", ""),
+            reported_by=request.user,
+            # Tenant scoping
+            facility=parent.facility,
+            organization=parent.organization,
+        )
+
+        AuditLog.log(
+            action="aefi_follow_up_create",
+            user=request.user,
+            resource_type="AEFI",
+            resource_id=follow_up_report.id,
+            details={
+                "parent_aefi_id": parent.id,
+                "immunization_record_id": parent.immunization_record_id,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(AEFISerializer(follow_up_report).data, status=status.HTTP_201_CREATED)
 
 
 class CoverageView(APIView):
@@ -380,6 +495,7 @@ class VaccineStockFilter(django_filters.rest_framework.FilterSet):
     vaccine = django_filters.rest_framework.NumberFilter()
     is_expired = django_filters.rest_framework.BooleanFilter(method="filter_expired")
     is_low_stock = django_filters.rest_framework.BooleanFilter(method="filter_low_stock")
+    available = django_filters.rest_framework.BooleanFilter(method="filter_available")
 
     class Meta:
         model = VaccineStock
@@ -398,6 +514,14 @@ class VaccineStockFilter(django_filters.rest_framework.FilterSet):
         if value:
             return queryset.filter(quantity_on_hand__lte=F("min_stock_level"))
         return queryset.filter(quantity_on_hand__gt=F("min_stock_level"))
+
+    def filter_available(self, queryset, name, value):
+        """Filter for batches that are usable: not expired and have stock > 0."""
+        from datetime import date
+
+        if value:
+            return queryset.filter(expiry_date__gte=date.today(), quantity_on_hand__gt=0)
+        return queryset
 
 
 class VaccineStockViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
