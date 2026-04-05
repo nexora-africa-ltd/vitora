@@ -51,12 +51,11 @@ class AEFITrackerService:
         program = mappings.get("program", {})
 
         record = aefi.immunization_record
-        patient = record.patient if record else None
         vaccine = record.vaccine if record else None
 
         org_unit = getattr(settings, "DHIS2_ORG_UNIT", "")
-        if aefi.vaccination_centre_mfl_code:
-            org_unit = aefi.vaccination_centre_mfl_code
+        if aefi.institution_mfl_code:
+            org_unit = aefi.institution_mfl_code
 
         data_values = []
 
@@ -84,26 +83,29 @@ class AEFITrackerService:
             _add("vaccine_batch", record.batch_number)
             _add("vaccination_date", record.administered_date.isoformat() if record.administered_date else None)
             _add("vaccination_service_type", record.vaccination_service_type)
-            _add("diluent_name", record.diluent_name)
+            _add("diluent_name", record.diluent_manufacturer)
             _add("diluent_batch_number", record.diluent_batch_number)
 
         # Facility info
         _add("vaccination_centre_name", aefi.vaccination_centre_name)
-        _add("vaccination_centre_mfl", aefi.vaccination_centre_mfl_code)
+        _add("vaccination_centre_mfl", aefi.institution_mfl_code)
 
-        # Reporter info
-        _add("reporter_name", aefi.reporter_name)
-        _add("reporter_designation", aefi.reporter_designation)
-        _add("reporter_phone", aefi.reporter_phone)
+        # Reporter info (from reported_by User FK)
+        reporter = aefi.reported_by
+        if reporter:
+            _add("reporter_name", reporter.get_full_name() or reporter.username)
+            # Phone from staff profile if available
+            profile = getattr(reporter, "staff_profile", None)
+            if profile:
+                _add("reporter_phone", getattr(profile, "phone", ""))
+        _add("reporter_designation", aefi.reported_by_designation)
 
-        # Actions
-        _add("action_taken", aefi.action_taken)
-        _add("specimen_collected", str(aefi.specimen_collected).lower() if aefi.specimen_collected is not None else None)
-        _add("specimen_date", aefi.specimen_collection_date.isoformat() if aefi.specimen_collection_date else None)
+        # Actions and specimen
+        _add("action_taken", aefi.treatment_details)
+        _add("specimen_collected", str(aefi.specimen_collected).lower())
 
         # National classification (may be empty for initial reports)
         _add("national_classification", aefi.national_classification)
-        _add("national_causality", aefi.national_causality_assessment)
 
         event_date = aefi.event_date.isoformat() if aefi.event_date else timezone.localdate().isoformat()
 

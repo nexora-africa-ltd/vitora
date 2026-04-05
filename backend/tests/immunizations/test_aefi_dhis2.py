@@ -69,24 +69,23 @@ def administered_record(child_patient, bcg_vaccine, sample_facility, test_user):
         batch_number="BCG-2026-001",
         administered_by=test_user,
         vaccine_manufacturer="SII",
-        diluent_name="Saline",
         diluent_batch_number="DIL-001",
+        diluent_manufacturer="AJ Vaccines",
         facility=sample_facility,
         organization=sample_facility.organization,
     )
 
 
 @pytest.fixture
-def reported_aefi(administered_record, sample_facility):
+def reported_aefi(administered_record, sample_facility, test_user):
     return AEFI.objects.create(
         immunization_record=administered_record,
         event_date=date.today() - timedelta(days=5),
         event_types=[AEFIEventType.BCG_LYMPHADENITIS],
         severity=AEFISeverity.MILD,
         description="Axillary swelling following BCG",
-        reporter_name="Nurse Kamau",
-        reporter_designation="RN",
-        reporter_phone="0712345678",
+        reported_by=test_user,
+        reported_by_designation="RN",
         reported_to_authorities=True,
         report_date=date.today(),
         facility=sample_facility,
@@ -136,17 +135,17 @@ class TestAEFITrackerPayload:
         payload = AEFITrackerService.prepare_tracker_payload(reported_aefi)
         data_values = {dv["dataElement"]: dv["value"] for dv in payload["events"][0]["dataValues"]}
 
-        assert data_values.get("AEFI_DE_DILUENT_NAME") == "Saline"
+        assert data_values.get("AEFI_DE_DILUENT_NAME") == "AJ Vaccines"
         assert data_values.get("AEFI_DE_DILUENT_BATCH") == "DIL-001"
 
     def test_payload_maps_reporter_info(self, reported_aefi):
-        """Should include reporter name, designation, phone."""
+        """Should include reporter name and designation."""
         payload = AEFITrackerService.prepare_tracker_payload(reported_aefi)
         data_values = {dv["dataElement"]: dv["value"] for dv in payload["events"][0]["dataValues"]}
 
-        assert data_values.get("AEFI_DE_REPORTER_NAME") == "Nurse Kamau"
+        # reported_by is a User FK — get_full_name() or username
+        assert "AEFI_DE_REPORTER_NAME" in data_values
         assert data_values.get("AEFI_DE_REPORTER_DESIGNATION") == "RN"
-        assert data_values.get("AEFI_DE_REPORTER_PHONE") == "0712345678"
 
     def test_payload_maps_severity_and_description(self, reported_aefi):
         """Should map severity and description."""
@@ -157,9 +156,9 @@ class TestAEFITrackerPayload:
         assert "Axillary swelling" in data_values.get("AEFI_DE_DESCRIPTION", "")
 
     def test_payload_uses_mfl_code_as_org_unit(self, reported_aefi, sample_facility):
-        """Should use vaccination_centre_mfl_code as orgUnit when set."""
-        reported_aefi.vaccination_centre_mfl_code = sample_facility.mfl_code
-        reported_aefi.save(update_fields=["vaccination_centre_mfl_code"])
+        """Should use institution_mfl_code as orgUnit when set."""
+        reported_aefi.institution_mfl_code = sample_facility.mfl_code
+        reported_aefi.save(update_fields=["institution_mfl_code"])
 
         payload = AEFITrackerService.prepare_tracker_payload(reported_aefi)
         assert payload["events"][0]["orgUnit"] == sample_facility.mfl_code
@@ -169,9 +168,9 @@ class TestAEFITrackerPayload:
         payload = AEFITrackerService.prepare_tracker_payload(reported_aefi)
         de_keys = {dv["dataElement"] for dv in payload["events"][0]["dataValues"]}
 
-        # outcome is not set → should not appear
-        assert "AEFI_DE_OUTCOME" not in de_keys
-        # action_taken is not set → should not appear
+        # national_classification is empty default → should not appear
+        assert "AEFI_DE_NATIONAL_CLASS" not in de_keys
+        # action_taken (treatment_details) is empty → should not appear
         assert "AEFI_DE_ACTION_TAKEN" not in de_keys
 
 
@@ -179,7 +178,7 @@ class TestAEFITrackerPayload:
 class TestAEFIDHIS2Submission:
     """Tests for DHIS2 HTTP submission."""
 
-    @patch("hmis.apps.immunizations.services.dhis2_tracker.requests.post")
+    @patch("requests.post")
     def test_successful_submission(self, mock_post, reported_aefi, settings):
         """Should POST to DHIS2 and update aefi.dhis2_submitted_at."""
         settings.DHIS2_API_URL = "https://dhis2.example.org"
@@ -204,7 +203,7 @@ class TestAEFIDHIS2Submission:
         call_kwargs = mock_post.call_args
         assert "/api/tracker" in call_kwargs[0][0]
 
-    @patch("hmis.apps.immunizations.services.dhis2_tracker.requests.post")
+    @patch("requests.post")
     def test_failed_submission_stores_error(self, mock_post, reported_aefi, settings):
         """Should store error response without setting dhis2_submitted_at."""
         settings.DHIS2_API_URL = "https://dhis2.example.org"
