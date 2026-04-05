@@ -105,6 +105,7 @@ class BillingAgentService:
         description: str = "",
         item_type: str = InvoiceItem.ItemType.SERVICE,
         lab_order=None,
+        immunization_record=None,
     ) -> InvoiceItem:
         """Add a billable line item to an invoice.
 
@@ -115,6 +116,7 @@ class BillingAgentService:
             description: Line item description.
             item_type: InvoiceItem.ItemType value.
             lab_order: Optional LabOrder FK for lab items.
+            immunization_record: Optional ImmunizationRecord FK for vaccination items.
 
         Returns:
             Created InvoiceItem.
@@ -127,6 +129,7 @@ class BillingAgentService:
             quantity=quantity,
             unit_price=service.unit_price,
             lab_order=lab_order,
+            immunization_record=immunization_record,
         )
 
     # ── Event Handlers (called from signals) ─────────────────────
@@ -209,6 +212,68 @@ class BillingAgentService:
             admission.patient_id,
             invoice.invoice_number,
         )
+
+    @classmethod
+    @transaction.atomic
+    def handle_immunization_administered(cls, immunization_record) -> None:
+        """Auto-bill vaccine administration when a dose is recorded.
+
+        Called from immunizations signal when ImmunizationRecord.status → ADMINISTERED.
+        Resolves billing via: VaccineDefinition.code → Service.code match within IMM category.
+        """
+        patient = immunization_record.patient
+        encounter = immunization_record.encounter
+        invoice = cls.get_or_create_draft_invoice(patient, encounter)
+
+        vaccine = immunization_record.vaccine
+
+        # Check for duplicate billing (idempotency)
+        already_billed = invoice.items.filter(
+            immunization_record=immunization_record,
+        ).exists()
+        if already_billed:
+            logger.debug(
+                "Billing agent: immunization %s already billed on invoice %s",
+                immunization_record.id,
+                invoice.invoice_number,
+            )
+            return
+
+        # Lookup: vaccine code → billing Service (e.g., Service.code == "BCG")
+        service = Service.objects.filter(
+            code=vaccine.code,
+            is_active=True,
+        ).first()
+
+        # Fallback: match by name within IMM category
+        if not service:
+            service = Service.objects.filter(
+                category__code="IMM",
+                name__icontains=vaccine.name,
+                is_active=True,
+            ).first()
+
+        if service:
+            cls.add_line_item(
+                invoice,
+                service=service,
+                quantity=1,
+                description=f"Vaccination: {vaccine.name} (dose {immunization_record.dose_number})",
+                item_type=InvoiceItem.ItemType.VACCINATION,
+                immunization_record=immunization_record,
+            )
+            logger.info(
+                "Billing agent: added vaccination %s to invoice %s",
+                vaccine.code,
+                invoice.invoice_number,
+            )
+        else:
+            logger.warning(
+                "Billing agent: no billing Service found for vaccine %s (code=%s). "
+                "Create a Service in the IMM category to enable auto-billing.",
+                vaccine.name,
+                vaccine.code,
+            )
 
     @classmethod
     @transaction.atomic

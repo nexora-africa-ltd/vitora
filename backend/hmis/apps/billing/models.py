@@ -703,6 +703,7 @@ class InvoiceItem(models.Model):
         PHARMACY = "pharmacy", "Pharmacy Item"
         LAB = "lab", "Lab Test"
         IMAGING = "imaging", "Imaging/Radiology"
+        VACCINATION = "vaccination", "Vaccination"
         CONSUMABLE = "consumable", "Consumable"
         OTHER = "other", "Other"
 
@@ -750,6 +751,15 @@ class InvoiceItem(models.Model):
     imaging_order = models.ForeignKey(
         "imaging.ImagingOrder",
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="invoice_items",
+    )
+
+    # For immunization items
+    immunization_record = models.ForeignKey(
+        "immunizations.ImmunizationRecord",
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="invoice_items",

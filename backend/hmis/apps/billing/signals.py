@@ -112,3 +112,19 @@ def handle_admission_billing(sender, instance, created, **kwargs):
         logger.exception(
             "Billing agent: admission billing failed for admission %s", instance.id
         )
+
+
+def handle_immunization_billing(sender, instance, created, **kwargs):
+    """Auto-bill vaccine administration when ImmunizationRecord.status is ADMINISTERED."""
+    # Trigger on both create (direct ADMINISTERED) and update (SCHEDULED → ADMINISTERED)
+    if instance.status != "ADMINISTERED":
+        return
+
+    try:
+        from hmis.apps.billing.agent import BillingAgentService
+
+        BillingAgentService.handle_immunization_administered(instance)
+    except Exception:
+        logger.exception(
+            "Billing agent: immunization billing failed for record %s", instance.id
+        )
