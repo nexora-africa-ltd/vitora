@@ -71,8 +71,8 @@ class TestAssignmentRuleModel:
         assert rule.rule_definition["version"] == "1.0"
         assert len(rule.rule_definition["constraints"]) == 3
 
-    def test_assignment_rule_code_must_be_unique(self, db):
-        """Should enforce unique rule codes."""
+    def test_assignment_rule_code_must_be_unique(self, db, sample_facility):
+        """Should enforce unique rule codes within a facility."""
         from hmis.apps.scheduling.models import AssignmentRule
 
         AssignmentRule.objects.create(
@@ -81,6 +81,8 @@ class TestAssignmentRuleModel:
             applies_to="APPOINTMENT",
             rule_definition={"version": "1.0"},
             is_active=True,
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
 
         with pytest.raises(Exception):  # IntegrityError
@@ -89,6 +91,8 @@ class TestAssignmentRuleModel:
                 rule_code="unique_rule",  # Duplicate code
                 applies_to="APPOINTMENT",
                 rule_definition={"version": "2.0"},
+                facility=sample_facility,
+                organization=sample_facility.organization,
             )
 
     def test_assignment_rule_requires_valid_applies_to(self, db):

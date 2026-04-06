@@ -142,6 +142,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "updated_at",
             "ward",
             "ward_name",
+            "ward_type",
         }),
     ),
     (
