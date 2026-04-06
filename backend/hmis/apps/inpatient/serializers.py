@@ -1583,7 +1583,7 @@ class BloodTransfusionSerializer(serializers.ModelSerializer):
         source="counter_checked_by.username", read_only=True, default=None
     )
     patient_name = serializers.CharField(
-        source="admission.patient.__str__", read_only=True
+        source="admission.patient.full_name", read_only=True
     )
     observations = TransfusionObservationEntrySerializer(many=True, read_only=True)
 
@@ -2123,7 +2123,7 @@ class ATRDetailSerializer(serializers.ModelSerializer):
         source="initial_reporter.username", read_only=True, default=None
     )
     patient_name = serializers.CharField(
-        source="transfusion.admission.patient.__str__", read_only=True
+        source="transfusion.admission.patient.full_name", read_only=True
     )
     patient_mrn = serializers.CharField(
         source="transfusion.admission.patient.mrn", read_only=True
@@ -2291,7 +2291,7 @@ class ATRListSerializer(serializers.ModelSerializer):
     has_lab_investigation = serializers.BooleanField(read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     patient_name = serializers.CharField(
-        source="transfusion.admission.patient.__str__", read_only=True
+        source="transfusion.admission.patient.full_name", read_only=True
     )
     blood_product_display = serializers.CharField(
         source="transfusion.get_blood_product_display", read_only=True
