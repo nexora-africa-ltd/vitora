@@ -103,6 +103,8 @@ export const ACTION_PERMISSIONS = {
   'laboratory.enter_results': ['LAB_TECH', 'LAB_SCIENTIST'],
   'laboratory.verify_results': ['LAB_SCIENTIST', 'PATHOLOGIST'],
   'laboratory.release_results': ['LAB_SCIENTIST', 'PATHOLOGIST'],
+  'laboratory.interpret_results': ['PATHOLOGIST'],
+  'laboratory.manage_catalog': ['LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN'],
   'laboratory.view_reports': ['LAB_TECH', 'LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN'],
   'laboratory.view_analytics': ['LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN'],
 

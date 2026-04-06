@@ -14,9 +14,14 @@ export interface TestCatalogListItem {
   short_name: string;
   category: TestCategory;
   specimen_type: SpecimenType;
+  result_type: ResultType;
+  result_unit?: string | null;
   cost: number;
   sha_claimable: boolean;
   available_in_house: boolean;
+  turnaround_hours?: number | null;
+  requires_fasting: boolean;
+  requires_clinical_signoff: boolean;
   is_active: boolean;
 }
 
@@ -37,16 +42,49 @@ export interface TestCatalog {
   normal_range_male?: string | null;
   normal_range_female?: string | null;
   normal_range_child?: string | null;
+  result_options?: string[] | null;
   cost: number;
   sha_claimable: boolean;
   available_in_house: boolean;
   external_lab_partner?: string | null;
   turnaround_hours?: number | null;
+  requires_fasting: boolean;
+  requires_clinical_signoff: boolean;
+  special_instructions?: string | null;
   is_panel: boolean;
   panel_components?: TestCatalogListItem[] | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Data for creating/updating a test catalog entry.
+ * Matches backend TestCatalogCreateSerializer.
+ */
+export interface TestCatalogCreateData {
+  code: string;
+  name: string;
+  short_name: string;
+  loinc_code?: string;
+  category: TestCategory;
+  specimen_type: SpecimenType;
+  requires_fasting?: boolean;
+  special_instructions?: string;
+  turnaround_hours?: number;
+  requires_clinical_signoff?: boolean;
+  available_in_house?: boolean;
+  external_lab_partner?: string;
+  cost?: number;
+  sha_claimable?: boolean;
+  result_type: ResultType;
+  result_unit?: string;
+  normal_range_male?: string;
+  normal_range_female?: string;
+  normal_range_child?: string;
+  result_options?: string[];
+  is_panel?: boolean;
+  is_active?: boolean;
 }
 
 export type TestCategory =

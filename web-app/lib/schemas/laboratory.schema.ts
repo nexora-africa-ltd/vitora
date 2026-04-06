@@ -306,9 +306,14 @@ export const LabTestCatalogListSchema = z.object({
   short_name: z.string(),
   category: TestCategorySchema,
   specimen_type: SpecimenTypeSchema,
+  result_type: ResultTypeSchema,
+  result_unit: z.string().nullable().optional(),
   cost: z.coerce.number(), // Backend returns DecimalField as string
   sha_claimable: z.boolean(),
   available_in_house: z.boolean(),
+  turnaround_hours: z.number().nullable().optional(),
+  requires_fasting: z.boolean(),
+  requires_clinical_signoff: z.boolean(),
   is_active: z.boolean(),
 });
 
@@ -331,11 +336,15 @@ export const LabTestCatalogSchema = z.object({
   normal_range_male: z.string().nullable().optional(),
   normal_range_female: z.string().nullable().optional(),
   normal_range_child: z.string().nullable().optional(),
+  result_options: z.array(z.string()).nullable().optional(),
   cost: z.coerce.number(), // Backend returns DecimalField as string
   sha_claimable: z.boolean(),
   available_in_house: z.boolean(),
   external_lab_partner: z.string().nullable().optional(),
   turnaround_hours: z.number().nullable().optional(),
+  requires_fasting: z.boolean(),
+  requires_clinical_signoff: z.boolean(),
+  special_instructions: z.string().nullable().optional(),
   is_panel: z.boolean(),
   panel_components: z.array(LabTestCatalogListSchema).nullable().optional(),
   is_active: z.boolean(),

@@ -53,6 +53,7 @@ from .serializers import (
     LabResultVerifySerializer,
     LOINCCodeSerializer,
     SpecimenSerializer,
+    TestCatalogCreateSerializer,
     TestCatalogDetailSerializer,
     TestCatalogSerializer,
 )
@@ -90,17 +91,21 @@ def _parse_date_range(request) -> tuple[date, date]:
     return start_date, end_date
 
 
-class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
+class TestCatalogViewSet(viewsets.ModelViewSet):
     """
     ViewSet for test catalog.
-    Provides list and retrieve operations with search functionality.
+    Provides full CRUD operations with search functionality.
+    List/retrieve are available to all authenticated users.
+    Create/update/delete require admin role.
     """
 
-    queryset = TestCatalog.objects.filter(is_active=True)
+    queryset = TestCatalog.objects.all()
     permission_classes = [IsAuthenticated]
     lookup_field = "code"
 
     def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return TestCatalogCreateSerializer
         if self.action == "retrieve":
             return TestCatalogDetailSerializer
         return TestCatalogSerializer
@@ -108,11 +113,20 @@ class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
 
+        # Non-admin list views default to active tests only
+        if self.action == "list":
+            show_inactive = self.request.query_params.get("show_inactive", "").lower() == "true"
+            if not show_inactive:
+                queryset = queryset.filter(is_active=True)
+
         # Search by name or code
         search = self.request.query_params.get("search", None)
         if search:
             queryset = queryset.filter(
-                models.Q(name__icontains=search) | models.Q(code__icontains=search)
+                models.Q(name__icontains=search)
+                | models.Q(code__icontains=search)
+                | models.Q(short_name__icontains=search)
+                | models.Q(loinc_code__icontains=search)
             )
 
         # Filter by category
@@ -120,7 +134,18 @@ class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
         if category:
             queryset = queryset.filter(category=category)
 
+        # Filter by specimen type
+        specimen_type = self.request.query_params.get("specimen_type", None)
+        if specimen_type:
+            queryset = queryset.filter(specimen_type=specimen_type)
+
         return queryset
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+    def perform_update(self, serializer):
+        serializer.save()
 
 
 class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
