@@ -387,6 +387,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Certificates', href: '/admin/certificates', icon: Lock, actionKey: 'admin.view_audit_logs' },
       { label: 'HL7 Messages', href: '/admin/hl7-messages', icon: Network, actionKey: 'admin.view_hl7_messages' },
       { label: 'KENHDD Compliance', href: '/admin/kenhdd-compliance', icon: BookCheck, actionKey: 'admin.view_audit_logs' },
+      { label: 'Scheduling Resources', href: '/admin/scheduling', icon: CalendarDays, actionKey: 'admin.manage_departments' },
       { label: 'Reports', href: '/reports', icon: FileText, actionKey: 'admin.view_reports' },
     ],
   },
