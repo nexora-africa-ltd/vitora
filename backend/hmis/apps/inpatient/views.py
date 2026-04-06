@@ -3,6 +3,7 @@ Views for the inpatient app.
 """
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
@@ -20,6 +21,7 @@ from hmis.apps.patients.models import Patient
 from .models import (
     Admission,
     AdmissionRecommendation,
+    AdverseTransfusionReaction,
     Bed,
     BloodTransfusionObservation,
     BPMonitoringReading,
@@ -41,6 +43,12 @@ from .models import (
     WardRound,
 )
 from .serializers import (
+    ATRAcknowledgeSerializer,
+    ATRCreateSerializer,
+    ATRDetailSerializer,
+    ATRLabInvestigationSerializer,
+    ATRListSerializer,
+    ATRSubmitToPPBSerializer,
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
     BedSerializer,
@@ -3163,3 +3171,143 @@ class MedicationAdministrationViewSet(viewsets.ModelViewSet):
 
         refreshed = self.get_queryset().get(pk=mar_entry.pk)
         return Response(MedicationAdministrationSerializer(refreshed).data)
+
+
+class AdverseTransfusionReactionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for Adverse Transfusion Reaction (ATR) reports.
+
+    Aligned with Kenya MOH/PPB form FOM20/MIP/PMS/SOP/001.
+    Supports CRUD, lab investigation updates, PPB submission, and acknowledgment.
+    """
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["status", "transfusion", "transfusion__admission"]
+    ordering_fields = ["report_date", "created_at"]
+    ordering = ["-report_date"]
+
+    def get_queryset(self):
+        return AdverseTransfusionReaction.objects.select_related(
+            "transfusion",
+            "transfusion__admission",
+            "transfusion__admission__patient",
+            "initial_reporter",
+            "facility",
+        ).prefetch_related("transfusion__observations")
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return ATRCreateSerializer
+        if self.action == "list":
+            return ATRListSerializer
+        if self.action == "update_lab_investigation":
+            return ATRLabInvestigationSerializer
+        if self.action == "submit_to_ppb":
+            return ATRSubmitToPPBSerializer
+        if self.action == "mark_acknowledged":
+            return ATRAcknowledgeSerializer
+        return ATRDetailSerializer
+
+    def perform_create(self, serializer):
+        from datetime import date as date_mod
+
+        instance = serializer.save(
+            initial_reporter=self.request.user,
+            report_date=date_mod.today(),
+        )
+        # Auto-resolve facility from the admission
+        admission = instance.transfusion.admission
+        if admission.facility:
+            instance.facility = admission.facility
+            instance.organization = admission.organization
+        instance.auto_populate_vitals()
+        instance.save()
+
+        AuditLog.log(
+            action="atr_create",
+            user=self.request.user,
+            resource_type="AdverseTransfusionReaction",
+            resource_id=instance.id,
+            details={
+                "transfusion_id": instance.transfusion_id,
+                "admission_id": instance.transfusion.admission_id,
+            },
+            ip_address=get_client_ip(self.request),
+        )
+
+    @action(detail=True, methods=["patch"], url_path="update-lab-investigation")
+    def update_lab_investigation(self, request, pk=None):
+        """Update the lab investigation section of an ATR report."""
+        atr = self.get_object()
+        serializer = ATRLabInvestigationSerializer(atr, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        AuditLog.log(
+            action="atr_lab_investigation_update",
+            user=request.user,
+            resource_type="AdverseTransfusionReaction",
+            resource_id=atr.id,
+            details={"fields_updated": list(request.data.keys())},
+            ip_address=get_client_ip(request),
+        )
+        return Response(ATRDetailSerializer(atr).data)
+
+    @action(detail=True, methods=["post"], url_path="submit-to-ppb")
+    def submit_to_ppb(self, request, pk=None):
+        """Submit the ATR report to PPB."""
+        atr = self.get_object()
+        serializer = ATRSubmitToPPBSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Update PPB submitter fields before submission
+        for field, value in serializer.validated_data.items():
+            if value:
+                setattr(atr, field, value)
+        atr.save(update_fields=list(serializer.validated_data.keys()) + ["updated_at"])
+
+        try:
+            atr.submit_to_ppb(user=request.user)
+        except DjangoValidationError as e:
+            msg = e.message if hasattr(e, "message") else str(e)
+            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        AuditLog.log(
+            action="atr_submit_ppb",
+            user=request.user,
+            resource_type="AdverseTransfusionReaction",
+            resource_id=atr.id,
+            details={"status": atr.status},
+            ip_address=get_client_ip(request),
+        )
+        return Response(ATRDetailSerializer(atr).data)
+
+    @action(detail=True, methods=["post"], url_path="mark-acknowledged")
+    def mark_acknowledged(self, request, pk=None):
+        """Record PPB acknowledgment of the ATR report."""
+        atr = self.get_object()
+        serializer = ATRAcknowledgeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            atr.mark_acknowledged(
+                adr_number=serializer.validated_data["adr_report_number"],
+                vigiflow_number=serializer.validated_data.get("vigiflow_entry_number", ""),
+            )
+        except DjangoValidationError as e:
+            msg = e.message if hasattr(e, "message") else str(e)
+            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        AuditLog.log(
+            action="atr_ppb_acknowledged",
+            user=request.user,
+            resource_type="AdverseTransfusionReaction",
+            resource_id=atr.id,
+            details={
+                "adr_report_number": atr.adr_report_number,
+                "vigiflow_entry_number": atr.vigiflow_entry_number,
+            },
+            ip_address=get_client_ip(request),
+        )
+        return Response(ATRDetailSerializer(atr).data)

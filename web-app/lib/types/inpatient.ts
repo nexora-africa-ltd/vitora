@@ -1141,6 +1141,7 @@ export interface BloodTransfusion {
   reaction_occurred: boolean;
   reaction_type?: string;
   reaction_action_taken?: string;
+  expiry_date?: string | null;
   observations?: TransfusionObservationEntry[];
   created_at?: string;
   updated_at?: string;
@@ -1156,6 +1157,7 @@ export interface BloodTransfusionCreateData {
   transfusion_date: string;
   time_started?: string;
   diagnosis?: string;
+  expiry_date?: string;
 }
 
 export type BPPosition = 'SITTING' | 'STANDING' | 'LYING' | 'LEFT_LATERAL';
@@ -1376,4 +1378,201 @@ export interface WardRecommendationResponse {
   infection_isolation_triggered: boolean;
   evaluation_time_ms: number;
   error: string | null;
+}
+
+// ============================================================================
+// Adverse Transfusion Reaction (ATR) Types
+// ============================================================================
+
+export type ATRStatus = 'DRAFT' | 'PENDING_REVIEW' | 'SUBMITTED' | 'ACKNOWLEDGED';
+export type ObstetricStatus = 'NA' | 'GRAVID' | 'PARA';
+export type GeneralReaction = 'FEVER' | 'CHILLS_RIGORS' | 'FLUSHING' | 'NAUSEA_VOMITING';
+export type DermatologicalReaction = 'URTICARIA' | 'OTHER_SKIN_RASH';
+export type CardiacRespiratoryReaction = 'CHEST_PAIN' | 'DYSPNOEA' | 'HYPOTENSION' | 'TACHYCARDIA';
+export type RenalReaction = 'HAEMOGLOBINURIA' | 'OLIGURIA' | 'ANURIA';
+export type HaematologicalReaction = 'UNEXPLAINED_BLEEDING';
+export type HemolysisResult = 'PRESENT' | 'ABSENT' | 'EQUIVOCAL';
+export type HemolysisSeverity = 'MILD' | 'MODERATE' | 'MARKED';
+export type AgglutinationResult = 'PRESENT' | 'ABSENT';
+export type CompatibilityResult = 'COMPATIBLE' | 'INCOMPATIBLE';
+export type DonorHemolysisResult = 'PRESENT' | 'ABSENT';
+export type CausalityAssessment = 'YES' | 'NO' | 'INCONCLUSIVE';
+
+export const GENERAL_REACTION_OPTIONS: { value: GeneralReaction; label: string }[] = [
+  { value: 'FEVER', label: 'Fever' },
+  { value: 'CHILLS_RIGORS', label: 'Chills/Rigors' },
+  { value: 'FLUSHING', label: 'Flushing' },
+  { value: 'NAUSEA_VOMITING', label: 'Nausea/Vomiting' },
+];
+
+export const DERMATOLOGICAL_REACTION_OPTIONS: { value: DermatologicalReaction; label: string }[] = [
+  { value: 'URTICARIA', label: 'Urticaria' },
+  { value: 'OTHER_SKIN_RASH', label: 'Other Skin Rash' },
+];
+
+export const CARDIAC_RESPIRATORY_REACTION_OPTIONS: { value: CardiacRespiratoryReaction; label: string }[] = [
+  { value: 'CHEST_PAIN', label: 'Chest Pain' },
+  { value: 'DYSPNOEA', label: 'Dyspnoea' },
+  { value: 'HYPOTENSION', label: 'Hypotension' },
+  { value: 'TACHYCARDIA', label: 'Tachycardia' },
+];
+
+export const RENAL_REACTION_OPTIONS: { value: RenalReaction; label: string }[] = [
+  { value: 'HAEMOGLOBINURIA', label: 'Haemoglobinuria (Dark Urine)' },
+  { value: 'OLIGURIA', label: 'Oliguria' },
+  { value: 'ANURIA', label: 'Anuria' },
+];
+
+export const HAEMATOLOGICAL_REACTION_OPTIONS: { value: HaematologicalReaction; label: string }[] = [
+  { value: 'UNEXPLAINED_BLEEDING', label: 'Unexplained Bleeding' },
+];
+
+export interface HaematologicalResults {
+  wbc?: string;
+  hb?: string;
+  rbc?: string;
+  hct?: string;
+  mcv?: string;
+  mch?: string;
+  mchc?: string;
+  plt?: string;
+}
+
+export interface AdverseTransfusionReaction {
+  id: number;
+  transfusion: number;
+  patient_name?: string;
+  patient_mrn?: string;
+  admission_id?: number;
+  blood_product?: string;
+  blood_product_display?: string;
+  blood_unit_number?: string;
+  amount_ml?: number;
+  transfusion_expiry_date?: string | null;
+  pre_transfusion_hb?: string | null;
+  obstetric_status: ObstetricStatus;
+  gravida?: number | null;
+  para?: number | null;
+  previous_transfusion?: boolean | null;
+  previous_transfusion_comment?: string;
+  previous_reactions?: boolean | null;
+  previous_reactions_comment?: string;
+  current_medications?: string;
+  general_reactions: GeneralReaction[];
+  dermatological_reactions: DermatologicalReaction[];
+  cardiac_respiratory_reactions: CardiacRespiratoryReaction[];
+  renal_reactions: RenalReaction[];
+  haematological_reactions: HaematologicalReaction[];
+  other_reactions?: string;
+  reaction_categories_display?: string[];
+  vitals_at_start_bp?: string;
+  vitals_at_start_temp?: string | null;
+  vitals_at_start_pulse?: number | null;
+  vitals_at_start_rr?: number | null;
+  vitals_during_bp?: string;
+  vitals_during_temp?: string | null;
+  vitals_during_pulse?: number | null;
+  vitals_during_rr?: number | null;
+  vitals_at_stop_bp?: string;
+  vitals_at_stop_temp?: string | null;
+  vitals_at_stop_pulse?: number | null;
+  vitals_at_stop_rr?: number | null;
+  recipient_supernatant_hemolysis?: string;
+  recipient_hemolysis_severity?: string;
+  recipient_agglutination?: string;
+  haematological_results?: HaematologicalResults;
+  blood_film_rbc?: string;
+  blood_film_wbc?: string;
+  blood_film_plt?: string;
+  donor_supernatant_hemolysis?: string;
+  donor_pack_age?: string;
+  culture_donor_pack_results?: string;
+  culture_recipient_blood_results?: string;
+  compatibility_saline_rt?: string;
+  compatibility_saline_37?: string;
+  compatibility_ahg?: string;
+  compatibility_albumin_37?: string;
+  enzyme_treated_cells_result?: string;
+  anti_a_titres?: string;
+  anti_b_titres?: string;
+  urinalysis?: string;
+  evaluation_diagnosis?: string;
+  reaction_related_to_transfusion?: CausalityAssessment | '';
+  has_lab_investigation?: boolean;
+  initial_reporter?: number | null;
+  initial_reporter_username?: string | null;
+  initial_reporter_cadre?: string;
+  initial_reporter_mobile?: string;
+  initial_reporter_email?: string;
+  report_date: string;
+  ppb_submitter_name?: string;
+  ppb_submitter_cadre?: string;
+  ppb_submitter_mobile?: string;
+  ppb_submitter_email?: string;
+  submission_date?: string | null;
+  status: ATRStatus;
+  status_display?: string;
+  adr_report_number?: string;
+  vigiflow_entry_number?: string;
+  ppb_date_received?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AdverseTransfusionReactionCreate {
+  transfusion: number;
+  pre_transfusion_hb?: string;
+  obstetric_status?: ObstetricStatus;
+  gravida?: number;
+  para?: number;
+  previous_transfusion?: boolean;
+  previous_transfusion_comment?: string;
+  previous_reactions?: boolean;
+  previous_reactions_comment?: string;
+  current_medications?: string;
+  general_reactions?: GeneralReaction[];
+  dermatological_reactions?: DermatologicalReaction[];
+  cardiac_respiratory_reactions?: CardiacRespiratoryReaction[];
+  renal_reactions?: RenalReaction[];
+  haematological_reactions?: HaematologicalReaction[];
+  other_reactions?: string;
+  initial_reporter_cadre?: string;
+  initial_reporter_mobile?: string;
+  initial_reporter_email?: string;
+}
+
+export interface ATRLabInvestigation {
+  recipient_supernatant_hemolysis?: HemolysisResult | '';
+  recipient_hemolysis_severity?: HemolysisSeverity | '';
+  recipient_agglutination?: AgglutinationResult | '';
+  haematological_results?: HaematologicalResults;
+  blood_film_rbc?: string;
+  blood_film_wbc?: string;
+  blood_film_plt?: string;
+  donor_supernatant_hemolysis?: DonorHemolysisResult | '';
+  donor_pack_age?: string;
+  culture_donor_pack_results?: string;
+  culture_recipient_blood_results?: string;
+  compatibility_saline_rt?: CompatibilityResult | '';
+  compatibility_saline_37?: CompatibilityResult | '';
+  compatibility_ahg?: CompatibilityResult | '';
+  compatibility_albumin_37?: CompatibilityResult | '';
+  enzyme_treated_cells_result?: string;
+  anti_a_titres?: string;
+  anti_b_titres?: string;
+  urinalysis?: string;
+  evaluation_diagnosis?: string;
+  reaction_related_to_transfusion?: CausalityAssessment | '';
+}
+
+export interface ATRSubmitToPPB {
+  ppb_submitter_name?: string;
+  ppb_submitter_cadre?: string;
+  ppb_submitter_mobile?: string;
+  ppb_submitter_email?: string;
+}
+
+export interface ATRAcknowledge {
+  adr_report_number: string;
+  vigiflow_entry_number?: string;
 }

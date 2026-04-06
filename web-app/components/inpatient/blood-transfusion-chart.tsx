@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Droplets, AlertTriangle, CheckCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Droplets, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ import {
   useAddTransfusionObservation,
   useMarkTransfusionReaction,
   useCompleteTransfusion,
+  useATRReports,
 } from '@/lib/hooks/use-inpatient';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
@@ -39,6 +41,7 @@ import type {
   BloodProduct,
   BloodTransfusion,
   TransfusionObservationInterval,
+  AdverseTransfusionReaction,
 } from '@/lib/types/inpatient';
 
 const BLOOD_PRODUCTS: { value: BloodProduct; label: string }[] = [
@@ -73,10 +76,19 @@ interface BloodTransfusionChartProps {
 export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusionChartProps) {
   const { toast } = useToast();
   const { data, isLoading } = useBloodTransfusions(admissionId);
+  const { data: atrReports } = useATRReports(admissionId);
   const createTransfusion = useCreateBloodTransfusion();
   const addObservation = useAddTransfusionObservation();
   const markReaction = useMarkTransfusionReaction();
   const completeTransfusion = useCompleteTransfusion();
+
+  // Build a map of transfusion ID → ATR report for quick lookup
+  const atrByTransfusion = new Map<number, AdverseTransfusionReaction>();
+  if (atrReports) {
+    for (const atr of atrReports) {
+      atrByTransfusion.set(atr.transfusion, atr);
+    }
+  }
 
   const [newTransfusionOpen, setNewTransfusionOpen] = useState(false);
   const [observationOpen, setObservationOpen] = useState(false);
@@ -370,6 +382,7 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
               transfusion={transfusion}
               isActive={isActive}
               statusColor={getStatusColor(transfusion.status)}
+              atrReport={atrByTransfusion.get(transfusion.id)}
               onAddObservation={() => {
                 setSelectedTransfusionId(transfusion.id);
                 resetObservationForm();
@@ -489,6 +502,7 @@ function TransfusionCard({
   transfusion,
   isActive,
   statusColor,
+  atrReport,
   onAddObservation,
   onReportReaction,
   onComplete,
@@ -496,6 +510,7 @@ function TransfusionCard({
   transfusion: BloodTransfusion;
   isActive: boolean;
   statusColor: string;
+  atrReport?: AdverseTransfusionReaction;
   onAddObservation: () => void;
   onReportReaction: () => void;
   onComplete: () => void;
@@ -571,12 +586,39 @@ function TransfusionCard({
 
         {/* Reaction info */}
         {transfusion.reaction_occurred && (
-          <div className="p-3 rounded-lg bg-destructive/10 space-y-1">
-            <p className="text-sm font-medium text-destructive">Transfusion Reaction</p>
-            <p className="text-sm">Type: {transfusion.reaction_type}</p>
-            {transfusion.reaction_action_taken && (
-              <p className="text-sm">Action: {transfusion.reaction_action_taken}</p>
-            )}
+          <div className="p-3 rounded-lg bg-destructive/10 space-y-2">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-destructive">Transfusion Reaction</p>
+              <p className="text-sm">Type: {transfusion.reaction_type}</p>
+              {transfusion.reaction_action_taken && (
+                <p className="text-sm">Action: {transfusion.reaction_action_taken}</p>
+              )}
+            </div>
+            {/* ATR Report link */}
+            <div className="pt-1">
+              {atrReport ? (
+                <Link
+                  href={`/inpatient/adverse-transfusion-reaction/${atrReport.id}`}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  View ATR Report
+                  <Badge variant="outline" className="ml-1 text-xs">
+                    {atrReport.status_display || atrReport.status}
+                  </Badge>
+                </Link>
+              ) : (
+                <Link
+                  href={`/inpatient/adverse-transfusion-reaction/new?transfusion=${transfusion.id}`}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10">
+                    <FileText className="h-3.5 w-3.5 mr-1" />
+                    Complete PPB ATR Form
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         )}
 

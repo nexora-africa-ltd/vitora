@@ -54,6 +54,10 @@ import type {
   WardRound,
   WardRoundCreateData,
   WardRoundListParams,
+  AdverseTransfusionReactionCreate,
+  ATRLabInvestigation,
+  ATRSubmitToPPB,
+  ATRAcknowledge,
 } from '@/lib/types/inpatient';
 
 // ============================================================================
@@ -115,6 +119,10 @@ export const inpatientQueryKeys = {
     [...inpatientQueryKeys.all, 'blood-transfusions', 'detail', id] as const,
   bpReadings: (admissionId: number) =>
     [...inpatientQueryKeys.all, 'bp-readings', admissionId] as const,
+  atrReports: (params?: { transfusion__admission?: number; status?: string }) =>
+    [...inpatientQueryKeys.all, 'atr-reports', params] as const,
+  atrReport: (id: number) =>
+    [...inpatientQueryKeys.all, 'atr-reports', 'detail', id] as const,
 };
 
 // ============================================================================
@@ -1086,5 +1094,68 @@ export function useRecommendWard() {
       requires_ventilator?: boolean;
       admission_type?: string;
     }) => inpatientApi.recommendWard(data),
+  });
+}
+
+// ============================================================================
+// Adverse Transfusion Reaction (ATR) Hooks
+// ============================================================================
+
+export function useATRReports(admissionId?: number) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.atrReports({ transfusion__admission: admissionId }),
+    queryFn: () => inpatientApi.listATRReports({ transfusion__admission: admissionId }),
+    enabled: !!admissionId,
+  });
+}
+
+export function useATRReport(id: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.atrReport(id ?? 0),
+    queryFn: () => inpatientApi.getATRReport(id!),
+    enabled: !!id,
+  });
+}
+
+export function useCreateATRReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AdverseTransfusionReactionCreate) => inpatientApi.createATRReport(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+export function useUpdateATRLabInvestigation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ATRLabInvestigation }) =>
+      inpatientApi.updateATRLabInvestigation(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+export function useSubmitATRToPPB() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ATRSubmitToPPB }) =>
+      inpatientApi.submitATRToPPB(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+export function useAcknowledgeATR() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ATRAcknowledge }) =>
+      inpatientApi.acknowledgeATR(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
   });
 }
