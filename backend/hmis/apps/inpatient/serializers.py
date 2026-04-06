@@ -1542,12 +1542,15 @@ class TransfusionObservationEntrySerializer(serializers.ModelSerializer):
 
 
 class TransfusionObservationEntryCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating transfusion observation entries."""
+    """Serializer for creating transfusion observation entries.
+
+    Note: ``transfusion`` and ``recorded_by`` are set by the view
+    (``add_observation`` action), not by the client.
+    """
 
     class Meta:
         model = TransfusionObservationEntry
         fields = [
-            "transfusion",
             "observation_interval",
             "exact_time",
             "blood_pressure",
