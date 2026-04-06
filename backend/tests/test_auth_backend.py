@@ -80,24 +80,23 @@ class TestEmailOrUsernameBackend:
         """Should return None when multiple users share the same email.
 
         This scenario can only arise from legacy data (before the unique
-        constraint was added). We simulate it by temporarily disconnecting the
-        pre_save signal.
+        constraint was added). We simulate it by making the email lookup
+        raise MultipleObjectsReturned.
         """
-        from hmis.apps.core.signals import enforce_unique_email
-        from django.db.models.signals import pre_save
+        from unittest.mock import patch
 
-        pre_save.disconnect(enforce_unique_email, sender=User)
-        try:
-            User.objects.create_user(
-                username="jdoe2",
-                email="jdoe@hospital.ke",  # duplicate email
-                password="otherPass1!",
+        original_get = User.objects.get
+
+        def get_side_effect(**kwargs):
+            if "email__iexact" in kwargs:
+                raise User.MultipleObjectsReturned
+            return original_get(**kwargs)
+
+        with patch.object(type(User.objects), "get", side_effect=get_side_effect):
+            user = backend.authenticate(
+                None, username="jdoe@hospital.ke", password="securePass1!"
             )
-        finally:
-            pre_save.connect(enforce_unique_email, sender=User)
-
-        user = backend.authenticate(None, username="jdoe@hospital.ke", password="securePass1!")
-        assert user is None
+            assert user is None
 
     def test_non_email_string_skips_email_fallback(self, backend, db):
         """Should not attempt email lookup when input has no @ symbol."""
