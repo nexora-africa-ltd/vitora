@@ -13,6 +13,7 @@ import { useTheme } from 'next-themes';
 import {
   ChevronLeft,
   ChevronDown,
+  ChevronsDownUp,
   LogOut,
   Pin,
   Stethoscope,
@@ -780,6 +781,26 @@ export function Sidebar({
           </div>
 
           {!collapsed && <CurrentPatientCard onMobileClose={onMobileClose} />}
+
+          {/* Collapse All button — sits above the scrollable area */}
+          {!collapsed && openMenus.length > 0 && (
+            <div className="flex justify-end px-3 pb-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setOpenMenus([])}
+                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="Collapse all menu groups"
+                  >
+                    <ChevronsDownUp className="h-3.5 w-3.5" />
+                    <span>Collapse all</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Collapse all open groups</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
 
           <div className="relative flex-1 min-h-0">
             {/* Top fade gradient when scrolled */}
