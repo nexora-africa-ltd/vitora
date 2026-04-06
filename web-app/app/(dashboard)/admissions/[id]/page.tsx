@@ -215,6 +215,71 @@ export default function AdmissionDetailPage() {
     )[0] ?? null;
   }, [wardRounds]);
 
+  // Compute latest vitals for ICU Risk Assessment panel.
+  // Prefer vitalsHistory (aggregated from triage, encounters, observation sheets)
+  // and fall back to the latest ward round vital signs.
+  const latestVitalsForICU = useMemo(() => {
+    // Try vitalsHistory first (most recent entry)
+    if (vitalsHistory && vitalsHistory.length > 0) {
+      const latest = vitalsHistory[vitalsHistory.length - 1] as (typeof vitalsHistory)[number] | undefined;
+      if (!latest) return undefined;
+      const hasSomething =
+        latest.heart_rate != null ||
+        latest.spo2 != null ||
+        latest.systolic_bp != null ||
+        latest.temperature != null;
+      if (hasSomething) {
+        return {
+          temperature: latest.temperature ?? undefined,
+          heart_rate: latest.heart_rate ?? undefined,
+          systolic_bp: latest.systolic_bp ?? undefined,
+          diastolic_bp: latest.diastolic_bp ?? undefined,
+          respiratory_rate: latest.respiratory_rate ?? undefined,
+          spo2: latest.spo2 ?? undefined,
+        };
+      }
+    }
+
+    // Fall back to the latest ward round vitals
+    if (latestWardRound) {
+      const vs = latestWardRound.vital_signs ?? latestWardRound;
+      const bp = typeof vs.blood_pressure === 'string' ? vs.blood_pressure : undefined;
+      const bpParts = bp?.match(/^(\d+)\/(\d+)$/);
+      const systolic = bpParts ? Number(bpParts[1]) : undefined;
+      const diastolic = bpParts ? Number(bpParts[2]) : undefined;
+      const hasSomething =
+        vs.pulse != null ||
+        vs.spo2 != null ||
+        systolic != null ||
+        vs.temperature != null;
+      if (hasSomething) {
+        return {
+          temperature: vs.temperature ?? undefined,
+          heart_rate: vs.pulse ?? undefined,
+          systolic_bp: systolic,
+          diastolic_bp: diastolic,
+          respiratory_rate: vs.respiratory_rate ?? undefined,
+          spo2: vs.spo2 != null ? Number(vs.spo2) : undefined,
+        };
+      }
+    }
+
+    return undefined;
+  }, [vitalsHistory, latestWardRound]);
+
+  // Derive clinical notes from the latest ward round SOAP notes
+  const latestClinicalNotes = useMemo(() => {
+    if (!latestWardRound) return null;
+    // Prefer the explicit clinical_notes field, then compose from SOAP notes
+    if (latestWardRound.clinical_notes) return latestWardRound.clinical_notes;
+    const parts: string[] = [];
+    if (latestWardRound.subjective) parts.push(`S: ${latestWardRound.subjective}`);
+    if (latestWardRound.objective) parts.push(`O: ${latestWardRound.objective}`);
+    if (latestWardRound.assessment) parts.push(`A: ${latestWardRound.assessment}`);
+    if (latestWardRound.plan) parts.push(`P: ${latestWardRound.plan}`);
+    return parts.length > 0 ? parts.join('\n') : null;
+  }, [latestWardRound]);
+
   const handleApplyAIToKardex = async (entries: NursingCarePlanEntryCreateData[]) => {
     if (!kardex) return;
     setIsApplyingAIToKardex(true);
@@ -834,14 +899,19 @@ export default function AdmissionDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Clinical Notes */}
+            {/* Clinical Notes (from latest ward round) */}
             <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="text-lg">Clinical Notes</CardTitle>
+                {latestWardRound && (
+                  <p className="text-xs text-muted-foreground">
+                    From ward round on {formatDateTime(latestWardRound.round_date)}
+                  </p>
+                )}
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-accent-foreground whitespace-pre-wrap break-words">
-                  {admission.clinical_notes || 'No clinical notes recorded.'}
+                  {latestClinicalNotes || 'No clinical notes recorded.'}
                 </p>
               </CardContent>
             </Card>
@@ -875,8 +945,10 @@ export default function AdmissionDetailPage() {
           {/* AI ICU Risk Assessment (Phase 4) */}
           {admission.admission_status === 'ACTIVE' && (
             <ICURiskAssessmentPanel
+              admissionId={admission.id}
               patientAge={admission.patient_age ?? 0}
               patientGender={admission.patient_gender ?? 'O'}
+              vitals={latestVitalsForICU}
               admissionDiagnosis={
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis
               }
