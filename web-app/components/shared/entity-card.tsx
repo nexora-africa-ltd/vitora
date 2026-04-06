@@ -127,7 +127,7 @@ export function EntityCard({
   const cardContent = (
     <Card
       className={cn(
-        'group relative overflow-hidden transition-all hover:shadow-md',
+        'group relative overflow-hidden transition-all hover:shadow-md h-full',
         isClickable && 'cursor-pointer transition-colors hover:border-teal-400/50 hover:scale-105',
         className
       )}
