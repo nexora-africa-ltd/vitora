@@ -9,6 +9,7 @@ from django.contrib import admin
 from .models import (
     Admission,
     AdmissionRecommendation,
+    AdverseTransfusionReaction,
     Bed,
     BloodTransfusionObservation,
     BPMonitoringReading,
@@ -1224,3 +1225,158 @@ class MedicationAdministrationAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ["created_at", "updated_at"]
     ordering = ["-scheduled_time"]
+
+
+@admin.register(AdverseTransfusionReaction)
+class AdverseTransfusionReactionAdmin(admin.ModelAdmin):
+    """Admin interface for Adverse Transfusion Reaction reports."""
+
+    list_display = [
+        "id",
+        "transfusion",
+        "status",
+        "report_date",
+        "has_lab_investigation",
+        "created_at",
+    ]
+    list_filter = ["status", "report_date", "facility"]
+    search_fields = [
+        "transfusion__admission__admission_number",
+        "transfusion__admission__patient__first_name",
+        "transfusion__admission__patient__last_name",
+        "transfusion__admission__patient__mrn",
+        "transfusion__blood_unit_number",
+        "adr_report_number",
+        "vigiflow_entry_number",
+    ]
+    raw_id_fields = ["transfusion", "initial_reporter", "facility", "organization"]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "vitals_at_start_bp",
+        "vitals_at_start_temp",
+        "vitals_at_start_pulse",
+        "vitals_at_start_rr",
+        "vitals_during_bp",
+        "vitals_during_temp",
+        "vitals_during_pulse",
+        "vitals_during_rr",
+        "vitals_at_stop_bp",
+        "vitals_at_stop_temp",
+        "vitals_at_stop_pulse",
+        "vitals_at_stop_rr",
+    ]
+    ordering = ["-report_date"]
+
+    fieldsets = (
+        (
+            "Source Event",
+            {"fields": ("transfusion", "facility", "organization")},
+        ),
+        (
+            "Patient History",
+            {
+                "fields": (
+                    "pre_transfusion_hb",
+                    "obstetric_status",
+                    "gravida",
+                    "para",
+                    "previous_transfusion",
+                    "previous_transfusion_comment",
+                    "previous_reactions",
+                    "previous_reactions_comment",
+                    "current_medications",
+                )
+            },
+        ),
+        (
+            "Reaction Categories",
+            {
+                "fields": (
+                    "general_reactions",
+                    "dermatological_reactions",
+                    "cardiac_respiratory_reactions",
+                    "renal_reactions",
+                    "haematological_reactions",
+                    "other_reactions",
+                )
+            },
+        ),
+        (
+            "Vital Signs Snapshot",
+            {
+                "classes": ("collapse",),
+                "fields": (
+                    "vitals_at_start_bp",
+                    "vitals_at_start_temp",
+                    "vitals_at_start_pulse",
+                    "vitals_at_start_rr",
+                    "vitals_during_bp",
+                    "vitals_during_temp",
+                    "vitals_during_pulse",
+                    "vitals_during_rr",
+                    "vitals_at_stop_bp",
+                    "vitals_at_stop_temp",
+                    "vitals_at_stop_pulse",
+                    "vitals_at_stop_rr",
+                ),
+            },
+        ),
+        (
+            "Lab Investigation",
+            {
+                "classes": ("collapse",),
+                "fields": (
+                    "recipient_supernatant_hemolysis",
+                    "recipient_hemolysis_severity",
+                    "recipient_agglutination",
+                    "haematological_results",
+                    "blood_film_rbc",
+                    "blood_film_wbc",
+                    "blood_film_plt",
+                    "donor_supernatant_hemolysis",
+                    "donor_pack_age",
+                    "culture_donor_pack_results",
+                    "culture_recipient_blood_results",
+                    "compatibility_saline_rt",
+                    "compatibility_saline_37",
+                    "compatibility_ahg",
+                    "compatibility_albumin_37",
+                    "enzyme_treated_cells_result",
+                    "anti_a_titres",
+                    "anti_b_titres",
+                    "urinalysis",
+                    "evaluation_diagnosis",
+                    "reaction_related_to_transfusion",
+                ),
+            },
+        ),
+        (
+            "Reporter Details",
+            {
+                "fields": (
+                    "initial_reporter",
+                    "initial_reporter_cadre",
+                    "initial_reporter_mobile",
+                    "initial_reporter_email",
+                    "report_date",
+                )
+            },
+        ),
+        (
+            "PPB Submission",
+            {
+                "fields": (
+                    "status",
+                    "ppb_submitter_name",
+                    "ppb_submitter_cadre",
+                    "ppb_submitter_mobile",
+                    "ppb_submitter_email",
+                    "submission_date",
+                    "adr_report_number",
+                    "vigiflow_entry_number",
+                    "ppb_date_received",
+                )
+            },
+        ),
+    )

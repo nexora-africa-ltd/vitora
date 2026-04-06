@@ -51,6 +51,8 @@ import {
   SmartRecommendBedResponseSchema,
   SetExpectedDischargeResponseSchema,
   WardRecommendationResponseSchema,
+  ATRDetailSchema,
+  ATRListSchema,
 } from '@/lib/schemas/inpatient.schema';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
@@ -137,6 +139,11 @@ import type {
   SetExpectedDischargeRequest,
   SetExpectedDischargeResponse,
   WardRecommendationResponse,
+  AdverseTransfusionReaction,
+  AdverseTransfusionReactionCreate,
+  ATRLabInvestigation,
+  ATRSubmitToPPB,
+  ATRAcknowledge,
 } from '@/lib/types/inpatient';
 
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -982,5 +989,54 @@ export const inpatientApi = {
     return parseResponse(WardRecommendationResponseSchema, response.data, {
       context: 'inpatientApi.recommendWard',
     });
+  },
+
+  // ============================================================================
+  // Adverse Transfusion Reactions (ATR)
+  // ============================================================================
+
+  async listATRReports(
+    params?: { transfusion__admission?: number; status?: string; page?: number; page_size?: number }
+  ): Promise<AdverseTransfusionReaction[]> {
+    const response = await apiClient.get('/api/inpatient/adverse-transfusion-reactions/', { params });
+    const data = response.data;
+    if (Array.isArray(data)) {
+      return data.map((item: unknown) => parseResponse(ATRListSchema, item, { context: 'inpatientApi.listATRReports' })) as AdverseTransfusionReaction[];
+    }
+    return (data.results ?? []).map((item: unknown) => parseResponse(ATRListSchema, item, { context: 'inpatientApi.listATRReports' })) as AdverseTransfusionReaction[];
+  },
+
+  async getATRReport(id: number): Promise<AdverseTransfusionReaction> {
+    const response = await apiClient.get(`/api/inpatient/adverse-transfusion-reactions/${id}/`);
+    return parseResponse(ATRDetailSchema, response.data, { context: 'inpatientApi.getATRReport' }) as AdverseTransfusionReaction;
+  },
+
+  async createATRReport(data: AdverseTransfusionReactionCreate): Promise<AdverseTransfusionReaction> {
+    const response = await apiClient.post('/api/inpatient/adverse-transfusion-reactions/', data);
+    return parseResponse(ATRDetailSchema, response.data, { context: 'inpatientApi.createATRReport' }) as AdverseTransfusionReaction;
+  },
+
+  async updateATRLabInvestigation(id: number, data: ATRLabInvestigation): Promise<AdverseTransfusionReaction> {
+    const response = await apiClient.patch(
+      `/api/inpatient/adverse-transfusion-reactions/${id}/update-lab-investigation/`,
+      data
+    );
+    return parseResponse(ATRDetailSchema, response.data, { context: 'inpatientApi.updateATRLabInvestigation' }) as AdverseTransfusionReaction;
+  },
+
+  async submitATRToPPB(id: number, data: ATRSubmitToPPB): Promise<AdverseTransfusionReaction> {
+    const response = await apiClient.post(
+      `/api/inpatient/adverse-transfusion-reactions/${id}/submit-to-ppb/`,
+      data
+    );
+    return parseResponse(ATRDetailSchema, response.data, { context: 'inpatientApi.submitATRToPPB' }) as AdverseTransfusionReaction;
+  },
+
+  async acknowledgeATR(id: number, data: ATRAcknowledge): Promise<AdverseTransfusionReaction> {
+    const response = await apiClient.post(
+      `/api/inpatient/adverse-transfusion-reactions/${id}/mark-acknowledged/`,
+      data
+    );
+    return parseResponse(ATRDetailSchema, response.data, { context: 'inpatientApi.acknowledgeATR' }) as AdverseTransfusionReaction;
   },
 };

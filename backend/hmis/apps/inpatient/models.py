@@ -28,6 +28,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
 
 if TYPE_CHECKING:
@@ -2668,6 +2669,13 @@ class BloodTransfusionObservation(TimeStampedModel):
         help_text="Current status of the transfusion",
     )
 
+    # Blood unit expiry
+    expiry_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Expiry date of the blood unit/bag",
+    )
+
     # Reaction
     reaction_occurred = models.BooleanField(
         default=False,
@@ -3040,3 +3048,519 @@ def create_kardex_for_admission(sender, instance, created, **kwargs):
             allergies=allergies_text,
             dietary_requirements="Regular",
         )
+
+
+# ============================================================================
+# Adverse Transfusion Reaction (ATR) — PPB Form FOM20/MIP/PMS/SOP/001
+# ============================================================================
+
+
+class GeneralReaction(models.TextChoices):
+    FEVER = "FEVER", "Fever"
+    CHILLS_RIGORS = "CHILLS_RIGORS", "Chills/Rigors"
+    FLUSHING = "FLUSHING", "Flushing"
+    NAUSEA_VOMITING = "NAUSEA_VOMITING", "Nausea/Vomiting"
+
+
+class DermatologicalReaction(models.TextChoices):
+    URTICARIA = "URTICARIA", "Urticaria"
+    OTHER_SKIN_RASH = "OTHER_SKIN_RASH", "Other Skin Rash"
+
+
+class CardiacRespiratoryReaction(models.TextChoices):
+    CHEST_PAIN = "CHEST_PAIN", "Chest Pain"
+    DYSPNOEA = "DYSPNOEA", "Dyspnoea"
+    HYPOTENSION = "HYPOTENSION", "Hypotension"
+    TACHYCARDIA = "TACHYCARDIA", "Tachycardia"
+
+
+class RenalReaction(models.TextChoices):
+    HAEMOGLOBINURIA = "HAEMOGLOBINURIA", "Haemoglobinuria (Dark Urine)"
+    OLIGURIA = "OLIGURIA", "Oliguria"
+    ANURIA = "ANURIA", "Anuria"
+
+
+class HaematologicalReaction(models.TextChoices):
+    UNEXPLAINED_BLEEDING = "UNEXPLAINED_BLEEDING", "Unexplained Bleeding"
+
+
+class HemolysisResult(models.TextChoices):
+    PRESENT = "PRESENT", "Present"
+    ABSENT = "ABSENT", "Absent"
+    EQUIVOCAL = "EQUIVOCAL", "Equivocal"
+
+
+class HemolysisSeverity(models.TextChoices):
+    MILD = "MILD", "Mild"
+    MODERATE = "MODERATE", "Moderate"
+    MARKED = "MARKED", "Marked"
+
+
+class AgglutinationResult(models.TextChoices):
+    PRESENT = "PRESENT", "Present"
+    ABSENT = "ABSENT", "Absent"
+
+
+class CompatibilityResult(models.TextChoices):
+    COMPATIBLE = "COMPATIBLE", "Compatible"
+    INCOMPATIBLE = "INCOMPATIBLE", "Incompatible"
+
+
+class DonorHemolysisResult(models.TextChoices):
+    PRESENT = "PRESENT", "Present"
+    ABSENT = "ABSENT", "Absent"
+
+
+class CausalityAssessment(models.TextChoices):
+    YES = "YES", "Yes"
+    NO = "NO", "No"
+    INCONCLUSIVE = "INCONCLUSIVE", "Inconclusive"
+
+
+class ATRStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    PENDING_REVIEW = "PENDING_REVIEW", "Pending Review"
+    SUBMITTED = "SUBMITTED", "Submitted to PPB"
+    ACKNOWLEDGED = "ACKNOWLEDGED", "Acknowledged by PPB"
+
+
+class ObstetricStatus(models.TextChoices):
+    NA = "NA", "N/A"
+    GRAVID = "GRAVID", "Gravid"
+    PARA = "PARA", "Para"
+
+
+class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
+    """
+    Adverse Transfusion Reaction report aligned with Kenya MOH/PPB form
+    FOM20/MIP/PMS/SOP/001.
+
+    This is the detailed regulatory report created after a blood transfusion
+    reaction is detected. The existing ``BloodTransfusionObservation.mark_reaction()``
+    is the immediate clinical stop; this model captures the full PPB-mandated
+    investigation and reporting data.
+
+    Sections follow the physical form layout:
+    1. Patient Information (linked via transfusion → admission → patient)
+    2. Reaction Information (structured checkboxes per category)
+    3. Vital Signs (auto-populated from observation entries)
+    4. Component Information (from parent transfusion record)
+    5. Lab Investigation (filled by transfusion manager)
+    6. Reporter Details
+    7. PPB Tracking
+    """
+
+    # ── Section 1: Source event ──────────────────────────────────────────
+    transfusion = models.OneToOneField(
+        BloodTransfusionObservation,
+        on_delete=models.CASCADE,
+        related_name="adverse_reaction_report",
+        help_text="Blood transfusion that triggered this reaction report",
+    )
+
+    # ── Section 1: Patient history ───────────────────────────────────────
+    pre_transfusion_hb = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        help_text="Pre-transfusion haemoglobin (g/dL)",
+    )
+    obstetric_status = models.CharField(
+        max_length=10,
+        choices=ObstetricStatus.choices,
+        default=ObstetricStatus.NA,
+        help_text="Obstetric history status",
+    )
+    gravida = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Number of pregnancies (if obstetric status is Gravid)",
+    )
+    para = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Number of deliveries (if obstetric status is Para)",
+    )
+    previous_transfusion = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Has the patient had a previous transfusion?",
+    )
+    previous_transfusion_comment = models.TextField(
+        blank=True,
+        help_text="Details of previous transfusions",
+    )
+    previous_reactions = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Has the patient had previous transfusion reactions?",
+    )
+    previous_reactions_comment = models.TextField(
+        blank=True,
+        help_text="Details of previous reactions",
+    )
+    current_medications = models.TextField(
+        blank=True,
+        help_text="Current medications at time of transfusion",
+    )
+
+    # ── Section 2: Reaction categories (JSONField checkbox lists) ────────
+    general_reactions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="General reactions: Fever, Chills/Rigors, Flushing, Nausea/Vomiting",
+    )
+    dermatological_reactions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Dermatological reactions: Urticaria, Other Skin Rash",
+    )
+    cardiac_respiratory_reactions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Cardiac/Respiratory: Chest Pain, Dyspnoea, Hypotension, Tachycardia",
+    )
+    renal_reactions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Renal: Haemoglobinuria, Oliguria, Anuria",
+    )
+    haematological_reactions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Haematological: Unexplained Bleeding",
+    )
+    other_reactions = models.TextField(
+        blank=True,
+        help_text="Other reactions not listed above (free text)",
+    )
+
+    # ── Section 3: Vital signs snapshot ──────────────────────────────────
+    vitals_at_start_bp = models.CharField(max_length=20, blank=True)
+    vitals_at_start_temp = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True
+    )
+    vitals_at_start_pulse = models.IntegerField(null=True, blank=True)
+    vitals_at_start_rr = models.IntegerField(null=True, blank=True)
+
+    vitals_during_bp = models.CharField(max_length=20, blank=True)
+    vitals_during_temp = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True
+    )
+    vitals_during_pulse = models.IntegerField(null=True, blank=True)
+    vitals_during_rr = models.IntegerField(null=True, blank=True)
+
+    vitals_at_stop_bp = models.CharField(max_length=20, blank=True)
+    vitals_at_stop_temp = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True
+    )
+    vitals_at_stop_pulse = models.IntegerField(null=True, blank=True)
+    vitals_at_stop_rr = models.IntegerField(null=True, blank=True)
+
+    # ── Section 5: Lab Investigation ─────────────────────────────────────
+    recipient_supernatant_hemolysis = models.CharField(
+        max_length=15,
+        choices=HemolysisResult.choices,
+        blank=True,
+        help_text="Recipient's blood supernatant hemolysis",
+    )
+    recipient_hemolysis_severity = models.CharField(
+        max_length=10,
+        choices=HemolysisSeverity.choices,
+        blank=True,
+        help_text="If hemolysis present, severity",
+    )
+    recipient_agglutination = models.CharField(
+        max_length=10,
+        choices=AgglutinationResult.choices,
+        blank=True,
+        help_text="Recipient's blood agglutination",
+    )
+    haematological_results = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Haematological results: {wbc, hb, rbc, hct, mcv, mch, mchc, plt}",
+    )
+    blood_film_rbc = models.TextField(
+        blank=True,
+        help_text="Blood film RBC findings",
+    )
+    blood_film_wbc = models.TextField(
+        blank=True,
+        help_text="Blood film WBC findings",
+    )
+    blood_film_plt = models.TextField(
+        blank=True,
+        help_text="Blood film platelet findings",
+    )
+    donor_supernatant_hemolysis = models.CharField(
+        max_length=10,
+        choices=DonorHemolysisResult.choices,
+        blank=True,
+        help_text="Donor blood supernatant hemolysis",
+    )
+    donor_pack_age = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Age of the donor blood pack",
+    )
+    culture_donor_pack_results = models.TextField(
+        blank=True,
+        help_text="Culture results for donor pack",
+    )
+    culture_recipient_blood_results = models.TextField(
+        blank=True,
+        help_text="Culture results for recipient blood",
+    )
+    compatibility_saline_rt = models.CharField(
+        max_length=15,
+        choices=CompatibilityResult.choices,
+        blank=True,
+        help_text="Compatibility testing: Saline RT",
+    )
+    compatibility_saline_37 = models.CharField(
+        max_length=15,
+        choices=CompatibilityResult.choices,
+        blank=True,
+        help_text="Compatibility testing: Saline 37°C",
+    )
+    compatibility_ahg = models.CharField(
+        max_length=15,
+        choices=CompatibilityResult.choices,
+        blank=True,
+        help_text="Compatibility testing: AHG",
+    )
+    compatibility_albumin_37 = models.CharField(
+        max_length=15,
+        choices=CompatibilityResult.choices,
+        blank=True,
+        help_text="Compatibility testing: Albumin 37°C",
+    )
+    enzyme_treated_cells_result = models.TextField(
+        blank=True,
+        help_text="Enzyme-treated cells compatibility result",
+    )
+    anti_a_titres = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Anti-A titres (for group O → A/B/AB transfusions)",
+    )
+    anti_b_titres = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Anti-B titres (for group O → A/B/AB transfusions)",
+    )
+    urinalysis = models.TextField(
+        blank=True,
+        help_text="Urinalysis results",
+    )
+    evaluation_diagnosis = models.TextField(
+        blank=True,
+        help_text="Evaluation diagnosis after investigation",
+    )
+    reaction_related_to_transfusion = models.CharField(
+        max_length=15,
+        choices=CausalityAssessment.choices,
+        blank=True,
+        help_text="Was the adverse reaction related to the transfusion?",
+    )
+
+    # ── Section 6: Reporter details ──────────────────────────────────────
+    initial_reporter = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="atr_reports",
+        help_text="Staff who initially reported the reaction",
+    )
+    initial_reporter_cadre = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Cadre/designation of the initial reporter",
+    )
+    initial_reporter_mobile = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Mobile number of the initial reporter",
+    )
+    initial_reporter_email = models.EmailField(
+        blank=True,
+        help_text="Email of the initial reporter",
+    )
+    report_date = models.DateField(
+        help_text="Date the ATR report was created",
+    )
+    ppb_submitter_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Name of person submitting to PPB (if different from reporter)",
+    )
+    ppb_submitter_cadre = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Cadre/designation of the PPB submitter",
+    )
+    ppb_submitter_mobile = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Mobile number of the PPB submitter",
+    )
+    ppb_submitter_email = models.EmailField(
+        blank=True,
+        help_text="Email of the PPB submitter",
+    )
+    submission_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date the form was submitted to PPB",
+    )
+
+    # ── Section 7: PPB tracking ──────────────────────────────────────────
+    status = models.CharField(
+        max_length=20,
+        choices=ATRStatus.choices,
+        default=ATRStatus.DRAFT,
+        help_text="Regulatory submission status",
+    )
+    adr_report_number = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="PPB-assigned ADR report number",
+    )
+    vigiflow_entry_number = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="PPB Vigiflow entry number",
+    )
+    ppb_date_received = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date PPB received the report",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-report_date", "-created_at"]
+        verbose_name = "Adverse Transfusion Reaction"
+        verbose_name_plural = "Adverse Transfusion Reactions"
+        indexes = [
+            models.Index(fields=["transfusion"]),
+            models.Index(fields=["status", "-report_date"]),
+        ]
+
+    def __str__(self):
+        patient = self.transfusion.admission.patient
+        return f"ATR #{self.id} — {patient} ({self.report_date})"
+
+    def auto_populate_vitals(self):
+        """Pull vital signs from linked TransfusionObservationEntry records."""
+        entries = self.transfusion.observations.all()
+        entry_map = {e.observation_interval: e for e in entries}
+
+        # At start = BEFORE observation
+        before = entry_map.get("BEFORE")
+        if before:
+            self.vitals_at_start_bp = before.blood_pressure or ""
+            self.vitals_at_start_temp = before.temperature
+            self.vitals_at_start_pulse = before.pulse
+            self.vitals_at_start_rr = before.respiratory_rate
+
+        # During = 15_MIN observation (closest to the standard "During 15min" on the form)
+        during = entry_map.get("15_MIN")
+        if during:
+            self.vitals_during_bp = during.blood_pressure or ""
+            self.vitals_during_temp = during.temperature
+            self.vitals_during_pulse = during.pulse
+            self.vitals_during_rr = during.respiratory_rate
+
+        # At stop = last observation entry by exact_time
+        if entries.exists():
+            last_entry = entries.order_by("-exact_time").first()
+            if last_entry and last_entry.observation_interval not in ("BEFORE", "15_MIN"):
+                self.vitals_at_stop_bp = last_entry.blood_pressure or ""
+                self.vitals_at_stop_temp = last_entry.temperature
+                self.vitals_at_stop_pulse = last_entry.pulse
+                self.vitals_at_stop_rr = last_entry.respiratory_rate
+
+    def submit_to_ppb(self, user=None, notes=""):
+        """Transition status to SUBMITTED and record submission details."""
+        if self.status in (ATRStatus.SUBMITTED, ATRStatus.ACKNOWLEDGED):
+            raise ValidationError("This ATR report has already been submitted.")
+
+        self.status = ATRStatus.SUBMITTED
+        self.submission_date = timezone.now().date()
+        if user and not self.ppb_submitter_name:
+            self.ppb_submitter_name = user.get_full_name() or user.username
+        self.save(
+            update_fields=[
+                "status",
+                "submission_date",
+                "ppb_submitter_name",
+                "updated_at",
+            ]
+        )
+
+    def mark_acknowledged(self, adr_number: str, vigiflow_number: str = ""):
+        """Record PPB acknowledgment after submission."""
+        if self.status != ATRStatus.SUBMITTED:
+            raise ValidationError("ATR must be in SUBMITTED status to be acknowledged.")
+
+        self.status = ATRStatus.ACKNOWLEDGED
+        self.adr_report_number = adr_number
+        self.vigiflow_entry_number = vigiflow_number
+        self.ppb_date_received = timezone.now().date()
+        self.save(
+            update_fields=[
+                "status",
+                "adr_report_number",
+                "vigiflow_entry_number",
+                "ppb_date_received",
+                "updated_at",
+            ]
+        )
+
+    @property
+    def has_lab_investigation(self) -> bool:
+        """Return True if any lab investigation field has been filled."""
+        lab_fields = [
+            self.recipient_supernatant_hemolysis,
+            self.recipient_agglutination,
+            self.donor_supernatant_hemolysis,
+            self.compatibility_saline_rt,
+            self.compatibility_saline_37,
+            self.compatibility_ahg,
+            self.compatibility_albumin_37,
+            self.urinalysis,
+            self.evaluation_diagnosis,
+            self.reaction_related_to_transfusion,
+            self.culture_donor_pack_results,
+            self.culture_recipient_blood_results,
+            self.blood_film_rbc,
+            self.blood_film_wbc,
+            self.blood_film_plt,
+            self.enzyme_treated_cells_result,
+        ]
+        if any(lab_fields):
+            return True
+        if self.haematological_results and self.haematological_results != {}:
+            return True
+        return False
+
+    @property
+    def reaction_categories_display(self) -> list[str]:
+        """Return flattened list of all selected reaction labels."""
+        labels: list[str] = []
+        for val in self.general_reactions or []:
+            labels.append(GeneralReaction(val).label)
+        for val in self.dermatological_reactions or []:
+            labels.append(DermatologicalReaction(val).label)
+        for val in self.cardiac_respiratory_reactions or []:
+            labels.append(CardiacRespiratoryReaction(val).label)
+        for val in self.renal_reactions or []:
+            labels.append(RenalReaction(val).label)
+        for val in self.haematological_reactions or []:
+            labels.append(HaematologicalReaction(val).label)
+        if self.other_reactions:
+            labels.append(self.other_reactions)
+        return labels
