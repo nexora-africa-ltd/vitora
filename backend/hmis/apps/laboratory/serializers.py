@@ -94,9 +94,14 @@ class TestCatalogSerializer(serializers.ModelSerializer):
             "short_name",
             "category",
             "specimen_type",
+            "result_type",
+            "result_unit",
             "cost",
             "sha_claimable",
             "available_in_house",
+            "turnaround_hours",
+            "requires_fasting",
+            "requires_clinical_signoff",
             "is_active",
         ]
 
@@ -109,6 +114,59 @@ class TestCatalogDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestCatalog
         fields = "__all__"
+
+
+class TestCatalogCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating test catalog entries."""
+
+    class Meta:
+        model = TestCatalog
+        fields = [
+            "code",
+            "name",
+            "short_name",
+            "loinc_code",
+            "category",
+            "specimen_type",
+            "requires_fasting",
+            "special_instructions",
+            "turnaround_hours",
+            "requires_clinical_signoff",
+            "available_in_house",
+            "external_lab_partner",
+            "cost",
+            "sha_claimable",
+            "result_type",
+            "result_unit",
+            "normal_range_male",
+            "normal_range_female",
+            "normal_range_child",
+            "result_options",
+            "is_panel",
+            "is_active",
+        ]
+
+    def validate_code(self):
+        """Ensure code is unique (case-insensitive)."""
+        code = self.initial_data.get("code", "")
+        if isinstance(code, str):
+            code = code.strip().upper()
+        qs = TestCatalog.objects.filter(code__iexact=code)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("A test with this code already exists.")
+        return code
+
+    def validate_result_options(self, value):
+        """Ensure result_options is a list of strings for OPTIONS type."""
+        result_type = self.initial_data.get("result_type", "")
+        if result_type == "OPTIONS":
+            if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+                raise serializers.ValidationError(
+                    "result_options must be a list of strings for OPTIONS result type."
+                )
+        return value
 
 
 class LabResultNestedSerializer(serializers.ModelSerializer):

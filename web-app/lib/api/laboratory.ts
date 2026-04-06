@@ -7,6 +7,7 @@ import { apiClient } from './client';
 import {
   TestCatalog,
   TestCatalogListItem,
+  TestCatalogCreateData,
   LabOrder,
   LabOrderItem,
   LabResult,
@@ -102,6 +103,38 @@ export const laboratoryApi = {
       context: 'laboratoryApi.searchTests',
     });
     return validated.results;
+  },
+
+  /**
+   * Create a new test catalog entry.
+   */
+  async createTest(data: TestCatalogCreateData): Promise<TestCatalog> {
+    const response = await apiClient.post<TestCatalog>('/api/lab/tests/', data);
+    return parseResponse(LabTestCatalogSchema, response.data, {
+      context: 'laboratoryApi.createTest',
+    });
+  },
+
+  /**
+   * Update an existing test catalog entry.
+   */
+  async updateTest(code: string, data: Partial<TestCatalogCreateData>): Promise<TestCatalog> {
+    const response = await apiClient.patch<TestCatalog>(`/api/lab/tests/${code}/`, data);
+    return parseResponse(LabTestCatalogSchema, response.data, {
+      context: 'laboratoryApi.updateTest',
+    });
+  },
+
+  /**
+   * Delete a test catalog entry (soft delete by setting is_active=false).
+   */
+  async deactivateTest(code: string): Promise<TestCatalog> {
+    const response = await apiClient.patch<TestCatalog>(`/api/lab/tests/${code}/`, {
+      is_active: false,
+    });
+    return parseResponse(LabTestCatalogSchema, response.data, {
+      context: 'laboratoryApi.deactivateTest',
+    });
   },
 
   // ============ Lab Orders ============

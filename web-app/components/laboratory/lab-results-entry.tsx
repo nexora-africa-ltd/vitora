@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AlertTriangle, Save, CheckCircle } from 'lucide-react';
 import { LabOrderItem, LabResultCreateData, ResultFlag } from '@/lib/types/laboratory';
 import { useAddLabResult, useVerifyLabResult, useLabOrder } from '@/lib/hooks/use-laboratory';
+import { laboratoryApi } from '@/lib/api/laboratory';
 import { useToast, useLabOrderSocket, type LabResultVerifiedEvent } from '@/lib/hooks';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { cn } from '@/lib/utils/cn';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { ResultValidationPanel } from './result-validation-panel';
@@ -55,7 +58,11 @@ interface LabResultsEntryProps {
   orderNumber: string;
   items: LabOrderItem[];
   onComplete?: () => void;
-  onResultAdded?: () => void; // Callback when a result is added
+  onResultAdded?: () => void;
+  /** Patient gender ('M' | 'F' | 'O') for demographic-specific reference ranges */
+  patientGender?: string;
+  /** Patient age in years for child-specific reference ranges */
+  patientAge?: number;
 }
 
 const RESULT_FLAGS: { value: ResultFlag; label: string; color: string }[] = [
@@ -110,8 +117,11 @@ const RESULT_UNITS = [
   { value: 'CFU/mL', label: 'CFU/mL' },
 ];
 
-export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded }: LabResultsEntryProps) {
+export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded, patientGender, patientAge }: LabResultsEntryProps) {
   const { toast } = useToast();
+  const { canPerformAction } = usePermissions();
+  const canInterpret = canPerformAction('laboratory.interpret_results');
+  const canVerify = canPerformAction('laboratory.verify_results');
   const [activeItemId, setActiveItemId] = useState<number | null>(
     items.find(item => !item.has_result)?.id || items[0]?.id || null
   );
@@ -153,6 +163,58 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
   const pendingItems = items.filter(item => !item.has_result);
   const completedItems = items.filter(item => item.has_result);
 
+  // Fetch test catalog detail for active item to get reference ranges and units
+  const activeTestCode = activeItem?.test_code;
+  const catalogQuery = useQuery({
+    queryKey: ['laboratoryTest', activeTestCode],
+    queryFn: () => laboratoryApi.getTest(activeTestCode!),
+    enabled: !!activeTestCode,
+    staleTime: 5 * 60 * 1000, // Cache catalog data for 5 minutes
+  });
+  const catalogTest = catalogQuery.data;
+
+  // Determine the appropriate reference range based on patient demographics
+  const getPatientReferenceRange = useCallback(() => {
+    if (!catalogTest) return '';
+    // Child takes precedence if age < 18
+    if (patientAge !== undefined && patientAge < 18 && catalogTest.normal_range_child) {
+      return catalogTest.normal_range_child;
+    }
+    if (patientGender === 'M' && catalogTest.normal_range_male) return catalogTest.normal_range_male;
+    if (patientGender === 'F' && catalogTest.normal_range_female) return catalogTest.normal_range_female;
+    // Fallback
+    return catalogTest.normal_range_male || catalogTest.normal_range_female || '';
+  }, [catalogTest, patientGender, patientAge]);
+
+  // Parse a range string like "4.5-5.5" into [low, high]
+  const parseRange = useCallback((range: string): [number, number] | null => {
+    if (!range || !range.includes('-')) return null;
+    const parts = range.split('-');
+    if (parts.length !== 2) return null;
+    const lowStr = parts[0];
+    const highStr = parts[1];
+    if (!lowStr || !highStr) return null;
+    const low = parseFloat(lowStr.trim());
+    const high = parseFloat(highStr.trim());
+    if (isNaN(low) || isNaN(high)) return null;
+    return [low, high];
+  }, []);
+
+  // Auto-compute result flag from numeric value and reference range
+  const autoComputeFlag = useCallback((value: number | undefined, rangeText: string): ResultFlag | '' => {
+    if (value === undefined || value === null || !rangeText) return '';
+    const parsed = parseRange(rangeText);
+    if (!parsed) return '';
+    const [low, high] = parsed;
+    const criticalLow = low - (high - low) * 0.2;
+    const criticalHigh = high + (high - low) * 0.2;
+    if (value < criticalLow) return 'CRITICAL_LOW';
+    if (value > criticalHigh) return 'CRITICAL_HIGH';
+    if (value < low) return 'LOW';
+    if (value > high) return 'HIGH';
+    return 'NORMAL';
+  }, [parseRange]);
+
   // Update activeItemId when items change (e.g., after a result is added)
   useEffect(() => {
     // If current active item now has a result, move to next pending
@@ -181,7 +243,36 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
     },
   });
 
+  // Auto-populate form from catalog when test changes
+  useEffect(() => {
+    if (!catalogTest || !activeItem || activeItem.has_result) return;
+    const refRange = getPatientReferenceRange();
+    const parsed = parseRange(refRange);
+    form.setValue('result_unit', catalogTest.result_unit || '');
+    form.setValue('reference_range_text', refRange);
+    if (parsed) {
+      form.setValue('reference_low', parsed[0]);
+      form.setValue('reference_high', parsed[1]);
+    }
+  }, [catalogTest, activeItem, getPatientReferenceRange, parseRange, form]);
+
   const resultFlag = form.watch('result_flag');
+  const numericValue = form.watch('numeric_value');
+  const referenceRangeText = form.watch('reference_range_text');
+
+  // Auto-compute flag when numeric value changes
+  useEffect(() => {
+    if (catalogTest?.result_type !== 'NUMERIC') return;
+    const computed = autoComputeFlag(numericValue, referenceRangeText || '');
+    if (computed) {
+      form.setValue('result_flag', computed);
+      if (computed.includes('CRITICAL')) {
+        form.setValue('is_critical_result', true);
+      } else {
+        form.setValue('is_critical_result', false);
+      }
+    }
+  }, [numericValue, referenceRangeText, catalogTest?.result_type, autoComputeFlag, form]);
 
   // Auto-set critical flag for critical values
   const handleFlagChange = (flag: string) => {
@@ -440,6 +531,35 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
                   )}
                 />
 
+                {/* Catalog Reference Info (auto-populated) */}
+                {catalogTest && !activeItem.has_result && (
+                  <div className="p-3 bg-muted/50 border rounded-lg text-sm">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <span className="text-muted-foreground">
+                        Type: <span className="font-medium text-foreground">{catalogTest.result_type}</span>
+                      </span>
+                      {catalogTest.result_unit && (
+                        <span className="text-muted-foreground">
+                          Unit: <span className="font-medium text-foreground">{catalogTest.result_unit}</span>
+                        </span>
+                      )}
+                      {referenceRangeText && (
+                        <span className="text-muted-foreground">
+                          Reference: <span className="font-medium text-foreground">{referenceRangeText} {catalogTest.result_unit || ''}</span>
+                        </span>
+                      )}
+                      {catalogTest.requires_fasting && (
+                        <Badge variant="outline" className="text-xs">Fasting Required</Badge>
+                      )}
+                      {catalogTest.special_instructions && (
+                        <span className="text-muted-foreground text-xs">
+                          Note: {catalogTest.special_instructions}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Critical Alert */}
                 {resultFlag?.includes('CRITICAL') && (
                   <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
@@ -453,26 +573,29 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
                   </div>
                 )}
 
-                {/* Interpretation */}
-                <FormField
-                  control={form.control}
-                  name="interpretation"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Interpretation (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Pathologist notes or interpretation..."
-                          className="min-h-[80px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Interpretation — only for pathologists / clinical sign-off roles */}
+                {(canInterpret || catalogTest?.requires_clinical_signoff) && (
+                  <FormField
+                    control={form.control}
+                    name="interpretation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Interpretation (Pathologist)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Pathologist notes or interpretation..."
+                            className="min-h-[80px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-                {/* Method & Equipment */}
+                {/* Method & Equipment — only for lab scientists and pathologists */}
+                {(canVerify || canInterpret) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -502,6 +625,7 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
                     )}
                   />
                 </div>
+                )}
 
                 <div className="flex justify-end gap-3">
                   <Button type="submit" disabled={addResult.isPending}>
