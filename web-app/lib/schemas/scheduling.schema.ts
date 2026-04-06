@@ -13,6 +13,10 @@ function createPaginatedSchema<T extends z.ZodTypeAny>(itemSchema: T) {
   });
 }
 
+// =============================================================================
+// Resources
+// =============================================================================
+
 export const ResourceTypeSchema = z.enum(['PERSON', 'PLACE', 'ASSET']);
 
 export const ResourceListItemSchema = z.object({
@@ -39,3 +43,135 @@ export const ResourceSchema = z.object({
 });
 
 export const PaginatedResourceListSchema = createPaginatedSchema(ResourceListItemSchema);
+
+// =============================================================================
+// Schedules
+// =============================================================================
+
+export const ScheduleTypeSchema = z.enum(['RECURRING', 'ONE_TIME', 'BLOCK']);
+
+export const ScheduleBreakSchema = z.object({
+  id: z.number(),
+  start_time: z.string(),
+  end_time: z.string(),
+  reason: z.string(),
+  created_at: z.string(),
+});
+
+export const ScheduleSchema = z.object({
+  id: z.number(),
+  resource: z.number(),
+  resource_name: z.string(),
+  schedule_type: ScheduleTypeSchema,
+  day_of_week: z.number().nullable(),
+  day_of_week_display: z.string().nullable(),
+  specific_date: z.string().nullable(),
+  start_time: z.string(),
+  end_time: z.string(),
+  slot_duration_minutes: z.number(),
+  buffer_minutes: z.number(),
+  max_appointments: z.number().nullable(),
+  effective_from: z.string(),
+  effective_until: z.string().nullable(),
+  is_active: z.boolean(),
+  notes: z.string(),
+  breaks: z.array(ScheduleBreakSchema),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedScheduleListSchema = createPaginatedSchema(ScheduleSchema);
+
+// =============================================================================
+// Appointments
+// =============================================================================
+
+export const AppointmentStatusSchema = z.enum([
+  'CREATED',
+  'CONFIRMED',
+  'CHECKED_IN',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+  'NO_SHOW',
+]);
+
+export const AppointmentTypeSchema = z.enum([
+  'CONSULTATION',
+  'FOLLOW_UP',
+  'PROCEDURE',
+  'LAB_TEST',
+  'IMAGING',
+  'VACCINATION',
+  'THERAPY',
+  'OTHER',
+]);
+
+export const AppointmentPrioritySchema = z.enum(['ROUTINE', 'URGENT', 'EMERGENCY']);
+
+export const AppointmentListItemSchema = z.object({
+  id: z.number(),
+  appointment_number: z.string(),
+  patient: z.number(),
+  patient_name: z.string(),
+  resource: z.number(),
+  resource_name: z.string(),
+  appointment_type: AppointmentTypeSchema,
+  scheduled_start: z.string(),
+  scheduled_end: z.string(),
+  status: AppointmentStatusSchema,
+  priority: AppointmentPrioritySchema,
+});
+
+export const AppointmentSchema = AppointmentListItemSchema.extend({
+  patient_mrn: z.string(),
+  resource_code: z.string(),
+  appointment_type_display: z.string(),
+  status_display: z.string(),
+  actual_start: z.string().nullable(),
+  actual_end: z.string().nullable(),
+  confirmed_at: z.string().nullable(),
+  confirmed_by: z.number().nullable(),
+  confirmed_by_name: z.string().nullable(),
+  checked_in_at: z.string().nullable(),
+  checked_in_by: z.number().nullable(),
+  cancelled_at: z.string().nullable(),
+  cancelled_by: z.number().nullable(),
+  cancelled_by_name: z.string().nullable(),
+  cancellation_reason: z.string(),
+  reason: z.string(),
+  notes: z.string(),
+  completion_notes: z.string(),
+  duration_minutes: z.number(),
+  is_upcoming: z.boolean(),
+  created_by: z.number().nullable(),
+  created_by_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedAppointmentListSchema = createPaginatedSchema(AppointmentListItemSchema);
+
+// =============================================================================
+// Availability
+// =============================================================================
+
+export const AvailabilitySlotSchema = z.object({
+  date: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+});
+
+export const ResourceAvailabilitySchema = z.object({
+  resource: z.number(),
+  resource_name: z.string(),
+  date: z.string(),
+  slots: z.array(AvailabilitySlotSchema),
+  total_available: z.number(),
+});
+
+export const SlotCheckResultSchema = z.object({
+  available: z.boolean(),
+  reason: z.string().nullable(),
+  conflicting_appointment: z.string().nullable().optional(),
+});

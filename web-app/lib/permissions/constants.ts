@@ -61,6 +61,11 @@ export const MODULE_PERMISSIONS = {
     'counselling.view_counsellingreferral',
     'counselling.view_sensitive_counselling_referral',
   ],
+  scheduling: [
+    'scheduling.view_schedule',
+    'scheduling.view_appointment',
+    'scheduling.view_resource',
+  ],
   theatre: [
     'scheduling.view_schedule',
     'scheduling.view_appointment',

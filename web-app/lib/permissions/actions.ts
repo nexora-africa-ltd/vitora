@@ -174,6 +174,13 @@ export const ACTION_PERMISSIONS = {
   'allied_health.supervise_sw_case': ['SOCIAL_WORKER', 'ADMIN'],
   'allied_health.refer': ['PHYSIOTHERAPIST', 'DIETITIAN', 'OCCUPATIONAL_THERAPIST', 'COUNSELLOR', 'SOCIAL_WORKER', 'DOCTOR', 'CLINICAL_OFFICER'],
 
+  // === Scheduling Module ===
+  'scheduling.view_appointments': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
+  'scheduling.create_appointment': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
+  'scheduling.manage_appointment': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
+  'scheduling.view_schedules': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
+  'scheduling.manage_schedules': ['ADMIN', 'ORG-ADMIN'],
+
   // === Theatre Module ===
   'theatre.view_schedule': ['SURGEON', 'ANAESTHETIST', 'THEATRE_NURSE', 'DOCTOR', 'ADMIN'],
   'theatre.schedule_case': ['SURGEON', 'DOCTOR', 'ADMIN'],
