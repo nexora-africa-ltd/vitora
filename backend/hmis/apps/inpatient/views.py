@@ -3196,6 +3196,7 @@ class AdverseTransfusionReactionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet
             "transfusion__started_by",
             "initial_reporter",
             "facility",
+            "lab_order",
         ).prefetch_related("transfusion__observations")
 
     def get_serializer_class(self):
@@ -3316,4 +3317,65 @@ class AdverseTransfusionReactionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet
             },
             ip_address=get_client_ip(request),
         )
+        return Response(ATRDetailSerializer(atr).data)
+
+    @action(detail=True, methods=["post"], url_path="request-lab-investigation")
+    def request_lab_investigation(self, request, pk=None):
+        """Create a lab order for ATR post-transfusion investigation."""
+        atr = self.get_object()
+
+        try:
+            order = atr.create_lab_order(user=request.user)
+        except DjangoValidationError as e:
+            return Response(
+                {"error": e.messages[0] if e.messages else str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Submit the order immediately (DRAFT → ORDERED)
+        try:
+            order.update_status("ORDERED", request.user)
+        except DjangoValidationError:
+            pass  # Order stays in DRAFT if transition fails
+
+        AuditLog.log(
+            action="atr_lab_order_created",
+            user=request.user,
+            resource_type="AdverseTransfusionReaction",
+            resource_id=atr.id,
+            details={
+                "lab_order_id": order.id,
+                "lab_order_number": order.order_number,
+                "tests": list(order.items.values_list("test__code", flat=True)),
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        # Re-fetch with select_related to include lab_order fields
+        atr.refresh_from_db()
+        return Response(ATRDetailSerializer(atr).data)
+
+    @action(detail=True, methods=["post"], url_path="sync-lab-results")
+    def sync_lab_results(self, request, pk=None):
+        """Pull verified lab results from the linked lab order into ATR fields."""
+        atr = self.get_object()
+
+        if not atr.lab_order_id:
+            return Response(
+                {"error": "No lab order linked to this ATR report."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        updated = atr.populate_from_lab_results()
+
+        AuditLog.log(
+            action="atr_lab_results_synced",
+            user=request.user,
+            resource_type="AdverseTransfusionReaction",
+            resource_id=atr.id,
+            details={"updated": updated, "lab_order_id": atr.lab_order_id},
+            ip_address=get_client_ip(request),
+        )
+
+        atr.refresh_from_db()
         return Response(ATRDetailSerializer(atr).data)

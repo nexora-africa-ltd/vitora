@@ -1159,3 +1159,23 @@ export function useAcknowledgeATR() {
     },
   });
 }
+
+export function useRequestATRLabInvestigation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => inpatientApi.requestATRLabInvestigation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+export function useSyncATRLabResults() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => inpatientApi.syncATRLabResults(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}

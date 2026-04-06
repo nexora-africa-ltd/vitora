@@ -10,7 +10,9 @@ import {
   FlaskConical,
   Loader2,
   Printer,
+  RefreshCw,
   Send,
+  TestTube,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +42,8 @@ import {
   useSubmitATRToPPB,
   useAcknowledgeATR,
   useUpdateATRLabInvestigation,
+  useRequestATRLabInvestigation,
+  useSyncATRLabResults,
 } from '@/lib/hooks/use-inpatient';
 import { printATRForm } from '@/lib/documents/print-atr-form';
 import type { ATRStatus, ATRLabInvestigation } from '@/lib/types/inpatient';
@@ -79,6 +83,8 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
   const submitMutation = useSubmitATRToPPB();
   const acknowledgeMutation = useAcknowledgeATR();
   const labMutation = useUpdateATRLabInvestigation();
+  const requestLabMutation = useRequestATRLabInvestigation();
+  const syncLabMutation = useSyncATRLabResults();
 
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitterName, setSubmitterName] = useState(() =>
@@ -230,6 +236,34 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
     );
   }
 
+  function handleRequestLabInvestigation() {
+    if (!atr) return;
+    requestLabMutation.mutate(atr.id, {
+      onSuccess: () => {
+        toast({ title: 'Lab Order Created', description: 'A STAT lab order has been submitted for CBC, Blood Culture, and Urinalysis.' });
+      },
+      onError: () => {
+        toast({ title: 'Error', description: 'Failed to create lab order.', variant: 'destructive' });
+      },
+    });
+  }
+
+  function handleSyncLabResults() {
+    if (!atr) return;
+    syncLabMutation.mutate(atr.id, {
+      onSuccess: () => {
+        toast({ title: 'Results Synced', description: 'Verified lab results have been pulled into this report.' });
+      },
+      onError: () => {
+        toast({ title: 'Error', description: 'Failed to sync lab results.', variant: 'destructive' });
+      },
+    });
+  }
+
+  const hasLabOrder = !!atr.lab_order_number;
+  const labOrderCompleted = atr.lab_order_status === 'COMPLETED';
+  const canRequestLab = !hasLabOrder && (atr.status === 'DRAFT' || atr.status === 'PENDING_REVIEW');
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
@@ -242,11 +276,25 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
               <span className="hidden sm:inline">Print MOH Form</span>
               <span className="sm:hidden">Print</span>
             </Button>
+            {canRequestLab && (
+              <Button variant="outline" size="sm" onClick={handleRequestLabInvestigation} disabled={requestLabMutation.isPending}>
+                {requestLabMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}
+                <span className="hidden sm:inline">Request Lab Investigation</span>
+                <span className="sm:hidden">Order Lab</span>
+              </Button>
+            )}
+            {hasLabOrder && labOrderCompleted && (
+              <Button variant="outline" size="sm" onClick={handleSyncLabResults} disabled={syncLabMutation.isPending}>
+                {syncLabMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                <span className="hidden sm:inline">Sync Lab Results</span>
+                <span className="sm:hidden">Sync</span>
+              </Button>
+            )}
             {(atr.status === 'DRAFT' || atr.status === 'PENDING_REVIEW') && (
               <Button variant="outline" size="sm" onClick={openLabDialog}>
                 <FlaskConical className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">{atr.has_lab_investigation ? 'Edit Lab Investigation' : 'Complete Lab Investigation'}</span>
-                <span className="sm:hidden">Lab</span>
+                <span className="hidden sm:inline">{hasLabOrder ? 'Complete Remaining Fields' : atr.has_lab_investigation ? 'Edit Lab Investigation' : 'Enter Manually'}</span>
+                <span className="sm:hidden">Manual</span>
               </Button>
             )}
             {atr.status === 'DRAFT' && (
@@ -282,8 +330,31 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
         </Badge>
       </div>
 
+      {/* Lab Order Status Banner */}
+      {hasLabOrder && (
+        <div className={`flex items-center gap-3 p-3 rounded-lg border ${
+          labOrderCompleted
+            ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-900/20'
+            : 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-900/20'
+        }`}>
+          <TestTube className={`h-5 w-5 shrink-0 ${labOrderCompleted ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`} />
+          <div className="flex-1 min-w-0">
+            <div className={`text-sm ${labOrderCompleted ? 'text-green-800 dark:text-green-300' : 'text-blue-800 dark:text-blue-300'}`}>
+              Lab Order <a href={`/laboratory/orders/${atr.lab_order_number}`} className="font-medium underline underline-offset-2">{atr.lab_order_number}</a>
+              {' — '}
+              <Badge variant="outline" className="text-xs ml-1">{atr.lab_order_status?.replace(/_/g, ' ')}</Badge>
+            </div>
+            {labOrderCompleted && !atr.has_lab_investigation && (
+              <p className="text-xs text-green-700 dark:text-green-400 mt-1">
+                Lab order is complete. Click &ldquo;Sync Lab Results&rdquo; to pull results into this report.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Alert for missing lab investigation */}
-      {atr.status === 'DRAFT' && !atr.has_lab_investigation && (
+      {atr.status === 'DRAFT' && !atr.has_lab_investigation && !hasLabOrder && (
         <div className="flex items-center gap-3 p-3 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-900/20">
           <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0" />
           <p className="text-sm text-yellow-800 dark:text-yellow-300">
@@ -405,10 +476,28 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
               <p className="text-muted-foreground mb-3">
                 Lab investigation has not been completed yet.
               </p>
-              {(atr.status === 'DRAFT' || atr.status === 'PENDING_REVIEW') && (
-                <Button variant="outline" size="sm" onClick={openLabDialog}>
-                  <FlaskConical className="mr-2 h-4 w-4" />
-                  Complete Lab Investigation
+              {(atr.status === 'DRAFT' || atr.status === 'PENDING_REVIEW') && !hasLabOrder && (
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                  <Button size="sm" onClick={handleRequestLabInvestigation} disabled={requestLabMutation.isPending}>
+                    {requestLabMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}
+                    Request Lab Investigation
+                  </Button>
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <Button variant="outline" size="sm" onClick={openLabDialog}>
+                    <FlaskConical className="mr-2 h-4 w-4" />
+                    Enter Manually
+                  </Button>
+                </div>
+              )}
+              {hasLabOrder && !labOrderCompleted && (
+                <p className="text-sm text-muted-foreground">
+                  Awaiting results from lab order {atr.lab_order_number}.
+                </p>
+              )}
+              {hasLabOrder && labOrderCompleted && (
+                <Button size="sm" onClick={handleSyncLabResults} disabled={syncLabMutation.isPending}>
+                  {syncLabMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  Sync Lab Results
                 </Button>
               )}
             </div>

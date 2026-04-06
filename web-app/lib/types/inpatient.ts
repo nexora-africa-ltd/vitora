@@ -1520,6 +1520,9 @@ export interface AdverseTransfusionReaction {
   adr_report_number?: string;
   vigiflow_entry_number?: string;
   ppb_date_received?: string | null;
+  lab_order_id?: number | null;
+  lab_order_number?: string | null;
+  lab_order_status?: string | null;
   created_at?: string;
   updated_at?: string;
 }
