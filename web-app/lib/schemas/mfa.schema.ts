@@ -102,7 +102,9 @@ export const MFAVerifyUserSchema = z.object({
   is_staff: z.boolean(),
   is_superuser: z.boolean().optional(),
   role: z.string().nullable().optional(),
+  role_display: z.string().nullable().optional(),
   role_category: z.string().nullable().optional(),
+  phone_number: z.string().nullable().optional(),
   permissions: z.array(z.string()),
   facility: UserFacilitySchema.nullable().optional(),
 });

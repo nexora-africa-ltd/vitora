@@ -97,6 +97,8 @@ def _build_user_info(user) -> dict:
     # Resolve role and role_category from StaffProfile
     role = None
     role_category = None
+    role_display = None
+    phone_number = None
     facility_data = None
 
     if hasattr(user, "staff_profile"):
@@ -106,9 +108,12 @@ def _build_user_info(user) -> dict:
             profile = None
 
         if profile:
+            phone_number = profile.phone_number or None
+
             if profile.primary_role:
                 role = profile.primary_role.code
                 role_category = profile.primary_role.category
+                role_display = profile.primary_role.name
 
             # Build facility payload
             if profile.primary_facility:
@@ -140,7 +145,9 @@ def _build_user_info(user) -> dict:
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
         "role": role,
+        "role_display": role_display,
         "role_category": role_category,
+        "phone_number": phone_number,
         "permissions": list(user.get_all_permissions()),
         "facility": facility_data,
     }

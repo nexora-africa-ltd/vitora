@@ -3270,8 +3270,10 @@ class AdverseTransfusionReactionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet
         try:
             atr.submit_to_ppb(user=request.user)
         except DjangoValidationError as e:
-            msg = e.message if hasattr(e, "message") else str(e)
-            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": e.messages[0] if e.messages else str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="atr_submit_ppb",
@@ -3296,8 +3298,10 @@ class AdverseTransfusionReactionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet
                 vigiflow_number=serializer.validated_data.get("vigiflow_entry_number", ""),
             )
         except DjangoValidationError as e:
-            msg = e.message if hasattr(e, "message") else str(e)
-            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": e.messages[0] if e.messages else str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         AuditLog.log(
             action="atr_ppb_acknowledged",

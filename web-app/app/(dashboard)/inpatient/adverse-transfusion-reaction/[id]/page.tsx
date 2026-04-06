@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
@@ -25,6 +25,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useAuth } from '@/lib/auth/context';
 import {
   useATRReport,
   useSubmitATRToPPB,
@@ -63,15 +64,29 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
   const { id } = use(params);
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { data: atr, isLoading, error } = useATRReport(parseInt(id, 10));
   const submitMutation = useSubmitATRToPPB();
   const acknowledgeMutation = useAcknowledgeATR();
 
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
-  const [submitterName, setSubmitterName] = useState('');
-  const [submitterCadre, setSubmitterCadre] = useState('');
-  const [submitterMobile, setSubmitterMobile] = useState('');
-  const [submitterEmail, setSubmitterEmail] = useState('');
+  const [submitterName, setSubmitterName] = useState(() =>
+    user ? `${user.first_name} ${user.last_name}`.trim() : ''
+  );
+  const [submitterCadre, setSubmitterCadre] = useState(() => user?.role_display || '');
+  const [submitterMobile, setSubmitterMobile] = useState(() => user?.phone_number || '');
+  const [submitterEmail, setSubmitterEmail] = useState(() => user?.email || '');
+
+  // Fill empty submitter fields when user profile syncs (handles stale localStorage)
+  useEffect(() => {
+    if (user) {
+      const fullName = `${user.first_name} ${user.last_name}`.trim();
+      if (fullName) setSubmitterName((prev) => prev || fullName);
+      if (user.role_display) setSubmitterCadre((prev) => prev || user.role_display!);
+      if (user.phone_number) setSubmitterMobile((prev) => prev || user.phone_number!);
+      if (user.email) setSubmitterEmail((prev) => prev || user.email);
+    }
+  }, [user]);
 
   const [showAcknowledgeDialog, setShowAcknowledgeDialog] = useState(false);
   const [adrNumber, setAdrNumber] = useState('');

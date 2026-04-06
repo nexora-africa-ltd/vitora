@@ -709,7 +709,7 @@ export default function AdmissionDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="charts" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Charts</span>
-            <span className="hidden sm:inline">Obs Charts</span>
+            <span className="hidden sm:inline">Observations</span>
           </TabsTrigger>
           <TabsTrigger value="kardex" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Kardex</span>

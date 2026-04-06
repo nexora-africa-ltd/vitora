@@ -6,6 +6,7 @@ import { Plus, Droplets, AlertTriangle, CheckCircle, FileText } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -68,6 +69,95 @@ const OBSERVATION_INTERVALS: { value: TransfusionObservationInterval; label: str
   { value: '4HR_AFTER', label: '4hr After Transfusion' },
 ];
 
+// MOH/PPB Form FOM20/MIP/PMS/SOP/001 — Reaction categories
+const REACTION_CATEGORIES = [
+  {
+    label: '1. General',
+    options: [
+      { value: 'FEVER', label: 'Fever' },
+      { value: 'CHILLS_RIGORS', label: 'Chills/Rigors' },
+      { value: 'FLUSHING', label: 'Flushing' },
+      { value: 'NAUSEA_VOMITING', label: 'Nausea/Vomiting' },
+    ],
+  },
+  {
+    label: '2. Dermatological',
+    options: [
+      { value: 'URTICARIA', label: 'Urticaria' },
+      { value: 'OTHER_SKIN_RASH', label: 'Other skin rash' },
+    ],
+  },
+  {
+    label: '3. Cardiac/Respiratory',
+    options: [
+      { value: 'CHEST_PAIN', label: 'Chest pain' },
+      { value: 'DYSPNOEA', label: 'Dyspnoea' },
+      { value: 'HYPOTENSION', label: 'Hypotension' },
+      { value: 'TACHYCARDIA', label: 'Tachycardia' },
+    ],
+  },
+  {
+    label: '4. Renal',
+    options: [
+      { value: 'HAEMOGLOBINURIA', label: 'Haemoglobinuria (Dark urine)' },
+      { value: 'OLIGURIA', label: 'Oliguria' },
+      { value: 'ANURIA', label: 'Anuria' },
+    ],
+  },
+  {
+    label: '5. Haematological',
+    options: [
+      { value: 'UNEXPLAINED_BLEEDING', label: 'Unexplained bleeding' },
+    ],
+  },
+] as const;
+
+// Build a reverse label→value map from REACTION_CATEGORIES for URL param generation
+const LABEL_TO_VALUE = new Map<string, { value: string; category: string }>();
+for (const cat of REACTION_CATEGORIES) {
+  for (const opt of cat.options) {
+    LABEL_TO_VALUE.set(opt.label.toLowerCase(), { value: opt.value, category: cat.label });
+  }
+}
+
+/** Parse a reaction_type label string into categorised enum values + leftover text. */
+function buildATRQueryParams(transfusionId: number, reactionType: string): string {
+  const general: string[] = [];
+  const dermatological: string[] = [];
+  const cardiac: string[] = [];
+  const renal: string[] = [];
+  const haematological: string[] = [];
+  const other: string[] = [];
+
+  const parts = reactionType.split(',').map((s) => s.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (part.toLowerCase().startsWith('other:')) {
+      other.push(part.replace(/^other:\s*/i, ''));
+      continue;
+    }
+    const match = LABEL_TO_VALUE.get(part.toLowerCase());
+    if (match) {
+      if (match.category.includes('General')) general.push(match.value);
+      else if (match.category.includes('Dermatological')) dermatological.push(match.value);
+      else if (match.category.includes('Cardiac')) cardiac.push(match.value);
+      else if (match.category.includes('Renal')) renal.push(match.value);
+      else if (match.category.includes('Haematological')) haematological.push(match.value);
+    } else {
+      other.push(part);
+    }
+  }
+
+  const params = new URLSearchParams();
+  params.set('transfusion', String(transfusionId));
+  if (general.length) params.set('general', general.join(','));
+  if (dermatological.length) params.set('dermatological', dermatological.join(','));
+  if (cardiac.length) params.set('cardiac', cardiac.join(','));
+  if (renal.length) params.set('renal', renal.join(','));
+  if (haematological.length) params.set('haematological', haematological.join(','));
+  if (other.length) params.set('other', other.join(', '));
+  return `/inpatient/adverse-transfusion-reaction/new?${params.toString()}`;
+}
+
 interface BloodTransfusionChartProps {
   admissionId: number;
   isActive: boolean;
@@ -121,7 +211,8 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
   const [obsRemarks, setObsRemarks] = useState('');
 
   // Reaction form
-  const [reactionType, setReactionType] = useState('');
+  const [selectedReactions, setSelectedReactions] = useState<Set<string>>(new Set());
+  const [otherReaction, setOtherReaction] = useState('');
   const [actionTaken, setActionTaken] = useState('');
 
   const transfusions = data?.results ?? [];
@@ -206,18 +297,29 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
   };
 
   const handleMarkReaction = async () => {
-    if (!selectedTransfusionId || !reactionType.trim()) {
-      toast({ title: 'Validation Error', description: 'Reaction type is required', variant: 'destructive' });
+    if (!selectedTransfusionId || (selectedReactions.size === 0 && !otherReaction.trim())) {
+      toast({ title: 'Validation Error', description: 'Select at least one reaction type', variant: 'destructive' });
       return;
     }
+    // Build a structured reaction_type string from selected checkboxes
+    const allOptions = REACTION_CATEGORIES.flatMap((c) => [...c.options]);
+    const labels = allOptions
+      .filter((o: { value: string; label: string }) => selectedReactions.has(o.value))
+      .map((o: { value: string; label: string }) => o.label);
+    if (otherReaction.trim()) {
+      labels.push(`Other: ${otherReaction.trim()}`);
+    }
+    const reactionType = labels.join(', ');
+
     try {
       await markReaction.mutateAsync({
         transfusionId: selectedTransfusionId,
-        data: { reaction_type: reactionType.trim(), action_taken: actionTaken || undefined },
+        data: { reaction_type: reactionType, action_taken: actionTaken || undefined },
       });
       toast({ title: 'Reaction recorded', description: 'Transfusion has been stopped', variant: 'destructive' });
       setReactionOpen(false);
-      setReactionType('');
+      setSelectedReactions(new Set());
+      setOtherReaction('');
       setActionTaken('');
     } catch {
       toast({ title: 'Error', description: 'Failed to record reaction', variant: 'destructive' });
@@ -390,7 +492,8 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
               }}
               onReportReaction={() => {
                 setSelectedTransfusionId(transfusion.id);
-                setReactionType('');
+                setSelectedReactions(new Set());
+                setOtherReaction('');
                 setActionTaken('');
                 setReactionOpen(true);
               }}
@@ -464,7 +567,7 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
 
       {/* Reaction Dialog */}
       <Dialog open={reactionOpen} onOpenChange={setReactionOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-destructive">Report Transfusion Reaction</DialogTitle>
           </DialogHeader>
@@ -473,10 +576,51 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
               <AlertTriangle className="h-4 w-4 inline mr-1" />
               This will stop the transfusion immediately.
             </div>
-            <div className="space-y-2">
-              <Label>Type of Reaction *</Label>
-              <Textarea value={reactionType} onChange={(e) => setReactionType(e.target.value)} placeholder="Describe the reaction (e.g., Febrile, Allergic, Hemolytic...)" rows={2} />
+
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Type of Reaction *</Label>
+              {REACTION_CATEGORIES.map((category) => (
+                <div key={category.label} className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">{category.label}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {category.options.map((option) => (
+                      <label
+                        key={option.value}
+                        className={`flex items-center gap-2.5 rounded-md border p-2.5 cursor-pointer transition-colors text-sm ${
+                          selectedReactions.has(option.value)
+                            ? 'border-destructive/50 bg-destructive/5'
+                            : 'border-border hover:bg-muted/50'
+                        }`}
+                      >
+                        <Checkbox
+                          checked={selectedReactions.has(option.value)}
+                          onCheckedChange={(checked) => {
+                            setSelectedReactions((prev) => {
+                              const next = new Set(prev);
+                              if (checked) next.add(option.value);
+                              else next.delete(option.value);
+                              return next;
+                            });
+                          }}
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">6. Others (Specify)</p>
+                <Input
+                  value={otherReaction}
+                  onChange={(e) => setOtherReaction(e.target.value)}
+                  placeholder="Other reaction type..."
+                />
+              </div>
             </div>
+
+            <Separator />
+
             <div className="space-y-2">
               <Label>Action Taken</Label>
               <Textarea value={actionTaken} onChange={(e) => setActionTaken(e.target.value)} placeholder="Actions taken in response to the reaction" rows={2} />
@@ -484,7 +628,7 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
           </div>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
             <Button variant="outline" onClick={() => setReactionOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleMarkReaction} disabled={markReaction.isPending || !reactionType.trim()}>
+            <Button variant="destructive" onClick={handleMarkReaction} disabled={markReaction.isPending || (selectedReactions.size === 0 && !otherReaction.trim())}>
               {markReaction.isPending ? 'Recording...' : 'Stop & Record Reaction'}
             </Button>
           </DialogFooter>
@@ -609,7 +753,7 @@ function TransfusionCard({
                 </Link>
               ) : (
                 <Link
-                  href={`/inpatient/adverse-transfusion-reaction/new?transfusion=${transfusion.id}`}
+                  href={buildATRQueryParams(transfusion.id, transfusion.reaction_type || '')}
                   className="inline-flex items-center gap-1.5"
                 >
                   <Button size="sm" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10">
