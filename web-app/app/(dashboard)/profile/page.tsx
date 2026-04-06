@@ -1,14 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { AlertTriangle, BadgeCheck, CheckCircle2, KeyRound, Loader2, Mail, Search, Settings, Shield, User as UserIcon, XCircle } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, BadgeCheck, CheckCircle2, ChevronDown, ChevronRight, KeyRound, Loader2, Mail, Search, Settings, Shield, User as UserIcon, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { DHAPractitionerSearch } from '@/components/sha';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { shaApi } from '@/lib/api/sha';
 import { useAuth } from '@/lib/auth/context';
 import { useLogout } from '@/lib/auth/hooks';
@@ -16,7 +17,23 @@ import type { User } from '@/lib/auth/context';
 import { useMyStaffProfile } from '@/lib/hooks/use-rbac';
 import type { DHAPractitioner, PractitionerInfo } from '@/lib/types/sha';
 
-const PERMISSIONS_PAGE_SIZE = 8;
+function groupPermissionsByDomain(permissions: string[]): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+  for (const perm of permissions) {
+    const dotIdx = perm.indexOf('.');
+    const domain = dotIdx > 0 ? perm.slice(0, dotIdx) : 'other';
+    const action = dotIdx > 0 ? perm.slice(dotIdx + 1) : perm;
+    if (!groups.has(domain)) groups.set(domain, []);
+    groups.get(domain)!.push(action);
+  }
+  // Sort domains alphabetically, sort actions within each domain
+  const sorted = new Map(
+    [...groups.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([domain, actions]) => [domain, actions.sort()])
+  );
+  return sorted;
+}
 
 function formatLabel(value: string): string {
   return value
@@ -139,7 +156,8 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const logout = useLogout();
   const { data: staffProfile, isLoading: isStaffProfileLoading } = useMyStaffProfile();
-  const [permissionsPage, setPermissionsPage] = useState(0);
+  const [permSearch, setPermSearch] = useState('');
+  const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
   const [verifiedPractitioner, setVerifiedPractitioner] = useState<DHAPractitioner | null>(null);
   const [validatedHwrPractitioner, setValidatedHwrPractitioner] = useState<PractitionerInfo | null>(null);
   const [isValidatingHwr, setIsValidatingHwr] = useState(false);
@@ -150,14 +168,25 @@ export default function ProfilePage() {
     : 'User';
   const email = user?.email?.trim() || 'No email address on file';
   const roleLabel = formatRole(user?.role, user?.is_superuser, user?.is_staff);
-  const permissions = user?.permissions ?? [];
+  const permissions = useMemo(() => user?.permissions ?? [], [user?.permissions]);
   const userInitials = getUserInitials(user?.first_name, user?.last_name, user?.username);
-  const totalPermissionPages = Math.max(1, Math.ceil(permissions.length / PERMISSIONS_PAGE_SIZE));
-  const permissionsStart = permissionsPage * PERMISSIONS_PAGE_SIZE;
-  const visiblePermissions = permissions.slice(permissionsStart, permissionsStart + PERMISSIONS_PAGE_SIZE);
-  const permissionRangeEnd = permissions.length === 0
-    ? 0
-    : Math.min(permissionsStart + PERMISSIONS_PAGE_SIZE, permissions.length);
+
+  const filteredGrouped = useMemo(() => {
+    const query = permSearch.trim().toLowerCase();
+    const filtered = query
+      ? permissions.filter((p) => p.toLowerCase().includes(query))
+      : permissions;
+    return groupPermissionsByDomain(filtered);
+  }, [permissions, permSearch]);
+
+  const toggleDomain = (domain: string) => {
+    setExpandedDomains((prev) => {
+      const next = new Set(prev);
+      if (next.has(domain)) next.delete(domain);
+      else next.add(domain);
+      return next;
+    });
+  };
 
   const hwrCompliant = isHwrCompliant(verifiedPractitioner);
   const complianceTone = getComplianceTone(hwrCompliant);
@@ -471,45 +500,66 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base sm:text-lg">Assigned Permissions</CardTitle>
             {permissions.length > 0 && (
-              <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground sm:justify-end">
-                <span>
-                  Showing {permissionsStart + 1}-{permissionRangeEnd} of {permissions.length}
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPermissionsPage((page) => Math.max(0, page - 1))}
-                    disabled={permissionsPage === 0}
-                  >
-                    Previous
-                  </Button>
-                  <span>
-                    {permissionsPage + 1}/{totalPermissionPages}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPermissionsPage((page) => Math.min(totalPermissionPages - 1, page + 1))}
-                    disabled={permissionsPage >= totalPermissionPages - 1}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+              <span className="text-sm text-muted-foreground">
+                {permissions.length} permission{permissions.length !== 1 ? 's' : ''}
+                {' '}across {groupPermissionsByDomain(permissions).size} module{groupPermissionsByDomain(permissions).size !== 1 ? 's' : ''}
+              </span>
             )}
           </div>
+          {permissions.length > 20 && (
+            <div className="relative mt-2 max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={permSearch}
+                onChange={(e) => setPermSearch(e.target.value)}
+                placeholder="Filter permissions..."
+                className="pl-9 h-9"
+              />
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {permissions.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {visiblePermissions.map((permission) => (
-                <Badge key={permission} variant="outline" className="py-1">
-                  {formatPermission(permission)}
-                </Badge>
-              ))}
+            <div className="space-y-1">
+              {[...filteredGrouped.entries()].map(([domain, actions]) => {
+                const isExpanded = expandedDomains.has(domain);
+                return (
+                  <div key={domain} className="border rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => toggleDomain(domain)}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {isExpanded
+                          ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        }
+                        <span className="font-medium truncate">{formatLabel(domain)}</span>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0 text-xs">
+                        {actions.length}
+                      </Badge>
+                    </button>
+                    {isExpanded && (
+                      <div className="px-3 pb-2 pl-9">
+                        <div className="flex flex-wrap gap-1.5">
+                          {actions.map((action) => (
+                            <Badge key={`${domain}.${action}`} variant="outline" className="py-0.5 text-xs font-normal">
+                              {formatLabel(action)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {filteredGrouped.size === 0 && permSearch && (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No permissions match &ldquo;{permSearch}&rdquo;
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
