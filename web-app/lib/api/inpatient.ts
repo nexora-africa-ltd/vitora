@@ -1039,4 +1039,18 @@ export const inpatientApi = {
     );
     return parseResponse(ATRDetailSchema, response.data, { context: 'inpatientApi.acknowledgeATR' }) as AdverseTransfusionReaction;
   },
+
+  async requestATRLabInvestigation(id: number): Promise<AdverseTransfusionReaction> {
+    const response = await apiClient.post(
+      `/api/inpatient/adverse-transfusion-reactions/${id}/request-lab-investigation/`
+    );
+    return parseResponse(ATRDetailSchema, response.data, { context: 'inpatientApi.requestATRLabInvestigation' }) as AdverseTransfusionReaction;
+  },
+
+  async syncATRLabResults(id: number): Promise<AdverseTransfusionReaction> {
+    const response = await apiClient.post(
+      `/api/inpatient/adverse-transfusion-reactions/${id}/sync-lab-results/`
+    );
+    return parseResponse(ATRDetailSchema, response.data, { context: 'inpatientApi.syncATRLabResults' }) as AdverseTransfusionReaction;
+  },
 };

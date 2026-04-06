@@ -457,3 +457,182 @@ class TestATRAPIActions:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "ACKNOWLEDGED"
         assert response.data["adr_report_number"] == "ADR/2026/0451"
+
+
+# ============================================================================
+# Lab Order Integration Tests
+# ============================================================================
+
+
+@pytest.fixture
+def sample_test_catalog(db):
+    """Create lab test catalog entries needed for ATR investigation."""
+    from hmis.apps.laboratory.models import TestCatalog
+
+    tests = []
+    for code, name, category in [
+        ("CBC", "Complete Blood Count", "HEMATOLOGY"),
+        ("BCULTURE", "Blood Culture", "MICROBIOLOGY"),
+        ("UA", "Urinalysis", "URINALYSIS"),
+    ]:
+        test, _ = TestCatalog.objects.get_or_create(
+            code=code,
+            defaults={
+                "name": name,
+                "short_name": code,
+                "category": category,
+                "specimen_type": "BLOOD" if category == "HEMATOLOGY" else "URINE",
+                "result_type": "NUMERIC",
+                "cost": 500,
+                "is_active": True,
+            },
+        )
+        tests.append(test)
+    return tests
+
+
+class TestATRLabOrderIntegration:
+    """Tests for ATR ↔ Lab Order integration."""
+
+    def test_create_lab_order_from_atr(
+        self, sample_atr, test_user, sample_test_catalog
+    ):
+        """create_lab_order() should create a linked URGENT lab order."""
+        order = sample_atr.create_lab_order(user=test_user)
+
+        assert order is not None
+        assert order.order_number.startswith("LAB-")
+        assert order.priority == "STAT"
+        assert order.admission == sample_atr.transfusion.admission
+        assert order.patient == sample_atr.transfusion.admission.patient
+        assert "ATR" in order.clinical_notes
+        assert order.items.count() >= 2  # CBC + BCULTURE + UA
+
+        sample_atr.refresh_from_db()
+        assert sample_atr.lab_order_id == order.id
+
+    def test_create_lab_order_rejects_duplicate(
+        self, sample_atr, test_user, sample_test_catalog
+    ):
+        """Should reject creating a second lab order."""
+        from django.core.exceptions import ValidationError
+
+        sample_atr.create_lab_order(user=test_user)
+        with pytest.raises(ValidationError, match="already been created"):
+            sample_atr.create_lab_order(user=test_user)
+
+    def test_populate_from_lab_results_empty(self, sample_atr):
+        """populate_from_lab_results() returns False when no lab order."""
+        assert sample_atr.populate_from_lab_results() is False
+
+    def test_populate_from_lab_results_with_verified_results(
+        self, sample_atr, test_user, sample_test_catalog
+    ):
+        """Should pull verified CBC results into haematological_results."""
+        from hmis.apps.laboratory.models import LabResult
+
+        order = sample_atr.create_lab_order(user=test_user)
+        # Find the UA order item and add a verified result
+        ua_item = order.items.filter(test__code="UA").first()
+        if ua_item:
+            LabResult.objects.create(
+                order_item=ua_item,
+                text_value="Hemoglobinuria detected, dark brown color",
+                verification_status="VERIFIED",
+                entered_by=test_user,
+            )
+
+        updated = sample_atr.populate_from_lab_results()
+        sample_atr.refresh_from_db()
+
+        if ua_item:
+            assert updated is True
+            assert "Hemoglobinuria" in sample_atr.urinalysis
+
+    def test_populate_does_not_overwrite_manual(
+        self, sample_atr, test_user, sample_test_catalog
+    ):
+        """Should not overwrite manually-entered urinalysis."""
+        from hmis.apps.laboratory.models import LabResult
+
+        sample_atr.urinalysis = "Manual entry: clear, no hemoglobinuria"
+        sample_atr.save()
+
+        order = sample_atr.create_lab_order(user=test_user)
+        ua_item = order.items.filter(test__code="UA").first()
+        if ua_item:
+            LabResult.objects.create(
+                order_item=ua_item,
+                text_value="Something different from lab",
+                verification_status="VERIFIED",
+                entered_by=test_user,
+            )
+
+        sample_atr.populate_from_lab_results()
+        sample_atr.refresh_from_db()
+        assert sample_atr.urinalysis == "Manual entry: clear, no hemoglobinuria"
+
+
+class TestATRLabOrderAPI:
+    """Tests for ATR lab order API actions."""
+
+    def test_request_lab_investigation_success(
+        self, authenticated_client, sample_atr, sample_test_catalog
+    ):
+        """Should create a lab order via the API."""
+        response = authenticated_client.post(
+            f"/api/inpatient/adverse-transfusion-reactions/{sample_atr.id}/request-lab-investigation/",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["lab_order_number"] is not None
+        assert response.data["lab_order_status"] in ("DRAFT", "ORDERED")
+
+    def test_request_lab_investigation_duplicate_fails(
+        self, authenticated_client, sample_atr, test_user, sample_test_catalog
+    ):
+        """Should reject duplicate lab order request."""
+        sample_atr.create_lab_order(user=test_user)
+        response = authenticated_client.post(
+            f"/api/inpatient/adverse-transfusion-reactions/{sample_atr.id}/request-lab-investigation/",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_sync_lab_results_no_order(self, authenticated_client, sample_atr):
+        """Should fail when no lab order exists."""
+        response = authenticated_client.post(
+            f"/api/inpatient/adverse-transfusion-reactions/{sample_atr.id}/sync-lab-results/",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_sync_lab_results_success(
+        self, authenticated_client, sample_atr, test_user, sample_test_catalog
+    ):
+        """Should sync verified results from the lab order."""
+        from hmis.apps.laboratory.models import LabResult
+
+        order = sample_atr.create_lab_order(user=test_user)
+        ua_item = order.items.filter(test__code="UA").first()
+        if ua_item:
+            LabResult.objects.create(
+                order_item=ua_item,
+                text_value="Hemoglobinuria detected",
+                verification_status="VERIFIED",
+                entered_by=test_user,
+            )
+
+        response = authenticated_client.post(
+            f"/api/inpatient/adverse-transfusion-reactions/{sample_atr.id}/sync-lab-results/",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_detail_includes_lab_order_fields(
+        self, authenticated_client, sample_atr, test_user, sample_test_catalog
+    ):
+        """Detail response should include lab_order_number and lab_order_status."""
+        order = sample_atr.create_lab_order(user=test_user)
+        response = authenticated_client.get(
+            f"/api/inpatient/adverse-transfusion-reactions/{sample_atr.id}/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["lab_order_number"] == order.order_number
+        assert response.data["lab_order_status"] is not None

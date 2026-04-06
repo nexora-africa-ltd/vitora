@@ -3158,6 +3158,16 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
         help_text="Blood transfusion that triggered this reaction report",
     )
 
+    # ── Lab order link (integrates with lab module workflow) ─────────────
+    lab_order = models.OneToOneField(
+        "laboratory.LabOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="atr_report",
+        help_text="Lab order created for post-transfusion investigation",
+    )
+
     # ── Section 1: Patient history ───────────────────────────────────────
     pre_transfusion_hb = models.DecimalField(
         max_digits=4,
@@ -3482,6 +3492,154 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
                 self.vitals_at_stop_temp = last_entry.temperature
                 self.vitals_at_stop_pulse = last_entry.pulse
                 self.vitals_at_stop_rr = last_entry.respiratory_rate
+
+    def create_lab_order(self, user):
+        """
+        Create a lab order for post-transfusion investigation.
+
+        Ordered tests (per MOH form section 4):
+        - CBC/FBC (WBC, HB, RBC, HCT, MCV, MCH, MCHC, PLT)
+        - BG (Blood Grouping — for crossmatch)
+        - UA (Urinalysis — for hemoglobinuria)
+
+        Returns the created LabOrder, or raises ValidationError if one already exists.
+        """
+        from hmis.apps.laboratory.models import LabOrder, LabOrderItem, TestCatalog
+
+        if self.lab_order_id:
+            raise ValidationError("A lab order has already been created for this ATR report.")
+
+        admission = self.transfusion.admission
+        patient = admission.patient
+        encounter = admission.ipd_encounter
+
+        # Determine which tests to order per MOH form section 4:
+        # Item 3: CBC (haematological results + blood film)
+        # Items 6-7: Blood culture (donor pack + recipient blood)
+        # Item 11: Urinalysis (hemoglobinuria check)
+        ATR_TEST_CODES = ["CBC", "BCULTURE", "UA"]
+        tests = TestCatalog.objects.filter(
+            code__in=ATR_TEST_CODES, is_active=True
+        )
+        if not tests.exists():
+            raise ValidationError(
+                "No matching lab tests found in the catalog. "
+                "Ensure CBC, BCULTURE, and UA tests are configured."
+            )
+
+        order = LabOrder.objects.create(
+            patient=patient,
+            encounter=encounter,
+            admission=admission,
+            ordered_by=user,
+            order_type="IN_HOUSE",
+            priority="STAT",
+            clinical_notes=(
+                f"Post-transfusion reaction investigation (ATR #{self.id}). "
+                f"Blood product: {self.transfusion.get_blood_product_display()}, "
+                f"Unit: {self.transfusion.blood_unit_number}. "
+                f"Reactions: {', '.join(self.reaction_categories_display)}."
+            ),
+            facility=self.facility,
+            organization=self.organization,
+        )
+
+        for test in tests:
+            LabOrderItem.objects.create(
+                lab_order=order,
+                test=test,
+                unit_cost=test.cost,
+                special_instructions="ATR investigation — urgent post-transfusion reaction workup",
+            )
+
+        order.calculate_total_cost()
+
+        self.lab_order = order
+        self.save(update_fields=["lab_order", "updated_at"])
+
+        return order
+
+    def populate_from_lab_results(self):
+        """
+        Pull verified lab results from the linked lab order into the ATR
+        lab investigation fields.
+
+        Maps:
+        - CBC/FBC results → haematological_results JSON + blood_film fields
+        - UA results → urinalysis text
+        - Does NOT overwrite manually-entered fields.
+
+        Returns True if any fields were updated.
+        """
+        if not self.lab_order_id:
+            return False
+
+        updated = False
+        results_by_code: dict[str, object] = {}
+
+        for item in self.lab_order.items.select_related("test", "result").all():
+            if hasattr(item, "result") and item.result.verification_status == "VERIFIED":
+                results_by_code[item.test.code] = item.result
+
+        # Map CBC/FBC results → haematological_results
+        haem_map = {
+            "WBC": "wbc", "HB": "hb", "PLT": "plt",
+        }
+        cbc_result = results_by_code.get("CBC") or results_by_code.get("FBC")
+        if cbc_result:
+            current = self.haematological_results or {}
+            if cbc_result.text_value:
+                # If result is a text blob, store it directly
+                if not current:
+                    self.haematological_results = {"notes": cbc_result.text_value}
+                    updated = True
+            elif cbc_result.numeric_value is not None:
+                # Single numeric value from a non-panel CBC
+                pass  # Handled by individual components below
+
+        # Individual hematology components (if ordered separately or as panel items)
+        for code, key in haem_map.items():
+            result = results_by_code.get(code)
+            if result and result.numeric_value is not None:
+                current = self.haematological_results or {}
+                if not current.get(key):
+                    current[key] = str(result.numeric_value)
+                    self.haematological_results = current
+                    updated = True
+
+        # Urinalysis → urinalysis field
+        ua_result = results_by_code.get("UA")
+        if ua_result and not self.urinalysis:
+            value = ua_result.text_value or (
+                str(ua_result.numeric_value) if ua_result.numeric_value is not None else ""
+            )
+            if value:
+                self.urinalysis = value
+                updated = True
+
+        # Blood culture → culture fields (items 6 & 7 on MOH form)
+        bculture_result = results_by_code.get("BCULTURE")
+        if bculture_result:
+            value = bculture_result.text_value or (
+                str(bculture_result.numeric_value) if bculture_result.numeric_value is not None else ""
+            )
+            if value:
+                if not self.culture_donor_pack_results:
+                    self.culture_donor_pack_results = value
+                    updated = True
+                if not self.culture_recipient_blood_results:
+                    self.culture_recipient_blood_results = value
+                    updated = True
+
+        update_fields = ["updated_at"]
+        if updated:
+            update_fields.extend([
+                "haematological_results", "urinalysis",
+                "culture_donor_pack_results", "culture_recipient_blood_results",
+            ])
+            self.save(update_fields=update_fields)
+
+        return updated
 
     def submit_to_ppb(self, user=None, notes=""):
         """Transition status to SUBMITTED and record submission details."""

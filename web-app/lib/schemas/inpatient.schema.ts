@@ -1308,6 +1308,9 @@ export const ATRDetailSchema = z.object({
   adr_report_number: z.string().optional().default(''),
   vigiflow_entry_number: z.string().optional().default(''),
   ppb_date_received: z.string().nullable().optional(),
+  lab_order_id: z.number().nullable().optional(),
+  lab_order_number: z.string().nullable().optional(),
+  lab_order_status: z.string().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
@@ -1323,5 +1326,7 @@ export const ATRListSchema = z.object({
   report_date: z.string(),
   reaction_categories_display: z.array(z.string()).optional().default([]),
   has_lab_investigation: z.boolean().optional().default(false),
+  lab_order_number: z.string().nullable().optional(),
+  lab_order_status: z.string().nullable().optional(),
   created_at: z.string().optional(),
 });

@@ -2157,6 +2157,15 @@ class ATRDetailSerializer(serializers.ModelSerializer):
     transfusion_expiry_date = serializers.DateField(
         source="transfusion.expiry_date", read_only=True
     )
+    lab_order_id = serializers.IntegerField(
+        source="lab_order.id", read_only=True, default=None
+    )
+    lab_order_number = serializers.CharField(
+        source="lab_order.order_number", read_only=True, default=None
+    )
+    lab_order_status = serializers.CharField(
+        source="lab_order.status", read_only=True, default=None
+    )
 
     def get_ward_name(self, obj):
         admission = obj.transfusion.admission
@@ -2244,6 +2253,10 @@ class ATRDetailSerializer(serializers.ModelSerializer):
             "evaluation_diagnosis",
             "reaction_related_to_transfusion",
             "has_lab_investigation",
+            # Lab order link
+            "lab_order_id",
+            "lab_order_number",
+            "lab_order_status",
             # Reporter details
             "initial_reporter",
             "initial_reporter_username",
@@ -2286,6 +2299,12 @@ class ATRListSerializer(serializers.ModelSerializer):
     admission_id = serializers.IntegerField(
         source="transfusion.admission_id", read_only=True
     )
+    lab_order_number = serializers.CharField(
+        source="lab_order.order_number", read_only=True, default=None
+    )
+    lab_order_status = serializers.CharField(
+        source="lab_order.status", read_only=True, default=None
+    )
 
     class Meta:
         model = AdverseTransfusionReaction
@@ -2300,6 +2319,8 @@ class ATRListSerializer(serializers.ModelSerializer):
             "report_date",
             "reaction_categories_display",
             "has_lab_investigation",
+            "lab_order_number",
+            "lab_order_status",
             "created_at",
         ]
 
