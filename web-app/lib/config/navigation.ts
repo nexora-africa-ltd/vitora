@@ -150,6 +150,18 @@ const _allNavItems: NavItemType[] = [
     ],
   },
   {
+    label: 'Scheduling',
+    icon: CalendarDays,
+    moduleKey: 'scheduling',
+    children: [
+      { label: 'Overview', href: '/scheduling', icon: LayoutDashboard, actionKey: 'scheduling.view_appointments' },
+      { label: 'Appointments', href: '/scheduling/appointments', icon: CalendarDays, actionKey: 'scheduling.view_appointments' },
+      { label: 'New Appointment', href: '/scheduling/appointments/new', icon: UserPlus2, actionKey: 'scheduling.create_appointment' },
+      { label: 'Schedules', href: '/scheduling/schedules', icon: Clock, actionKey: 'scheduling.view_schedules' },
+      { label: 'Resources', href: '/scheduling/resources', icon: Settings, actionKey: 'scheduling.manage_schedules' },
+    ],
+  },
+  {
     label: 'Surveillance',
     icon: Flag,
     moduleKey: 'surveillance',
@@ -387,7 +399,6 @@ const _allNavItems: NavItemType[] = [
       { label: 'Certificates', href: '/admin/certificates', icon: Lock, actionKey: 'admin.view_audit_logs' },
       { label: 'HL7 Messages', href: '/admin/hl7-messages', icon: Network, actionKey: 'admin.view_hl7_messages' },
       { label: 'KENHDD Compliance', href: '/admin/kenhdd-compliance', icon: BookCheck, actionKey: 'admin.view_audit_logs' },
-      { label: 'Scheduling Resources', href: '/admin/scheduling', icon: CalendarDays, actionKey: 'admin.manage_departments' },
       { label: 'Reports', href: '/reports', icon: FileText, actionKey: 'admin.view_reports' },
     ],
   },
