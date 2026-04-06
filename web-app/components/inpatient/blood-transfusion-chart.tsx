@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { HelpPopover } from '@/components/shared/help-popover';
 import {
   useBloodTransfusions,
@@ -90,6 +91,13 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
   const [amountMl, setAmountMl] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
 
+  // Pre-transfusion baseline vitals (mandatory — recorded as a BEFORE observation)
+  const [preBPSys, setPreBPSys] = useState('');
+  const [preBPDia, setPreBPDia] = useState('');
+  const [preTemp, setPreTemp] = useState('');
+  const [prePulse, setPrePulse] = useState('');
+  const [preRR, setPreRR] = useState('');
+
   // Observation form
   const [obsInterval, setObsInterval] = useState<TransfusionObservationInterval>('BEFORE');
   const [obsTime, setObsTime] = useState('');
@@ -106,13 +114,19 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
 
   const transfusions = data?.results ?? [];
 
+  const preVitalsValid = !!(preBPSys && preBPDia && preTemp && prePulse);
+
   const handleCreateTransfusion = async () => {
     if (!unitNumber.trim() || !amountMl) {
       toast({ title: 'Validation Error', description: 'Unit number and amount are required', variant: 'destructive' });
       return;
     }
+    if (!preVitalsValid) {
+      toast({ title: 'Validation Error', description: 'Pre-transfusion baseline vitals (BP, temp, pulse) are required', variant: 'destructive' });
+      return;
+    }
     try {
-      await createTransfusion.mutateAsync({
+      const transfusion = await createTransfusion.mutateAsync({
         admission: admissionId,
         blood_product: bloodProduct,
         blood_product_other: bloodProduct === 'OTHER' ? bloodProductOther : '',
@@ -122,6 +136,29 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
         transfusion_date: new Date().toISOString().split('T')[0] as string,
         diagnosis: diagnosis || undefined,
       });
+
+      // Record mandatory pre-transfusion baseline vitals as a BEFORE observation
+      if (transfusion?.id) {
+        try {
+          const now = new Date();
+          const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          await addObservation.mutateAsync({
+            transfusionId: transfusion.id,
+            data: {
+              observation_interval: 'BEFORE' as TransfusionObservationInterval,
+              exact_time: timeStr,
+              blood_pressure: preBPSys && preBPDia ? `${preBPSys}/${preBPDia}` : undefined,
+              temperature: preTemp ? parseFloat(preTemp) : undefined,
+              pulse: prePulse ? parseInt(prePulse) : undefined,
+              respiratory_rate: preRR ? parseInt(preRR) : undefined,
+            },
+          });
+        } catch {
+          // Vitals are mandatory — alert prominently so nurse records them immediately
+          toast({ title: 'Baseline vitals not saved', description: 'Transfusion was started but the pre-transfusion vitals failed to save. Record them now via "Add Observation" → Before Transfusion.', variant: 'destructive' });
+        }
+      }
+
       toast({ title: 'Transfusion record created' });
       setNewTransfusionOpen(false);
       resetTransfusionForm();
@@ -191,6 +228,11 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
     setBloodGroup('');
     setAmountMl('');
     setDiagnosis('');
+    setPreBPSys('');
+    setPreBPDia('');
+    setPreTemp('');
+    setPrePulse('');
+    setPreRR('');
   };
 
   const resetObservationForm = () => {
@@ -271,10 +313,40 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
                   <Label>Diagnosis/Indication</Label>
                   <Textarea value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Indication for transfusion" rows={2} />
                 </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">Pre-Transfusion Baseline Vitals</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">BP (mmHg) *</Label>
+                      <div className="flex items-center gap-1">
+                        <Input type="number" placeholder="120" value={preBPSys} onChange={(e) => setPreBPSys(e.target.value)} className="w-20" aria-label="Systolic BP" />
+                        <span className="text-muted-foreground">/</span>
+                        <Input type="number" placeholder="80" value={preBPDia} onChange={(e) => setPreBPDia(e.target.value)} className="w-20" aria-label="Diastolic BP" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Temp (°C) *</Label>
+                      <Input type="number" step="0.1" placeholder="36.5" value={preTemp} onChange={(e) => setPreTemp(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Pulse *</Label>
+                      <Input type="number" placeholder="72" value={prePulse} onChange={(e) => setPrePulse(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Resp Rate</Label>
+                      <Input type="number" placeholder="16" value={preRR} onChange={(e) => setPreRR(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
               </div>
               <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
                 <Button variant="outline" onClick={() => setNewTransfusionOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateTransfusion} disabled={createTransfusion.isPending || !unitNumber || !amountMl}>
+                <Button onClick={handleCreateTransfusion} disabled={createTransfusion.isPending || !unitNumber || !amountMl || !preVitalsValid}>
                   {createTransfusion.isPending ? 'Creating...' : 'Start Transfusion'}
                 </Button>
               </DialogFooter>
@@ -445,6 +517,11 @@ function TransfusionCard({
               {' • '}{transfusion.amount_ml}mL
               {' • '}{formatDate(transfusion.transfusion_date)}
             </p>
+            {transfusion.diagnosis && (
+              <p className="text-sm text-muted-foreground">
+                Indication: {transfusion.diagnosis}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Badge variant={statusColor as 'warning' | 'success' | 'destructive' | 'secondary'}>
