@@ -88,6 +88,18 @@ export default function NewRolePage() {
     }));
   };
 
+  const togglePermissionGroup = (codes: string[], selected: boolean) => {
+    setFormData((prev) => {
+      if (selected) {
+        const newSet = new Set(prev.permissions);
+        for (const code of codes) newSet.add(code);
+        return { ...prev, permissions: Array.from(newSet) };
+      }
+      const toRemove = new Set(codes);
+      return { ...prev, permissions: prev.permissions.filter((p) => !toRemove.has(p)) };
+    });
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
       <PageHeader
@@ -182,6 +194,7 @@ export default function NewRolePage() {
                 permissions={permissionsData}
                 selectedPermissions={formData.permissions}
                 onToggle={togglePermission}
+                onToggleGroup={togglePermissionGroup}
               />
             ) : (
               <Alert>

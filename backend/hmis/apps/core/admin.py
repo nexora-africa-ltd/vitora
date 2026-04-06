@@ -370,6 +370,13 @@ class RoleAdmin(admin.ModelAdmin):
         ),
     )
 
+    def save_model(self, request, obj, form, change):
+        """Save role and sync permissions to linked Django Group."""
+        super().save_model(request, obj, form, change)
+        from hmis.apps.core.role_permissions_sync import sync_role_group_permissions
+
+        sync_role_group_permissions(obj)
+
 
 @admin.register(StaffProfile)
 class StaffProfileAdmin(admin.ModelAdmin):
