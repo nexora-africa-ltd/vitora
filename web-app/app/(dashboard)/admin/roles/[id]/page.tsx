@@ -81,6 +81,18 @@ export default function RoleEditPage() {
     );
   };
 
+  const handleGroupToggle = (codes: string[], selected: boolean) => {
+    setSelectedPermissions((current) => {
+      if (selected) {
+        const newSet = new Set(current);
+        for (const code of codes) newSet.add(code);
+        return Array.from(newSet);
+      }
+      const toRemove = new Set(codes);
+      return current.filter((item) => !toRemove.has(item));
+    });
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -286,6 +298,7 @@ export default function RoleEditPage() {
               permissions={allPermissions || []}
               selectedPermissions={selectedPermissions}
               onToggle={handlePermissionToggle}
+              onToggleGroup={handleGroupToggle}
             />
           </CardContent>
         </Card>

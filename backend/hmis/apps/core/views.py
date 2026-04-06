@@ -42,6 +42,7 @@ from .models import (
     Ward,
 )
 from .permissions import AuditLogPermission
+from .role_permissions_sync import sync_role_group_permissions
 from .serializers import (
     AuditLogSerializer,
     CertificateAuthoritySerializer,
@@ -706,8 +707,9 @@ class RoleViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
-        """Create role and record the admin audit trail."""
+        """Create role, sync group permissions, and record the admin audit trail."""
         role = serializer.save()
+        sync_role_group_permissions(role)
         AuditLog.log(
             action="role_created",
             user=self.request.user,
@@ -719,8 +721,10 @@ class RoleViewSet(viewsets.ModelViewSet):
         )
 
     def perform_update(self, serializer):
-        """Update role and record the admin audit trail."""
+        """Update role, sync group permissions, and record the admin audit trail."""
         role = serializer.save()
+        if "permissions_matrix" in serializer.validated_data:
+            sync_role_group_permissions(role)
         AuditLog.log(
             action="role_updated",
             user=self.request.user,

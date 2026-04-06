@@ -837,6 +837,48 @@
           "read": true,
           "update": false,
           "delete": false
+        },
+        "ChatSession": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ChatMessage": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AICareplanResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AICDSResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AIDischargeResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AIICURiskResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AILabInterpretResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 2,
@@ -998,6 +1040,48 @@
           "create": true,
           "read": true,
           "update": true,
+          "delete": false
+        },
+        "ChatSession": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ChatMessage": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AICareplanResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AICDSResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AIDischargeResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AIICURiskResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AILabInterpretResult": {
+          "create": true,
+          "read": true,
+          "update": false,
           "delete": false
         }
       },
@@ -1267,6 +1351,48 @@
         },
         "CheckIn": {
           "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "ChatSession": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ChatMessage": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AICareplanResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AICDSResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AIDischargeResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AIICURiskResult": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "AILabInterpretResult": {
+          "create": true,
           "read": true,
           "update": false,
           "delete": false
@@ -3251,24 +3377,117 @@
       "category": "MANAGEMENT",
       "description": "Organization-level administrator managing facility settings, staff, billing configuration, and operational oversight. Does not access clinical data directly.",
       "permissions_matrix": {
-        "StaffProfile": {"create": true, "read": true, "update": true, "delete": false},
-        "Role": {"create": false, "read": true, "update": false, "delete": false},
-        "Department": {"create": true, "read": true, "update": true, "delete": false},
-        "Facility": {"create": false, "read": true, "update": true, "delete": false},
-        "Organization": {"create": false, "read": true, "update": true, "delete": false},
-        "AuditLog": {"create": false, "read": true, "update": false, "delete": false},
-        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
-        "Encounter": {"create": false, "read": true, "update": false, "delete": false},
-        "Invoice": {"create": false, "read": true, "update": false, "delete": false},
-        "Payment": {"create": false, "read": true, "update": false, "delete": false},
-        "Service": {"create": true, "read": true, "update": true, "delete": false},
-        "ServiceCategory": {"create": true, "read": true, "update": true, "delete": false},
-        "SHATariff": {"create": true, "read": true, "update": true, "delete": false},
-        "FacilityBillingConfig": {"create": true, "read": true, "update": true, "delete": false},
-        "Clinic": {"create": true, "read": true, "update": true, "delete": false, "manage_clinic_staff": true, "manage_clinic_schedule": true},
-        "InpatientWard": {"create": true, "read": true, "update": true, "delete": false},
-        "Bed": {"create": true, "read": true, "update": true, "delete": false},
-        "Schedule": {"create": true, "read": true, "update": true, "delete": false}
+        "StaffProfile": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Role": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "Department": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Facility": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Organization": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "AuditLog": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "Patient": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false,
+          "view_sensitive": false
+        },
+        "Encounter": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "Invoice": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "Payment": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "Service": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ServiceCategory": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "SHATariff": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "FacilityBillingConfig": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Clinic": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_clinic_staff": true,
+          "manage_clinic_schedule": true
+        },
+        "InpatientWard": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Bed": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Schedule": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        }
       },
       "hierarchy_level": 0,
       "parent_role": null,

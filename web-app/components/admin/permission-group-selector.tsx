@@ -1,6 +1,5 @@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import {
   Accordion,
   AccordionContent,
@@ -13,6 +12,7 @@ interface PermissionGroupSelectorProps {
   permissions: Permission[];
   selectedPermissions: string[];
   onToggle: (permissionCode: string) => void;
+  onToggleGroup?: (permissionCodes: string[], selected: boolean) => void;
   emptyMessage?: string;
 }
 
@@ -31,6 +31,7 @@ export function PermissionGroupSelector({
   permissions,
   selectedPermissions,
   onToggle,
+  onToggleGroup,
   emptyMessage = 'No permissions available.',
 }: PermissionGroupSelectorProps) {
   const groupedPermissions = groupPermissions(permissions);
@@ -47,9 +48,28 @@ export function PermissionGroupSelector({
   return (
     <Accordion type="multiple" defaultValue={defaultOpenGroups} className="w-full">
       {Object.entries(groupedPermissions).map(([group, items]) => {
-        const selectedCount = items.filter((item) =>
-          selectedPermissions.includes(`${item.app_label}.${item.codename}`)
+        const groupCodes = items.map((item) => `${item.app_label}.${item.codename}`);
+        const selectedCount = groupCodes.filter((code) =>
+          selectedPermissions.includes(code)
         ).length;
+        const allSelected = selectedCount === items.length;
+        const someSelected = selectedCount > 0 && !allSelected;
+
+        const handleSelectAll = () => {
+          if (onToggleGroup) {
+            onToggleGroup(groupCodes, !allSelected);
+          } else {
+            // Fallback: toggle each individually
+            for (const code of groupCodes) {
+              const isSelected = selectedPermissions.includes(code);
+              if (allSelected && isSelected) {
+                onToggle(code);
+              } else if (!allSelected && !isSelected) {
+                onToggle(code);
+              }
+            }
+          }
+        };
 
         return (
           <AccordionItem key={group} value={group}>
@@ -62,33 +82,48 @@ export function PermissionGroupSelector({
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <div className="grid gap-2 pt-2 sm:grid-cols-2">
-                {items.map((permission) => {
-                  const permissionCode = `${permission.app_label}.${permission.codename}`;
-                  const isSelected = selectedPermissions.includes(permissionCode);
+              <div className="space-y-3 pt-2">
+                <label
+                  className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed p-3 transition-colors hover:bg-muted/50"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                    onCheckedChange={handleSelectAll}
+                    aria-label={`Select all ${group} permissions`}
+                  />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {allSelected ? 'Deselect all' : 'Select all'}
+                  </span>
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {items.map((permission) => {
+                    const permissionCode = `${permission.app_label}.${permission.codename}`;
+                    const isSelected = selectedPermissions.includes(permissionCode);
 
-                  return (
-                    <label
-                      key={permissionCode}
-                      htmlFor={permissionCode}
-                      className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
-                        isSelected ? 'border-primary/30 bg-primary/5' : 'hover:bg-muted/50'
-                      }`}
-                    >
-                      <Checkbox
-                        id={permissionCode}
-                        checked={isSelected}
-                        onCheckedChange={() => onToggle(permissionCode)}
-                        aria-label={permission.name}
-                        className="mt-0.5"
-                      />
-                      <span className="min-w-0 text-sm">
-                        <span className="block font-medium text-foreground">{permission.name}</span>
-                        <span className="block text-xs text-muted-foreground">{permission.codename}</span>
-                      </span>
-                    </label>
-                  );
-                })}
+                    return (
+                      <label
+                        key={permissionCode}
+                        htmlFor={permissionCode}
+                        className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
+                          isSelected ? 'border-primary/30 bg-primary/5' : 'hover:bg-muted/50'
+                        }`}
+                      >
+                        <Checkbox
+                          id={permissionCode}
+                          checked={isSelected}
+                          onCheckedChange={() => onToggle(permissionCode)}
+                          aria-label={permission.name}
+                          className="mt-0.5"
+                        />
+                        <span className="min-w-0 text-sm">
+                          <span className="block font-medium text-foreground">{permission.name}</span>
+                          <span className="block text-xs text-muted-foreground">{permission.codename}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
