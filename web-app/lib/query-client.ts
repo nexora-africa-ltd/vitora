@@ -65,8 +65,10 @@ const defaultOptions: DefaultOptions = {
     networkMode: 'offlineFirst',
   },
   mutations: {
-    // Retry mutations once
-    retry: 1,
+    // Never retry mutations — they are not idempotent.
+    // A "failed" mutation that actually reached the server (e.g. 201 + Zod
+    // validation error) would create duplicate records on retry.
+    retry: false,
 
     // Network mode
     networkMode: 'offlineFirst',
