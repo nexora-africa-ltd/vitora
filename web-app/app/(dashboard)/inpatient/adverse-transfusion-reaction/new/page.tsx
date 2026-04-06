@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useAuth } from '@/lib/auth/context';
 import { useCreateATRReport } from '@/lib/hooks/use-inpatient';
 import {
   GENERAL_REACTION_OPTIONS,
@@ -37,11 +38,19 @@ import type {
   AdverseTransfusionReactionCreate,
 } from '@/lib/types/inpatient';
 
+/** Parse a comma-separated query param into a typed array, filtering to valid enum values. */
+function parseEnumParam<T extends string>(param: string | null, validValues: readonly { value: T }[]): T[] {
+  if (!param) return [];
+  const valid = new Set(validValues.map((v) => v.value));
+  return param.split(',').filter((v): v is T => valid.has(v as T));
+}
+
 export default function NewATRReportPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const transfusionId = searchParams.get('transfusion_id');
+  const transfusionId = searchParams.get('transfusion');
   const { toast } = useToast();
+  const { user } = useAuth();
   const createMutation = useCreateATRReport();
 
   // Section 1: Patient history
@@ -55,18 +64,35 @@ export default function NewATRReportPage() {
   const [previousReactionsComment, setPreviousReactionsComment] = useState('');
   const [currentMedications, setCurrentMedications] = useState('');
 
-  // Section 2: Reaction categories
-  const [generalReactions, setGeneralReactions] = useState<GeneralReaction[]>([]);
-  const [dermatologicalReactions, setDermatologicalReactions] = useState<DermatologicalReaction[]>([]);
-  const [cardiacRespiratoryReactions, setCardiacRespiratoryReactions] = useState<CardiacRespiratoryReaction[]>([]);
-  const [renalReactions, setRenalReactions] = useState<RenalReaction[]>([]);
-  const [haematologicalReactions, setHaematologicalReactions] = useState<HaematologicalReaction[]>([]);
-  const [otherReactions, setOtherReactions] = useState('');
+  // Section 2: Reaction categories — pre-populated from query params set by the blood transfusion chart
+  const [generalReactions, setGeneralReactions] = useState<GeneralReaction[]>(() =>
+    parseEnumParam(searchParams.get('general'), GENERAL_REACTION_OPTIONS)
+  );
+  const [dermatologicalReactions, setDermatologicalReactions] = useState<DermatologicalReaction[]>(() =>
+    parseEnumParam(searchParams.get('dermatological'), DERMATOLOGICAL_REACTION_OPTIONS)
+  );
+  const [cardiacRespiratoryReactions, setCardiacRespiratoryReactions] = useState<CardiacRespiratoryReaction[]>(() =>
+    parseEnumParam(searchParams.get('cardiac'), CARDIAC_RESPIRATORY_REACTION_OPTIONS)
+  );
+  const [renalReactions, setRenalReactions] = useState<RenalReaction[]>(() =>
+    parseEnumParam(searchParams.get('renal'), RENAL_REACTION_OPTIONS)
+  );
+  const [haematologicalReactions, setHaematologicalReactions] = useState<HaematologicalReaction[]>(() =>
+    parseEnumParam(searchParams.get('haematological'), HAEMATOLOGICAL_REACTION_OPTIONS)
+  );
+  const [otherReactions, setOtherReactions] = useState(() => searchParams.get('other') || '');
 
-  // Section 6: Reporter details
-  const [reporterCadre, setReporterCadre] = useState('');
-  const [reporterMobile, setReporterMobile] = useState('');
-  const [reporterEmail, setReporterEmail] = useState('');
+  // Section 6: Reporter details — auto-populated from staff profile, editable
+  const [reporterCadre, setReporterCadre] = useState(() => user?.role_display || '');
+  const [reporterMobile, setReporterMobile] = useState(() => user?.phone_number || '');
+  const [reporterEmail, setReporterEmail] = useState(() => user?.email || '');
+
+  // Fill empty reporter fields when user profile syncs (handles stale localStorage)
+  useEffect(() => {
+    if (user?.role_display) setReporterCadre((prev) => prev || user.role_display!);
+    if (user?.phone_number) setReporterMobile((prev) => prev || user.phone_number!);
+    if (user?.email) setReporterEmail((prev) => prev || user.email);
+  }, [user?.role_display, user?.phone_number, user?.email]);
 
   function toggleReaction<T extends string>(list: T[], setList: (v: T[]) => void, value: T) {
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);

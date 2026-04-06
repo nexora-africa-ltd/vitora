@@ -39,7 +39,9 @@ export interface User {
   is_superuser?: boolean;
   permissions: string[];
   role?: string;  // User role (ADMIN, NURSE, DOCTOR, BILLING_CLERK, etc.)
+  role_display?: string;  // Human-readable role name (e.g. "Nurse", "Clinical Officer")
   role_category?: string;  // Role category (CLINICAL, ADMINISTRATIVE, etc.)
+  phone_number?: string | null;  // From staff profile
   facility?: UserFacility | null;  // Primary facility with module capabilities
 }
 
@@ -126,7 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? userInfo.permissions.filter((permission: unknown): permission is string => typeof permission === 'string')
           : fallbackUser.permissions,
         role: typeof userInfo.role === 'string' ? userInfo.role : fallbackUser.role,
+        role_display: typeof userInfo.role_display === 'string' ? userInfo.role_display : fallbackUser.role_display,
         role_category: typeof userInfo.role_category === 'string' ? userInfo.role_category : fallbackUser.role_category,
+        phone_number: typeof userInfo.phone_number === 'string' ? userInfo.phone_number : fallbackUser.phone_number,
         facility: userInfo.facility && typeof userInfo.facility === 'object'
           ? userInfo.facility as UserFacility
           : null,
@@ -293,7 +297,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         is_superuser: response.user.is_superuser,
         permissions: response.user.permissions,
         role: response.user.role ?? undefined,
+        role_display: response.user.role_display ?? undefined,
         role_category: response.user.role_category ?? undefined,
+        phone_number: response.user.phone_number ?? undefined,
         facility: response.user.facility ?? null,
       };
 

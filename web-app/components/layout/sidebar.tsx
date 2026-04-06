@@ -786,8 +786,11 @@ export function Sidebar({
           {!collapsed && <CurrentPatientCard onMobileClose={onMobileClose} />}
 
           {/* Collapse All button — sits above the scrollable area */}
-          {!collapsed && openMenus.length > 0 && (
-            <div className="flex shrink-0 justify-end px-3 pb-1">
+          {!collapsed && (
+            <div className={cn(
+              "flex shrink-0 justify-end px-3 pb-1",
+              openMenus.length === 0 && "hidden"
+            )}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button

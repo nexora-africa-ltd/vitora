@@ -57,7 +57,9 @@ export interface MFAVerifyUser {
   is_staff: boolean;
   is_superuser?: boolean;
   role?: string | null;
+  role_display?: string | null;
   role_category?: string | null;
+  phone_number?: string | null;
   permissions: string[];
   facility?: {
     id: number;
