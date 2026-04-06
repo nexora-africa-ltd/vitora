@@ -159,6 +159,10 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def perform_create(self, serializer):
+        """Create resource with tenant scoping."""
+        serializer.save(**self.get_tenant_save_kwargs())
+
     @action(detail=True, methods=["get"])
     def availability(self, request, pk=None):
         """
