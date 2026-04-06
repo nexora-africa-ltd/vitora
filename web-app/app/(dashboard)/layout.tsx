@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AuthGuard, RouteGuard } from '@/lib/auth/guard';
 import { SyncProvider } from '@/lib/context/sync-context';
 import { AIChatProvider } from '@/lib/context/ai-chat-context';
@@ -13,6 +13,7 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
 import { cn } from '@/lib/utils/cn';
 import { usePageContextForAI } from '@/lib/hooks/use-page-context-for-ai';
+import { useSwipeSidebar } from '@/lib/hooks/use-swipe-sidebar';
 
 /** Invisible component that syncs the current route into AI chat context. */
 function AIPageContextSync() {
@@ -23,6 +24,16 @@ function AIPageContextSync() {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const openMobileSidebar = useCallback(() => setMobileSidebarOpen(true), []);
+  const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
+
+  // Swipe left-edge → open, swipe left → close (mobile/tablet only)
+  useSwipeSidebar({
+    onOpen: openMobileSidebar,
+    onClose: closeMobileSidebar,
+    isOpen: mobileSidebarOpen,
+  });
 
   // Prevent scroll chaining into the underlying page when the mobile sidebar is open.
   useEffect(() => {
@@ -51,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 collapsed={sidebarCollapsed}
                 onCollapse={setSidebarCollapsed}
                 mobileOpen={mobileSidebarOpen}
-                onMobileClose={() => setMobileSidebarOpen(false)}
+                onMobileClose={closeMobileSidebar}
               />
 
               {/* Main content area */}
@@ -63,7 +74,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 {/* Header */}
                 <Header
-                  onMenuClick={() => setMobileSidebarOpen(true)}
+                  onMenuClick={openMobileSidebar}
                   sidebarCollapsed={sidebarCollapsed}
                 />
 
@@ -78,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {mobileSidebarOpen && (
                 <div
                   className="fixed inset-0 z-40 bg-black/50 xl:hidden"
-                  onClick={() => setMobileSidebarOpen(false)}
+                  onClick={closeMobileSidebar}
                 />
               )}
 
