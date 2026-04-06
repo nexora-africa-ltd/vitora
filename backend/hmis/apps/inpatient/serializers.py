@@ -2128,6 +2128,17 @@ class ATRDetailSerializer(serializers.ModelSerializer):
     patient_mrn = serializers.CharField(
         source="transfusion.admission.patient.mrn", read_only=True
     )
+    patient_gender = serializers.CharField(
+        source="transfusion.admission.patient.get_gender_display", read_only=True
+    )
+    patient_date_of_birth = serializers.DateField(
+        source="transfusion.admission.patient.date_of_birth", read_only=True
+    )
+    ward_name = serializers.SerializerMethodField(read_only=True)
+    transfusion_diagnosis = serializers.CharField(
+        source="transfusion.diagnosis", read_only=True, default=""
+    )
+    started_by_name = serializers.SerializerMethodField(read_only=True)
     admission_id = serializers.IntegerField(
         source="transfusion.admission_id", read_only=True
     )
@@ -2147,6 +2158,19 @@ class ATRDetailSerializer(serializers.ModelSerializer):
         source="transfusion.expiry_date", read_only=True
     )
 
+    def get_ward_name(self, obj):
+        admission = obj.transfusion.admission
+        if hasattr(admission, "ward") and admission.ward:
+            return admission.ward.name
+        return ""
+
+    def get_started_by_name(self, obj):
+        user = obj.transfusion.started_by
+        if user:
+            full = user.get_full_name()
+            return full if full else user.username
+        return ""
+
     class Meta:
         model = AdverseTransfusionReaction
         fields = [
@@ -2155,6 +2179,11 @@ class ATRDetailSerializer(serializers.ModelSerializer):
             # Nested transfusion context
             "patient_name",
             "patient_mrn",
+            "patient_gender",
+            "patient_date_of_birth",
+            "ward_name",
+            "transfusion_diagnosis",
+            "started_by_name",
             "admission_id",
             "blood_product",
             "blood_product_display",

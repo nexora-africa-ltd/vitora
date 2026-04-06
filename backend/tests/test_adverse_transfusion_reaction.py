@@ -342,6 +342,24 @@ class TestATRAPIRetrieve:
         assert "has_lab_investigation" in response.data
         assert "reaction_categories_display" in response.data
 
+    def test_retrieve_atr_detail_includes_patient_demographics(self, authenticated_client, sample_atr):
+        """Detail should include patient gender, DOB, ward, diagnosis, and started_by."""
+        response = authenticated_client.get(
+            f"/api/inpatient/adverse-transfusion-reactions/{sample_atr.id}/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.data
+        # Patient demographics
+        assert "patient_gender" in data
+        assert "patient_date_of_birth" in data
+        assert "ward_name" in data
+        # Transfusion context
+        assert "transfusion_diagnosis" in data
+        assert "started_by_name" in data
+        # Existing fields still present
+        assert "patient_name" in data
+        assert "patient_mrn" in data
+
     def test_filter_by_admission(self, authenticated_client, sample_atr):
         """Should filter ATR reports by admission."""
         admission_id = sample_atr.transfusion.admission_id

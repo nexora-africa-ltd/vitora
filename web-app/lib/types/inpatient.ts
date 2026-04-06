@@ -1443,6 +1443,11 @@ export interface AdverseTransfusionReaction {
   transfusion: number;
   patient_name?: string;
   patient_mrn?: string;
+  patient_gender?: string;
+  patient_date_of_birth?: string;
+  ward_name?: string;
+  transfusion_diagnosis?: string;
+  started_by_name?: string;
   admission_id?: number;
   blood_product?: string;
   blood_product_display?: string;
