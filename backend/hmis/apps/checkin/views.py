@@ -338,6 +338,10 @@ class PatientCheckinView(views.APIView):
 
         data = serializer.validated_data
 
+        # Resolve tenant context for facility/org scoping
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
         # Process check-in
         try:
             checkin, warning = process_checkin(
@@ -352,6 +356,8 @@ class PatientCheckinView(views.APIView):
                 linked_encounter_id=data.get("linked_encounter_id"),
                 identity_method=data.get("identity_method", "MRN"),
                 procedure_order_id=data.get("procedure_order"),
+                facility=facility,
+                organization=organization,
             )
         except ValueError as e:
             # Duplicate check-in or business rule violation

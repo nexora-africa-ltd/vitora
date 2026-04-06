@@ -252,6 +252,8 @@ def process_checkin(
     linked_encounter_id: Optional[int] = None,
     identity_method: str = "MRN",
     procedure_order_id: Optional[int] = None,
+    facility=None,
+    organization=None,
 ):
     """
     Process a patient check-in.
@@ -273,6 +275,8 @@ def process_checkin(
         notes: Additional notes
         linked_encounter_id: ID of previous encounter for follow-up
         identity_method: How identity was verified
+        facility: Facility instance (resolved from request by view)
+        organization: Organization instance (resolved from request by view)
         procedure_order_id: ID of procedure order for SCHEDULED_PROCEDURE visits
 
     Returns:
@@ -363,14 +367,19 @@ def process_checkin(
     elif visit_reason == "FOLLOW_UP" or visit_type == "FOLLOW_UP":
         encounter_type = "FOLLOW_UP"
 
-    encounter = Encounter.objects.create(
-        patient=patient,
-        encounter_type=encounter_type,
-        chief_complaint=chief_complaint or "Check-in",
-        status="CREATED",
-        visit_reason=visit_reason,
-        linked_encounter=linked_encounter,
-    )
+    encounter_kwargs = {
+        "patient": patient,
+        "encounter_type": encounter_type,
+        "chief_complaint": chief_complaint or "Check-in",
+        "status": "CREATED",
+        "visit_reason": visit_reason,
+        "linked_encounter": linked_encounter,
+    }
+    if facility:
+        encounter_kwargs["facility"] = facility
+    if organization:
+        encounter_kwargs["organization"] = organization
+    encounter = Encounter.objects.create(**encounter_kwargs)
 
     # Create check-in record
     checkin = CheckIn.objects.create(
