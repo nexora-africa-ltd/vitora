@@ -966,6 +966,32 @@ def my_record(db, sample_patient, sample_facility):
 - [ ] Test fixtures include `sample_facility` / `sample_organization`
 - [ ] Admin class includes `facility` in `list_display`, `list_filter`, and `raw_id_fields`
 
+### 12. Split Create/Read Serializers Require `ReadOnCreateMixin`
+
+When a ViewSet uses `get_serializer_class()` to return a write-only `CreateSerializer` for `action == "create"` and a different read serializer for other actions, DRF's default `create()` serializes the 201 response with the **create** serializer — omitting `id`, computed properties, and nested relations. Frontend Zod schemas that expect the full read shape then throw a validation error, making the 201 look like a failure.
+
+**Always** add `ReadOnCreateMixin` (from `hmis.apps.core.mixins`) **before** `ModelViewSet` in the MRO:
+
+```python
+from hmis.apps.core.mixins import ReadOnCreateMixin
+
+# ✅ CORRECT
+class MyViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+    def get_serializer_class(self):
+        if self.action == "create":
+            return MyCreateSerializer
+        return MyReadSerializer
+
+# ❌ WRONG — 201 response will only contain input fields
+class MyViewSet(viewsets.ModelViewSet):
+    def get_serializer_class(self):
+        if self.action == "create":
+            return MyCreateSerializer
+        return MyReadSerializer
+```
+
+The mixin re-queries the instance through `get_queryset()` (honouring `select_related`/`prefetch_related`) and re-serializes with the read serializer.
+
 ---
 
 ## 🔐 Security & Compliance

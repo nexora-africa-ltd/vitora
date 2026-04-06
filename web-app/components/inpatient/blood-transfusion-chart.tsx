@@ -93,7 +93,8 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
   // Observation form
   const [obsInterval, setObsInterval] = useState<TransfusionObservationInterval>('BEFORE');
   const [obsTime, setObsTime] = useState('');
-  const [obsBP, setObsBP] = useState('');
+  const [obsBPSys, setObsBPSys] = useState('');
+  const [obsBPDia, setObsBPDia] = useState('');
   const [obsTemp, setObsTemp] = useState('');
   const [obsPulse, setObsPulse] = useState('');
   const [obsRR, setObsRR] = useState('');
@@ -140,7 +141,7 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
         data: {
           observation_interval: obsInterval,
           exact_time: obsTime,
-          blood_pressure: obsBP || undefined,
+          blood_pressure: obsBPSys && obsBPDia ? `${obsBPSys}/${obsBPDia}` : undefined,
           temperature: obsTemp ? parseFloat(obsTemp) : undefined,
           pulse: obsPulse ? parseInt(obsPulse) : undefined,
           respiratory_rate: obsRR ? parseInt(obsRR) : undefined,
@@ -195,7 +196,8 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
   const resetObservationForm = () => {
     setObsInterval('BEFORE');
     setObsTime('');
-    setObsBP('');
+    setObsBPSys('');
+    setObsBPDia('');
     setObsTemp('');
     setObsPulse('');
     setObsRR('');
@@ -339,8 +341,12 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>BP</Label>
-                <Input placeholder="120/80" value={obsBP} onChange={(e) => setObsBP(e.target.value)} />
+                <Label>BP (mmHg)</Label>
+                <div className="flex items-center gap-1">
+                  <Input type="number" placeholder="120" value={obsBPSys} onChange={(e) => setObsBPSys(e.target.value)} className="w-20" aria-label="Systolic blood pressure" />
+                  <span className="text-muted-foreground">/</span>
+                  <Input type="number" placeholder="80" value={obsBPDia} onChange={(e) => setObsBPDia(e.target.value)} className="w-20" aria-label="Diastolic blood pressure" />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Temp (°C)</Label>

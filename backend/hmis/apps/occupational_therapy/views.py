@@ -13,7 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.occupational_therapy.models import (
     OccupationalTherapyOrder,
@@ -531,7 +531,7 @@ class OTSessionFilter(django_filters.FilterSet):
         fields = ["order", "therapist", "status", "is_billed"]
 
 
-class OTSessionViewSet(viewsets.ModelViewSet):
+class OTSessionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing OT sessions.
 

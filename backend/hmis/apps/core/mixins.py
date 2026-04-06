@@ -473,3 +473,50 @@ class TenantScopedViewMixin:
     def perform_create(self, serializer):
         """Auto-set organization and facility from the request context."""
         serializer.save(**self.get_tenant_save_kwargs())
+
+
+class ReadOnCreateMixin:
+    """
+    Re-serialize the 201 response using the read/detail serializer.
+
+    DRF's default ``CreateModelMixin.create()`` serializes the response with
+    whichever serializer ``get_serializer_class()`` returns for the current
+    action.  When a ViewSet returns a *write-only* create serializer, the 201
+    body only contains the input fields — missing computed properties, nested
+    relations, ``id``, etc.  Frontend Zod schemas that expect the full read
+    shape then throw a validation error, which surfaces as a false "failure."
+
+    Add this mixin **before** ``ModelViewSet`` in the MRO::
+
+        class MyViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+            ...
+
+    The mixin re-queries the saved instance through ``get_queryset()``
+    (preserving ``select_related`` / ``prefetch_related``) and re-serializes
+    it with the serializer that ``get_serializer_class()`` returns for the
+    ``retrieve`` action.
+    """
+
+    def create(self, request, *args, **kwargs):  # type: ignore[override]
+        write_serializer = self.get_serializer(data=request.data)  # type: ignore[attr-defined]
+        write_serializer.is_valid(raise_exception=True)
+        self.perform_create(write_serializer)  # type: ignore[attr-defined]
+
+        # Re-query so select_related / prefetch_related are honoured
+        instance = self.get_queryset().get(pk=write_serializer.instance.pk)  # type: ignore[attr-defined]
+
+        # Resolve the read serializer (what retrieve would use)
+        saved_action = self.action  # type: ignore[attr-defined]
+        try:
+            self.action = "retrieve"  # type: ignore[attr-defined]
+            read_serializer_class = self.get_serializer_class()  # type: ignore[attr-defined]
+        finally:
+            self.action = saved_action  # type: ignore[attr-defined]
+
+        read_serializer = read_serializer_class(
+            instance, context=self.get_serializer_context()  # type: ignore[attr-defined]
+        )
+        headers = self.get_success_headers(read_serializer.data)  # type: ignore[attr-defined]
+        return Response(
+            read_serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
