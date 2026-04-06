@@ -48,7 +48,7 @@ class TestAssignmentRuleAPI:
         assert response.data["rule_code"] == "api_test_rule"
         assert response.data["is_active"] is True
 
-    def test_list_assignment_rules(self, authenticated_client, db):
+    def test_list_assignment_rules(self, authenticated_client, sample_facility, db):
         """Should list all active assignment rules."""
         from hmis.apps.scheduling.models import AssignmentRule
 
@@ -59,6 +59,8 @@ class TestAssignmentRuleAPI:
             applies_to="APPOINTMENT",
             rule_definition={"version": "1.0"},
             priority=100,
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
         AssignmentRule.objects.create(
             name="Rule 2",
@@ -66,6 +68,8 @@ class TestAssignmentRuleAPI:
             applies_to="SHIFT",
             rule_definition={"version": "1.0"},
             priority=50,
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
 
         response = authenticated_client.get("/api/scheduling/assignment-rules/")
@@ -135,7 +139,7 @@ class TestAssignmentRuleAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["is_active"] is False
 
-    def test_activate_assignment_rule(self, authenticated_client, db):
+    def test_activate_assignment_rule(self, authenticated_client, sample_facility, db):
         """Should activate an inactive rule."""
         from hmis.apps.scheduling.models import AssignmentRule
 
@@ -145,6 +149,8 @@ class TestAssignmentRuleAPI:
             applies_to="APPOINTMENT",
             rule_definition={"version": "1.0"},
             is_active=False,
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
 
         response = authenticated_client.post(

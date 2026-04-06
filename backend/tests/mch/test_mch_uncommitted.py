@@ -198,10 +198,10 @@ def delivery(db, mch_registration, test_user):
 
 @pytest.fixture
 def administered_immunization(db, infant_patient):
-    """Create an administered immunization record."""
-    from hmis.apps.mch.models import ImmunizationRecord, Vaccine
+    """Create an administered immunization record (in the unified immunizations app)."""
+    from hmis.apps.immunizations.models import ImmunizationRecord, VaccineDefinition
 
-    vaccine = Vaccine.objects.create(
+    vaccine = VaccineDefinition.objects.create(
         code="BCG",
         name="BCG Vaccine",
         standard_age_days=0,
@@ -658,9 +658,9 @@ class TestReportAEFIAction:
         self, authenticated_client, infant_patient
     ):
         """Should fail if vaccine was not administered."""
-        from hmis.apps.mch.models import ImmunizationRecord, Vaccine
+        from hmis.apps.immunizations.models import ImmunizationRecord, VaccineDefinition
 
-        vaccine = Vaccine.objects.create(
+        vaccine = VaccineDefinition.objects.create(
             code="TEST", name="Test Vaccine", standard_age_days=0
         )
         record = ImmunizationRecord.objects.create(
