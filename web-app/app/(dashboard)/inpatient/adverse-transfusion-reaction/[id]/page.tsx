@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   FileText,
+  FlaskConical,
   Loader2,
   Printer,
   Send,
@@ -17,6 +18,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -30,9 +39,10 @@ import {
   useATRReport,
   useSubmitATRToPPB,
   useAcknowledgeATR,
+  useUpdateATRLabInvestigation,
 } from '@/lib/hooks/use-inpatient';
 import { printATRForm } from '@/lib/documents/print-atr-form';
-import type { ATRStatus } from '@/lib/types/inpatient';
+import type { ATRStatus, ATRLabInvestigation } from '@/lib/types/inpatient';
 
 const STATUS_STYLES: Record<ATRStatus, string> = {
   DRAFT: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -68,6 +78,7 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
   const { data: atr, isLoading, error } = useATRReport(parseInt(id, 10));
   const submitMutation = useSubmitATRToPPB();
   const acknowledgeMutation = useAcknowledgeATR();
+  const labMutation = useUpdateATRLabInvestigation();
 
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitterName, setSubmitterName] = useState(() =>
@@ -91,6 +102,10 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
   const [showAcknowledgeDialog, setShowAcknowledgeDialog] = useState(false);
   const [adrNumber, setAdrNumber] = useState('');
   const [vigiflowNumber, setVigiflowNumber] = useState('');
+
+  // Lab investigation dialog state
+  const [showLabDialog, setShowLabDialog] = useState(false);
+  const [labData, setLabData] = useState<ATRLabInvestigation>({});
 
   if (isLoading) {
     return (
@@ -159,6 +174,62 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
     );
   }
 
+  function openLabDialog() {
+    if (!atr) return;
+    // Pre-populate with existing values
+    setLabData({
+      recipient_supernatant_hemolysis: (atr.recipient_supernatant_hemolysis || '') as ATRLabInvestigation['recipient_supernatant_hemolysis'],
+      recipient_hemolysis_severity: (atr.recipient_hemolysis_severity || '') as ATRLabInvestigation['recipient_hemolysis_severity'],
+      recipient_agglutination: (atr.recipient_agglutination || '') as ATRLabInvestigation['recipient_agglutination'],
+      haematological_results: atr.haematological_results ?? {},
+      blood_film_rbc: atr.blood_film_rbc || '',
+      blood_film_wbc: atr.blood_film_wbc || '',
+      blood_film_plt: atr.blood_film_plt || '',
+      donor_supernatant_hemolysis: (atr.donor_supernatant_hemolysis || '') as ATRLabInvestigation['donor_supernatant_hemolysis'],
+      donor_pack_age: atr.donor_pack_age || '',
+      culture_donor_pack_results: atr.culture_donor_pack_results || '',
+      culture_recipient_blood_results: atr.culture_recipient_blood_results || '',
+      compatibility_saline_rt: (atr.compatibility_saline_rt || '') as ATRLabInvestigation['compatibility_saline_rt'],
+      compatibility_saline_37: (atr.compatibility_saline_37 || '') as ATRLabInvestigation['compatibility_saline_37'],
+      compatibility_ahg: (atr.compatibility_ahg || '') as ATRLabInvestigation['compatibility_ahg'],
+      compatibility_albumin_37: (atr.compatibility_albumin_37 || '') as ATRLabInvestigation['compatibility_albumin_37'],
+      enzyme_treated_cells_result: atr.enzyme_treated_cells_result || '',
+      anti_a_titres: atr.anti_a_titres || '',
+      anti_b_titres: atr.anti_b_titres || '',
+      urinalysis: atr.urinalysis || '',
+      evaluation_diagnosis: atr.evaluation_diagnosis || '',
+      reaction_related_to_transfusion: (atr.reaction_related_to_transfusion || '') as ATRLabInvestigation['reaction_related_to_transfusion'],
+    });
+    setShowLabDialog(true);
+  }
+
+  function updateLabField(field: keyof ATRLabInvestigation, value: string) {
+    setLabData((prev) => ({ ...prev, [field]: value } as ATRLabInvestigation));
+  }
+
+  function updateHaemResult(field: string, value: string) {
+    setLabData((prev) => ({
+      ...prev,
+      haematological_results: { ...(prev.haematological_results ?? {}), [field]: value },
+    }));
+  }
+
+  function handleSaveLabInvestigation() {
+    if (!atr) return;
+    labMutation.mutate(
+      { id: atr.id, data: labData },
+      {
+        onSuccess: () => {
+          toast({ title: 'Lab Investigation Saved', description: 'Lab results have been recorded.' });
+          setShowLabDialog(false);
+        },
+        onError: () => {
+          toast({ title: 'Error', description: 'Failed to save lab investigation.', variant: 'destructive' });
+        },
+      }
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
@@ -171,6 +242,13 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
               <span className="hidden sm:inline">Print MOH Form</span>
               <span className="sm:hidden">Print</span>
             </Button>
+            {(atr.status === 'DRAFT' || atr.status === 'PENDING_REVIEW') && (
+              <Button variant="outline" size="sm" onClick={openLabDialog}>
+                <FlaskConical className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">{atr.has_lab_investigation ? 'Edit Lab Investigation' : 'Complete Lab Investigation'}</span>
+                <span className="sm:hidden">Lab</span>
+              </Button>
+            )}
             {atr.status === 'DRAFT' && (
               <Button size="sm" onClick={() => setShowSubmitDialog(true)}>
                 <Send className="mr-2 h-4 w-4" />
@@ -321,40 +399,107 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="space-y-4 text-sm">
           {!atr.has_lab_investigation ? (
-            <p className="text-muted-foreground">
-              Lab investigation has not been completed yet.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {atr.recipient_supernatant_hemolysis && (
-                <p><span className="font-medium">Recipient Hemolysis:</span> {atr.recipient_supernatant_hemolysis}
-                  {atr.recipient_hemolysis_severity && ` (${atr.recipient_hemolysis_severity})`}
-                </p>
-              )}
-              {atr.recipient_agglutination && (
-                <p><span className="font-medium">Agglutination:</span> {atr.recipient_agglutination}</p>
-              )}
-              {atr.donor_supernatant_hemolysis && (
-                <p><span className="font-medium">Donor Hemolysis:</span> {atr.donor_supernatant_hemolysis}</p>
-              )}
-              {atr.compatibility_saline_rt && (
-                <p><span className="font-medium">Saline RT:</span> {atr.compatibility_saline_rt}</p>
-              )}
-              {atr.compatibility_ahg && (
-                <p><span className="font-medium">AHG:</span> {atr.compatibility_ahg}</p>
-              )}
-              {atr.evaluation_diagnosis && (
-                <p className="sm:col-span-2"><span className="font-medium">Evaluation Diagnosis:</span> {atr.evaluation_diagnosis}</p>
-              )}
-              {atr.reaction_related_to_transfusion && (
-                <p><span className="font-medium">Reaction Related:</span> {atr.reaction_related_to_transfusion}</p>
-              )}
-              {atr.urinalysis && (
-                <p><span className="font-medium">Urinalysis:</span> {atr.urinalysis}</p>
+            <div className="text-center py-4">
+              <p className="text-muted-foreground mb-3">
+                Lab investigation has not been completed yet.
+              </p>
+              {(atr.status === 'DRAFT' || atr.status === 'PENDING_REVIEW') && (
+                <Button variant="outline" size="sm" onClick={openLabDialog}>
+                  <FlaskConical className="mr-2 h-4 w-4" />
+                  Complete Lab Investigation
+                </Button>
               )}
             </div>
+          ) : (
+            <>
+              {/* 1. Recipient's blood supernatant */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {atr.recipient_supernatant_hemolysis && (
+                  <p><span className="font-medium">Recipient Hemolysis:</span> {atr.recipient_supernatant_hemolysis}
+                    {atr.recipient_hemolysis_severity && ` (${atr.recipient_hemolysis_severity})`}
+                  </p>
+                )}
+                {atr.recipient_agglutination && (
+                  <p><span className="font-medium">Agglutination:</span> {atr.recipient_agglutination}</p>
+                )}
+              </div>
+
+              {/* 3. Haematological results */}
+              {atr.haematological_results && Object.keys(atr.haematological_results).length > 0 && (
+                <div>
+                  <p className="font-medium mb-1">Haematological Results:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-muted/50 rounded-md p-2">
+                    {(['wbc', 'hb', 'rbc', 'hct', 'mcv', 'mch', 'mchc', 'plt'] as const).map((key) => (
+                      atr.haematological_results?.[key] ? (
+                        <span key={key}><span className="font-medium uppercase">{key}:</span> {atr.haematological_results[key]}</span>
+                      ) : null
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Blood film */}
+              {(atr.blood_film_rbc || atr.blood_film_wbc || atr.blood_film_plt) && (
+                <div>
+                  <p className="font-medium mb-1">Blood Film:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs bg-muted/50 rounded-md p-2">
+                    {atr.blood_film_rbc && <span><span className="font-medium">RBC:</span> {atr.blood_film_rbc}</span>}
+                    {atr.blood_film_wbc && <span><span className="font-medium">WBC:</span> {atr.blood_film_wbc}</span>}
+                    {atr.blood_film_plt && <span><span className="font-medium">PLT:</span> {atr.blood_film_plt}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* 4-7: Donor investigations */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {atr.donor_supernatant_hemolysis && (
+                  <p><span className="font-medium">Donor Hemolysis:</span> {atr.donor_supernatant_hemolysis}</p>
+                )}
+                {atr.donor_pack_age && (
+                  <p><span className="font-medium">Donor Pack Age:</span> {atr.donor_pack_age}</p>
+                )}
+                {atr.culture_donor_pack_results && (
+                  <p><span className="font-medium">Culture (Donor Pack):</span> {atr.culture_donor_pack_results}</p>
+                )}
+                {atr.culture_recipient_blood_results && (
+                  <p><span className="font-medium">Culture (Recipient Blood):</span> {atr.culture_recipient_blood_results}</p>
+                )}
+              </div>
+
+              {/* 8. Compatibility testing */}
+              {(atr.compatibility_saline_rt || atr.compatibility_saline_37 || atr.compatibility_ahg || atr.compatibility_albumin_37) && (
+                <div>
+                  <p className="font-medium mb-1">Compatibility Testing:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    {atr.compatibility_saline_rt && <span><span className="font-medium">Saline RT:</span> {atr.compatibility_saline_rt}</span>}
+                    {atr.compatibility_saline_37 && <span><span className="font-medium">Saline 37°C:</span> {atr.compatibility_saline_37}</span>}
+                    {atr.compatibility_ahg && <span><span className="font-medium">AHG:</span> {atr.compatibility_ahg}</span>}
+                    {atr.compatibility_albumin_37 && <span><span className="font-medium">Albumin 37°C:</span> {atr.compatibility_albumin_37}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* 9-13: Extended investigation */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {atr.enzyme_treated_cells_result && (
+                  <p><span className="font-medium">Enzyme-treated Cells:</span> {atr.enzyme_treated_cells_result}</p>
+                )}
+                {(atr.anti_a_titres || atr.anti_b_titres) && (
+                  <p><span className="font-medium">Titres:</span> Anti-A: {atr.anti_a_titres || '—'}, Anti-B: {atr.anti_b_titres || '—'}</p>
+                )}
+                {atr.urinalysis && (
+                  <p><span className="font-medium">Urinalysis:</span> {atr.urinalysis}</p>
+                )}
+                {atr.evaluation_diagnosis && (
+                  <p className="sm:col-span-2"><span className="font-medium">Evaluation Diagnosis:</span> {atr.evaluation_diagnosis}</p>
+                )}
+                {atr.reaction_related_to_transfusion && (
+                  <p><span className="font-medium">Reaction Related to Transfusion:</span> {atr.reaction_related_to_transfusion}</p>
+                )}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -444,6 +589,196 @@ export default function ATRDetailPage({ params }: { params: Promise<{ id: string
             <Button onClick={handleAcknowledge} disabled={!adrNumber || acknowledgeMutation.isPending}>
               {acknowledgeMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Record Acknowledgment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lab Investigation Dialog */}
+      <Dialog open={showLabDialog} onOpenChange={setShowLabDialog}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Lab Investigation — Transfusion Manager</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* 1. Recipient's blood supernatant */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">1. Recipient&apos;s Blood Supernatant</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Hemolysis</Label>
+                  <Select value={labData.recipient_supernatant_hemolysis || ''} onValueChange={(v) => updateLabField('recipient_supernatant_hemolysis', v)}>
+                    <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PRESENT">Present</SelectItem>
+                      <SelectItem value="ABSENT">Absent</SelectItem>
+                      <SelectItem value="EQUIVOCAL">Equivocal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {labData.recipient_supernatant_hemolysis === 'PRESENT' && (
+                  <div className="space-y-2">
+                    <Label>Severity</Label>
+                    <Select value={labData.recipient_hemolysis_severity || ''} onValueChange={(v) => updateLabField('recipient_hemolysis_severity', v)}>
+                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MILD">Mild</SelectItem>
+                        <SelectItem value="MODERATE">Moderate</SelectItem>
+                        <SelectItem value="MARKED">Marked</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Recipient agglutination */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">2. Recipient&apos;s Blood Agglutination</h4>
+              <Select value={labData.recipient_agglutination || ''} onValueChange={(v) => updateLabField('recipient_agglutination', v)}>
+                <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PRESENT">Present</SelectItem>
+                  <SelectItem value="ABSENT">Absent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 3. Haematological results */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">3. Haematological Results</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {(['wbc', 'hb', 'rbc', 'hct', 'mcv', 'mch', 'mchc', 'plt'] as const).map((key) => (
+                  <div key={key} className="space-y-1">
+                    <Label className="text-xs uppercase">{key}</Label>
+                    <Input
+                      placeholder="—"
+                      value={labData.haematological_results?.[key] || ''}
+                      onChange={(e) => updateHaemResult(key, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Film RBC</Label>
+                  <Input value={labData.blood_film_rbc || ''} onChange={(e) => updateLabField('blood_film_rbc', e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Film WBC</Label>
+                  <Input value={labData.blood_film_wbc || ''} onChange={(e) => updateLabField('blood_film_wbc', e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Film PLT</Label>
+                  <Input value={labData.blood_film_plt || ''} onChange={(e) => updateLabField('blood_film_plt', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {/* 4-7: Donor investigations */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">4-7. Donor Investigations</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Donor Supernatant Hemolysis</Label>
+                  <Select value={labData.donor_supernatant_hemolysis || ''} onValueChange={(v) => updateLabField('donor_supernatant_hemolysis', v)}>
+                    <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PRESENT">Present</SelectItem>
+                      <SelectItem value="ABSENT">Absent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Age of Donor Pack</Label>
+                  <Input value={labData.donor_pack_age || ''} onChange={(e) => updateLabField('donor_pack_age', e.target.value)} placeholder="e.g. 14 days" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Culture: Donor Pack Results</Label>
+                  <Textarea rows={2} value={labData.culture_donor_pack_results || ''} onChange={(e) => updateLabField('culture_donor_pack_results', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Culture: Recipient Blood Results</Label>
+                  <Textarea rows={2} value={labData.culture_recipient_blood_results || ''} onChange={(e) => updateLabField('culture_recipient_blood_results', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {/* 8. Compatibility testing */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">8. Compatibility Testing</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {([
+                  ['compatibility_saline_rt', 'Saline RT'],
+                  ['compatibility_saline_37', 'Saline 37°C'],
+                  ['compatibility_ahg', 'AHG'],
+                  ['compatibility_albumin_37', 'Albumin 37°C'],
+                ] as [keyof ATRLabInvestigation, string][]).map(([field, label]) => (
+                  <div key={field} className="space-y-1">
+                    <Label className="text-xs">{label}</Label>
+                    <Select value={(labData[field] as string) || ''} onValueChange={(v) => updateLabField(field, v)}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="COMPATIBLE">Compatible</SelectItem>
+                        <SelectItem value="INCOMPATIBLE">Incompatible</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 9. Enzyme-treated cells */}
+            <div className="space-y-2">
+              <Label>9. Enzyme-treated Cells Result</Label>
+              <Textarea rows={2} value={labData.enzyme_treated_cells_result || ''} onChange={(e) => updateLabField('enzyme_treated_cells_result', e.target.value)} />
+            </div>
+
+            {/* 10. Anti-A / Anti-B titres */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">10. Anti-A / Anti-B Titres (Group O → A/B/AB)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Anti-A Titres</Label>
+                  <Input value={labData.anti_a_titres || ''} onChange={(e) => updateLabField('anti_a_titres', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Anti-B Titres</Label>
+                  <Input value={labData.anti_b_titres || ''} onChange={(e) => updateLabField('anti_b_titres', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {/* 11. Urinalysis */}
+            <div className="space-y-2">
+              <Label>11. Urinalysis</Label>
+              <Textarea rows={2} value={labData.urinalysis || ''} onChange={(e) => updateLabField('urinalysis', e.target.value)} />
+            </div>
+
+            {/* 12. Evaluation diagnosis */}
+            <div className="space-y-2">
+              <Label>12. Evaluation: Diagnosis</Label>
+              <Textarea rows={2} value={labData.evaluation_diagnosis || ''} onChange={(e) => updateLabField('evaluation_diagnosis', e.target.value)} placeholder="e.g. Febrile non-hemolytic transfusion reaction" />
+            </div>
+
+            {/* 13. Causality */}
+            <div className="space-y-2">
+              <Label>13. Was the adverse reaction related to transfusion?</Label>
+              <Select value={labData.reaction_related_to_transfusion || ''} onValueChange={(v) => updateLabField('reaction_related_to_transfusion', v)}>
+                <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="YES">Yes</SelectItem>
+                  <SelectItem value="NO">No</SelectItem>
+                  <SelectItem value="INCONCLUSIVE">Inconclusive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLabDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveLabInvestigation} disabled={labMutation.isPending}>
+              {labMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Lab Investigation
             </Button>
           </DialogFooter>
         </DialogContent>

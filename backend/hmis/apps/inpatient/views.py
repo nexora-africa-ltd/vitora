@@ -3192,6 +3192,8 @@ class AdverseTransfusionReactionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet
             "transfusion",
             "transfusion__admission",
             "transfusion__admission__patient",
+            "transfusion__admission__ward",
+            "transfusion__started_by",
             "initial_reporter",
             "facility",
         ).prefetch_related("transfusion__observations")
