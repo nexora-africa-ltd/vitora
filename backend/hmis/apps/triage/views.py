@@ -17,7 +17,7 @@ from rest_framework.permissions import BasePermission, IsAdminUser, IsAuthentica
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
@@ -1142,7 +1142,7 @@ class VolumeReportView(APIView):
 # =============================================================================
 
 
-class ERBedViewSet(viewsets.ModelViewSet):
+class ERBedViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ER Bed management for the bed board.
 

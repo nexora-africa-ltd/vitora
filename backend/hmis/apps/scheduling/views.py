@@ -23,7 +23,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.scheduling.models import (
     Appointment,
     AssignmentDecision,
@@ -235,7 +235,7 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(result)
 
 
-class ScheduleViewSet(viewsets.ModelViewSet):
+class ScheduleViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing resource schedules.
 

@@ -15,7 +15,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 
 from .models import (
@@ -142,7 +142,7 @@ class NotifiableDiseaseViewSet(viewsets.ModelViewSet):
         )
 
 
-class NotifiableCaseViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     API endpoint for NotifiableCase management.
 
@@ -968,7 +968,7 @@ class IHRNotificationFilter(filters.FilterSet):
         ]
 
 
-class IHRNotificationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class IHRNotificationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     API endpoint for IHR Notification management.
 

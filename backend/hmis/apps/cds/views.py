@@ -18,7 +18,7 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.encounters.models import Encounter
 
@@ -75,7 +75,7 @@ class CDSAlertFilter(django_filters.FilterSet):
 # ──────────────────────────── Rule ViewSet ────────────────────────────
 
 
-class CDSRuleViewSet(viewsets.ModelViewSet):
+class CDSRuleViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     CRUD and lifecycle management for CDS rules.
 

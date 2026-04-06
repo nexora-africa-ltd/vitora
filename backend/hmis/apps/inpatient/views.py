@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.patients.models import Patient
 
@@ -2898,7 +2898,7 @@ class FluidBalanceEntryViewSet(viewsets.ModelViewSet):
         )
 
 
-class BloodTransfusionViewSet(viewsets.ModelViewSet):
+class BloodTransfusionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for blood transfusion observation charts.
 
@@ -3029,7 +3029,7 @@ class BloodTransfusionViewSet(viewsets.ModelViewSet):
         return Response(BloodTransfusionSerializer(transfusion).data)
 
 
-class BPMonitoringViewSet(viewsets.ModelViewSet):
+class BPMonitoringViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for blood pressure monitoring readings.
 
