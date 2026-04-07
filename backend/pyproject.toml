@@ -19,7 +19,7 @@ requests = "^2.31"
 python-dotenv = "^1.0"
 pydantic = "^2.5"
 pydantic-settings = "^2.1"
-cryptography = "^42.0"
+cryptography = "^44.0"
 pillow = "^10.2"
 django-extensions = "^3.2"
 reportlab = "^4.4.7"
@@ -59,6 +59,7 @@ azure-keyvault-keys = {version = "^4.10.0", optional = true}
 ruff = "^0.15.4"
 django-ratelimit = "^4.1.0"
 resend = "^2.26.0"
+webauthn = "^2.7"
 
 [tool.poetry.extras]
 azure = ["azure-identity", "azure-keyvault-keys"]

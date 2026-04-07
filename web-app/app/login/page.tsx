@@ -29,6 +29,7 @@ export default function LoginPage() {
     required: boolean;
     token?: string;
     setupRequired?: boolean;
+    availableMethods?: string[];
   } | null>(null);
   const [logoutReason, setLogoutReason] = useState<'idle' | null>(null);
   const { login, verifyMFA } = useAuth();
@@ -98,6 +99,7 @@ export default function LoginPage() {
           required: true,
           token: result.mfaToken,
           setupRequired: result.mfaSetupRequired,
+          availableMethods: result.availableMethods,
         });
         return;
       }
@@ -139,6 +141,7 @@ export default function LoginPage() {
     return (
       <MFAVerification
         mfaToken={mfaState.token}
+        availableMethods={mfaState.availableMethods}
         onCancel={() => setMfaState(null)}
       />
     );

@@ -1,4 +1,4 @@
-# MFA Implementation (TOTP + Backup Codes)
+# MFA Implementation (TOTP + WebAuthn + Backup Codes)
 
 This document describes the current backend Multi‑Factor Authentication (MFA) implementation for Vitora HMIS.
 
@@ -7,32 +7,37 @@ This document describes the current backend Multi‑Factor Authentication (MFA) 
 ### Implemented (Backend)
 - TOTP-based MFA enrollment using an authenticator app (RFC 6238 via `pyotp`)
 - QR provisioning URI + base64 PNG QR code
+- **WebAuthn / FIDO2 passkeys** (Windows Hello, Touch ID, Face ID, security keys) via `py_webauthn`
 - Single-use backup codes (recovery codes)
+- **Backup codes re-download** endpoint (generates fresh set after TOTP verification)
 - MFA login flow using a short-lived temporary MFA token
+- **Multi-method MFA verification** — TOTP, WebAuthn, or backup code during login
+- **`available_methods`** returned in login and status responses
 - Role-based MFA requirement enforcement (blocks disabling MFA for required roles)
-- Audit logging for MFA lifecycle events
+- Audit logging for MFA lifecycle events (including WebAuthn registration/authentication)
 - **Brute-force protection** via rate limiting and failed attempt tracking
 - **Django admin restricted to Nexora superusers** (`AdminAccessMiddleware`)
 - **Admin MFA enforcement** — TOTP verification required before accessing `/admin/` (session-based)
 - **MFA onboarding grace period** — 72h (configurable) for new users before mandatory setup
 - **Grace period enforcement middleware** — blocks API access after deadline expires
-- 53 comprehensive unit tests (`backend/tests/test_mfa.py`)
+- 89 comprehensive unit tests (`backend/tests/core/test_mfa.py`)
 - 16 rate limiting tests (`backend/tests/test_rate_limiting.py`)
 - 21 admin security tests (`backend/tests/test_admin_security.py`)
 
 ### Implemented (Frontend)
-- MFA setup wizard (`web-app/components/auth/mfa-setup-wizard.tsx`)
-- MFA verification during login (`web-app/components/auth/mfa-verification.tsx`)
-- MFA API client (`web-app/lib/api/mfa.ts`)
+- MFA setup wizard with **"Open in Authenticator App"** deep-link (`web-app/components/auth/mfa-setup-wizard.tsx`)
+- MFA verification during login with **Passkey / TOTP / Backup Code tabs** (`web-app/components/auth/mfa-verification.tsx`)
+- MFA settings with **passkey management** (add/list/delete) and **re-download backup codes** (`web-app/components/settings/mfa-settings.tsx`)
+- MFA API client with WebAuthn support (`web-app/lib/api/mfa.ts`)
 - Zod schemas for type-safe API responses (`web-app/lib/schemas/mfa.schema.ts`)
 - **MFA grace period banner** (`web-app/components/auth/mfa-grace-banner.tsx`) — dismissible countdown
 - **403 `mfa_setup_required` interceptor** (`web-app/lib/api/client.ts`) — redirects to setup
-- **Login flow** passes `mfa_grace_deadline` and `mfa_grace_expired` through auth context
+- **Login flow** passes `available_methods`, `mfa_grace_deadline`, and `mfa_grace_expired` through auth context
 - 37 UI component tests
 
 ### Not implemented yet
 - E2E MFA tests (Playwright)
-- MFA settings page in user profile (currently via Settings > Security tab)
+- Mobile app MFA (Phase 1 — React Native `Linking.openURL()` for `otpauth://` deep-link)
 
 ## Dependencies
 
@@ -40,10 +45,12 @@ This document describes the current backend Multi‑Factor Authentication (MFA) 
 Declared in [backend/pyproject.toml](backend/pyproject.toml):
 - `pyotp` — TOTP token generation/verification (RFC 6238)
 - `qrcode` — QR code generation for authenticator apps
+- `py_webauthn` — WebAuthn/FIDO2 registration and authentication ceremonies
 
 **Note**: `django-otp` and `django-two-factor-auth` were evaluated but **not used**. Our custom MFA module provides better control for DHA compliance (audit logging, role-based enforcement) without the overhead of SMS support we don't need.
 
 ### Frontend
+- `@simplewebauthn/browser` — WebAuthn browser ceremony helpers (passkey registration & authentication)
 - React components using shadcn/ui patterns
 - Sonner for toast notifications
 - Zod for API response validation
@@ -53,11 +60,18 @@ Declared in [backend/pyproject.toml](backend/pyproject.toml):
 Module: [backend/hmis/apps/core/mfa/models.py](backend/hmis/apps/core/mfa/models.py)
 
 - `UserTOTPDevice`
-  - Fields: `user`, `name`, `secret_key`, `confirmed`, `created_at`, `last_used_at`
+  - Fields: `user`, `name`, `secret_key`, `confirmed`, `confirmed_at`, `created_at`, `last_used_at`
   - Behavior:
     - Secret auto-generated on save if missing
     - `verify_token()` updates `last_used_at` on successful verification
     - `get_provisioning_uri()` returns an `otpauth://` URI (issuer: `Vitora HMIS`)
+
+- `UserWebAuthnCredential`
+  - Fields: `user`, `name`, `credential_id` (binary, unique), `public_key` (binary), `sign_count`, `transports` (JSON), `aaguid`, `backed_up`, `created_at`, `last_used_at`
+  - Behavior:
+    - `update_sign_count()` updates counter and `last_used_at` after successful authentication
+    - Registration requires existing confirmed TOTP device (WebAuthn is layered on top of TOTP)
+    - Registration/authentication challenges stored in Django cache (not session — JWT auth doesn't maintain sessions)
 
 - `BackupCode`
   - Stores SHA‑256 hashes of recovery codes
@@ -70,14 +84,16 @@ Module: [backend/hmis/apps/core/mfa/models.py](backend/hmis/apps/core/mfa/models
   - Enforced single-use (`used=True` after verification)
   - **Brute-force protection**: Tracks `failed_attempts` and invalidates after 5 failed attempts (`MAX_FAILED_ATTEMPTS = 5`)
 
-Migration: [backend/hmis/apps/core/migrations/0017_mfa_models.py](backend/hmis/apps/core/migrations/0017_mfa_models.py)
+Migrations:
+- [0017_mfa_models.py](backend/hmis/apps/core/migrations/0017_mfa_models.py) — TOTP, BackupCode, MFAToken
+- [0036_add_webauthn_credential.py](backend/hmis/apps/core/migrations/0036_add_webauthn_credential.py) — UserWebAuthnCredential
 
 ## Role Requirements
 
 Utility: [backend/hmis/apps/core/mfa/utils.py](backend/hmis/apps/core/mfa/utils.py)
 
 MFA is considered:
-- **Enabled** if the user has at least one confirmed TOTP device.
+- **Enabled** if the user has at least one confirmed TOTP device **or** at least one WebAuthn credential.
 - **Required** if:
   - `user.is_superuser` is true, OR
   - the user has a `StaffProfile` whose primary/secondary role code is in `{ADMIN, CLINICAL_SENIOR, MANAGEMENT}`, OR
@@ -93,9 +109,11 @@ Mounted at: [backend/hmis/urls.py](backend/hmis/urls.py) under `/api/mfa/`.
 - Response shape:
   - `mfa_enabled` (bool)
   - `mfa_required` (bool)
-  - `devices_count` (int)
+  - `devices_count` (int) — confirmed TOTP devices
+  - `webauthn_credentials_count` (int) — registered passkeys
   - `backup_codes_remaining` (int)
   - `has_pending_setup` (bool)
+  - `available_methods` (list[str]) — e.g. `["totp", "webauthn", "backup_code"]`
 
 ### 2) Start TOTP Setup (Enrollment)
 - `POST /api/mfa/totp/setup/` (auth required)
@@ -120,7 +138,7 @@ Mounted at: [backend/hmis/urls.py](backend/hmis/urls.py) under `/api/mfa/`.
 - Behavior:
   - Denied (`403`) if MFA is required for the user’s role
   - Validates password
-  - Deletes all devices and backup codes for the user
+  - Deletes all TOTP devices, WebAuthn credentials, and backup codes for the user
 
 ### 5) Regenerate Backup Codes
 - `POST /api/mfa/backup-codes/regenerate/` (auth required)
@@ -140,13 +158,63 @@ Mounted at: [backend/hmis/urls.py](backend/hmis/urls.py) under `/api/mfa/`.
   - Validates and consumes `MFAToken`
   - Returns JWT `access` + `refresh` on success
 
+### 7) Re-download Backup Codes
+- `POST /api/mfa/backup-codes/download/` (auth required)
+- Body:
+  - `{ "token": "123456" }` (current TOTP)
+- Behavior:
+  - Requires MFA enabled
+  - Verifies TOTP
+  - Generates a fresh set of backup codes (old codes are replaced — hashed codes cannot be revealed)
+
+### 8) WebAuthn: Register Begin
+- `POST /api/mfa/webauthn/register/begin/` (auth required)
+- Behavior:
+  - Requires TOTP MFA to be enabled first (WebAuthn is layered on top)
+  - Stores challenge in Django cache (keyed by `user.id`, 5 min TTL)
+  - Returns `{ "options": "<JSON PublicKeyCredentialCreationOptions>" }`
+
+### 9) WebAuthn: Register Complete
+- `POST /api/mfa/webauthn/register/complete/` (auth required)
+- Body:
+  - `{ "credential": {...}, "name": "Windows Hello" }`
+- Behavior:
+  - Retrieves challenge from cache, verifies attestation
+  - Creates `UserWebAuthnCredential` record
+  - Returns credential metadata
+
+### 10) WebAuthn: List Credentials
+- `GET /api/mfa/webauthn/credentials/` (auth required)
+- Returns array of `{ id, name, created_at, last_used_at, backed_up, transports }`
+
+### 11) WebAuthn: Delete Credential
+- `DELETE /api/mfa/webauthn/credentials/{id}/` (auth required)
+- Body: `{ "password": "<current_password>" }`
+
+### 12) WebAuthn: Authenticate Begin
+- `POST /api/mfa/webauthn/authenticate/begin/` (no auth; part of login flow)
+- Body: `{ "mfa_token": "..." }`
+- Behavior:
+  - Validates MFA token, looks up user's WebAuthn credentials
+  - Stores challenge in Django cache (keyed by `mfa_token`, 5 min TTL)
+  - Returns `{ "options": "<JSON PublicKeyCredentialRequestOptions>" }`
+
+### 13) WebAuthn: Authenticate Complete
+- `POST /api/mfa/webauthn/authenticate/complete/` (no auth; part of login flow)
+- Body: `{ "mfa_token": "...", "credential": {...} }`
+- Behavior:
+  - Retrieves challenge from cache, verifies assertion
+  - Updates credential sign count
+  - Returns JWT `access` + `refresh` on success
+
 ## Login Flow Integration
 
 Login view: [backend/hmis/apps/core/views.py](backend/hmis/apps/core/views.py) (`AuditedTokenObtainPairView`)
 
 - If MFA is enabled for the user, `/api/token/` returns:
-  - `{ "mfa_required": true, "mfa_token": "..." }`
+  - `{ "mfa_required": true, "mfa_token": "...", "available_methods": ["totp", "webauthn", "backup_code"] }`
   - (No `access`/`refresh` yet)
+  - `available_methods` tells the frontend which MFA verification tabs to show
 - If MFA is required but not enabled:
   - Tokens are still returned, plus:
     - `mfa_setup_required=true` to drive the UI flow
@@ -195,9 +263,13 @@ Current MFA-related actions:
 - `mfa_enabled`
 - `mfa_disabled`
 - `backup_codes_regenerated`
+- `backup_codes_downloaded`
 - `backup_code_used`
 - `mfa_verification_failed`
 - `mfa_verification_success`
+- `webauthn_registration_started`
+- `webauthn_credential_registered`
+- `webauthn_credential_deleted`
 
 ## Brute-Force Protection
 
@@ -242,12 +314,25 @@ Rate limiting tests: [backend/tests/test_rate_limiting.py](backend/tests/test_ra
 
 ## Test Coverage
 
-Backend tests: [backend/tests/test_mfa.py](backend/tests/test_mfa.py)
-- Model tests: devices, provisioning URI, backup code generation/consumption
-- API tests: status, setup/confirm, disable, regenerate
-- Login flow: MFA required response + verify endpoint
+Backend tests: [backend/tests/core/test_mfa.py](backend/tests/core/test_mfa.py)
+- Model tests: TOTP devices, WebAuthn credentials, provisioning URI, backup code generation/consumption
+- API tests: status, setup/confirm, disable, regenerate, re-download backup codes
+- WebAuthn tests: credential CRUD, registration flow, authentication begin, credential isolation
+- Login flow: MFA required response + verify endpoint + `available_methods`
 - Role enforcement: required roles vs optional roles
-- Audit log tests for MFA events
+- Audit log tests for MFA events (including WebAuthn)
+- MFA-aware token refresh: blocks pre-MFA tokens, allows post-MFA tokens
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WEBAUTHN_RP_ID` | `localhost` | Relying Party ID — must match the domain the browser sees (no scheme, no port) |
+| `WEBAUTHN_ORIGIN` | `http://localhost:3009` | Origin(s) the browser sends — comma-separate for multiple |
+| `MFA_ENFORCEMENT` | `True` | Master toggle for role-based MFA requirement (`False` in dev/test) |
+| `MFA_GRACE_PERIOD_HOURS` | `72` | Hours before MFA setup becomes mandatory (`0` = immediate) |
+
+Set in: `.env`, `.env.example`, `.env.render`, and `backend/hmis/settings/base.py`.
 
 ## Frontend Follow-ups
 

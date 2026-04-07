@@ -124,6 +124,14 @@ export function MFASetupWizard({ onComplete, onCancel }: MFASetupWizardProps) {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
+                    {setupData.provisioning_uri && (
+                      <a
+                        href={setupData.provisioning_uri}
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+                      >
+                        Open in Authenticator App →
+                      </a>
+                    )}
                   </div>
                 </div>
 

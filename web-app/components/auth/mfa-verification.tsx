@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Key, Loader2, Smartphone, Archive, AlertTriangle } from 'lucide-react';
+import { Shield, Key, Loader2, Smartphone, Archive, AlertTriangle, Fingerprint } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
+import { mfaApi } from '@/lib/api/mfa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,16 +19,21 @@ const MFA_TOKEN_LIFETIME_SECONDS = 5 * 60;
 
 interface MFAVerificationProps {
   mfaToken: string;
+  availableMethods?: string[];
   onCancel: () => void;
 }
 
-export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
+export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_code'], onCancel }: MFAVerificationProps) {
   const [token, setToken] = useState('');
   const [backupCode, setBackupCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'token' | 'backup'>('token');
+  const hasWebAuthn = availableMethods.includes('webauthn');
+  const tabCount = hasWebAuthn ? 3 : 2;
+  const defaultTab = hasWebAuthn ? 'passkey' : 'token';
+  const [activeTab, setActiveTab] = useState<'token' | 'backup' | 'passkey'>(defaultTab);
   const [isExpired, setIsExpired] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(MFA_TOKEN_LIFETIME_SECONDS);
+  const [webAuthnError, setWebAuthnError] = useState<string | null>(null);
   const { verifyMFA } = useAuth();
   const router = useRouter();
   const expiresAtRef = useRef(Date.now() + MFA_TOKEN_LIFETIME_SECONDS * 1000);
@@ -119,9 +125,40 @@ export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
   };
 
   const handleTabChange = (value: string) => {
-    setActiveTab(value as 'token' | 'backup');
+    setActiveTab(value as 'token' | 'backup' | 'passkey');
+    setWebAuthnError(null);
     if (value === 'backup') {
       mfaToast.backupCodeHint();
+    }
+  };
+
+  const handleWebAuthnVerify = async () => {
+    setIsLoading(true);
+    setWebAuthnError(null);
+    try {
+      const { startAuthentication } = await import('@simplewebauthn/browser');
+      // Get challenge options from backend
+      const optionsJSON = await mfaApi.webauthnAuthenticateBegin(mfaToken);
+      const options = JSON.parse(optionsJSON);
+      // Trigger browser passkey/biometric prompt
+      const credential = await startAuthentication({ optionsJSON: options });
+      // Complete authentication with backend
+      const result = await mfaApi.webauthnAuthenticateComplete(mfaToken, credential);
+      // Store tokens and user
+      localStorage.setItem('vitora_access_token', result.access);
+      localStorage.setItem('vitora_refresh_token', result.refresh);
+      localStorage.setItem('vitora_user', JSON.stringify(result.user));
+      mfaToast.success();
+      await new Promise(resolve => setTimeout(resolve, 100));
+      router.replace('/');
+    } catch (err) {
+      if (err instanceof Error && err.name === 'NotAllowedError') {
+        setWebAuthnError('Authentication was cancelled or timed out.');
+      } else {
+        setWebAuthnError(err instanceof Error ? err.message : 'Passkey verification failed.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -201,7 +238,20 @@ export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
 
         <CardContent className="space-y-5 pb-6">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-11 p-1 bg-muted/50">
+            <TabsList className={cn("grid w-full h-11 p-1 bg-muted/50", hasWebAuthn ? "grid-cols-3" : "grid-cols-2")}>
+              {hasWebAuthn && (
+                <TabsTrigger
+                  value="passkey"
+                  className={cn(
+                    "gap-1.5 text-xs sm:text-sm transition-all data-[state=active]:shadow-sm",
+                    "data-[state=active]:bg-background data-[state=active]:text-foreground"
+                  )}
+                >
+                  <Fingerprint className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="sm:hidden">Passkey</span>
+                  <span className="hidden sm:inline">Passkey</span>
+                </TabsTrigger>
+              )}
               <TabsTrigger 
                 value="token" 
                 className={cn(
@@ -279,6 +329,48 @@ export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
                 </Button>
               </form>
             </TabsContent>
+
+            {hasWebAuthn && (
+              <TabsContent value="passkey" className="mt-4">
+                <div className="space-y-4">
+                  <div className="text-center space-y-2">
+                    <Fingerprint className="h-12 w-12 mx-auto text-primary/70" />
+                    <p className="text-sm text-muted-foreground">
+                      Use Windows Hello, Touch ID, Face ID, or a security key to verify.
+                    </p>
+                  </div>
+
+                  {webAuthnError && (
+                    <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                      {webAuthnError}
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleWebAuthnVerify}
+                    className={cn(
+                      "w-full h-11 sm:h-12 text-sm sm:text-base font-medium",
+                      "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary",
+                      "shadow-lg shadow-primary/25 hover:shadow-primary/40",
+                      "transition-all duration-200"
+                    )}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Waiting for device...
+                      </>
+                    ) : (
+                      <>
+                        <Fingerprint className="mr-2 h-4 w-4" />
+                        Use Passkey
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
 
             <TabsContent value="backup" className="mt-4">
               <form onSubmit={handleBackupSubmit} className="space-y-4">

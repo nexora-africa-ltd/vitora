@@ -494,11 +494,20 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                         ip_address=get_client_ip(request),
                     )
 
+                    # Build available methods for the client
+                    from hmis.apps.core.mfa.models import UserWebAuthnCredential
+
+                    available_methods = ["totp"]
+                    if UserWebAuthnCredential.objects.filter(user=user).exists():
+                        available_methods.append("webauthn")
+                    available_methods.append("backup_code")
+
                     # Return MFA required response (without access tokens)
                     return Response(
                         {
                             "mfa_required": True,
                             "mfa_token": mfa_token.token,
+                            "available_methods": available_methods,
                         }
                     )
 

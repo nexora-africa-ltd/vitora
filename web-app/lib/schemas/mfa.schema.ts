@@ -19,8 +19,10 @@ export const MFAStatusSchema = z.object({
   mfa_enabled: z.boolean(),
   mfa_required: z.boolean(),
   devices_count: z.number(),
+  webauthn_credentials_count: z.number().default(0),
   backup_codes_remaining: z.number(),
   has_pending_setup: z.boolean().optional(),
+  available_methods: z.array(z.string()).default([]),
 });
 
 export type MFAStatusSchemaType = z.infer<typeof MFAStatusSchema>;
@@ -144,6 +146,35 @@ export const MFADisableRequestSchema = z.object({
 export type MFADisableRequestSchemaType = z.infer<typeof MFADisableRequestSchema>;
 
 // =============================================================================
+// WEBAUTHN / PASSKEY SCHEMAS
+// =============================================================================
+
+export const WebAuthnCredentialSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  created_at: z.string(),
+  last_used_at: z.string().nullable(),
+  backed_up: z.boolean(),
+  transports: z.array(z.string()),
+});
+
+export type WebAuthnCredentialSchemaType = z.infer<typeof WebAuthnCredentialSchema>;
+
+export const WebAuthnCredentialListSchema = z.array(WebAuthnCredentialSchema);
+
+export const WebAuthnRegisterBeginResponseSchema = z.object({
+  options: z.string(), // JSON string of PublicKeyCredentialCreationOptions
+});
+
+export type WebAuthnRegisterBeginResponseSchemaType = z.infer<typeof WebAuthnRegisterBeginResponseSchema>;
+
+export const WebAuthnAuthenticateBeginResponseSchema = z.object({
+  options: z.string(), // JSON string of PublicKeyCredentialRequestOptions
+});
+
+export type WebAuthnAuthenticateBeginResponseSchemaType = z.infer<typeof WebAuthnAuthenticateBeginResponseSchema>;
+
+// =============================================================================
 // LOGIN RESPONSE WITH MFA
 // =============================================================================
 
@@ -151,9 +182,10 @@ export const LoginResponseWithMFASchema = z.object({
   mfa_required: z.boolean(),
   mfa_token: z.string().optional(),
   mfa_setup_required: z.boolean().optional(),
+  available_methods: z.array(z.string()).optional(),
   access: z.string().optional(),
   refresh: z.string().optional(),
-  user: z.any().optional(), // User object from backend
+  user: z.any().optional(),
 });
 
 export type LoginResponseWithMFASchemaType = z.infer<typeof LoginResponseWithMFASchema>;
