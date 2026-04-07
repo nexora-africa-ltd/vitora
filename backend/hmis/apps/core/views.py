@@ -1663,7 +1663,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
     * Order by ``name``, ``level``, ``mfl_code``, or ``created_at``.
     """
 
-    queryset = Facility.objects.select_related("county", "sub_county", "ward").all()
+    queryset = Facility.objects.select_related("county", "sub_county", "ward", "organization").all()
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "mfl_code"]
     ordering_fields = ["name", "level", "mfl_code", "created_at"]

@@ -38,6 +38,24 @@ export const facilitiesApi = {
       context: 'facilitiesApi.create',
     });
   },
+
+  async uploadLogo(id: number, file: File): Promise<FacilityDetail> {
+    const formData = new FormData();
+    formData.append('logo', file);
+    const response = await apiClient.patch<FacilityDetail>(`/api/facilities/${id}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return parseResponse(FacilityDetailSchema, response.data, {
+      context: 'facilitiesApi.uploadLogo',
+    });
+  },
+
+  async removeLogo(id: number): Promise<FacilityDetail> {
+    const response = await apiClient.patch<FacilityDetail>(`/api/facilities/${id}/`, { logo: null });
+    return parseResponse(FacilityDetailSchema, response.data, {
+      context: 'facilitiesApi.removeLogo',
+    });
+  },
 };
 
 export function toUserFacility(facility: FacilityDetail): UserFacility {

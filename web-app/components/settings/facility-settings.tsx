@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Building2,
@@ -9,12 +9,15 @@ import {
   RefreshCw,
   Save,
   Settings2,
+  Trash2,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth, type FacilityModules } from '@/lib/auth/context';
 import { useFacility } from '@/lib/context/facility-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { facilitiesApi, toUserFacility } from '@/lib/api/facilities';
+import { API_BASE_URL } from '@/lib/utils/constants';
 import type {
   FacilityDetail,
   FacilityLevel,
@@ -42,6 +45,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { HelpPopover } from '@/components/shared/help-popover';
 
 const FACILITY_LEVELS: Array<{ value: FacilityLevel; label: string }> = [
   { value: '1', label: 'Level 1 - Community Unit' },
@@ -140,6 +144,11 @@ export function FacilitySettingsTab() {
   } = useFacility();
   const [form, setForm] = useState<FacilityFormState | null>(null);
 
+  // Logo upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
   const canManageFacility = isSuperuser || hasPermission('change_facility');
   const activeFacilityId = facility?.id ?? null;
 
@@ -152,6 +161,7 @@ export function FacilitySettingsTab() {
   useEffect(() => {
     if (facilityQuery.data) {
       setForm(createFormState(facilityQuery.data));
+      setLogoPreview(facilityQuery.data.effective_logo_url ?? facilityQuery.data.logo ?? null);
     }
   }, [facilityQuery.data]);
 
@@ -197,6 +207,45 @@ export function FacilitySettingsTab() {
       toast.error(error.message || 'Failed to update facility settings');
     },
   });
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeFacilityId) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo must be under 2 MB');
+      return;
+    }
+    setIsUploadingLogo(true);
+    try {
+      const updated = await facilitiesApi.uploadLogo(activeFacilityId, file);
+      queryClient.setQueryData(['facility', activeFacilityId], updated);
+      setLogoPreview(updated.effective_logo_url ?? updated.logo ?? null);
+      toast.success('Logo uploaded');
+    } catch {
+      toast.error('Could not upload logo');
+    } finally {
+      setIsUploadingLogo(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleLogoRemove = async () => {
+    if (!activeFacilityId) return;
+    setIsUploadingLogo(true);
+    try {
+      const updated = await facilitiesApi.removeLogo(activeFacilityId);
+      queryClient.setQueryData(['facility', activeFacilityId], updated);
+      setLogoPreview(updated.effective_logo_url ?? null);
+      toast.success('Logo removed');
+    } catch {
+      toast.error('Could not remove logo');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  /** Whether the displayed logo is inherited from the organization (not the facility's own). */
+  const isInheritedLogo = !facilityQuery.data?.logo && !!logoPreview;
 
   if (!facility) {
     return (
@@ -265,6 +314,80 @@ export function FacilitySettingsTab() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Logo */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Upload className="h-4 w-4 text-muted-foreground" />
+              Facility Logo
+            </CardTitle>
+            <HelpPopover content="Upload a logo for this facility's printed documents (discharge summaries, lab reports, etc.). If not set, the parent organization's logo is used automatically." />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            {logoPreview ? (
+              <div className="relative h-16 w-16 shrink-0 rounded-lg border overflow-hidden bg-muted">
+                <img
+                  src={logoPreview.startsWith('http') ? logoPreview : `${API_BASE_URL}${logoPreview}`}
+                  alt="Facility logo"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
+                <Building2 className="h-6 w-6" />
+              </div>
+            )}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={handleLogoUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!canManageFacility || isUploadingLogo}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {isUploadingLogo ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5" />}
+                  {facilityQuery.data?.logo ? 'Change' : 'Upload'}
+                </Button>
+                {facilityQuery.data?.logo && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={!canManageFacility || isUploadingLogo}
+                    onClick={handleLogoRemove}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-3.5 w-3.5" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+              {isInheritedLogo && (
+                <p className="text-xs text-muted-foreground">
+                  Using organization logo. Upload a facility-specific logo to override.
+                </p>
+              )}
+              {!logoPreview && (
+                <p className="text-xs text-muted-foreground">
+                  PNG, JPG, or WebP. Max 2 MB.
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-4">
