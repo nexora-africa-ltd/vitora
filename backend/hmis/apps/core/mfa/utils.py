@@ -31,10 +31,12 @@ def is_mfa_enabled(user: "AbstractUser") -> bool:
     """
     from django.db.utils import OperationalError, ProgrammingError
 
-    from hmis.apps.core.mfa.models import UserTOTPDevice
+    from hmis.apps.core.mfa.models import UserTOTPDevice, UserWebAuthnCredential
 
     try:
-        return UserTOTPDevice.objects.filter(user=user, confirmed=True).exists()
+        has_totp = UserTOTPDevice.objects.filter(user=user, confirmed=True).exists()
+        has_webauthn = UserWebAuthnCredential.objects.filter(user=user).exists()
+        return has_totp or has_webauthn
     except (OperationalError, ProgrammingError):
         # Table may not exist in --no-migrations test mode
         return False
@@ -102,18 +104,30 @@ def get_mfa_status(user: "AbstractUser") -> dict:
     Returns:
         dict: MFA status information
     """
-    from hmis.apps.core.mfa.models import BackupCode, UserTOTPDevice
+    from hmis.apps.core.mfa.models import BackupCode, UserTOTPDevice, UserWebAuthnCredential
 
     devices = UserTOTPDevice.objects.filter(user=user)
     confirmed_devices = devices.filter(confirmed=True)
+    webauthn_count = UserWebAuthnCredential.objects.filter(user=user).count()
     backup_codes_remaining = BackupCode.remaining_codes_count(user)
+
+    # Build available methods list
+    available_methods: list[str] = []
+    if confirmed_devices.exists():
+        available_methods.append("totp")
+    if webauthn_count > 0:
+        available_methods.append("webauthn")
+    if backup_codes_remaining > 0:
+        available_methods.append("backup_code")
 
     return {
         "mfa_enabled": confirmed_devices.exists(),
         "mfa_required": is_mfa_required(user),
         "devices_count": confirmed_devices.count(),
+        "webauthn_credentials_count": webauthn_count,
         "backup_codes_remaining": backup_codes_remaining,
         "has_pending_setup": devices.filter(confirmed=False).exists(),
+        "available_methods": available_methods,
     }
 
 

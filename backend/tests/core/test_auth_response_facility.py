@@ -271,6 +271,8 @@ class TestBuildUserInfo:
             "is_superuser",
             "role",
             "role_category",
+            "role_display",
+            "phone_number",
             "permissions",
             "facility",
         }

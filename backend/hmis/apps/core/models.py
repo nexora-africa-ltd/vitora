@@ -3480,3 +3480,12 @@ class EmailVerificationToken(models.Model):
         self.used = True
         self.used_at = timezone.now()
         self.save(update_fields=["used", "used_at"])
+
+
+# Import MFA models so Django discovers them for syncdb (--no-migrations mode)
+from hmis.apps.core.mfa.models import (  # noqa: E402, F401
+    BackupCode,
+    MFAToken,
+    UserTOTPDevice,
+    UserWebAuthnCredential,
+)

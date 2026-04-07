@@ -77,6 +77,7 @@ export interface LoginResult {
   mfaGraceDeadline?: string;    // ISO 8601 — when MFA setup grace period expires
   mfaGraceExpired?: boolean;    // true if grace period already passed
   mustChangePassword?: boolean;
+  availableMethods?: string[];  // e.g. ['totp', 'webauthn', 'backup_code']
   error?: string;
 }
 
@@ -214,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           mfaRequired: true,
           mfaToken: data.mfa_token,
           mfaSetupRequired: data.mfa_setup_required,
+          availableMethods: data.available_methods || ['totp', 'backup_code'],
         };
       }
 

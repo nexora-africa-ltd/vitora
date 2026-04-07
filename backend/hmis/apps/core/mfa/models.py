@@ -3,6 +3,7 @@ MFA models for Vitora HMIS.
 
 This module provides:
 - UserTOTPDevice: TOTP device for time-based one-time passwords
+- UserWebAuthnCredential: WebAuthn/FIDO2 credential (passkeys, biometrics, security keys)
 - BackupCode: Single-use recovery codes
 - MFAToken: Temporary token for MFA verification flow
 """
@@ -132,6 +133,75 @@ class UserTOTPDevice(models.Model):
             name=account_name,
             issuer_name=self.TOTP_ISSUER,
         )
+
+
+class UserWebAuthnCredential(models.Model):
+    """
+    WebAuthn/FIDO2 credential for a user (passkeys, Windows Hello, Touch ID, security keys).
+
+    Stores the credential public key and metadata for passwordless/biometric MFA.
+    Uses the py_webauthn library for registration and authentication ceremonies.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="webauthn_credentials",
+        help_text="User who owns this credential",
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="Friendly name for this credential (e.g., 'Windows Hello', 'YubiKey')",
+    )
+    credential_id = models.BinaryField(
+        unique=True,
+        help_text="Credential ID from the authenticator",
+    )
+    public_key = models.BinaryField(
+        help_text="COSE public key bytes from the authenticator",
+    )
+    sign_count = models.PositiveBigIntegerField(
+        default=0,
+        help_text="Signature counter (for clone detection)",
+    )
+    transports = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of transport hints (usb, nfc, ble, internal, hybrid)",
+    )
+    aaguid = models.CharField(
+        max_length=36,
+        blank=True,
+        default="",
+        help_text="Authenticator Attestation GUID (identifies authenticator model)",
+    )
+    backed_up = models.BooleanField(
+        default=False,
+        help_text="Whether the credential is backed up (multi-device credential / passkey)",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When credential was registered",
+    )
+    last_used_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When credential was last used for authentication",
+    )
+
+    class Meta:
+        verbose_name = "WebAuthn Credential"
+        verbose_name_plural = "WebAuthn Credentials"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.user.username} - {self.name}"
+
+    def update_sign_count(self, new_sign_count: int) -> None:
+        """Update the signature counter after a successful authentication."""
+        self.sign_count = new_sign_count
+        self.last_used_at = timezone.now()
+        self.save(update_fields=["sign_count", "last_used_at"])
 
 
 class BackupCode(models.Model):

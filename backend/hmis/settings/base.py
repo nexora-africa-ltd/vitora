@@ -222,6 +222,12 @@ MFA_ENFORCEMENT = True
 # Set to 0 to require immediate MFA setup (no grace period).
 MFA_GRACE_PERIOD_HOURS = 72
 
+# WebAuthn / FIDO2 / Passkey settings
+# RP ID must match the domain the site is served from (no port, no scheme).
+WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", "localhost")
+WEBAUTHN_RP_NAME = "Vitora HMIS"
+WEBAUTHN_ORIGIN = os.getenv("WEBAUTHN_ORIGIN", "http://localhost:3009")
+
 
 # drf-spectacular settings
 def _model_attr(dotted_path: str, attr: str):

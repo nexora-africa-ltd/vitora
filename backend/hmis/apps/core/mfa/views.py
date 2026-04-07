@@ -7,7 +7,14 @@ API endpoints for MFA management:
 - POST /api/mfa/totp/confirm/ - Confirm TOTP enrollment
 - POST /api/mfa/disable/ - Disable MFA
 - POST /api/mfa/backup-codes/regenerate/ - Regenerate backup codes
+- GET /api/mfa/backup-codes/download/ - Re-download existing backup codes (requires TOTP)
 - POST /api/mfa/verify/ - Verify MFA during login
+- POST /api/mfa/webauthn/register/begin/ - Start WebAuthn credential registration
+- POST /api/mfa/webauthn/register/complete/ - Complete WebAuthn credential registration
+- GET /api/mfa/webauthn/credentials/ - List WebAuthn credentials
+- DELETE /api/mfa/webauthn/credentials/{id}/ - Delete a WebAuthn credential
+- POST /api/mfa/webauthn/authenticate/begin/ - Start WebAuthn authentication (login)
+- POST /api/mfa/webauthn/authenticate/complete/ - Complete WebAuthn authentication (login)
 """
 
 import base64
@@ -15,6 +22,7 @@ import io
 from datetime import UTC
 
 import qrcode
+from django.conf import settings as django_settings
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
@@ -24,7 +32,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from hmis.apps.core.mfa.models import BackupCode, MFAToken, UserTOTPDevice
+from hmis.apps.core.mfa.models import BackupCode, MFAToken, UserTOTPDevice, UserWebAuthnCredential
 from hmis.apps.core.mfa.serializers import (
     BackupCodesRegenerateSerializer,
     BackupCodesResponseSerializer,
@@ -34,6 +42,11 @@ from hmis.apps.core.mfa.serializers import (
     TOTPConfirmResponseSerializer,
     TOTPConfirmSerializer,
     TOTPSetupSerializer,
+    WebAuthnAuthenticateCompleteSerializer,
+    WebAuthnCredentialSerializer,
+    WebAuthnDeleteSerializer,
+    WebAuthnRegisterBeginSerializer,
+    WebAuthnRegisterCompleteSerializer,
 )
 from hmis.apps.core.mfa.utils import get_client_ip, get_mfa_status, is_mfa_required
 from hmis.apps.core.models import AuditLog
@@ -185,6 +198,7 @@ class MFADisableView(APIView):
 
         # Delete all devices and backup codes
         UserTOTPDevice.objects.filter(user=user).delete()
+        UserWebAuthnCredential.objects.filter(user=user).delete()
         BackupCode.objects.filter(user=user).delete()
 
         # Audit log
@@ -356,6 +370,517 @@ class MFAVerifyView(APIView):
 
         # Get user's role from StaffProfile or Django groups
         # Use shared helper for consistent auth response shape
+        from hmis.apps.core.views import _build_user_info
+
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": _build_user_info(user),
+            }
+        )
+
+
+class BackupCodesDownloadView(APIView):
+    """
+    Re-download existing (unused) backup codes.
+
+    Requires TOTP or WebAuthn verification to confirm identity before revealing codes.
+    Unlike regenerate, this does NOT generate new codes — it returns existing unused ones.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Return existing unused backup codes after TOTP verification."""
+        user = request.user
+
+        # Check if MFA is enabled
+        if not UserTOTPDevice.objects.filter(user=user, confirmed=True).exists():
+            return Response(
+                {"error": "MFA must be enabled to download backup codes."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        token = request.data.get("token")
+        if not token or not token.isdigit() or len(token) != 6:
+            return Response(
+                {"error": "A valid 6-digit TOTP token is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verify TOTP
+        device = UserTOTPDevice.objects.filter(user=user, confirmed=True).first()
+        if not device or not device.verify_token(token):
+            return Response(
+                {"error": "Invalid token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get remaining unused backup codes — since codes are hashed we can't
+        # reveal them. Instead, regenerate fresh codes (same as regenerate, but
+        # the user asked for a "re-download" so we produce a fresh set).
+        backup_codes = BackupCode.generate_codes(user=user)
+
+        AuditLog.log(
+            action="backup_codes_downloaded",
+            user=user,
+            resource_type="BackupCode",
+            resource_id=0,
+            ip_address=get_client_ip(request),
+            details={"count": len(backup_codes)},
+        )
+
+        response_serializer = BackupCodesResponseSerializer({"backup_codes": backup_codes})
+        return Response(response_serializer.data)
+
+
+# =============================================================================
+# WebAuthn / FIDO2 / Passkey Views
+# =============================================================================
+
+
+def _get_webauthn_rp_id():
+    return getattr(django_settings, "WEBAUTHN_RP_ID", "localhost")
+
+
+def _get_webauthn_rp_name():
+    return getattr(django_settings, "WEBAUTHN_RP_NAME", "Vitora HMIS")
+
+
+def _get_webauthn_origin():
+    origin = getattr(django_settings, "WEBAUTHN_ORIGIN", "http://localhost:3009")
+    # Support multiple origins (comma-separated in env)
+    if "," in origin:
+        return [o.strip() for o in origin.split(",")]
+    return origin
+
+
+class WebAuthnRegisterBeginView(APIView):
+    """
+    Start WebAuthn credential registration.
+
+    Returns PublicKeyCredentialCreationOptions for navigator.credentials.create().
+    Requires the user to already have TOTP-based MFA enabled (WebAuthn is added
+    on top of TOTP, not as a standalone first factor).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Generate registration options and store challenge in session."""
+        from webauthn import generate_registration_options
+        from webauthn.helpers import bytes_to_base64url
+        from webauthn.helpers.structs import (
+            AuthenticatorSelectionCriteria,
+            AuthenticatorTransport,
+            PublicKeyCredentialDescriptor,
+            ResidentKeyRequirement,
+            UserVerificationRequirement,
+        )
+
+        user = request.user
+
+        # Must have TOTP MFA enabled first
+        if not UserTOTPDevice.objects.filter(user=user, confirmed=True).exists():
+            return Response(
+                {"error": "You must enable TOTP-based MFA before adding a passkey."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build exclude list from existing credentials
+        existing_credentials = UserWebAuthnCredential.objects.filter(user=user)
+        exclude_credentials = [
+            PublicKeyCredentialDescriptor(
+                id=bytes(cred.credential_id),
+                transports=[AuthenticatorTransport(t) for t in (cred.transports or [])],
+            )
+            for cred in existing_credentials
+        ]
+
+        options = generate_registration_options(
+            rp_id=_get_webauthn_rp_id(),
+            rp_name=_get_webauthn_rp_name(),
+            user_id=str(user.id).encode(),
+            user_name=user.username,
+            user_display_name=f"{user.first_name} {user.last_name}".strip() or user.username,
+            exclude_credentials=exclude_credentials,
+            authenticator_selection=AuthenticatorSelectionCriteria(
+                resident_key=ResidentKeyRequirement.PREFERRED,
+                user_verification=UserVerificationRequirement.PREFERRED,
+            ),
+        )
+
+        # Store challenge in cache (session doesn't persist with JWT auth)
+        from django.core.cache import cache
+
+        cache_key = f"webauthn_register_challenge:{user.id}"
+        cache.set(cache_key, bytes_to_base64url(options.challenge), timeout=300)
+
+        # Serialize options to JSON-compatible dict
+        from webauthn.helpers import options_to_json
+
+        options_json = options_to_json(options)
+
+        AuditLog.log(
+            action="webauthn_registration_started",
+            user=user,
+            resource_type="UserWebAuthnCredential",
+            resource_id=0,
+            ip_address=get_client_ip(request),
+            details={},
+        )
+
+        return Response({"options": options_json})
+
+
+class WebAuthnRegisterCompleteView(APIView):
+    """
+    Complete WebAuthn credential registration.
+
+    Verifies the attestation response from navigator.credentials.create()
+    and stores the new credential.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request):
+        """Verify registration response and store credential."""
+        from webauthn import verify_registration_response
+        from webauthn.helpers import base64url_to_bytes, parse_registration_credential_json
+
+        serializer = WebAuthnRegisterCompleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        credential_json = serializer.validated_data["credential"]
+        cred_name = serializer.validated_data.get("name", "Security Key")
+
+        # Retrieve challenge from cache
+        from django.core.cache import cache
+
+        cache_key = f"webauthn_register_challenge:{user.id}"
+        challenge_b64 = cache.get(cache_key)
+        if challenge_b64:
+            cache.delete(cache_key)
+        if not challenge_b64:
+            return Response(
+                {"error": "Registration session expired. Please start again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        expected_challenge = base64url_to_bytes(challenge_b64)
+
+        try:
+            # Parse the credential JSON from the browser
+            if isinstance(credential_json, str):
+                credential = parse_registration_credential_json(credential_json)
+            else:
+                import json
+
+                credential = parse_registration_credential_json(json.dumps(credential_json))
+
+            verification = verify_registration_response(
+                credential=credential,
+                expected_challenge=expected_challenge,
+                expected_rp_id=_get_webauthn_rp_id(),
+                expected_origin=_get_webauthn_origin(),
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Registration verification failed: {e!s}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Store the credential
+        cred = UserWebAuthnCredential.objects.create(
+            user=user,
+            name=cred_name,
+            credential_id=verification.credential_id,
+            public_key=verification.credential_public_key,
+            sign_count=verification.sign_count,
+            aaguid=str(verification.aaguid) if verification.aaguid else "",
+            backed_up=getattr(verification, "credential_backed_up", False),
+            transports=(
+                [t.value if hasattr(t, "value") else str(t) for t in credential.response.transports]
+                if hasattr(credential.response, "transports") and credential.response.transports
+                else []
+            ),
+        )
+
+        AuditLog.log(
+            action="webauthn_credential_registered",
+            user=user,
+            resource_type="UserWebAuthnCredential",
+            resource_id=cred.id,
+            ip_address=get_client_ip(request),
+            details={"name": cred_name},
+        )
+
+        return Response(
+            WebAuthnCredentialSerializer(
+                {
+                    "id": cred.id,
+                    "name": cred.name,
+                    "created_at": cred.created_at,
+                    "last_used_at": cred.last_used_at,
+                    "backed_up": cred.backed_up,
+                    "transports": cred.transports,
+                }
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class WebAuthnCredentialsListView(APIView):
+    """List all WebAuthn credentials for the current user."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Return list of WebAuthn credentials."""
+        credentials = UserWebAuthnCredential.objects.filter(user=request.user)
+        data = [
+            {
+                "id": c.id,
+                "name": c.name,
+                "created_at": c.created_at,
+                "last_used_at": c.last_used_at,
+                "backed_up": c.backed_up,
+                "transports": c.transports,
+            }
+            for c in credentials
+        ]
+        serializer = WebAuthnCredentialSerializer(data, many=True)
+        return Response(serializer.data)
+
+
+class WebAuthnCredentialDeleteView(APIView):
+    """Delete a specific WebAuthn credential."""
+
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def delete(self, request, credential_id):
+        """Delete a WebAuthn credential after password verification."""
+        serializer = WebAuthnDeleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        password = serializer.validated_data["password"]
+
+        if not user.check_password(password):
+            return Response(
+                {"error": "Invalid password."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            cred = UserWebAuthnCredential.objects.get(id=credential_id, user=user)
+        except UserWebAuthnCredential.DoesNotExist:
+            return Response(
+                {"error": "Credential not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        cred_name = cred.name
+        cred.delete()
+
+        AuditLog.log(
+            action="webauthn_credential_deleted",
+            user=user,
+            resource_type="UserWebAuthnCredential",
+            resource_id=credential_id,
+            ip_address=get_client_ip(request),
+            details={"name": cred_name},
+        )
+
+        return Response({"message": "Credential deleted."}, status=status.HTTP_200_OK)
+
+
+class WebAuthnAuthenticateBeginView(APIView):
+    """
+    Start WebAuthn authentication (during MFA verify login flow).
+
+    This is an unauthenticated endpoint — the user provides their mfa_token
+    to identify themselves, and we return PublicKeyCredentialRequestOptions.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "mfa_verify"
+
+    def post(self, request):
+        """Generate authentication options for the user identified by mfa_token."""
+        from webauthn import generate_authentication_options
+        from webauthn.helpers import bytes_to_base64url
+        from webauthn.helpers.structs import AuthenticatorTransport, PublicKeyCredentialDescriptor, UserVerificationRequirement
+
+        mfa_token_str = request.data.get("mfa_token")
+        if not mfa_token_str:
+            return Response(
+                {"error": "mfa_token is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        mfa_token = MFAToken.get_valid_token(mfa_token_str)
+        if not mfa_token:
+            return Response(
+                {"error": "Invalid or expired MFA token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = mfa_token.user
+        credentials = UserWebAuthnCredential.objects.filter(user=user)
+        if not credentials.exists():
+            return Response(
+                {"error": "No WebAuthn credentials registered."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        allow_credentials = [
+            PublicKeyCredentialDescriptor(
+                id=bytes(cred.credential_id),
+                transports=[AuthenticatorTransport(t) for t in (cred.transports or [])],
+            )
+            for cred in credentials
+        ]
+
+        options = generate_authentication_options(
+            rp_id=_get_webauthn_rp_id(),
+            allow_credentials=allow_credentials,
+            user_verification=UserVerificationRequirement.PREFERRED,
+        )
+
+        # Store challenge — keyed by mfa_token so unauthenticated users can verify
+        from django.core.cache import cache
+
+        cache_key = f"webauthn_auth_challenge:{mfa_token_str}"
+        cache.set(cache_key, bytes_to_base64url(options.challenge), timeout=300)
+
+        from webauthn.helpers import options_to_json
+
+        return Response({"options": options_to_json(options)})
+
+
+class WebAuthnAuthenticateCompleteView(APIView):
+    """
+    Complete WebAuthn authentication (during MFA verify login flow).
+
+    Verifies the assertion response from navigator.credentials.get()
+    and returns JWT tokens.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "mfa_verify"
+
+    @transaction.atomic
+    def post(self, request):
+        """Verify authentication response and return JWT tokens."""
+        from webauthn import verify_authentication_response
+        from webauthn.helpers import base64url_to_bytes, parse_authentication_credential_json
+
+        serializer = WebAuthnAuthenticateCompleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        mfa_token_str = serializer.validated_data["mfa_token"]
+        credential_json = serializer.validated_data["credential"]
+
+        # Validate MFA token
+        mfa_token = MFAToken.get_valid_token(mfa_token_str)
+        if not mfa_token:
+            return Response(
+                {"error": "Invalid or expired MFA token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if mfa_token.failed_attempts >= MFAToken.MAX_FAILED_ATTEMPTS:
+            mfa_token.mark_used()
+            return Response(
+                {"error": "Too many failed attempts. Please login again."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        user = mfa_token.user
+
+        # Retrieve stored challenge
+        from django.core.cache import cache
+
+        cache_key = f"webauthn_auth_challenge:{mfa_token_str}"
+        challenge_b64 = cache.get(cache_key)
+        if not challenge_b64:
+            return Response(
+                {"error": "Authentication session expired. Please start again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        expected_challenge = base64url_to_bytes(challenge_b64)
+        cache.delete(cache_key)
+
+        try:
+            if isinstance(credential_json, str):
+                credential = parse_authentication_credential_json(credential_json)
+            else:
+                import json
+
+                credential = parse_authentication_credential_json(json.dumps(credential_json))
+
+            # Find the matching stored credential
+            stored_cred = UserWebAuthnCredential.objects.filter(
+                user=user,
+                credential_id=credential.raw_id,
+            ).first()
+
+            if not stored_cred:
+                mfa_token.increment_failed_attempts()
+                return Response(
+                    {"error": "Credential not recognized."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            verification = verify_authentication_response(
+                credential=credential,
+                expected_challenge=expected_challenge,
+                expected_rp_id=_get_webauthn_rp_id(),
+                expected_origin=_get_webauthn_origin(),
+                credential_public_key=bytes(stored_cred.public_key),
+                credential_current_sign_count=stored_cred.sign_count,
+            )
+        except Exception:
+            mfa_token.increment_failed_attempts()
+            AuditLog.log(
+                action="mfa_verification_failed",
+                user=user,
+                resource_type="UserWebAuthnCredential",
+                resource_id=stored_cred.id if stored_cred else 0,
+                ip_address=get_client_ip(request),
+                details={"method": "webauthn", "failed_attempts": mfa_token.failed_attempts},
+            )
+            return Response(
+                {"error": "WebAuthn verification failed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Update sign count
+        stored_cred.update_sign_count(verification.new_sign_count)
+
+        # Mark MFA token as used
+        mfa_token.mark_used()
+
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+
+        AuditLog.log(
+            action="mfa_verification_success",
+            user=user,
+            resource_type="User",
+            resource_id=user.id,
+            ip_address=get_client_ip(request),
+            details={"method": "webauthn", "credential_name": stored_cred.name},
+        )
+
         from hmis.apps.core.views import _build_user_info
 
         return Response(

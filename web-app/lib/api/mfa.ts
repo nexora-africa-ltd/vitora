@@ -18,6 +18,8 @@ import {
   TOTPConfirmResponseSchema,
   MFAVerifyResponseSchema,
   BackupCodesResponseSchema,
+  WebAuthnCredentialListSchema,
+  WebAuthnCredentialSchema,
   type MFAStatusSchemaType,
   type TOTPSetupSchemaType,
   type TOTPConfirmRequestSchemaType,
@@ -27,14 +29,17 @@ import {
   type BackupCodesRegenerateRequestSchemaType,
   type BackupCodesResponseSchemaType,
   type MFADisableRequestSchemaType,
+  type WebAuthnCredentialSchemaType,
 } from '@/lib/schemas/mfa.schema';
 
 export interface MFAStatus {
   mfa_enabled: boolean;
   mfa_required: boolean;
   devices_count: number;
+  webauthn_credentials_count: number;
   backup_codes_remaining: number;
   has_pending_setup?: boolean;
+  available_methods: string[];
 }
 
 export interface TOTPSetup {
@@ -79,6 +84,15 @@ export interface MFAVerifyResponse {
 
 export interface BackupCodesResponse {
   backup_codes: string[];
+}
+
+export interface WebAuthnCredential {
+  id: number;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  backed_up: boolean;
+  transports: string[];
 }
 
 export const mfaApi = {
@@ -152,5 +166,91 @@ export const mfaApi = {
   async disableMFA(password: string): Promise<void> {
     const requestData: MFADisableRequestSchemaType = { password };
     await apiClient.post('/api/mfa/disable/', requestData);
+  },
+
+  // =========================================================================
+  // Backup Codes Download (re-download)
+  // =========================================================================
+
+  /**
+   * Re-download backup codes (generates fresh set, requires TOTP verification).
+   */
+  async downloadBackupCodes(totpToken: string): Promise<BackupCodesResponse> {
+    const response = await apiClient.post('/api/mfa/backup-codes/download/', { token: totpToken });
+    return parseResponse(BackupCodesResponseSchema, response.data, {
+      context: 'mfaApi.downloadBackupCodes',
+    });
+  },
+
+  // =========================================================================
+  // WebAuthn / Passkey
+  // =========================================================================
+
+  /**
+   * Start WebAuthn credential registration.
+   * Returns PublicKeyCredentialCreationOptions JSON string.
+   */
+  async webauthnRegisterBegin(): Promise<string> {
+    const response = await apiClient.post('/api/mfa/webauthn/register/begin/');
+    return response.data.options;
+  },
+
+  /**
+   * Complete WebAuthn credential registration.
+   */
+  async webauthnRegisterComplete(credential: unknown, name: string): Promise<WebAuthnCredential> {
+    const response = await apiClient.post('/api/mfa/webauthn/register/complete/', {
+      credential,
+      name,
+    });
+    return parseResponse(WebAuthnCredentialSchema, response.data, {
+      context: 'mfaApi.webauthnRegisterComplete',
+    });
+  },
+
+  /**
+   * List WebAuthn credentials for current user.
+   */
+  async webauthnListCredentials(): Promise<WebAuthnCredential[]> {
+    const response = await apiClient.get('/api/mfa/webauthn/credentials/');
+    return parseResponse(WebAuthnCredentialListSchema, response.data, {
+      context: 'mfaApi.webauthnListCredentials',
+    });
+  },
+
+  /**
+   * Delete a WebAuthn credential.
+   */
+  async webauthnDeleteCredential(credentialId: number, password: string): Promise<void> {
+    await apiClient.delete(`/api/mfa/webauthn/credentials/${credentialId}/`, {
+      data: { password },
+    });
+  },
+
+  /**
+   * Start WebAuthn authentication (during MFA login flow).
+   * Returns PublicKeyCredentialRequestOptions JSON string.
+   */
+  async webauthnAuthenticateBegin(mfaToken: string): Promise<string> {
+    const response = await apiClient.post('/api/mfa/webauthn/authenticate/begin/', {
+      mfa_token: mfaToken,
+    });
+    return response.data.options;
+  },
+
+  /**
+   * Complete WebAuthn authentication (during MFA login flow).
+   */
+  async webauthnAuthenticateComplete(
+    mfaToken: string,
+    credential: unknown
+  ): Promise<MFAVerifyResponse> {
+    const response = await apiClient.post('/api/mfa/webauthn/authenticate/complete/', {
+      mfa_token: mfaToken,
+      credential,
+    });
+    return parseResponse(MFAVerifyResponseSchema, response.data, {
+      context: 'mfaApi.webauthnAuthenticateComplete',
+    });
   },
 };
