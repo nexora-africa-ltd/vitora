@@ -100,33 +100,29 @@ export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActi
     <div className="space-y-4">
       {/* Action buttons */}
       {isActive && (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/laboratory/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`}>
-              <Beaker className="h-4 w-4 mr-1.5" />
+        <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
+          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" asChild>
+            <Link href={`/laboratory/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`} title="New Lab Order">
+              <Beaker className="h-4 w-4 sm:mr-1.5" />
               <span className="hidden sm:inline">New Lab Order</span>
-              <span className="sm:hidden">Lab</span>
             </Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/imaging/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`}>
-              <ImageIcon className="h-4 w-4 mr-1.5" />
+          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" asChild>
+            <Link href={`/imaging/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`} title="New Imaging">
+              <ImageIcon className="h-4 w-4 sm:mr-1.5" />
               <span className="hidden sm:inline">New Imaging</span>
-              <span className="sm:hidden">Imaging</span>
             </Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/pharmacy/prescriptions/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`}>
-              <Pill className="h-4 w-4 mr-1.5" />
+          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" asChild>
+            <Link href={`/pharmacy/prescriptions/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`} title="New Prescription">
+              <Pill className="h-4 w-4 sm:mr-1.5" />
               <span className="hidden sm:inline">New Prescription</span>
-              <span className="sm:hidden">Rx</span>
             </Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/procedures/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`}>
-              <Syringe className="h-4 w-4 mr-1.5" />
+          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" asChild>
+            <Link href={`/procedures/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`} title="New Procedure">
+              <Syringe className="h-4 w-4 sm:mr-1.5" />
               <span className="hidden sm:inline">New Procedure</span>
-              <span className="sm:hidden">Proc</span>
             </Link>
           </Button>
         </div>
@@ -279,29 +275,25 @@ function OrdersSummaryCard({ icon: Icon, title, count, items }: OrdersSummaryCar
             <Link
               key={item.id}
               href={item.href}
-              className="flex items-center justify-between gap-2 p-2 -mx-2 rounded-md hover:bg-muted/50 transition-colors group"
+              className="block p-2 -mx-2 rounded-md hover:bg-muted/50 transition-colors group"
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium truncate">{item.label}</span>
-                  {item.priorityConfig && item.priorityConfig.label !== 'Routine' && (
-                    <Badge className={`${item.priorityConfig.color} text-[10px] px-1 py-0`} variant="secondary">
-                      {item.priorityConfig.label}
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>{item.sublabel}</span>
-                  <span>•</span>
-                  <span>{formatDate(item.date)}</span>
-                </div>
+              <div className="flex items-center justify-between gap-1.5 mb-0.5">
+                <span className="text-sm font-medium truncate">{item.label}</span>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <p className="text-xs text-muted-foreground truncate mb-1">
+                {item.sublabel} · {formatDate(item.date)}
+              </p>
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <Badge className={`${item.statusConfig.color} text-[10px] px-1.5 py-0`} variant="secondary">
                   <StatusIcon className="h-3 w-3 mr-0.5" />
                   {item.statusConfig.label}
                 </Badge>
-                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                {item.priorityConfig && item.priorityConfig.label !== 'Routine' && (
+                  <Badge className={`${item.priorityConfig.color} text-[10px] px-1 py-0`} variant="secondary">
+                    {item.priorityConfig.label}
+                  </Badge>
+                )}
               </div>
             </Link>
           );
