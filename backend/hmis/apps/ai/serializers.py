@@ -659,11 +659,11 @@ class AISuggestionAuditRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/suggestion-audit/."""
 
     suggestion_type = serializers.ChoiceField(
-        choices=["autopopulate", "clerking_autocomplete"],
+        choices=["autopopulate", "clerking_autocomplete", "mode_change"],
         help_text="Suggestion workflow that produced the accepted value.",
     )
     event_type = serializers.ChoiceField(
-        choices=["accepted", "applied"],
+        choices=["accepted", "applied", "acknowledged"],
         help_text="Whether the suggestion was accepted inline or applied in batch.",
     )
     suggestions = AISuggestionAuditItemSerializer(
