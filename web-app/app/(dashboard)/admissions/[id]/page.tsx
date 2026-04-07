@@ -975,9 +975,6 @@ export default function AdmissionDetailPage() {
               primaryDiagnosis={
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''
               }
-              admissionType={
-                (admission.admission_type?.toLowerCase() as 'medical' | 'surgical' | 'obstetric' | 'pediatric') ?? 'medical'
-              }
               daysAdmitted={daysAdmitted}
               vitalsHistory={wardRounds?.results?.map((wr) => {
                 const v = wr.vital_signs ?? wr;
