@@ -475,6 +475,8 @@ export default function DischargePage() {
     patientCtx,
     clinicalHistoryText,
     generationMode,
+    orders,
+    wardRounds,
     followUpInstructions,
     followUpDate,
     patientInstructions,

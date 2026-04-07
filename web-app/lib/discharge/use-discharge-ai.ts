@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useAIClinicalDocument } from '@/lib/hooks/use-ai';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, AIPatientContext } from '@/lib/types/ai';
-import type { DischargeType, DischargeMedication } from '@/lib/types/inpatient';
+import type { DischargeType, DischargeMedication, AdmissionOrdersResponse, WardRound } from '@/lib/types/inpatient';
 import type { DiagnosisEntry } from '@/components/shared';
 import type { DischargeSummarySection, ParsedSection, SuggestedMedication } from './types';
 import { ROUTED_SECTION_IDS, HIDDEN_SECTION_IDS } from './types';
@@ -28,6 +28,10 @@ interface UseDischargeAIParams {
   patientCtx: AIPatientContext;
   clinicalHistoryText: string;
   generationMode: ClinicalDocGenerationMode;
+  /** Admission orders (labs, imaging, prescriptions) for context enrichment */
+  orders?: AdmissionOrdersResponse | null;
+  /** Ward rounds for condition-at-discharge and complication extraction */
+  wardRounds?: { results: WardRound[] } | null;
   // Current form state (read-only, for conditional logic)
   followUpInstructions: string;
   followUpDate: string;
@@ -57,6 +61,8 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     patientCtx,
     clinicalHistoryText,
     generationMode,
+    orders,
+    wardRounds,
     followUpInstructions,
     followUpDate,
     patientInstructions,
@@ -85,6 +91,57 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
     const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency}`);
 
+    // Extract ICD-10 code from the primary diagnosis entry
+    const icd10Code = primaryEntry?.code.icd10Code
+      ? String(primaryEntry.code.icd10Code)
+      : (primaryEntry?.code.icd10Display?.split(' - ')[0]) || '';
+
+    // Secondary diagnoses
+    const secondaryDiagnoses = diagnoses
+      .filter((d) => d.role !== 'PRIMARY')
+      .map((d) => d.code.icd11Display || d.code.icd10Display || '')
+      .filter(Boolean);
+
+    // Medications given during stay (from prescriptions)
+    const medicationsGiven: string[] = [];
+    if (orders?.prescriptions) {
+      for (const rx of orders.prescriptions) {
+        if (rx.status !== 'CANCELLED') {
+          for (const item of rx.items) {
+            medicationsGiven.push(`${item.drug_name} ${item.dosage} ${item.frequency}`);
+          }
+        }
+      }
+    }
+
+    // Key investigations from lab and imaging orders
+    const keyInvestigations: string[] = [];
+    if (orders?.lab_orders) {
+      for (const lo of orders.lab_orders) {
+        for (const item of lo.items) {
+          const r = item.result;
+          if (r?.formatted_value) {
+            keyInvestigations.push(`${item.test_name}: ${r.formatted_value}${r.is_critical_result ? ' [CRITICAL]' : ''}`);
+          } else {
+            keyInvestigations.push(`${item.test_name}: ${lo.status}`);
+          }
+        }
+      }
+    }
+    if (orders?.imaging_orders) {
+      for (const io of orders.imaging_orders) {
+        for (const item of io.items) {
+          keyInvestigations.push(`${item.procedure_name} (${item.modality}): ${io.status}`);
+        }
+      }
+    }
+
+    // Condition at discharge from the most recent ward round
+    const latestRound = wardRounds?.results?.[0];
+    const conditionAtDischarge = latestRound
+      ? `${latestRound.condition_status_display || latestRound.condition_status || 'Stable'}. ${latestRound.assessment || ''}`.trim()
+      : '';
+
     const docPatientCtx: ClinicalDocPatientContext = {
       patient_age: admission.patient_age ?? 0,
       patient_sex: admission.patient_gender === 'M' ? 'male' : 'female',
@@ -95,16 +152,21 @@ export function useDischargeAI(params: UseDischargeAIParams) {
 
     const admissionCtx: ClinicalDocAdmissionContext = {
       primary_diagnosis: diagnosis,
+      icd10_code: icd10Code || undefined,
+      secondary_diagnoses: secondaryDiagnoses.length > 0 ? secondaryDiagnoses : undefined,
       admission_date: admission.admission_date || '',
+      discharge_date: new Date().toISOString(),
       length_of_stay_days: lengthOfStay,
       ward: admission.ward_name || '',
       discharge_type: dischargeType === 'ROUTINE' || dischargeType === 'ABSCONDED' ? 'NORMAL' : dischargeType as ClinicalDocAdmissionContext['discharge_type'],
+      medications_given: medicationsGiven.length > 0 ? medicationsGiven : undefined,
       discharge_medications: medsText,
-      condition_at_discharge: '',
+      key_investigations: keyInvestigations.length > 0 ? keyInvestigations : undefined,
+      condition_at_discharge: conditionAtDischarge || undefined,
     };
 
     return { docPatientCtx, admissionCtx };
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx]);
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, orders, wardRounds]);
 
   // Generate ALL sections
   const handleGenerateAll = useCallback(async () => {
