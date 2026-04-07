@@ -258,6 +258,8 @@ export interface DischargeDocumentData {
   showSignatureLines?: boolean;
   /** Whether to show QR code */
   showQrCode?: boolean;
+  /** Facility logo URL (effective_logo_url from API) */
+  facilityLogoUrl?: string | null;
 }
 
 // =============================================================================
@@ -282,6 +284,19 @@ const DISCHARGE_CSS = `
     border-bottom: 2px solid #333;
     padding-bottom: 10px;
     margin-bottom: 16px;
+  }
+
+  .header .facility-logo {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  .header .facility-block {
+    display: flex;
+    align-items: flex-start;
   }
 
   .header .facility {
@@ -378,16 +393,18 @@ const DISCHARGE_CSS = `
   }
   .content table:not(.section-table) th,
   .content table:not(.section-table) td {
-    border: 1px solid #999;
     padding: 6px 10px;
     text-align: left;
+    border: none;
+    border-bottom: 1px solid #e5e5e5;
   }
   .content table:not(.section-table) th {
-    background: #f2f2f2;
+    background: #f8f8f8;
     font-weight: 600;
+    border-bottom: 2px solid #ccc;
   }
-  .content table:not(.section-table) tr:nth-child(even) td {
-    background: #fafafa;
+  .content table:not(.section-table) tr:last-child td {
+    border-bottom: none;
   }
   .content hr { border: none; border-top: 1px solid #ccc; margin: 12px 0; }
 
@@ -575,9 +592,12 @@ function buildStandardHtml(data: DischargeDocumentData, qrDataUri?: string): str
 
   return `
 <div class="header">
-  <div>
-    <div class="facility">${escapeHtml(data.facilityName || 'Health Facility')}</div>
-    ${ctx.facilityDetails.length ? `<div class="facility-detail">${ctx.facilityDetails.join(' &bull; ')}</div>` : ''}
+  <div class="facility-block">
+    ${data.facilityLogoUrl ? `<img class="facility-logo" src="${escapeHtml(data.facilityLogoUrl)}" alt="" />` : ''}
+    <div>
+      <div class="facility">${escapeHtml(data.facilityName || 'Health Facility')}</div>
+      ${ctx.facilityDetails.length ? `<div class="facility-detail">${ctx.facilityDetails.join(' &bull; ')}</div>` : ''}
+    </div>
   </div>
   <div class="doc-title">${escapeHtml(data.documentTitle)}</div>
 </div>
@@ -611,6 +631,7 @@ function buildStructuredHtml(data: DischargeDocumentData, qrDataUri?: string): s
 
   return `
 <div class="structured-header">
+  ${data.facilityLogoUrl ? `<img class="structured-logo" src="${escapeHtml(data.facilityLogoUrl)}" alt="" />` : ''}
   <div class="structured-facility">${escapeHtml(data.facilityName || 'Health Facility')}</div>
   ${ctx.facilityDetails.length ? `<div class="structured-facility-detail">${ctx.facilityDetails.join(' &bull; ')}</div>` : ''}
   <div class="structured-doc-title">${escapeHtml(data.documentTitle)}</div>
@@ -658,6 +679,7 @@ function buildMinimalHtml(data: DischargeDocumentData, qrDataUri?: string): stri
 
   return `
 <div class="minimal-header">
+  ${data.facilityLogoUrl ? `<img class="minimal-logo" src="${escapeHtml(data.facilityLogoUrl)}" alt="" />` : ''}
   <div class="minimal-facility">${escapeHtml(data.facilityName || 'Health Facility')}</div>
   <div class="minimal-doc-title">${escapeHtml(data.documentTitle)}</div>
 </div>
@@ -731,6 +753,13 @@ const STRUCTURED_CSS = `
     padding-bottom: 10px;
     margin-bottom: 12px;
   }
+  .structured-logo {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    margin: 0 auto 6px;
+    display: block;
+  }
   .structured-facility {
     font-size: 14pt;
     font-weight: 700;
@@ -756,6 +785,10 @@ const STRUCTURED_CSS = `
   }
   .structured-demographics td {
     padding: 4px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
   }
   .structured-demographics .demo-label {
     font-weight: 600;
@@ -765,6 +798,8 @@ const STRUCTURED_CSS = `
   }
   .structured-demographics .demo-value {
     color: #111;
+    white-space: normal;
+    word-break: break-word;
   }
 `;
 
@@ -773,6 +808,13 @@ const MINIMAL_CSS = `
   .minimal-header {
     text-align: center;
     margin-bottom: 16px;
+  }
+  .minimal-logo {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    margin: 0 auto 4px;
+    display: block;
   }
   .minimal-facility {
     font-size: 13pt;
@@ -794,6 +836,10 @@ const MINIMAL_CSS = `
   }
   .minimal-demographics td {
     padding: 3px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
   }
   .minimal-demographics .demo-label {
     font-weight: 700;
@@ -805,6 +851,8 @@ const MINIMAL_CSS = `
   }
   .minimal-demographics .demo-value {
     color: #111;
+    white-space: normal;
+    word-break: break-word;
   }
   .minimal-sig-row {
     display: flex;
