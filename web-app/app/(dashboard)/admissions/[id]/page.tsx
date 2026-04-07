@@ -970,11 +970,33 @@ export default function AdmissionDetailPage() {
           {/* AI Discharge Readiness (Phase 5) */}
           {admission.admission_status === 'ACTIVE' && (
             <DischargeReadinessPanel
+              admissionId={admission.id}
               patientAge={admission.patient_age ?? 0}
               primaryDiagnosis={
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''
               }
+              admissionType={
+                (admission.admission_type?.toLowerCase() as 'medical' | 'surgical' | 'obstetric' | 'pediatric') ?? 'medical'
+              }
               daysAdmitted={daysAdmitted}
+              vitalsHistory={wardRounds?.results?.map((wr) => {
+                const v = wr.vital_signs ?? wr;
+                const bpStr = typeof v.blood_pressure === 'string' ? v.blood_pressure : undefined;
+                const bp = bpStr?.split('/').map(Number);
+                return {
+                  timestamp: `${wr.round_date}T${wr.round_time || '00:00:00'}`,
+                  heart_rate: v.pulse ?? null,
+                  systolic_bp: bp?.[0] ?? null,
+                  diastolic_bp: bp?.[1] ?? null,
+                  temperature: v.temperature != null ? Number(v.temperature) : null,
+                  respiratory_rate: v.respiratory_rate ?? null,
+                  oxygen_saturation: v.spo2 != null ? Number(v.spo2) : null,
+                };
+              }).filter((v) =>
+                v.heart_rate != null || v.temperature != null || v.oxygen_saturation != null ||
+                v.systolic_bp != null || v.respiratory_rate != null
+              )}
+              currentMedications={admission.clinical_context?.current_medications}
               autoTrigger={autoTriggerDischarge}
               onAutoTriggerConsumed={() => setAutoTriggerDischarge(false)}
             />

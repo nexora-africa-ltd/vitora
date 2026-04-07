@@ -1603,7 +1603,12 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
 
         try:
             client = get_tibabot_client()
-            result = client.assess_discharge(data)
+            # Strip internal-only fields before sending to TibaBot
+            tibabot_payload = {
+                k: v for k, v in data.items()
+                if k != "admission_id"
+            }
+            result = client.assess_discharge(tibabot_payload)
             result["mode"] = "tibabot"
 
             # Supplement shallow TibaBot responses with local criteria

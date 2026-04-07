@@ -642,8 +642,8 @@ export interface AIDischargeCriterion {
   category: string;
   met: boolean;
   details?: string | null;
-  current_value?: unknown;
-  target_value?: unknown;
+  current_value?: string | null;
+  target_value?: string | null;
   notes?: string | null;
 }
 
