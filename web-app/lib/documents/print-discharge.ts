@@ -756,7 +756,6 @@ const STRUCTURED_CSS = `
   }
   .structured-demographics td {
     padding: 4px 6px;
-    border-bottom: 1px solid #ddd;
   }
   .structured-demographics .demo-label {
     font-weight: 600;
@@ -766,7 +765,6 @@ const STRUCTURED_CSS = `
   }
   .structured-demographics .demo-value {
     color: #111;
-    border-bottom: 1px solid #333;
   }
 `;
 
@@ -807,7 +805,6 @@ const MINIMAL_CSS = `
   }
   .minimal-demographics .demo-value {
     color: #111;
-    border-bottom: 1px solid #333;
   }
   .minimal-sig-row {
     display: flex;
@@ -823,7 +820,6 @@ const MINIMAL_CSS = `
     margin-right: 8px;
   }
   .minimal-sig-row .demo-value {
-    border-bottom: 1px solid #333;
     display: inline-block;
     min-width: 100px;
   }
@@ -846,7 +842,7 @@ const MINIMAL_CSS = `
  *
  * Supports three layout variants:
  * - STANDARD (default): narrative layout — existing Vitora style
- * - STRUCTURED: labelled field grid — KU Hospital / large facility style
+ * - STRUCTURED: labelled field grid — large facility style
  * - MINIMAL: compact single-page — dispensary / small clinic style
  */
 export async function printDischargeDocument(data: DischargeDocumentData): Promise<Window | null> {
