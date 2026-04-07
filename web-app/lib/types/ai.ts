@@ -461,10 +461,10 @@ export interface AIFeedbackStats {
 }
 
 /** Suggestion workflow that produced an accountable AI action. */
-export type AISuggestionType = 'autopopulate' | 'clerking_autocomplete';
+export type AISuggestionType = 'autopopulate' | 'clerking_autocomplete' | 'mode_change';
 
 /** Suggestion action recorded for accountability. */
-export type AISuggestionEventType = 'accepted' | 'applied';
+export type AISuggestionEventType = 'accepted' | 'applied' | 'acknowledged';
 
 /** A single accepted or applied suggestion audit item. */
 export interface AISuggestionAuditItem {

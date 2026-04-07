@@ -43,10 +43,11 @@ import { FacilityModuleWarning } from '@/components/shared/facility-module-warni
 import { SectionCard } from '@/components/discharge/section-card';
 import { MedicationSuggestions } from '@/components/discharge/medication-suggestions';
 import { AdmissionPrescriptionsPicker } from '@/components/discharge/admission-prescriptions-picker';
-import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus } from '@/lib/hooks/use-inpatient';
+import { ClinicalReferenceCard } from '@/components/discharge/clinical-reference-card';
+import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus, useKardexByAdmission, useTemperatureReadings, useFluidBalanceSheets, useBPReadings, useBloodTransfusions } from '@/lib/hooks/use-inpatient';
 import { useAdmissionPrescriptions, useUpdatePrescription } from '@/lib/hooks/use-pharmacy';
 import { useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
-import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans } from '@/lib/hooks/use-ai';
+import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans, useAISuggestionAudit } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
@@ -72,6 +73,11 @@ export default function DischargePage() {
   const { data: admission, isLoading } = useAdmission(admissionId);
   const { data: wardRounds } = useAdmissionWardRounds(admissionId);
   const { data: orders } = useAdmissionOrders(admissionId);
+  const { data: kardex } = useKardexByAdmission(admissionId);
+  const { data: temperatureData } = useTemperatureReadings(admissionId);
+  const { data: fluidBalanceData } = useFluidBalanceSheets(admissionId);
+  const { data: bpData } = useBPReadings(admissionId);
+  const { data: transfusionData } = useBloodTransfusions(admissionId);
   const { facility, facilityDetail } = useFacility();
   const patientContext = useOptionalPatientContext();
   const createDischarge = useCreateDischarge();
@@ -132,8 +138,21 @@ export default function DischargePage() {
   const [showCdsDialog, setShowCdsDialog] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
-  // AI generation mode: 'suggest' = rich draft, 'generate' = strict facts-only
-  const [generationMode, setGenerationMode] = useState<ClinicalDocGenerationMode>('suggest');
+  // AI generation mode: 'generate' = strict facts-only (default), 'suggest' = experimental rich drafts
+  const AI_MODE_STORAGE_KEY = 'vitora_ai_generation_mode';
+  const [generationMode, setGenerationModeRaw] = useState<ClinicalDocGenerationMode>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(AI_MODE_STORAGE_KEY);
+      if (stored === 'suggest' || stored === 'generate') return stored;
+    }
+    return 'generate';
+  });
+  const setGenerationMode = useCallback((mode: ClinicalDocGenerationMode) => {
+    setGenerationModeRaw(mode);
+    try { localStorage.setItem(AI_MODE_STORAGE_KEY, mode); } catch { /* ignore */ }
+  }, []);
+  const [showSuggestModeDialog, setShowSuggestModeDialog] = useState(false);
+  const suggestionAudit = useAISuggestionAudit();
 
   // Customizable discharge summary sections
   const [sections, setSections] = useState<DischargeSummarySection[]>(() =>
@@ -316,8 +335,65 @@ export default function DischargePage() {
       if (rxSummary) parts.push(`Prescriptions during stay: ${rxSummary}`);
     }
 
+    // Nursing Kardex summary
+    if (kardex) {
+      const kardexParts: string[] = [];
+      if (kardex.mobility_status) kardexParts.push(`Mobility: ${kardex.mobility_status}`);
+      if (kardex.dietary_requirements || kardex.diet) kardexParts.push(`Diet: ${kardex.dietary_requirements || kardex.diet}`);
+      if (kardex.iv_access) kardexParts.push(`IV: ${kardex.iv_access}`);
+      if (kardex.fall_risk && kardex.fall_risk !== 'LOW') kardexParts.push(`Fall risk: ${kardex.fall_risk}`);
+      if (kardex.pressure_sore_risk && kardex.pressure_sore_risk !== 'LOW') kardexParts.push(`Pressure sore risk: ${kardex.pressure_sore_risk}`);
+      if (kardex.isolation_required) kardexParts.push(`Isolation: ${kardex.isolation_type || 'Yes'}`);
+      // Active nursing care plan entries
+      const activeEntries = (kardex.care_plan_entries || []).filter((e) => e.status === 'ACTIVE' || e.status === 'ONGOING');
+      if (activeEntries.length > 0) {
+        const cpSummary = activeEntries.slice(0, 3).map((e) => `${e.nursing_diagnosis} (${e.evaluation || e.implementation || 'ongoing'})`).join('; ');
+        kardexParts.push(`Active nursing problems: ${cpSummary}`);
+      }
+      if (kardexParts.length > 0) parts.push(`Nursing kardex: ${kardexParts.join('. ')}`);
+    }
+
+    // Observation charts — recent TPR
+    const temps = temperatureData?.results;
+    if (temps && temps.length > 0) {
+      const tprSummary = temps.slice(0, 3).map((t) => {
+        const bits = [`${t.temperature}°C`];
+        if (t.pulse != null) bits.push(`HR ${t.pulse}`);
+        if (t.respiratory_rate != null) bits.push(`RR ${t.respiratory_rate}`);
+        return bits.join('/');
+      }).join(', ');
+      parts.push(`Recent TPR: ${tprSummary}`);
+    }
+
+    // BP monitoring
+    const bps = bpData?.results;
+    if (bps && bps.length > 0) {
+      const bpSummary = bps.slice(0, 3).map((bp) => bp.bp_display || `${bp.systolic}/${bp.diastolic}`).join(', ');
+      parts.push(`Recent BP: ${bpSummary}`);
+    }
+
+    // Fluid balance
+    const fluids = fluidBalanceData?.results;
+    if (fluids && fluids.length > 0) {
+      const latest = fluids[0]!;
+      const fluidParts: string[] = [];
+      if (latest.total_intake_ml != null) fluidParts.push(`Intake ${latest.total_intake_ml}ml`);
+      if (latest.total_output_ml != null) fluidParts.push(`Output ${latest.total_output_ml}ml`);
+      if (latest.net_balance_ml != null) fluidParts.push(`Net ${latest.net_balance_ml > 0 ? '+' : ''}${latest.net_balance_ml}ml`);
+      if (fluidParts.length > 0) parts.push(`Fluid balance (${latest.chart_date}): ${fluidParts.join(', ')}`);
+    }
+
+    // Blood transfusions
+    const transfusions = transfusionData?.results;
+    if (transfusions && transfusions.length > 0) {
+      const txSummary = transfusions.map((t) =>
+        `${t.blood_product_display || t.blood_product} ${t.amount_ml}ml${t.reaction_occurred ? ' [REACTION]' : ''}`
+      ).join('; ');
+      parts.push(`Blood transfusions: ${txSummary}`);
+    }
+
     return parts.join(' \n');
-  }, [wardRounds, orders]);
+  }, [wardRounds, orders, kardex, temperatureData, bpData, fluidBalanceData, transfusionData]);
 
   // Build suggested diagnoses from admission data + encounter + AI care plans
   const suggestedDiagnoses = useMemo(() => {
@@ -875,6 +951,17 @@ export default function DischargePage() {
         message="Laboratory module is not enabled at this facility. Ensure pending lab results from referral facilities are reviewed before discharge."
       />
 
+      {/* Clinical Reference — collapsed card with ward rounds, labs, kardex, observation charts */}
+      <ClinicalReferenceCard
+        wardRounds={wardRounds}
+        orders={orders}
+        kardex={kardex}
+        temperatureReadings={temperatureData?.results}
+        fluidBalanceSheets={fluidBalanceData?.results}
+        bpReadings={bpData?.results}
+        bloodTransfusions={transfusionData?.results}
+      />
+
       {/* Discharge Form */}
       <Card>
         <CardHeader>
@@ -977,7 +1064,7 @@ export default function DischargePage() {
             <MultiDiagnosisInput
               value={diagnoses}
               onChange={setDiagnoses}
-              label="Discharge Diagnoses"
+              label={<><span className="sm:hidden">Discharge Dx(s)</span><span className="hidden sm:inline">Discharge Diagnoses</span></>}
             />
           </div>
 
@@ -1025,11 +1112,21 @@ export default function DischargePage() {
                       <div className="flex items-center gap-2 w-fit cursor-default">
                         <Switch
                           checked={generationMode === 'suggest'}
-                          onCheckedChange={(checked) => setGenerationMode(checked ? 'suggest' : 'generate')}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setShowSuggestModeDialog(true);
+                            } else {
+                              setGenerationMode('generate');
+                            }
+                          }}
                         />
                         <span className="text-sm font-medium">
                           {generationMode === 'suggest' ? (
-                            'Suggest Mode'
+                            <span className="flex items-center gap-1.5">
+                              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                              Suggest Mode
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-700 dark:text-amber-300">Experimental</Badge>
+                            </span>
                           ) : (
                             <span className="flex items-center gap-1.5">
                               <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
@@ -1042,7 +1139,7 @@ export default function DischargePage() {
                     <TooltipContent side="bottom" className="max-w-xs">
                       {generationMode === 'suggest'
                         ? 'Switch to Strict mode — facts-only output safe for audit trails and legal records'
-                        : 'Switch to Suggest mode — rich drafts with AI-synthesised narratives for clinician review'}
+                        : 'Switch to Suggest mode — experimental rich drafts with AI-synthesised narratives (requires acknowledgement)'}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1443,6 +1540,54 @@ export default function DischargePage() {
               className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               Acknowledge & Discharge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Suggest Mode Disclaimer Dialog */}
+      <AlertDialog open={showSuggestModeDialog} onOpenChange={setShowSuggestModeDialog}>
+        <AlertDialogContent className="max-w-lg mx-4 sm:mx-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Suggest Mode is Experimental
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  Suggest mode uses AI to generate rich narrative drafts with synthesised clinical content. 
+                  This content <strong>may contain inaccuracies, hallucinated details, or missing information</strong>.
+                </p>
+                <p>
+                  You are responsible for verifying every section before filing. 
+                  For audit-safe, facts-only output, use <strong>Strict Mode</strong> (default).
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Your acknowledgement will be logged for accountability.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+            <AlertDialogCancel>Stay on Strict Mode</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={() => {
+                setGenerationMode('suggest');
+                // Audit-log the mode change acknowledgement
+                suggestionAudit.mutate({
+                  suggestion_type: 'mode_change',
+                  event_type: 'acknowledged',
+                  suggestions: [{
+                    field_name: 'generation_mode',
+                    source: 'ai',
+                    accepted_value: 'suggest',
+                  }],
+                });
+              }}
+            >
+              I Understand — Enable Suggest Mode
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
