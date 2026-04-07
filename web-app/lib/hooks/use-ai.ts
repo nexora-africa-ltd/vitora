@@ -72,6 +72,8 @@ export const aiKeys = {
     [...aiKeys.all, 'stored-discharge', admissionId] as const,
   storedICURisk: (admissionId: number) =>
     [...aiKeys.all, 'stored-icu-risk', admissionId] as const,
+  icuLabs: (admissionId: number) =>
+    [...aiKeys.all, 'icu-labs', admissionId] as const,
 };
 
 // =============================================================================
@@ -286,6 +288,22 @@ export function useAIICUPredict() {
   return useMutation<AIICUPredictResponse, Error, AIICUPredictRequest>({
     mutationFn: (data) => aiApi.predictICU(data),
     retry: false,
+  });
+}
+
+/**
+ * Hook to fetch the latest verified lab values for ICU risk scoring.
+ *
+ * Calls GET /api/ai/predict/icu/labs/?admission_id=N and returns
+ * a flat object of numeric values (wbc, platelets, creatinine, etc.).
+ * Only enabled when admissionId is provided and AI is accessible.
+ */
+export function useICULabs(admissionId: number | undefined) {
+  return useQuery<Record<string, number>>({
+    queryKey: aiKeys.icuLabs(admissionId ?? 0),
+    queryFn: () => aiApi.getICULabs(admissionId!),
+    enabled: !!admissionId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

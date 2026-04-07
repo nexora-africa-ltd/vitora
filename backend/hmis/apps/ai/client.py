@@ -279,6 +279,32 @@ class TibaBotClient:
     # Phase 4 — ICU Predictor
     # -----------------------------------------------------------------
 
+    # Gender code → TibaBot full-word mapping
+    _GENDER_MAP: ClassVar[dict[str, str]] = {
+        "M": "Male",
+        "F": "Female",
+        "O": "Other",
+    }
+
+    def _prepare_icu_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Flatten and adapt *payload* to the schema TibaBot ICU endpoints expect.
+
+        TibaBot expects patient fields at the **request body root** (not
+        nested under ``patient_data``), ``oxygen_saturation`` instead of
+        ``spo2``, and full-word gender values (``Male``/``Female``/``Other``).
+        """
+        patient_data: dict[str, Any] = dict(payload.get("patient_data", {}))
+
+        # Rename spo2 → oxygen_saturation
+        if "spo2" in patient_data:
+            patient_data["oxygen_saturation"] = patient_data.pop("spo2")
+
+        # Map gender code to full word
+        raw_gender = patient_data.get("gender", "")
+        patient_data["gender"] = self._GENDER_MAP.get(raw_gender, raw_gender)
+
+        return patient_data
+
     def predict_icu(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
         Predict ICU admission risk for an admitted patient.
@@ -299,7 +325,7 @@ class TibaBotClient:
         return self._request(
             method="POST",
             endpoint="/predict/icu/predict",
-            data=payload,
+            data=self._prepare_icu_payload(payload),
         )
 
     def predict_icu_risk_stratify(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -323,7 +349,7 @@ class TibaBotClient:
         return self._request(
             method="POST",
             endpoint="/predict/icu/risk-stratify",
-            data=payload,
+            data=self._prepare_icu_payload(payload),
         )
 
     # -----------------------------------------------------------------

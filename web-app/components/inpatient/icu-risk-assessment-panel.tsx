@@ -320,8 +320,49 @@ export function ICURiskAssessmentPanel({
   // Load stored ICU results
   const { data: storedResults } = useStoredICURiskResults(admissionId);
   const latestStored = storedResults?.[0];
-  const displayPrediction: AIICUPredictResponse | undefined = prediction
-    ?? (latestStored?.result_data as unknown as AIICUPredictResponse | undefined);
+
+  // Normalize stored result_data — older records may have sofa_score/qsofa_score
+  // as raw TibaBot objects instead of numbers.
+  const normalizedStored = React.useMemo<AIICUPredictResponse | undefined>(() => {
+    if (!latestStored?.result_data) return undefined;
+    const raw = latestStored.result_data as Record<string, unknown>;
+
+    let sofaScore = raw.sofa_score as number | null | undefined;
+    let sofaBreakdown = raw.sofa_breakdown as AISOFAScoreBreakdown | null | undefined;
+    if (raw.sofa_score != null && typeof raw.sofa_score === 'object') {
+      const obj = raw.sofa_score as Record<string, number>;
+      sofaScore = obj.total ?? null;
+      sofaBreakdown = {
+        respiratory: obj.respiratory ?? null,
+        coagulation: obj.coagulation ?? null,
+        liver: obj.liver ?? null,
+        cardiovascular: obj.cardiovascular ?? null,
+        neurological: obj.neurological ?? obj.cns ?? null,
+        renal: obj.renal ?? null,
+      };
+    }
+
+    let qsofaScore = raw.qsofa_score as number | null | undefined;
+    let qsofaCriteria = raw.qsofa_criteria as string[] | undefined;
+    if (raw.qsofa_score != null && typeof raw.qsofa_score === 'object') {
+      const obj = raw.qsofa_score as Record<string, boolean | number>;
+      qsofaScore = (obj.total as number) ?? null;
+      qsofaCriteria = [];
+      if (obj.altered_mentation) qsofaCriteria.push('Altered mentation (GCS < 15)');
+      if (obj.respiratory_rate_high) qsofaCriteria.push('Respiratory rate >= 22');
+      if (obj.systolic_bp_low) qsofaCriteria.push('Systolic BP <= 100');
+    }
+
+    return {
+      ...raw,
+      sofa_score: sofaScore,
+      sofa_breakdown: sofaBreakdown,
+      qsofa_score: qsofaScore,
+      qsofa_criteria: qsofaCriteria,
+    } as unknown as AIICUPredictResponse;
+  }, [latestStored]);
+
+  const displayPrediction: AIICUPredictResponse | undefined = prediction ?? normalizedStored;
 
   // Show success toast when prediction completes
   React.useEffect(() => {
@@ -340,11 +381,29 @@ export function ICURiskAssessmentPanel({
   // Don't render if AI is disabled
   if (!aiEnabled) return null;
 
-  const hasEnoughData =
-    vitals?.heart_rate != null ||
-    vitals?.spo2 != null ||
-    vitals?.systolic_bp != null ||
-    vitals?.temperature != null;
+  // Vitals the frontend must supply (cannot be auto-defaulted server-side)
+  const REQUIRED_VITALS = ['heart_rate', 'systolic_bp', 'diastolic_bp', 'respiratory_rate', 'spo2', 'temperature'] as const;
+  // Labs that improve accuracy — missing ones get normal defaults server-side
+  const ADVISORY_LABS = ['creatinine', 'wbc', 'platelets', 'lactate'] as const;
+
+  const FIELD_LABELS: Record<string, string> = {
+    heart_rate: 'Heart Rate',
+    systolic_bp: 'Systolic BP',
+    diastolic_bp: 'Diastolic BP',
+    respiratory_rate: 'Respiratory Rate',
+    spo2: 'SpO2',
+    temperature: 'Temperature',
+    creatinine: 'Creatinine',
+    wbc: 'WBC',
+    platelets: 'Platelets',
+    lactate: 'Lactate',
+  };
+
+  const missingVitals = REQUIRED_VITALS.filter((f) => vitals?.[f as keyof typeof vitals] == null);
+  const missingLabs = ADVISORY_LABS.filter((f) => labs?.[f as keyof typeof labs] == null);
+
+  // Only vitals block the assessment; labs are advisory
+  const hasEnoughData = missingVitals.length === 0;
 
   const handlePredict = (type?: AIICUPredictionType) => {
     const useType = type ?? predictionType;
@@ -422,10 +481,24 @@ export function ICURiskAssessmentPanel({
         {!hasPrediction && (
           <div className="flex flex-col items-center gap-3 py-2">
             <p className="text-sm text-muted-foreground text-center">
-              {hasEnoughData
-                ? 'Run AI analysis to assess ICU risk, compute SOFA/qSOFA scores, and identify escalation needs.'
-                : 'Enter patient vitals to enable ICU risk assessment.'}
+              {!hasEnoughData
+                ? (
+                  <>
+                    Record the following vitals before running ICU risk assessment:{' '}
+                    <span className="font-medium text-foreground">
+                      {missingVitals.map((f) => FIELD_LABELS[f]).join(', ')}
+                    </span>
+                  </>
+                )
+                : 'Run AI analysis to assess ICU risk, compute SOFA/qSOFA scores, and identify escalation needs.'}
             </p>
+            {hasEnoughData && missingLabs.length > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                <Info className="inline h-3 w-3 mr-1 -mt-0.5" />
+                Accuracy improves with lab results: {missingLabs.map((f) => FIELD_LABELS[f]).join(', ')}.
+                Normal values will be assumed for missing labs.
+              </p>
+            )}
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
               <Button
                 type="button"
@@ -475,6 +548,20 @@ export function ICURiskAssessmentPanel({
         {/* Prediction Results */}
         {hasPrediction && riskConfig && (
           <div className="space-y-4">
+            {/* Defaulted Labs Warning */}
+            {displayPrediction.defaulted_labs && displayPrediction.defaulted_labs.length > 0 && (
+              <div className="rounded-md p-2.5 border bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-sm">
+                <div className="flex items-start gap-2">
+                  <Info className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <p className="text-amber-700 dark:text-amber-300">
+                    <span className="font-medium">Normal values assumed</span> for{' '}
+                    {displayPrediction.defaulted_labs.map((f) => FIELD_LABELS[f] ?? f).join(', ')}.
+                    Accuracy improves with actual lab results.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Risk Level Banner */}
             <div
               className={cn(

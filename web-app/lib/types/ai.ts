@@ -376,6 +376,8 @@ export interface AIICUPredictResponse {
   sepsis_probability?: number | null;
   aki_probability?: number | null;
   deterioration_probability?: number | null;
+  // Labs that were substituted with normal defaults
+  defaulted_labs?: string[];
   // Error
   error?: string | null;
 }

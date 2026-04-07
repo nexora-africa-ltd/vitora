@@ -886,6 +886,16 @@ class ICUPredictPatientDataSerializer(serializers.Serializer):
 class ICUPredictRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/predict/icu/."""
 
+    # Vitals that the frontend MUST supply (cannot be auto-enriched).
+    ICU_REQUIRED_VITALS = (
+        "heart_rate",
+        "systolic_bp",
+        "diastolic_bp",
+        "respiratory_rate",
+        "spo2",
+        "temperature",
+    )
+
     admission_id = serializers.IntegerField(
         required=False, allow_null=True, default=None,
         help_text="Link result to this admission for persistence.",
@@ -899,6 +909,26 @@ class ICUPredictRequestSerializer(serializers.Serializer):
         help_text='"predict" for ICU admission prediction, '
         '"risk-stratify" for sepsis/deterioration composite score.',
     )
+
+    def validate(self, attrs):  # type: ignore[override]
+        attrs = super().validate(attrs)
+        pd = attrs.get("patient_data", {})
+        missing_vitals = [
+            f for f in self.ICU_REQUIRED_VITALS
+            if pd.get(f) is None
+        ]
+        if missing_vitals:
+            raise serializers.ValidationError(
+                {
+                    "patient_data": (
+                        f"ICU risk prediction requires the following vitals: "
+                        f"{', '.join(missing_vitals)}. Please record them "
+                        f"before running the assessment."
+                    ),
+                    "missing_fields": missing_vitals,
+                }
+            )
+        return attrs
 
 
 class SOFAScoreBreakdownSerializer(serializers.Serializer):
@@ -1060,6 +1090,14 @@ class ICUPredictResponseSerializer(serializers.Serializer):
         min_value=0.0,
         max_value=1.0,
         help_text="Clinical deterioration probability (0.0 to 1.0).",
+    )
+
+    defaulted_labs = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+        help_text="Lab fields that were substituted with normal defaults "
+        "because actual results were unavailable.",
     )
 
     error = serializers.CharField(
