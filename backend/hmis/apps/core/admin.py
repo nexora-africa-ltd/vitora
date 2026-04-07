@@ -991,6 +991,7 @@ class FacilityAdmin(admin.ModelAdmin):
                 "fields": (
                     "mfl_code",
                     "name",
+                    "logo",
                     "level",
                     "ownership",
                 )

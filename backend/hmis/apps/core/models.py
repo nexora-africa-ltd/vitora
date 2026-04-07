@@ -2573,6 +2573,12 @@ class Facility(TimeStampedModel):
         default="",
         help_text="Internal branch identifier within the organization.",
     )
+    logo = models.ImageField(
+        upload_to="facilities/logos/",
+        null=True,
+        blank=True,
+        help_text="Facility logo for branding. Falls back to organization logo if not set.",
+    )
 
     # ------------------------------------------------------------------
     # Location (Kenya administrative hierarchy)
@@ -2763,6 +2769,20 @@ class Facility(TimeStampedModel):
             ['outpatient', 'pharmacy', 'laboratory']
         """
         return [name for name, enabled in self.modules.items() if enabled]
+
+    @property
+    def effective_logo(self):
+        """
+        Return the facility's own logo, falling back to the organization logo.
+
+        This allows facilities to either use their own branding or inherit
+        the parent organization's logo.
+        """
+        if self.logo:
+            return self.logo
+        if self.organization and self.organization.logo:
+            return self.organization.logo
+        return None
 
     # ------------------------------------------------------------------
     # Class Methods

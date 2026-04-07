@@ -820,6 +820,9 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
     dictionary, plus resolved location names.  ``enabled_module_names``
     provides a convenience list of only the enabled modules for quick
     frontend rendering.
+
+    ``effective_logo_url`` returns the facility's own logo URL if set,
+    otherwise falls back to the parent organization's logo URL.
     """
 
     county_name = serializers.CharField(source="county.name", read_only=True)
@@ -834,6 +837,7 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
     enabled_module_names = serializers.ListField(
         child=serializers.CharField(), read_only=True
     )
+    effective_logo_url = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for FacilityDetailSerializer."""
@@ -849,6 +853,8 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "ownership",
             "is_headquarters",
             "branch_code",
+            "logo",
+            "effective_logo_url",
             # Location
             "county",
             "county_name",
@@ -885,9 +891,20 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "id",
             "modules",
             "enabled_module_names",
+            "effective_logo_url",
             "created_at",
             "updated_at",
         ]
+
+    def get_effective_logo_url(self, obj) -> str | None:
+        """Return the effective logo URL (facility logo or organization fallback)."""
+        effective = obj.effective_logo
+        if effective:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(effective.url)
+            return effective.url
+        return None
 
 
 class FacilityCreateSerializer(serializers.ModelSerializer):

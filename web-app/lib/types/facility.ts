@@ -24,6 +24,8 @@ export interface FacilityListItem {
 export interface FacilityDetail extends FacilityListItem {
   ward?: number | null;
   ward_name?: string | null;
+  logo: string | null;
+  effective_logo_url: string | null;
   sha_contract_expiry: string | null;
   sha_facility_code: string;
   modules: FacilityModules;
