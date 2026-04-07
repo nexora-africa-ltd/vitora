@@ -1029,6 +1029,55 @@ class AIFeedbackStatsView(AIFeatureGatedMixin, APIView):
 # =============================================================================
 
 
+class ICULabEnrichmentView(AIFeatureGatedMixin, APIView):
+    """
+    Return the latest verified lab values for ICU risk scoring.
+
+    GET /api/ai/predict/icu/labs/?admission_id=49
+
+    Returns a flat dict of lab values mapped from verified LabResults,
+    e.g. {"wbc": 15.2, "platelets": 120.0, "creatinine": 2.1}.
+    The frontend can display these before triggering a prediction.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        admission_id = request.query_params.get("admission_id")
+        if not admission_id:
+            return Response(
+                {"detail": "admission_id query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            admission_id_int = int(admission_id)
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "admission_id must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from hmis.apps.inpatient.models import Admission
+
+            admission = Admission.objects.only("id", "patient_id").get(pk=admission_id_int)
+        except Admission.DoesNotExist:
+            return Response(
+                {"detail": "Admission not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        from .services.icu_lab_enrichment import get_latest_labs_for_icu
+
+        lab_values = get_latest_labs_for_icu(
+            patient_id=admission.patient_id,
+            admission_id=admission_id_int,
+        )
+
+        return Response(lab_values)
+
+
 class ICUPredictView(AIFeatureGatedMixin, APIView):
     """
     Proxy endpoint for ICU risk prediction via TibaBot.
@@ -1081,12 +1130,51 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
 
         patient_data = serializer.validated_data["patient_data"]
         prediction_type = serializer.validated_data.get("prediction_type", "predict")
+        admission_id = serializer.validated_data.get("admission_id")
+
+        # Auto-enrich lab values from verified results when admission is
+        # provided.  Only fills fields the frontend didn't already supply.
+        if admission_id is not None:
+            try:
+                from hmis.apps.inpatient.models import Admission
+
+                admission = Admission.objects.select_related("patient").get(pk=admission_id)
+                patient_id = admission.patient_id
+
+                from .services.icu_lab_enrichment import get_latest_labs_for_icu
+
+                lab_values = get_latest_labs_for_icu(
+                    patient_id=patient_id,
+                    admission_id=admission_id,
+                )
+                lab_fields = ("wbc", "platelets", "creatinine", "bilirubin", "lactate", "pao2_fio2_ratio")
+                for field in lab_fields:
+                    if patient_data.get(field) is None and field in lab_values:
+                        patient_data[field] = lab_values[field]
+            except Exception:
+                logger.warning("Failed to enrich ICU prediction with lab data", exc_info=True)
 
         # Sanitize free-text fields
         if patient_data.get("admission_diagnosis"):
             patient_data["admission_diagnosis"] = sanitize_clinical_text(
                 patient_data["admission_diagnosis"]
             )
+
+        # TibaBot requires numeric values for all lab fields.  When labs
+        # are unavailable (not yet drawn / not yet verified), substitute
+        # clinically normal defaults so the prediction can still run and
+        # track which fields were defaulted so the UI can warn the user.
+        _LAB_NORMAL_DEFAULTS: dict[str, float] = {
+            "creatinine": 0.9,   # mg/dL — mid-normal
+            "wbc": 7.5,          # x10^9/L
+            "platelets": 250.0,  # x10^9/L
+            "lactate": 1.0,      # mmol/L
+        }
+        defaulted_labs: list[str] = []
+        for lab_field, normal_val in _LAB_NORMAL_DEFAULTS.items():
+            if patient_data.get(lab_field) is None:
+                patient_data[lab_field] = normal_val
+                defaulted_labs.append(lab_field)
 
         # Enrich with user and facility context
         payload = {
@@ -1139,24 +1227,64 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
                 status=status.HTTP_200_OK,
             )
 
-        # Validate and normalize the response
+        # Validate and normalize the response.
+        # TibaBot returns sofa_score and qsofa_score as structured objects;
+        # the frontend expects a numeric total + a separate breakdown/criteria.
+        raw_sofa = result.get("sofa_score")
+        if isinstance(raw_sofa, dict):
+            sofa_total = raw_sofa.get("total")
+            sofa_breakdown = {
+                k: raw_sofa.get(k)
+                for k in ("respiratory", "coagulation", "liver",
+                          "cardiovascular", "neurological", "renal")
+                if raw_sofa.get(k) is not None
+            }
+            # TibaBot uses "cns" instead of "neurological"
+            if "cns" in raw_sofa and "neurological" not in sofa_breakdown:
+                sofa_breakdown["neurological"] = raw_sofa["cns"]
+        else:
+            sofa_total = raw_sofa
+            sofa_breakdown = result.get("sofa_breakdown")
+
+        raw_qsofa = result.get("qsofa_score")
+        if isinstance(raw_qsofa, dict):
+            qsofa_total = raw_qsofa.get("total")
+            qsofa_criteria: list[str] = []
+            if raw_qsofa.get("altered_mentation"):
+                qsofa_criteria.append("Altered mentation (GCS < 15)")
+            if raw_qsofa.get("respiratory_rate_high"):
+                qsofa_criteria.append("Respiratory rate >= 22")
+            if raw_qsofa.get("systolic_bp_low"):
+                qsofa_criteria.append("Systolic BP <= 100")
+        else:
+            qsofa_total = raw_qsofa
+            qsofa_criteria = result.get("qsofa_criteria", [])
+
+        # Derive risk_score from risk_level if TibaBot didn't provide one
+        risk_level = result.get("risk_level", "low")
+        risk_score = result.get("risk_score")
+        if risk_score is None:
+            risk_score = {"critical": 0.95, "high": 0.75, "moderate": 0.5, "low": 0.2}.get(
+                risk_level, 0.0
+            )
+
         response_data = {
-            "risk_level": result.get("risk_level", "low"),
-            "risk_score": result.get("risk_score", 0.0),
-            "sofa_score": result.get("sofa_score"),
-            "sofa_breakdown": result.get("sofa_breakdown"),
-            "qsofa_score": result.get("qsofa_score"),
-            "qsofa_criteria": result.get("qsofa_criteria", []),
-            "critical_alerts": result.get("critical_alerts", []),
+            "risk_level": risk_level,
+            "risk_score": risk_score,
+            "sofa_score": sofa_total,
+            "sofa_breakdown": sofa_breakdown or None,
+            "qsofa_score": qsofa_total,
+            "qsofa_criteria": qsofa_criteria,
+            "critical_alerts": result.get("critical_alerts", result.get("alerts", [])),
             "escalation": result.get("escalation"),
-            "recommendations": result.get("recommendations", []),
+            "recommendations": result.get("recommendations", result.get("recommended_actions", [])),
             "sepsis_probability": result.get("sepsis_probability"),
             "aki_probability": result.get("aki_probability"),
             "deterioration_probability": result.get("deterioration_probability"),
+            "defaulted_labs": defaulted_labs,
         }
 
         # Persist result
-        admission_id = serializer.validated_data.get("admission_id")
         try:
             stored = AIICURiskResult.objects.create(
                 created_by=request.user,

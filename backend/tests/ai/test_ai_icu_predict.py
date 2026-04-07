@@ -261,12 +261,26 @@ class TestICUPredictValidation:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_accepts_minimal_payload(
+    def test_rejects_minimal_payload_missing_vitals(
+        self,
+        authenticated_client,
+    ):
+        """Should reject payload missing required vitals."""
+        response = authenticated_client.post(
+            "/api/ai/predict/icu/",
+            {"patient_data": {"age": 65, "gender": "M"}},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "missing_fields" in response.data
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_accepts_vitals_only_defaults_labs(
         self,
         authenticated_client,
         tibabot_icu_predict_response,
     ):
-        """Should accept minimal valid payload (age + gender only)."""
+        """Should accept payload with vitals but no labs — labs get normal defaults."""
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.predict_icu.return_value = tibabot_icu_predict_response
@@ -274,7 +288,41 @@ class TestICUPredictValidation:
 
             response = authenticated_client.post(
                 "/api/ai/predict/icu/",
-                {"patient_data": {"age": 65, "gender": "M"}},
+                {
+                    "patient_data": {
+                        "age": 65,
+                        "gender": "M",
+                        "temperature": 38.0,
+                        "heart_rate": 100,
+                        "systolic_bp": 110,
+                        "diastolic_bp": 70,
+                        "respiratory_rate": 20,
+                        "spo2": 95,
+                    },
+                },
+                format="json",
+            )
+            assert response.status_code == status.HTTP_200_OK
+            assert set(response.data["defaulted_labs"]) == {
+                "creatinine", "wbc", "platelets", "lactate",
+            }
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_accepts_payload_with_required_fields(
+        self,
+        authenticated_client,
+        icu_predict_payload,
+        tibabot_icu_predict_response,
+    ):
+        """Should accept payload with all required vitals and labs."""
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.predict_icu.return_value = tibabot_icu_predict_response
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.post(
+                "/api/ai/predict/icu/",
+                icu_predict_payload,
                 format="json",
             )
             assert response.status_code == status.HTTP_200_OK
@@ -283,6 +331,7 @@ class TestICUPredictValidation:
     def test_accepts_gcs_range(
         self,
         authenticated_client,
+        icu_predict_payload,
         tibabot_icu_predict_response,
     ):
         """Should accept valid GCS values (3-15)."""
@@ -292,9 +341,11 @@ class TestICUPredictValidation:
             mock_get_client.return_value = mock_client
 
             for gcs in [3, 8, 15]:
+                payload = icu_predict_payload.copy()
+                payload["patient_data"] = {**payload["patient_data"], "gcs": gcs}
                 response = authenticated_client.post(
                     "/api/ai/predict/icu/",
-                    {"patient_data": {"age": 65, "gender": "M", "gcs": gcs}},
+                    payload,
                     format="json",
                 )
                 assert response.status_code == status.HTTP_200_OK

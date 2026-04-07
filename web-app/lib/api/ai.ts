@@ -232,6 +232,18 @@ export const aiApi = {
     });
   },
 
+  /**
+   * Fetch the latest verified lab values relevant to ICU risk scoring
+   * for a given admission. Returns a flat object of numeric values
+   * (wbc, platelets, creatinine, bilirubin, lactate, pao2_fio2_ratio).
+   */
+  getICULabs: async (admissionId: number): Promise<Record<string, number>> => {
+    const response = await apiClient.get('/api/ai/predict/icu/labs/', {
+      params: { admission_id: admissionId },
+    });
+    return response.data as Record<string, number>;
+  },
+
   // ===========================================================================
   // Phase 3 — Feedback
   // ===========================================================================

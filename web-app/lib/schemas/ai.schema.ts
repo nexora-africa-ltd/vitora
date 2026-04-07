@@ -151,6 +151,7 @@ export const AIICUPredictResponseSchema = z.object({
   sepsis_probability: z.number().min(0).max(1).nullable().optional(),
   aki_probability: z.number().min(0).max(1).nullable().optional(),
   deterioration_probability: z.number().min(0).max(1).nullable().optional(),
+  defaulted_labs: z.array(z.string()).optional(),
   error: z.string().nullable().optional(),
 });
 

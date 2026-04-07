@@ -25,6 +25,7 @@ from .views import (
     DischargeAssessView,
     DischargeConditionsListView,
     ICD10SuggestView,
+    ICULabEnrichmentView,
     ICUPredictView,
     LabInterpretView,
     StoredCarePlanDeleteView,
@@ -75,6 +76,11 @@ urlpatterns = [
         "predict/icu/",
         ICUPredictView.as_view(),
         name="predict-icu",
+    ),
+    path(
+        "predict/icu/labs/",
+        ICULabEnrichmentView.as_view(),
+        name="predict-icu-labs",
     ),
     # Phase 4a — Smart Autopopulate
     path("autopopulate/", AutopopulateView.as_view(), name="autopopulate"),

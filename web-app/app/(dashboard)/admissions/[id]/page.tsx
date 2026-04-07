@@ -66,6 +66,7 @@ import { BPMonitoringChart } from '@/components/inpatient/bp-monitoring-chart';
 import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { useICULabs } from '@/lib/hooks/use-ai';
 import { useMCHRegistration } from '@/lib/hooks/use-mch';
 import { PartographTab } from '@/components/mch/partograph-tab';
 import { DeliveryTab } from '@/components/mch/delivery-tab';
@@ -161,6 +162,11 @@ export default function AdmissionDetailPage() {
     admission?.patient ?? 0, 'all'
   );
 
+  // Fetch latest verified lab values for ICU risk scoring
+  const { data: icuLabValues } = useICULabs(
+    admission?.admission_status === 'ACTIVE' ? admissionId : undefined
+  );
+
   // Maternity case: show partograph tab for maternity ward OR linked MCH registration
   const isMaternityCase = admission?.ward_type === 'MATERNITY' || Boolean(admission?.mch_registration);
   const { data: mchRegistration } = useMCHRegistration(
@@ -216,55 +222,59 @@ export default function AdmissionDetailPage() {
   }, [wardRounds]);
 
   // Compute latest vitals for ICU Risk Assessment panel.
-  // Prefer vitalsHistory (aggregated from triage, encounters, observation sheets)
-  // and fall back to the latest ward round vital signs.
+  // Nursing vitals are split across separate records (TemperatureReading vs
+  // BPMonitoringReading), so we merge backwards through the history taking
+  // the most recent non-null value for each vital sign.
   const latestVitalsForICU = useMemo(() => {
-    // Try vitalsHistory first (most recent entry)
+    const merged: {
+      temperature?: number;
+      heart_rate?: number;
+      systolic_bp?: number;
+      diastolic_bp?: number;
+      respiratory_rate?: number;
+      spo2?: number;
+    } = {};
+
+    const VITAL_KEYS = ['temperature', 'heart_rate', 'systolic_bp', 'diastolic_bp', 'respiratory_rate', 'spo2'] as const;
+
     if (vitalsHistory && vitalsHistory.length > 0) {
-      const latest = vitalsHistory[vitalsHistory.length - 1] as (typeof vitalsHistory)[number] | undefined;
-      if (!latest) return undefined;
-      const hasSomething =
-        latest.heart_rate != null ||
-        latest.spo2 != null ||
-        latest.systolic_bp != null ||
-        latest.temperature != null;
-      if (hasSomething) {
-        return {
-          temperature: latest.temperature ?? undefined,
-          heart_rate: latest.heart_rate ?? undefined,
-          systolic_bp: latest.systolic_bp ?? undefined,
-          diastolic_bp: latest.diastolic_bp ?? undefined,
-          respiratory_rate: latest.respiratory_rate ?? undefined,
-          spo2: latest.spo2 ?? undefined,
-        };
+      // Walk backwards (most recent first) and fill gaps
+      for (let i = vitalsHistory.length - 1; i >= 0; i--) {
+        const entry = vitalsHistory[i]!;
+        for (const key of VITAL_KEYS) {
+          if (merged[key] == null && entry[key] != null) {
+            merged[key] = Number(entry[key]);
+          }
+        }
+        // Stop early if all fields are filled
+        if (VITAL_KEYS.every((k) => merged[k] != null)) break;
       }
     }
 
-    // Fall back to the latest ward round vitals
-    if (latestWardRound) {
+    // Fill remaining gaps from the latest ward round vitals
+    if (latestWardRound && VITAL_KEYS.some((k) => merged[k] == null)) {
       const vs = latestWardRound.vital_signs ?? latestWardRound;
       const bp = typeof vs.blood_pressure === 'string' ? vs.blood_pressure : undefined;
       const bpParts = bp?.match(/^(\d+)\/(\d+)$/);
-      const systolic = bpParts ? Number(bpParts[1]) : undefined;
-      const diastolic = bpParts ? Number(bpParts[2]) : undefined;
-      const hasSomething =
-        vs.pulse != null ||
-        vs.spo2 != null ||
-        systolic != null ||
-        vs.temperature != null;
-      if (hasSomething) {
-        return {
-          temperature: vs.temperature ?? undefined,
-          heart_rate: vs.pulse ?? undefined,
-          systolic_bp: systolic,
-          diastolic_bp: diastolic,
-          respiratory_rate: vs.respiratory_rate ?? undefined,
-          spo2: vs.spo2 != null ? Number(vs.spo2) : undefined,
-        };
+
+      const wrVitals: Record<string, number | undefined> = {
+        temperature: vs.temperature != null ? Number(vs.temperature) : undefined,
+        heart_rate: vs.pulse ?? undefined,
+        systolic_bp: bpParts ? Number(bpParts[1]) : undefined,
+        diastolic_bp: bpParts ? Number(bpParts[2]) : undefined,
+        respiratory_rate: vs.respiratory_rate ?? undefined,
+        spo2: vs.spo2 != null ? Number(vs.spo2) : undefined,
+      };
+
+      for (const key of VITAL_KEYS) {
+        if (merged[key] == null && wrVitals[key] != null) {
+          merged[key] = wrVitals[key];
+        }
       }
     }
 
-    return undefined;
+    const hasSomething = VITAL_KEYS.some((k) => merged[k] != null);
+    return hasSomething ? merged : undefined;
   }, [vitalsHistory, latestWardRound]);
 
   // Derive clinical notes from the latest ward round SOAP notes
@@ -949,6 +959,7 @@ export default function AdmissionDetailPage() {
               patientAge={admission.patient_age ?? 0}
               patientGender={admission.patient_gender ?? 'O'}
               vitals={latestVitalsForICU}
+              labs={icuLabValues}
               admissionDiagnosis={
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis
               }
