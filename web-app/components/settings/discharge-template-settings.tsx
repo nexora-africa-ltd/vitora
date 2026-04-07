@@ -359,6 +359,7 @@ export function DischargeTemplateSettings() {
       facilityLocation: facilityDetail
         ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}`
         : 'Nairobi',
+      facilityLogoUrl: facilityDetail?.effective_logo_url,
       layout: template.layout,
       showSignatureLines: template.show_signature_lines,
       showQrCode: template.show_qr_code,
@@ -448,6 +449,7 @@ export function DischargeTemplateSettings() {
       facilityLocation: facilityDetail
         ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}`
         : 'Nairobi',
+      facilityLogoUrl: facilityDetail?.effective_logo_url,
       layout,
       showSignatureLines: showSig,
       showQrCode: showQr,
