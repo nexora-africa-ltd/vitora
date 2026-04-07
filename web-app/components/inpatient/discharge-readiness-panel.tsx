@@ -139,7 +139,7 @@ function CriterionItem({ criterion }: { criterion: AIDischargeCriterion }) {
         )}
         {criterion.current_value != null && criterion.target_value != null && (
           <p className="text-xs text-muted-foreground">
-            Current: {String(criterion.current_value)} · Target: {String(criterion.target_value)}
+            Current: {criterion.current_value} · Target: {criterion.target_value}
           </p>
         )}
       </div>
