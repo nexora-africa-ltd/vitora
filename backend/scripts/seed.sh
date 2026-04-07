@@ -46,6 +46,7 @@ python manage.py seed_procedure_catalog --link-billing
 python manage.py seed_service_catalog
 python manage.py seed_vaccines
 python manage.py seed_demo_vaccine_stock
+python manage.py seed_discharge_templates
 python manage.py backfill_org_facility
 
 echo "==> Seeding complete!"

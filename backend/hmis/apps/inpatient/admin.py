@@ -15,6 +15,7 @@ from .models import (
     BPMonitoringReading,
     Discharge,
     DischargeDiagnosis,
+    DischargeTemplate,
     FluidBalanceEntry,
     FluidBalanceSheet,
     InpatientConsumableUsage,
@@ -1377,6 +1378,64 @@ class AdverseTransfusionReactionAdmin(admin.ModelAdmin):
                     "vigiflow_entry_number",
                     "ppb_date_received",
                 )
+            },
+        ),
+    )
+
+
+@admin.register(DischargeTemplate)
+class DischargeTemplateAdmin(admin.ModelAdmin):
+    """Admin interface for DischargeTemplate model."""
+
+    list_display = [
+        "name",
+        "layout",
+        "is_default",
+        "is_active",
+        "facility",
+        "created_at",
+    ]
+    list_filter = ["layout", "is_default", "is_active", "facility"]
+    search_fields = ["name"]
+    raw_id_fields = ["facility", "organization"]
+    readonly_fields = ["created_at", "updated_at"]
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "name",
+                    "layout",
+                    "is_default",
+                    "is_active",
+                    "facility",
+                    "organization",
+                )
+            },
+        ),
+        (
+            "Sections",
+            {
+                "fields": ("sections",),
+                "description": "Ordered list of section configs (JSON).",
+            },
+        ),
+        (
+            "Header Overrides",
+            {
+                "fields": (
+                    "header_title",
+                    "header_subtitle",
+                    "show_signature_lines",
+                    "show_qr_code",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
             },
         ),
     )

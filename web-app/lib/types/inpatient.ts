@@ -1584,3 +1584,45 @@ export interface ATRAcknowledge {
   adr_report_number: string;
   vigiflow_entry_number?: string;
 }
+
+// =============================================================================
+// Discharge Template Types (Configurable Print Templates)
+// =============================================================================
+
+export type DischargeTemplateLayout = 'STANDARD' | 'STRUCTURED' | 'MINIMAL';
+
+export interface DischargeTemplateSectionConfig {
+  key: string;
+  label: string;
+  enabled: boolean;
+}
+
+export interface DischargeTemplate {
+  id: number;
+  name: string;
+  layout: DischargeTemplateLayout;
+  layout_display?: string;
+  is_default: boolean;
+  is_active: boolean;
+  sections: DischargeTemplateSectionConfig[];
+  header_title: string;
+  header_subtitle: string;
+  show_signature_lines: boolean;
+  show_qr_code: boolean;
+  facility: number;
+  organization: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DischargeTemplateCreateData {
+  name: string;
+  layout?: DischargeTemplateLayout;
+  is_default?: boolean;
+  is_active?: boolean;
+  sections?: DischargeTemplateSectionConfig[];
+  header_title?: string;
+  header_subtitle?: string;
+  show_signature_lines?: boolean;
+  show_qr_code?: boolean;
+}

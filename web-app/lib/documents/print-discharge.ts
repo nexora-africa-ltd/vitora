@@ -244,6 +244,20 @@ export interface DischargeDocumentData {
   facilityPhone?: string;
   /** Facility email */
   facilityEmail?: string;
+  /** Consultant / attending doctor name */
+  consultantName?: string;
+  /** Patient age (e.g. "48 Years") */
+  patientAge?: string;
+  /** Patient sex */
+  patientSex?: string;
+  /** Department name */
+  departmentName?: string;
+  /** Print layout variant */
+  layout?: 'STANDARD' | 'STRUCTURED' | 'MINIMAL';
+  /** Whether to show signature lines */
+  showSignatureLines?: boolean;
+  /** Whether to show QR code */
+  showQrCode?: boolean;
 }
 
 // =============================================================================
@@ -496,10 +510,11 @@ const DISCHARGE_CSS = `
 `;
 
 // =============================================================================
-// TEMPLATE BUILDER
+// TEMPLATE BUILDERS (one per layout variant)
 // =============================================================================
 
-function buildDischargeHtml(data: DischargeDocumentData, qrDataUri?: string): string {
+/** Shared helper: format date strings and build facility detail text. */
+function prepareRenderContext(data: DischargeDocumentData) {
   const now = new Date();
   const dischargeDate = data.dischargeDate
     ? formatDate(data.dischargeDate)
@@ -508,18 +523,61 @@ function buildDischargeHtml(data: DischargeDocumentData, qrDataUri?: string): st
     ? formatDate(data.admissionDate)
     : '';
 
-  // Build facility detail line(s) under the name
   const facilityDetails: string[] = [];
   if (data.facilityMflCode) facilityDetails.push(`MFL: ${escapeHtml(data.facilityMflCode)}`);
   if (data.facilityLocation) facilityDetails.push(escapeHtml(data.facilityLocation));
   if (data.facilityPhone) facilityDetails.push(`Tel: ${escapeHtml(data.facilityPhone)}`);
   if (data.facilityEmail) facilityDetails.push(escapeHtml(data.facilityEmail));
 
+  return { now, dischargeDate, admissionDate, facilityDetails };
+}
+
+/** Shared helper: render signature and footer blocks. */
+function renderFooterBlocks(
+  data: DischargeDocumentData,
+  ctx: ReturnType<typeof prepareRenderContext>,
+  qrDataUri?: string,
+): string {
+  const showSig = data.showSignatureLines !== false;
+  const showQr = data.showQrCode !== false;
+
+  return `
+${showSig ? `
+<div class="signature-block">
+  <div class="sig">
+    <div class="line">Discharging Officer</div>
+  </div>
+  ${showQr && qrDataUri ? `
+  <div class="qr-block">
+    <img src="${qrDataUri}" alt="QR Code" width="80" height="80" />
+    <div class="qr-label">${escapeHtml(data.admissionNumber || '')}</div>
+  </div>
+  ` : ''}
+  <div class="sig">
+    <div class="line">Patient / Guardian Signature</div>
+  </div>
+</div>
+` : ''}
+
+<div class="footer">
+  <span>Printed: ${ctx.now.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+  <span>${escapeHtml(data.facilityName || '')}</span>
+</div>
+`;
+}
+
+/**
+ * STANDARD layout — narrative style (existing default).
+ * Matches the current Vitora format: header, patient info grid, narrative content, signatures.
+ */
+function buildStandardHtml(data: DischargeDocumentData, qrDataUri?: string): string {
+  const ctx = prepareRenderContext(data);
+
   return `
 <div class="header">
   <div>
     <div class="facility">${escapeHtml(data.facilityName || 'Health Facility')}</div>
-    ${facilityDetails.length ? `<div class="facility-detail">${facilityDetails.join(' &bull; ')}</div>` : ''}
+    ${ctx.facilityDetails.length ? `<div class="facility-detail">${ctx.facilityDetails.join(' &bull; ')}</div>` : ''}
   </div>
   <div class="doc-title">${escapeHtml(data.documentTitle)}</div>
 </div>
@@ -532,34 +590,250 @@ function buildDischargeHtml(data: DischargeDocumentData, qrDataUri?: string): st
   ${data.patientMRN ? `<div class="row"><span class="label">MRN:</span><span class="value">${escapeHtml(data.patientMRN)}</span></div>` : ''}
   ${data.admissionNumber ? `<div class="row"><span class="label">Admission #:</span><span class="value">${escapeHtml(data.admissionNumber)}</span></div>` : ''}
   ${data.wardName ? `<div class="row"><span class="label">Ward:</span><span class="value">${escapeHtml(data.wardName)}</span></div>` : ''}
-  ${admissionDate ? `<div class="row"><span class="label">Admitted:</span><span class="value">${admissionDate}</span></div>` : ''}
-  <div class="row"><span class="label">Discharge Date:</span><span class="value">${dischargeDate}</span></div>
+  ${ctx.admissionDate ? `<div class="row"><span class="label">Admitted:</span><span class="value">${ctx.admissionDate}</span></div>` : ''}
+  <div class="row"><span class="label">Discharge Date:</span><span class="value">${ctx.dischargeDate}</span></div>
   ${data.admittingDiagnosis ? `<div class="row"><span class="label">Diagnosis:</span><span class="value">${escapeHtml(data.admittingDiagnosis)}</span></div>` : ''}
 </div>
 
 <div class="content">${contentToHtml(stripAdvisoryContent(data.content))}</div>
 
-<div class="signature-block">
-  <div class="sig">
-    <div class="line">Discharging Officer</div>
+${renderFooterBlocks(data, ctx, qrDataUri)}
+`;
+}
+
+/**
+ * STRUCTURED layout — labelled field grid with underlined values.
+ * Inspired by Kenyatta University Hospital / large facility format.
+ * Dense patient demographics grid at top, then labelled sections below.
+ */
+function buildStructuredHtml(data: DischargeDocumentData, qrDataUri?: string): string {
+  const ctx = prepareRenderContext(data);
+
+  return `
+<div class="structured-header">
+  <div class="structured-facility">${escapeHtml(data.facilityName || 'Health Facility')}</div>
+  ${ctx.facilityDetails.length ? `<div class="structured-facility-detail">${ctx.facilityDetails.join(' &bull; ')}</div>` : ''}
+  <div class="structured-doc-title">${escapeHtml(data.documentTitle)}</div>
+</div>
+
+<table class="structured-demographics">
+  <tbody>
+    <tr>
+      <td class="demo-label">Name:</td>
+      <td class="demo-value">${escapeHtml(data.patientName)}</td>
+      <td class="demo-label">IP No:</td>
+      <td class="demo-value">${escapeHtml(data.admissionNumber || data.patientMRN || '')}</td>
+      <td class="demo-label">Age:</td>
+      <td class="demo-value">${escapeHtml(data.patientAge || '')}</td>
+    </tr>
+    <tr>
+      <td class="demo-label">Sex:</td>
+      <td class="demo-value">${escapeHtml(data.patientSex || '')}</td>
+      <td class="demo-label">DOA:</td>
+      <td class="demo-value">${ctx.admissionDate}</td>
+      <td class="demo-label">DOD:</td>
+      <td class="demo-value">${ctx.dischargeDate}</td>
+    </tr>
+    <tr>
+      <td class="demo-label">Consultant:</td>
+      <td class="demo-value" colspan="2">${escapeHtml(data.consultantName || '')}</td>
+      <td class="demo-label">Department:</td>
+      <td class="demo-value" colspan="2">${escapeHtml(data.departmentName || data.wardName || '')}</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="content">${contentToHtml(stripAdvisoryContent(data.content))}</div>
+
+${renderFooterBlocks(data, ctx, qrDataUri)}
+`;
+}
+
+/**
+ * MINIMAL layout — compact single-page (small dispensary / clinic format).
+ * Inspired by Onyinjo Dispensary style: centred header, simple field list, compact sections.
+ */
+function buildMinimalHtml(data: DischargeDocumentData, qrDataUri?: string): string {
+  const ctx = prepareRenderContext(data);
+
+  return `
+<div class="minimal-header">
+  <div class="minimal-facility">${escapeHtml(data.facilityName || 'Health Facility')}</div>
+  <div class="minimal-doc-title">${escapeHtml(data.documentTitle)}</div>
+</div>
+
+<table class="minimal-demographics">
+  <tbody>
+    <tr>
+      <td class="demo-label">NAME:</td>
+      <td class="demo-value">${escapeHtml(data.patientName)}</td>
+      <td class="demo-label">IP NO:</td>
+      <td class="demo-value">${escapeHtml(data.admissionNumber || data.patientMRN || '')}</td>
+      <td class="demo-label">AGE:</td>
+      <td class="demo-value">${escapeHtml(data.patientAge || '')}</td>
+    </tr>
+    <tr>
+      <td class="demo-label">SEX:</td>
+      <td class="demo-value">${escapeHtml(data.patientSex || '')}</td>
+      <td class="demo-label">DOA:</td>
+      <td class="demo-value">${ctx.admissionDate}</td>
+      <td class="demo-label">DOD:</td>
+      <td class="demo-value">${ctx.dischargeDate}</td>
+    </tr>
+    <tr>
+      <td class="demo-label">CONSULTANT:</td>
+      <td class="demo-value" colspan="2">${escapeHtml(data.consultantName || '')}</td>
+      <td class="demo-label">DEPARTMENT:</td>
+      <td class="demo-value" colspan="2">${escapeHtml(data.departmentName || data.wardName || '')}</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="content">${contentToHtml(stripAdvisoryContent(data.content))}</div>
+
+<div class="minimal-sig-row">
+  <div>
+    <span class="demo-label">NAME:</span>
+    <span class="demo-value">${escapeHtml(data.consultantName || '')}</span>
   </div>
-  ${qrDataUri ? `
-  <div class="qr-block">
-    <img src="${qrDataUri}" alt="QR Code" width="80" height="80" />
-    <div class="qr-label">${escapeHtml(data.admissionNumber || '')}</div>
+  <div>
+    <span class="demo-label">SIGNATURE:</span>
+    <span class="demo-value" style="min-width:120px">&nbsp;</span>
   </div>
-  ` : ''}
-  <div class="sig">
-    <div class="line">Patient / Guardian Signature</div>
+</div>
+<div class="minimal-sig-row" style="margin-top:8px">
+  <div>
+    <span class="demo-label">DESTINATION:</span>
+    <span class="demo-value">DISCHARGE</span>
+  </div>
+  <div>
+    <span class="demo-label">DATE:</span>
+    <span class="demo-value">${ctx.dischargeDate}</span>
   </div>
 </div>
 
-<div class="footer">
-  <span>Printed: ${now.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+<div class="footer" style="margin-top:20px">
+  <span>Printed: ${ctx.now.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
   <span>${escapeHtml(data.facilityName || '')}</span>
 </div>
 `;
 }
+
+// =============================================================================
+// LAYOUT CSS OVERRIDES
+// =============================================================================
+
+/** Extra CSS for the STRUCTURED layout (Kenyatta-style). */
+const STRUCTURED_CSS = `
+  .structured-header {
+    text-align: center;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+  .structured-facility {
+    font-size: 14pt;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .structured-facility-detail {
+    font-size: 9pt;
+    color: #555;
+    margin-top: 2px;
+  }
+  .structured-doc-title {
+    font-size: 13pt;
+    font-weight: 600;
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .structured-demographics {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 10.5pt;
+  }
+  .structured-demographics td {
+    padding: 4px 6px;
+    border-bottom: 1px solid #ddd;
+  }
+  .structured-demographics .demo-label {
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+    width: 1%;
+  }
+  .structured-demographics .demo-value {
+    color: #111;
+    border-bottom: 1px solid #333;
+  }
+`;
+
+/** Extra CSS for the MINIMAL layout (dispensary-style compact). */
+const MINIMAL_CSS = `
+  .minimal-header {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .minimal-facility {
+    font-size: 13pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .minimal-doc-title {
+    font-size: 12pt;
+    font-weight: 600;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  .minimal-demographics {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 10.5pt;
+  }
+  .minimal-demographics td {
+    padding: 3px 6px;
+  }
+  .minimal-demographics .demo-label {
+    font-weight: 700;
+    color: #333;
+    white-space: nowrap;
+    width: 1%;
+    text-transform: uppercase;
+    font-size: 9.5pt;
+  }
+  .minimal-demographics .demo-value {
+    color: #111;
+    border-bottom: 1px solid #333;
+  }
+  .minimal-sig-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5pt;
+    margin-top: 24px;
+  }
+  .minimal-sig-row .demo-label {
+    font-weight: 700;
+    color: #333;
+    text-transform: uppercase;
+    font-size: 9.5pt;
+    margin-right: 8px;
+  }
+  .minimal-sig-row .demo-value {
+    border-bottom: 1px solid #333;
+    display: inline-block;
+    min-width: 100px;
+  }
+
+  /* Minimal uses more compact spacing */
+  body { font-size: 11pt; line-height: 1.5; }
+  .content h1 { font-size: 12pt; }
+  .content h2 { font-size: 11.5pt; }
+  .content h3 { font-size: 11pt; }
+`;
 
 // =============================================================================
 // PUBLIC API
@@ -569,11 +843,16 @@ function buildDischargeHtml(data: DischargeDocumentData, qrDataUri?: string): st
  * Print a discharge document (summary or patient instructions).
  * Opens a new browser tab with the formatted document and triggers print.
  * Generates a QR code encoding the admission number for quick record lookup.
+ *
+ * Supports three layout variants:
+ * - STANDARD (default): narrative layout — existing Vitora style
+ * - STRUCTURED: labelled field grid — KU Hospital / large facility style
+ * - MINIMAL: compact single-page — dispensary / small clinic style
  */
 export async function printDischargeDocument(data: DischargeDocumentData): Promise<Window | null> {
-  // Generate QR code encoding admission number
+  const showQr = data.showQrCode !== false;
   let qrDataUri: string | undefined;
-  if (data.admissionNumber) {
+  if (showQr && data.admissionNumber) {
     try {
       qrDataUri = await generateQRDataUri(`VITORA:ADM:${data.admissionNumber}`, { size: 80 });
     } catch {
@@ -581,8 +860,26 @@ export async function printDischargeDocument(data: DischargeDocumentData): Promi
     }
   }
 
-  const bodyHtml = buildDischargeHtml(data, qrDataUri);
+  const layout = data.layout || 'STANDARD';
+  let bodyHtml: string;
+  let extraCss = '';
+
+  switch (layout) {
+    case 'STRUCTURED':
+      bodyHtml = buildStructuredHtml(data, qrDataUri);
+      extraCss = STRUCTURED_CSS;
+      break;
+    case 'MINIMAL':
+      bodyHtml = buildMinimalHtml(data, qrDataUri);
+      extraCss = MINIMAL_CSS;
+      break;
+    default:
+      bodyHtml = buildStandardHtml(data, qrDataUri);
+      break;
+  }
+
   const title = `${data.documentTitle} - ${data.patientName}`;
-  const html = buildPrintDocument(bodyHtml, title, 'a4', 'default', DISCHARGE_CSS);
+  const css = DISCHARGE_CSS + extraCss;
+  const html = buildPrintDocument(bodyHtml, title, 'a4', 'default', css);
   return openPrintWindow(html);
 }

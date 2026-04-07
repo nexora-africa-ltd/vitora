@@ -3722,3 +3722,132 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
         if self.other_reactions:
             labels.append(self.other_reactions)
         return labels
+
+
+# =============================================================================
+# Discharge Template Configuration
+# =============================================================================
+
+
+class DischargeTemplateLayout(models.TextChoices):
+    """Layout preset for discharge summary print templates."""
+
+    STANDARD = "STANDARD", "Standard (narrative layout)"
+    STRUCTURED = "STRUCTURED", "Structured (labelled fields in grid)"
+    MINIMAL = "MINIMAL", "Minimal (compact single-page)"
+
+
+class DischargeTemplate(FacilityScopedModel, TimeStampedModel):
+    """
+    Configurable discharge summary print template.
+
+    Each facility can have multiple templates and set one as default.
+    Templates control:
+    - Which sections appear on the printed summary
+    - Section ordering
+    - Print layout variant (narrative, grid, compact)
+    - Custom facility header text
+
+    The combination (facility, name) must be unique so facilities
+    can maintain multiple named templates without collisions.
+    """
+
+    name = models.CharField(
+        max_length=120,
+        help_text="Human-readable template name, e.g. 'Maternity Discharge'",
+    )
+    layout = models.CharField(
+        max_length=20,
+        choices=DischargeTemplateLayout.choices,
+        default=DischargeTemplateLayout.STANDARD,
+        help_text="Print layout variant (standard narrative, structured grid, minimal).",
+    )
+    is_default = models.BooleanField(
+        default=False,
+        help_text="Whether this is the default template for the facility.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Inactive templates are hidden from the print selector.",
+    )
+
+    # Section configuration stored as JSON list:
+    #  [
+    #    {"key": "hospital_course", "label": "Hospital Course", "enabled": true},
+    #    {"key": "investigations", "label": "Investigations Done", "enabled": true},
+    #    ...
+    #  ]
+    sections = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Ordered list of section configs. "
+            "Each entry: {key, label, enabled}. "
+            "The key maps to a content source (AI section id or model field)."
+        ),
+    )
+
+    # Optional overrides printed on the document header
+    header_title = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Override document title (default: 'Discharge Summary').",
+    )
+    header_subtitle = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Subtitle line printed below the facility name.",
+    )
+    show_signature_lines = models.BooleanField(
+        default=True,
+        help_text="Whether to include signature lines on the printed document.",
+    )
+    show_qr_code = models.BooleanField(
+        default=True,
+        help_text="Whether to include a QR code for document verification.",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-is_default", "name"]
+        verbose_name = "Discharge Template"
+        verbose_name_plural = "Discharge Templates"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "name"],
+                name="unique_discharge_template_per_facility",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.get_layout_display()})"
+
+    def save(self, *args, **kwargs):
+        # If marking as default, unset other defaults for the same facility.
+        if self.is_default and self.facility_id:
+            DischargeTemplate.objects.filter(
+                facility=self.facility, is_default=True,
+            ).exclude(pk=self.pk).update(is_default=False)
+        # Populate default sections when none are specified.
+        if not self.sections:
+            self.sections = self.get_default_sections()
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def get_default_sections() -> list[dict]:
+        """Return the default section configuration for a new template."""
+        return [
+            {"key": "patient_demographics", "label": "Patient Information", "enabled": True},
+            {"key": "admission_details", "label": "Admission Details", "enabled": True},
+            {"key": "diagnosis", "label": "Diagnosis", "enabled": True},
+            {"key": "history", "label": "History", "enabled": True},
+            {"key": "hospital_course", "label": "Hospital Course", "enabled": True},
+            {"key": "physical_examination", "label": "Physical Examination", "enabled": True},
+            {"key": "investigations", "label": "Investigations Done", "enabled": True},
+            {"key": "management", "label": "Management", "enabled": True},
+            {"key": "condition_at_discharge", "label": "Condition at Discharge", "enabled": True},
+            {"key": "discharge_medications", "label": "Discharge Medications", "enabled": True},
+            {"key": "discharge_instructions", "label": "Discharge Instructions", "enabled": True},
+            {"key": "follow_up", "label": "Follow-up / TCA", "enabled": True},
+        ]
