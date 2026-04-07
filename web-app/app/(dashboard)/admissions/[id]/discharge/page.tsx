@@ -44,7 +44,7 @@ import { SectionCard } from '@/components/discharge/section-card';
 import { MedicationSuggestions } from '@/components/discharge/medication-suggestions';
 import { AdmissionPrescriptionsPicker } from '@/components/discharge/admission-prescriptions-picker';
 import { ClinicalReferenceCard } from '@/components/discharge/clinical-reference-card';
-import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus, useKardexByAdmission, useTemperatureReadings, useFluidBalanceSheets, useBPReadings, useBloodTransfusions } from '@/lib/hooks/use-inpatient';
+import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus, useKardexByAdmission, useTemperatureReadings, useFluidBalanceSheets, useBPReadings, useBloodTransfusions, useDefaultDischargeTemplate } from '@/lib/hooks/use-inpatient';
 import { useAdmissionPrescriptions, useUpdatePrescription } from '@/lib/hooks/use-pharmacy';
 import { useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans, useAISuggestionAudit } from '@/lib/hooks/use-ai';
@@ -79,6 +79,7 @@ export default function DischargePage() {
   const { data: bpData } = useBPReadings(admissionId);
   const { data: transfusionData } = useBloodTransfusions(admissionId);
   const { facility, facilityDetail } = useFacility();
+  const { data: defaultTemplate } = useDefaultDischargeTemplate();
   const patientContext = useOptionalPatientContext();
   const createDischarge = useCreateDischarge();
   const isAIEnabled = useAIEnabled();
@@ -764,6 +765,31 @@ export default function DischargePage() {
     await executeDischarge();
   };
 
+  /** Print helper — shows a helpful toast if no discharge template is configured. */
+  const handlePrint = (content: string, title: string) => {
+    if (!defaultTemplate) {
+      toast({
+        title: 'Using default print layout',
+        description: 'No discharge template configured for this facility. Go to Settings → Facility → Discharge Templates to set one up.',
+      });
+    }
+    printDischargeDocument({
+      documentTitle: defaultTemplate?.header_title || title,
+      content,
+      patientName: admission?.patient_name || '',
+      admissionNumber: admission?.admission_number,
+      wardName: admission?.ward_name || '',
+      admissionDate: admission?.admission_date,
+      admittingDiagnosis: admission?.admitting_diagnosis_text || admission?.admitting_diagnosis || '',
+      facilityName: facility?.name,
+      facilityMflCode: facility?.mfl_code,
+      facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
+      layout: defaultTemplate?.layout,
+      showSignatureLines: defaultTemplate?.show_signature_lines,
+      showQrCode: defaultTemplate?.show_qr_code,
+    });
+  };
+
   if (isLoading) {
     return <DischargeSkeleton />;
   }
@@ -977,18 +1003,7 @@ export default function DischargePage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => printDischargeDocument({
-                  documentTitle: 'Discharge Summary',
-                  content: printableSummary,
-                  patientName: admission.patient_name || '',
-                  admissionNumber: admission.admission_number,
-                  wardName: admission.ward_name || '',
-                  admissionDate: admission.admission_date,
-                  admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-                  facilityName: facility?.name,
-                  facilityMflCode: facility?.mfl_code,
-                  facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
-                })}
+                onClick={() => handlePrint(printableSummary, 'Discharge Summary')}
                 className="gap-1.5 text-xs shrink-0 w-full sm:w-auto"
               >
                 <Printer className="h-3.5 w-3.5" />
@@ -1201,18 +1216,7 @@ export default function DischargePage() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => printDischargeDocument({
-                      documentTitle: 'Patient Discharge Instructions',
-                      content: patientInstructions,
-                      patientName: admission.patient_name || '',
-                      admissionNumber: admission.admission_number,
-                      wardName: admission.ward_name || '',
-                      admissionDate: admission.admission_date,
-                      admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-                      facilityName: facility?.name,
-                      facilityMflCode: facility?.mfl_code,
-                      facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
-                    })}
+                    onClick={() => handlePrint(patientInstructions, 'Patient Discharge Instructions')}
                     className="gap-1.5 text-xs"
                   >
                     <Printer className="h-3.5 w-3.5" />

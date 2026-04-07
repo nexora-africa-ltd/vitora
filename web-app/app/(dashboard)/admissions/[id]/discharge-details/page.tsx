@@ -22,8 +22,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAdmission, useDischargeByAdmission } from '@/lib/hooks/use-inpatient';
+import { useDefaultDischargeTemplate } from '@/lib/hooks/use-inpatient';
 import { useFacility } from '@/lib/context/facility-context';
 import { printDischargeDocument } from '@/lib/documents';
+import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import type { Discharge, DischargeType } from '@/lib/types/inpatient';
 
@@ -81,6 +83,8 @@ export default function DischargeDetailPage() {
   const { data: admission, isLoading: admissionLoading } = useAdmission(admissionId);
   const { data: discharge, isLoading: dischargeLoading } = useDischargeByAdmission(admissionId);
   const { facility, facilityDetail } = useFacility();
+  const { data: defaultTemplate } = useDefaultDischargeTemplate();
+  const { toast } = useToast();
 
   const isLoading = admissionLoading || dischargeLoading;
 
@@ -115,6 +119,32 @@ export default function DischargeDetailPage() {
 
   const diagPrimary = discharge.diagnoses?.find((d) => d.role === 'PRIMARY');
   const diagSecondary = discharge.diagnoses?.filter((d) => d.role !== 'PRIMARY') || [];
+
+  /** Print helper — shows a helpful toast if no discharge template is configured. */
+  const handlePrint = (content: string, title: string) => {
+    if (!defaultTemplate) {
+      toast({
+        title: 'Using default print layout',
+        description: 'No discharge template configured for this facility. Go to Settings → Facility → Discharge Templates to set one up.',
+      });
+    }
+    printDischargeDocument({
+      documentTitle: defaultTemplate?.header_title || title,
+      content,
+      patientName: admission.patient_name || '',
+      admissionNumber: admission.admission_number,
+      wardName: admission.ward_name || '',
+      admissionDate: admission.admission_date,
+      dischargeDate: discharge.discharge_date,
+      admittingDiagnosis: discharge.admission_diagnosis,
+      facilityName: facility?.name,
+      facilityMflCode: facility?.mfl_code,
+      facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
+      layout: defaultTemplate?.layout,
+      showSignatureLines: defaultTemplate?.show_signature_lines,
+      showQrCode: defaultTemplate?.show_qr_code,
+    });
+  };
 
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
@@ -254,21 +284,7 @@ export default function DischargeDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                printDischargeDocument({
-                  documentTitle: 'Discharge Summary',
-                  content: discharge.treatment_summary,
-                  patientName: admission.patient_name || '',
-                  admissionNumber: admission.admission_number,
-                  wardName: admission.ward_name || '',
-                  admissionDate: admission.admission_date,
-                  dischargeDate: discharge.discharge_date,
-                  admittingDiagnosis: discharge.admission_diagnosis,
-                  facilityName: facility?.name,
-                  facilityMflCode: facility?.mfl_code,
-                  facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
-                })
-              }
+              onClick={() => handlePrint(discharge.treatment_summary, 'Discharge Summary')}
               className="gap-1.5 text-xs"
             >
               <Printer className="h-3.5 w-3.5" />
@@ -298,21 +314,7 @@ export default function DischargeDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                printDischargeDocument({
-                  documentTitle: 'Patient Discharge Instructions',
-                  content: discharge.patient_instructions,
-                  patientName: admission.patient_name || '',
-                  admissionNumber: admission.admission_number,
-                  wardName: admission.ward_name || '',
-                  admissionDate: admission.admission_date,
-                  dischargeDate: discharge.discharge_date,
-                  admittingDiagnosis: discharge.admission_diagnosis,
-                  facilityName: facility?.name,
-                  facilityMflCode: facility?.mfl_code,
-                  facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
-                })
-              }
+              onClick={() => handlePrint(discharge.patient_instructions, 'Patient Discharge Instructions')}
               className="gap-1.5 text-xs"
             >
               <Printer className="h-3.5 w-3.5" />

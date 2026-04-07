@@ -53,6 +53,8 @@ import {
   WardRecommendationResponseSchema,
   ATRDetailSchema,
   ATRListSchema,
+  DischargeTemplateSchema,
+  PaginatedDischargeTemplateSchema,
 } from '@/lib/schemas/inpatient.schema';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
@@ -144,6 +146,8 @@ import type {
   ATRLabInvestigation,
   ATRSubmitToPPB,
   ATRAcknowledge,
+  DischargeTemplate,
+  DischargeTemplateCreateData,
 } from '@/lib/types/inpatient';
 
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -1052,5 +1056,38 @@ export const inpatientApi = {
       `/api/inpatient/adverse-transfusion-reactions/${id}/sync-lab-results/`
     );
     return parseResponse(ATRDetailSchema, response.data, { context: 'inpatientApi.syncATRLabResults' }) as AdverseTransfusionReaction;
+  },
+
+  // ============================================================================
+  // Discharge Templates
+  // ============================================================================
+
+  async listDischargeTemplates(params?: { layout?: string; is_default?: boolean; is_active?: boolean; search?: string; page?: number; page_size?: number }): Promise<Paginated<DischargeTemplate>> {
+    const response = await apiClient.get('/api/inpatient/discharge-templates/', { params });
+    return parseResponse(PaginatedDischargeTemplateSchema, response.data, { context: 'inpatientApi.listDischargeTemplates' });
+  },
+
+  async getDischargeTemplate(id: number): Promise<DischargeTemplate> {
+    const response = await apiClient.get(`/api/inpatient/discharge-templates/${id}/`);
+    return parseResponse(DischargeTemplateSchema, response.data, { context: 'inpatientApi.getDischargeTemplate' });
+  },
+
+  async getDefaultDischargeTemplate(): Promise<DischargeTemplate> {
+    const response = await apiClient.get('/api/inpatient/discharge-templates/default/');
+    return parseResponse(DischargeTemplateSchema, response.data, { context: 'inpatientApi.getDefaultDischargeTemplate' });
+  },
+
+  async createDischargeTemplate(data: DischargeTemplateCreateData): Promise<DischargeTemplate> {
+    const response = await apiClient.post('/api/inpatient/discharge-templates/', data);
+    return parseResponse(DischargeTemplateSchema, response.data, { context: 'inpatientApi.createDischargeTemplate' });
+  },
+
+  async updateDischargeTemplate(id: number, data: Partial<DischargeTemplateCreateData>): Promise<DischargeTemplate> {
+    const response = await apiClient.patch(`/api/inpatient/discharge-templates/${id}/`, data);
+    return parseResponse(DischargeTemplateSchema, response.data, { context: 'inpatientApi.updateDischargeTemplate' });
+  },
+
+  async deleteDischargeTemplate(id: number): Promise<void> {
+    await apiClient.delete(`/api/inpatient/discharge-templates/${id}/`);
   },
 };

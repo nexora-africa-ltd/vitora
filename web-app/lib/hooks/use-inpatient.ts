@@ -58,6 +58,7 @@ import type {
   ATRLabInvestigation,
   ATRSubmitToPPB,
   ATRAcknowledge,
+  DischargeTemplateCreateData,
 } from '@/lib/types/inpatient';
 
 // ============================================================================
@@ -123,6 +124,12 @@ export const inpatientQueryKeys = {
     [...inpatientQueryKeys.all, 'atr-reports', params] as const,
   atrReport: (id: number) =>
     [...inpatientQueryKeys.all, 'atr-reports', 'detail', id] as const,
+  dischargeTemplates: (params?: { layout?: string; is_active?: boolean }) =>
+    [...inpatientQueryKeys.all, 'discharge-templates', params] as const,
+  dischargeTemplate: (id: number) =>
+    [...inpatientQueryKeys.all, 'discharge-templates', id] as const,
+  defaultDischargeTemplate: () =>
+    [...inpatientQueryKeys.all, 'discharge-templates', 'default'] as const,
 };
 
 // ============================================================================
@@ -1176,6 +1183,64 @@ export function useSyncATRLabResults() {
     mutationFn: (id: number) => inpatientApi.syncATRLabResults(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+// ============================================================================
+// Discharge Template Hooks
+// ============================================================================
+
+export function useDischargeTemplates(params?: { layout?: string; is_active?: boolean }) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.dischargeTemplates(params),
+    queryFn: () => inpatientApi.listDischargeTemplates(params),
+  });
+}
+
+export function useDischargeTemplate(id: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.dischargeTemplate(id!),
+    queryFn: () => inpatientApi.getDischargeTemplate(id!),
+    enabled: !!id,
+  });
+}
+
+export function useDefaultDischargeTemplate() {
+  return useQuery({
+    queryKey: inpatientQueryKeys.defaultDischargeTemplate(),
+    queryFn: () => inpatientApi.getDefaultDischargeTemplate(),
+    retry: false, // 404 is expected when no default is configured
+  });
+}
+
+export function useCreateDischargeTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: DischargeTemplateCreateData) => inpatientApi.createDischargeTemplate(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.dischargeTemplates() });
+    },
+  });
+}
+
+export function useUpdateDischargeTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<DischargeTemplateCreateData> }) =>
+      inpatientApi.updateDischargeTemplate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.dischargeTemplates() });
+    },
+  });
+}
+
+export function useDeleteDischargeTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => inpatientApi.deleteDischargeTemplate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.dischargeTemplates() });
     },
   });
 }

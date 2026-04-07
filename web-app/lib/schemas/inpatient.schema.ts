@@ -1330,3 +1330,40 @@ export const ATRListSchema = z.object({
   lab_order_status: z.string().nullable().optional(),
   created_at: z.string().optional(),
 });
+
+// =============================================================================
+// DISCHARGE TEMPLATE SCHEMAS (Configurable Print Templates)
+// =============================================================================
+
+export const DischargeTemplateLayoutSchema = z.enum(['STANDARD', 'STRUCTURED', 'MINIMAL']);
+
+export const DischargeTemplateSectionConfigSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  enabled: z.boolean(),
+});
+
+export const DischargeTemplateSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  layout: DischargeTemplateLayoutSchema,
+  layout_display: z.string().optional(),
+  is_default: z.boolean(),
+  is_active: z.boolean(),
+  sections: z.array(DischargeTemplateSectionConfigSchema),
+  header_title: z.string(),
+  header_subtitle: z.string(),
+  show_signature_lines: z.boolean(),
+  show_qr_code: z.boolean(),
+  facility: z.number(),
+  organization: z.number().nullable(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const PaginatedDischargeTemplateSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(DischargeTemplateSchema),
+});

@@ -22,6 +22,7 @@ from .models import (
     DermatologicalReaction,
     Discharge,
     DischargeDiagnosis,
+    DischargeTemplate,
     FluidBalanceEntry,
     FluidBalanceSheet,
     GeneralReaction,
@@ -2369,3 +2370,59 @@ class ATRAcknowledgeSerializer(serializers.Serializer):
 
     adr_report_number = serializers.CharField(required=True)
     vigiflow_entry_number = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+# =============================================================================
+# DISCHARGE TEMPLATE SERIALIZERS
+# =============================================================================
+
+
+class DischargeTemplateSerializer(serializers.ModelSerializer):
+    """Read serializer for DischargeTemplate."""
+
+    layout_display = serializers.CharField(source="get_layout_display", read_only=True)
+
+    class Meta:
+        model = DischargeTemplate
+        fields = [
+            "id",
+            "name",
+            "layout",
+            "layout_display",
+            "is_default",
+            "is_active",
+            "sections",
+            "header_title",
+            "header_subtitle",
+            "show_signature_lines",
+            "show_qr_code",
+            "facility",
+            "organization",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "facility",
+            "organization",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class DischargeTemplateCreateSerializer(serializers.ModelSerializer):
+    """Write serializer — facility/organization set by the ViewSet."""
+
+    class Meta:
+        model = DischargeTemplate
+        fields = [
+            "name",
+            "layout",
+            "is_default",
+            "is_active",
+            "sections",
+            "header_title",
+            "header_subtitle",
+            "show_signature_lines",
+            "show_qr_code",
+        ]
