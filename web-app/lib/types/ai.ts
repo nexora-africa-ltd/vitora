@@ -798,6 +798,21 @@ export type ClinicalDocumentType = 'discharge_summary' | 'soap' | 'progress_note
 export type ClinicalDocOutputFormat = 'markdown' | 'structured' | 'fhir';
 export type ClinicalDocGenerationMode = 'suggest' | 'generate';
 export type ClinicalDocDischargeType = 'NORMAL' | 'AMA' | 'TRANSFER' | 'DEATH' | 'DAMA';
+export type ClinicalDocDischargeLayout = 'STANDARD' | 'STRUCTURED' | 'MINIMAL';
+
+export interface ClinicalDocTemplateSectionConfig {
+  key: string;
+  label: string;
+  enabled: boolean;
+}
+
+export interface ClinicalDocMedicationEntry {
+  drug_name: string;
+  dose?: string;
+  route?: string;
+  frequency?: string;
+  duration?: string;
+}
 
 export interface ClinicalDocPatientContext {
   patient_age: number;
@@ -818,11 +833,13 @@ export interface ClinicalDocAdmissionContext {
   ward?: string;
   discharge_type?: ClinicalDocDischargeType;
   procedures_performed?: string[];
-  medications_given?: string[];
-  discharge_medications?: string[];
+  medications_given?: (string | ClinicalDocMedicationEntry)[];
+  discharge_medications?: (string | ClinicalDocMedicationEntry)[];
   key_investigations?: string[];
   complications?: string[];
   condition_at_discharge?: string;
+  follow_up_instructions?: string;
+  clinical_notes?: string[];
 }
 
 export interface ClinicalDocVitals {
@@ -858,6 +875,10 @@ export interface AIClinicalDocumentRequest {
   generation_mode?: ClinicalDocGenerationMode;
   additional_instructions?: string;
   system_instruction?: string;
+  /** Selects TibaBot's built-in layout matching DischargeTemplate.layout */
+  discharge_layout?: ClinicalDocDischargeLayout;
+  /** Pass the template's sections array for full control over section generation */
+  template_sections?: ClinicalDocTemplateSectionConfig[];
 }
 
 export interface ClinicalDocSection {

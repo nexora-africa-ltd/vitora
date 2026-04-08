@@ -27,11 +27,27 @@ export interface DischargeSummarySection {
 /** Section IDs that get routed to dedicated form fields instead of summary cards. */
 export const ROUTED_SECTION_IDS = new Set([
   'discharge_medications', 'follow_up', 'follow_up_plan',
+  'discharge_instructions', 'patient_education',
 ]);
 
 /** Sections that duplicate existing page UI and should be hidden from cards entirely. */
 export const HIDDEN_SECTION_IDS = new Set([
   'patient_information', 'reason_for_admission', 'discharge_diagnosis',
+  'patient_demographics', 'admission_details', 'diagnosis',
+]);
+
+/**
+ * Template section keys that map to dedicated form fields on the discharge page.
+ * These are skipped when building the editable section cards from a template
+ * because they're already rendered by their own UI widgets.
+ */
+export const DEDICATED_FIELD_KEYS = new Set([
+  'patient_demographics',
+  'admission_details',
+  'diagnosis',
+  'discharge_medications',
+  'discharge_instructions',
+  'follow_up',
 ]);
 
 export const DEFAULT_SECTION_TEMPLATES: Omit<DischargeSummarySection, 'id'>[] = [

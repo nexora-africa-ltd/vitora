@@ -58,8 +58,8 @@ import { printDischargeDocument } from '@/lib/documents';
 import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
 import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocGenerationMode } from '@/lib/types/ai';
 import type { DischargeSummarySection, SuggestedMedication } from '@/lib/discharge/types';
-import { DEFAULT_SECTION_TEMPLATES, DISCHARGE_TYPES, MATERNITY_CONTINUITY_ACTIONS } from '@/lib/discharge/types';
-import { createSectionId, assembleSectionsText } from '@/lib/discharge/utils';
+import { DEFAULT_SECTION_TEMPLATES, DEDICATED_FIELD_KEYS, DISCHARGE_TYPES, MATERNITY_CONTINUITY_ACTIONS } from '@/lib/discharge/types';
+import { createSectionId, assembleSectionsText, buildTemplateAlignedContent } from '@/lib/discharge/utils';
 import { useDischargeAI } from '@/lib/discharge/use-discharge-ai';
 import { useDischargeDraft } from '@/lib/discharge/use-discharge-draft';
 
@@ -155,10 +155,11 @@ export default function DischargePage() {
   const [showSuggestModeDialog, setShowSuggestModeDialog] = useState(false);
   const suggestionAudit = useAISuggestionAudit();
 
-  // Customizable discharge summary sections
+  // Customizable discharge summary sections — initialized from template or defaults
   const [sections, setSections] = useState<DischargeSummarySection[]>(() =>
     DEFAULT_SECTION_TEMPLATES.map((s) => ({ ...s, id: createSectionId() }))
   );
+  const [sectionsInitFromTemplate, setSectionsInitFromTemplate] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [generatingSectionId, setGeneratingSectionId] = useState<string | null>(null);
 
@@ -206,10 +207,136 @@ export default function DischargePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasDraft]);
 
+  // Derive editable form sections from the facility's discharge template.
+  // Runs once when the template loads, skipped if a draft was restored.
+  useEffect(() => {
+    if (sectionsInitFromTemplate) return;   // Already done
+    if (hasDraft) return;                   // Draft restored — keep those sections
+    if (!defaultTemplate?.sections?.length) return;
+
+    const templateSections = defaultTemplate.sections
+      .filter((s) => s.enabled && !DEDICATED_FIELD_KEYS.has(s.key))
+      .map((s) => ({
+        id: createSectionId(),
+        title: s.label,
+        content: '',
+        source: 'template' as const,
+      }));
+
+    if (templateSections.length > 0) {
+      setSections(templateSections);
+    }
+    setSectionsInitFromTemplate(true);
+  }, [defaultTemplate, hasDraft, sectionsInitFromTemplate]);
+
   // Computed discharge summary from sections (for form submission and validation)
   const dischargeSummary = useMemo(() => assembleSectionsText(sections), [sections]);
-  // Print-only version: respects the per-section printable toggle
-  const printableSummary = useMemo(() => assembleSectionsText(sections, true), [sections]);
+
+  // Print-only version: aligns form data to the facility's discharge template layout.
+  // When no template is configured, falls back to simple section assembly.
+  const printableSummary = useMemo(() => {
+    if (!defaultTemplate?.sections?.length) {
+      return assembleSectionsText(sections, true);
+    }
+
+    // Build dedicated content for template sections that map to structured data
+    const dedicatedContent: Record<string, string> = {};
+
+    // Diagnoses — always provide dedicated content to prevent fuzzy-match cross-contamination
+    if (diagnoses.length > 0) {
+      const primary = diagnoses.find((d) => d.role === 'PRIMARY');
+      const secondary = diagnoses.filter((d) => d.role !== 'PRIMARY');
+      const parts: string[] = [];
+      if (primary) {
+        const display = primary.code.icd11Display || primary.code.icd10Display || '';
+        if (display) parts.push(`**Primary Diagnosis:** ${display}`);
+      }
+      if (secondary.length > 0) {
+        parts.push('**Other Diagnoses:**');
+        secondary.forEach((d) => {
+          const display = d.code.icd11Display || d.code.icd10Display || '';
+          if (display) parts.push(`- ${display}`);
+        });
+      }
+      if (parts.length) dedicatedContent['diagnosis'] = parts.join('\n');
+    } else {
+      // Fallback: use admitting diagnosis text so the slot never fuzzy-matches
+      // a form section like "Condition at Discharge"
+      const admittingDx = admission?.admitting_diagnosis_text || admission?.admitting_diagnosis;
+      if (admittingDx) dedicatedContent['diagnosis'] = admittingDx;
+    }
+
+    // Chief complaint / complaints
+    const complaint = admission?.admitting_diagnosis_text || admission?.admitting_diagnosis;
+    if (complaint) dedicatedContent['complaints'] = complaint;
+
+    // Investigations from admission orders
+    if (orders) {
+      const lines: string[] = [];
+      // Helper: trim trailing zeros from numeric values (e.g. "11.8000 g/dL" → "11.8 g/dL")
+      const cleanValue = (v: string) => v.replace(/(\d+\.\d*?)0+(\s)/g, '$1$2').replace(/\.(\s)/g, '$1');
+      if (orders.lab_orders) {
+        for (const lo of orders.lab_orders) {
+          for (const item of lo.items) {
+            const r = item.result;
+            if (r?.formatted_value) {
+              lines.push(`- ${item.test_name}: ${cleanValue(r.formatted_value)}${r.is_critical_result ? ' **[CRITICAL]**' : ''}`);
+            } else {
+              lines.push(`- ${item.test_name}: ${lo.status}`);
+            }
+          }
+        }
+      }
+      if (orders.imaging_orders) {
+        for (const io of orders.imaging_orders) {
+          for (const item of io.items) {
+            lines.push(`- ${item.procedure_name} (${item.modality}): ${io.status}`);
+          }
+        }
+      }
+      if (lines.length) dedicatedContent['investigations'] = lines.join('\n');
+    }
+
+    // Discharge medications — merge manual meds + selected admission prescriptions
+    const medEntries: { drug_name: string; dosage: string; frequency: string; duration: string }[] = [
+      ...medications.filter((m) => m.drug_name),
+    ];
+    for (const rx of admissionPrescriptions) {
+      if (selectedRxIds.has(rx.id)) {
+        const activeItems = (rx.items || []).filter((item: any) => !item.is_cancelled);
+        for (const item of activeItems) {
+          medEntries.push({
+            drug_name: item.drug_name || '',
+            dosage: item.dosage || '',
+            frequency: item.frequency || '',
+            duration: item.duration || '',
+          });
+        }
+      }
+    }
+    if (medEntries.length > 0) {
+      const header = '| Medication | Dosage | Frequency | Duration |\n| --- | --- | --- | --- |';
+      const rows = medEntries.map((m) => `| ${m.drug_name} | ${m.dosage} | ${m.frequency} | ${m.duration || ''} |`);
+      dedicatedContent['discharge_medications'] = [header, ...rows].join('\n');
+    }
+
+    // Follow-up
+    const followUpParts: string[] = [];
+    if (followUpDate) {
+      try {
+        followUpParts.push(`**Return Date:** ${format(parseISO(followUpDate), 'dd MMM yyyy')}`);
+      } catch {
+        followUpParts.push(`**Return Date:** ${followUpDate}`);
+      }
+    }
+    if (followUpInstructions) followUpParts.push(followUpInstructions);
+    if (followUpParts.length) dedicatedContent['follow_up'] = followUpParts.join('\n\n');
+
+    // Patient instructions / discharge instructions
+    if (patientInstructions) dedicatedContent['discharge_instructions'] = patientInstructions;
+
+    return buildTemplateAlignedContent(defaultTemplate.sections, sections, dedicatedContent, true);
+  }, [sections, defaultTemplate, diagnoses, medications, admissionPrescriptions, selectedRxIds, orders, followUpDate, followUpInstructions, patientInstructions, admission]);
 
   // Calculate length of stay
   const lengthOfStay = useMemo(() => {
@@ -554,6 +681,8 @@ export default function DischargePage() {
     generationMode,
     orders,
     wardRounds,
+    templateLayout: defaultTemplate?.layout,
+    templateSections: defaultTemplate?.sections,
     followUpInstructions,
     followUpDate,
     patientInstructions,
