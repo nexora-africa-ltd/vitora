@@ -9,6 +9,8 @@ import type { DischargeSummarySection, ParsedSection } from './types';
 const BRACKET_LINE_PATTERN = /^\[.*?\].*$|^>\s*\[.*?\].*$/;
 /** Matches inline bracket tags anywhere within a line. */
 const INLINE_BRACKET_PATTERN = /\[([^\]]*(?:AI|suggested|clinician|verify|review|edit|sign|not documented)[^\]]*)\]/gi;
+/** Matches italic advisory/meta lines (e.g. "*Relevant guideline context...*"). */
+const ITALIC_ADVISORY_PATTERN = /^\*.*(?:guideline|context|reference|advisory|note|disclaimer|AI.generated|clinician.review).*\*?\s*$/i;
 
 export function parseAdvisories(content: string): ParsedSection {
   const advisories: ParsedSection['advisories'] = [];
@@ -21,6 +23,8 @@ export function parseAdvisories(content: string): ParsedSection {
       const text = trimmed.replace(/^>\s*/, '');
       const isCritical = /critical|urgent|immediate|danger/i.test(text);
       advisories.push({ text, severity: isCritical ? 'critical' : 'warning' });
+    } else if (ITALIC_ADVISORY_PATTERN.test(trimmed)) {
+      advisories.push({ text: trimmed, severity: 'warning' });
     } else {
       let cleaned = line;
       let inlineMatch: RegExpExecArray | null;
@@ -60,6 +64,100 @@ export function assembleSectionsText(secs: DischargeSummarySection[], printOnly 
     .filter((s) => s.content.trim() && (!printOnly || s.printable !== false))
     .map((s) => `## ${s.title}\n${s.content}`)
     .join('\n\n');
+}
+
+// ---------------------------------------------------------------------------
+// Template-aligned print content assembly
+// ---------------------------------------------------------------------------
+
+/** Template section keys rendered in the print header — skip from content body. */
+const HEADER_SECTION_KEYS = new Set([
+  'patient_demographics',
+  'admission_details',
+]);
+
+/**
+ * Map of template section keys → form-section title patterns for fuzzy matching.
+ * Used when no dedicated content is supplied for a given key.
+ */
+const KEY_TO_TITLE_PATTERNS: Record<string, string[]> = {
+  history: ['history', 'history of presenting illness', 'clinical history'],
+  hospital_course: ['hospital course'],
+  complaints: ['complaints', 'chief complaint', 'presenting complaint'],
+  physical_examination: ['physical examination', 'physical findings', 'examination'],
+  investigations: ['investigations', 'investigations done', 'investigation', 'significant findings'],
+  management: ['management', 'treatment', 'treatment given'],
+  condition_at_discharge: ['condition at discharge'],
+  discharge_medications: ['discharge medications', 'medications'],
+  discharge_instructions: ['discharge instructions', 'patient instructions', 'instructions'],
+  follow_up: ['follow-up', 'follow up', 'tca', 'follow-up / tca'],
+  patient_education: ['patient education', 'education'],
+  diagnosis: ['discharge diagnosis', 'diagnoses'],
+};
+
+export interface TemplateSectionConfig {
+  key: string;
+  label: string;
+  enabled: boolean;
+}
+
+/**
+ * Build print content aligned to a discharge template's section order and labels.
+ *
+ * For each enabled template section:
+ *  1. Skips sections rendered in the print header (patient demographics, admission details)
+ *  2. Uses pre-built `dedicatedContent[key]` if provided (diagnoses, medications, etc.)
+ *  3. Falls back to fuzzy-matching against the form's dynamic sections by title
+ *  4. Skips sections with no content
+ *
+ * Any form sections not consumed by the template are appended at the end so that
+ * user-added custom sections are never silently lost.
+ */
+export function buildTemplateAlignedContent(
+  templateSections: TemplateSectionConfig[],
+  formSections: DischargeSummarySection[],
+  dedicatedContent: Record<string, string>,
+  printOnly = false,
+): string {
+  const usedFormSectionIds = new Set<string>();
+  const outputParts: string[] = [];
+
+  for (const tplSection of templateSections) {
+    if (!tplSection.enabled) continue;
+    if (HEADER_SECTION_KEYS.has(tplSection.key)) continue;
+
+    // 1. Dedicated content (structured data rendered by the page)
+    let content = dedicatedContent[tplSection.key]?.trim();
+
+    // 2. Fuzzy-match against form sections (skip when dedicated content exists)
+    if (!content) {
+      const patterns = KEY_TO_TITLE_PATTERNS[tplSection.key] || [tplSection.label.toLowerCase()];
+      const match = formSections.find(
+        (s) =>
+          !usedFormSectionIds.has(s.id) &&
+          s.content.trim() &&
+          (!printOnly || s.printable !== false) &&
+          patterns.some((p) => fuzzyTitleMatch(s.title, p)),
+      );
+      if (match) {
+        content = match.content.trim();
+        usedFormSectionIds.add(match.id);
+      }
+    }
+
+    if (!content) continue;
+    outputParts.push(`## ${tplSection.label}\n${content}`);
+  }
+
+  // Append any form sections not consumed by the template (custom sections)
+  for (const section of formSections) {
+    if (usedFormSectionIds.has(section.id)) continue;
+    if (!section.content.trim()) continue;
+    if (printOnly && section.printable === false) continue;
+    outputParts.push(`## ${section.title}\n${section.content}`);
+  }
+
+  return outputParts.join('\n\n');
 }
 
 /** Parse flat AI text (with ## headings) into sections. */

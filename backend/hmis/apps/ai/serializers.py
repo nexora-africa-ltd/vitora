@@ -1622,6 +1622,33 @@ class ClinicalDocPatientContextSerializer(serializers.Serializer):
 class ClinicalDocAdmissionContextSerializer(serializers.Serializer):
     """Admission / encounter data for clinical document generation."""
 
+    _MEDICATION_KEYS = {"drug_name", "dose", "route", "frequency", "duration"}
+
+    def _validate_medication_list(self, value: list, field_name: str) -> list:
+        """Accept each item as either a string or a dict with medication keys."""
+        result = []
+        for i, item in enumerate(value):
+            if isinstance(item, str):
+                result.append(item)
+            elif isinstance(item, dict):
+                unknown = set(item.keys()) - self._MEDICATION_KEYS
+                if unknown:
+                    raise serializers.ValidationError(
+                        {field_name: {str(i): [f"Unknown keys: {unknown}"]}}
+                    )
+                result.append(item)
+            else:
+                raise serializers.ValidationError(
+                    {field_name: {str(i): ["Must be a string or object."]}}
+                )
+        return result
+
+    def validate_medications_given(self, value: list) -> list:
+        return self._validate_medication_list(value, "medications_given")
+
+    def validate_discharge_medications(self, value: list) -> list:
+        return self._validate_medication_list(value, "discharge_medications")
+
     primary_diagnosis = serializers.CharField(
         min_length=2, max_length=500,
         help_text="Primary diagnosis (free text or ICD-10 description).",
@@ -1657,12 +1684,12 @@ class ClinicalDocAdmissionContextSerializer(serializers.Serializer):
         required=False, default=list,
     )
     medications_given = serializers.ListField(
-        child=serializers.CharField(max_length=300),
         required=False, default=list,
+        help_text='List of medications: strings or {drug_name, dose, route, frequency, duration} objects.',
     )
     discharge_medications = serializers.ListField(
-        child=serializers.CharField(max_length=300),
         required=False, default=list,
+        help_text='Discharge medications: strings or {drug_name, dose, route, frequency, duration} objects.',
     )
     key_investigations = serializers.ListField(
         child=serializers.CharField(max_length=300),
@@ -1674,6 +1701,15 @@ class ClinicalDocAdmissionContextSerializer(serializers.Serializer):
     )
     condition_at_discharge = serializers.CharField(
         required=False, allow_blank=True, max_length=1000,
+    )
+    follow_up_instructions = serializers.CharField(
+        required=False, allow_blank=True, max_length=2000,
+        help_text="Follow-up plan / TCA instructions.",
+    )
+    clinical_notes = serializers.ListField(
+        child=serializers.CharField(max_length=5000),
+        required=False, default=list,
+        help_text="Ward round progress notes / clinical notes in chronological order.",
     )
 
 
@@ -1757,6 +1793,16 @@ class ClinicalDocGenerateRequestSerializer(serializers.Serializer):
     )
     system_instruction = serializers.CharField(
         required=False, allow_blank=True, max_length=2000,
+    )
+    discharge_layout = serializers.ChoiceField(
+        choices=[("STANDARD", "Standard"), ("STRUCTURED", "Structured"), ("MINIMAL", "Minimal")],
+        required=False,
+        help_text='Selects TibaBot built-in layout: "STANDARD", "STRUCTURED", or "MINIMAL".',
+    )
+    template_sections = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+        help_text="Pass the discharge template sections array [{key, label, enabled}] for full control.",
     )
 
 

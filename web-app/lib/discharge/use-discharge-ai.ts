@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { useAIClinicalDocument } from '@/lib/hooks/use-ai';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, AIPatientContext } from '@/lib/types/ai';
-import type { DischargeType, DischargeMedication, AdmissionOrdersResponse, WardRound } from '@/lib/types/inpatient';
+import type { ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, AIPatientContext, ClinicalDocSection, ClinicalDocEncounterContext } from '@/lib/types/ai';
+import type { DischargeType, DischargeTemplateLayout, DischargeTemplateSectionConfig, DischargeMedication, AdmissionOrdersResponse, WardRound } from '@/lib/types/inpatient';
 import type { DiagnosisEntry } from '@/components/shared';
 import type { DischargeSummarySection, ParsedSection, SuggestedMedication } from './types';
 import { ROUTED_SECTION_IDS, HIDDEN_SECTION_IDS } from './types';
@@ -14,6 +14,29 @@ import {
   extractFollowUpDate,
   parseMedicationLines,
 } from './utils';
+
+// ---------------------------------------------------------------------------
+// Legacy → new section key mapping (for backward compatibility with TibaBot)
+// ---------------------------------------------------------------------------
+
+const LEGACY_KEY_MAP: Record<string, string> = {
+  reason_for_admission: 'history',
+  significant_findings: 'investigations',
+  patient_education: 'discharge_instructions',
+  discharge_diagnosis: 'diagnosis',
+  follow_up_plan: 'follow_up',
+};
+
+function normalizeSectionKey(key: string): string {
+  return LEGACY_KEY_MAP[key] ?? key;
+}
+
+function normalizeSections(sections: ClinicalDocSection[]): ClinicalDocSection[] {
+  return sections.map((s) => ({
+    ...s,
+    section_id: normalizeSectionKey(s.section_id),
+  }));
+}
 
 // ---------------------------------------------------------------------------
 // Types for the hook
@@ -32,6 +55,10 @@ interface UseDischargeAIParams {
   orders?: AdmissionOrdersResponse | null;
   /** Ward rounds for condition-at-discharge and complication extraction */
   wardRounds?: { results: WardRound[] } | null;
+  /** Facility's active discharge template layout */
+  templateLayout?: DischargeTemplateLayout;
+  /** Facility's active discharge template sections */
+  templateSections?: DischargeTemplateSectionConfig[];
   // Current form state (read-only, for conditional logic)
   followUpInstructions: string;
   followUpDate: string;
@@ -63,6 +90,8 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     generationMode,
     orders,
     wardRounds,
+    templateLayout,
+    templateSections,
     followUpInstructions,
     followUpDate,
     patientInstructions,
@@ -102,13 +131,19 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       .map((d) => d.code.icd11Display || d.code.icd10Display || '')
       .filter(Boolean);
 
-    // Medications given during stay (from prescriptions)
-    const medicationsGiven: string[] = [];
+    // Medications given during stay (from prescriptions) — structured objects
+    const medicationsGiven: { drug_name: string; dose: string; route: string; frequency: string; duration: string }[] = [];
     if (orders?.prescriptions) {
       for (const rx of orders.prescriptions) {
         if (rx.status !== 'CANCELLED') {
           for (const item of rx.items) {
-            medicationsGiven.push(`${item.drug_name} ${item.dosage} ${item.frequency}`);
+            medicationsGiven.push({
+              drug_name: item.drug_name || '',
+              dose: item.dosage || '',
+              route: (item as any).route || 'PO',
+              frequency: item.frequency || '',
+              duration: item.duration || '',
+            });
           }
         }
       }
@@ -142,6 +177,20 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       ? `${latestRound.condition_status_display || latestRound.condition_status || 'Stable'}. ${latestRound.assessment || ''}`.trim()
       : '';
 
+    // Clinical notes from ward rounds (chronological)
+    const clinicalNotes: string[] = [];
+    if (wardRounds?.results) {
+      for (const round of [...wardRounds.results].reverse()) {
+        const parts = [
+          round.subjective ? `S: ${round.subjective}` : '',
+          round.objective ? `O: ${round.objective}` : '',
+          round.assessment ? `A: ${round.assessment}` : '',
+          round.plan ? `P: ${round.plan}` : '',
+        ].filter(Boolean);
+        if (parts.length) clinicalNotes.push(parts.join('\n'));
+      }
+    }
+
     const docPatientCtx: ClinicalDocPatientContext = {
       patient_age: admission.patient_age ?? 0,
       patient_sex: admission.patient_gender === 'M' ? 'male' : 'female',
@@ -149,6 +198,15 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       comorbidities: patientCtx.comorbidities || [],
       current_medications: patientCtx.current_medications || [],
     };
+
+    // Structured discharge medications
+    const dischargeMedsStructured = medications.filter((m) => m.drug_name).map((m) => ({
+      drug_name: m.drug_name,
+      dose: m.dosage || '',
+      route: 'PO',
+      frequency: m.frequency || '',
+      duration: (m as any).duration || '',
+    }));
 
     const admissionCtx: ClinicalDocAdmissionContext = {
       primary_diagnosis: diagnosis,
@@ -160,13 +218,45 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       ward: admission.ward_name || '',
       discharge_type: dischargeType === 'ROUTINE' || dischargeType === 'ABSCONDED' ? 'NORMAL' : dischargeType as ClinicalDocAdmissionContext['discharge_type'],
       medications_given: medicationsGiven.length > 0 ? medicationsGiven : undefined,
-      discharge_medications: medsText,
+      discharge_medications: dischargeMedsStructured.length > 0 ? dischargeMedsStructured : undefined,
       key_investigations: keyInvestigations.length > 0 ? keyInvestigations : undefined,
       condition_at_discharge: conditionAtDischarge || undefined,
+      follow_up_instructions: followUpInstructions || undefined,
+      clinical_notes: clinicalNotes.length > 0 ? clinicalNotes : undefined,
     };
 
-    return { docPatientCtx, admissionCtx };
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, orders, wardRounds]);
+    // Encounter context — enrich with ward round data for Complaints & Physical Findings
+    const encounterCtx: ClinicalDocEncounterContext = {
+      chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+    };
+
+    // HPI from the earliest ward round's subjective (presenting complaint detail)
+    if (wardRounds?.results?.length) {
+      const earliest = wardRounds.results[wardRounds.results.length - 1];
+      if (earliest?.subjective) encounterCtx.hpi = earliest.subjective;
+    }
+
+    // Examination findings from ward round objectives (most recent)
+    if (wardRounds?.results?.length) {
+      const objectiveFindings = wardRounds.results
+        .filter((r) => r.objective)
+        .map((r) => r.objective!)
+        .slice(0, 3); // Latest 3 rounds
+      if (objectiveFindings.length) {
+        encounterCtx.examination_findings = objectiveFindings.join('\n\n');
+      }
+    }
+
+    return { docPatientCtx, admissionCtx, encounterCtx };
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, orders, wardRounds, followUpInstructions]);
+
+  // Build template-alignment fields for TibaBot requests
+  const templateFields = useCallback(() => {
+    const fields: Record<string, unknown> = {};
+    if (templateLayout) fields.discharge_layout = templateLayout;
+    if (templateSections?.length) fields.template_sections = templateSections;
+    return fields;
+  }, [templateLayout, templateSections]);
 
   // Generate ALL sections
   const handleGenerateAll = useCallback(async () => {
@@ -178,11 +268,10 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         document_type: 'discharge_summary',
         patient_context: ctx.docPatientCtx,
         admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
+        encounter_context: ctx.encounterCtx,
         output_format: 'structured',
         generation_mode: generationMode,
+        ...templateFields(),
         additional_instructions: [
           'For the Hospital Course section, write a flowing clinical narrative that synthesizes the ward round findings into a coherent story of the admission.',
           'Mention key dates and clinical inflection points (e.g. when symptoms improved, when antibiotics were changed, when a complication arose) but do NOT list each ward round as separate S/O/A/P entries.',
@@ -191,7 +280,9 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         ].filter(Boolean).join(' '),
       });
 
+      // Normalize legacy section keys in the response
       if (result.sections?.length) {
+        result.sections = normalizeSections(result.sections);
         for (const section of result.sections) {
           const { cleanContent } = parseAdvisories(section.content);
           const sid = section.section_id;
@@ -211,6 +302,11 @@ export function useDischargeAI(params: UseDischargeAIParams) {
             const medLines = cleanContent.split('\n').filter((l) => l.trim());
             const medParsed = parseMedicationLines(medLines);
             if (medParsed.length > 0) setSuggestedMeds(medParsed);
+          }
+
+          if (sid === 'discharge_instructions' && cleanContent && !patientInstructions) {
+            setPatientInstructions(cleanContent);
+            setInstructionsGenerated(true);
           }
         }
 
@@ -302,11 +398,10 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         document_type: 'discharge_summary',
         patient_context: ctx.docPatientCtx,
         admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
+        encounter_context: ctx.encounterCtx,
         output_format: 'structured',
         generation_mode: generationMode,
+        ...templateFields(),
         additional_instructions: [
           `Generate ONLY the "${section.title}" section of a discharge summary. Return focused, detailed content for this section only.`,
           section.title.toLowerCase().includes('hospital course')
@@ -315,6 +410,11 @@ export function useDischargeAI(params: UseDischargeAIParams) {
           clinicalHistoryText || '',
         ].filter(Boolean).join(' '),
       });
+
+      // Normalize legacy keys
+      if (result.sections?.length) {
+        result.sections = normalizeSections(result.sections);
+      }
 
       let content = '';
       let advisories: ParsedSection['advisories'] = [];
@@ -369,11 +469,10 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         document_type: 'discharge_summary',
         patient_context: ctx.docPatientCtx,
         admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
+        encounter_context: ctx.encounterCtx,
         output_format: 'structured',
         generation_mode: generationMode,
+        ...templateFields(),
         additional_instructions: [
           'Generate ONLY the Follow-up Plan section. Include specific follow-up appointments, timeline, warning signs to watch for, and when to return to hospital.',
           'Be specific with timing (e.g., "Return in 2 weeks" or "Follow-up on 2026-04-06").',
@@ -419,11 +518,10 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         document_type: 'discharge_summary',
         patient_context: ctx.docPatientCtx,
         admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
+        encounter_context: ctx.encounterCtx,
         output_format: 'structured',
         generation_mode: generationMode,
+        ...templateFields(),
         additional_instructions: [
           'Generate concise, actionable patient discharge instructions — NOT patient education.',
           'Format as a short numbered list of 4-8 practical instructions the patient must follow at home.',
@@ -470,11 +568,10 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         document_type: 'discharge_summary',
         patient_context: ctx.docPatientCtx,
         admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
+        encounter_context: ctx.encounterCtx,
         output_format: 'structured',
         generation_mode: 'generate',
+        ...templateFields(),
         additional_instructions: [
           'Generate ONLY the Discharge Medications section.',
           'For each medication, provide the drug name, suggested dosage, frequency, and duration on separate lines.',

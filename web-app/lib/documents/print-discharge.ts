@@ -42,6 +42,7 @@ function contentToHtml(text: string): string {
  * Strip AI advisory content that should not appear on the printed document.
  * Removes:
  *  - Fully italic paragraphs (advisory notes wrapped in *...* or _..._ )
+ *  - Lines starting with italic markers that contain advisory keywords
  *  - "Not documented (...)" placeholder lines and table cell values
  *  - Standalone parenthetical instructions "(If ... )"
  *  - Table rows where every data cell is a "not documented" placeholder
@@ -53,6 +54,8 @@ function stripAdvisoryContent(md: string): string {
       const trimmed = block.trim();
       // Remove blocks that are entirely italic: *text* or _text_ (possibly multi-line)
       if (/^\*[^*]+\*$/.test(trimmed) || /^_[^_]+_$/.test(trimmed)) return null;
+      // Remove italic-prefixed advisory lines (e.g. "*Relevant guideline context...*)
+      if (/^\*.*(?:guideline|context|reference|advisory|note|disclaimer|AI.generated|clinician.review).*\*?\s*$/i.test(trimmed)) return null;
       // Remove "Not documented (reason)" standalone lines
       if (/^not documented\b/i.test(trimmed)) return null;
       // Remove standalone parenthetical instruction blocks
