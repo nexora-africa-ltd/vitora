@@ -38,6 +38,8 @@ export interface UseOfflineQueryOptions<TRow extends Record<string, unknown>, TR
   queryOptions?: Omit<UseQueryOptions<TResult, Error>, 'queryKey' | 'queryFn' | 'enabled'>;
   /** Override: force API mode even when PowerSync DB is available */
   forceApi?: boolean;
+  /** When false, both local and API paths are disabled (returns idle result). Default: true */
+  enabled?: boolean;
 }
 
 export interface UseOfflineQueryResult<TResult> {
@@ -72,10 +74,12 @@ export function useOfflineQuery<
     queryFn,
     queryOptions,
     forceApi = false,
+    enabled = true,
   } = options;
 
   const { isReady } = useSyncStatus();
-  const useLocal = isReady && !forceApi;
+  const isEnabled = enabled !== false;
+  const useLocal = isReady && !forceApi && isEnabled;
 
   // --- Path 1: PowerSync local query (always called, toggled by `useLocal`) ---
   const localResult = usePowerSyncQuery<TRow>(
@@ -87,9 +91,22 @@ export function useOfflineQuery<
   const apiResult = useQuery<TResult, Error>({
     queryKey,
     queryFn,
-    enabled: !useLocal,
+    enabled: !useLocal && isEnabled,
     ...queryOptions,
   });
+
+  // --- Short-circuit: return idle result when disabled ---
+  if (!isEnabled) {
+    return {
+      data: undefined,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      error: null,
+      refetch: () => {},
+      source: 'api',
+    };
+  }
 
   // --- Merge results based on active path ---
   if (useLocal) {
