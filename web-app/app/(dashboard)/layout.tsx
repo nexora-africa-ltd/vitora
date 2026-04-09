@@ -9,6 +9,7 @@ import { AIChatWidget } from '@/components/shared/ai-chat-widget';
 import { PermissionDebugPanel } from '@/components/shared/permission-debug-panel';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { CommandMenu } from '@/components/layout/command-menu';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
 import { OfflineBanner } from '@/components/shared/offline-banner';
@@ -100,6 +101,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               {/* TibaBot AI floating widget */}
               <AIChatWidget />
+              {/* Global command menu (⌘K / Ctrl+K) */}
+              <CommandMenu />
               {/* Permission debug panel (dev only) */}
               <PermissionDebugPanel />
               {/* Sync current page route into AI chat context */}
