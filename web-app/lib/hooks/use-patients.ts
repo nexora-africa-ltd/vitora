@@ -131,6 +131,7 @@ export function usePatient(id: number | string) {
     queryKey: patientKeys.detail(numericId),
     queryFn: () => patientsApi.getPatient(numericId),
     forceApi: !id || isNaN(numericId),
+    enabled: numericId > 0 && !isNaN(numericId),
   });
 
   // Supplementary PII fetch — only when data came from local SQLite (PII fields

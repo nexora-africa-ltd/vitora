@@ -84,6 +84,7 @@ export function useEncounter(id: number) {
     queryKey: ['encounters', id],
     queryFn: () => encountersApi.get(id),
     forceApi: !id,
+    enabled: id > 0,
   });
 }
 
