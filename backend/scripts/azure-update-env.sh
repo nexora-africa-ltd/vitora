@@ -146,6 +146,7 @@ az containerapp update \
     "SMS_SENDER_ID=${SMS_SENDER_ID:-VitoraHMIS}" \
     "WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-vitora-navy.vercel.app,staging.vitora.digital}" \
     "WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://vitora-navy.vercel.app,https://staging.vitora.digital}" \
+    "POWERSYNC_URL=${POWERSYNC_URL:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
   --output none
 
 echo ""

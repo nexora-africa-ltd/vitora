@@ -23,12 +23,25 @@ const POWERSYNC_URL = process.env.NEXT_PUBLIC_POWERSYNC_URL || '';
 /**
  * Map PowerSync table names back to Django REST API endpoints.
  * Only tables that support client-side writes need entries here.
- * Read-only reference tables (counties, sub-counties, wards) are omitted.
+ * Read-only reference tables (counties, sub-counties, wards, ICD-10, templates) are omitted.
  */
 const TABLE_TO_ENDPOINT: Record<string, string> = {
+  // Phase 1: Core tables
   patients_patient: '/api/patients/',
   patients_emergencycontact: '/api/patients/{patient_id}/emergency-contacts/',
   encounters_encounter: '/api/encounters/',
+
+  // Phase 2: Clinical workflow
+  triage_triageassessment: '/api/triage/assessments/',
+  encounters_diagnosis: '/api/encounters/{encounter_id}/diagnoses/',
+  encounters_treatmentplan: '/api/encounters/{encounter_id}/treatment-plan/',
+  encounters_medication: '/api/encounters/{encounter_id}/treatment-plan/medications/',
+
+  // Phase 3: Pharmacy, Laboratory, Billing
+  pharmacy_prescription: '/api/pharmacy/prescriptions/',
+  laboratory_laborder: '/api/lab/orders/',
+  laboratory_labresult: '/api/lab/results/',
+  billing_invoice: '/api/billing/invoices/',
 };
 
 export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
@@ -118,6 +131,9 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
     let endpoint = endpointTemplate;
     if (endpoint.includes('{patient_id}') && entry.opData?.patient_id) {
       endpoint = endpoint.replace('{patient_id}', String(entry.opData.patient_id));
+    }
+    if (endpoint.includes('{encounter_id}') && entry.opData?.encounter_id) {
+      endpoint = endpoint.replace('{encounter_id}', String(entry.opData.encounter_id));
     }
 
     switch (entry.op) {
