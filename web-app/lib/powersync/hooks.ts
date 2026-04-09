@@ -107,7 +107,7 @@ export function usePowerSyncQueryFirst<T extends Record<string, unknown> = Recor
 ): { data: T | null; isLoading: boolean; error: Error | null } {
   const result = usePowerSyncQuery<T>(sql, params);
   return {
-    data: result.data.length > 0 ? result.data[0] : null,
+    data: result.data.length > 0 ? (result.data[0] ?? null) : null,
     isLoading: result.isLoading,
     error: result.error,
   };
