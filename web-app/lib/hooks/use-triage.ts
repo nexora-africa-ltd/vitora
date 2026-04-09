@@ -13,6 +13,8 @@ import { apiClient } from '@/lib/api/client';
 import { consultationQueueKeys } from '@/lib/hooks/use-consultation-queue';
 import { triageApi, type TriageAssessmentUpdateData } from '@/lib/api/triage';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
+import { generateId } from '@/lib/powersync/uuid';
 import { transformTriageRow } from '@/lib/powersync/transforms';
 import type { TriageAssessmentRow } from '@/lib/powersync/schema';
 import type {
@@ -306,20 +308,52 @@ export function useTriageHistory(filters: TriageHistoryFilters = {}) {
 }
 
 /**
- * Create a new triage assessment
+ * Create a new triage assessment.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useCreateTriageAssessment() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (data: TriageAssessmentCreateData) => {
-      return triageApi.createAssessment(data);
-    },
-    onSuccess: (data, variables) => {
+  return useOfflineMutation<TriageAssessmentCreateData, TriageAssessment>({
+    table: 'triage_triageassessment',
+    operation: 'create',
+    buildLocalData: (data) => ({
+      id: generateId(),
+      encounter_id: String(data.encounter),
+      chief_complaint: data.chief_complaint || '',
+      chief_complaint_category: data.chief_complaint_category || '',
+      pain_score: data.pain_score ?? null,
+      mental_status: data.mental_status || 'A',
+      gcs_eye: data.gcs_eye ?? null,
+      gcs_verbal: data.gcs_verbal ?? null,
+      gcs_motor: data.gcs_motor ?? null,
+      mobility: data.mobility || '',
+      arrival_mode: data.arrival_mode || '',
+      referring_facility_name: data.referring_facility_name || null,
+      allergies_noted: data.allergies_noted || null,
+      spo2: data.spo2 ?? null,
+      heart_rate: data.heart_rate ?? null,
+      systolic_bp: data.systolic_bp ?? null,
+      diastolic_bp: data.diastolic_bp ?? null,
+      temperature: data.temperature ?? null,
+      respiratory_rate: data.respiratory_rate ?? null,
+      weight: data.weight ?? null,
+      height: data.height ?? null,
+      triage_category: data.triage_category || '',
+      auto_calculated_category: data.auto_calculated_category || null,
+      category_override_reason: data.category_override_reason || null,
+      assigned_area: data.assigned_area || null,
+      assigned_clinic_id: data.assigned_clinic ? String(data.assigned_clinic) : null,
+      assigned_clinician_id: data.assigned_clinician ? String(data.assigned_clinician) : null,
+      arrival_time: data.arrival_time || new Date().toISOString(),
+      triage_start_time: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+    mutationFn: (data) => triageApi.createAssessment(data),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
       queryClient.invalidateQueries({ queryKey: triageKeys.assessments() });
-      // Invalidate the encounter query so vitals copied from triage are reflected
-      // when the encounter page is loaded
       queryClient.invalidateQueries({ queryKey: ['encounters', variables.encounter] });
       queryClient.invalidateQueries({ queryKey: ['encounters'] });
     },
@@ -327,21 +361,48 @@ export function useCreateTriageAssessment() {
 }
 
 /**
- * Update an existing triage assessment
+ * Update an existing triage assessment.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useUpdateTriageAssessment() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: TriageAssessmentUpdateData }) => {
-      const response = await apiClient.patch<TriageAssessment>(`/api/triage/assessments/${id}/`, data);
-      return response.data;
+  return useOfflineMutation<{ id: number; data: TriageAssessmentUpdateData }, TriageAssessment>({
+    table: 'triage_triageassessment',
+    operation: 'update',
+    getId: (input) => input.id,
+    buildLocalData: ({ data }) => {
+      const fields: Record<string, string | number | null> = {};
+      if (data.chief_complaint !== undefined) fields.chief_complaint = data.chief_complaint;
+      if (data.chief_complaint_category !== undefined) fields.chief_complaint_category = data.chief_complaint_category;
+      if (data.mental_status !== undefined) fields.mental_status = data.mental_status;
+      if (data.pain_score !== undefined) fields.pain_score = data.pain_score ?? null;
+      if (data.mobility !== undefined) fields.mobility = data.mobility;
+      if (data.allergies_noted !== undefined) fields.allergies_noted = data.allergies_noted || null;
+      if (data.spo2 !== undefined) fields.spo2 = data.spo2 ?? null;
+      if (data.heart_rate !== undefined) fields.heart_rate = data.heart_rate ?? null;
+      if (data.systolic_bp !== undefined) fields.systolic_bp = data.systolic_bp ?? null;
+      if (data.diastolic_bp !== undefined) fields.diastolic_bp = data.diastolic_bp ?? null;
+      if (data.temperature !== undefined) fields.temperature = data.temperature ?? null;
+      if (data.respiratory_rate !== undefined) fields.respiratory_rate = data.respiratory_rate ?? null;
+      if (data.triage_category !== undefined) fields.triage_category = data.triage_category;
+      if (data.auto_calculated_category !== undefined) fields.auto_calculated_category = data.auto_calculated_category || null;
+      if (data.category_override_reason !== undefined) fields.category_override_reason = data.category_override_reason || null;
+      if (data.assigned_area !== undefined) fields.assigned_area = data.assigned_area || null;
+      if (data.assigned_clinic !== undefined) fields.assigned_clinic_id = data.assigned_clinic ? String(data.assigned_clinic) : null;
+      fields.updated_at = new Date().toISOString();
+      return fields;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: triageKeys.assessment(data.id) });
+    mutationFn: ({ id, data }) => {
+      return apiClient.patch<TriageAssessment>(`/api/triage/assessments/${id}/`, data).then(r => r.data);
+    },
+    onSuccess: (result) => {
+      const data = result as TriageAssessment | null;
+      if (data && data.id) {
+        queryClient.invalidateQueries({ queryKey: triageKeys.assessment(data.id) });
+      }
       queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
-      // Invalidate the encounter query so updated vitals/triage data is reflected
-      if (data.encounter) {
+      if (data && data.encounter) {
         queryClient.invalidateQueries({ queryKey: ['encounters', data.encounter] });
       }
     },

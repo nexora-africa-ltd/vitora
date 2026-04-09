@@ -104,6 +104,10 @@ export default function NewTriagePage() {
         encounter_date: new Date().toISOString().split('T')[0],
         chief_complaint: 'Pending triage',
       });
+      if (!newEncounter) {
+        toast({ title: 'Created', description: 'Encounter created locally — will sync when online.' });
+        return;
+      }
       setSelectedEncounterId(newEncounter.id);
 
       // For legacy flow, navigate directly; for new flow, useEffect handles redirect
@@ -157,6 +161,12 @@ export default function NewTriagePage() {
           ...data,
           encounter: selectedEncounterId,
         });
+
+        if (!assessment) {
+          toast({ title: 'Triage Saved', description: 'Assessment saved locally — will sync when online.' });
+          router.push('/triage');
+          return;
+        }
 
         // Complete the assessment (sets triage_end_time, status = COMPLETED)
         await completeAssessment(assessment.id);

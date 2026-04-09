@@ -18,6 +18,7 @@ import type {
   SubCountyRow,
   WardRow,
   ICD10CodeRow,
+  ClinicalTemplateRow,
   TriageAssessmentRow,
   DiagnosisRow,
   TreatmentPlanRow,
@@ -73,6 +74,51 @@ export function transformWardRow(row: WardRow & { id: string }): Ward {
     id: toNumericId(row.id),
     sub_county: toNumericId(row.sub_county_id as string),
     name: row.name as string,
+  };
+}
+
+/**
+ * Transforms an ICD-10 code row from PowerSync into the ICD10SearchResult shape.
+ */
+export function transformICD10Row(row: ICD10CodeRow & { id: string }) {
+  return {
+    id: toNumericId(row.id),
+    code: row.code as string,
+    description: (row.description as string) || (row.short_description as string) || '',
+    short_description: (row.short_description as string) || '',
+    long_description: (row.long_description as string) || '',
+    category: (row.category as string) || '',
+    chapter: row.chapter as number | null,
+    is_billable: toBool(row.is_billable as number),
+    is_active: toBool(row.is_active as number),
+  };
+}
+
+/**
+ * Transforms a clinical template row from PowerSync into the ClinicalTemplate shape.
+ */
+export function transformClinicalTemplateRow(row: ClinicalTemplateRow & { id: string }) {
+  let content;
+  try {
+    content = row.content ? JSON.parse(row.content as string) : {};
+  } catch {
+    content = {};
+  }
+  return {
+    id: toNumericId(row.id),
+    name: row.name as string,
+    template_type: row.template_type as string,
+    specialty: (row.specialty as string) || '',
+    description: (row.description as string) || '',
+    content,
+    is_system: toBool(row.is_system as number),
+    is_active: toBool(row.is_active as number),
+    usage_count: (row.usage_count as number) || 0,
+    created_by: row.created_by_id ? toNumericId(row.created_by_id as string) : null,
+    created_by_username: null,
+    created_at: (row.created_at as string) || '',
+    updated_at: (row.updated_at as string) || '',
+    sections: content?.sections || [],
   };
 }
 
@@ -530,6 +576,7 @@ export type {
   SubCountyRow,
   WardRow,
   ICD10CodeRow,
+  ClinicalTemplateRow,
   TriageAssessmentRow,
   DiagnosisRow,
   TreatmentPlanRow,

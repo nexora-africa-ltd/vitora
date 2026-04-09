@@ -1,9 +1,16 @@
 /**
  * Billing React Query Hooks
- * Custom hooks for billing data fetching and mutations
+ * Dual-mode: PowerSync (local SQLite) with React Query API fallback for invoice reads.
+ * Mutations and reports remain API-only.
  */
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { billingApi } from '@/lib/api/billing';
+import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
+import { generateId } from '@/lib/powersync/uuid';
+import { transformInvoiceRow } from '@/lib/powersync/transforms';
+import type { InvoiceRow } from '@/lib/powersync/schema';
+import type { PaginatedResponse } from '@/lib/types';
 import type {
   Invoice,
   InvoiceCreateData,
@@ -114,45 +121,140 @@ export const billingKeys = {
 // Invoice Hooks
 // ============================================================================
 
+type InvoiceJoinedRow = InvoiceRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string };
+
 /**
- * Fetch paginated list of invoices
+ * Fetch paginated list of invoices.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useInvoices(params?: InvoiceListParams) {
-  return useQuery({
+  const conditions: string[] = [];
+  const sqlParams: (string | number)[] = [];
+
+  if (params?.search) {
+    conditions.push('(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR inv.invoice_number LIKE ?)');
+    const pattern = `%${params.search}%`;
+    sqlParams.push(pattern, pattern, pattern, pattern);
+  }
+  if (params?.status) {
+    conditions.push('inv.status = ?');
+    sqlParams.push(params.status);
+  }
+  if (params?.payment_type) {
+    conditions.push('inv.payment_type = ?');
+    sqlParams.push(params.payment_type);
+  }
+  if (params?.patient) {
+    conditions.push('inv.patient_id = ?');
+    sqlParams.push(String(params.patient));
+  }
+  if (params?.start_date) {
+    conditions.push('inv.invoice_date >= ?');
+    sqlParams.push(params.start_date);
+  }
+  if (params?.end_date) {
+    conditions.push('inv.invoice_date <= ?');
+    sqlParams.push(params.end_date);
+  }
+
+  const limit = params?.page_size || 25;
+  const offset = ((params?.page || 1) - 1) * limit;
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  return useOfflineQuery<InvoiceJoinedRow, PaginatedResponse<Invoice>>({
+    sql: `SELECT inv.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM billing_invoice inv
+      LEFT JOIN patients_patient p ON inv.patient_id = p.id
+      ${whereClause}
+      ORDER BY inv.created_at DESC
+      LIMIT ? OFFSET ?`,
+    params: [...sqlParams, limit, offset],
+    transform: (rows) => ({
+      count: rows.length < limit ? offset + rows.length : offset + limit + 1,
+      next: null,
+      previous: null,
+      results: rows.map(r => transformInvoiceRow(r) as unknown as Invoice),
+    }),
     queryKey: billingKeys.invoicesList(params),
     queryFn: () => billingApi.getInvoices(params),
   });
 }
 
 /**
- * Fetch single invoice by ID
+ * Fetch single invoice by ID.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useInvoice(id: number | undefined) {
-  return useQuery({
+  return useOfflineQuery<InvoiceJoinedRow, Invoice>({
+    sql: `SELECT inv.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM billing_invoice inv
+      LEFT JOIN patients_patient p ON inv.patient_id = p.id
+      WHERE inv.id = ?`,
+    params: [id !== undefined ? String(id) : '0'],
+    transform: (rows) => {
+      if (rows.length === 0) throw new Error(`Invoice ${id} not found`);
+      return transformInvoiceRow(rows[0]!) as unknown as Invoice;
+    },
     queryKey: billingKeys.invoiceDetail(id!),
     queryFn: () => billingApi.getInvoice(id!),
-    enabled: id !== undefined,
+    forceApi: id === undefined,
   });
 }
 
 /**
- * Fetch overdue invoices
+ * Fetch overdue invoices.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useOverdueInvoices() {
-  return useQuery({
+  const today = new Date().toISOString().split('T')[0];
+  return useOfflineQuery<InvoiceJoinedRow, PaginatedResponse<Invoice>>({
+    sql: `SELECT inv.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM billing_invoice inv
+      LEFT JOIN patients_patient p ON inv.patient_id = p.id
+      WHERE inv.status IN ('PENDING', 'PARTIAL') AND inv.due_date < ?
+      ORDER BY inv.due_date ASC`,
+    params: [today!],
+    transform: (rows) => ({
+      count: rows.length,
+      next: null,
+      previous: null,
+      results: rows.map(r => transformInvoiceRow(r) as unknown as Invoice),
+    }),
     queryKey: billingKeys.invoicesOverdue(),
     queryFn: () => billingApi.getOverdueInvoices(),
   });
 }
 
 /**
- * Create a new invoice
+ * Create a new invoice.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useCreateInvoice() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: InvoiceCreateData) => billingApi.createInvoice(data),
+  return useOfflineMutation<InvoiceCreateData, Invoice>({
+    table: 'billing_invoice',
+    operation: 'create',
+    buildLocalData: (data) => ({
+      id: generateId(),
+      invoice_number: '', // Assigned by backend after sync
+      patient_id: String(data.patient),
+      encounter_id: data.encounter ? String(data.encounter) : null,
+      status: 'DRAFT',
+      payment_type: data.payment_type || null,
+      invoice_date: new Date().toISOString().split('T')[0],
+      due_date: data.due_date || null,
+      subtotal: 0,
+      tax_amount: 0,
+      discount_amount: 0,
+      total_amount: 0,
+      amount_paid: 0,
+      balance_due: 0,
+      notes: data.notes || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+    mutationFn: (data) => billingApi.createInvoice(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billingKeys.invoices() });
     },
@@ -160,14 +262,24 @@ export function useCreateInvoice() {
 }
 
 /**
- * Update an existing invoice
+ * Update an existing invoice.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useUpdateInvoice() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: InvoiceUpdateData }) =>
-      billingApi.updateInvoice(id, data),
+  return useOfflineMutation<{ id: number; data: InvoiceUpdateData }, Invoice>({
+    table: 'billing_invoice',
+    operation: 'update',
+    getId: (input) => input.id,
+    buildLocalData: ({ data }) => {
+      const fields: Record<string, string | number | null> = {};
+      if (data.notes !== undefined) fields.notes = data.notes || null;
+      if (data.due_date !== undefined) fields.due_date = data.due_date || null;
+      fields.updated_at = new Date().toISOString();
+      return fields;
+    },
+    mutationFn: ({ id, data }) => billingApi.updateInvoice(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: billingKeys.invoiceDetail(id) });
       queryClient.invalidateQueries({ queryKey: billingKeys.invoices() });

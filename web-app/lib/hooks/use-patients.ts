@@ -12,6 +12,8 @@ import { patientsApi } from '@/lib/api/patients';
 import type { Patient, PatientListParams, PatientCreateData, PatientUpdateData, DuplicateCheckParams, EmergencyContact, PatientEncounter } from '@/lib/types/patient';
 import type { TimeRange } from '@/components/shared/vitals-trend-chart';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
+import { generateId } from '@/lib/powersync/uuid';
 import { transformPatientRow } from '@/lib/powersync/transforms';
 import type { PatientRow } from '@/lib/powersync/schema';
 import type { PaginatedResponse } from '@/lib/types';
@@ -201,8 +203,38 @@ export function usePatientEncounters(patientId: number) {
 export function useCreatePatient() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ data, idempotencyKey }: { data: PatientCreateData; idempotencyKey?: string }) =>
+  return useOfflineMutation<{ data: PatientCreateData; idempotencyKey?: string }, Patient>({
+    table: 'patients_patient',
+    operation: 'create',
+    buildLocalData: ({ data }) => ({
+      id: generateId(),
+      mrn: '', // Placeholder — real MRN assigned by backend after sync
+      first_name: data.first_name,
+      middle_name: data.middle_name || null,
+      last_name: data.last_name,
+      title: data.title || null,
+      date_of_birth: data.date_of_birth,
+      gender: data.gender,
+      cr_number: data.cr_number || null,
+      sha_number: data.sha_number || null,
+      email: data.email || null,
+      address: data.address || null,
+      citizenship: data.citizenship || null,
+      identification_type: data.identification_type || null,
+      is_person_with_disability: data.is_person_with_disability ? 1 : 0,
+      is_sensitive: 0,
+      consent_given: data.consent_given ? 1 : 0,
+      consent_date: data.consent_date || null,
+      consent_deferred: data.consent_deferred ? 1 : 0,
+      referral_source: data.referral_source || null,
+      county_id: String(data.county),
+      sub_county_id: String(data.sub_county),
+      ward_id: data.ward ? String(data.ward) : null,
+      is_deceased: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+    mutationFn: ({ data, idempotencyKey }) =>
       patientsApi.createPatient(data, idempotencyKey),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
@@ -211,14 +243,35 @@ export function useCreatePatient() {
 }
 
 /**
- * Hook for updating a patient
+ * Hook for updating a patient.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useUpdatePatient() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: PatientUpdateData }) =>
-      patientsApi.updatePatient(id, data),
+  return useOfflineMutation<{ id: number; data: PatientUpdateData }, Patient>({
+    table: 'patients_patient',
+    operation: 'update',
+    getId: (input) => input.id,
+    buildLocalData: ({ data }) => {
+      const fields: Record<string, string | number | null> = {};
+      if (data.first_name !== undefined) fields.first_name = data.first_name;
+      if (data.middle_name !== undefined) fields.middle_name = data.middle_name || null;
+      if (data.last_name !== undefined) fields.last_name = data.last_name;
+      if (data.title !== undefined) fields.title = data.title || null;
+      if (data.date_of_birth !== undefined) fields.date_of_birth = data.date_of_birth;
+      if (data.gender !== undefined) fields.gender = data.gender;
+      if (data.email !== undefined) fields.email = data.email || null;
+      if (data.address !== undefined) fields.address = data.address || null;
+      if (data.county !== undefined) fields.county_id = String(data.county);
+      if (data.sub_county !== undefined) fields.sub_county_id = String(data.sub_county);
+      if (data.ward !== undefined) fields.ward_id = data.ward ? String(data.ward) : null;
+      if (data.consent_given !== undefined) fields.consent_given = data.consent_given ? 1 : 0;
+      if (data.is_sensitive !== undefined) fields.is_sensitive = data.is_sensitive ? 1 : 0;
+      fields.updated_at = new Date().toISOString();
+      return fields;
+    },
+    mutationFn: ({ id, data }) => patientsApi.updatePatient(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: patientKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
@@ -227,13 +280,17 @@ export function useUpdatePatient() {
 }
 
 /**
- * Hook for deleting a patient
+ * Hook for deleting a patient.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useDeletePatient() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (id: number) => patientsApi.deletePatient(id),
+  return useOfflineMutation<number, void>({
+    table: 'patients_patient',
+    operation: 'delete',
+    getId: (id) => id,
+    mutationFn: (id) => patientsApi.deletePatient(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
     },

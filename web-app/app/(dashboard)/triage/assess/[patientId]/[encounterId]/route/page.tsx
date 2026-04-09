@@ -243,6 +243,12 @@ export default function TriageRoutePage() {
         // Create the assessment (sets triage_start_time, status = IN_PROGRESS)
         const assessment = await createAssessment(payload);
 
+        if (!assessment) {
+          toast({ title: 'Triage Saved', description: 'Assessment saved locally — will sync when online.' });
+          router.push('/triage');
+          return;
+        }
+
         // Complete the assessment (sets triage_end_time, status = COMPLETED)
         await completeAssessment(assessment.id);
 

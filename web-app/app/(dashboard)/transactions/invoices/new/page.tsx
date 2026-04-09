@@ -34,6 +34,11 @@ export default function NewInvoicePage() {
   const handleSubmit = async (data: InvoiceCreateData) => {
     try {
       const invoice = await createInvoice.mutateAsync(data);
+      if (!invoice) {
+        toast({ title: 'Invoice created', description: 'Saved locally — will sync when online.' });
+        router.push('/transactions/invoices');
+        return;
+      }
       toast({
         title: 'Invoice created',
         description: `Invoice ${invoice.invoice_number} has been created.`,

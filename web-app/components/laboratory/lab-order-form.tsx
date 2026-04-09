@@ -250,6 +250,12 @@ export function LabOrderForm({
 
       const order = await createOrder.mutateAsync(orderData);
 
+      if (!order) {
+        sonnerToast.success('Lab order saved locally — will sync when online.');
+        onSuccess?.('');
+        return;
+      }
+
       // Auto-submit so it goes straight to ORDERED status
       try {
         await submitOrder.mutateAsync(order.order_number);

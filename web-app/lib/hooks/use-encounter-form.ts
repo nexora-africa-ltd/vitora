@@ -4,6 +4,9 @@ import { useState, useCallback, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { transformICD10Row } from '@/lib/powersync/transforms';
+import type { ICD10CodeRow } from '@/lib/powersync/schema';
 import type {
   EncounterFormData,
   VitalAlert,
@@ -15,11 +18,19 @@ import type { Patient } from '@/lib/types/patient';
 
 /**
  * Hook for ICD-10 code search.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useICD10Search(query: string) {
   const debouncedQuery = useDebounce(query, 300);
+  const searchPattern = `%${debouncedQuery}%`;
 
-  return useQuery({
+  return useOfflineQuery<ICD10CodeRow & { id: string }, ICD10SearchResult[]>({
+    sql: `SELECT * FROM encounters_icd10code
+      WHERE is_active = 1 AND (code LIKE ? OR short_description LIKE ? OR description LIKE ?)
+      ORDER BY code
+      LIMIT 20`,
+    params: [searchPattern, searchPattern, searchPattern],
+    transform: (rows) => rows.map(r => transformICD10Row(r) as unknown as ICD10SearchResult),
     queryKey: ['icd10-search', debouncedQuery],
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) {
@@ -30,8 +41,10 @@ export function useICD10Search(query: string) {
       );
       return response.data.results || [];
     },
-    enabled: debouncedQuery.length >= 2,
-    staleTime: 60000, // Cache for 1 minute
+    forceApi: !debouncedQuery || debouncedQuery.length < 2,
+    queryOptions: {
+      staleTime: 60000,
+    },
   });
 }
 
