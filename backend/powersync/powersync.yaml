@@ -1,0 +1,46 @@
+# =============================================================================
+# PowerSync Service Configuration for Vitora HMIS
+# =============================================================================
+# This file configures the PowerSync self-hosted service (Docker).
+# For PowerSync Cloud, configure via the dashboard instead.
+#
+# Documentation: https://docs.powersync.com/self-hosting/configuration
+# =============================================================================
+
+# Replication connection to the source PostgreSQL database
+replication:
+  # Connection URI for logical replication
+  # Uses the dedicated replication user created by setup_powersync_replication.sql
+  uri: !env POWERSYNC_REPLICATION_URI
+  # e.g. postgresql://powersync_replicator:password@host:5432/vitora_hmis
+
+  # Publication name (must match the one created in PostgreSQL)
+  publication_name: powersync
+
+  # Slot name for logical replication (auto-created by PowerSync)
+  slot_name: powersync_slot
+
+# Client API configuration
+api:
+  # Tokens are verified using the same secret Django uses to sign JWTs
+  tokens:
+    - type: HS256
+      key: !env POWERSYNC_JWT_SECRET
+      # Must match Django's SIMPLE_JWT SIGNING_KEY (defaults to SECRET_KEY)
+      # Claims required: sub (user_id), iss (optional)
+      # Custom parameters: facility_id, organization_id
+      audiences: ["powersync"]
+      issuers: ["vitora-hmis"]
+
+# Storage configuration
+storage:
+  type: mongodb
+  uri: !env POWERSYNC_STORAGE_URI
+  # e.g. mongodb://localhost:27017/powersync_vitora
+
+# Telemetry (optional)
+telemetry:
+  disable_telemetry: false
+
+# Logging
+log_level: info

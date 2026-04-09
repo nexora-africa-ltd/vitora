@@ -78,12 +78,26 @@ const nextConfig = {
             key: 'Cache-Control',
             value: 'public, max-age=0, must-revalidate',
           },
+          // PowerSync (wa-sqlite) requires SharedArrayBuffer,
+          // which in turn requires cross-origin isolation headers.
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+            // 'credentialless' is less restrictive than 'require-corp'
+            // and still enables SharedArrayBuffer in modern browsers.
+            // It allows loading cross-origin images/fonts without CORS.
+          },
         ],
       },
     ];
   },
 
   // Webpack config for handling Node.js modules in browser (Cornerstone.js WASM codecs)
+  // and WASM support for PowerSync (wa-sqlite)
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Provide empty fallbacks for Node.js modules used by Cornerstone.js codecs
@@ -93,6 +107,18 @@ const nextConfig = {
         path: false,
         crypto: false,
       };
+
+      // Enable async WebAssembly for wa-sqlite (used by PowerSync)
+      config.experiments = {
+        ...config.experiments,
+        asyncWebAssembly: true,
+      };
+
+      // Exclude wa-sqlite WASM from Next.js default asset handling
+      config.module.rules.push({
+        test: /\.wasm$/,
+        type: 'asset/resource',
+      });
     }
     return config;
   },

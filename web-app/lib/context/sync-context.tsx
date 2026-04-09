@@ -1,12 +1,21 @@
 /**
- * Global Sync Status Context
- * Tracks synchronization status across the application
- * Used by auto-save and the network indicator
+ * Global Sync Status Context — PowerSync Integration
+ *
+ * Wraps the PowerSync Web SDK to provide offline-first data sync.
+ * PowerSync streams data from PostgreSQL → browser SQLite (via WASM).
+ * Writes go through the Django REST API via the connector's uploadData().
+ *
+ * Exports the same public API as the original stub so existing consumers
+ * (Header, useAutoSave) continue to work without changes.
  */
 
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { PowerSyncDatabase } from '@powersync/web';
+import { powersyncSchema } from '@/lib/powersync/schema';
+import { VitoraPowerSyncConnector } from '@/lib/powersync/connector';
+import { tokenStorage } from '@/lib/auth/storage';
 
 export interface SyncStatus {
   /** Timestamp of last successful sync */
@@ -20,6 +29,8 @@ export interface SyncStatus {
 }
 
 interface SyncContextValue extends SyncStatus {
+  /** The PowerSync database instance (for direct queries) */
+  db: PowerSyncDatabase | null;
   /** Report a successful sync */
   reportSync: () => void;
   /** Report sync started */
@@ -32,90 +43,170 @@ interface SyncContextValue extends SyncStatus {
   decrementPending: () => void;
   /** Set pending count directly */
   setPendingCount: (count: number) => void;
-  /** Trigger a manual sync - can be overridden by components */
+  /** Trigger a manual sync */
   triggerSync: () => Promise<void>;
-  /** Set the trigger sync function */
+  /** Set the trigger sync function (legacy — unused with PowerSync) */
   setTriggerSync: (fn: () => Promise<void>) => void;
 }
 
 const SyncContext = createContext<SyncContextValue | null>(null);
 
+/** Singleton PowerSync database instance (shared across re-renders). */
+let _dbInstance: PowerSyncDatabase | null = null;
+
+function getOrCreateDatabase(): PowerSyncDatabase {
+  if (!_dbInstance) {
+    _dbInstance = new PowerSyncDatabase({
+      schema: powersyncSchema,
+      database: { dbFilename: 'vitora.db' },
+    });
+  }
+  return _dbInstance;
+}
+
 export function SyncProvider({ children }: { children: React.ReactNode }) {
+  const [db, setDb] = useState<PowerSyncDatabase | null>(null);
   const [status, setStatus] = useState<SyncStatus>(() => ({
-    // Initialize lastSyncTime to now (user is online on first load)
-    // This will be replaced by actual PowerSync integration later
-    lastSyncTime: new Date(),
+    lastSyncTime: null,
     isSyncing: false,
     pendingChanges: 0,
     lastError: null,
   }));
+  const connectedRef = useRef(false);
 
-  // Store the trigger sync function (can be set by components that handle syncing)
-  const triggerSyncRef = React.useRef<() => Promise<void>>(async () => {
-    // Default implementation - just simulates a sync
-    setStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
-    // Small delay to show syncing state
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setStatus(prev => ({ ...prev, isSyncing: false, lastSyncTime: new Date() }));
-  });
+  // Initialize PowerSync when the provider mounts
+  useEffect(() => {
+    const powersyncUrl = process.env.NEXT_PUBLIC_POWERSYNC_URL;
 
-  const triggerSync = useCallback(async () => {
-    if (status.isSyncing) return; // Don't trigger if already syncing
-    await triggerSyncRef.current();
-  }, [status.isSyncing]);
+    // If no PowerSync URL is configured, run in "offline-only" mode
+    // where we still have a local SQLite DB but no server sync.
+    if (!powersyncUrl) {
+      const database = getOrCreateDatabase();
+      database.init();
+      setDb(database);
+      setStatus(prev => ({ ...prev, lastSyncTime: new Date() }));
+      return;
+    }
 
-  const setTriggerSync = useCallback((fn: () => Promise<void>) => {
-    triggerSyncRef.current = fn;
+    const database = getOrCreateDatabase();
+    const connector = new VitoraPowerSyncConnector();
+
+    let disposed = false;
+
+    async function connect() {
+      try {
+        // Only connect if user has an access token
+        const token = tokenStorage.getAccessToken();
+        if (!token) {
+          // Wait for auth — the provider will re-mount or the user will log in
+          database.init();
+          setDb(database);
+          return;
+        }
+
+        await database.init();
+        await database.connect(connector);
+        connectedRef.current = true;
+
+        if (!disposed) {
+          setDb(database);
+          setStatus(prev => ({
+            ...prev,
+            isSyncing: false,
+            lastSyncTime: new Date(),
+            lastError: null,
+          }));
+        }
+      } catch (error) {
+        console.error('[PowerSync] Connection error:', error);
+        if (!disposed) {
+          setDb(database);
+          setStatus(prev => ({
+            ...prev,
+            isSyncing: false,
+            lastError: error instanceof Error ? error.message : 'Connection failed',
+          }));
+        }
+      }
+    }
+
+    connect();
+
+    return () => {
+      disposed = true;
+      // Don't disconnect the singleton — it persists across layout re-mounts
+    };
   }, []);
 
+  // Track sync status changes from the PowerSync database
+  useEffect(() => {
+    if (!db) return;
+
+    const unsubscribe = db.registerListener({
+      statusChanged: (newStatus) => {
+        setStatus(prev => ({
+          ...prev,
+          isSyncing: newStatus.dataFlowStatus?.downloading === true ||
+                     newStatus.dataFlowStatus?.uploading === true,
+          lastSyncTime: newStatus.lastSyncedAt ? new Date(newStatus.lastSyncedAt) : prev.lastSyncTime,
+          pendingChanges: newStatus.hasSynced === false ? prev.pendingChanges : 0,
+        }));
+      },
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [db]);
+
+  const triggerSync = useCallback(async () => {
+    if (!db || status.isSyncing) return;
+    try {
+      setStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
+      // Trigger an immediate sync cycle
+      await db.connect(new VitoraPowerSyncConnector());
+      setStatus(prev => ({ ...prev, isSyncing: false, lastSyncTime: new Date() }));
+    } catch (error) {
+      setStatus(prev => ({
+        ...prev,
+        isSyncing: false,
+        lastError: error instanceof Error ? error.message : 'Sync failed',
+      }));
+    }
+  }, [db, status.isSyncing]);
+
+  // Legacy callbacks — kept for backward compatibility with useAutoSave etc.
   const reportSync = useCallback(() => {
-    setStatus(prev => ({
-      ...prev,
-      lastSyncTime: new Date(),
-      isSyncing: false,
-      lastError: null,
-    }));
+    setStatus(prev => ({ ...prev, lastSyncTime: new Date(), isSyncing: false, lastError: null }));
   }, []);
 
   const reportSyncStart = useCallback(() => {
-    setStatus(prev => ({
-      ...prev,
-      isSyncing: true,
-      lastError: null,
-    }));
+    setStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
   }, []);
 
   const reportSyncError = useCallback((error: string) => {
-    setStatus(prev => ({
-      ...prev,
-      isSyncing: false,
-      lastError: error,
-    }));
+    setStatus(prev => ({ ...prev, isSyncing: false, lastError: error }));
   }, []);
 
   const incrementPending = useCallback(() => {
-    setStatus(prev => ({
-      ...prev,
-      pendingChanges: prev.pendingChanges + 1,
-    }));
+    setStatus(prev => ({ ...prev, pendingChanges: prev.pendingChanges + 1 }));
   }, []);
 
   const decrementPending = useCallback(() => {
-    setStatus(prev => ({
-      ...prev,
-      pendingChanges: Math.max(0, prev.pendingChanges - 1),
-    }));
+    setStatus(prev => ({ ...prev, pendingChanges: Math.max(0, prev.pendingChanges - 1) }));
   }, []);
 
   const setPendingCount = useCallback((count: number) => {
-    setStatus(prev => ({
-      ...prev,
-      pendingChanges: count,
-    }));
+    setStatus(prev => ({ ...prev, pendingChanges: count }));
+  }, []);
+
+  const setTriggerSync = useCallback((_fn: () => Promise<void>) => {
+    // No-op with PowerSync — sync is handled by the SDK
   }, []);
 
   const value = useMemo<SyncContextValue>(() => ({
     ...status,
+    db,
     reportSync,
     reportSyncStart,
     reportSyncError,
@@ -124,7 +215,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     setPendingCount,
     triggerSync,
     setTriggerSync,
-  }), [status, reportSync, reportSyncStart, reportSyncError, incrementPending, decrementPending, setPendingCount, triggerSync, setTriggerSync]);
+  }), [status, db, reportSync, reportSyncStart, reportSyncError, incrementPending, decrementPending, setPendingCount, triggerSync, setTriggerSync]);
 
   return (
     <SyncContext.Provider value={value}>
@@ -138,6 +229,7 @@ export function useSyncStatus(): SyncContextValue {
   if (!context) {
     // Return a default value for components outside the provider
     return {
+      db: null,
       lastSyncTime: null,
       isSyncing: false,
       pendingChanges: 0,

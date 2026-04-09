@@ -69,11 +69,15 @@ ENCRYPTION_KEY = os.getenv(
 )
 FIELD_ENCRYPTION_KEY = ENCRYPTION_KEY
 
-# Sync server configuration (for offline sync)
+# Sync server configuration (legacy offline sync — being replaced by PowerSync)
 SYNC_SERVER_URL = os.getenv("SYNC_SERVER_URL", "http://localhost:9088/api/sync")
 SYNC_ENABLED = os.getenv("SYNC_ENABLED", "false").lower() == "true"
 SYNC_BATCH_SIZE = int(os.getenv("SYNC_BATCH_SIZE", "100"))
 SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "3"))
+
+# PowerSync — offline-first data sync (set NEXT_PUBLIC_POWERSYNC_URL on the frontend)
+# In development, PowerSync is optional. Leave empty to use API-only mode.
+POWERSYNC_URL = os.getenv("POWERSYNC_URL", "")
 
 # Development-specific apps
 INSTALLED_APPS += ["django_extensions"]  # noqa: F405
