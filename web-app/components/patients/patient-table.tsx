@@ -36,6 +36,7 @@ import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
 import type { ViewMode } from '@/components/ui/view-toggle';
 import { useQuickConsultation } from '@/lib/hooks/use-encounters';
 import { useToast } from '@/lib/hooks/use-toast';
+import { PendingSyncBadge, isPendingSync } from '@/components/shared/pending-sync-badge';
 
 interface PatientTableProps {
   patients: Patient[];
@@ -257,7 +258,7 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
               {patient.first_name} {patient.last_name}
             </p>
             <p className="text-sm text-muted-foreground font-mono">
-              {patient.mrn}
+              {isPendingSync(patient.mrn) ? <PendingSyncBadge label="MRN pending" /> : patient.mrn}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -354,7 +355,9 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
           header: 'MRN',
           sortable: true,
           cell: (patient) => (
-            <span className="font-mono text-sm">{patient.mrn}</span>
+            <span className="font-mono text-sm">
+              {isPendingSync(patient.mrn) ? <PendingSyncBadge label="MRN pending" /> : patient.mrn}
+            </span>
           ),
         },
         {

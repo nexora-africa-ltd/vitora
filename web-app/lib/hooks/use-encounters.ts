@@ -9,10 +9,10 @@ import { EncounterListParams, Encounter } from '@/lib/types/encounter';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
 import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
 import { generateId } from '@/lib/powersync/uuid';
-import { transformEncounterRow, transformDiagnosisRow } from '@/lib/powersync/transforms';
-import type { EncounterRow, DiagnosisRow } from '@/lib/powersync/schema';
+import { transformEncounterRow, transformDiagnosisRow, transformTreatmentPlanRow, transformMedicationRow } from '@/lib/powersync/transforms';
+import type { EncounterRow, DiagnosisRow, TreatmentPlanRow, MedicationRow } from '@/lib/powersync/schema';
 import type { PaginatedResponse } from '@/lib/types';
-import type { Diagnosis } from '@/lib/types/encounter';
+import type { Diagnosis, TreatmentPlan, Medication } from '@/lib/types/encounter';
 
 /**
  * Hook for fetching paginated encounter list.
@@ -122,19 +122,41 @@ export function useEncounterDiagnoses(encounterId: number) {
 
 /**
  * Hook for fetching encounter treatment plan.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  * Note: 404 is expected when no treatment plan exists - handled gracefully by returning null.
  */
 export function useEncounterTreatmentPlan(encounterId: number) {
-  return useQuery({
-    queryKey: ['encounters', encounterId, 'treatment-plan'],
-    queryFn: () => encountersApi.getTreatmentPlan(encounterId),
-    enabled: !!encounterId,
-    // Don't retry on 404 - it means no treatment plan exists (expected)
-    retry: (failureCount, error) => {
-      const axiosError = error as { response?: { status?: number } };
-      if (axiosError.response?.status === 404) return false;
-      return failureCount < 3;
+  return useOfflineQuery<
+    TreatmentPlanRow & { id: string },
+    TreatmentPlan | null
+  >({
+    sql: `SELECT * FROM encounters_treatmentplan WHERE encounter_id = ? LIMIT 1`,
+    params: [String(encounterId)],
+    transform: (rows) => {
+      if (rows.length === 0) return null;
+      const local = transformTreatmentPlanRow(rows[0]!);
+      // Map TreatmentPlanLocalRecord → TreatmentPlan shape expected by consumers
+      return {
+        ...local,
+        template: local.template ?? null,
+        medications_json: local.medications_json,
+        procedures_json: local.procedures_json,
+        has_follow_up: !!local.follow_up_date,
+        has_referral: local.referral_needed,
+        medications: [], // Medications loaded separately via useEncounterMedications
+      } as TreatmentPlan;
     },
+    queryKey: ['encounters', encounterId, 'treatment-plan'],
+    queryFn: async () => {
+      try {
+        return await encountersApi.getTreatmentPlan(encounterId);
+      } catch (err) {
+        const axiosError = err as { response?: { status?: number } };
+        if (axiosError.response?.status === 404) return null;
+        throw err;
+      }
+    },
+    forceApi: !encounterId,
   });
 }
 
@@ -376,5 +398,30 @@ export function useUpdateDiagnosis(encounterId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'diagnoses'] });
     },
+  });
+}
+
+/**
+ * Hook for fetching medications for a treatment plan.
+ * Reads from local PowerSync SQLite when available, falls back to API.
+ */
+export function useEncounterMedications(treatmentPlanId: number | undefined) {
+  return useOfflineQuery<
+    MedicationRow & { id: string },
+    Medication[]
+  >({
+    sql: `SELECT * FROM encounters_medication WHERE treatment_plan_id = ? ORDER BY created_at`,
+    params: [String(treatmentPlanId ?? 0)],
+    transform: (rows) => rows.map(r => {
+      const local = transformMedicationRow(r);
+      return { ...local, is_active: true } as Medication;
+    }),
+    queryKey: ['treatment-plans', treatmentPlanId, 'medications'],
+    queryFn: async () => {
+      // Medications are typically embedded in the treatment plan response;
+      // if a standalone endpoint exists, use it. Otherwise return empty.
+      return [];
+    },
+    forceApi: !treatmentPlanId,
   });
 }

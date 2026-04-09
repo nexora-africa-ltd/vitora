@@ -11,6 +11,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
+import { OfflineBanner } from '@/components/shared/offline-banner';
 import { cn } from '@/lib/utils/cn';
 import { usePageContextForAI } from '@/lib/hooks/use-page-context-for-ai';
 import { useSwipeSidebar } from '@/lib/hooks/use-swipe-sidebar';
@@ -80,6 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Page content */}
                 <main className="min-h-[calc(100vh-4rem)] p-4 pb-28 md:p-6 md:pb-28 xl:p-8 xl:pb-8">
+                  <OfflineBanner />
                   <MFAGraceBanner />
                   <RouteGuard>{children}</RouteGuard>
                 </main>
