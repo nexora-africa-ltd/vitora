@@ -78,11 +78,11 @@ export function FacilitySwitcher() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           role="combobox"
           aria-expanded={open}
           aria-label="Switch facility"
-          className="hidden sm:flex items-center gap-1.5 h-9 px-2.5 text-xs max-w-[160px] xl:max-w-[220px]"
+          className="hidden sm:flex items-center gap-1.5 h-9 px-2.5 text-xs max-w-[160px] xl:max-w-[220px] border border-border/40"
         >
           <Building2 className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{facility.name}</span>
