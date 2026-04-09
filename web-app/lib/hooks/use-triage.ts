@@ -12,6 +12,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { consultationQueueKeys } from '@/lib/hooks/use-consultation-queue';
 import { triageApi, type TriageAssessmentUpdateData } from '@/lib/api/triage';
+import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { transformTriageRow } from '@/lib/powersync/transforms';
+import type { TriageAssessmentRow } from '@/lib/powersync/schema';
 import type {
   TriageAssessment,
   TriageAssessmentCreateData,
@@ -177,38 +180,56 @@ interface WaitTimeStatsResponse {
 }
 
 // =============================================================================
-// TRIAGE ASSESSMENT HOOKS
+// TRIAGE ASSESSMENT HOOKS — Dual-mode: PowerSync + API fallback
 // =============================================================================
 
+type TriageJoinedRow = TriageAssessmentRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string };
+
 /**
- * Fetch a single triage assessment by ID
+ * Fetch a single triage assessment by ID.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useTriageAssessment(id: number | undefined) {
-  return useQuery({
+  return useOfflineQuery<TriageJoinedRow, TriageAssessment>({
+    sql: `SELECT t.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM triage_triageassessment t
+      LEFT JOIN encounters_encounter e ON t.encounter_id = e.id
+      LEFT JOIN patients_patient p ON e.patient_id = p.id
+      WHERE t.id = ?`,
+    params: [String(id ?? 0)],
+    transform: (rows) => {
+      if (rows.length === 0) throw new Error(`Triage assessment ${id} not found`);
+      return transformTriageRow(rows[0]!) as unknown as TriageAssessment;
+    },
     queryKey: triageKeys.assessment(id!),
     queryFn: async () => {
       const response = await apiClient.get<TriageAssessment>(`/api/triage/assessments/${id}/`);
       return response.data;
     },
-    enabled: !!id,
+    forceApi: !id,
   });
 }
 
 /**
  * Fetch triage assessment by encounter ID.
- * Returns the first (and should be only) assessment for a given encounter.
- * Useful for checking if an encounter has already been triaged.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useTriageAssessmentByEncounter(encounterId: number | undefined) {
-  return useQuery({
+  return useOfflineQuery<TriageJoinedRow, TriageAssessment | null>({
+    sql: `SELECT t.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM triage_triageassessment t
+      LEFT JOIN encounters_encounter e ON t.encounter_id = e.id
+      LEFT JOIN patients_patient p ON e.patient_id = p.id
+      WHERE t.encounter_id = ?
+      LIMIT 1`,
+    params: [String(encounterId ?? 0)],
+    transform: (rows) => rows.length > 0 ? transformTriageRow(rows[0]!) as unknown as TriageAssessment : null,
     queryKey: triageKeys.assessmentByEncounter(encounterId!),
     queryFn: async () => {
       try {
         const response = await triageApi.listAssessments({ encounter: encounterId });
-        // OneToOne relationship means at most 1 result
         return response.results?.[0] ?? null;
       } catch (error) {
-        // Log detailed error for debugging
         console.error('[useTriageAssessmentByEncounter] Failed to check for existing assessment:', {
           encounterId,
           error: error instanceof Error ? error.message : String(error),
@@ -216,9 +237,7 @@ export function useTriageAssessmentByEncounter(encounterId: number | undefined) 
         throw error;
       }
     },
-    enabled: !!encounterId,
-    // Retry once in case of transient network issues
-    retry: 1,
+    forceApi: !encounterId,
   });
 }
 

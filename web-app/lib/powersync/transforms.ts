@@ -223,6 +223,303 @@ export function transformEncounterRow(
 }
 
 // ---------------------------------------------------------------------------
+// Triage Assessment Transformer
+// ---------------------------------------------------------------------------
+
+export interface TriageAssessmentLocalRecord {
+  id: number;
+  facility_id: number;
+  encounter_id: number;
+  chief_complaint: string;
+  chief_complaint_category?: string;
+  pain_score?: number;
+  mental_status?: string;
+  gcs_eye?: number;
+  gcs_verbal?: number;
+  gcs_motor?: number;
+  mobility?: string;
+  arrival_mode?: string;
+  spo2?: number;
+  heart_rate?: number;
+  systolic_bp?: number;
+  diastolic_bp?: number;
+  temperature?: number;
+  respiratory_rate?: number;
+  weight?: number;
+  height?: number;
+  triage_category?: string;
+  auto_calculated_category?: string;
+  assigned_area?: string;
+  arrival_time?: string;
+  triage_start_time?: string;
+  triage_end_time?: string;
+  triaged_by: number;
+  created_at: string;
+  updated_at: string;
+  // JOINed fields
+  patient_name?: string;
+  patient_mrn?: string;
+}
+
+export function transformTriageRow(
+  row: TriageAssessmentRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string }
+): TriageAssessmentLocalRecord {
+  return {
+    id: toNumericId(row.id),
+    facility_id: toNumericId(row.facility_id as string),
+    encounter_id: toNumericId(row.encounter_id as string),
+    chief_complaint: (row.chief_complaint as string) || '',
+    chief_complaint_category: (row.chief_complaint_category as string) || undefined,
+    pain_score: row.pain_score as number | undefined,
+    mental_status: (row.mental_status as string) || undefined,
+    gcs_eye: row.gcs_eye as number | undefined,
+    gcs_verbal: row.gcs_verbal as number | undefined,
+    gcs_motor: row.gcs_motor as number | undefined,
+    mobility: (row.mobility as string) || undefined,
+    arrival_mode: (row.arrival_mode as string) || undefined,
+    spo2: row.spo2 as number | undefined,
+    heart_rate: row.heart_rate as number | undefined,
+    systolic_bp: row.systolic_bp as number | undefined,
+    diastolic_bp: row.diastolic_bp as number | undefined,
+    temperature: row.temperature as number | undefined,
+    respiratory_rate: row.respiratory_rate as number | undefined,
+    weight: row.weight as number | undefined,
+    height: row.height as number | undefined,
+    triage_category: (row.triage_category as string) || undefined,
+    auto_calculated_category: (row.auto_calculated_category as string) || undefined,
+    assigned_area: (row.assigned_area as string) || undefined,
+    arrival_time: (row.arrival_time as string) || undefined,
+    triage_start_time: (row.triage_start_time as string) || undefined,
+    triage_end_time: (row.triage_end_time as string) || undefined,
+    triaged_by: toNumericId(row.triaged_by_id as string),
+    created_at: (row.created_at as string) || '',
+    updated_at: (row.updated_at as string) || '',
+    patient_name: row.patient_first_name && row.patient_last_name
+      ? `${row.patient_first_name} ${row.patient_last_name}`
+      : undefined,
+    patient_mrn: (row.patient_mrn as string) || undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Diagnosis Transformer
+// ---------------------------------------------------------------------------
+
+export interface DiagnosisLocalRecord {
+  id: number;
+  encounter_id: number;
+  icd10_code_id?: number;
+  icd11_code?: string;
+  icd11_display?: string;
+  snomed_code?: string;
+  snomed_display?: string;
+  diagnosis_type: string;
+  free_text_diagnosis?: string;
+  notes?: string;
+  is_confirmed: boolean;
+  certainty?: string;
+  diagnosed_by: number;
+  diagnosed_at?: string;
+  created_at: string;
+  updated_at: string;
+  // JOINed ICD-10 fields
+  icd10_code?: string;
+  icd10_description?: string;
+}
+
+export function transformDiagnosisRow(
+  row: DiagnosisRow & { id: string; icd10_code_text?: string; icd10_short_description?: string }
+): DiagnosisLocalRecord {
+  return {
+    id: toNumericId(row.id),
+    encounter_id: toNumericId(row.encounter_id as string),
+    icd10_code_id: row.icd10_code_id ? toNumericId(row.icd10_code_id as string) : undefined,
+    icd11_code: (row.icd11_code as string) || undefined,
+    icd11_display: (row.icd11_display as string) || undefined,
+    snomed_code: (row.snomed_code as string) || undefined,
+    snomed_display: (row.snomed_display as string) || undefined,
+    diagnosis_type: (row.diagnosis_type as string) || '',
+    free_text_diagnosis: (row.free_text_diagnosis as string) || undefined,
+    notes: (row.notes as string) || undefined,
+    is_confirmed: toBool(row.is_confirmed as number),
+    certainty: (row.certainty as string) || undefined,
+    diagnosed_by: toNumericId(row.diagnosed_by_id as string),
+    diagnosed_at: (row.diagnosed_at as string) || undefined,
+    created_at: (row.created_at as string) || '',
+    updated_at: (row.updated_at as string) || '',
+    icd10_code: (row.icd10_code_text as string) || undefined,
+    icd10_description: (row.icd10_short_description as string) || undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Prescription Transformer
+// ---------------------------------------------------------------------------
+
+export interface PrescriptionLocalRecord {
+  id: number;
+  prescription_number: string;
+  facility_id: number;
+  encounter_id?: number;
+  patient_id: number;
+  prescribed_by: number;
+  prescribed_at?: string;
+  valid_until?: string;
+  status: string;
+  dispensing_type?: string;
+  is_discharge_medication: boolean;
+  clinical_notes?: string;
+  created_at: string;
+  updated_at: string;
+  // JOINed fields
+  patient_name?: string;
+  patient_mrn?: string;
+}
+
+export function transformPrescriptionRow(
+  row: PrescriptionRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string }
+): PrescriptionLocalRecord {
+  return {
+    id: toNumericId(row.id),
+    prescription_number: (row.prescription_number as string) || '',
+    facility_id: toNumericId(row.facility_id as string),
+    encounter_id: row.encounter_id ? toNumericId(row.encounter_id as string) : undefined,
+    patient_id: toNumericId(row.patient_id as string),
+    prescribed_by: toNumericId(row.prescribed_by_id as string),
+    prescribed_at: (row.prescribed_at as string) || undefined,
+    valid_until: (row.valid_until as string) || undefined,
+    status: (row.status as string) || '',
+    dispensing_type: (row.dispensing_type as string) || undefined,
+    is_discharge_medication: toBool(row.is_discharge_medication as number),
+    clinical_notes: (row.clinical_notes as string) || undefined,
+    created_at: (row.created_at as string) || '',
+    updated_at: (row.updated_at as string) || '',
+    patient_name: row.patient_first_name && row.patient_last_name
+      ? `${row.patient_first_name} ${row.patient_last_name}`
+      : undefined,
+    patient_mrn: (row.patient_mrn as string) || undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Lab Order Transformer
+// ---------------------------------------------------------------------------
+
+export interface LabOrderLocalRecord {
+  id: number;
+  order_number: string;
+  facility_id: number;
+  patient_id: number;
+  encounter_id?: number;
+  ordered_by: number;
+  order_type?: string;
+  priority?: string;
+  clinical_notes?: string;
+  status: string;
+  specimen_collected: boolean;
+  specimen_collected_at?: string;
+  sample_type?: string;
+  total_cost?: number;
+  is_paid: boolean;
+  ordered_at?: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
+  // JOINed fields
+  patient_name?: string;
+  patient_mrn?: string;
+}
+
+export function transformLabOrderRow(
+  row: LabOrderRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string }
+): LabOrderLocalRecord {
+  return {
+    id: toNumericId(row.id),
+    order_number: (row.order_number as string) || '',
+    facility_id: toNumericId(row.facility_id as string),
+    patient_id: toNumericId(row.patient_id as string),
+    encounter_id: row.encounter_id ? toNumericId(row.encounter_id as string) : undefined,
+    ordered_by: toNumericId(row.ordered_by_id as string),
+    order_type: (row.order_type as string) || undefined,
+    priority: (row.priority as string) || undefined,
+    clinical_notes: (row.clinical_notes as string) || undefined,
+    status: (row.status as string) || '',
+    specimen_collected: toBool(row.specimen_collected as number),
+    specimen_collected_at: (row.specimen_collected_at as string) || undefined,
+    sample_type: (row.sample_type as string) || undefined,
+    total_cost: row.total_cost as number | undefined,
+    is_paid: toBool(row.is_paid as number),
+    ordered_at: (row.ordered_at as string) || undefined,
+    completed_at: (row.completed_at as string) || undefined,
+    created_at: (row.created_at as string) || '',
+    updated_at: (row.updated_at as string) || '',
+    patient_name: row.patient_first_name && row.patient_last_name
+      ? `${row.patient_first_name} ${row.patient_last_name}`
+      : undefined,
+    patient_mrn: (row.patient_mrn as string) || undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Invoice Transformer
+// ---------------------------------------------------------------------------
+
+export interface InvoiceLocalRecord {
+  id: number;
+  invoice_number: string;
+  facility_id: number;
+  patient_id: number;
+  encounter_id?: number;
+  status: string;
+  payment_type?: string;
+  invoice_date?: string;
+  due_date?: string;
+  subtotal?: number;
+  tax_amount?: number;
+  discount_amount?: number;
+  total_amount?: number;
+  amount_paid?: number;
+  balance_due?: number;
+  insurance_provider?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // JOINed fields
+  patient_name?: string;
+  patient_mrn?: string;
+}
+
+export function transformInvoiceRow(
+  row: InvoiceRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string }
+): InvoiceLocalRecord {
+  return {
+    id: toNumericId(row.id),
+    invoice_number: (row.invoice_number as string) || '',
+    facility_id: toNumericId(row.facility_id as string),
+    patient_id: toNumericId(row.patient_id as string),
+    encounter_id: row.encounter_id ? toNumericId(row.encounter_id as string) : undefined,
+    status: (row.status as string) || '',
+    payment_type: (row.payment_type as string) || undefined,
+    invoice_date: (row.invoice_date as string) || undefined,
+    due_date: (row.due_date as string) || undefined,
+    subtotal: row.subtotal as number | undefined,
+    tax_amount: row.tax_amount as number | undefined,
+    discount_amount: row.discount_amount as number | undefined,
+    total_amount: row.total_amount as number | undefined,
+    amount_paid: row.amount_paid as number | undefined,
+    balance_due: row.balance_due as number | undefined,
+    insurance_provider: (row.insurance_provider as string) || undefined,
+    notes: (row.notes as string) || undefined,
+    created_at: (row.created_at as string) || '',
+    updated_at: (row.updated_at as string) || '',
+    patient_name: row.patient_first_name && row.patient_last_name
+      ? `${row.patient_first_name} ${row.patient_last_name}`
+      : undefined,
+    patient_mrn: (row.patient_mrn as string) || undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Re-export types and helpers for convenience
 // ---------------------------------------------------------------------------
 

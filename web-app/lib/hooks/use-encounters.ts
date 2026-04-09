@@ -1,16 +1,61 @@
 /**
  * React hooks for encounter data fetching and mutations.
+ * Dual-mode: PowerSync (local SQLite) with React Query API fallback.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { encountersApi, PreTriageQueueParams } from '@/lib/api/encounters';
 import { EncounterListParams, Encounter } from '@/lib/types/encounter';
+import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { transformEncounterRow, transformDiagnosisRow } from '@/lib/powersync/transforms';
+import type { EncounterRow, DiagnosisRow } from '@/lib/powersync/schema';
+import type { PaginatedResponse } from '@/lib/types';
+import type { Diagnosis } from '@/lib/types/encounter';
 
 /**
  * Hook for fetching paginated encounter list.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useEncounters(params?: EncounterListParams) {
-  return useQuery({
+  const limit = params?.page_size || 20;
+  const offset = ((params?.page || 1) - 1) * limit;
+
+  const conditions: string[] = [];
+  const sqlParams: (string | number | null)[] = [];
+
+  if (params?.patient) {
+    conditions.push('e.patient_id = ?');
+    sqlParams.push(String(params.patient));
+  }
+  if (params?.encounter_type) {
+    conditions.push('e.encounter_type = ?');
+    sqlParams.push(params.encounter_type);
+  }
+  if (params?.search) {
+    conditions.push('(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR e.chief_complaint LIKE ?)');
+    const pattern = `%${params.search}%`;
+    sqlParams.push(pattern, pattern, pattern, pattern);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  return useOfflineQuery<
+    EncounterRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string },
+    PaginatedResponse<Encounter>
+  >({
+    sql: `SELECT e.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM encounters_encounter e
+      LEFT JOIN patients_patient p ON e.patient_id = p.id
+      ${whereClause}
+      ORDER BY e.encounter_date DESC
+      LIMIT ? OFFSET ?`,
+    params: [...sqlParams, limit, offset],
+    transform: (rows) => ({
+      count: rows.length < limit ? offset + rows.length : offset + limit + 1,
+      next: null,
+      previous: null,
+      results: rows.map(r => transformEncounterRow(r) as unknown as Encounter),
+    }),
     queryKey: ['encounters', params],
     queryFn: () => encountersApi.list(params),
   });
@@ -18,12 +63,25 @@ export function useEncounters(params?: EncounterListParams) {
 
 /**
  * Hook for fetching a single encounter.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useEncounter(id: number) {
-  return useQuery({
+  return useOfflineQuery<
+    EncounterRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string },
+    Encounter
+  >({
+    sql: `SELECT e.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM encounters_encounter e
+      LEFT JOIN patients_patient p ON e.patient_id = p.id
+      WHERE e.id = ?`,
+    params: [String(id)],
+    transform: (rows) => {
+      if (rows.length === 0) throw new Error(`Encounter ${id} not found`);
+      return transformEncounterRow(rows[0]!) as unknown as Encounter;
+    },
     queryKey: ['encounters', id],
     queryFn: () => encountersApi.get(id),
-    enabled: !!id,
+    forceApi: !id,
   });
 }
 
@@ -40,12 +98,23 @@ export function useEncounterClinicalSnapshot(encounterId: number) {
 
 /**
  * Hook for fetching encounter diagnoses.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useEncounterDiagnoses(encounterId: number) {
-  return useQuery({
+  return useOfflineQuery<
+    DiagnosisRow & { id: string; icd10_code_text?: string; icd10_short_description?: string },
+    Diagnosis[]
+  >({
+    sql: `SELECT d.*, i.code as icd10_code_text, i.short_description as icd10_short_description
+      FROM encounters_diagnosis d
+      LEFT JOIN encounters_icd10code i ON d.icd10_code_id = i.id
+      WHERE d.encounter_id = ?
+      ORDER BY d.created_at`,
+    params: [String(encounterId)],
+    transform: (rows) => rows.map(r => transformDiagnosisRow(r) as unknown as Diagnosis),
     queryKey: ['encounters', encounterId, 'diagnoses'],
     queryFn: () => encountersApi.getDiagnoses(encounterId),
-    enabled: !!encounterId,
+    forceApi: !encounterId,
   });
 }
 

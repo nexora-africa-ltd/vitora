@@ -1,5 +1,6 @@
 /**
  * React hooks for laboratory data fetching and mutations.
+ * Dual-mode: PowerSync (local SQLite) with React Query API fallback.
  * Sprint 1.5-1.6 Track B: Lab Workflow
  */
 
@@ -19,6 +20,10 @@ import {
   DiagnosticReportCreateData,
   DiagnosticReportStatus,
 } from '@/lib/types/laboratory';
+import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { transformLabOrderRow } from '@/lib/powersync/transforms';
+import type { LabOrderRow } from '@/lib/powersync/schema';
+import type { PaginatedResponse } from '@/lib/types';
 
 // ============ Test Catalog Hooks ============
 
@@ -54,13 +59,55 @@ export function useTestSearch(query: string) {
   });
 }
 
-// ============ Lab Order Hooks ============
+// ============ Lab Order Hooks — Dual-mode: PowerSync + API fallback ============
+
+type LabOrderJoinedRow = LabOrderRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string };
 
 /**
  * Hook for fetching paginated lab orders.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useLabOrders(params?: LabOrderListParams) {
-  return useQuery({
+  const limit = params?.page_size || 20;
+  const offset = ((params?.page || 1) - 1) * limit;
+
+  const conditions: string[] = [];
+  const sqlParams: (string | number | null)[] = [];
+
+  if (params?.status) {
+    conditions.push('lo.status = ?');
+    sqlParams.push(params.status);
+  }
+  if (params?.patient) {
+    conditions.push('lo.patient_id = ?');
+    sqlParams.push(String(params.patient));
+  }
+  if (params?.priority) {
+    conditions.push('lo.priority = ?');
+    sqlParams.push(params.priority);
+  }
+  if (params?.search) {
+    conditions.push('(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR lo.order_number LIKE ?)');
+    const pattern = `%${params.search}%`;
+    sqlParams.push(pattern, pattern, pattern, pattern);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  return useOfflineQuery<LabOrderJoinedRow, PaginatedResponse<LabOrder>>({
+    sql: `SELECT lo.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM laboratory_laborder lo
+      LEFT JOIN patients_patient p ON lo.patient_id = p.id
+      ${whereClause}
+      ORDER BY lo.created_at DESC
+      LIMIT ? OFFSET ?`,
+    params: [...sqlParams, limit, offset],
+    transform: (rows) => ({
+      count: rows.length < limit ? offset + rows.length : offset + limit + 1,
+      next: null,
+      previous: null,
+      results: rows.map(r => transformLabOrderRow(r) as unknown as LabOrder),
+    }),
     queryKey: ['lab-orders', params],
     queryFn: () => laboratoryApi.listOrders(params),
   });
@@ -68,40 +115,60 @@ export function useLabOrders(params?: LabOrderListParams) {
 
 /**
  * Hook for fetching a single lab order.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useLabOrder(orderNumber: string) {
-  return useQuery({
+  return useOfflineQuery<LabOrderJoinedRow, LabOrder>({
+    sql: `SELECT lo.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM laboratory_laborder lo
+      LEFT JOIN patients_patient p ON lo.patient_id = p.id
+      WHERE lo.order_number = ?`,
+    params: [orderNumber],
+    transform: (rows) => {
+      if (rows.length === 0) throw new Error(`Lab order ${orderNumber} not found`);
+      return transformLabOrderRow(rows[0]!) as unknown as LabOrder;
+    },
     queryKey: ['lab-orders', orderNumber],
     queryFn: () => laboratoryApi.getOrder(orderNumber),
-    enabled: !!orderNumber,
+    forceApi: !orderNumber,
   });
 }
 
 /**
  * Hook for fetching lab orders for a patient.
- * Polls every 30 seconds to detect new results.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePatientLabOrders(patientId: number) {
-  return useQuery({
+  return useOfflineQuery<LabOrderJoinedRow, LabOrder[]>({
+    sql: `SELECT lo.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM laboratory_laborder lo
+      LEFT JOIN patients_patient p ON lo.patient_id = p.id
+      WHERE lo.patient_id = ?
+      ORDER BY lo.created_at DESC`,
+    params: [String(patientId)],
+    transform: (rows) => rows.map(r => transformLabOrderRow(r) as unknown as LabOrder),
     queryKey: ['patients', patientId, 'lab-orders'],
     queryFn: () => laboratoryApi.getPatientOrders(patientId),
-    enabled: !!patientId,
-    refetchInterval: 30000, // Check for new results every 30 seconds
-    refetchIntervalInBackground: false,
+    forceApi: !patientId,
   });
 }
 
 /**
  * Hook for fetching lab orders for an encounter.
- * Polls every 30 seconds to detect new results.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useEncounterLabOrders(encounterId: number) {
-  return useQuery({
+  return useOfflineQuery<LabOrderJoinedRow, LabOrder[]>({
+    sql: `SELECT lo.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM laboratory_laborder lo
+      LEFT JOIN patients_patient p ON lo.patient_id = p.id
+      WHERE lo.encounter_id = ?
+      ORDER BY lo.created_at DESC`,
+    params: [String(encounterId)],
+    transform: (rows) => rows.map(r => transformLabOrderRow(r) as unknown as LabOrder),
     queryKey: ['encounters', encounterId, 'lab-orders'],
     queryFn: () => laboratoryApi.getEncounterOrders(encounterId),
-    enabled: !!encounterId,
-    refetchInterval: 30000, // Check for new results every 30 seconds
-    refetchIntervalInBackground: false,
+    forceApi: !encounterId,
   });
 }
 
