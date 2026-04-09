@@ -295,8 +295,8 @@ export function CommandMenuTrigger() {
 
   return (
     <Button
-      variant="outline"
-      className="hidden md:inline-flex items-center gap-2 text-sm text-muted-foreground w-48 lg:w-56 xl:w-64 justify-start"
+      variant="ghost"
+      className="hidden md:inline-flex items-center gap-2 text-sm text-muted-foreground w-48 lg:w-56 xl:w-64 justify-start border border-border/40"
       onClick={() => {
         document.dispatchEvent(
           new KeyboardEvent('keydown', { key: 'k', metaKey: true })
