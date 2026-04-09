@@ -14,7 +14,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { PowerSyncDatabase } from '@powersync/web';
 import { powersyncSchema } from '@/lib/powersync/schema';
-import { VitoraPowerSyncConnector } from '@/lib/powersync/connector';
+import { VitoraPowerSyncConnector, onSyncUploadEvent } from '@/lib/powersync/connector';
 import { tokenStorage } from '@/lib/auth/storage';
 
 export interface SyncStatus {
@@ -156,7 +156,6 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           isSyncing: newStatus.dataFlowStatus?.downloading === true ||
                      newStatus.dataFlowStatus?.uploading === true,
           lastSyncTime: newStatus.lastSyncedAt ? new Date(newStatus.lastSyncedAt) : prev.lastSyncTime,
-          pendingChanges: newStatus.hasSynced === false ? prev.pendingChanges : 0,
         }));
       },
     });
@@ -165,6 +164,65 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       unsubscribe?.();
     };
   }, [db]);
+
+  // Poll the CRUD upload queue for an accurate pending changes count.
+  // PowerSync's ps_crud table holds local writes until the connector uploads them.
+  useEffect(() => {
+    if (!db) return;
+
+    let disposed = false;
+
+    async function pollCrudCount() {
+      try {
+        const result = await db!.getAll<{ cnt: number }>(
+          'SELECT COUNT(*) as cnt FROM ps_crud'
+        );
+        const count = result[0]?.cnt ?? 0;
+        if (!disposed) {
+          setStatus(prev =>
+            prev.pendingChanges !== count
+              ? { ...prev, pendingChanges: count }
+              : prev
+          );
+        }
+      } catch {
+        // ps_crud may not exist if PowerSync hasn't initialized upload queue
+      }
+    }
+
+    // Initial poll
+    pollCrudCount();
+
+    // Re-poll when any local table changes (covers inserts, uploads completing)
+    const abortController = new AbortController();
+    db.onChange(
+      { onChange: () => { if (!disposed) pollCrudCount(); } },
+      { signal: abortController.signal },
+    );
+
+    return () => {
+      disposed = true;
+      abortController.abort();
+    };
+  }, [db]);
+
+  // Surface upload errors from the connector's event bus
+  useEffect(() => {
+    const unsubscribe = onSyncUploadEvent((event) => {
+      if (event.type === 'upload_error') {
+        setStatus(prev => ({
+          ...prev,
+          lastError: `Sync error (${event.table}): ${event.message}`,
+        }));
+      } else if (event.type === 'upload_success') {
+        // Clear error on next successful upload
+        setStatus(prev =>
+          prev.lastError ? { ...prev, lastError: null } : prev
+        );
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const triggerSync = useCallback(async () => {
     if (!db || status.isSyncing) return;

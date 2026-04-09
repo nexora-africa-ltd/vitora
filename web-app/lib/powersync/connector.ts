@@ -20,6 +20,28 @@ import { apiClient } from '@/lib/api/client';
 /** URL of the PowerSync service (Cloud or self-hosted). */
 const POWERSYNC_URL = process.env.NEXT_PUBLIC_POWERSYNC_URL || '';
 
+// ---------------------------------------------------------------------------
+// Upload event bus — lets SyncProvider react to upload successes/failures
+// without coupling the connector to React context.
+// ---------------------------------------------------------------------------
+
+export type SyncUploadEvent =
+  | { type: 'upload_success'; table: string }
+  | { type: 'upload_error'; table: string; message: string; permanent: boolean };
+
+type SyncUploadListener = (event: SyncUploadEvent) => void;
+const _listeners = new Set<SyncUploadListener>();
+
+/** Subscribe to upload events. Returns an unsubscribe function. */
+export function onSyncUploadEvent(listener: SyncUploadListener): () => void {
+  _listeners.add(listener);
+  return () => { _listeners.delete(listener); };
+}
+
+function emitSyncEvent(event: SyncUploadEvent) {
+  _listeners.forEach(fn => fn(event));
+}
+
 /**
  * Map PowerSync table names back to Django REST API endpoints.
  * Only tables that support client-side writes need entries here.
@@ -101,19 +123,26 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
         await this.uploadCrudEntry(entry);
       }
       await transaction.complete();
+      const table = transaction.crud[0]?.table ?? 'unknown';
+      emitSyncEvent({ type: 'upload_success', table });
     } catch (error: unknown) {
+      const table = transaction.crud[0]?.table ?? 'unknown';
+      const message = error instanceof Error ? error.message : 'Upload failed';
+
       // If it's a permanent error (4xx), discard the entry to avoid infinite retries
       if (error instanceof Error && 'status' in error) {
         const status = (error as { status: number }).status;
         if (status >= 400 && status < 500 && status !== 401 && status !== 429) {
           console.error(
-            `[PowerSync] Permanent error uploading ${transaction.crud[0]?.table}:`,
+            `[PowerSync] Permanent error uploading ${table}:`,
             error
           );
+          emitSyncEvent({ type: 'upload_error', table, message, permanent: true });
           await transaction.complete();
           return;
         }
       }
+      emitSyncEvent({ type: 'upload_error', table, message, permanent: false });
       throw error; // Retryable — let PowerSync handle backoff
     }
   }
