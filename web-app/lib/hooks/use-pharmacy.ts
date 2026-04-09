@@ -1,5 +1,6 @@
 /**
  * React hooks for pharmacy data fetching and mutations.
+ * Dual-mode: PowerSync (local SQLite) with React Query API fallback.
  * Sprint 1.3-1.4 Track A: Pharmacy Module
  */
 
@@ -17,6 +18,11 @@ import {
   DispensingCreateData,
   StockAdjustmentCreateData,
 } from '@/lib/types/pharmacy';
+import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { transformPrescriptionRow } from '@/lib/powersync/transforms';
+import type { PrescriptionRow } from '@/lib/powersync/schema';
+import type { PaginatedResponse } from '@/lib/types';
+import type { Prescription } from '@/lib/types/pharmacy';
 
 // ============ Drug Hooks ============
 
@@ -224,13 +230,51 @@ export function useResolveAlert() {
   });
 }
 
-// ============ Prescription Hooks ============
+// ============ Prescription Hooks — Dual-mode: PowerSync + API fallback ============
+
+type PrescriptionJoinedRow = PrescriptionRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string };
 
 /**
  * Hook for fetching paginated prescriptions.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePrescriptions(params?: PrescriptionListParams) {
-  return useQuery({
+  const limit = params?.page_size || 20;
+  const offset = ((params?.page || 1) - 1) * limit;
+
+  const conditions: string[] = [];
+  const sqlParams: (string | number | null)[] = [];
+
+  if (params?.status) {
+    conditions.push('rx.status = ?');
+    sqlParams.push(params.status);
+  }
+  if (params?.patient) {
+    conditions.push('rx.patient_id = ?');
+    sqlParams.push(String(params.patient));
+  }
+  if (params?.search) {
+    conditions.push('(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ? OR rx.prescription_number LIKE ?)');
+    const pattern = `%${params.search}%`;
+    sqlParams.push(pattern, pattern, pattern, pattern);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  return useOfflineQuery<PrescriptionJoinedRow, PaginatedResponse<Prescription>>({
+    sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM pharmacy_prescription rx
+      LEFT JOIN patients_patient p ON rx.patient_id = p.id
+      ${whereClause}
+      ORDER BY rx.created_at DESC
+      LIMIT ? OFFSET ?`,
+    params: [...sqlParams, limit, offset],
+    transform: (rows) => ({
+      count: rows.length < limit ? offset + rows.length : offset + limit + 1,
+      next: null,
+      previous: null,
+      results: rows.map(r => transformPrescriptionRow(r) as unknown as Prescription),
+    }),
     queryKey: ['prescriptions', params],
     queryFn: () => pharmacyApi.listPrescriptions(params),
   });
@@ -238,34 +282,60 @@ export function usePrescriptions(params?: PrescriptionListParams) {
 
 /**
  * Hook for fetching a single prescription.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePrescription(id: number) {
-  return useQuery({
+  return useOfflineQuery<PrescriptionJoinedRow, Prescription>({
+    sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM pharmacy_prescription rx
+      LEFT JOIN patients_patient p ON rx.patient_id = p.id
+      WHERE rx.id = ?`,
+    params: [String(id)],
+    transform: (rows) => {
+      if (rows.length === 0) throw new Error(`Prescription ${id} not found`);
+      return transformPrescriptionRow(rows[0]!) as unknown as Prescription;
+    },
     queryKey: ['prescriptions', id],
     queryFn: () => pharmacyApi.getPrescription(id),
-    enabled: !!id,
+    forceApi: !id,
   });
 }
 
 /**
  * Hook for fetching patient prescriptions.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePatientPrescriptions(patientId: number) {
-  return useQuery({
+  return useOfflineQuery<PrescriptionJoinedRow, Prescription[]>({
+    sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM pharmacy_prescription rx
+      LEFT JOIN patients_patient p ON rx.patient_id = p.id
+      WHERE rx.patient_id = ?
+      ORDER BY rx.created_at DESC`,
+    params: [String(patientId)],
+    transform: (rows) => rows.map(r => transformPrescriptionRow(r) as unknown as Prescription),
     queryKey: ['patients', patientId, 'prescriptions'],
     queryFn: () => pharmacyApi.getPatientPrescriptions(patientId),
-    enabled: !!patientId,
+    forceApi: !patientId,
   });
 }
 
 /**
  * Hook for fetching encounter prescriptions.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useEncounterPrescriptions(encounterId: number) {
-  return useQuery({
+  return useOfflineQuery<PrescriptionJoinedRow, Prescription[]>({
+    sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
+      FROM pharmacy_prescription rx
+      LEFT JOIN patients_patient p ON rx.patient_id = p.id
+      WHERE rx.encounter_id = ?
+      ORDER BY rx.created_at DESC`,
+    params: [String(encounterId)],
+    transform: (rows) => rows.map(r => transformPrescriptionRow(r) as unknown as Prescription),
     queryKey: ['encounters', encounterId, 'prescriptions'],
     queryFn: () => pharmacyApi.getEncounterPrescriptions(encounterId),
-    enabled: !!encounterId,
+    forceApi: !encounterId,
   });
 }
 

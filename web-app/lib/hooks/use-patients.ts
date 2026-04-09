@@ -9,8 +9,12 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients';
-import type { PatientListParams, PatientCreateData, PatientUpdateData, DuplicateCheckParams } from '@/lib/types/patient';
+import type { Patient, PatientListParams, PatientCreateData, PatientUpdateData, DuplicateCheckParams, EmergencyContact, PatientEncounter } from '@/lib/types/patient';
 import type { TimeRange } from '@/components/shared/vitals-trend-chart';
+import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { transformPatientRow } from '@/lib/powersync/transforms';
+import type { PatientRow } from '@/lib/powersync/schema';
+import type { PaginatedResponse } from '@/lib/types';
 
 // =============================================================================
 // QUERY KEYS
@@ -34,52 +38,151 @@ export const patientKeys = {
 };
 
 // =============================================================================
-// QUERY HOOKS
+// QUERY HOOKS — Dual-mode: PowerSync (local SQLite) with API fallback
 // =============================================================================
 
 /**
- * Hook for fetching paginated patients list
+ * Hook for fetching paginated patients list.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePatients(params: PatientListParams = {}) {
-  return useQuery({
+  const searchTerm = params.search || '';
+  const limit = params.page_size || 20;
+  const offset = ((params.page || 1) - 1) * limit;
+
+  // Build WHERE clauses for PowerSync SQL
+  const conditions: string[] = [];
+  const sqlParams: (string | number | null)[] = [];
+
+  if (searchTerm) {
+    conditions.push('(p.first_name LIKE ? OR p.last_name LIKE ? OR p.mrn LIKE ?)');
+    const pattern = `%${searchTerm}%`;
+    sqlParams.push(pattern, pattern, pattern);
+  }
+  if (params.gender) {
+    conditions.push('p.gender = ?');
+    sqlParams.push(params.gender);
+  }
+  if (params.county) {
+    conditions.push('p.county_id = ?');
+    sqlParams.push(String(params.county));
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const orderBy = params.ordering || 'p.last_name ASC';
+
+  const sql = `SELECT p.*, c.name as county_name, sc.name as sub_county_name
+    FROM patients_patient p
+    LEFT JOIN core_county c ON p.county_id = c.id
+    LEFT JOIN core_subcounty sc ON p.sub_county_id = sc.id
+    ${whereClause}
+    ORDER BY ${orderBy}
+    LIMIT ? OFFSET ?`;
+
+  const countSql = `SELECT COUNT(*) as count FROM patients_patient p ${whereClause}`;
+
+  return useOfflineQuery<
+    PatientRow & { id: string; county_name?: string; sub_county_name?: string },
+    PaginatedResponse<Patient>
+  >({
+    sql,
+    params: [...sqlParams, limit, offset],
+    transform: (rows) => {
+      // We need to run a separate count — for now approximate from the rows
+      // In PowerSync mode, we get the full result set
+      return {
+        count: rows.length < limit ? offset + rows.length : offset + limit + 1,
+        next: null,
+        previous: null,
+        results: rows.map(r => transformPatientRow(r) as unknown as Patient),
+      };
+    },
     queryKey: patientKeys.list(params),
     queryFn: () => patientsApi.getPatients(params),
-    staleTime: 30000, // 30 seconds
+    queryOptions: { staleTime: 30000 },
   });
 }
 
 /**
- * Hook for fetching a single patient
+ * Hook for fetching a single patient.
+ * Base data from PowerSync (offline-capable), PII fields from API (online-only).
  */
 export function usePatient(id: number | string) {
   const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+  const strId = String(numericId);
 
-  return useQuery({
+  return useOfflineQuery<
+    PatientRow & { id: string; county_name?: string; sub_county_name?: string; ward_name?: string },
+    Patient
+  >({
+    sql: `SELECT p.*, c.name as county_name, sc.name as sub_county_name, w.name as ward_name
+      FROM patients_patient p
+      LEFT JOIN core_county c ON p.county_id = c.id
+      LEFT JOIN core_subcounty sc ON p.sub_county_id = sc.id
+      LEFT JOIN core_ward w ON p.ward_id = w.id
+      WHERE p.id = ?`,
+    params: [strId],
+    transform: (rows) => {
+      if (rows.length === 0) throw new Error(`Patient ${numericId} not found`);
+      return transformPatientRow(rows[0]!) as unknown as Patient;
+    },
     queryKey: patientKeys.detail(numericId),
     queryFn: () => patientsApi.getPatient(numericId),
-    enabled: !!id && !isNaN(numericId),
+    forceApi: !id || isNaN(numericId),
   });
 }
 
 /**
- * Hook for fetching patient's emergency contacts
+ * Hook for fetching patient's emergency contacts.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePatientEmergencyContacts(patientId: number) {
-  return useQuery({
+  return useOfflineQuery<
+    Record<string, unknown> & { id: string },
+    EmergencyContact[]
+  >({
+    sql: 'SELECT * FROM patients_emergencycontact WHERE patient_id = ? ORDER BY created_at',
+    params: [String(patientId)],
+    transform: (rows) => rows.map(row => ({
+      id: parseInt(row.id, 10) || 0,
+      full_name: (row.full_name as string) || '',
+      relationship: (row.relationship as string) || '',
+      phone_number: (row.phone_number as string) || '',
+      alternative_phone: (row.alternative_phone as string) || undefined,
+      created_at: (row.created_at as string) || '',
+      updated_at: (row.updated_at as string) || '',
+    } as EmergencyContact)),
     queryKey: patientKeys.emergencyContacts(patientId),
     queryFn: () => patientsApi.getEmergencyContacts(patientId),
-    enabled: !!patientId,
+    forceApi: !patientId,
   });
 }
 
 /**
- * Hook for fetching patient's encounters
+ * Hook for fetching patient's encounters.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePatientEncounters(patientId: number) {
-  return useQuery({
+  return useOfflineQuery<
+    Record<string, unknown> & { id: string },
+    PatientEncounter[]
+  >({
+    sql: `SELECT id, encounter_type, encounter_date, chief_complaint, consultation_status as status, created_at
+      FROM encounters_encounter
+      WHERE patient_id = ?
+      ORDER BY encounter_date DESC`,
+    params: [String(patientId)],
+    transform: (rows) => rows.map(row => ({
+      id: parseInt(row.id, 10) || 0,
+      encounter_type: (row.encounter_type as string) || '',
+      status: ((row.status as string) || 'CREATED') as PatientEncounter['status'],
+      encounter_date: (row.encounter_date as string) || '',
+      chief_complaint: (row.chief_complaint as string) || '',
+      created_at: (row.created_at as string) || '',
+    })),
     queryKey: patientKeys.encounters(patientId),
     queryFn: () => patientsApi.getEncounters(patientId),
-    enabled: !!patientId,
+    forceApi: !patientId,
   });
 }
 

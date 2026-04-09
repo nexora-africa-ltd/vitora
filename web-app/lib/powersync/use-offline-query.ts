@@ -45,6 +45,10 @@ export interface UseOfflineQueryResult<TResult> {
   data: TResult | undefined;
   /** Whether the query is currently loading */
   isLoading: boolean;
+  /** Whether the query is in an error state */
+  isError: boolean;
+  /** Whether a fetch is in-flight (background refetch or initial) */
+  isFetching: boolean;
   /** Error from the active query path */
   error: Error | null;
   /** Trigger a manual refresh */
@@ -96,6 +100,8 @@ export function useOfflineQuery<
       return {
         data: undefined,
         isLoading: false,
+        isError: true,
+        isFetching: false,
         error: e instanceof Error ? e : new Error('Transform failed'),
         refetch: localResult.refresh,
         source: 'local',
@@ -105,6 +111,8 @@ export function useOfflineQuery<
     return {
       data,
       isLoading: localResult.isLoading,
+      isError: !!localResult.error,
+      isFetching: localResult.isLoading,
       error: localResult.error,
       refetch: localResult.refresh,
       source: 'local',
@@ -114,6 +122,8 @@ export function useOfflineQuery<
   return {
     data: apiResult.data,
     isLoading: apiResult.isLoading,
+    isError: apiResult.isError,
+    isFetching: apiResult.isFetching,
     error: apiResult.error ?? null,
     refetch: () => { apiResult.refetch(); },
     source: 'api',

@@ -38,10 +38,23 @@ export {
   transformWardRow,
   transformPatientRow,
   transformEncounterRow,
+  transformTriageRow,
+  transformDiagnosisRow,
+  transformPrescriptionRow,
+  transformLabOrderRow,
+  transformInvoiceRow,
   toNumericId,
   toBool,
 } from './transforms';
-export type { PatientLocalRecord, EncounterLocalRecord } from './transforms';
+export type {
+  PatientLocalRecord,
+  EncounterLocalRecord,
+  TriageAssessmentLocalRecord,
+  DiagnosisLocalRecord,
+  PrescriptionLocalRecord,
+  LabOrderLocalRecord,
+  InvoiceLocalRecord,
+} from './transforms';
 
 // Utilities
 export { generateId } from './uuid';
