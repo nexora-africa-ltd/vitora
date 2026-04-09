@@ -31,6 +31,8 @@ export interface SyncStatus {
 interface SyncContextValue extends SyncStatus {
   /** The PowerSync database instance (for direct queries) */
   db: PowerSyncDatabase | null;
+  /** Whether the PowerSync DB has finished initializing (safe to query) */
+  isReady: boolean;
   /** Report a successful sync */
   reportSync: () => void;
   /** Report sync started */
@@ -66,6 +68,7 @@ function getOrCreateDatabase(): PowerSyncDatabase {
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<PowerSyncDatabase | null>(null);
+  const [isReady, setIsReady] = useState(false);
   const [status, setStatus] = useState<SyncStatus>(() => ({
     lastSyncTime: null,
     isSyncing: false,
@@ -84,6 +87,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       const database = getOrCreateDatabase();
       database.init();
       setDb(database);
+      setIsReady(true);
       setStatus(prev => ({ ...prev, lastSyncTime: new Date() }));
       return;
     }
@@ -101,6 +105,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           // Wait for auth — the provider will re-mount or the user will log in
           database.init();
           setDb(database);
+          setIsReady(true);
           return;
         }
 
@@ -110,6 +115,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
         if (!disposed) {
           setDb(database);
+          setIsReady(true);
           setStatus(prev => ({
             ...prev,
             isSyncing: false,
@@ -121,6 +127,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         console.error('[PowerSync] Connection error:', error);
         if (!disposed) {
           setDb(database);
+          setIsReady(true);
           setStatus(prev => ({
             ...prev,
             isSyncing: false,
@@ -207,6 +214,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<SyncContextValue>(() => ({
     ...status,
     db,
+    isReady,
     reportSync,
     reportSyncStart,
     reportSyncError,
@@ -215,7 +223,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     setPendingCount,
     triggerSync,
     setTriggerSync,
-  }), [status, db, reportSync, reportSyncStart, reportSyncError, incrementPending, decrementPending, setPendingCount, triggerSync, setTriggerSync]);
+  }), [status, db, isReady, reportSync, reportSyncStart, reportSyncError, incrementPending, decrementPending, setPendingCount, triggerSync, setTriggerSync]);
 
   return (
     <SyncContext.Provider value={value}>
@@ -230,6 +238,7 @@ export function useSyncStatus(): SyncContextValue {
     // Return a default value for components outside the provider
     return {
       db: null,
+      isReady: false,
       lastSyncTime: null,
       isSyncing: false,
       pendingChanges: 0,

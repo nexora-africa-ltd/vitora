@@ -61,7 +61,8 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
     // Decode token expiry without a library (JWT is base64url)
     let expiresAt: Date | undefined;
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const parts = token.split('.');
+      const payload = JSON.parse(atob(parts[1] ?? ''));
       if (payload.exp) {
         expiresAt = new Date(payload.exp * 1000);
       }

@@ -1,0 +1,121 @@
+/**
+ * useOfflineQuery — Dual-Mode Read Hook
+ *
+ * Reads from local PowerSync SQLite when the database is ready,
+ * falls back to React Query API fetching when it is not.
+ *
+ * Both code paths are always called (React rules of hooks forbid conditional
+ * hook calls). The `enabled` flag on each path toggles which is active.
+ *
+ * Usage:
+ *   const patients = useOfflineQuery<PatientRow, Patient[]>({
+ *     sql: 'SELECT * FROM patients_patient ORDER BY last_name',
+ *     params: [],
+ *     transform: (rows) => rows.map(transformPatientRow),
+ *     queryKey: ['patients', 'list'],
+ *     queryFn: () => patientsApi.getPatients(),
+ *   });
+ */
+
+'use client';
+
+import { useQuery, type QueryKey, type UseQueryOptions } from '@tanstack/react-query';
+import { usePowerSyncQuery } from './hooks';
+import { useSyncStatus } from '@/lib/context/sync-context';
+
+export interface UseOfflineQueryOptions<TRow extends Record<string, unknown>, TResult> {
+  /** SQL query for the local PowerSync database */
+  sql: string;
+  /** Positional parameters for the SQL query */
+  params?: (string | number | null)[];
+  /** Transform PowerSync rows into the expected return type */
+  transform: (rows: TRow[]) => TResult;
+  /** React Query key (used when PowerSync is not available) */
+  queryKey: QueryKey;
+  /** React Query fetch function (used when PowerSync is not available) */
+  queryFn: () => Promise<TResult>;
+  /** Additional React Query options (applied to the API fallback path) */
+  queryOptions?: Omit<UseQueryOptions<TResult, Error>, 'queryKey' | 'queryFn' | 'enabled'>;
+  /** Override: force API mode even when PowerSync DB is available */
+  forceApi?: boolean;
+}
+
+export interface UseOfflineQueryResult<TResult> {
+  /** The query result data */
+  data: TResult | undefined;
+  /** Whether the query is currently loading */
+  isLoading: boolean;
+  /** Error from the active query path */
+  error: Error | null;
+  /** Trigger a manual refresh */
+  refetch: () => void;
+  /** Which data source is active: 'local' (PowerSync) or 'api' (React Query) */
+  source: 'local' | 'api';
+}
+
+/**
+ * Dual-mode read hook: PowerSync (local SQLite) with React Query API fallback.
+ */
+export function useOfflineQuery<
+  TRow extends Record<string, unknown> = Record<string, unknown>,
+  TResult = TRow[]
+>(options: UseOfflineQueryOptions<TRow, TResult>): UseOfflineQueryResult<TResult> {
+  const {
+    sql,
+    params = [],
+    transform,
+    queryKey,
+    queryFn,
+    queryOptions,
+    forceApi = false,
+  } = options;
+
+  const { isReady } = useSyncStatus();
+  const useLocal = isReady && !forceApi;
+
+  // --- Path 1: PowerSync local query (always called, toggled by `useLocal`) ---
+  const localResult = usePowerSyncQuery<TRow>(
+    useLocal ? sql : 'SELECT 1 WHERE 0', // no-op SQL when disabled
+    useLocal ? params : []
+  );
+
+  // --- Path 2: React Query API fetch (always called, toggled by `enabled`) ---
+  const apiResult = useQuery<TResult, Error>({
+    queryKey,
+    queryFn,
+    enabled: !useLocal,
+    ...queryOptions,
+  });
+
+  // --- Merge results based on active path ---
+  if (useLocal) {
+    let data: TResult | undefined;
+    try {
+      data = localResult.isLoading ? undefined : transform(localResult.data);
+    } catch (e) {
+      return {
+        data: undefined,
+        isLoading: false,
+        error: e instanceof Error ? e : new Error('Transform failed'),
+        refetch: localResult.refresh,
+        source: 'local',
+      };
+    }
+
+    return {
+      data,
+      isLoading: localResult.isLoading,
+      error: localResult.error,
+      refetch: localResult.refresh,
+      source: 'local',
+    };
+  }
+
+  return {
+    data: apiResult.data,
+    isLoading: apiResult.isLoading,
+    error: apiResult.error ?? null,
+    refetch: () => { apiResult.refetch(); },
+    source: 'api',
+  };
+}
