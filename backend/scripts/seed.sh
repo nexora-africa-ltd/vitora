@@ -48,5 +48,6 @@ python manage.py seed_vaccines
 python manage.py seed_demo_vaccine_stock
 python manage.py seed_discharge_templates
 python manage.py backfill_org_facility
+python manage.py backfill_analytics --start 2026-01-01 --end 2026-03-31
 
 echo "==> Seeding complete!"
