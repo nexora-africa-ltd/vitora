@@ -54,6 +54,10 @@ app.conf.task_routes = {
     # Triage escalation tasks
     "hmis.apps.triage.tasks.check_wait_time_breaches": {"queue": "monitoring"},
     "hmis.apps.triage.tasks.auto_resolve_breaches": {"queue": "monitoring"},
+    # Analytics ETL tasks
+    "hmis.apps.analytics.tasks.refresh_daily_analytics": {"queue": "reporting"},
+    "hmis.apps.analytics.tasks.refresh_monthly_analytics": {"queue": "reporting"},
+    "hmis.apps.analytics.tasks.refresh_demographics_snapshot": {"queue": "reporting"},
 }
 
 # Configure periodic tasks (Celery Beat)
@@ -143,6 +147,21 @@ app.conf.beat_schedule = {
     "pharmacy-prescription-expiry-alerts": {
         "task": "hmis.apps.pharmacy.tasks.generate_prescription_expiry_alerts",
         "schedule": crontab(minute=0, hour=6),
+    },
+    # Analytics: Daily facility summaries at 2 AM
+    "analytics-refresh-daily": {
+        "task": "hmis.apps.analytics.tasks.refresh_daily_analytics",
+        "schedule": crontab(minute=0, hour=2),
+    },
+    # Analytics: Monthly department + diagnosis trends on 1st at 3 AM
+    "analytics-refresh-monthly": {
+        "task": "hmis.apps.analytics.tasks.refresh_monthly_analytics",
+        "schedule": crontab(minute=0, hour=3, day_of_month=1),
+    },
+    # Analytics: Demographics snapshot on 1st at 4 AM
+    "analytics-refresh-demographics": {
+        "task": "hmis.apps.analytics.tasks.refresh_demographics_snapshot",
+        "schedule": crontab(minute=0, hour=4, day_of_month=1),
     },
 }
 

@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     "hmis.apps.hl7.apps.HL7Config",
     "hmis.apps.kenhdd.apps.KENHDDConfig",
     "hmis.apps.procedures.apps.ProceduresConfig",
+    "hmis.apps.analytics.apps.AnalyticsConfig",
 ]
 
 MIDDLEWARE = [

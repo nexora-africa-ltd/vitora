@@ -297,6 +297,8 @@ urlpatterns = [
     path("api/kenhdd/", include("hmis.apps.kenhdd.urls", namespace="kenhdd")),
     # AI / TibaBot proxy API
     path("api/ai/", include("hmis.apps.ai.urls", namespace="ai")),
+    # Analytics & BI API
+    path("api/analytics/", include("hmis.apps.analytics.urls", namespace="analytics")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
     # MFA (Multi-Factor Authentication) API
