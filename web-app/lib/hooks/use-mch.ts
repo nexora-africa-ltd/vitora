@@ -21,7 +21,7 @@ export function useMCHRegistration(registrationId: number | undefined) {
   return useQuery<MCHRegistration>({
     queryKey: ['mch-registration', registrationId ?? null],
     queryFn: () => mchRegistrationsApi.get(registrationId!),
-    enabled: typeof registrationId === 'number',
+    enabled: typeof registrationId === 'number' && registrationId > 0,
   });
 }
 
@@ -29,7 +29,7 @@ export function useLabourPartographs(registrationId: number | undefined) {
   return useQuery({
     queryKey: ['mch-partographs', { registration: registrationId ?? null }],
     queryFn: () => labourPartographsApi.list({ registration: registrationId }),
-    enabled: typeof registrationId === 'number',
+    enabled: typeof registrationId === 'number' && registrationId > 0,
   });
 }
 
@@ -50,7 +50,7 @@ export function useLabourPartographObservations(partographId: number | undefined
   return useQuery({
     queryKey: ['mch-partograph-observations', partographId ?? null],
     queryFn: () => labourPartographObservationsApi.list(partographId!),
-    enabled: typeof partographId === 'number',
+    enabled: typeof partographId === 'number' && partographId > 0,
   });
 }
 
@@ -72,6 +72,6 @@ export function useDelivery(deliveryId: number | undefined) {
   return useQuery<Delivery>({
     queryKey: ['delivery', deliveryId ?? null],
     queryFn: () => deliveriesApi.get(deliveryId!),
-    enabled: typeof deliveryId === 'number',
+    enabled: typeof deliveryId === 'number' && deliveryId > 0,
   });
 }

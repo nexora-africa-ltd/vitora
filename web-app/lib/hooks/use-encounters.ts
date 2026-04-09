@@ -118,6 +118,7 @@ export function useEncounterDiagnoses(encounterId: number) {
     queryKey: ['encounters', encounterId, 'diagnoses'],
     queryFn: () => encountersApi.getDiagnoses(encounterId),
     forceApi: !encounterId,
+    enabled: encounterId > 0,
   });
 }
 
@@ -158,6 +159,7 @@ export function useEncounterTreatmentPlan(encounterId: number) {
       }
     },
     forceApi: !encounterId,
+    enabled: encounterId > 0,
   });
 }
 
@@ -424,5 +426,6 @@ export function useEncounterMedications(treatmentPlanId: number | undefined) {
       return [];
     },
     forceApi: !treatmentPlanId,
+    enabled: !!treatmentPlanId && treatmentPlanId > 0,
   });
 }

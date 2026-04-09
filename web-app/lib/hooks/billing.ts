@@ -198,6 +198,7 @@ export function useInvoice(id: number | undefined) {
     queryKey: billingKeys.invoiceDetail(id!),
     queryFn: () => billingApi.getInvoice(id!),
     forceApi: id === undefined,
+    enabled: id !== undefined && id > 0,
   });
 }
 
