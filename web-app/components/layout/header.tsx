@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, Search, Settings, User, RefreshCw, Trash2, Stethoscope } from 'lucide-react';
+import { Menu, Settings, User, RefreshCw, Trash2, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +33,7 @@ import { FacilitySwitcher } from '@/components/layout/facility-switcher';
 import { NotificationPanel } from '@/components/notifications/notification-panel';
 import { clearCacheAndReload } from '@/lib/utils/version-check';
 import { useNavigationMode } from '@/lib/context/navigation-mode-context';
+import { CommandMenuTrigger } from '@/components/layout/command-menu';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils/cn';
 
@@ -46,7 +46,6 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const router = useRouter();
   const { user } = useAuth();
   const logout = useLogout();
-  const [headerSearch, setHeaderSearch] = useState('');
   const { isOnline } = useNetworkStatus();
   const { lastSyncTime, isSyncing, pendingChanges, lastError, triggerSync } = useSyncStatus();
   const { lastFetchTime, isRefreshing, refresh } = usePageRefresh();
@@ -230,27 +229,8 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
           {/* Facility switcher (multi-branch) */}
           <FacilitySwitcher />
 
-          {/* Search (tablet+) - smaller at lg, full width at xl */}
-          <form
-            className="hidden md:flex relative w-48 lg:w-56 xl:w-64"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const q = headerSearch.trim();
-              if (q) {
-                router.push(`/patients?search=${encodeURIComponent(q)}`);
-                setHeaderSearch('');
-              }
-            }}
-          >
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search patients..."
-              className="pl-9"
-              value={headerSearch}
-              onChange={(e) => setHeaderSearch(e.target.value)}
-            />
-          </form>
+          {/* Command menu trigger (⌘K / Ctrl+K) */}
+          <CommandMenuTrigger />
 
           {/* Notifications */}
           <NotificationPanel />
