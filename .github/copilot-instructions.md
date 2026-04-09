@@ -115,6 +115,12 @@ vitora/
 │   │   ├── conftest.py            # Fixtures: authenticated_client, sample_patient, etc.
 │   │   └── test_*.py              # Test files by feature
 │   ├── data/                       # CSV imports (diseases, ICD-10, Kenya locations)
+│   ├── powersync/
+│   │   ├── sync-streams.yaml      # PowerSync Sync Streams config (deploy to dashboard)
+│   │   ├── sync-rules.yaml        # Legacy Sync Rules (reference only)
+│   │   └── powersync.yaml         # Self-hosted config (reference only)
+│   ├── scripts/
+│   │   └── setup_powersync_replication.sql  # One-time Neon publication setup
 │   ├── Makefile                    # make test, make quality, make format
 │   └── pyproject.toml             # Poetry dependencies
 │
@@ -357,91 +363,105 @@ class SyncConflict(models.Model):
 
 ---
 
-## � Real-Time & Sync Architecture
+## 🔄 PowerSync Offline-First Sync (Implemented)
 
-Vitora uses a **hybrid approach**: PowerSync for offline-first data sync + WebSockets for instant notifications.
+Vitora uses **PowerSync Cloud** + **Neon PostgreSQL** for offline-first data sync, plus **WebSockets** (Django Channels) for instant notifications.
 
-### PowerSync vs WebSockets Decision Matrix
+> **SSOT**: `docs/powersync-integration.md` — full architecture, file reference, table inventory, troubleshooting.
 
-| Capability | PowerSync | WebSockets |
-|------------|-----------|------------|
-| **Data sync/persistence** | ✅ Primary purpose | ❌ Not designed for this |
-| **Offline support** | ✅ Built-in | ❌ Requires online |
-| **Conflict resolution** | ✅ Built-in | ❌ You build it |
-| **Instant server→client push** | ⚠️ Sync latency (seconds) | ✅ Milliseconds |
-| **Ephemeral events** | ❌ Not designed for this | ✅ Primary purpose |
-| **Presence/live cursors** | ❌ No | ✅ Yes |
-
-### When to Use Each
-
-| Use Case | PowerSync | WebSocket | Notes |
-|----------|-----------|-----------|-------|
-| Load patient record | ✅ | ❌ | Local SQLite query (instant) |
-| Save encounter offline | ✅ | ❌ | Built-in, automatic |
-| 🚨 Critical lab result alert | ❌ | ✅ | Instant push required |
-| Lab result ready notification | ⚠️ | ✅ | WS triggers sync |
-| Triage queue display | ✅ | ✅ | WS for position changes |
-| Multi-user conflict warning | ❌ | ✅ | "Dr. Smith is viewing" |
-| Dashboard stats refresh | ✅ | ❌ | Cached locally |
-
-### Architecture Diagram
+### How It Works
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Vitora Real-time Architecture                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                    Frontend (Electron/Web/Mobile)         │   │
-│  │                                                           │   │
-│  │  ┌─────────────────┐       ┌─────────────────┐           │   │
-│  │  │  PowerSync      │       │  WebSocket      │           │   │
-│  │  │  - Local SQLite │       │  - Notifications│           │   │
-│  │  │  - Data queries │       │  - Critical     │           │   │
-│  │  │  - Offline ops  │       │    alerts       │           │   │
-│  │  │  - Background   │       │  - Queue updates│           │   │
-│  │  │    sync         │       │  - Presence     │           │   │
-│  │  └────────┬────────┘       └────────┬────────┘           │   │
-│  └───────────┼─────────────────────────┼────────────────────┘   │
-│              │                         │                        │
-│  ┌───────────▼─────────┐   ┌───────────▼────────┐               │
-│  │  PowerSync Service  │   │  Django Channels   │               │
-│  │  (Sync Gateway)     │   │  (WebSocket Server)│               │
-│  └───────────┬─────────┘   └───────────┬────────┘               │
-│              │                         │                        │
-│              └────────────┬────────────┘                        │
-│                           │                                     │
-│                  ┌────────▼────────┐                            │
-│                  │   PostgreSQL    │                            │
-│                  └─────────────────┘                            │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
+       ↑ reads locally          ↑ logical replication     ↑ writes via REST
+  @powersync/web SDK       sync-streams.yaml         Django REST API
 ```
 
-### Implementation Pattern
+- **Reads**: Local SQLite queries via `usePowerSyncQuery()` (instant, offline-capable)
+- **Writes**: `uploadData()` in connector → Django REST API (existing endpoints)
+- **Local dev**: `NEXT_PUBLIC_POWERSYNC_URL` is empty → app falls back to API-only mode (React Query)
 
-```typescript
-// Combined hook for a page with durable data + real-time events
-export function useEncounterData(encounterId: string) {
-  // Durable data from PowerSync (offline-capable)
-  const encounter = usePowerSyncQuery(
-    `SELECT * FROM encounters WHERE id = ?`,
-    [encounterId]
-  );
-  
-  // Real-time events via WebSocket
-  const { lastMessage } = useWebSocket(`/ws/encounters/${encounterId}/`);
-  
-  useEffect(() => {
-    if (lastMessage?.type === 'lab_result_verified') {
-      // Trigger PowerSync to pull latest
-      db.triggerSync();
-      toast.info('Lab results verified - refreshing...');
-    }
-  }, [lastMessage]);
-  
-  return { encounter };
-}
+### Environment Variables
+
+| Env Var | Where | Dev | Staging/Production |
+|---------|-------|-----|--------------------|
+| `NEXT_PUBLIC_POWERSYNC_URL` | Vercel | *(empty)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
+| `POWERSYNC_URL` | Azure Container App | *(empty)* | Same as above |
+
+### PowerSync Cloud Configuration
+
+| Setting | Value |
+|---------|-------|
+| **Region** | EU Central (matches Neon `eu-central-1`) |
+| **DB Host** | `ep-patient-cake-almonm9l.c-3.eu-central-1.aws.neon.tech` (**no** `-pooler`) |
+| **Publication** | `powersync` |
+| **JWT** | HS256, secret=`DJANGO_SECRET_KEY`, aud=`powersync`, iss=`vitora-hmis` |
+
+### Synced Tables (18 tables across 3 phases)
+
+| Scope | Tables | Notes |
+|-------|--------|-------|
+| **Global (all users)** | `core_county`, `core_subcounty`, `core_ward`, `encounters_icd10code`, `clinical_templates_clinicaltemplate` | Reference data, `auto_subscribe: true` |
+| **Organization** | `patients_patient`, `patients_emergencycontact` | Scoped by `auth.parameter('organization_id')`. **Excludes** encrypted PII fields |
+| **Facility** | `encounters_encounter`, `triage_triageassessment`, `encounters_diagnosis`, `encounters_treatmentplan`, `encounters_medication`, `pharmacy_prescription`, `pharmacy_prescriptionitem`, `laboratory_laborder`, `laboratory_laborderitem`, `laboratory_labresult`, `billing_invoice` | Scoped by `auth.parameter('facility_id')` |
+
+### Key Files
+
+| File | Purpose |
+|------|--------|
+| `backend/powersync/sync-streams.yaml` | **Sync Streams config** — paste into PowerSync Cloud dashboard to deploy |
+| `backend/hmis/apps/core/powersync_tokens.py` | Custom JWT serializer — adds `facility_id`, `organization_id`, `iss`, `aud` claims |
+| `web-app/lib/powersync/schema.ts` | Client-side SQLite schema (must mirror sync-streams.yaml) |
+| `web-app/lib/powersync/connector.ts` | `fetchCredentials()` + `uploadData()` — bridges PowerSync ↔ Django API |
+| `web-app/lib/powersync/hooks.ts` | `usePowerSyncQuery()`, `usePowerSyncQueryFirst()`, `usePowerSyncDatabase()` |
+| `web-app/lib/context/sync-context.tsx` | `SyncProvider` — initializes PowerSync SDK, falls back to API-only mode |
+| `backend/scripts/setup_powersync_replication.sql` | One-time Neon publication setup (reference — already run) |
+| `backend/tests/test_powersync_tokens.py` | JWT claims tests |
+
+### PowerSync vs WebSockets
+
+| Use Case | PowerSync | WebSocket |
+|----------|-----------|----------|
+| Load patient record | ✅ Local SQLite query | ❌ |
+| Save encounter offline | ✅ Built-in | ❌ |
+| 🚨 Critical lab alert | ❌ | ✅ Instant push |
+| Triage queue display | ✅ Data | ✅ Position changes |
+| Dashboard stats | ✅ Cached locally | ❌ |
+
+### Adding a New Table to PowerSync
+
+1. **Neon SQL**: `ALTER PUBLICATION powersync ADD TABLE app_modelname;`
+2. **sync-streams.yaml**: Add a stream with correct scope (`auth.parameter('facility_id')` or `auth.parameter('organization_id')`)
+3. **schema.ts**: Add a `Table` definition + row type export
+4. **connector.ts** (if writable): Add `TABLE_TO_ENDPOINT` mapping
+5. **Deploy**: Paste updated sync-streams.yaml into PowerSync Cloud dashboard → Deploy
+6. **Never sync**: Fernet-encrypted fields, audit logs, binary blobs (DICOM), framework internals
+
+### Sync Streams Format (NOT Legacy Sync Rules)
+
+PowerSync now uses **Sync Streams** (edition 3), not the legacy `bucket_definitions` format:
+
+```yaml
+# ✅ CORRECT — Sync Streams (edition 3)
+config:
+  edition: 3
+
+streams:
+  facility_encounters:
+    auto_subscribe: true
+    priority: 1
+    query: >
+      SELECT id, patient_id, ...
+      FROM encounters_encounter
+      WHERE facility_id = auth.parameter('facility_id')
+
+# ❌ WRONG — Legacy Sync Rules (do not use)
+bucket_definitions:
+  facility_encounters:
+    parameters: SELECT token_parameters.facility_id AS fac_id
+    data:
+      - SELECT ... WHERE facility_id = bucket.fac_id
+```
 ```
 
 ---
@@ -1693,6 +1713,6 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: April 3, 2026
+**Last Updated**: April 9, 2026
 **Maintainer**: Engineering Lead
-**Version**: 2.8 (Admin access restriction, admin MFA, MFA onboarding grace period)
+**Version**: 2.9 (PowerSync offline-first sync implementation)

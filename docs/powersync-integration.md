@@ -1,6 +1,6 @@
 # PowerSync Integration — Single Source of Truth
 
-> **Status**: Phase 1 Complete (Infrastructure)
+> **Status**: Phases 1-3 Complete (Infrastructure + Clinical + Pharmacy/Lab/Billing)
 > **Last Updated**: April 9, 2026
 
 ---
@@ -89,7 +89,7 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 
 ## Synced Tables
 
-### Phase 1 (Current)
+### Phase 1: Core (Complete)
 
 | Bucket | Table | Scope | Notes |
 |--------|-------|-------|-------|
@@ -100,24 +100,27 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 | `facility_encounters` | `encounters_encounter` | Facility | Core clinical data |
 | `facility_emergency_contacts` | `patients_emergencycontact` | Organization (via patient) | Emergency contact info |
 
-### Phase 2 (Planned)
+### Phase 2: Clinical Workflow (Complete)
 
-| Table | Scope | Notes |
-|-------|-------|-------|
-| `triage_triageassessment` | Facility | Triage workflow |
-| `encounters_diagnosis` | Facility | Linked to encounters |
-| `encounters_medication` | Facility | Treatment plans |
-| `encounters_icd10code` | Global | ICD-10 lookup (~70K codes) |
-| `clinical_templates_clinicaltemplate` | Global | Offline assessment forms |
+| Bucket | Table | Scope | Notes |
+|--------|-------|-------|-------|
+| `global_icd10_codes` | `encounters_icd10code` | All users | ICD-10 lookup (~70K codes, active only) |
+| `global_clinical_templates` | `clinical_templates_clinicaltemplate` | All users | Treatment plan templates (active only) |
+| `facility_triage` | `triage_triageassessment` | Facility | Triage assessments, KETA categories, vitals |
+| `facility_diagnoses` | `encounters_diagnosis` | Facility (via encounter) | ICD-10/11/SNOMED diagnoses |
+| `facility_treatment_plans` | `encounters_treatmentplan` | Facility (via encounter) | Treatment plans with follow-up |
+| `facility_medications` | `encounters_medication` | Facility (via treatment_plan→encounter) | Prescribed medications |
 
-### Phase 3 (Future)
+### Phase 3: Pharmacy, Laboratory, Billing (Complete)
 
-| Table | Scope | Notes |
-|-------|-------|-------|
-| `pharmacy_prescription` | Facility | Pharmacy workflow |
-| `laboratory_laborder` | Facility | Lab orders |
-| `laboratory_labresult` | Facility | Lab results |
-| `billing_invoice` | Facility | Offline billing |
+| Bucket | Table | Scope | Notes |
+|--------|-------|-------|-------|
+| `facility_prescriptions` | `pharmacy_prescription` | Facility | Prescription headers |
+| `facility_prescription_items` | `pharmacy_prescriptionitem` | Facility (via prescription) | Prescription line items |
+| `facility_lab_orders` | `laboratory_laborder` | Facility | Lab order headers |
+| `facility_lab_order_items` | `laboratory_laborderitem` | Facility (via lab_order) | Lab order line items/test list |
+| `facility_lab_results` | `laboratory_labresult` | Facility (via order_item→lab_order) | Results (**excludes** file attachments) |
+| `facility_invoices` | `billing_invoice` | Facility | Invoice headers (**excludes** `internal_notes`) |
 
 ### Never Sync
 
