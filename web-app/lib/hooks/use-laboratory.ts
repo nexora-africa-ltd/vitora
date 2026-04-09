@@ -133,6 +133,7 @@ export function useLabOrder(orderNumber: string) {
     queryKey: ['lab-orders', orderNumber],
     queryFn: () => laboratoryApi.getOrder(orderNumber),
     forceApi: !orderNumber,
+    enabled: !!orderNumber,
   });
 }
 
@@ -152,6 +153,7 @@ export function usePatientLabOrders(patientId: number) {
     queryKey: ['patients', patientId, 'lab-orders'],
     queryFn: () => laboratoryApi.getPatientOrders(patientId),
     forceApi: !patientId,
+    enabled: patientId > 0,
   });
 }
 
@@ -171,6 +173,7 @@ export function useEncounterLabOrders(encounterId: number) {
     queryKey: ['encounters', encounterId, 'lab-orders'],
     queryFn: () => laboratoryApi.getEncounterOrders(encounterId),
     forceApi: !encounterId,
+    enabled: encounterId > 0,
   });
 }
 
