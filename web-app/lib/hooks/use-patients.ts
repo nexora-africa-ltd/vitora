@@ -113,7 +113,7 @@ export function usePatient(id: number | string) {
   const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
   const strId = String(numericId);
 
-  return useOfflineQuery<
+  const baseResult = useOfflineQuery<
     PatientRow & { id: string; county_name?: string; sub_county_name?: string; ward_name?: string },
     Patient
   >({
@@ -132,6 +132,29 @@ export function usePatient(id: number | string) {
     queryFn: () => patientsApi.getPatient(numericId),
     forceApi: !id || isNaN(numericId),
   });
+
+  // Supplementary PII fetch — only when data came from local SQLite (PII fields
+  // like national_id and phone_number are excluded from PowerSync sync-streams).
+  const piiResult = useQuery({
+    queryKey: [...patientKeys.detail(numericId), 'pii'],
+    queryFn: () => patientsApi.getPatient(numericId),
+    enabled: baseResult.source === 'local' && !!baseResult.data && !isNaN(numericId),
+    staleTime: 5 * 60 * 1000, // Cache PII for 5 minutes to avoid excessive requests
+    select: (full) => ({
+      national_id: full.national_id,
+      phone_number: full.phone_number,
+    }),
+  });
+
+  // Merge PII into base data when available
+  const data = baseResult.data && piiResult.data
+    ? { ...baseResult.data, ...piiResult.data }
+    : baseResult.data;
+
+  return {
+    ...baseResult,
+    data,
+  };
 }
 
 /**

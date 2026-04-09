@@ -1,6 +1,6 @@
 # PowerSync Integration — Single Source of Truth
 
-> **Status**: Phases 1-3 Complete (Infrastructure + Clinical + Pharmacy/Lab/Billing)
+> **Status**: All phases complete — dual-mode hooks, sync UI, and hybrid PII implemented
 > **Last Updated**: April 9, 2026
 
 ---
@@ -14,7 +14,7 @@ PowerSync provides offline-first data sync for the Vitora HMIS web app. It strea
 ```
 Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
        ↑ reads locally          ↑ logical replication     ↑ writes via REST
-  @powersync/web SDK       sync-rules.yaml           Django REST API
+  @powersync/web SDK       sync-streams.yaml         Django REST API
 ```
 
 - **Reads**: Local SQLite queries (instant, offline-capable)
@@ -70,20 +70,49 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 | `backend/hmis/settings/base.py` | Registers `TOKEN_OBTAIN_SERIALIZER` in SIMPLE_JWT config |
 | `backend/hmis/settings/{staging,production,development}.py` | `POWERSYNC_URL` env var |
 | `backend/powersync/powersync.yaml` | PowerSync service config (self-hosted reference) |
-| `backend/powersync/sync-rules.yaml` | Defines which tables sync to which users, scoped by tenant |
+| `backend/powersync/sync-streams.yaml` | Sync Streams config (edition 3) — deploy to PowerSync Cloud dashboard |
 | `backend/scripts/setup_powersync_replication.sql` | PostgreSQL publication + replication user DDL |
 | `backend/tests/test_powersync_tokens.py` | JWT claims tests |
 
-### Web-app
+### Web-app — PowerSync Infrastructure
 
 | File | Purpose |
-|------|---------|
-| `web-app/lib/powersync/schema.ts` | Client-side SQLite schema (mirrors sync rules) |
-| `web-app/lib/powersync/connector.ts` | `fetchCredentials()` + `uploadData()` implementation |
+|------|--------|
+| `web-app/lib/powersync/schema.ts` | Client-side SQLite schema (mirrors sync streams) |
+| `web-app/lib/powersync/connector.ts` | `fetchCredentials()` + `uploadData()` + `SyncUploadEvent` bus |
 | `web-app/lib/powersync/hooks.ts` | `usePowerSyncQuery()`, `usePowerSyncQueryFirst()`, `usePowerSyncDatabase()` |
+| `web-app/lib/powersync/use-offline-query.ts` | Dual-mode read hook — PowerSync SQL with React Query API fallback |
+| `web-app/lib/powersync/use-offline-mutation.ts` | Dual-mode write hook — local SQLite INSERT/UPDATE/DELETE with API fallback |
+| `web-app/lib/powersync/sql-builders.ts` | Parameterized SQL builders (`buildListQuery`, `buildInsertQuery`, etc.) |
+| `web-app/lib/powersync/transforms.ts` | Row → TypeScript type mappers (12 transform functions) |
+| `web-app/lib/powersync/uuid.ts` | Client-side UUID generation (`generateId()`) |
 | `web-app/lib/powersync/index.ts` | Barrel export |
-| `web-app/lib/context/sync-context.tsx` | `SyncProvider` wrapping PowerSync SDK |
+| `web-app/lib/context/sync-context.tsx` | `SyncProvider` — `isReady`, `pendingChanges`, `lastError`, CRUD queue polling |
 | `web-app/next.config.js` | COOP/COEP headers + WASM webpack config |
+
+### Web-app — Sync UI Components
+
+| File | Purpose |
+|------|--------|
+| `web-app/components/shared/offline-banner.tsx` | `OfflineBanner` — 4-state banner (offline/back-online/pending/error) |
+| `web-app/components/shared/pending-sync-badge.tsx` | `PendingSyncBadge` + `isPendingSync()` helper for placeholder fields |
+| `web-app/app/(dashboard)/layout.tsx` | Renders `<OfflineBanner />` above page content |
+| `web-app/components/patients/patient-table.tsx` | Uses `PendingSyncBadge` for MRN in desktop column + mobile card |
+| `web-app/app/(dashboard)/patients/[id]/page.tsx` | Uses `PendingSyncBadge` for MRN in summary bar |
+
+### Web-app — Migrated Hook Files
+
+| File | Dual-mode hooks |
+|------|----------------|
+| `web-app/lib/hooks/use-locations.ts` | `useCounties`, `useSubCounties`, `useWards` |
+| `web-app/lib/hooks/use-encounter-form.ts` | `useICD10Search` |
+| `web-app/lib/hooks/use-clinical-templates.ts` | List, detail, search, by-specialty, active assessment |
+| `web-app/lib/hooks/use-patients.ts` | `usePatients`, `usePatient` (hybrid PII), `useCreatePatient`, `useUpdatePatient`, `useDeletePatient`, `usePatientEmergencyContacts`, `usePatientEncounters` |
+| `web-app/lib/hooks/use-encounters.ts` | `useEncounters`, `useEncounter`, `useEncounterDiagnoses`, `useEncounterTreatmentPlan`, `useEncounterMedications`, create/update/delete mutations |
+| `web-app/lib/hooks/use-triage.ts` | `useTriageAssessment`, `useTriageAssessmentByEncounter`, `useTriageQueue`, create/update mutations |
+| `web-app/lib/hooks/use-pharmacy.ts` | `usePrescriptions`, `usePrescription`, by-patient/encounter, `useCreatePrescription` |
+| `web-app/lib/hooks/use-laboratory.ts` | `useLabOrders`, `useLabOrder`, by-patient/encounter, `useCreateLabOrder` |
+| `web-app/lib/hooks/billing.ts` | `useInvoices`, `useInvoice`, `useOverdueInvoices`, `useCreateInvoice`, `useUpdateInvoice` |
 
 ---
 
@@ -145,7 +174,11 @@ Fields encrypted with Fernet (AES-128) are **never** synced to client SQLite:
 - `Patient.phone_number`
 - `Patient.identification_number`
 
-These remain API-only. The detail view fetches them via REST when the user has network access and appropriate permissions.
+These remain API-only. The `usePatient` hook implements a **hybrid PII pattern**:
+
+1. Base patient data loads from local PowerSync SQLite (offline-capable)
+2. A supplementary `useQuery` fetches PII fields from the API **only when online** and when the base data source is local
+3. The results are merged — PII fields show when available, base data is always present
 
 **Rationale**: Fernet ciphertext in the browser SQLite is useless without the encryption key. Shipping the key client-side would violate Kenya Data Protection Act 2019.
 
@@ -165,29 +198,51 @@ These remain API-only. The detail view fetches them via REST when the user has n
 
 ## How It Works
 
+### Dual-Mode Hook Architecture
+
+All data hooks use `useOfflineQuery` (reads) and `useOfflineMutation` (writes) — generic wrappers that internally call both `usePowerSyncQuery` and React Query's `useQuery`/`useMutation`, toggling which is active via `enabled` flags based on `SyncProvider.isReady`.
+
+```
+useOfflineQuery({ sql, params, transform, queryKey, queryFn })
+  ├─ When PowerSync ready → usePowerSyncQuery(sql, params) → transform(rows) → data
+  └─ When API-only mode  → useQuery({ queryKey, queryFn }) → data
+```
+
+Both paths are always called (React rules of hooks). The `enabled` flag prevents execution on the inactive path.
+
 ### Read Flow (Offline-capable)
 
 ```
-Component → usePowerSyncQuery('SELECT * FROM patients_patient WHERE ...') 
-         → Local SQLite (instant) → Re-renders on data change
+Component → usePatients() → useOfflineQuery()
+  ├─ [PowerSync] SQL with JOINs → Local SQLite (instant) → transformPatientRow()
+  └─ [API-only]  React Query → GET /api/patients/ (Django REST API)
 ```
 
 ### Write Flow (Online required for upload)
 
 ```
-Component → db.execute('INSERT INTO patients_patient ...') 
-         → Local SQLite (immediate) → PowerSync upload queue
-         → uploadData() → POST /api/patients/ (Django REST API)
-         → PowerSync replicates back to all clients
+Component → useCreatePatient() → useOfflineMutation()
+  ├─ [PowerSync] generateId() → db.execute(INSERT) → Local SQLite (immediate)
+  │              → PowerSync upload queue → uploadData() → POST /api/patients/
+  │              → Sync-down reconciles local UUID with server PK
+  └─ [API-only]  React Query useMutation → POST /api/patients/
 ```
+
+**Server-generated fields** (MRN, invoice_number, order_number): Set to empty/placeholder on local create. Real values arrive after sync. UI shows `PendingSyncBadge` next to placeholder values.
 
 ### Fallback (No PowerSync URL configured)
 
 ```
-Component → useQuery() (React Query) → GET /api/patients/ (Django REST API)
+Component → useOfflineQuery() → isReady=false → useQuery() → Django REST API
 ```
 
 This is the default in local development.
+
+### Sync Status UI
+
+- **`OfflineBanner`**: Rendered in dashboard layout. Shows 4 states: offline (amber), back-online (green), pending writes (blue with count), sync error (red).
+- **`PendingSyncBadge`**: Blue outline badge shown next to MRN or other server-generated fields when `isPendingSync()` returns true (null, empty, or `PENDING*` value).
+- **`SyncProvider` context**: Exposes `pendingChanges` (polled from `ps_crud` table), `lastError`, `isSyncing`, `lastSyncTime` to all consumers.
 
 ---
 
@@ -198,8 +253,8 @@ This is the default in local development.
    ALTER PUBLICATION powersync ADD TABLE app_modelname;
    ```
 
-2. **Sync Rules**: Add a bucket/data entry in `backend/powersync/sync-rules.yaml`
-   - Choose correct scope: `token_parameters.facility_id` or `token_parameters.organization_id`
+2. **Sync Streams**: Add a stream in `backend/powersync/sync-streams.yaml` (edition 3)
+   - Choose correct scope: `auth.parameter('facility_id')` or `auth.parameter('organization_id')`
    - **Never include** Fernet-encrypted or PII fields
 
 3. **Client Schema**: Add a `Table` definition in `web-app/lib/powersync/schema.ts`
@@ -208,9 +263,13 @@ This is the default in local development.
 
 4. **Connector** (if writable): Add the table → endpoint mapping in `web-app/lib/powersync/connector.ts` `TABLE_TO_ENDPOINT`
 
-5. **Upload sync rules** to PowerSync Cloud dashboard
+5. **Dual-mode hook**: Create or update the module's hook file to use `useOfflineQuery`/`useOfflineMutation`
+   - Add a transform function in `transforms.ts` for the new table
+   - Use parameterized SQL with JOINs as needed
 
-6. **Test**: Verify data appears in browser DevTools → Application → IndexedDB
+6. **Upload sync streams** to PowerSync Cloud dashboard → Deploy
+
+7. **Test**: Verify data appears in browser DevTools → Application → IndexedDB
 
 ---
 
@@ -225,3 +284,22 @@ This is the default in local development.
 | Empty local SQLite | Missing `NEXT_PUBLIC_POWERSYNC_URL` | Set the env var (empty = API-only mode) |
 | Data from wrong facility | JWT claims missing | Check that `powersync_tokens.py` is registered in SIMPLE_JWT settings |
 | 3rd-party embed broken | COEP too strict | We use `credentialless` (not `require-corp`) to mitigate this |
+
+---
+
+## Not in Scope (API-only)
+
+These modules have no matching PowerSync tables and remain entirely API-only:
+
+| Module | Reason |
+|--------|--------|
+| Auth / RBAC / setup pages | Configuration, not clinical data |
+| Clinics (`use-clinics.ts`) | Facility config — rarely changes, not needed offline |
+| Consultation queue (`use-consultation-queue.ts`) | Separate model, real-time queue management |
+| Waiting queue (`useWaitingQueue`) | Separate model from triage assessments |
+| Drug catalogue, lab test catalogue | Reference lookups not in sync-streams |
+| Dashboard stats / aggregations | Separate optimization concern |
+| AI/CDS, SHA claims, DHIS2/HL7 | External integrations requiring connectivity |
+| Imaging, inpatient, allied health, MCH | Not yet in sync-streams |
+| Audit logs | Write-only, high volume, sensitive |
+| Payments, invoice line items | Business validation requiring API roundtrip |

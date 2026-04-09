@@ -58,6 +58,7 @@ import { PatientAuditTrail } from '@/components/patients/patient-audit-trail';
 import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PendingSyncBadge, isPendingSync } from '@/components/shared/pending-sync-badge';
 import { EmptyState } from '@/components/shared/empty-state';
 import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
@@ -151,7 +152,7 @@ export default function PatientDetailPage() {
               />
               <div className="flex min-w-0 flex-col gap-1">
                 <p className="truncate font-mono text-sm font-medium">
-                  MRN: {patient.mrn}
+                  MRN: {isPendingSync(patient.mrn) ? <PendingSyncBadge label="MRN pending" /> : patient.mrn}
                   {patient.sha_number && (
                     <span className="text-muted-foreground"> • SHA: {patient.sha_number}</span>
                   )}

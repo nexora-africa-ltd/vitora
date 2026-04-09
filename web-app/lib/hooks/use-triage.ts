@@ -482,11 +482,107 @@ export function useCalculateTriageCategory() {
 // TRIAGE QUEUE HOOKS
 // =============================================================================
 
+type TriageQueueJoinedRow = TriageAssessmentRow & {
+  id: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
+  patient_mrn?: string;
+  patient_date_of_birth?: string;
+  patient_gender?: string;
+  patient_id?: string;
+};
+
 /**
- * Fetch triage queue with optional filters
+ * Fetch triage queue with optional filters.
+ * Reads from local PowerSync SQLite when available, falls back to API.
+ *
+ * Note: Offline mode provides best-effort queue data from triage_triageassessment.
+ * Computed fields (position, wait_time_minutes, alerts) are approximated locally.
  */
 export function useTriageQueue(filters: QueueFilters = {}) {
-  return useQuery({
+  const conditions: string[] = ['t.triage_end_time IS NULL'];
+  const sqlParams: (string | number | null)[] = [];
+
+  if (filters.area) {
+    conditions.push('t.assigned_area = ?');
+    sqlParams.push(filters.area);
+  }
+  if (filters.category) {
+    conditions.push('t.triage_category = ?');
+    sqlParams.push(filters.category);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  return useOfflineQuery<TriageQueueJoinedRow, PaginatedResponse<TriageQueueEntry>>({
+    sql: `SELECT t.*, p.first_name as patient_first_name, p.last_name as patient_last_name,
+        p.mrn as patient_mrn, p.date_of_birth as patient_date_of_birth, p.gender as patient_gender,
+        e.patient_id as patient_id
+      FROM triage_triageassessment t
+      LEFT JOIN encounters_encounter e ON t.encounter_id = e.id
+      LEFT JOIN patients_patient p ON e.patient_id = p.id
+      ${whereClause}
+      ORDER BY
+        CASE t.triage_category
+          WHEN 'EMERGENCY' THEN 1 WHEN 'PRIORITY' THEN 2
+          WHEN 'QUEUE' THEN 3 WHEN 'NON_URGENT' THEN 4 ELSE 5
+        END,
+        t.arrival_time ASC`,
+    params: sqlParams,
+    transform: (rows) => {
+      const results: TriageQueueEntry[] = rows.map((row, idx) => {
+        const arrivalTime = (row.arrival_time as string) || new Date().toISOString();
+        const waitMs = Date.now() - new Date(arrivalTime).getTime();
+        const waitMinutes = Math.max(0, Math.round(waitMs / 60000));
+        const name = row.patient_first_name && row.patient_last_name
+          ? `${row.patient_first_name} ${row.patient_last_name}`
+          : 'Unknown';
+        let age = 0;
+        if (row.patient_date_of_birth) {
+          const dob = new Date(row.patient_date_of_birth as string);
+          age = Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        }
+
+        let alerts: TriageAlert[] = [];
+        try {
+          if (row.alerts) alerts = JSON.parse(row.alerts as string);
+        } catch { /* keep empty */ }
+
+        return {
+          id: parseInt(row.id, 10) || 0,
+          triage_assessment: parseInt(row.id, 10) || 0,
+          patient_id: row.patient_id ? parseInt(row.patient_id as string, 10) : 0,
+          patient_name: name,
+          patient_mrn: (row.patient_mrn as string) || '',
+          patient_age: age,
+          patient_gender: (row.patient_gender as string) || '',
+          triage_category: ((row.triage_category as string) || 'QUEUE') as TriageCategory,
+          chief_complaint_category: (row.chief_complaint_category as string) || '',
+          chief_complaint: (row.chief_complaint as string) || '',
+          assigned_area: ((row.assigned_area as string) || 'WAITING') as AssignedArea,
+          assigned_area_label: (row.assigned_area as string) || 'Waiting',
+          assigned_area_display: (row.assigned_area as string) || 'Waiting',
+          assigned_clinic: row.assigned_clinic_id ? parseInt(row.assigned_clinic_id as string, 10) : null,
+          assigned_clinic_name: null,
+          routing_destination: null,
+          arrival_time: arrivalTime,
+          triage_time: (row.triage_start_time as string) || arrivalTime,
+          notes: null,
+          wait_time_minutes: waitMinutes,
+          is_wait_exceeded: waitMinutes > 30,
+          status: 'WAITING' as const,
+          called_at: null,
+          called_by_name: null,
+          position: idx + 1,
+          alerts,
+          alerts_count: alerts.length,
+          created_at: (row.created_at as string) || '',
+          updated_at: (row.updated_at as string) || '',
+        } as TriageQueueEntry;
+      });
+
+      return { count: results.length, next: null, previous: null, results };
+    },
     queryKey: triageKeys.queueFiltered(filters),
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -499,8 +595,10 @@ export function useTriageQueue(filters: QueueFilters = {}) {
       );
       return response.data;
     },
-    refetchInterval: 15000, // Auto-refresh every 15 seconds
-    refetchIntervalInBackground: false, // Don't poll when tab is in background
+    queryOptions: {
+      refetchInterval: 15000,
+      refetchIntervalInBackground: false,
+    },
   });
 }
 

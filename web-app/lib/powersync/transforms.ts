@@ -566,6 +566,101 @@ export function transformInvoiceRow(
 }
 
 // ---------------------------------------------------------------------------
+// Treatment Plan Transformer
+// ---------------------------------------------------------------------------
+
+export interface TreatmentPlanLocalRecord {
+  id: number;
+  encounter: number;
+  template?: number;
+  clinical_notes: string;
+  medications_json: unknown;
+  procedures_json: unknown;
+  follow_up_instructions: string;
+  follow_up_date: string | null;
+  diet_recommendations: string;
+  activity_restrictions: string;
+  referral_needed: boolean;
+  referral_specialty: string;
+  referral_notes: string;
+  status: string;
+  created_by?: number | null;
+  approved_by?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function transformTreatmentPlanRow(
+  row: TreatmentPlanRow & { id: string }
+): TreatmentPlanLocalRecord {
+  let medicationsJson: unknown = [];
+  let proceduresJson: unknown = [];
+  try { medicationsJson = row.medications_json ? JSON.parse(row.medications_json as string) : []; } catch { /* keep default */ }
+  try { proceduresJson = row.procedures_json ? JSON.parse(row.procedures_json as string) : []; } catch { /* keep default */ }
+
+  return {
+    id: toNumericId(row.id),
+    encounter: toNumericId(row.encounter_id as string),
+    template: row.template_id ? toNumericId(row.template_id as string) : undefined,
+    clinical_notes: (row.clinical_notes as string) || '',
+    medications_json: medicationsJson,
+    procedures_json: proceduresJson,
+    follow_up_instructions: (row.follow_up_instructions as string) || '',
+    follow_up_date: (row.follow_up_date as string) || null,
+    diet_recommendations: (row.diet_recommendations as string) || '',
+    activity_restrictions: (row.activity_restrictions as string) || '',
+    referral_needed: toBool(row.referral_needed as number),
+    referral_specialty: (row.referral_specialty as string) || '',
+    referral_notes: (row.referral_notes as string) || '',
+    status: (row.status as string) || 'DRAFT',
+    created_by: row.created_by_id ? toNumericId(row.created_by_id as string) : null,
+    approved_by: row.approved_by_id ? toNumericId(row.approved_by_id as string) : null,
+    created_at: (row.created_at as string) || '',
+    updated_at: (row.updated_at as string) || '',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Medication Transformer
+// ---------------------------------------------------------------------------
+
+export interface MedicationLocalRecord {
+  id: number;
+  treatment_plan: number;
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  route: string;
+  quantity: string;
+  instructions: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function transformMedicationRow(
+  row: MedicationRow & { id: string }
+): MedicationLocalRecord {
+  return {
+    id: toNumericId(row.id),
+    treatment_plan: toNumericId(row.treatment_plan_id as string),
+    name: (row.name as string) || '',
+    dosage: (row.dosage as string) || '',
+    frequency: (row.frequency as string) || '',
+    duration: (row.duration as string) || '',
+    route: (row.route as string) || '',
+    quantity: String((row.quantity as number) ?? ''),
+    instructions: (row.instructions as string) || '',
+    start_date: (row.start_date as string) || null,
+    end_date: (row.end_date as string) || null,
+    created_at: (row.created_at as string) || '',
+    updated_at: (row.updated_at as string) || '',
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Re-export types and helpers for convenience
 // ---------------------------------------------------------------------------
 
