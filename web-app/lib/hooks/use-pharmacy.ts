@@ -19,6 +19,8 @@ import {
   StockAdjustmentCreateData,
 } from '@/lib/types/pharmacy';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
+import { generateId } from '@/lib/powersync/uuid';
 import { transformPrescriptionRow } from '@/lib/powersync/transforms';
 import type { PrescriptionRow } from '@/lib/powersync/schema';
 import type { PaginatedResponse } from '@/lib/types';
@@ -362,12 +364,31 @@ export function useAdmissionPrescriptions(admissionId: number) {
 
 /**
  * Hook for creating a prescription.
+ * Uses local PowerSync write when available, falls back to API.
+ * Note: Prescription items are handled separately via the connector upload.
  */
 export function useCreatePrescription() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: PrescriptionCreateData) => pharmacyApi.createPrescription(data),
+  return useOfflineMutation<PrescriptionCreateData, Prescription>({
+    table: 'pharmacy_prescription',
+    operation: 'create',
+    buildLocalData: (data) => ({
+      id: generateId(),
+      prescription_number: '', // Assigned by backend after sync
+      patient_id: String(data.patient),
+      encounter_id: data.encounter ? String(data.encounter) : null,
+      admission_id: data.admission ? String(data.admission) : null,
+      status: 'PENDING',
+      dispensing_type: data.dispensing_type || 'INTERNAL',
+      is_discharge_medication: data.is_discharge_medication ? 1 : 0,
+      clinical_notes: data.clinical_notes || null,
+      valid_until: data.valid_until || null,
+      prescribed_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+    mutationFn: (data) => pharmacyApi.createPrescription(data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
       queryClient.invalidateQueries({ queryKey: ['patients', variables.patient, 'prescriptions'] });

@@ -78,6 +78,7 @@ export default function NewPatientPage() {
     try {
       // Use idempotency key to prevent duplicate creation (Sprint 1.7)
       const patient = await createPatient.mutateAsync({ data, idempotencyKey });
+      if (!patient) return; // Local write — data will sync later
       setRegisteredPatient(patient);
 
       // Clear idempotency key after successful creation

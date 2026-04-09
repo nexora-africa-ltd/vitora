@@ -1,21 +1,69 @@
 /**
  * React hooks for clinical templates.
- * Provides data fetching and mutations for clinical assessment templates.
+ * Dual-mode: PowerSync (local SQLite) with React Query API fallback.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clinicalTemplatesApi } from '@/lib/api/clinical-templates';
+import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { transformClinicalTemplateRow } from '@/lib/powersync/transforms';
+import type { ClinicalTemplateRow } from '@/lib/powersync/schema';
 import type {
   ClinicalTemplateListParams,
   ClinicalTemplateCreateData,
+  ClinicalTemplate,
   TemplateType,
 } from '@/lib/types/clinical-template';
+import type { PaginatedResponse } from '@/lib/types';
+
+type TemplateLocalRow = ClinicalTemplateRow & { id: string };
 
 /**
  * Hook for fetching paginated clinical templates.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useClinicalTemplates(params?: ClinicalTemplateListParams) {
-  return useQuery({
+  const conditions: string[] = [];
+  const sqlParams: (string | number)[] = [];
+
+  if (params?.template_type) {
+    conditions.push('template_type = ?');
+    sqlParams.push(params.template_type);
+  }
+  if (params?.specialty) {
+    conditions.push('specialty = ?');
+    sqlParams.push(params.specialty);
+  }
+  if (params?.is_active !== undefined) {
+    conditions.push('is_active = ?');
+    sqlParams.push(params.is_active ? 1 : 0);
+  }
+  if (params?.is_system !== undefined) {
+    conditions.push('is_system = ?');
+    sqlParams.push(params.is_system ? 1 : 0);
+  }
+  if (params?.search) {
+    conditions.push('(name LIKE ? OR description LIKE ?)');
+    const pattern = `%${params.search}%`;
+    sqlParams.push(pattern, pattern);
+  }
+
+  const limit = params?.page_size || 25;
+  const offset = ((params?.page || 1) - 1) * limit;
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  return useOfflineQuery<TemplateLocalRow, PaginatedResponse<ClinicalTemplate>>({
+    sql: `SELECT * FROM clinical_templates_clinicaltemplate
+      ${whereClause}
+      ORDER BY name
+      LIMIT ? OFFSET ?`,
+    params: [...sqlParams, limit, offset],
+    transform: (rows) => ({
+      count: rows.length < limit ? offset + rows.length : offset + limit + 1,
+      next: null,
+      previous: null,
+      results: rows.map(r => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
+    }),
     queryKey: ['clinical-templates', params],
     queryFn: () => clinicalTemplatesApi.list(params),
   });
@@ -23,39 +71,73 @@ export function useClinicalTemplates(params?: ClinicalTemplateListParams) {
 
 /**
  * Hook for fetching a single clinical template.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useClinicalTemplate(id: number) {
-  return useQuery({
+  return useOfflineQuery<TemplateLocalRow, ClinicalTemplate>({
+    sql: 'SELECT * FROM clinical_templates_clinicaltemplate WHERE id = ?',
+    params: [String(id)],
+    transform: (rows) => {
+      if (rows.length === 0) throw new Error(`Clinical template ${id} not found`);
+      return transformClinicalTemplateRow(rows[0]!) as unknown as ClinicalTemplate;
+    },
     queryKey: ['clinical-templates', id],
     queryFn: () => clinicalTemplatesApi.get(id),
-    enabled: !!id,
+    forceApi: !id,
   });
 }
 
 /**
  * Hook for searching clinical templates.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useClinicalTemplateSearch(query: string, templateType?: TemplateType) {
-  return useQuery({
+  const conditions: string[] = ['is_active = 1'];
+  const sqlParams: (string | number)[] = [];
+
+  if (query) {
+    conditions.push('(name LIKE ? OR description LIKE ?)');
+    const pattern = `%${query}%`;
+    sqlParams.push(pattern, pattern);
+  }
+  if (templateType) {
+    conditions.push('template_type = ?');
+    sqlParams.push(templateType);
+  }
+
+  return useOfflineQuery<TemplateLocalRow, ClinicalTemplate[]>({
+    sql: `SELECT * FROM clinical_templates_clinicaltemplate
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY usage_count DESC, name
+      LIMIT 20`,
+    params: sqlParams,
+    transform: (rows) => rows.map(r => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
     queryKey: ['clinical-templates', 'search', query, templateType],
     queryFn: () => clinicalTemplatesApi.search(query, templateType),
-    enabled: query.length >= 2,
+    forceApi: query.length < 2,
   });
 }
 
 /**
  * Hook for fetching templates by specialty.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useClinicalTemplatesBySpecialty(specialty: string) {
-  return useQuery({
+  return useOfflineQuery<TemplateLocalRow, ClinicalTemplate[]>({
+    sql: `SELECT * FROM clinical_templates_clinicaltemplate
+      WHERE is_active = 1 AND specialty = ?
+      ORDER BY usage_count DESC, name`,
+    params: [specialty],
+    transform: (rows) => rows.map(r => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
     queryKey: ['clinical-templates', 'specialty', specialty],
     queryFn: () => clinicalTemplatesApi.getBySpecialty(specialty),
-    enabled: !!specialty,
+    forceApi: !specialty,
   });
 }
 
 /**
  * Hook for fetching suggested templates based on encounter context.
+ * Remains API-only — suggestion logic is server-side.
  */
 export function useSuggestedTemplates(params: {
   encounter_type?: string;
@@ -70,10 +152,21 @@ export function useSuggestedTemplates(params: {
 
 /**
  * Hook for fetching active assessment templates.
- * Useful for template selection in encounter forms.
+ * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useActiveAssessmentTemplates() {
-  return useQuery({
+  return useOfflineQuery<TemplateLocalRow, PaginatedResponse<ClinicalTemplate>>({
+    sql: `SELECT * FROM clinical_templates_clinicaltemplate
+      WHERE is_active = 1 AND template_type = 'assessment'
+      ORDER BY usage_count DESC, name
+      LIMIT 100`,
+    params: [],
+    transform: (rows) => ({
+      count: rows.length,
+      next: null,
+      previous: null,
+      results: rows.map(r => transformClinicalTemplateRow(r) as unknown as ClinicalTemplate),
+    }),
     queryKey: ['clinical-templates', 'active', 'assessment'],
     queryFn: () =>
       clinicalTemplatesApi.list({

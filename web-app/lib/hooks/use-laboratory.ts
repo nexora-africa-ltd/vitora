@@ -21,6 +21,8 @@ import {
   DiagnosticReportStatus,
 } from '@/lib/types/laboratory';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
+import { generateId } from '@/lib/powersync/uuid';
 import { transformLabOrderRow } from '@/lib/powersync/transforms';
 import type { LabOrderRow } from '@/lib/powersync/schema';
 import type { PaginatedResponse } from '@/lib/types';
@@ -174,27 +176,48 @@ export function useEncounterLabOrders(encounterId: number) {
 
 /**
  * Hook for creating a lab order.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useCreateLabOrder() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: LabOrderCreateData) => laboratoryApi.createOrder(data),
+  return useOfflineMutation<LabOrderCreateData, LabOrder>({
+    table: 'laboratory_laborder',
+    operation: 'create',
+    buildLocalData: (data) => ({
+      id: generateId(),
+      order_number: '', // Assigned by backend after sync
+      patient_id: String(data.patient),
+      encounter_id: String(data.encounter),
+      admission_id: data.admission ? String(data.admission) : null,
+      order_type: data.order_type || 'INTERNAL',
+      priority: data.priority || 'ROUTINE',
+      clinical_notes: data.clinical_notes || null,
+      status: 'DRAFT',
+      specimen_collected: 0,
+      is_paid: 0,
+      ordered_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+    mutationFn: (data) => laboratoryApi.createOrder(data),
     onSuccess: (newOrder) => {
       queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
-      queryClient.invalidateQueries({
-        queryKey: ['patients', newOrder.patient, 'lab-orders'],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['encounters', newOrder.encounter, 'lab-orders'],
-      });
-      if (newOrder.admission) {
+      if (newOrder) {
         queryClient.invalidateQueries({
-          queryKey: ['inpatient', 'admissions', newOrder.admission, 'orders'],
+          queryKey: ['patients', newOrder.patient, 'lab-orders'],
         });
         queryClient.invalidateQueries({
-          queryKey: ['inpatient', 'admissions', newOrder.admission, 'lab-orders'],
+          queryKey: ['encounters', newOrder.encounter, 'lab-orders'],
         });
+        if (newOrder.admission) {
+          queryClient.invalidateQueries({
+            queryKey: ['inpatient', 'admissions', newOrder.admission, 'orders'],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ['inpatient', 'admissions', newOrder.admission, 'lab-orders'],
+          });
+        }
       }
     },
   });

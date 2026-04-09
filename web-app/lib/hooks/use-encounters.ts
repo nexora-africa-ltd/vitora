@@ -7,6 +7,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { encountersApi, PreTriageQueueParams } from '@/lib/api/encounters';
 import { EncounterListParams, Encounter } from '@/lib/types/encounter';
 import { useOfflineQuery } from '@/lib/powersync/use-offline-query';
+import { useOfflineMutation } from '@/lib/powersync/use-offline-mutation';
+import { generateId } from '@/lib/powersync/uuid';
 import { transformEncounterRow, transformDiagnosisRow } from '@/lib/powersync/transforms';
 import type { EncounterRow, DiagnosisRow } from '@/lib/powersync/schema';
 import type { PaginatedResponse } from '@/lib/types';
@@ -138,12 +140,27 @@ export function useEncounterTreatmentPlan(encounterId: number) {
 
 /**
  * Hook for creating an encounter.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useCreateEncounter() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: Partial<Encounter>) => encountersApi.create(data),
+  return useOfflineMutation<Partial<Encounter>, Encounter>({
+    table: 'encounters_encounter',
+    operation: 'create',
+    buildLocalData: (data) => ({
+      id: generateId(),
+      patient_id: data.patient ? String(data.patient) : null,
+      encounter_type: data.encounter_type || 'OPD',
+      encounter_date: data.encounter_date || new Date().toISOString().split('T')[0],
+      chief_complaint: data.chief_complaint || '',
+      consultation_status: 'WAITING',
+      triage_status: 'PENDING',
+      notes: data.notes || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+    mutationFn: (data) => encountersApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['encounters'] });
     },
@@ -190,13 +207,31 @@ export function useQuickConsultation() {
 
 /**
  * Hook for updating an encounter.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useUpdateEncounter() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Encounter> }) =>
-      encountersApi.update(id, data),
+  return useOfflineMutation<{ id: number; data: Partial<Encounter> }, Encounter>({
+    table: 'encounters_encounter',
+    operation: 'update',
+    getId: (input) => input.id,
+    buildLocalData: ({ data }) => {
+      const fields: Record<string, string | number | null> = {};
+      if (data.chief_complaint !== undefined) fields.chief_complaint = data.chief_complaint;
+      if (data.encounter_type !== undefined) fields.encounter_type = data.encounter_type;
+      if (data.notes !== undefined) fields.notes = data.notes || null;
+      if (data.temperature !== undefined) fields.temperature = data.temperature ?? null;
+      if (data.pulse !== undefined) fields.pulse = data.pulse ?? null;
+      if (data.blood_pressure !== undefined) fields.blood_pressure = data.blood_pressure || null;
+      if (data.respiratory_rate !== undefined) fields.respiratory_rate = data.respiratory_rate ?? null;
+      if (data.spo2 !== undefined) fields.spo2 = data.spo2 ?? null;
+      if (data.weight !== undefined) fields.weight = data.weight ?? null;
+      if (data.height !== undefined) fields.height = data.height ?? null;
+      fields.updated_at = new Date().toISOString();
+      return fields;
+    },
+    mutationFn: ({ id, data }) => encountersApi.update(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['encounters'] });
       queryClient.invalidateQueries({ queryKey: ['encounters', variables.id] });
@@ -248,21 +283,39 @@ export function usePreTriageQueue(params?: PreTriageQueueParams) {
 
 /**
  * Hook for adding a diagnosis to an encounter.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useAddDiagnosis(encounterId: number) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: {
-      icd10_code?: number | null;
-      icd11_code?: string;
-      icd11_display?: string;
-      diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
-      free_text_diagnosis?: string;
-      notes?: string;
-      is_confirmed?: boolean;
-      certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
-    }) => encountersApi.createDiagnosis(encounterId, data),
+  return useOfflineMutation<{
+    icd10_code?: number | null;
+    icd11_code?: string;
+    icd11_display?: string;
+    diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
+    free_text_diagnosis?: string;
+    notes?: string;
+    is_confirmed?: boolean;
+    certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
+  }, Diagnosis>({
+    table: 'encounters_diagnosis',
+    operation: 'create',
+    buildLocalData: (data) => ({
+      id: generateId(),
+      encounter_id: String(encounterId),
+      icd10_code_id: data.icd10_code ? String(data.icd10_code) : null,
+      icd11_code: data.icd11_code || null,
+      icd11_display: data.icd11_display || null,
+      diagnosis_type: data.diagnosis_type,
+      free_text_diagnosis: data.free_text_diagnosis || null,
+      notes: data.notes || null,
+      is_confirmed: data.is_confirmed ? 1 : 0,
+      certainty: data.certainty || 'provisional',
+      diagnosed_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+    mutationFn: (data) => encountersApi.createDiagnosis(encounterId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'diagnoses'] });
     },
@@ -271,12 +324,16 @@ export function useAddDiagnosis(encounterId: number) {
 
 /**
  * Hook for deleting a diagnosis from an encounter.
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useDeleteDiagnosis(encounterId: number) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (diagnosisId: number) => encountersApi.deleteDiagnosis(encounterId, diagnosisId),
+  return useOfflineMutation<number, void>({
+    table: 'encounters_diagnosis',
+    operation: 'delete',
+    getId: (diagnosisId) => diagnosisId,
+    mutationFn: (diagnosisId) => encountersApi.deleteDiagnosis(encounterId, diagnosisId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'diagnoses'] });
     },
@@ -285,22 +342,37 @@ export function useDeleteDiagnosis(encounterId: number) {
 
 /**
  * Hook for updating a diagnosis (e.g., changing certainty after lab results).
+ * Uses local PowerSync write when available, falls back to API.
  */
 export function useUpdateDiagnosis(encounterId: number) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ diagnosisId, data }: {
-      diagnosisId: number;
-      data: {
-        icd10_code?: number | null;
-        diagnosis_type?: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
-        free_text_diagnosis?: string;
-        notes?: string;
-        is_confirmed?: boolean;
-        certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
-      };
-    }) => encountersApi.updateDiagnosis(encounterId, diagnosisId, data),
+  return useOfflineMutation<{
+    diagnosisId: number;
+    data: {
+      icd10_code?: number | null;
+      diagnosis_type?: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
+      free_text_diagnosis?: string;
+      notes?: string;
+      is_confirmed?: boolean;
+      certainty?: 'confirmed' | 'provisional' | 'ruled_out' | 'suspected';
+    };
+  }, Diagnosis>({
+    table: 'encounters_diagnosis',
+    operation: 'update',
+    getId: (input) => input.diagnosisId,
+    buildLocalData: ({ data }) => {
+      const fields: Record<string, string | number | null> = {};
+      if (data.icd10_code !== undefined) fields.icd10_code_id = data.icd10_code ? String(data.icd10_code) : null;
+      if (data.diagnosis_type !== undefined) fields.diagnosis_type = data.diagnosis_type;
+      if (data.free_text_diagnosis !== undefined) fields.free_text_diagnosis = data.free_text_diagnosis || null;
+      if (data.notes !== undefined) fields.notes = data.notes || null;
+      if (data.is_confirmed !== undefined) fields.is_confirmed = data.is_confirmed ? 1 : 0;
+      if (data.certainty !== undefined) fields.certainty = data.certainty;
+      fields.updated_at = new Date().toISOString();
+      return fields;
+    },
+    mutationFn: ({ diagnosisId, data }) => encountersApi.updateDiagnosis(encounterId, diagnosisId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'diagnoses'] });
     },

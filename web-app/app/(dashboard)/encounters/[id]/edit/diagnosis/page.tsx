@@ -85,6 +85,26 @@ export default function EncounterEditDiagnosisPage() {
         certainty: (diagnosis.certainty?.toLowerCase() || 'suspected') as 'confirmed' | 'provisional' | 'ruled_out' | 'suspected',
       });
 
+      if (!savedDiagnosis) {
+        // Local write — add input data to local store
+        setDiagnoses(encounterId, [
+          ...diagnoses,
+          {
+            icd10_code: diagnosis.icd10_code,
+            icd10_display: diagnosis.icd10_display || '',
+            icd11_code: diagnosis.icd11_code,
+            icd11_display: diagnosis.icd11_display || '',
+            diagnosis_type: diagnosis.diagnosis_type,
+            free_text_diagnosis: diagnosis.free_text_diagnosis || '',
+            notes: diagnosis.notes || '',
+            is_confirmed: diagnosis.is_confirmed || false,
+            certainty: diagnosis.certainty,
+          },
+        ]);
+        toast({ title: 'Diagnosis Added', description: 'Saved locally — will sync when online.' });
+        return;
+      }
+
       // Update local store
       setDiagnoses(encounterId, [
         ...diagnoses,
