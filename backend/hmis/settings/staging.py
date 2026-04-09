@@ -127,6 +127,13 @@ ENCRYPTION_KEY = os.getenv(
 FIELD_ENCRYPTION_KEY = ENCRYPTION_KEY
 
 # =============================================================================
+# PowerSync — offline-first data sync
+# =============================================================================
+# Set the PowerSync Cloud instance URL here for staging demos.
+# The frontend reads NEXT_PUBLIC_POWERSYNC_URL separately.
+POWERSYNC_URL = os.getenv("POWERSYNC_URL", "")
+
+# =============================================================================
 # SHA Integration - Sandbox mode for demos
 # =============================================================================
 SHA_ENABLED = os.getenv("SHA_ENABLED", "true").lower() == "true"

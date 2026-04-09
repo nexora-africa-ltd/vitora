@@ -54,6 +54,11 @@ else:
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# PowerSync integration — env vars for the PowerSync service (self-hosted)
+# These are read by powersync/powersync.yaml, not by Django directly.
+# Listed here for documentation and .env template purposes.
+POWERSYNC_URL = os.getenv("POWERSYNC_URL", "")  # e.g. https://ps.example.com
+
 # Security settings for production
 # Note: Render handles SSL termination, so we may need to disable redirect
 SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "true").lower() == "true"

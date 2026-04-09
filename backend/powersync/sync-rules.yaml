@@ -1,0 +1,131 @@
+# =============================================================================
+# PowerSync Sync Rules for Vitora HMIS
+# =============================================================================
+# These rules define what data syncs to each connected client.
+# Data is scoped by facility_id from the JWT token parameters.
+#
+# SECURITY NOTES:
+# - Encrypted fields (national_id, phone_number) are EXCLUDED from sync.
+#   They remain API-only to comply with Kenya DPA 2019.
+# - Sensitive patients (is_sensitive=true) require view_sensitive_patient
+#   permission — handled at the API layer, not here.
+# - Facility scoping ensures tenant isolation.
+#
+# Documentation: https://docs.powersync.com/usage/sync-rules
+# =============================================================================
+
+bucket_definitions:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Global reference data — synced to ALL authenticated users (read-only)
+  # ───────────────────────────────────────────────────────────────────────────
+  global_counties:
+    # Kenya location hierarchy — 47 counties, ~289 sub-counties, ~1448 wards
+    # Small dataset, rarely changes. Sync once, query locally forever.
+    parameters: SELECT token_parameters.user_id AS user_id
+    data:
+      - SELECT id, code, name FROM core_county
+
+  global_sub_counties:
+    parameters: SELECT token_parameters.user_id AS user_id
+    data:
+      - SELECT id, county_id, name FROM core_subcounty
+
+  global_wards:
+    parameters: SELECT token_parameters.user_id AS user_id
+    data:
+      - SELECT id, sub_county_id, name FROM core_ward
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Organization-scoped data — synced to users in the same organization
+  # ───────────────────────────────────────────────────────────────────────────
+  org_patients:
+    # Patients are organization-scoped (visible across all org facilities).
+    # EXCLUDES: national_id, phone_number, identification_number (encrypted/PII)
+    parameters: SELECT token_parameters.organization_id AS org_id
+    data:
+      - >
+        SELECT
+          id,
+          organization_id,
+          registered_at_facility_id,
+          mrn,
+          first_name,
+          middle_name,
+          last_name,
+          title,
+          date_of_birth,
+          gender,
+          cr_number,
+          sha_number,
+          email,
+          address,
+          citizenship,
+          identification_type,
+          is_person_with_disability,
+          is_sensitive,
+          consent_given,
+          consent_date,
+          consent_deferred,
+          registered_by_id,
+          referral_source,
+          referred_from_facility,
+          county_id,
+          sub_county_id,
+          ward_id,
+          is_deceased,
+          created_at,
+          updated_at
+        FROM patients_patient
+        WHERE organization_id = bucket.org_id
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Facility-scoped data — synced only to users at the same facility
+  # ───────────────────────────────────────────────────────────────────────────
+  facility_encounters:
+    parameters: SELECT token_parameters.facility_id AS fac_id
+    data:
+      - >
+        SELECT
+          id,
+          organization_id,
+          facility_id,
+          patient_id,
+          clinic_visit_id,
+          encounter_type,
+          encounter_date,
+          chief_complaint,
+          temperature,
+          pulse,
+          blood_pressure,
+          respiratory_rate,
+          spo2,
+          weight,
+          height,
+          notes,
+          triage_requirement,
+          triage_status,
+          consultation_status,
+          created_by_id,
+          created_at,
+          updated_at
+        FROM encounters_encounter
+        WHERE facility_id = bucket.fac_id
+
+  facility_emergency_contacts:
+    # Emergency contacts for patients in the organization
+    # Synced per-facility via the patient's organization
+    parameters: SELECT token_parameters.organization_id AS org_id
+    data:
+      - >
+        SELECT
+          ec.id,
+          ec.patient_id,
+          ec.full_name,
+          ec.relationship,
+          ec.phone_number,
+          ec.alternative_phone,
+          ec.created_at,
+          ec.updated_at
+        FROM patients_emergencycontact ec
+        INNER JOIN patients_patient p ON ec.patient_id = p.id
+        WHERE p.organization_id = bucket.org_id
