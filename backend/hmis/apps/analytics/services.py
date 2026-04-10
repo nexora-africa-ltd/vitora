@@ -429,18 +429,25 @@ def compute_department_monthly(facility, year: int, month: int) -> list[dict]:
             svc = _compute_service_department(
                 facility, dept_code, month_start, month_end
             )
-            if svc and svc["visit_count"] > 0:
-                results.append(svc)
+            results.append(
+                svc
+                if svc
+                else {
+                    "department": dept_code,
+                    "visit_count": 0,
+                    "unique_patients": 0,
+                    "revenue": Decimal("0"),
+                    "top_diagnoses": [],
+                    "avg_length_of_stay_days": None,
+                }
+            )
             continue
 
         enc_types = [k for k, v in ENCOUNTER_TYPE_TO_DEPARTMENT.items() if v == dept_code]
         dept_enc = enc_qs.filter(encounter_type__in=enc_types)
 
         visit_count = dept_enc.count()
-        if visit_count == 0:
-            continue
-
-        unique_patients = dept_enc.values("patient").distinct().count()
+        unique_patients = dept_enc.values("patient").distinct().count() if visit_count else 0
 
         # Revenue via invoices linked to these encounters
         revenue = Decimal("0")

@@ -111,9 +111,14 @@ class TestComputeDepartmentMonthly:
         assert opd["unique_patients"] >= 1
 
     def test_no_encounters_month(self, sample_facility):
-        """Should return empty list for months with no encounters."""
+        """Should return all 8 departments with zero counts for months with no encounters."""
         results = compute_department_monthly(sample_facility, 2020, 1)
-        assert results == []
+        assert len(results) == 8
+        depts = {r["department"] for r in results}
+        assert depts == {"OPD", "IPD", "EMERGENCY", "MCH", "THEATRE", "PHARMACY", "LABORATORY", "IMAGING"}
+        for r in results:
+            assert r["visit_count"] == 0
+            assert r["unique_patients"] == 0
 
 
 @pytest.mark.django_db
