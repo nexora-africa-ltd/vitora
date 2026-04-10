@@ -53,6 +53,12 @@ class FacilityDailySummarySerializer(serializers.ModelSerializer):
             "new_admissions",
             "discharges",
             "bed_occupancy_rate",
+            # Patient flow KPIs
+            "return_patients",
+            "walk_ins",
+            "referral_ins",
+            "clinic_referrals",
+            "follow_up_encounters",
             # Meta
             "created_at",
         ]
@@ -118,6 +124,9 @@ class PatientDemographicSnapshotSerializer(serializers.ModelSerializer):
             "age_distribution",
             "gender_distribution",
             "county_distribution",
+            "referral_source_distribution",
+            "new_vs_return",
+            "insurance_coverage",
             "created_at",
         ]
         read_only_fields = fields

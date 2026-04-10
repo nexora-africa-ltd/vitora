@@ -46,6 +46,12 @@ export interface FacilityDailySummary {
   new_admissions: number;
   discharges: number;
   bed_occupancy_rate: number;
+  // Patient flow KPIs
+  return_patients: number;
+  walk_ins: number;
+  referral_ins: number;
+  clinic_referrals: number;
+  follow_up_encounters: number;
   // Meta
   created_at: string;
 }
@@ -124,6 +130,9 @@ export interface PatientDemographicSnapshot {
   age_distribution: Record<string, number>;
   gender_distribution: Record<string, number>;
   county_distribution: CountyDistribution[];
+  referral_source_distribution: Record<string, number>;
+  new_vs_return: Record<string, number>;
+  insurance_coverage: Record<string, number>;
   created_at: string;
 }
 

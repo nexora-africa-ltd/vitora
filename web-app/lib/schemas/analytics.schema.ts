@@ -40,6 +40,11 @@ export const FacilityDailySummarySchema = z.object({
   new_admissions: z.number(),
   discharges: z.number(),
   bed_occupancy_rate: z.union([z.number(), z.string()]).transform(Number),
+  return_patients: z.number(),
+  walk_ins: z.number(),
+  referral_ins: z.number(),
+  clinic_referrals: z.number(),
+  follow_up_encounters: z.number(),
   created_at: z.string(),
 });
 
@@ -105,6 +110,9 @@ export const PatientDemographicSnapshotSchema = z.object({
   age_distribution: z.record(z.string(), z.number()),
   gender_distribution: z.record(z.string(), z.number()),
   county_distribution: z.array(CountyDistributionSchema),
+  referral_source_distribution: z.record(z.string(), z.number()),
+  new_vs_return: z.record(z.string(), z.number()),
+  insurance_coverage: z.record(z.string(), z.number()),
   created_at: z.string(),
 });
 

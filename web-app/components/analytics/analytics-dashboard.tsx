@@ -9,15 +9,15 @@
 
 import { useState, useMemo } from 'react';
 import {
-  Activity,
   Users,
   DollarSign,
   BedDouble,
   BarChart3,
   PieChart as PieChartIcon,
-  TrendingUp,
   Stethoscope,
-  Siren,
+  UserCheck,
+  ArrowRightLeft,
+  CalendarClock,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,7 +26,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { LineChart, BarChart, DonutChart } from '@/components/charts';
 import { ChartEmptyState } from '@/components/charts';
-import { encounterTypeConfig, chartColors } from '@/components/charts/chart-config';
 import { useFacilitySummary, useDepartmentPerformance, useDiagnosisTrends, useDemographics } from '@/lib/hooks/use-analytics';
 import type { ChartConfig } from '@/components/ui/chart';
 import type { FacilityDailySummary } from '@/lib/types/analytics';
@@ -98,6 +97,30 @@ const genderConfig: ChartConfig = {
   O: { label: 'Other', color: 'hsl(var(--gender-other))' },
 };
 
+const referralConfig: ChartConfig = {
+  self: { label: 'Walk-in', color: 'hsl(var(--chart-1))' },
+  clinic: { label: 'Clinic Referral', color: 'hsl(var(--chart-2))' },
+  other_facility: { label: 'Facility Referral', color: 'hsl(var(--chart-3))' },
+  unknown: { label: 'Unknown', color: 'hsl(var(--chart-4))' },
+};
+
+const newVsReturnConfig: ChartConfig = {
+  new: { label: 'New', color: 'hsl(var(--chart-1))' },
+  return: { label: 'Returning', color: 'hsl(var(--chart-3))' },
+};
+
+const insuranceConfig: ChartConfig = {
+  sha: { label: 'SHA', color: 'hsl(var(--chart-2))' },
+  none: { label: 'Uninsured', color: 'hsl(var(--chart-4))' },
+};
+
+const ageConfig: ChartConfig = {
+  count: { label: 'Patients', color: 'hsl(var(--chart-1))' },
+};
+
+// Age-band ordering
+const AGE_BAND_ORDER = ['0-4', '5-14', '15-24', '25-34', '35-49', '50-64', '65+'];
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -108,6 +131,7 @@ interface AnalyticsDashboardProps {
 
 export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
   const [dxChartView, setDxChartView] = useState<'bar' | 'pie'>('bar');
+  const [revenueChartView, setRevenueChartView] = useState<'bar' | 'pie'>('bar');
   const dateRange = useMemo(() => getDateRange(period), [period]);
 
   const now = new Date();
@@ -138,6 +162,15 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
     ? summaries.reduce((s, d) => s + d.bed_occupancy_rate, 0) / summaries.length
     : 0;
 
+  // New KPIs
+  const totalReturnPatients = summaries.reduce((s, d) => s + d.return_patients, 0);
+  const totalFollowUps = summaries.reduce((s, d) => s + d.follow_up_encounters, 0);
+  const totalWalkIns = summaries.reduce((s, d) => s + d.walk_ins, 0);
+  const totalReferralIns = summaries.reduce((s, d) => s + d.referral_ins, 0);
+  const returnRate = totalEncounters > 0
+    ? Math.round((totalReturnPatients / totalEncounters) * 100)
+    : 0;
+
   // Chart data: encounter volume over time (most recent first → reverse)
   const volumeChartData = useMemo(
     () =>
@@ -165,6 +198,18 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
         })),
     [summaries]
   );
+
+  // Revenue donut (aggregate totals)
+  const revenuePieData = useMemo(() => {
+    const cash = summaries.reduce((s, d) => s + d.revenue_cash, 0);
+    const mpesa = summaries.reduce((s, d) => s + d.revenue_mpesa, 0);
+    const insurance = summaries.reduce((s, d) => s + d.revenue_insurance, 0);
+    return [
+      { name: 'revenue_cash', value: cash, fill: 'hsl(var(--chart-1))' },
+      { name: 'revenue_mpesa', value: mpesa, fill: 'hsl(var(--chart-2))' },
+      { name: 'revenue_insurance', value: insurance, fill: 'hsl(var(--chart-3))' },
+    ].filter((d) => d.value > 0);
+  }, [summaries]);
 
   // Top diagnoses horizontal bar
   const diagnosisChartData = useMemo(
@@ -203,9 +248,84 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
     }));
   }, [demoData]);
 
+  // Referral source donut
+  const referralChartData = useMemo(() => {
+    const snap = demoData?.results?.[0];
+    if (!snap?.referral_source_distribution) return [];
+    return Object.entries(snap.referral_source_distribution).map(([key, val]) => ({
+      name: key,
+      value: val,
+      fill: referralConfig[key]?.color ?? 'hsl(var(--chart-4))',
+    }));
+  }, [demoData]);
+
+  // New vs Return donut
+  const newVsReturnData = useMemo(() => {
+    const snap = demoData?.results?.[0];
+    if (!snap?.new_vs_return) return [];
+    return Object.entries(snap.new_vs_return)
+      .filter(([, val]) => val > 0)
+      .map(([key, val]) => ({
+        name: key,
+        value: val,
+        fill: newVsReturnConfig[key]?.color ?? 'hsl(var(--chart-4))',
+      }));
+  }, [demoData]);
+
+  // Insurance coverage donut
+  const insuranceData = useMemo(() => {
+    const snap = demoData?.results?.[0];
+    if (!snap?.insurance_coverage) return [];
+    return Object.entries(snap.insurance_coverage)
+      .filter(([, val]) => val > 0)
+      .map(([key, val]) => ({
+        name: key,
+        value: val,
+        fill: insuranceConfig[key]?.color ?? 'hsl(var(--chart-4))',
+      }));
+  }, [demoData]);
+
+  // Age distribution bar
+  const ageChartData = useMemo(() => {
+    const snap = demoData?.results?.[0];
+    if (!snap?.age_distribution) return [];
+    return AGE_BAND_ORDER
+      .filter((band) => snap.age_distribution[band] != null)
+      .map((band) => ({
+        age_band: band,
+        count: snap.age_distribution[band] ?? 0,
+      }));
+  }, [demoData]);
+
+  // Encounter volume with projection (simple linear extrapolation)
+  const volumeWithProjection = useMemo(() => {
+    if (volumeChartData.length < 3) return volumeChartData;
+    const data = [...volumeChartData];
+    const n = data.length;
+    // Simple moving average of last 7 data points for projection
+    const windowSize = Math.min(7, n);
+    const recentTotals = data.slice(-windowSize).map(
+      (d) => d.encounters_opd + d.encounters_ipd + d.encounters_emergency
+    );
+    const avgDaily = recentTotals.reduce((a, b) => a + b, 0) / windowSize;
+    // Add 3 projected days
+    for (let i = 1; i <= 3; i++) {
+      data.push({
+        date: `+${i}d`,
+        encounters_opd: Math.round(avgDaily * 0.7),
+        encounters_ipd: Math.round(avgDaily * 0.15),
+        encounters_emergency: Math.round(avgDaily * 0.15),
+        projected: true as unknown as number, // marker for styling
+      } as typeof data[0]);
+    }
+    return data;
+  }, [volumeChartData]);
+
+  const periodLabel = period === '7d' ? '7' : period === '30d' ? '30' : '90';
+
   return (
     <div className="space-y-6">
-      {/* KPI Stats Row */}
+      {/* KPI Stats Row 1: Core */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Encounters"
@@ -213,7 +333,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           icon={Stethoscope}
           variant="default"
           loading={summaryLoading}
-          description={`${period === '7d' ? '7' : period === '30d' ? '30' : '90'}-day total`}
+          description={`${periodLabel}-day total`}
         />
         <StatsCard
           title="New Patients"
@@ -241,9 +361,45 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
         />
       </div>
 
+      {/* KPI Stats Row 2: Patient Flow */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Return Patients"
+          value={summaryLoading ? '—' : `${totalReturnPatients} (${returnRate}%)`}
+          icon={UserCheck}
+          variant="info"
+          loading={summaryLoading}
+          description={`${periodLabel}-day returners`}
+        />
+        <StatsCard
+          title="Follow-ups"
+          value={summaryLoading ? '—' : totalFollowUps.toLocaleString()}
+          icon={CalendarClock}
+          variant="default"
+          loading={summaryLoading}
+          description="Follow-up visits"
+        />
+        <StatsCard
+          title="Walk-ins"
+          value={summaryLoading ? '—' : totalWalkIns.toLocaleString()}
+          icon={Users}
+          variant="default"
+          loading={summaryLoading}
+          description="Self-referral registrations"
+        />
+        <StatsCard
+          title="Referrals In"
+          value={summaryLoading ? '—' : totalReferralIns.toLocaleString()}
+          icon={ArrowRightLeft}
+          variant={totalReferralIns > 0 ? 'success' : 'default'}
+          loading={summaryLoading}
+          description="From other facilities"
+        />
+      </div>
+
       {/* Charts Row 1: Volume + Revenue */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Encounter Volume */}
+        {/* Encounter Volume (with projection) */}
         <Card className="min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Encounter Volume</CardTitle>
@@ -255,7 +411,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
               <ChartEmptyState chartType="line" description="No encounter data for this period" />
             ) : (
               <LineChart
-                data={volumeChartData}
+                data={volumeWithProjection}
                 config={encounterVolumeConfig}
                 dataKeys={['encounters_opd', 'encounters_ipd', 'encounters_emergency']}
                 xAxisKey="date"
@@ -271,15 +427,38 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
 
         {/* Revenue Breakdown */}
         <Card className="min-w-0">
-          <CardHeader className="pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base">Revenue Breakdown</CardTitle>
+            {revenueChartData.length > 0 && (
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setRevenueChartView(revenueChartView === 'bar' ? 'pie' : 'bar')}
+                    >
+                      {revenueChartView === 'bar' ? (
+                        <PieChartIcon className="h-4 w-4" />
+                      ) : (
+                        <BarChart3 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Switch to {revenueChartView === 'bar' ? 'pie' : 'bar'} chart</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </CardHeader>
           <CardContent className="px-2 sm:px-6">
             {summaryLoading ? (
               <Skeleton className="h-[250px] w-full" />
             ) : revenueChartData.length === 0 ? (
               <ChartEmptyState chartType="bar" description="No revenue data for this period" />
-            ) : (
+            ) : revenueChartView === 'bar' ? (
               <BarChart
                 data={revenueChartData}
                 config={revenueConfig}
@@ -291,6 +470,18 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
                 showLegend
                 minHeight="250px"
                 yAxisFormatter={(v) => formatKes(Number(v))}
+              />
+            ) : (
+              <DonutChart
+                data={revenuePieData}
+                config={revenueConfig}
+                showTooltip
+                showLegend
+                showCenterLabel
+                centerLabelTitle="Total"
+                centerLabelValue={formatKes(totalRevenue)}
+                useDataColors
+                minHeight="250px"
               />
             )}
           </CardContent>
@@ -364,6 +555,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
                 centerLabelTitle="Total"
                 centerLabelValue={diagnosisChartData.reduce((s, d) => s + d.case_count, 0)}
                 useDataColors
+                compact={false}
                 minHeight="350px"
               />
             )}
@@ -390,6 +582,111 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
                 centerLabelTitle="Total"
                 centerLabelValue={demoData?.results?.[0]?.total_patients ?? 0}
                 minHeight="260px"
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row 3: Demographics Deep Dive */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Referral Source */}
+        <Card className="min-w-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Referral Source</CardTitle>
+          </CardHeader>
+          <CardContent className="px-2 sm:px-6">
+            {demoLoading ? (
+              <Skeleton className="h-[220px] w-full" />
+            ) : referralChartData.length === 0 ? (
+              <ChartEmptyState chartType="pie" description="No referral data" />
+            ) : (
+              <DonutChart
+                data={referralChartData}
+                config={referralConfig}
+                showTooltip
+                showLegend
+                showCenterLabel
+                centerLabelTitle="Total"
+                centerLabelValue={referralChartData.reduce((s, d) => s + d.value, 0)}
+                useDataColors
+                minHeight="220px"
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* New vs Return */}
+        <Card className="min-w-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">New vs Returning</CardTitle>
+          </CardHeader>
+          <CardContent className="px-2 sm:px-6">
+            {demoLoading ? (
+              <Skeleton className="h-[220px] w-full" />
+            ) : newVsReturnData.length === 0 ? (
+              <ChartEmptyState chartType="pie" description="No visit history data" />
+            ) : (
+              <DonutChart
+                data={newVsReturnData}
+                config={newVsReturnConfig}
+                showTooltip
+                showLegend
+                showCenterLabel
+                centerLabelTitle="Total"
+                centerLabelValue={demoData?.results?.[0]?.total_patients ?? 0}
+                useDataColors
+                minHeight="220px"
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Insurance Coverage */}
+        <Card className="min-w-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Insurance Coverage</CardTitle>
+          </CardHeader>
+          <CardContent className="px-2 sm:px-6">
+            {demoLoading ? (
+              <Skeleton className="h-[220px] w-full" />
+            ) : insuranceData.length === 0 ? (
+              <ChartEmptyState chartType="pie" description="No insurance data" />
+            ) : (
+              <DonutChart
+                data={insuranceData}
+                config={insuranceConfig}
+                showTooltip
+                showLegend
+                showCenterLabel
+                centerLabelTitle="Patients"
+                centerLabelValue={demoData?.results?.[0]?.total_patients ?? 0}
+                useDataColors
+                minHeight="220px"
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Age Distribution */}
+        <Card className="min-w-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Age Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="px-2 sm:px-6">
+            {demoLoading ? (
+              <Skeleton className="h-[220px] w-full" />
+            ) : ageChartData.length === 0 ? (
+              <ChartEmptyState chartType="bar" description="No age band data" />
+            ) : (
+              <BarChart
+                data={ageChartData}
+                config={ageConfig}
+                dataKeys={['count']}
+                xAxisKey="age_band"
+                showGrid
+                showTooltip
+                minHeight="220px"
               />
             )}
           </CardContent>
