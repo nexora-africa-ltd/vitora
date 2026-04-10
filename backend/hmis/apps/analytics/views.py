@@ -54,7 +54,11 @@ class DiagnosisTrendFilter(django_filters.FilterSet):
 
     def filter_top_n(self, queryset, name, value):
         if value and value > 0:
-            return queryset[:int(value)]
+            # Order before slicing to avoid "Cannot reorder after slice" errors
+            # when DRF pagination/ordering runs after filtering.
+            qs = queryset.order_by("-case_count")
+            pks = list(qs.values_list("pk", flat=True)[: int(value)])
+            return queryset.filter(pk__in=pks)
         return queryset
 
 

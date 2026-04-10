@@ -366,6 +366,18 @@ const _allNavItems: NavItemType[] = [
     ],
   },
   {
+    label: 'Analytics',
+    href: '/analytics',
+    icon: BarChart3,
+    moduleKey: 'analytics',
+  },
+  {
+    label: 'MOH Reports',
+    href: '/reports/moh',
+    icon: ClipboardList,
+    moduleKey: 'moh_reporting',
+  },
+  {
     label: 'CDS',
     icon: BrainCircuit,
     moduleKey: 'cds',

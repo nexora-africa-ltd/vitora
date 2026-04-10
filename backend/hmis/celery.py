@@ -58,6 +58,10 @@ app.conf.task_routes = {
     "hmis.apps.analytics.tasks.refresh_daily_analytics": {"queue": "reporting"},
     "hmis.apps.analytics.tasks.refresh_monthly_analytics": {"queue": "reporting"},
     "hmis.apps.analytics.tasks.refresh_demographics_snapshot": {"queue": "reporting"},
+    # MOH Reporting tasks
+    "hmis.apps.moh_reporting.tasks.generate_moh705_monthly": {"queue": "reporting"},
+    "hmis.apps.moh_reporting.tasks.generate_moh711_monthly": {"queue": "reporting"},
+    "hmis.apps.moh_reporting.tasks.generate_moh717_monthly": {"queue": "reporting"},
 }
 
 # Configure periodic tasks (Celery Beat)
@@ -162,6 +166,21 @@ app.conf.beat_schedule = {
     "analytics-refresh-demographics": {
         "task": "hmis.apps.analytics.tasks.refresh_demographics_snapshot",
         "schedule": crontab(minute=0, hour=4, day_of_month=1),
+    },
+    # MOH 705: Outpatient morbidity on 1st at 5 AM
+    "generate-moh705-monthly": {
+        "task": "hmis.apps.moh_reporting.tasks.generate_moh705_monthly",
+        "schedule": crontab(minute=0, hour=5, day_of_month=1),
+    },
+    # MOH 711: Integrated RH/HIV/Malaria/Nutrition on 1st at 5:30 AM
+    "generate-moh711-monthly": {
+        "task": "hmis.apps.moh_reporting.tasks.generate_moh711_monthly",
+        "schedule": crontab(minute=30, hour=5, day_of_month=1),
+    },
+    # MOH 717: Workload summary on 1st at 6 AM
+    "generate-moh717-monthly": {
+        "task": "hmis.apps.moh_reporting.tasks.generate_moh717_monthly",
+        "schedule": crontab(minute=0, hour=6, day_of_month=1),
     },
 }
 
