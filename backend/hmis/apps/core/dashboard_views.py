@@ -566,10 +566,11 @@ def _get_theatre_stats(today, facility=None, organization=None) -> dict:
     try:
         from hmis.apps.scheduling.models import Appointment
 
-        # Appointment has no facility FK; skip facility scoping
+        scope = _build_scope_filter(facility, organization)
         today_appointments = Appointment.objects.filter(
             scheduled_start__date=today,
             appointment_type="PROCEDURE",
+            **scope,
         )
 
         return {

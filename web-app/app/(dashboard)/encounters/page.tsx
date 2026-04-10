@@ -28,6 +28,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { EncounterTable } from '@/components/encounters/encounter-table';
+import { EncounterTypeChips } from '@/components/encounters/encounter-type-chips';
 import { ConsultationQueueContainer } from '@/components/encounters/consultation-queue-container';
 import { useEncounters } from '@/lib/hooks/use-encounters';
 import { useMyClaimedEncounters, useAllClaimedEncounters, useReleaseEncounter } from '@/lib/hooks/use-consultation-queue';
@@ -228,6 +229,18 @@ export default function EncountersPage() {
             <span className="hidden sm:inline">New Encounter</span>
           </Button>
         }
+      />
+
+      {/* Encounter Type Quick-Filter Chips */}
+      <EncounterTypeChips
+        selectedType={encounterType}
+        onTypeChange={(type) => {
+          setEncounterType(type);
+          setPage(1);
+          if (type && activeTab !== 'all') {
+            setActiveTab('all');
+          }
+        }}
       />
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EncountersTab)} className="space-y-4">
