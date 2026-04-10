@@ -199,7 +199,7 @@ export default function DashboardPage() {
       ariaLabel: 'Open patient list',
       showTrendIndicator: false,
     }] : []),
-    ...(canViewTriage ? [{
+    ...(canViewTriage && hasModule('outpatient') ? [{
       title: 'Triage Queue',
       value: formatNumber(triageQueueCount),
       meta: `${formatNumber(triageAvgWait)} min average wait`,
@@ -211,7 +211,7 @@ export default function DashboardPage() {
       loading: isLoading && isTriageLoading,
       showTrendIndicator: false,
     }] : []),
-    ...(canViewConsultations ? [{
+    ...(canViewConsultations && hasModule('outpatient') ? [{
       title: "Today's Encounters",
       value: formatNumber(stats?.encounters.today ?? 0),
       meta: `${formatNumber(stats?.encounters.in_progress ?? 0)} in progress`,
@@ -221,7 +221,7 @@ export default function DashboardPage() {
       ariaLabel: 'Open encounters',
       showTrendIndicator: false,
     }] : []),
-    ...(canViewPharmacy ? [{
+    ...(canViewPharmacy && hasModule('pharmacy') ? [{
       title: 'Pending Dispensing',
       value: formatNumber(stats?.pharmacy.pending_dispensing ?? 0),
       meta: `${formatNumber(stats?.pharmacy.prescriptions_today ?? 0)} prescriptions today`,
@@ -232,7 +232,7 @@ export default function DashboardPage() {
       variant: ((stats?.pharmacy.pending_dispensing ?? 0) > 10 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
     }] : []),
-    ...(canViewLaboratory ? [{
+    ...(canViewLaboratory && hasModule('laboratory') ? [{
       title: 'Pending Lab Tests',
       value: formatNumber(stats?.laboratory.pending_tests ?? 0),
       meta: `${formatNumber(stats?.laboratory.completed_today ?? 0)} completed today`,
@@ -243,7 +243,7 @@ export default function DashboardPage() {
       variant: ((stats?.laboratory.critical_results ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
     }] : []),
-    ...(canViewPharmacy ? [{
+    ...(canViewPharmacy && hasModule('pharmacy') ? [{
       title: 'Low Stock Items',
       value: formatNumber(stats?.pharmacy.low_stock_items ?? 0),
       meta: `${formatNumber(stats?.pharmacy.expiring_soon ?? 0)} expiring soon`,
@@ -287,7 +287,7 @@ export default function DashboardPage() {
       ariaLabel: 'Open check-in queue',
       showTrendIndicator: false,
     }] : []),
-    ...(canViewInpatient ? [{
+    ...(canViewInpatient && hasModule('inpatient') ? [{
       title: 'Bed Occupancy',
       value: `${stats?.inpatient.occupancy_rate ?? 0}%`,
       meta: `${formatNumber(stats?.inpatient.current_admissions ?? 0)} admitted`,
@@ -298,7 +298,7 @@ export default function DashboardPage() {
       variant: ((stats?.inpatient.occupancy_rate ?? 0) > 90 ? 'destructive' : (stats?.inpatient.occupancy_rate ?? 0) > 75 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
     }] : []),
-    ...(canViewImaging ? [{
+    ...(canViewImaging && hasModule('imaging') ? [{
       title: 'Pending Imaging',
       value: formatNumber(stats?.imaging.pending_orders ?? 0),
       meta: `${formatNumber(stats?.imaging.urgent_orders ?? 0)} urgent`,
@@ -309,7 +309,7 @@ export default function DashboardPage() {
       variant: ((stats?.imaging.urgent_orders ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
     }] : []),
-    ...(canViewEmergency ? [{
+    ...(canViewEmergency && hasModule('emergency') ? [{
       title: 'Emergency Access',
       value: formatNumber(stats?.emergency.active_overrides ?? 0),
       meta: `${formatNumber(stats?.emergency.pending_review ?? 0)} pending review`,
@@ -320,7 +320,7 @@ export default function DashboardPage() {
       variant: ((stats?.emergency.active_overrides ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
     }] : []),
-    ...(canViewMCH ? [{
+    ...(canViewMCH && hasModule('maternity') ? [{
       title: 'MCH Active',
       value: formatNumber(stats?.mch.active_registrations ?? 0),
       meta: `${formatNumber(stats?.mch.high_risk ?? 0)} high risk`,
@@ -341,7 +341,7 @@ export default function DashboardPage() {
       ariaLabel: 'Open theatre schedule',
       showTrendIndicator: false,
     }] : []),
-    ...(canViewProcedures ? [{
+    ...(canViewProcedures && hasModule('outpatient') ? [{
       title: 'Procedures Today',
       value: formatNumber(
         (stats?.procedures.scheduled_today ?? 0) +
