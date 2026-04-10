@@ -527,6 +527,16 @@ class TriageAssessment(models.Model):
         ("POISONING", "Poisoning/Overdose"),
         ("OBSTETRIC", "Obstetric Emergency"),
         ("PEDIATRIC", "Pediatric Emergency"),
+        # Neonatal-specific (<1 month)
+        ("NEONATAL_SEPSIS", "Neonatal Sepsis"),
+        ("NEONATAL_JAUNDICE", "Neonatal Jaundice"),
+        ("NEONATAL_RESPIRATORY_DISTRESS", "Neonatal Respiratory Distress"),
+        ("BIRTH_ASPHYXIA", "Birth Asphyxia"),
+        # Pediatric-specific (1-12y)
+        ("FEBRILE_CONVULSION", "Febrile Convulsion"),
+        ("CROUP", "Croup"),
+        ("BRONCHIOLITIS", "Bronchiolitis"),
+        ("SEVERE_MALARIA", "Severe Malaria"),
         ("OTHER", "Other"),
     ]
 
@@ -730,6 +740,82 @@ class TriageAssessment(models.Model):
         blank=True,
         validators=[MinValueValidator(0), MaxValueValidator(300)],
         help_text="Body height in centimeters (cm)",
+    )
+
+    # =========================================================================
+    # ETAT (Emergency Triage Assessment & Treatment) Fields
+    # Used for pediatric patients (<5 years). All nullable — not relevant for adults.
+    # =========================================================================
+
+    # ETAT Danger Signs (WHO list for children under 5)
+    etat_danger_signs = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "ETAT danger signs present (list of strings). "
+            "Valid values: unable_to_drink, convulsions, lethargy, chest_indrawing, "
+            "stridor, severe_malnutrition, grunting, cyanosis, severe_pallor, hypothermia"
+        ),
+    )
+
+    # WHO Dehydration Assessment
+    DEHYDRATION_CHOICES = [
+        ("NONE", "No dehydration"),
+        ("SOME", "Some dehydration"),
+        ("SEVERE", "Severe dehydration"),
+    ]
+    dehydration_level = models.CharField(
+        max_length=10,
+        choices=DEHYDRATION_CHOICES,
+        blank=True,
+        default="",
+        help_text="WHO dehydration classification (children)",
+    )
+
+    # Fontanelle status (relevant for <18 months)
+    FONTANELLE_CHOICES = [
+        ("NORMAL", "Normal"),
+        ("BULGING", "Bulging"),
+        ("SUNKEN", "Sunken"),
+    ]
+    fontanelle_status = models.CharField(
+        max_length=10,
+        choices=FONTANELLE_CHOICES,
+        blank=True,
+        default="",
+        help_text="Anterior fontanelle status (for infants <18 months)",
+    )
+
+    # Breastfeeding ability (relevant for infants)
+    BREASTFEEDING_CHOICES = [
+        ("NORMAL", "Normal / able to feed"),
+        ("REDUCED", "Reduced / poor feeding"),
+        ("UNABLE", "Unable to breastfeed / drink"),
+    ]
+    breastfeeding_ability = models.CharField(
+        max_length=10,
+        choices=BREASTFEEDING_CHOICES,
+        blank=True,
+        default="",
+        help_text="Breastfeeding / feeding ability (for infants)",
+    )
+
+    # Capillary refill time (relevant for children; adults use MAP)
+    capillary_refill_seconds = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(15)],
+        help_text="Capillary refill time in seconds (prolonged ≥3s is abnormal)",
+    )
+
+    # MUAC for children 6-59 months
+    muac_cm = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(30)],
+        help_text="Mid-Upper Arm Circumference in cm (SAM <11.5, MAM 11.5-12.4)",
     )
 
     # Triage Decision

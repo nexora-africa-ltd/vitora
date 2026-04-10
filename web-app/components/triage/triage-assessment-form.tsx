@@ -25,6 +25,7 @@ import {
   MapPin,
   Stethoscope,
   Info,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { TriageCategoryBadge } from './triage-category-badge';
 import { VitalAlertsPanel } from './vital-alerts-panel';
 import { GCSScorePanel } from './gcs-score-panel';
@@ -55,6 +57,11 @@ import type {
   TriageCategory,
   AssignedArea,
   TriageAlert,
+  EtATDangerSign,
+  DehydrationLevel,
+  FontanelleStatus,
+  BreastfeedingAbility,
+  AgeGroup,
 } from '@/lib/types/triage';
 import { useCalculateTriageCategory } from '@/lib/hooks/use-triage';
 import {
@@ -66,6 +73,13 @@ import {
   ASSIGNED_AREA_CONFIG,
   EMERGENCY_AREA_OPTIONS,
   VitalType,
+  ETAT_DANGER_SIGNS_CONFIG,
+  DEHYDRATION_CONFIG,
+  FONTANELLE_CONFIG,
+  BREASTFEEDING_CONFIG,
+  getAgeGroup,
+  isPediatric,
+  isNeonateOrInfant,
 } from '@/lib/types/triage';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { calculateBMI, getBMIColorClass } from '@/lib/utils/bmi';
@@ -94,6 +108,16 @@ const triageFormSchema = z
         'POISONING',
         'OBSTETRIC',
         'PEDIATRIC',
+        // Neonatal-specific
+        'NEONATAL_SEPSIS',
+        'NEONATAL_JAUNDICE',
+        'NEONATAL_RESPIRATORY_DISTRESS',
+        'BIRTH_ASPHYXIA',
+        // Pediatric-specific
+        'FEBRILE_CONVULSION',
+        'CROUP',
+        'BRONCHIOLITIS',
+        'SEVERE_MALARIA',
         'OTHER',
       ],
       { required_error: 'Chief complaint category is required' }
@@ -162,6 +186,21 @@ const triageFormSchema = z
       .enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'])
       .optional(),
     category_override_reason: z.string().optional(),
+
+    // ETAT pediatric fields (optional for all, shown conditionally for <12y)
+    etat_danger_signs: z.array(z.string()).optional().default([]),
+    dehydration_level: z.enum(['NONE', 'SOME', 'SEVERE', '']).optional().default(''),
+    fontanelle_status: z.enum(['NORMAL', 'BULGING', 'SUNKEN', '']).optional().default(''),
+    breastfeeding_ability: z.enum(['NORMAL', 'REDUCED', 'UNABLE', '']).optional().default(''),
+    capillary_refill_seconds: z.union([
+      z.literal(null),
+      z.number().min(0, 'Must be 0-15').max(15, 'Must be 0-15'),
+    ]).optional(),
+    muac_cm: z.union([
+      z.literal(null),
+      z.number().min(0, 'Must be 0-30').max(30, 'Must be 0-30'),
+    ]).optional(),
+
     // Routing: Either assigned_area (ER zones) OR assigned_clinic (clinics)
     assigned_area: z.enum(
       [
@@ -312,12 +351,12 @@ function calculateMAP(systolic: number, diastolic: number): number {
 /**
  * Age group classification for MAP thresholds
  */
-type AgeGroup = 'adult' | 'adolescent' | 'school_age' | 'young_child' | 'infant' | 'neonate';
+type MAPAgeGroup = 'adult' | 'adolescent' | 'school_age' | 'young_child' | 'infant' | 'neonate';
 
 /**
- * Get age group from age in years
+ * Get age group from age in years (for MAP thresholds)
  */
-function getAgeGroup(ageYears: number): AgeGroup {
+function getMAPAgeGroup(ageYears: number): MAPAgeGroup {
   if (ageYears >= 18) return 'adult';
   if (ageYears >= 13) return 'adolescent';
   if (ageYears >= 6) return 'school_age';
@@ -338,7 +377,7 @@ interface MAPThresholds {
   label: string;
 }
 
-const MAP_THRESHOLDS: Record<AgeGroup, MAPThresholds> = {
+const MAP_THRESHOLDS: Record<MAPAgeGroup, MAPThresholds> = {
   adult: {
     normalLow: 70,
     normalHigh: 100,
@@ -397,7 +436,7 @@ function getMAPThresholdStatus(
   }
 
   const map = calculateMAP(systolic, diastolic);
-  const ageGroup = getAgeGroup(patientAgeYears);
+  const ageGroup = getMAPAgeGroup(patientAgeYears);
   const thresholds = MAP_THRESHOLDS[ageGroup];
 
   // Emergency: MAP severely below critical (organ failure imminent)
@@ -969,7 +1008,7 @@ function calculateSuggestedCategory(
   let mapCritical = false;
   if (typeof systolicBp === 'number' && typeof diastolicBp === 'number') {
     const map = calculateMAP(systolicBp, diastolicBp);
-    const ageGroup = getAgeGroup(patientAgeYears);
+    const ageGroup = getMAPAgeGroup(patientAgeYears);
     const thresholds = MAP_THRESHOLDS[ageGroup];
     // MAP below critical threshold indicates inadequate organ perfusion
     mapCritical = map < thresholds.criticalLow || map > thresholds.elevatedHigh + 15;
@@ -1151,6 +1190,13 @@ export function TriageAssessmentForm({
         initialData?.triage_category ||
         initialSuggested,
       category_override_reason: initialData?.category_override_reason || '',
+      // ETAT pediatric fields
+      etat_danger_signs: [],
+      dehydration_level: '',
+      fontanelle_status: '',
+      breastfeeding_ability: '',
+      capillary_refill_seconds: null,
+      muac_cm: null,
       assigned_area: initialData?.assigned_area || '',
       assigned_clinic: initialData?.assigned_clinic ?? null,
       assigned_clinician: initialData?.assigned_clinician || null,
@@ -1176,6 +1222,11 @@ export function TriageAssessmentForm({
 
   // Calculate patient age for MAP thresholds
   const patientAge = calculateAge(patient.date_of_birth);
+
+  // Calculate patient age group for ETAT conditional rendering
+  const patientAgeGroup = getAgeGroup(patient.date_of_birth);
+  const showPediatricSection = isPediatric(patientAgeGroup);
+  const showNeonatalFields = isNeonateOrInfant(patientAgeGroup);
 
   // Get threshold status for each vital (for inline badges)
   const spo2Status = getVitalThresholdStatus('spo2', spo2);
@@ -1318,6 +1369,22 @@ export function TriageAssessmentForm({
             chief_complaint_category: chiefComplaintCategory || 'OTHER',
             pain_score: typeof painScore === 'number' ? painScore : undefined,
             mobility: watchedValues.mobility,
+            // ETAT fields for pediatric category calculation
+            patient_age_years: patientAge,
+            etat_danger_signs: watchedValues.etat_danger_signs?.length
+              ? watchedValues.etat_danger_signs
+              : undefined,
+            dehydration_level: watchedValues.dehydration_level || undefined,
+            fontanelle_status: watchedValues.fontanelle_status || undefined,
+            breastfeeding_ability: watchedValues.breastfeeding_ability || undefined,
+            capillary_refill_seconds:
+              typeof watchedValues.capillary_refill_seconds === 'number'
+                ? watchedValues.capillary_refill_seconds
+                : undefined,
+            muac_cm:
+              typeof watchedValues.muac_cm === 'number'
+                ? watchedValues.muac_cm
+                : undefined,
           });
 
           if (cancelled) return;
@@ -1352,6 +1419,13 @@ export function TriageAssessmentForm({
     chiefComplaintCategory,
     painScore,
     watchedValues.mobility,
+    patientAge,
+    watchedValues.etat_danger_signs,
+    watchedValues.dehydration_level,
+    watchedValues.fontanelle_status,
+    watchedValues.breastfeeding_ability,
+    watchedValues.capillary_refill_seconds,
+    watchedValues.muac_cm,
   ]);
 
   // Generate alerts: prefer backend alerts if available, otherwise use local fallback
@@ -1408,6 +1482,13 @@ export function TriageAssessmentForm({
         triage_category: data.triage_category,
         auto_calculated_category: data.auto_calculated_category,
         category_override_reason: data.category_override_reason,
+        // ETAT pediatric fields (only send non-empty values)
+        etat_danger_signs: data.etat_danger_signs?.length ? data.etat_danger_signs as EtATDangerSign[] : undefined,
+        dehydration_level: data.dehydration_level || undefined,
+        fontanelle_status: data.fontanelle_status || undefined,
+        breastfeeding_ability: data.breastfeeding_ability || undefined,
+        capillary_refill_seconds: data.capillary_refill_seconds,
+        muac_cm: data.muac_cm,
         // Routing: use routingMode state to determine which field to send
         // Clinic mode: send assigned_clinic, clear assigned_area
         // Emergency mode: send assigned_area, clear assigned_clinic
@@ -1875,9 +1956,16 @@ export function TriageAssessmentForm({
                     {(
                       Object.entries(CHIEF_COMPLAINT_CONFIG) as [
                         ChiefComplaintCategory,
-                        { label: string },
+                        { label: string; ageRestriction?: 'neonatal' | 'pediatric' },
                       ][]
-                    ).map(([value, config]) => (
+                    )
+                      .filter(([, config]) => {
+                        // Filter categories by patient age
+                        if (config.ageRestriction === 'neonatal') return isNeonateOrInfant(patientAgeGroup);
+                        if (config.ageRestriction === 'pediatric') return isPediatric(patientAgeGroup);
+                        return true;
+                      })
+                      .map(([value, config]) => (
                       <SelectItem key={value} value={value}>
                         {config.label}
                       </SelectItem>
@@ -1913,6 +2001,198 @@ export function TriageAssessmentForm({
           </div>
         </CardContent>
       </Card>
+
+      {/* ETAT Pediatric Assessment — shown for patients <12 years */}
+      {showPediatricSection && (
+        <Card className="border-orange-200 dark:border-orange-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-orange-700 dark:text-orange-300">
+              <ShieldAlert className="h-4 w-4" />
+              Pediatric Assessment (ETAT)
+              <Badge variant="outline" className="ml-auto text-xs">
+                {patientAgeGroup}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* ETAT Danger Signs */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">
+                ETAT Danger Signs
+                <span className="text-xs text-muted-foreground ml-2">(check all that apply)</span>
+              </Label>
+              <Controller
+                name="etat_danger_signs"
+                control={control}
+                render={({ field }) => {
+                  const selected = field.value || [];
+                  return (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(Object.entries(ETAT_DANGER_SIGNS_CONFIG) as [EtATDangerSign, { label: string; description: string }][]).map(
+                        ([sign, config]) => (
+                          <label
+                            key={sign}
+                            className={cn(
+                              'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                              selected.includes(sign)
+                                ? 'border-red-500 bg-red-50 dark:bg-red-950/30'
+                                : 'border-border hover:border-muted-foreground'
+                            )}
+                          >
+                            <Checkbox
+                              checked={selected.includes(sign)}
+                              onCheckedChange={(checked) => {
+                                const next = checked
+                                  ? [...selected, sign]
+                                  : selected.filter((s: string) => s !== sign);
+                                field.onChange(next);
+                              }}
+                              disabled={disabled}
+                              className="mt-0.5"
+                            />
+                            <div>
+                              <span className="text-sm font-medium">{config.label}</span>
+                              <p className="text-xs text-muted-foreground">{config.description}</p>
+                            </div>
+                          </label>
+                        )
+                      )}
+                    </div>
+                  );
+                }}
+              />
+              {watchedValues.etat_danger_signs && watchedValues.etat_danger_signs.length > 0 && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                  <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                    {watchedValues.etat_danger_signs.length} danger sign(s) — auto-escalation to RED category
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Capillary Refill & MUAC */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="capillary_refill_seconds">Capillary Refill (seconds)</Label>
+                <Input
+                  id="capillary_refill_seconds"
+                  type="number"
+                  min={0}
+                  max={15}
+                  step={1}
+                  {...register('capillary_refill_seconds', { valueAsNumber: true })}
+                  placeholder="e.g. 2"
+                  disabled={disabled}
+                />
+                {errors.capillary_refill_seconds && (
+                  <p className="text-sm text-destructive">{errors.capillary_refill_seconds.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="muac_cm">MUAC (cm)</Label>
+                <Input
+                  id="muac_cm"
+                  type="number"
+                  min={0}
+                  max={30}
+                  step={0.1}
+                  {...register('muac_cm', { valueAsNumber: true })}
+                  placeholder="e.g. 12.5"
+                  disabled={disabled}
+                />
+                {watchedValues.muac_cm != null && watchedValues.muac_cm < 11.5 && (
+                  <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                    ⚠ SAM: MUAC &lt; 11.5 cm
+                  </p>
+                )}
+                {watchedValues.muac_cm != null && watchedValues.muac_cm >= 11.5 && watchedValues.muac_cm < 12.5 && (
+                  <p className="text-sm text-orange-600 dark:text-orange-400">
+                    MAM: MUAC 11.5-12.5 cm
+                  </p>
+                )}
+                {errors.muac_cm && (
+                  <p className="text-sm text-destructive">{errors.muac_cm.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Dehydration Level */}
+            <div className="space-y-2">
+              <Label>Dehydration Level</Label>
+              <Controller
+                name="dehydration_level"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value || ''} onValueChange={field.onChange} disabled={disabled}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Assess dehydration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.entries(DEHYDRATION_CONFIG) as [DehydrationLevel, { label: string }][]).map(
+                        ([value, config]) => (
+                          <SelectItem key={value} value={value}>{config.label}</SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            {/* Neonatal/Infant-specific fields */}
+            {showNeonatalFields && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Fontanelle Status */}
+                <div className="space-y-2">
+                  <Label>Fontanelle Status</Label>
+                  <Controller
+                    name="fontanelle_status"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value || ''} onValueChange={field.onChange} disabled={disabled}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Assess fontanelle" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.entries(FONTANELLE_CONFIG) as [FontanelleStatus, { label: string }][]).map(
+                            ([value, config]) => (
+                              <SelectItem key={value} value={value}>{config.label}</SelectItem>
+                            )
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+
+                {/* Breastfeeding Ability */}
+                <div className="space-y-2">
+                  <Label>Breastfeeding Ability</Label>
+                  <Controller
+                    name="breastfeeding_ability"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value || ''} onValueChange={field.onChange} disabled={disabled}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Assess feeding" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.entries(BREASTFEEDING_CONFIG) as [BreastfeedingAbility, { label: string }][]).map(
+                            ([value, config]) => (
+                              <SelectItem key={value} value={value}>{config.label}</SelectItem>
+                            )
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Clinical Assessment */}
       <Card>

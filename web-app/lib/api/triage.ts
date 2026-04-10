@@ -108,6 +108,14 @@ export interface CalculateCategoryRequest {
   chief_complaint_category: string;
   pain_score?: number;
   mobility?: string;
+  // ETAT fields (pediatric)
+  patient_age_years?: number;
+  etat_danger_signs?: string[];
+  dehydration_level?: string;
+  fontanelle_status?: string;
+  breastfeeding_ability?: string;
+  capillary_refill_seconds?: number;
+  muac_cm?: number;
 }
 
 export interface CalculateCategoryResponse {

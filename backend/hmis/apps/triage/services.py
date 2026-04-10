@@ -85,7 +85,7 @@ def calculate_map(systolic: int, diastolic: int) -> int:
 
 def get_age_group(age_years: float) -> str:
     """
-    Classify patient age for MAP thresholds.
+    Classify patient age for vital sign thresholds.
 
     Args:
         age_years: Patient age in years
@@ -117,6 +117,292 @@ MAP_THRESHOLDS = {
     "infant": {"normal_low": 45, "normal_high": 70, "critical_low": 40, "elevated_high": 75},
     "neonate": {"normal_low": 40, "normal_high": 60, "critical_low": 35, "elevated_high": 65},
 }
+
+# =============================================================================
+# Age-Specific Vital Sign Thresholds
+# Based on ETAT (WHO Emergency Triage Assessment & Treatment) and KETA guidelines
+# =============================================================================
+
+# Heart rate thresholds by age group (bpm)
+HR_THRESHOLDS: dict[str, dict[str, int]] = {
+    "neonate": {"critical_low": 80, "normal_low": 100, "normal_high": 160, "critical_high": 200},
+    "infant": {"critical_low": 80, "normal_low": 100, "normal_high": 150, "critical_high": 180},
+    "young_child": {"critical_low": 60, "normal_low": 80, "normal_high": 130, "critical_high": 170},
+    "school_age": {"critical_low": 50, "normal_low": 70, "normal_high": 110, "critical_high": 150},
+    "adolescent": {"critical_low": 40, "normal_low": 60, "normal_high": 100, "critical_high": 150},
+    "adult": {"critical_low": 40, "normal_low": 60, "normal_high": 100, "critical_high": 150},
+}
+
+# Respiratory rate thresholds by age group (breaths/min)
+RR_THRESHOLDS: dict[str, dict[str, int]] = {
+    "neonate": {"critical_low": 20, "normal_low": 30, "normal_high": 60, "critical_high": 70},
+    "infant": {"critical_low": 15, "normal_low": 25, "normal_high": 50, "critical_high": 60},
+    "young_child": {"critical_low": 12, "normal_low": 20, "normal_high": 30, "critical_high": 45},
+    "school_age": {"critical_low": 10, "normal_low": 18, "normal_high": 25, "critical_high": 35},
+    "adolescent": {"critical_low": 8, "normal_low": 12, "normal_high": 20, "critical_high": 30},
+    "adult": {"critical_low": 8, "normal_low": 12, "normal_high": 20, "critical_high": 30},
+}
+
+# Temperature thresholds by age group (°C)
+# Neonates and infants are more vulnerable to temperature extremes
+TEMP_THRESHOLDS: dict[str, dict[str, float]] = {
+    "neonate": {"critical_low": 35.0, "normal_low": 36.5, "normal_high": 37.5, "critical_high": 38.0},
+    "infant": {"critical_low": 35.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 38.5},
+    "young_child": {"critical_low": 35.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 39.0},
+    "school_age": {"critical_low": 35.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 39.5},
+    "adolescent": {"critical_low": 35.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 40.0},
+    "adult": {"critical_low": 32.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 40.0},
+}
+
+# ETAT danger signs for children under 5 years
+ETAT_DANGER_SIGNS = [
+    "unable_to_drink",
+    "convulsions",
+    "lethargy",
+    "chest_indrawing",
+    "stridor",
+    "severe_malnutrition",
+    "grunting",
+    "cyanosis",
+    "severe_pallor",
+    "hypothermia",
+]
+
+# Neonatal-specific chief complaint categories
+NEONATAL_COMPLAINT_CATEGORIES = [
+    "NEONATAL_SEPSIS",
+    "NEONATAL_JAUNDICE",
+    "NEONATAL_RESPIRATORY_DISTRESS",
+    "BIRTH_ASPHYXIA",
+]
+
+# Pediatric-specific chief complaint categories (1-12y)
+PEDIATRIC_COMPLAINT_CATEGORIES = [
+    "FEBRILE_CONVULSION",
+    "CROUP",
+    "BRONCHIOLITIS",
+    "SEVERE_MALARIA",
+]
+
+
+def check_heart_rate_status(
+    hr: int, age_years: float = 30
+) -> tuple[str, AlertDict | None]:
+    """
+    Check heart rate against age-appropriate thresholds.
+
+    Args:
+        hr: Heart rate in bpm
+        age_years: Patient age in years (default 30 for adult)
+
+    Returns:
+        Tuple of (status, alert_dict) — 'critical', 'warning', or 'normal'
+    """
+    age_group = get_age_group(age_years)
+    thresholds = HR_THRESHOLDS[age_group]
+
+    if hr <= thresholds["critical_low"]:
+        return (
+            "critical",
+            create_alert(
+                severity="CRITICAL",
+                vital_type="HEART_RATE",
+                message=f"Severe bradycardia (heart rate {hr} bpm)",
+                value=hr,
+                threshold=thresholds["critical_low"],
+                clinical_note=f"Critical for {age_group.replace('_', ' ')}: HR ≤{thresholds['critical_low']} bpm",
+                actions=["12-lead ECG", "Assess perfusion", "Prepare resuscitation"],
+            ),
+        )
+
+    if hr >= thresholds["critical_high"]:
+        return (
+            "critical",
+            create_alert(
+                severity="CRITICAL",
+                vital_type="HEART_RATE",
+                message=f"Severe tachycardia (heart rate {hr} bpm)",
+                value=hr,
+                threshold=thresholds["critical_high"],
+                clinical_note=f"Critical for {age_group.replace('_', ' ')}: HR ≥{thresholds['critical_high']} bpm",
+                actions=["12-lead ECG", "IV access", "Assess for shock/dehydration"],
+            ),
+        )
+
+    if hr < thresholds["normal_low"]:
+        return (
+            "warning",
+            create_alert(
+                severity="WARNING",
+                vital_type="HEART_RATE",
+                message=f"Bradycardia (heart rate {hr} bpm)",
+                value=hr,
+                threshold=thresholds["normal_low"],
+            ),
+        )
+
+    if hr > thresholds["normal_high"]:
+        return (
+            "warning",
+            create_alert(
+                severity="WARNING",
+                vital_type="HEART_RATE",
+                message=f"Tachycardia (heart rate {hr} bpm)",
+                value=hr,
+                threshold=thresholds["normal_high"],
+            ),
+        )
+
+    return ("normal", None)
+
+
+def check_respiratory_rate_status(
+    rr: int, age_years: float = 30
+) -> tuple[str, AlertDict | None]:
+    """
+    Check respiratory rate against age-appropriate thresholds.
+
+    Args:
+        rr: Respiratory rate in breaths/min
+        age_years: Patient age in years (default 30 for adult)
+
+    Returns:
+        Tuple of (status, alert_dict) — 'critical', 'warning', or 'normal'
+    """
+    age_group = get_age_group(age_years)
+    thresholds = RR_THRESHOLDS[age_group]
+
+    if rr <= thresholds["critical_low"]:
+        return (
+            "critical",
+            create_alert(
+                severity="CRITICAL",
+                vital_type="RESPIRATORY_RATE",
+                message=f"Severely low respiratory rate ({rr} breaths/min)",
+                value=rr,
+                threshold=thresholds["critical_low"],
+                clinical_note=f"Critical for {age_group.replace('_', ' ')}: RR ≤{thresholds['critical_low']}",
+                actions=["Assess airway", "Bag-valve mask ready", "Prepare intubation"],
+            ),
+        )
+
+    if rr >= thresholds["critical_high"]:
+        return (
+            "critical",
+            create_alert(
+                severity="CRITICAL",
+                vital_type="RESPIRATORY_RATE",
+                message=f"Severely elevated respiratory rate ({rr} breaths/min)",
+                value=rr,
+                threshold=thresholds["critical_high"],
+                clinical_note=f"Critical for {age_group.replace('_', ' ')}: RR ≥{thresholds['critical_high']}",
+                actions=["Supplemental oxygen", "Assess for respiratory failure", "Chest X-ray"],
+            ),
+        )
+
+    if rr < thresholds["normal_low"]:
+        return (
+            "warning",
+            create_alert(
+                severity="WARNING",
+                vital_type="RESPIRATORY_RATE",
+                message=f"Low respiratory rate ({rr} breaths/min)",
+                value=rr,
+                threshold=thresholds["normal_low"],
+            ),
+        )
+
+    if rr > thresholds["normal_high"]:
+        return (
+            "warning",
+            create_alert(
+                severity="WARNING",
+                vital_type="RESPIRATORY_RATE",
+                message=f"Elevated respiratory rate ({rr} breaths/min)",
+                value=rr,
+                threshold=thresholds["normal_high"],
+            ),
+        )
+
+    return ("normal", None)
+
+
+def check_temperature_status(
+    temp: float, age_years: float = 30
+) -> tuple[str, AlertDict | None]:
+    """
+    Check temperature against age-appropriate thresholds.
+
+    Args:
+        temp: Temperature in °C
+        age_years: Patient age in years (default 30 for adult)
+
+    Returns:
+        Tuple of (status, alert_dict) — 'critical', 'warning', or 'normal'
+    """
+    age_group = get_age_group(age_years)
+    thresholds = TEMP_THRESHOLDS[age_group]
+
+    if temp <= thresholds["critical_low"]:
+        note = "Life-threatening hypothermia"
+        if age_group in ("neonate", "infant"):
+            note = "Neonatal/infant hypothermia — high mortality risk"
+        return (
+            "critical",
+            create_alert(
+                severity="CRITICAL",
+                vital_type="TEMPERATURE",
+                message=f"Severe hypothermia ({temp}°C)",
+                value=float(temp),
+                threshold=thresholds["critical_low"],
+                clinical_note=note,
+                actions=["Active warming", "Warm IV fluids", "Cardiac monitoring"],
+            ),
+        )
+
+    if temp >= thresholds["critical_high"]:
+        note = "Potentially life-threatening; urgent evaluation needed"
+        if age_group in ("neonate", "infant"):
+            note = "Neonatal/infant fever — high risk of serious bacterial infection"
+        return (
+            "critical",
+            create_alert(
+                severity="CRITICAL",
+                vital_type="TEMPERATURE",
+                message=f"High fever / Hyperpyrexia ({temp}°C)",
+                value=float(temp),
+                threshold=thresholds["critical_high"],
+                clinical_note=note,
+                actions=["Antipyretics", "Cooling measures", "Blood cultures"],
+            ),
+        )
+
+    if temp < thresholds["normal_low"]:
+        return (
+            "warning",
+            create_alert(
+                severity="WARNING",
+                vital_type="TEMPERATURE",
+                message=f"Low temperature ({temp}°C)",
+                value=float(temp),
+                threshold=thresholds["normal_low"],
+                clinical_note="Monitor closely; consider warming",
+            ),
+        )
+
+    if temp > thresholds["normal_high"]:
+        return (
+            "warning",
+            create_alert(
+                severity="WARNING",
+                vital_type="TEMPERATURE",
+                message=f"Elevated temperature ({temp}°C)",
+                value=float(temp),
+                threshold=thresholds["normal_high"],
+            ),
+        )
+
+    return ("normal", None)
 
 
 def check_map_status(
@@ -233,6 +519,12 @@ class TriageCategoryCalculator:
         mobility: str | None = None,
         patient_age_years: float = 30,
         gcs_total: int | None = None,
+        etat_danger_signs: list[str] | None = None,
+        dehydration_level: str = "",
+        fontanelle_status: str = "",
+        breastfeeding_ability: str = "",
+        capillary_refill_seconds: int | None = None,
+        muac_cm: float | None = None,
     ) -> tuple[str, list[AlertDict]]:
         """
         Calculate triage category and generate alerts.
@@ -244,13 +536,35 @@ class TriageCategoryCalculator:
             chief_complaint_category: From CHIEF_COMPLAINT_CHOICES
             pain_score: 0-10 pain scale (optional)
             mobility: Mobility status (optional)
-            patient_age_years: Patient age in years (for age-adjusted MAP thresholds)
+            patient_age_years: Patient age in years (for age-adjusted thresholds)
             gcs_total: Glasgow Coma Scale total (3-15, optional)
+            etat_danger_signs: List of ETAT danger signs present (children <5y)
+            dehydration_level: WHO dehydration classification (NONE/SOME/SEVERE)
+            fontanelle_status: Anterior fontanelle (NORMAL/BULGING/SUNKEN)
+            breastfeeding_ability: Feeding ability (NORMAL/REDUCED/UNABLE)
+            capillary_refill_seconds: Capillary refill time in seconds
+            muac_cm: Mid-upper arm circumference in cm (children 6-59 months)
 
         Returns:
             Tuple of (category, alerts_list) where alerts are structured dicts
         """
         alerts: list[AlertDict] = []
+
+        # Check ETAT criteria for children <5 years (highest priority)
+        if patient_age_years < 5:
+            etat_alerts = self._check_etat_criteria(
+                etat_danger_signs=etat_danger_signs or [],
+                dehydration_level=dehydration_level,
+                fontanelle_status=fontanelle_status,
+                breastfeeding_ability=breastfeeding_ability,
+                capillary_refill_seconds=capillary_refill_seconds,
+                muac_cm=muac_cm,
+                patient_age_years=patient_age_years,
+            )
+            if etat_alerts:
+                alerts.extend(etat_alerts)
+                # ETAT danger signs always warrant RED
+                return "RED", alerts
 
         # Check RED criteria (highest priority)
         red_alerts = self._check_red_criteria(
@@ -262,29 +576,130 @@ class TriageCategoryCalculator:
 
         # Check ORANGE criteria (very urgent)
         orange_alerts = self._check_orange_criteria(
-            vitals, pain_score, chief_complaint_category, mobility, gcs_total
+            vitals, pain_score, chief_complaint_category, mobility, gcs_total,
+            capillary_refill_seconds=capillary_refill_seconds,
+            muac_cm=muac_cm,
+            patient_age_years=patient_age_years,
+            dehydration_level=dehydration_level,
         )
         if orange_alerts:
             alerts.extend(orange_alerts)
             # Add any vital warnings
-            alerts.extend(self._check_vital_alerts(vitals))
+            alerts.extend(self._check_vital_alerts(vitals, patient_age_years))
             return "ORANGE", alerts
 
         # Check YELLOW criteria (urgent)
         yellow_alerts = self._check_yellow_criteria(vitals, pain_score, chief_complaint_category)
         if yellow_alerts:
             alerts.extend(yellow_alerts)
-            alerts.extend(self._check_vital_alerts(vitals))
+            alerts.extend(self._check_vital_alerts(vitals, patient_age_years))
             return "YELLOW", alerts
 
         # Check if GREEN (standard)
         if chief_complaint_category in ["FEVER", "HEADACHE", "ABDOMINAL_PAIN"]:
-            alerts.extend(self._check_vital_alerts(vitals))
+            alerts.extend(self._check_vital_alerts(vitals, patient_age_years))
             return "GREEN", alerts
 
         # Default to BLUE (non-urgent)
-        alerts.extend(self._check_vital_alerts(vitals))
+        alerts.extend(self._check_vital_alerts(vitals, patient_age_years))
         return "BLUE", alerts
+
+    def _check_etat_criteria(
+        self,
+        etat_danger_signs: list[str],
+        dehydration_level: str,
+        fontanelle_status: str,
+        breastfeeding_ability: str,
+        capillary_refill_seconds: int | None,
+        muac_cm: float | None,
+        patient_age_years: float,
+    ) -> list[AlertDict]:
+        """
+        Check ETAT (Emergency Triage Assessment & Treatment) criteria for children <5y.
+
+        Any ETAT danger sign = RED (emergency). These are WHO-defined signs indicating
+        imminent risk of death in children.
+
+        Returns:
+            List of RED-level alerts, empty if no ETAT criteria met
+        """
+        alerts: list[AlertDict] = []
+
+        # Check ETAT danger signs
+        if etat_danger_signs:
+            sign_labels = {
+                "unable_to_drink": "Unable to drink or breastfeed",
+                "convulsions": "Convulsions (now or recent)",
+                "lethargy": "Abnormally sleepy / lethargic",
+                "chest_indrawing": "Chest indrawing",
+                "stridor": "Stridor in a calm child",
+                "severe_malnutrition": "Severe visible malnutrition (wasting)",
+                "grunting": "Grunting respiration",
+                "cyanosis": "Central cyanosis",
+                "severe_pallor": "Severe pallor",
+                "hypothermia": "Hypothermia (cold to touch)",
+            }
+            for sign in etat_danger_signs:
+                if sign in sign_labels:
+                    alerts.append(
+                        create_alert(
+                            severity="CRITICAL",
+                            vital_type="GENERAL",
+                            message=f"ETAT danger sign: {sign_labels[sign]}",
+                            clinical_note="WHO ETAT: immediate assessment and treatment required",
+                            actions=["Assess ABC (Airway, Breathing, Circulation)", "Initiate emergency treatment"],
+                        )
+                    )
+
+        # Severe dehydration = RED
+        if dehydration_level == "SEVERE":
+            alerts.append(
+                create_alert(
+                    severity="CRITICAL",
+                    vital_type="GENERAL",
+                    message="Severe dehydration (WHO classification)",
+                    clinical_note="Immediate IV/IO fluid resuscitation required",
+                    actions=["IV access", "Ringer's lactate 20ml/kg bolus", "Reassess after 30 min"],
+                )
+            )
+
+        # Bulging fontanelle = RED (meningitis sign) — only for <18 months
+        if fontanelle_status == "BULGING" and patient_age_years < 1.5:
+            alerts.append(
+                create_alert(
+                    severity="CRITICAL",
+                    vital_type="GENERAL",
+                    message="Bulging fontanelle — possible meningitis/raised ICP",
+                    clinical_note="Urgent lumbar puncture consideration; IV antibiotics",
+                    actions=["Blood cultures", "IV ceftriaxone", "Consider LP when stable"],
+                )
+            )
+
+        # Capillary refill ≥5 seconds = RED (poor perfusion / shock)
+        if capillary_refill_seconds is not None and capillary_refill_seconds >= 5:
+            alerts.append(
+                create_alert(
+                    severity="CRITICAL",
+                    vital_type="GENERAL",
+                    message=f"Severely prolonged capillary refill ({capillary_refill_seconds}s)",
+                    clinical_note="Signs of circulatory shock",
+                    actions=["IV access", "Fluid bolus 20ml/kg", "Reassess perfusion"],
+                )
+            )
+
+        # Unable to breastfeed = RED for infants <1 year
+        if breastfeeding_ability == "UNABLE" and patient_age_years < 1:
+            alerts.append(
+                create_alert(
+                    severity="CRITICAL",
+                    vital_type="GENERAL",
+                    message="Unable to breastfeed / drink (infant)",
+                    clinical_note="ETAT danger sign — risk of hypoglycaemia and dehydration",
+                    actions=["Check blood glucose", "NG tube feed or IV dextrose", "Assess for sepsis"],
+                )
+            )
+
+        return alerts
 
     def _check_red_criteria(
         self, vitals: dict, mental_status: str, chief_complaint: str, patient_age_years: float = 30,
@@ -427,64 +842,28 @@ class TriageCategoryCalculator:
                 )
                 has_red_criteria = True
 
-        # Heart rate critical
+        # Heart rate critical (age-adjusted)
         hr = vitals.get("heart_rate")
         if hr:
-            if hr < 40:
-                alerts.append(
-                    create_alert(
-                        severity="CRITICAL",
-                        vital_type="HEART_RATE",
-                        message=f"Severe bradycardia (heart rate {hr} bpm)",
-                        value=hr,
-                        threshold=40,
-                        clinical_note="Risk of cardiac arrest",
-                        actions=["12-lead ECG", "Atropine ready", "Pacing on standby"],
-                    )
-                )
-                has_red_criteria = True
-            elif hr > 150:
-                alerts.append(
-                    create_alert(
-                        severity="CRITICAL",
-                        vital_type="HEART_RATE",
-                        message=f"Severe tachycardia (heart rate {hr} bpm)",
-                        value=hr,
-                        threshold=150,
-                        clinical_note="Unstable tachyarrhythmia risk",
-                        actions=["12-lead ECG", "IV access", "Cardioversion on standby"],
-                    )
-                )
+            hr_status, hr_alert = check_heart_rate_status(hr, patient_age_years)
+            if hr_status == "critical" and hr_alert:
+                alerts.append(hr_alert)
                 has_red_criteria = True
 
-        # Temperature critical (severe hypothermia or high fever)
+        # Temperature critical (age-adjusted)
         temp = vitals.get("temperature")
         if temp is not None:
-            if temp < 32:
-                alerts.append(
-                    create_alert(
-                        severity="CRITICAL",
-                        vital_type="TEMPERATURE",
-                        message=f"Severe hypothermia ({temp}°C)",
-                        value=float(temp),
-                        threshold=32,
-                        clinical_note="Life-threatening; risk of cardiac arrest",
-                        actions=["Active warming", "Warm IV fluids", "Cardiac monitoring"],
-                    )
-                )
+            temp_status, temp_alert = check_temperature_status(float(temp), patient_age_years)
+            if temp_status == "critical" and temp_alert:
+                alerts.append(temp_alert)
                 has_red_criteria = True
-            elif temp >= 40:
-                alerts.append(
-                    create_alert(
-                        severity="CRITICAL",
-                        vital_type="TEMPERATURE",
-                        message=f"High fever / Hyperpyrexia ({temp}°C)",
-                        value=float(temp),
-                        threshold=40,
-                        clinical_note="Potentially life-threatening; urgent evaluation needed",
-                        actions=["Antipyretics", "Cooling measures", "Investigate source"],
-                    )
-                )
+
+        # Respiratory rate critical (age-adjusted)
+        rr = vitals.get("respiratory_rate")
+        if rr:
+            rr_status, rr_alert = check_respiratory_rate_status(rr, patient_age_years)
+            if rr_status == "critical" and rr_alert:
+                alerts.append(rr_alert)
                 has_red_criteria = True
 
         # Altered consciousness with responds to voice
@@ -506,7 +885,11 @@ class TriageCategoryCalculator:
 
     def _check_orange_criteria(
         self, vitals: dict, pain_score: int | None, chief_complaint: str, mobility: str | None,
-        gcs_total: int | None = None
+        gcs_total: int | None = None,
+        capillary_refill_seconds: int | None = None,
+        muac_cm: float | None = None,
+        patient_age_years: float = 30,
+        dehydration_level: str = "",
     ) -> list[AlertDict]:
         """
         Check for ORANGE (Very Urgent) criteria.
@@ -609,6 +992,51 @@ class TriageCategoryCalculator:
             )
             return alerts
 
+        # ---- Pediatric ORANGE criteria (ETAT sub-RED) ----
+
+        # Capillary refill 3-4 seconds = ORANGE (delayed but not shock)
+        if capillary_refill_seconds is not None and 3 <= capillary_refill_seconds < 5:
+            alerts.append(
+                create_alert(
+                    severity="WARNING",
+                    vital_type="GENERAL",
+                    message=f"Prolonged capillary refill ({capillary_refill_seconds}s)",
+                    value=capillary_refill_seconds,
+                    threshold=3,
+                    clinical_note="Delayed perfusion — assess hydration and circulation",
+                    actions=["IV access", "Fluid assessment", "Monitor closely"],
+                )
+            )
+            return alerts
+
+        # MUAC < 11.5 cm (SAM) = ORANGE (nutritional emergency, children 6-59 months)
+        if muac_cm is not None and muac_cm < 11.5 and patient_age_years < 5:
+            alerts.append(
+                create_alert(
+                    severity="WARNING",
+                    vital_type="GENERAL",
+                    message=f"Severe Acute Malnutrition (MUAC {muac_cm} cm)",
+                    value=float(muac_cm),
+                    threshold=11.5,
+                    clinical_note="SAM — high mortality risk; initiate therapeutic feeding",
+                    actions=["F-75 therapeutic milk", "Check blood glucose", "Assess for complications"],
+                )
+            )
+            return alerts
+
+        # Some dehydration = ORANGE
+        if dehydration_level == "SOME":
+            alerts.append(
+                create_alert(
+                    severity="WARNING",
+                    vital_type="GENERAL",
+                    message="Some dehydration (WHO classification)",
+                    clinical_note="Oral rehydration therapy; monitor for worsening",
+                    actions=["ORS administration", "Reassess in 4 hours"],
+                )
+            )
+            return alerts
+
         return []
 
     def _check_yellow_criteria(
@@ -675,12 +1103,14 @@ class TriageCategoryCalculator:
 
         return []
 
-    def _check_vital_alerts(self, vitals: dict) -> list[AlertDict]:
+    def _check_vital_alerts(self, vitals: dict, patient_age_years: float = 30) -> list[AlertDict]:
         """
         Generate alerts for abnormal vitals (warning level).
+        Uses age-adjusted thresholds.
 
         Args:
             vitals: Dictionary of vital signs
+            patient_age_years: Patient age in years (for age-adjusted thresholds)
 
         Returns:
             List of warning-level structured alerts for abnormal vitals
@@ -700,29 +1130,12 @@ class TriageCategoryCalculator:
                 )
             )
 
-        # Heart rate warnings (not critical)
+        # Heart rate warnings (age-adjusted)
         hr = vitals.get("heart_rate")
         if hr:
-            if 40 <= hr < 50:
-                alerts.append(
-                    create_alert(
-                        severity="WARNING",
-                        vital_type="HEART_RATE",
-                        message=f"Bradycardia (heart rate {hr} bpm)",
-                        value=hr,
-                        threshold=50,
-                    )
-                )
-            elif 100 < hr <= 150:
-                alerts.append(
-                    create_alert(
-                        severity="WARNING",
-                        vital_type="HEART_RATE",
-                        message=f"Tachycardia (heart rate {hr} bpm)",
-                        value=hr,
-                        threshold=100,
-                    )
-                )
+            hr_status, hr_alert = check_heart_rate_status(hr, patient_age_years)
+            if hr_status == "warning" and hr_alert:
+                alerts.append(hr_alert)
 
         # Blood pressure warnings (not critical)
         systolic = vitals.get("systolic_bp")
@@ -737,80 +1150,18 @@ class TriageCategoryCalculator:
                 )
             )
 
-        # Temperature warnings (critical cases already handled in RED)
+        # Temperature warnings (age-adjusted)
         temp = vitals.get("temperature")
-        if temp:
-            # Warning high: 37.6-39.9°C (sub-classified as low-grade or moderate fever)
-            if 37.5 < temp < 40:
-                if temp < 38.5:
-                    alerts.append(
-                        create_alert(
-                            severity="WARNING",
-                            vital_type="TEMPERATURE",
-                            message=f"Low-grade fever ({temp}°C)",
-                            value=float(temp),
-                            threshold=37.5,
-                            clinical_note="Usually mild, often infection-related",
-                        )
-                    )
-                else:
-                    alerts.append(
-                        create_alert(
-                            severity="WARNING",
-                            vital_type="TEMPERATURE",
-                            message=f"Moderate fever ({temp}°C)",
-                            value=float(temp),
-                            threshold=38.5,
-                            clinical_note="Clinical attention may be required",
-                        )
-                    )
-            # Warning low: 32-36°C (sub-classified as mild or moderate hypothermia)
-            elif 32 <= temp < 36:
-                if temp >= 35:
-                    alerts.append(
-                        create_alert(
-                            severity="WARNING",
-                            vital_type="TEMPERATURE",
-                            message=f"Mild hypothermia ({temp}°C)",
-                            value=float(temp),
-                            threshold=36.0,
-                            clinical_note="Usually mild, monitor closely",
-                        )
-                    )
-                else:
-                    alerts.append(
-                        create_alert(
-                            severity="WARNING",
-                            vital_type="TEMPERATURE",
-                            message=f"Moderate hypothermia ({temp}°C)",
-                            value=float(temp),
-                            threshold=35.0,
-                            clinical_note="Symptoms: shivering, confusion, slurred speech",
-                        )
-                    )
+        if temp is not None:
+            temp_status, temp_alert = check_temperature_status(float(temp), patient_age_years)
+            if temp_status == "warning" and temp_alert:
+                alerts.append(temp_alert)
 
-        # Respiratory rate warnings
+        # Respiratory rate warnings (age-adjusted)
         rr = vitals.get("respiratory_rate")
         if rr:
-            if rr < 10:
-                alerts.append(
-                    create_alert(
-                        severity="WARNING",
-                        vital_type="RESPIRATORY_RATE",
-                        message=f"Low respiratory rate ({rr} breaths/min)",
-                        value=rr,
-                        threshold=10,
-                    )
-                )
-            elif rr > 24:
-                alerts.append(
-                    create_alert(
-                        severity="WARNING",
-                        vital_type="RESPIRATORY_RATE",
-                        message=f"Elevated respiratory rate ({rr} breaths/min)",
-                        value=rr,
-                        threshold=24,
-                    )
-                )
+            rr_status, rr_alert = check_respiratory_rate_status(rr, patient_age_years)
+            if rr_status == "warning" and rr_alert:
+                alerts.append(rr_alert)
 
         return alerts

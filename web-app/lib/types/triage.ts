@@ -415,6 +415,103 @@ export const ARRIVAL_MODE_CONFIG: Record<ArrivalMode, { label: string }> = {
 };
 
 // =============================================================================
+// AGE GROUPS & ETAT (Pediatric Triage)
+// =============================================================================
+
+/** WHO/ETAT age groups for age-adjusted vital sign thresholds */
+export type AgeGroup =
+  | 'neonate'     // 0-28 days
+  | 'infant'      // 1-12 months
+  | 'toddler'     // 1-3 years
+  | 'preschool'   // 3-5 years
+  | 'child'       // 5-12 years
+  | 'adolescent'  // 12-18 years
+  | 'adult';      // 18+ years
+
+/** ETAT danger signs — matches backend ETAT_DANGER_SIGNS list */
+export type EtATDangerSign =
+  | 'obstructed_breathing'
+  | 'central_cyanosis'
+  | 'severe_respiratory_distress'
+  | 'shock_cold_extremities'
+  | 'coma_unconscious'
+  | 'convulsing_now'
+  | 'severe_dehydration_with_shock'
+  | 'not_able_to_drink_breastfeed'
+  | 'severe_malnutrition_visible'
+  | 'bleeding_severe';
+
+export const ETAT_DANGER_SIGNS_CONFIG: Record<EtATDangerSign, { label: string; description: string }> = {
+  obstructed_breathing: { label: 'Obstructed Breathing', description: 'Airway obstruction / stridor at rest' },
+  central_cyanosis: { label: 'Central Cyanosis', description: 'Blue discolouration of lips/tongue' },
+  severe_respiratory_distress: { label: 'Severe Respiratory Distress', description: 'Severe chest indrawing / grunting' },
+  shock_cold_extremities: { label: 'Shock (Cold Extremities)', description: 'Cold hands/feet with weak rapid pulse' },
+  coma_unconscious: { label: 'Coma / Unconscious', description: 'No response to stimuli' },
+  convulsing_now: { label: 'Convulsing Now', description: 'Active seizure at time of assessment' },
+  severe_dehydration_with_shock: { label: 'Severe Dehydration with Shock', description: 'Severe dehydration with altered consciousness' },
+  not_able_to_drink_breastfeed: { label: 'Not Able to Drink/Breastfeed', description: 'Unable to drink or breastfeed at all' },
+  severe_malnutrition_visible: { label: 'Severe Visible Malnutrition', description: 'Severe visible wasting / oedema' },
+  bleeding_severe: { label: 'Severe Bleeding', description: 'Active severe bleeding requiring intervention' },
+};
+
+/** Dehydration levels per ETAT/IMCI classification */
+export type DehydrationLevel = 'NONE' | 'SOME' | 'SEVERE';
+
+export const DEHYDRATION_CONFIG: Record<DehydrationLevel, { label: string; severity: 'normal' | 'warning' | 'critical' }> = {
+  NONE: { label: 'No Dehydration', severity: 'normal' },
+  SOME: { label: 'Some Dehydration', severity: 'warning' },
+  SEVERE: { label: 'Severe Dehydration', severity: 'critical' },
+};
+
+/** Fontanelle status for neonates/infants */
+export type FontanelleStatus = 'NORMAL' | 'BULGING' | 'SUNKEN';
+
+export const FONTANELLE_CONFIG: Record<FontanelleStatus, { label: string; severity: 'normal' | 'warning' | 'critical' }> = {
+  NORMAL: { label: 'Normal', severity: 'normal' },
+  BULGING: { label: 'Bulging', severity: 'critical' },
+  SUNKEN: { label: 'Sunken', severity: 'warning' },
+};
+
+/** Breastfeeding ability for neonates/young infants */
+export type BreastfeedingAbility = 'NORMAL' | 'REDUCED' | 'UNABLE';
+
+export const BREASTFEEDING_CONFIG: Record<BreastfeedingAbility, { label: string; severity: 'normal' | 'warning' | 'critical' }> = {
+  NORMAL: { label: 'Feeding Well', severity: 'normal' },
+  REDUCED: { label: 'Reduced Feeding', severity: 'warning' },
+  UNABLE: { label: 'Unable to Feed', severity: 'critical' },
+};
+
+/**
+ * Determine age group from date of birth.
+ * Used to conditionally show ETAT fields and apply age-adjusted thresholds.
+ */
+export function getAgeGroup(dob: string | Date): AgeGroup {
+  const birth = new Date(dob);
+  const now = new Date();
+  const diffMs = now.getTime() - birth.getTime();
+  const days = diffMs / (1000 * 60 * 60 * 24);
+
+  if (days <= 28) return 'neonate';
+  if (days <= 365) return 'infant';
+  const years = days / 365.25;
+  if (years < 3) return 'toddler';
+  if (years < 5) return 'preschool';
+  if (years < 12) return 'child';
+  if (years < 18) return 'adolescent';
+  return 'adult';
+}
+
+/** Returns true if the patient is pediatric (<12 years) */
+export function isPediatric(ageGroup: AgeGroup): boolean {
+  return ['neonate', 'infant', 'toddler', 'preschool', 'child'].includes(ageGroup);
+}
+
+/** Returns true if the patient is a neonate or young infant (<1 year) */
+export function isNeonateOrInfant(ageGroup: AgeGroup): boolean {
+  return ageGroup === 'neonate' || ageGroup === 'infant';
+}
+
+// =============================================================================
 // CHIEF COMPLAINT CATEGORIES
 // =============================================================================
 
@@ -430,9 +527,19 @@ export type ChiefComplaintCategory =
   | 'POISONING'
   | 'OBSTETRIC'
   | 'PEDIATRIC'
+  // Neonatal-specific (<1 month)
+  | 'NEONATAL_SEPSIS'
+  | 'NEONATAL_JAUNDICE'
+  | 'NEONATAL_RESPIRATORY_DISTRESS'
+  | 'BIRTH_ASPHYXIA'
+  // Pediatric-specific (1-12y)
+  | 'FEBRILE_CONVULSION'
+  | 'CROUP'
+  | 'BRONCHIOLITIS'
+  | 'SEVERE_MALARIA'
   | 'OTHER';
 
-export const CHIEF_COMPLAINT_CONFIG: Record<ChiefComplaintCategory, { label: string }> = {
+export const CHIEF_COMPLAINT_CONFIG: Record<ChiefComplaintCategory, { label: string; ageRestriction?: 'neonatal' | 'pediatric' }> = {
   CHEST_PAIN: { label: 'Chest Pain' },
   DIFFICULTY_BREATHING: { label: 'Difficulty Breathing' },
   TRAUMA: { label: 'Trauma/Injury' },
@@ -444,6 +551,16 @@ export const CHIEF_COMPLAINT_CONFIG: Record<ChiefComplaintCategory, { label: str
   POISONING: { label: 'Poisoning/Overdose' },
   OBSTETRIC: { label: 'Obstetric Emergency' },
   PEDIATRIC: { label: 'Pediatric Emergency' },
+  // Neonatal-specific
+  NEONATAL_SEPSIS: { label: 'Neonatal Sepsis', ageRestriction: 'neonatal' },
+  NEONATAL_JAUNDICE: { label: 'Neonatal Jaundice', ageRestriction: 'neonatal' },
+  NEONATAL_RESPIRATORY_DISTRESS: { label: 'Neonatal Respiratory Distress', ageRestriction: 'neonatal' },
+  BIRTH_ASPHYXIA: { label: 'Birth Asphyxia', ageRestriction: 'neonatal' },
+  // Pediatric-specific
+  FEBRILE_CONVULSION: { label: 'Febrile Convulsion', ageRestriction: 'pediatric' },
+  CROUP: { label: 'Croup', ageRestriction: 'pediatric' },
+  BRONCHIOLITIS: { label: 'Bronchiolitis', ageRestriction: 'pediatric' },
+  SEVERE_MALARIA: { label: 'Severe Malaria', ageRestriction: 'pediatric' },
   OTHER: { label: 'Other' },
 };
 
@@ -581,6 +698,14 @@ export interface TriageAssessmentCreateData {
   triage_category: TriageCategory;
   auto_calculated_category?: TriageCategory;
   category_override_reason?: string;
+
+  // ETAT fields (pediatric — optional, nullable for adults)
+  etat_danger_signs?: EtATDangerSign[];
+  dehydration_level?: DehydrationLevel | '';
+  fontanelle_status?: FontanelleStatus | '';
+  breastfeeding_ability?: BreastfeedingAbility | '';
+  capillary_refill_seconds?: number | null;
+  muac_cm?: number | null;
 
   // Routing - provide EITHER assigned_area (ER) OR assigned_clinic (clinic), not both
   assigned_area?: AssignedArea;

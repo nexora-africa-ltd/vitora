@@ -139,6 +139,14 @@ interface CalculateCategoryRequest {
   mobility?: string;
   // Glasgow Coma Scale (optional)
   gcs_total?: number;
+  // ETAT fields (pediatric)
+  patient_age_years?: number;
+  etat_danger_signs?: string[];
+  dehydration_level?: string;
+  fontanelle_status?: string;
+  breastfeeding_ability?: string;
+  capillary_refill_seconds?: number;
+  muac_cm?: number;
 }
 
 interface CalculateCategoryResponse {

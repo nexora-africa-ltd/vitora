@@ -85,6 +85,16 @@ const assessmentSchema = z.object({
       'POISONING',
       'OBSTETRIC',
       'PEDIATRIC',
+      // Neonatal-specific
+      'NEONATAL_SEPSIS',
+      'NEONATAL_JAUNDICE',
+      'NEONATAL_RESPIRATORY_DISTRESS',
+      'BIRTH_ASPHYXIA',
+      // Pediatric-specific
+      'FEBRILE_CONVULSION',
+      'CROUP',
+      'BRONCHIOLITIS',
+      'SEVERE_MALARIA',
       'OTHER',
     ],
     { required_error: 'Chief complaint category is required' }
