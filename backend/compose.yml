@@ -26,6 +26,8 @@ services:
       # Staging/Prod: Postgres — set these env vars to a *separate* Neon DB
       # or use the same Neon project with a dedicated "metabase" database.
       MB_DB_TYPE: "${MB_DB_TYPE:-h2}"
+      # H2 file path — must be inside the mounted volume for persistence
+      MB_DB_FILE: "/metabase-data/metabase.db"
       MB_DB_DBNAME: "${MB_DB_DBNAME:-}"
       MB_DB_HOST: "${MB_DB_HOST:-}"
       MB_DB_PORT: "${MB_DB_PORT:-5432}"
@@ -36,6 +38,8 @@ services:
       # ---------- Embedding ----------
       # MUST match METABASE_EMBEDDING_SECRET in Django settings.
       MB_EMBEDDING_SECRET_KEY: "${METABASE_EMBEDDING_SECRET:-changeme-in-production}"
+      # Allow embedding in iframes from any origin (restrict in production)
+      MB_EMBEDDING_APP_ORIGIN: "${MB_EMBEDDING_APP_ORIGIN:-*}"
 
       # ---------- Metabase config ----------
       MB_SITE_URL: "${METABASE_SITE_URL:-http://localhost:3333}"
