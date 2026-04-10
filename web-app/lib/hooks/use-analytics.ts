@@ -10,6 +10,7 @@ import type {
   FacilitySummaryParams,
   DepartmentPerformanceParams,
   DiagnosisTrendParams,
+  MetabaseResourceType,
 } from '@/lib/types/analytics';
 
 // Query keys
@@ -21,6 +22,8 @@ export const ANALYTICS_KEYS = {
   diagnosisTrends: (params?: DiagnosisTrendParams) =>
     ['analytics', 'diagnosis-trends', params] as const,
   demographics: () => ['analytics', 'demographics'] as const,
+  metabaseEmbed: (type: MetabaseResourceType, id: number) =>
+    ['analytics', 'metabase-embed', type, id] as const,
 };
 
 // Analytics data is ETL'd nightly — 15 min stale time is fine
@@ -67,5 +70,23 @@ export function useDemographics() {
     queryKey: ANALYTICS_KEYS.demographics(),
     queryFn: () => analyticsApi.getDemographics(),
     staleTime: STALE_TIME,
+  });
+}
+
+/**
+ * Fetch a signed Metabase embed URL for a dashboard or question.
+ * Token is short-lived (10 min), so refetch every 8 min.
+ */
+export function useMetabaseEmbedUrl(
+  resourceType: MetabaseResourceType,
+  resourceId: number
+) {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.metabaseEmbed(resourceType, resourceId),
+    queryFn: () => analyticsApi.getMetabaseEmbedUrl(resourceType, resourceId),
+    staleTime: 8 * 60 * 1000, // 8 min (token expires in 10 min)
+    refetchInterval: 8 * 60 * 1000,
+    enabled: resourceId > 0,
+    retry: 1,
   });
 }

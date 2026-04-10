@@ -1,5 +1,6 @@
 """Analytics URL configuration."""
 
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from hmis.apps.analytics import views
@@ -16,4 +17,6 @@ router.register(
 router.register(r"diagnosis-trends", views.DiagnosisTrendViewSet, basename="diagnosis-trends")
 router.register(r"demographics", views.PatientDemographicSnapshotViewSet, basename="demographics")
 
-urlpatterns = router.urls
+urlpatterns = [
+    path("metabase-embed/", views.MetabaseEmbedView.as_view(), name="metabase-embed"),
+] + router.urls

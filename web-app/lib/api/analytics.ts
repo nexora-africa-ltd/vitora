@@ -11,6 +11,7 @@ import {
   PaginatedDepartmentSummarySchema,
   PaginatedDiagnosisTrendSchema,
   PaginatedDemographicSnapshotSchema,
+  MetabaseEmbedResponseSchema,
 } from '@/lib/schemas/analytics.schema';
 import type { PaginatedResponse } from '@/lib/types';
 import type {
@@ -21,6 +22,8 @@ import type {
   FacilitySummaryParams,
   DepartmentPerformanceParams,
   DiagnosisTrendParams,
+  MetabaseResourceType,
+  MetabaseEmbedResponse,
 } from '@/lib/types/analytics';
 
 export const analyticsApi = {
@@ -72,6 +75,21 @@ export const analyticsApi = {
     const response = await apiClient.get('/api/analytics/demographics/', { params });
     return parseResponse(PaginatedDemographicSnapshotSchema, response.data, {
       context: 'analyticsApi.getDemographics',
+    });
+  },
+
+  /**
+   * Get a signed Metabase embed URL for a dashboard or question.
+   */
+  getMetabaseEmbedUrl: async (
+    resourceType: MetabaseResourceType,
+    resourceId: number
+  ): Promise<MetabaseEmbedResponse> => {
+    const response = await apiClient.get('/api/analytics/metabase-embed/', {
+      params: { resource_type: resourceType, resource_id: resourceId },
+    });
+    return parseResponse(MetabaseEmbedResponseSchema, response.data, {
+      context: 'analyticsApi.getMetabaseEmbedUrl',
     });
   },
 };

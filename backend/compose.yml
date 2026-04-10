@@ -14,3 +14,44 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: vitora-metabase
+    environment:
+      MB_JETTY_PORT: "3000"
+
+      # ---------- Metabase application database (internal state) ----------
+      # Local dev: H2 (default, no config needed).
+      # Staging/Prod: Postgres — set these env vars to a *separate* Neon DB
+      # or use the same Neon project with a dedicated "metabase" database.
+      MB_DB_TYPE: "${MB_DB_TYPE:-h2}"
+      MB_DB_DBNAME: "${MB_DB_DBNAME:-}"
+      MB_DB_HOST: "${MB_DB_HOST:-}"
+      MB_DB_PORT: "${MB_DB_PORT:-5432}"
+      MB_DB_USER: "${MB_DB_USER:-}"
+      MB_DB_PASS: "${MB_DB_PASS:-}"
+      MB_DB_CONNECTION_URI: "${MB_DB_CONNECTION_URI:-}"
+
+      # ---------- Embedding ----------
+      # MUST match METABASE_EMBEDDING_SECRET in Django settings.
+      MB_EMBEDDING_SECRET_KEY: "${METABASE_EMBEDDING_SECRET:-changeme-in-production}"
+
+      # ---------- Metabase config ----------
+      MB_SITE_URL: "${METABASE_SITE_URL:-http://localhost:3333}"
+      MB_ENABLE_EMBEDDING: "true"
+      JAVA_TIMEZONE: "Africa/Nairobi"
+    ports:
+      - "3333:3000"
+    restart: unless-stopped
+    volumes:
+      - metabase-data:/metabase-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  metabase-data:
