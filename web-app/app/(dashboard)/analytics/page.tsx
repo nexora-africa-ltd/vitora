@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { PageHeader } from '@/components/shared/page-header';
-import { AnalyticsDashboard } from '@/components/analytics/analytics-dashboard';
+import { AnalyticsPageContent } from '@/components/analytics/analytics-page-content';
 
 export const metadata: Metadata = {
   title: 'Analytics | Vitora HMIS',
@@ -13,10 +13,10 @@ export default function AnalyticsPage() {
     <div className="container mx-auto py-6 space-y-6">
       <PageHeader
         title="Analytics"
-        helpContent="Facility-level operational intelligence. View encounter volumes, revenue trends, top diagnoses, bed occupancy, and patient demographics across configurable time periods."
+        helpContent="Facility-level operational intelligence. The Dashboard tab shows encounter volumes, revenue trends, top diagnoses, and demographics. The Explore tab provides embedded Metabase dashboards for ad-hoc analysis."
       />
 
-      <AnalyticsDashboard />
+      <AnalyticsPageContent />
     </div>
   );
 }

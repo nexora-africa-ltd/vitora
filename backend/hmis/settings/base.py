@@ -466,6 +466,12 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
+# ---------------------------------------------------------------------------
+# Metabase Embedded Analytics
+# ---------------------------------------------------------------------------
+METABASE_SITE_URL = os.getenv("METABASE_SITE_URL", "http://localhost:3333")
+METABASE_EMBEDDING_SECRET = os.getenv("METABASE_EMBEDDING_SECRET", "")
+
 # Pharmacy Configuration
 PHARMACY_SETTINGS = {
     "DEFAULT_PRESCRIPTION_VALIDITY_DAYS": 30,

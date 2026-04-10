@@ -152,3 +152,13 @@ export interface DiagnosisTrendParams {
   top_n?: number;
   page?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Metabase Embedding
+// ---------------------------------------------------------------------------
+
+export type MetabaseResourceType = 'dashboard' | 'question';
+
+export interface MetabaseEmbedResponse {
+  embed_url: string;
+}

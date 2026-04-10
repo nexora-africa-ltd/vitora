@@ -124,3 +124,11 @@ export const PaginatedFacilitySummarySchema = paginatedResponse(FacilityDailySum
 export const PaginatedDepartmentSummarySchema = paginatedResponse(DepartmentMonthlySummarySchema);
 export const PaginatedDiagnosisTrendSchema = paginatedResponse(DiagnosisTrendSchema);
 export const PaginatedDemographicSnapshotSchema = paginatedResponse(PatientDemographicSnapshotSchema);
+
+// ---------------------------------------------------------------------------
+// Metabase Embedding
+// ---------------------------------------------------------------------------
+
+export const MetabaseEmbedResponseSchema = z.object({
+  embed_url: z.string(),
+});

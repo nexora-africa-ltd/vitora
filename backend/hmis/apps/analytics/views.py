@@ -5,9 +5,17 @@ Read-only endpoints for BI dashboards and trend analysis.
 All endpoints are tenant-scoped via ``TenantScopedViewMixin``.
 """
 
+import logging
+import time
+
+import jwt
+from django.conf import settings
 from django_filters import rest_framework as django_filters
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, serializers, viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from hmis.apps.analytics.models import (
     DepartmentMonthlySummary,
@@ -148,3 +156,83 @@ class PatientDemographicSnapshotViewSet(
     ordering_fields = ["snapshot_date", "total_patients"]
     ordering = ["-snapshot_date"]
     tenant_scope = "facility"
+
+
+# ---------------------------------------------------------------------------
+# Metabase Embedded Analytics
+# ---------------------------------------------------------------------------
+
+logger = logging.getLogger(__name__)
+
+
+class MetabaseEmbedSerializer(serializers.Serializer):
+    """Validates the request for a Metabase embed URL."""
+
+    resource_type = serializers.ChoiceField(
+        choices=["dashboard", "question"],
+        default="dashboard",
+    )
+    resource_id = serializers.IntegerField(min_value=1)
+
+
+class MetabaseEmbedView(APIView):
+    """
+    Generate a signed Metabase embed URL.
+
+    ``GET /api/analytics/metabase-embed/?resource_type=dashboard&resource_id=1``
+
+    Returns ``{ "embed_url": "https://metabase.…/embed/dashboard/…#token=…" }``
+
+    The JWT is signed with ``METABASE_EMBEDDING_SECRET`` and includes the
+    requesting user's ``facility_id`` as a locked parameter so Metabase's
+    row-level sandboxing filters data by tenant.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        serializer = MetabaseEmbedSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        secret = getattr(settings, "METABASE_EMBEDDING_SECRET", "")
+        site_url = getattr(settings, "METABASE_SITE_URL", "")
+
+        if not secret:
+            return Response(
+                {"detail": "Metabase embedding is not configured."},
+                status=503,
+            )
+
+        # Resolve facility_id from the requesting user's profile
+        facility_id = None
+        profile = getattr(request.user, "staff_profile", None)
+        if profile and getattr(profile, "primary_facility_id", None):
+            facility_id = profile.primary_facility_id
+
+        resource_type = data["resource_type"]
+        resource_id = data["resource_id"]
+
+        payload = {
+            "resource": {resource_type: resource_id},
+            "params": {
+                "facility_id": facility_id,
+            },
+            "exp": int(time.time()) + 600,  # 10 minute expiry
+        }
+
+        token = jwt.encode(payload, secret, algorithm="HS256")
+        embed_url = (
+            f"{site_url.rstrip('/')}/embed/{resource_type}/{token}"
+            f"#bordered=false&titled=true"
+        )
+
+        logger.info(
+            "Metabase embed URL generated for user=%s resource=%s:%d facility=%s",
+            request.user.pk,
+            resource_type,
+            resource_id,
+            facility_id,
+        )
+
+        return Response({"embed_url": embed_url})
