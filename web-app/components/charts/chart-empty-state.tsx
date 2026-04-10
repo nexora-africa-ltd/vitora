@@ -9,13 +9,6 @@ import {
   Activity,
   type LucideIcon,
 } from "lucide-react";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import { cn } from "@/lib/utils";
 
@@ -105,28 +98,31 @@ export function ChartEmptyState({
   const displayDescription = description ?? defaultDescriptions[chartType];
 
   return (
-    <Empty
-      className={cn("border-none", className)}
+    <div
+      className={cn(
+        "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-lg p-6 text-center md:p-12",
+        className
+      )}
       style={{ minHeight }}
     >
-      <EmptyHeader>
-        <div className="mb-2 rounded-xl border border-border/60 bg-background/80 px-3 py-2 shadow-sm">
-          <VitoraLogo
-            variant="icon"
-            tone="teal"
-            alt=""
-            className="w-8 opacity-75"
-            imageClassName="pointer-events-none select-none"
-          />
-        </div>
-        <EmptyMedia>
-          <Icon className="h-12 w-12 text-muted-foreground/60" />
-        </EmptyMedia>
-        <EmptyTitle>{displayTitle}</EmptyTitle>
-        <EmptyDescription>{displayDescription}</EmptyDescription>
-      </EmptyHeader>
-      {action && <div className="mt-2">{action}</div>}
-    </Empty>
+      {/* Watermark logo */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+        <VitoraLogo
+          variant="icon"
+          tone="teal"
+          alt=""
+          className="w-28 sm:w-32 opacity-[0.045] dark:opacity-[0.06]"
+          imageClassName="pointer-events-none select-none"
+        />
+      </div>
+      {/* Foreground content */}
+      <div className="relative z-10 flex max-w-sm flex-col items-center gap-2 text-center">
+        <Icon className="mb-1 h-10 w-10 text-muted-foreground/60" />
+        <div className="text-base font-medium tracking-tight">{displayTitle}</div>
+        <p className="text-muted-foreground text-sm/relaxed">{displayDescription}</p>
+      </div>
+      {action && <div className="relative z-10 mt-2">{action}</div>}
+    </div>
   );
 }
 

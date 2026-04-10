@@ -13,20 +13,16 @@ import {
   Users,
   DollarSign,
   BedDouble,
+  BarChart3,
+  PieChart as PieChartIcon,
   TrendingUp,
   Stethoscope,
   Siren,
-  CalendarDays,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { LineChart, BarChart, DonutChart } from '@/components/charts';
 import { ChartEmptyState } from '@/components/charts';
@@ -39,7 +35,7 @@ import type { FacilityDailySummary } from '@/lib/types/analytics';
 // Period helpers
 // ---------------------------------------------------------------------------
 
-type Period = '7d' | '30d' | '90d';
+export type Period = '7d' | '30d' | '90d';
 
 function getDateRange(period: Period): { date_from: string; date_to: string } {
   const today = new Date();
@@ -83,6 +79,19 @@ const diagnosisBarConfig: ChartConfig = {
   case_count: { label: 'Cases', color: 'hsl(var(--chart-1))' },
 };
 
+const DIAGNOSIS_COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+  'hsl(187 60% 45%)',
+  'hsl(220 55% 55%)',
+  'hsl(340 65% 55%)',
+  'hsl(45 80% 50%)',
+  'hsl(160 50% 40%)',
+];
+
 const genderConfig: ChartConfig = {
   M: { label: 'Male', color: 'hsl(var(--gender-male))' },
   F: { label: 'Female', color: 'hsl(var(--gender-female))' },
@@ -93,8 +102,12 @@ const genderConfig: ChartConfig = {
 // Component
 // ---------------------------------------------------------------------------
 
-export function AnalyticsDashboard() {
-  const [period, setPeriod] = useState<Period>('30d');
+interface AnalyticsDashboardProps {
+  period: Period;
+}
+
+export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
+  const [dxChartView, setDxChartView] = useState<'bar' | 'pie'>('bar');
   const dateRange = useMemo(() => getDateRange(period), [period]);
 
   const now = new Date();
@@ -156,12 +169,27 @@ export function AnalyticsDashboard() {
   // Top diagnoses horizontal bar
   const diagnosisChartData = useMemo(
     () =>
-      (dxData?.results ?? []).slice(0, 10).map((d) => ({
+      (dxData?.results ?? []).slice(0, 10).map((d, i) => ({
         name: d.icd10_code,
         label: d.icd10_name || d.icd10_code,
         case_count: d.case_count,
+        fill: DIAGNOSIS_COLORS[i % DIAGNOSIS_COLORS.length],
       })),
     [dxData]
+  );
+
+  // Diagnosis pie chart config (built from data)
+  const diagnosisPieConfig = useMemo<ChartConfig>(() => {
+    const cfg: ChartConfig = {};
+    diagnosisChartData.forEach((d, i) => {
+      cfg[d.name] = { label: d.label, color: DIAGNOSIS_COLORS[i % DIAGNOSIS_COLORS.length] };
+    });
+    return cfg;
+  }, [diagnosisChartData]);
+
+  const diagnosisPieData = useMemo(
+    () => diagnosisChartData.map((d) => ({ name: d.name, value: d.case_count, fill: d.fill })),
+    [diagnosisChartData]
   );
 
   // Gender donut
@@ -177,22 +205,6 @@ export function AnalyticsDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Period Selector */}
-      <div className="flex items-center justify-between">
-        <div />
-        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="w-[140px]">
-            <CalendarDays className="h-4 w-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Last 7d</SelectItem>
-            <SelectItem value="30d">Last 30d</SelectItem>
-            <SelectItem value="90d">Last 90d</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* KPI Stats Row */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatsCard
@@ -232,11 +244,11 @@ export function AnalyticsDashboard() {
       {/* Charts Row 1: Volume + Revenue */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Encounter Volume */}
-        <Card>
+        <Card className="min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Encounter Volume</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {summaryLoading ? (
               <Skeleton className="h-[250px] w-full" />
             ) : volumeChartData.length === 0 ? (
@@ -258,11 +270,11 @@ export function AnalyticsDashboard() {
         </Card>
 
         {/* Revenue Breakdown */}
-        <Card>
+        <Card className="min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Revenue Breakdown</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {summaryLoading ? (
               <Skeleton className="h-[250px] w-full" />
             ) : revenueChartData.length === 0 ? (
@@ -278,7 +290,7 @@ export function AnalyticsDashboard() {
                 showTooltip
                 showLegend
                 minHeight="250px"
-                yAxisFormatter={(v) => formatKes(v)}
+                yAxisFormatter={(v) => formatKes(Number(v))}
               />
             )}
           </CardContent>
@@ -288,38 +300,84 @@ export function AnalyticsDashboard() {
       {/* Charts Row 2: Top Diagnoses + Gender Distribution */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Top Diagnoses */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2">
+        <Card className="lg:col-span-2 min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base">Top 10 Diagnoses</CardTitle>
+            {diagnosisChartData.length > 0 && (
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setDxChartView(dxChartView === 'bar' ? 'pie' : 'bar')}
+                    >
+                      {dxChartView === 'bar' ? (
+                        <PieChartIcon className="h-4 w-4" />
+                      ) : (
+                        <BarChart3 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Switch to {dxChartView === 'bar' ? 'pie' : 'bar'} chart</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {dxLoading ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[350px] sm:h-[400px] w-full" />
             ) : diagnosisChartData.length === 0 ? (
               <ChartEmptyState chartType="bar" description="No diagnosis trends available" />
+            ) : dxChartView === 'bar' ? (
+              <>
+                {/* Bar view: scrollable on mobile, fits on desktop */}
+                <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                  <div className="min-w-[480px] sm:min-w-0">
+                    <BarChart
+                      data={diagnosisChartData}
+                      config={diagnosisBarConfig}
+                      dataKeys={['case_count']}
+                      xAxisKey="label"
+                      layout="vertical"
+                      showGrid
+                      showTooltip
+                      showYAxis
+                      yAxisWidth={120}
+                      yAxisFormatter={(v) => String(v).length > 18 ? String(v).slice(0, 16) + '…' : String(v)}
+                      minHeight="400px"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2 sm:hidden">← Scroll to see full chart →</p>
+              </>
             ) : (
-              <BarChart
-                data={diagnosisChartData}
-                config={diagnosisBarConfig}
-                dataKeys={['case_count']}
-                xAxisKey="name"
-                layout="vertical"
-                showGrid
+              <DonutChart
+                data={diagnosisPieData}
+                config={diagnosisPieConfig}
                 showTooltip
-                minHeight="300px"
+                showLegend
+                showCenterLabel
+                centerLabelTitle="Total"
+                centerLabelValue={diagnosisChartData.reduce((s, d) => s + d.case_count, 0)}
+                useDataColors
+                minHeight="350px"
               />
             )}
           </CardContent>
         </Card>
 
         {/* Gender Distribution */}
-        <Card>
+        <Card className="min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Gender Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {demoLoading ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[260px] sm:h-[300px] w-full" />
             ) : genderChartData.length === 0 ? (
               <ChartEmptyState chartType="pie" description="No demographic data" />
             ) : (
@@ -331,7 +389,7 @@ export function AnalyticsDashboard() {
                 showCenterLabel
                 centerLabelTitle="Total"
                 centerLabelValue={demoData?.results?.[0]?.total_patients ?? 0}
-                minHeight="300px"
+                minHeight="260px"
               />
             )}
           </CardContent>
@@ -355,8 +413,8 @@ export function AnalyticsDashboard() {
               No department data for this month. Data is generated monthly by the analytics ETL.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto -mx-6 px-6">
+              <table className="w-full text-sm min-w-[500px]">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">Department</th>

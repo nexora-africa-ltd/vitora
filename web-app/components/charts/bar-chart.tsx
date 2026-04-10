@@ -56,7 +56,7 @@ export interface BarChartProps<T extends Record<string, unknown>> {
   /** X-axis tick formatter */
   xAxisFormatter?: (value: string) => string;
   /** Y-axis tick formatter */
-  yAxisFormatter?: (value: number) => string;
+  yAxisFormatter?: (value: number | string) => string;
   /** Custom tooltip formatter */
   tooltipFormatter?: (
     value: ValueType,
@@ -69,6 +69,8 @@ export interface BarChartProps<T extends Record<string, unknown>> {
   tooltipIndicator?: "line" | "dot" | "dashed";
   /** Hide tooltip label */
   hideTooltipLabel?: boolean;
+  /** Width of Y-axis (useful for vertical layouts with long labels) */
+  yAxisWidth?: number;
   /** Bar gap (for grouped bars) */
   barGap?: number;
   /** Category gap (space between bar groups) */
@@ -123,6 +125,7 @@ export function BarChart<T extends Record<string, unknown>>({
   tooltipFormatter,
   tooltipIndicator = "dot",
   hideTooltipLabel = false,
+  yAxisWidth = 80,
   barGap = 4,
   categoryGap = "20%",
   onBarClick,
@@ -142,7 +145,7 @@ export function BarChart<T extends Record<string, unknown>>({
           )}
         </div>
       )}
-      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, "w-full")}>
+      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, "aspect-auto w-full")}>
         <RechartsBarChart
           accessibilityLayer
           data={data}
@@ -178,7 +181,7 @@ export function BarChart<T extends Record<string, unknown>>({
               axisLine={false}
               tickFormatter={yAxisFormatter}
               className="text-xs fill-muted-foreground"
-              width={80}
+              width={yAxisWidth}
             />
           )}
           {showTooltip && (

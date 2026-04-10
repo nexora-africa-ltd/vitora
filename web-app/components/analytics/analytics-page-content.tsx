@@ -5,11 +5,20 @@
  * "Explore" tab in a tabbed container.
  */
 
+import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Compass } from 'lucide-react';
+import { BarChart3, CalendarDays, Compass } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { AnalyticsDashboard } from '@/components/analytics/analytics-dashboard';
 import { MetabaseEmbed } from '@/components/analytics/metabase-embed';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { Period } from '@/components/analytics/analytics-dashboard';
 
 /**
  * Default Metabase dashboard IDs.
@@ -23,23 +32,37 @@ const METABASE_DASHBOARDS = {
 } as const;
 
 export function AnalyticsPageContent() {
+  const [period, setPeriod] = useState<Period>('30d');
+
   return (
     <Tabs defaultValue="dashboard">
-      <TabsList>
-        <TabsTrigger value="dashboard" className="gap-1.5">
-          <BarChart3 className="h-4 w-4" />
-          <span className="sm:hidden">Dashboard</span>
-          <span className="hidden sm:inline">Dashboard</span>
-        </TabsTrigger>
-        <TabsTrigger value="explore" className="gap-1.5">
-          <Compass className="h-4 w-4" />
-          <span className="sm:hidden">Explore</span>
-          <span className="hidden sm:inline">Explore</span>
-        </TabsTrigger>
-      </TabsList>
+      <div className="flex items-center justify-between gap-2 sm:gap-4 text-xs sm:text-sm">
+        <TabsList>
+          <TabsTrigger value="dashboard" className="gap-1.5 text-xs sm:text-sm">
+            <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </TabsTrigger>
+          <TabsTrigger value="explore" className="gap-1.5 text-xs sm:text-sm">
+            <Compass className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Explore</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+          <SelectTrigger className="w-[110px] sm:w-[140px] text-xs sm:text-sm h-8 sm:h-9">
+            <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7d">Last 7d</SelectItem>
+            <SelectItem value="30d">Last 30d</SelectItem>
+            <SelectItem value="90d">Last 90d</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <TabsContent value="dashboard" className="mt-4">
-        <AnalyticsDashboard />
+        <AnalyticsDashboard period={period} />
       </TabsContent>
 
       <TabsContent value="explore" className="mt-4 space-y-6">

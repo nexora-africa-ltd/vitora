@@ -70,7 +70,7 @@ export function AlertsWidget() {
   ].filter((item) => item.value > 0);
 
   if (isLoading) {
-    return <DashboardListSkeleton rows={3} showMeta={false} />;
+    return <DashboardListSkeleton rows={3} showMeta={false} className="min-h-[280px]" />;
   }
 
   if (unresolvedAlerts.length === 0) {
@@ -79,12 +79,13 @@ export function AlertsWidget() {
         icon={AlertTriangle}
         title="No active stock alerts"
         description="Reorder thresholds, expiries, and stock-outs will appear here when action is needed."
+        className="min-h-[280px]"
       />
     );
   }
 
   return (
-    <div data-testid="alerts-widget" className="space-y-4">
+    <div data-testid="alerts-widget" className="space-y-4 min-h-[280px]">
       <div className="flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">{unresolvedAlerts.length} unresolved alerts</p>
