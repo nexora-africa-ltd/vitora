@@ -39,8 +39,28 @@ export const ChiefComplaintCategorySchema = z.enum([
   'POISONING',
   'OBSTETRIC',
   'PEDIATRIC',
+  // Neonatal-specific
+  'NEONATAL_SEPSIS',
+  'NEONATAL_JAUNDICE',
+  'NEONATAL_RESPIRATORY_DISTRESS',
+  'BIRTH_ASPHYXIA',
+  // Pediatric-specific
+  'FEBRILE_CONVULSION',
+  'CROUP',
+  'BRONCHIOLITIS',
+  'SEVERE_MALARIA',
   'OTHER',
 ]);
+
+export const AgeGroupSchema = z.enum([
+  'neonate', 'infant', 'toddler', 'preschool', 'child', 'adolescent', 'adult',
+]);
+
+export const DehydrationLevelSchema = z.enum(['NONE', 'SOME', 'SEVERE']);
+
+export const FontanelleStatusSchema = z.enum(['NORMAL', 'BULGING', 'SUNKEN']);
+
+export const BreastfeedingAbilitySchema = z.enum(['NORMAL', 'REDUCED', 'UNABLE']);
 
 export const AssignedAreaSchema = z.enum([
   'ER_RESUS',
@@ -167,6 +187,15 @@ export const TriageAssessmentSchema = z.object({
   height: z.union([z.coerce.number(), z.null()]).optional().nullable(),
   referring_facility_name: z.string().optional().default(''),
   vitals: z.record(z.unknown()).optional(),
+
+  // ETAT pediatric fields
+  age_group: AgeGroupSchema.optional().nullable(),
+  etat_danger_signs: z.array(z.string()).optional().default([]),
+  dehydration_level: DehydrationLevelSchema.optional().nullable().default(null),
+  fontanelle_status: FontanelleStatusSchema.optional().nullable().default(null),
+  breastfeeding_ability: BreastfeedingAbilitySchema.optional().nullable().default(null),
+  capillary_refill_seconds: z.number().optional().nullable().default(null),
+  muac_cm: z.number().optional().nullable().default(null),
 
   // Triage decision
   triage_category: TriageCategorySchema,

@@ -189,6 +189,9 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
     gcs_total = serializers.IntegerField(read_only=True, allow_null=True)
     gcs_severity = serializers.CharField(read_only=True, allow_null=True)
 
+    # Computed age group for frontend conditional rendering
+    age_group = serializers.SerializerMethodField()
+
     class Meta:
         model = TriageAssessment
         fields = [
@@ -199,6 +202,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "patient_mrn",
             "patient_age",
             "patient_gender",
+            "age_group",
             "chief_complaint",
             "chief_complaint_category",
             "pain_score",
@@ -220,6 +224,14 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "respiratory_rate",
             "weight",
             "height",
+            # ETAT fields
+            "etat_danger_signs",
+            "dehydration_level",
+            "fontanelle_status",
+            "breastfeeding_ability",
+            "capillary_refill_seconds",
+            "muac_cm",
+            # Triage decision
             "triage_category",
             "auto_calculated_category",
             "category_override_reason",
@@ -242,7 +254,16 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["auto_calculated_category", "alerts", "triaged_by", "assigned_clinic_name", "routing_destination", "gcs_total", "gcs_severity"]
+        read_only_fields = ["auto_calculated_category", "alerts", "triaged_by", "assigned_clinic_name", "routing_destination", "gcs_total", "gcs_severity", "age_group"]
+
+    def get_age_group(self, obj) -> str:
+        """Get age group for frontend conditional rendering."""
+        from hmis.apps.triage.services import get_age_group
+
+        patient = obj.encounter.patient
+        if hasattr(patient, "age") and patient.age is not None:
+            return get_age_group(patient.age)
+        return "adult"  # Default fallback
 
     def get_vitals(self, obj) -> dict:
         """Get vitals captured at triage (fallback to encounter vitals if needed)."""
@@ -468,6 +489,43 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         required=False, allow_null=True, min_value=1, max_value=6
     )
 
+    # ETAT fields (optional - for pediatric assessments)
+    etat_danger_signs = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+    )
+    dehydration_level = serializers.ChoiceField(
+        choices=TriageAssessment.DEHYDRATION_CHOICES,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    fontanelle_status = serializers.ChoiceField(
+        choices=TriageAssessment.FONTANELLE_CHOICES,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    breastfeeding_ability = serializers.ChoiceField(
+        choices=TriageAssessment.BREASTFEEDING_CHOICES,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    capillary_refill_seconds = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0, max_value=15
+    )
+    muac_cm = serializers.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        required=False,
+        allow_null=True,
+        min_value=Decimal("0"),
+        max_value=Decimal("30"),
+        coerce_to_string=False,
+    )
+
     class Meta:
         model = TriageAssessment
         fields = [
@@ -491,6 +549,14 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             "respiratory_rate",
             "weight",
             "height",
+            # ETAT fields
+            "etat_danger_signs",
+            "dehydration_level",
+            "fontanelle_status",
+            "breastfeeding_ability",
+            "capillary_refill_seconds",
+            "muac_cm",
+            # Triage decision
             "triage_category",
             "auto_calculated_category",
             "category_override_reason",
@@ -504,6 +570,19 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "assigned_clinic": {"required": False, "allow_null": True},
         }
+
+    def validate_etat_danger_signs(self, value):
+        """Validate ETAT danger signs are from the allowed set."""
+        from hmis.apps.triage.services import ETAT_DANGER_SIGNS
+
+        if value:
+            invalid = set(value) - set(ETAT_DANGER_SIGNS)
+            if invalid:
+                raise serializers.ValidationError(
+                    f"Invalid ETAT danger signs: {', '.join(invalid)}. "
+                    f"Valid values: {', '.join(ETAT_DANGER_SIGNS)}"
+                )
+        return value
 
     def _extract_vitals(self, data, encounter: Encounter | None) -> dict:
         """Extract vitals from incoming triage payload; fallback to encounter vitals."""
@@ -637,6 +716,10 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             # Calculate GCS total if components provided
             gcs_total = self._calculate_gcs_total(data)
 
+            # Get patient age for age-adjusted calculation
+            patient = encounter.patient
+            patient_age_years = float(patient.age) if hasattr(patient, "age") and patient.age is not None else 30.0
+
             # Calculate suggested category
             calculator = TriageCategoryCalculator()
             auto_category, _ = calculator.calculate(
@@ -645,7 +728,14 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
                 chief_complaint_category=data.get("chief_complaint_category"),
                 pain_score=data.get("pain_score"),
                 mobility=data.get("mobility"),
+                patient_age_years=patient_age_years,
                 gcs_total=gcs_total,
+                etat_danger_signs=data.get("etat_danger_signs"),
+                dehydration_level=data.get("dehydration_level", ""),
+                fontanelle_status=data.get("fontanelle_status", ""),
+                breastfeeding_ability=data.get("breastfeeding_ability", ""),
+                capillary_refill_seconds=data.get("capillary_refill_seconds"),
+                muac_cm=float(data["muac_cm"]) if data.get("muac_cm") is not None else None,
             )
 
         # Check if user is overriding
@@ -685,7 +775,11 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         # Calculate GCS total if components provided
         gcs_total = self._calculate_gcs_total(validated_data)
 
-        # Calculate category and alerts
+        # Get patient age for age-adjusted calculations
+        patient = encounter.patient
+        patient_age_years = float(patient.age) if hasattr(patient, "age") and patient.age is not None else 30.0
+
+        # Calculate category and alerts (age-aware, with ETAT for children)
         calculator = TriageCategoryCalculator()
         auto_category, alerts = calculator.calculate(
             vitals=vitals,
@@ -693,7 +787,14 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             chief_complaint_category=validated_data.get("chief_complaint_category"),
             pain_score=validated_data.get("pain_score"),
             mobility=validated_data.get("mobility"),
+            patient_age_years=patient_age_years,
             gcs_total=gcs_total,
+            etat_danger_signs=validated_data.get("etat_danger_signs"),
+            dehydration_level=validated_data.get("dehydration_level", ""),
+            fontanelle_status=validated_data.get("fontanelle_status", ""),
+            breastfeeding_ability=validated_data.get("breastfeeding_ability", ""),
+            capillary_refill_seconds=validated_data.get("capillary_refill_seconds"),
+            muac_cm=float(validated_data["muac_cm"]) if validated_data.get("muac_cm") is not None else None,
         )
 
         # Set auto-calculated category and alerts
@@ -956,6 +1057,17 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
         min_value=1, max_value=6, required=False, allow_null=True
     )
 
+    # ETAT fields (optional)
+    patient_age_years = serializers.FloatField(required=False, default=30)
+    etat_danger_signs = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list
+    )
+    dehydration_level = serializers.CharField(required=False, allow_blank=True, default="")
+    fontanelle_status = serializers.CharField(required=False, allow_blank=True, default="")
+    breastfeeding_ability = serializers.CharField(required=False, allow_blank=True, default="")
+    capillary_refill_seconds = serializers.IntegerField(required=False, allow_null=True)
+    muac_cm = serializers.FloatField(required=False, allow_null=True)
+
     def calculate_category(self):
         """Calculate triage category using the service."""
         vitals = {}
@@ -981,6 +1093,8 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
         if all([gcs_eye, gcs_verbal, gcs_motor]):
             gcs_total = gcs_eye + gcs_verbal + gcs_motor
 
+        patient_age_years = self.validated_data.get("patient_age_years", 30)
+
         calculator = TriageCategoryCalculator()
         category, alerts = calculator.calculate(
             vitals=vitals,
@@ -988,7 +1102,14 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
             chief_complaint_category=self.validated_data["chief_complaint_category"],
             pain_score=self.validated_data.get("pain_score"),
             mobility=self.validated_data.get("mobility"),
+            patient_age_years=patient_age_years,
             gcs_total=gcs_total,
+            etat_danger_signs=self.validated_data.get("etat_danger_signs"),
+            dehydration_level=self.validated_data.get("dehydration_level", ""),
+            fontanelle_status=self.validated_data.get("fontanelle_status", ""),
+            breastfeeding_ability=self.validated_data.get("breastfeeding_ability", ""),
+            capillary_refill_seconds=self.validated_data.get("capillary_refill_seconds"),
+            muac_cm=self.validated_data.get("muac_cm"),
         )
 
         return {
