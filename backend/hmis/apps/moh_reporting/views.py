@@ -9,6 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.analytics.permissions import CanViewAnalytics
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 
@@ -163,7 +164,7 @@ class MOH705ReportViewSet(
     MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet
 ):
     queryset = MOH705Report.objects.select_related("facility", "generated_by", "approved_by")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
     tenant_scope = "facility"
     generator_class = MOH705Generator
     report_type_label = "MOH 705"
@@ -183,7 +184,7 @@ class MOH711ReportViewSet(
     MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet
 ):
     queryset = MOH711Report.objects.select_related("facility", "generated_by", "approved_by")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
     tenant_scope = "facility"
     generator_class = MOH711Generator
     report_type_label = "MOH 711"
@@ -203,7 +204,7 @@ class MOH717ReportViewSet(
     MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet
 ):
     queryset = MOH717Report.objects.select_related("facility", "generated_by", "approved_by")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
     tenant_scope = "facility"
     generator_class = MOH717Generator
     report_type_label = "MOH 717"

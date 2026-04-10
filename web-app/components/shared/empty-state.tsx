@@ -19,28 +19,32 @@ export function EmptyState({
   action,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="mb-4 rounded-2xl border border-border/60 bg-background/80 px-4 py-3 shadow-sm">
+    <div className="relative flex flex-col items-center justify-center py-12 text-center overflow-hidden">
+      {/* Watermark logo */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
         <VitoraLogo
           variant="icon"
           tone="teal"
           alt=""
-          className="w-9 opacity-80"
+          className="w-28 sm:w-32 opacity-[0.045] dark:opacity-[0.06]"
           imageClassName="pointer-events-none select-none"
         />
       </div>
-      <div className="rounded-full bg-muted p-4 mb-4">
-        <Icon className="h-8 w-8 text-muted-foreground" />
+      {/* Foreground content */}
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="rounded-full bg-muted p-4 mb-4">
+          <Icon className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {description && (
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">{description}</p>
+        )}
+        {action && (
+          <Button onClick={action.onClick} className="mt-4">
+            {action.label}
+          </Button>
+        )}
       </div>
-      <h3 className="text-lg font-semibold">{title}</h3>
-      {description && (
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">{description}</p>
-      )}
-      {action && (
-        <Button onClick={action.onClick} className="mt-4">
-          {action.label}
-        </Button>
-      )}
     </div>
   );
 }

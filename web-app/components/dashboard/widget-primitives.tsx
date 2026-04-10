@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils/cn';
 interface DashboardListSkeletonProps {
   rows?: number;
   showMeta?: boolean;
+  className?: string;
 }
 
 interface DashboardEmptyStateProps {
@@ -26,9 +27,10 @@ interface DashboardFooterLinkProps {
 export function DashboardListSkeleton({
   rows = 3,
   showMeta = true,
+  className,
 }: DashboardListSkeletonProps) {
   return (
-    <div className="space-y-3" aria-live="polite" aria-label="Loading widget content">
+    <div className={cn('space-y-3', className)} aria-live="polite" aria-label="Loading widget content">
       {Array.from({ length: rows }).map((_, index) => (
         <div
           key={`widget-skeleton-${index}`}
@@ -57,26 +59,30 @@ export function DashboardEmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center',
+        'relative flex flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center',
         className
       )}
       role="status"
       aria-live="polite"
     >
-      <div className="mb-3 rounded-xl border border-border/60 bg-background/80 px-3 py-2 shadow-sm">
+      {/* Watermark logo */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
         <VitoraLogo
           variant="icon"
           tone="teal"
           alt=""
-          className="w-7 opacity-75"
+          className="w-24 sm:w-28 opacity-[0.045] dark:opacity-[0.06]"
           imageClassName="pointer-events-none select-none"
         />
       </div>
-      <div className="mb-3 rounded-full bg-background p-3 shadow-sm ring-1 ring-border/60">
-        <Icon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+      {/* Foreground content */}
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="mb-3 rounded-full bg-background p-3 shadow-sm ring-1 ring-border/60">
+          <Icon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        </div>
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground text-pretty">{description}</p>
       </div>
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      <p className="mt-1 max-w-sm text-sm text-muted-foreground text-pretty">{description}</p>
     </div>
   );
 }

@@ -261,6 +261,8 @@ ENCOUNTER_TYPE_TO_DEPARTMENT = {
     "CONSULTANT_REVIEW": "OPD",
     "CHRONIC_STABLE": "OPD",
     "SPECIALIST_CLINIC": "OPD",
+    "DIALYSIS": "OPD",
+    "ONCOLOGY": "OPD",
     "IPD": "IPD",
     "WARD_ROUND": "IPD",
     "DISCHARGE_REVIEW": "IPD",
@@ -270,6 +272,92 @@ ENCOUNTER_TYPE_TO_DEPARTMENT = {
     "PROCEDURE": "THEATRE",
     "DAY_CASE": "THEATRE",
 }
+
+
+def _compute_service_department(
+    facility, dept_code: str, month_start: date, month_end: date
+) -> dict | None:
+    """Aggregate stats for service departments (Pharmacy, Lab, Imaging)."""
+    visit_count = 0
+    unique_patients = 0
+    revenue = Decimal("0")
+
+    if dept_code == "PHARMACY":
+        try:
+            from hmis.apps.pharmacy.models import Prescription
+
+            rx_qs = Prescription.objects.filter(
+                facility=facility,
+                prescribed_at__date__gte=month_start,
+                prescribed_at__date__lte=month_end,
+            )
+            visit_count = rx_qs.count()
+            unique_patients = rx_qs.values("patient").distinct().count()
+        except Exception:
+            logger.debug("Pharmacy stats failed for facility %s", facility.pk)
+
+    elif dept_code == "LABORATORY":
+        try:
+            from hmis.apps.laboratory.models import LabOrder
+
+            lab_qs = LabOrder.objects.filter(
+                facility=facility,
+                ordered_at__date__gte=month_start,
+                ordered_at__date__lte=month_end,
+            )
+            visit_count = lab_qs.count()
+            unique_patients = lab_qs.values("patient").distinct().count()
+        except Exception:
+            logger.debug("Lab stats failed for facility %s", facility.pk)
+
+    elif dept_code == "IMAGING":
+        try:
+            from hmis.apps.imaging.models import ImagingOrder
+
+            img_qs = ImagingOrder.objects.filter(
+                facility=facility,
+                ordered_at__date__gte=month_start,
+                ordered_at__date__lte=month_end,
+            )
+            visit_count = img_qs.count()
+            unique_patients = img_qs.values("patient").distinct().count()
+        except Exception:
+            logger.debug("Imaging stats failed for facility %s", facility.pk)
+
+    if visit_count == 0:
+        return None
+
+    # Revenue from billing line items tagged to this department
+    _dept_to_item_type = {
+        "PHARMACY": "pharmacy",
+        "LABORATORY": "lab",
+        "IMAGING": "imaging",
+    }
+    try:
+        from hmis.apps.billing.models import InvoiceItem
+
+        dept_revenue = (
+            InvoiceItem.objects.filter(
+                invoice__facility=facility,
+                invoice__status__in=["paid", "partial"],
+                invoice__created_at__date__gte=month_start,
+                invoice__created_at__date__lte=month_end,
+                item_type=_dept_to_item_type.get(dept_code, ""),
+            ).aggregate(t=Sum("total_price"))["t"]
+            or Decimal("0")
+        )
+        revenue = dept_revenue
+    except Exception:
+        logger.debug("Revenue aggregation failed for service dept %s", dept_code)
+
+    return {
+        "department": dept_code,
+        "visit_count": visit_count,
+        "unique_patients": unique_patients,
+        "revenue": revenue,
+        "top_diagnoses": [],
+        "avg_length_of_stay_days": None,
+    }
 
 
 def compute_department_monthly(facility, year: int, month: int) -> list[dict]:
@@ -300,7 +388,19 @@ def compute_department_monthly(facility, year: int, month: int) -> list[dict]:
         ("EMERGENCY", "Emergency"),
         ("MCH", "Maternal & Child Health"),
         ("THEATRE", "Theatre / Procedures"),
+        ("PHARMACY", "Pharmacy"),
+        ("LABORATORY", "Laboratory"),
+        ("IMAGING", "Imaging / Radiology"),
     ]:
+        # Service departments (no encounter types) — aggregate from own models
+        if dept_code in ("PHARMACY", "LABORATORY", "IMAGING"):
+            svc = _compute_service_department(
+                facility, dept_code, month_start, month_end
+            )
+            if svc and svc["visit_count"] > 0:
+                results.append(svc)
+            continue
+
         enc_types = [k for k, v in ENCOUNTER_TYPE_TO_DEPARTMENT.items() if v == dept_code]
         dept_enc = enc_qs.filter(encounter_type__in=enc_types)
 

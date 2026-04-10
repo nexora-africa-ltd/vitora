@@ -2,7 +2,12 @@
 Analytics API views.
 
 Read-only endpoints for BI dashboards and trend analysis.
-All endpoints are tenant-scoped via ``TenantScopedViewMixin``.
+
+Scope levels
+------------
+* **Facility** — default, scoped via ``TenantScopedViewMixin``.
+* **Organization** — cross-facility aggregation for org admins.
+* **Platform** — cross-tenant aggregation for Nexora superusers.
 """
 
 import logging
@@ -23,6 +28,7 @@ from hmis.apps.analytics.models import (
     FacilityDailySummary,
     PatientDemographicSnapshot,
 )
+from hmis.apps.analytics.permissions import CanViewAnalytics, IsSuperUser
 from hmis.apps.analytics.serializers import (
     DepartmentMonthlySummarySerializer,
     DiagnosisTrendSerializer,
@@ -89,7 +95,7 @@ class FacilityDailySummaryViewSet(
 
     queryset = FacilityDailySummary.objects.select_related("facility")
     serializer_class = FacilityDailySummarySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
     filterset_class = FacilityDailySummaryFilter
     ordering_fields = ["date", "encounters_total", "revenue_total"]
     ordering = ["-date"]
@@ -110,7 +116,7 @@ class DepartmentMonthlySummaryViewSet(
 
     queryset = DepartmentMonthlySummary.objects.select_related("facility")
     serializer_class = DepartmentMonthlySummarySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
     filterset_class = DepartmentMonthlyFilter
     ordering_fields = ["year", "month", "visit_count", "revenue"]
     ordering = ["-year", "-month"]
@@ -131,7 +137,7 @@ class DiagnosisTrendViewSet(
 
     queryset = DiagnosisTrend.objects.select_related("facility")
     serializer_class = DiagnosisTrendSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
     filterset_class = DiagnosisTrendFilter
     ordering_fields = ["period_start", "case_count"]
     ordering = ["-period_start", "-case_count"]
@@ -152,7 +158,7 @@ class PatientDemographicSnapshotViewSet(
 
     queryset = PatientDemographicSnapshot.objects.select_related("facility")
     serializer_class = PatientDemographicSnapshotSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
     ordering_fields = ["snapshot_date", "total_patients"]
     ordering = ["-snapshot_date"]
     tenant_scope = "facility"
@@ -188,7 +194,7 @@ class MetabaseEmbedView(APIView):
     row-level sandboxing filters data by tenant.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
 
     def get(self, request: Request) -> Response:
         serializer = MetabaseEmbedSerializer(data=request.query_params)
@@ -236,3 +242,148 @@ class MetabaseEmbedView(APIView):
         )
 
         return Response({"embed_url": embed_url})
+
+
+# ---------------------------------------------------------------------------
+# Organization-level cross-facility aggregation
+# ---------------------------------------------------------------------------
+
+
+class OrgFacilityDailySummaryViewSet(
+    TenantScopedViewMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Cross-facility daily summaries for the user's organization.
+
+    Returns one row per facility per date across all facilities in the
+    user's organization.  Only accessible by management / admin roles.
+    """
+
+    queryset = FacilityDailySummary.objects.select_related("facility")
+    serializer_class = FacilityDailySummarySerializer
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    filterset_class = FacilityDailySummaryFilter
+    ordering_fields = ["date", "encounters_total", "revenue_total"]
+    ordering = ["-date"]
+    tenant_scope = "organization"
+
+
+class OrgDepartmentMonthlySummaryViewSet(
+    TenantScopedViewMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Cross-facility department monthly summaries for the user's organization.
+    """
+
+    queryset = DepartmentMonthlySummary.objects.select_related("facility")
+    serializer_class = DepartmentMonthlySummarySerializer
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    filterset_class = DepartmentMonthlyFilter
+    ordering_fields = ["year", "month", "visit_count", "revenue"]
+    ordering = ["-year", "-month"]
+    tenant_scope = "organization"
+
+
+class OrgDiagnosisTrendViewSet(
+    TenantScopedViewMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Cross-facility diagnosis trends for the user's organization.
+    """
+
+    queryset = DiagnosisTrend.objects.select_related("facility")
+    serializer_class = DiagnosisTrendSerializer
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    filterset_class = DiagnosisTrendFilter
+    ordering_fields = ["period_start", "case_count"]
+    ordering = ["-period_start", "-case_count"]
+    tenant_scope = "organization"
+
+
+class OrgDemographicSnapshotViewSet(
+    TenantScopedViewMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Cross-facility patient demographics for the user's organization.
+    """
+
+    queryset = PatientDemographicSnapshot.objects.select_related("facility")
+    serializer_class = PatientDemographicSnapshotSerializer
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
+    ordering_fields = ["snapshot_date", "total_patients"]
+    ordering = ["-snapshot_date"]
+    tenant_scope = "organization"
+
+
+# ---------------------------------------------------------------------------
+# Platform-wide analytics (Nexora superusers only)
+# ---------------------------------------------------------------------------
+
+
+class PlatformFacilityDailySummaryViewSet(
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Platform-wide facility daily summaries across all tenants.
+
+    Restricted to Nexora superusers.  No tenant scoping — returns all
+    rows.  Useful for platform-level dashboards comparing facility
+    performance.
+    """
+
+    queryset = FacilityDailySummary.objects.select_related("facility")
+    serializer_class = FacilityDailySummarySerializer
+    permission_classes = [IsAuthenticated, IsSuperUser]
+    filterset_class = FacilityDailySummaryFilter
+    ordering_fields = ["date", "encounters_total", "revenue_total"]
+    ordering = ["-date"]
+
+
+class PlatformDepartmentMonthlySummaryViewSet(
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Platform-wide department monthly summaries across all tenants."""
+
+    queryset = DepartmentMonthlySummary.objects.select_related("facility")
+    serializer_class = DepartmentMonthlySummarySerializer
+    permission_classes = [IsAuthenticated, IsSuperUser]
+    filterset_class = DepartmentMonthlyFilter
+    ordering_fields = ["year", "month", "visit_count", "revenue"]
+    ordering = ["-year", "-month"]
+
+
+class PlatformDiagnosisTrendViewSet(
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Platform-wide diagnosis trends across all tenants."""
+
+    queryset = DiagnosisTrend.objects.select_related("facility")
+    serializer_class = DiagnosisTrendSerializer
+    permission_classes = [IsAuthenticated, IsSuperUser]
+    filterset_class = DiagnosisTrendFilter
+    ordering_fields = ["period_start", "case_count"]
+    ordering = ["-period_start", "-case_count"]
+
+
+class PlatformDemographicSnapshotViewSet(
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Platform-wide patient demographics across all tenants."""
+
+    queryset = PatientDemographicSnapshot.objects.select_related("facility")
+    serializer_class = PatientDemographicSnapshotSerializer
+    permission_classes = [IsAuthenticated, IsSuperUser]
+    ordering_fields = ["snapshot_date", "total_patients"]
+    ordering = ["-snapshot_date"]
