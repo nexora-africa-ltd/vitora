@@ -299,6 +299,8 @@ urlpatterns = [
     path("api/ai/", include("hmis.apps.ai.urls", namespace="ai")),
     # Analytics & BI API
     path("api/analytics/", include("hmis.apps.analytics.urls", namespace="analytics")),
+    # MOH Reporting API
+    path("api/moh-reports/", include("hmis.apps.moh_reporting.urls", namespace="moh_reporting")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
     # MFA (Multi-Factor Authentication) API

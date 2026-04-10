@@ -787,10 +787,13 @@ export function Sidebar({
 
           {/* Collapse All button — sits above the scrollable area */}
           {!collapsed && (
-            <div className={cn(
-              "flex shrink-0 justify-end px-3 pb-1",
-              openMenus.length === 0 && "hidden"
-            )}>
+            <div
+              className={cn(
+                "flex shrink-0 justify-end px-3 pb-1",
+                openMenus.length === 0 && "hidden"
+              )}
+              suppressHydrationWarning
+            >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button

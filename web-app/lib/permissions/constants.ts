@@ -88,6 +88,8 @@ export const MODULE_PERMISSIONS = {
   immunizations: 'immunizations.view_immunizationrecord',
   quality: 'quality.view_qualitymeasure',
   cds: 'cds.view_cdsrule',
+  analytics: null, // All authenticated users can view analytics
+  moh_reporting: null, // All authenticated users can view MOH reports
   ai: null, // Feature-flag gated, not permission gated
   admin: 'core.view_staffprofile',
 } as const;

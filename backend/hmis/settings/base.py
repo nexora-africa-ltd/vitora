@@ -88,6 +88,7 @@ INSTALLED_APPS = [
     "hmis.apps.kenhdd.apps.KENHDDConfig",
     "hmis.apps.procedures.apps.ProceduresConfig",
     "hmis.apps.analytics.apps.AnalyticsConfig",
+    "hmis.apps.moh_reporting.apps.MohReportingConfig",
 ]
 
 MIDDLEWARE = [
