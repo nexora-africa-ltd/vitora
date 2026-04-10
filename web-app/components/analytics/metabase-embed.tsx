@@ -4,10 +4,12 @@
  * MetabaseEmbed — renders an embedded Metabase dashboard or question
  * inside an iframe using a signed embed URL from the backend.
  *
- * The backend generates the embed URL using `METABASE_SITE_URL` (server-side).
- * In dev environments where the browser-accessible URL differs (e.g. VS Code
- * remote tunnels), set `NEXT_PUBLIC_METABASE_URL` on the frontend to override
- * the base URL while preserving the signed token path.
+ * In development, the embed is proxied through `/api/metabase-proxy` so the
+ * browser never needs direct access to the Metabase port (fixes "localhost
+ * refused to connect" in remote dev environments).
+ *
+ * In production, set `NEXT_PUBLIC_METABASE_URL` to the public Metabase URL
+ * and the embed will load directly for better performance.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -17,20 +19,31 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useMetabaseEmbedUrl } from '@/lib/hooks/use-analytics';
 
 /**
- * If `NEXT_PUBLIC_METABASE_URL` is set, rewrite the embed URL base to use it.
- * This handles the common dev case where the backend returns
- * `http://localhost:3333/embed/...` but the browser needs a tunnel URL.
+ * Rewrite the embed URL to go through the Next.js rewrite proxy, or use a
+ * direct public URL if `NEXT_PUBLIC_METABASE_URL` is set to a non-localhost value.
  */
 function rewriteEmbedUrl(embedUrl: string): string {
   const override = process.env.NEXT_PUBLIC_METABASE_URL;
-  if (!override) return embedUrl;
 
+  // If a non-localhost public URL is configured, rewrite the base directly
+  if (override && !override.includes('localhost') && !override.includes('127.0.0.1')) {
+    try {
+      const parsed = new URL(embedUrl);
+      const base = new URL(override);
+      parsed.protocol = base.protocol;
+      parsed.host = base.host;
+      return parsed.toString();
+    } catch {
+      // fall through to proxy
+    }
+  }
+
+  // Otherwise, proxy through Next.js rewrites (/metabase-embed/* → Metabase)
   try {
     const parsed = new URL(embedUrl);
-    const base = new URL(override);
-    parsed.protocol = base.protocol;
-    parsed.host = base.host;
-    return parsed.toString();
+    // pathname is e.g. /embed/dashboard/<token>
+    // hash is e.g. #bordered=false&titled=true
+    return `/metabase-embed${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return embedUrl;
   }

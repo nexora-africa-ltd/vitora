@@ -26,9 +26,9 @@ import type { Period } from '@/components/analytics/analytics-dashboard';
  * Admins can update these via env vars or a settings page in the future.
  */
 const METABASE_DASHBOARDS = {
-  facilityOverview: 1,
-  clinicalTrends: 2,
-  financialPerformance: 3,
+  facilityOverview: 2,
+  clinicalTrends: 3,
+  financialPerformance: 4,
 } as const;
 
 export function AnalyticsPageContent() {
@@ -66,6 +66,22 @@ export function AnalyticsPageContent() {
       </TabsContent>
 
       <TabsContent value="explore" className="mt-4 space-y-6">
+        <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-sm text-muted-foreground">
+          <p>
+            The Explore tab connects to Metabase for ad-hoc analytics.
+            Dashboards must be configured in Metabase first — add a data source, create questions, and pin them to these dashboards.
+            {' '}
+            <a
+              href="/metabase-embed/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              Open Metabase
+            </a>
+            {' '}to set them up.
+          </p>
+        </div>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Facility Overview</CardTitle>
