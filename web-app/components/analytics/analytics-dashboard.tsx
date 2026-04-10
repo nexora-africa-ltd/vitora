@@ -8,6 +8,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Users,
   DollarSign,
@@ -323,6 +324,18 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
 
   const periodLabel = period === '7d' ? '7' : period === '30d' ? '30' : '90';
 
+  // Department → drill-down route mapping
+  const deptRouteMap: Record<string, string> = {
+    OPD: '/encounters?tab=all',
+    IPD: '/inpatient/bed-board',
+    EMERGENCY: '/encounters?tab=all',
+    MCH: '/encounters?tab=all',
+    THEATRE: '/encounters?tab=all',
+    PHARMACY: '/pharmacy',
+    LABORATORY: '/laboratory',
+    IMAGING: '/encounters?tab=all',
+  };
+
   return (
     <div className="space-y-6">
       {/* KPI Stats Row 1: Core */}
@@ -334,6 +347,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           variant="default"
           loading={summaryLoading}
           description={`${periodLabel}-day total`}
+          href="/encounters"
         />
         <StatsCard
           title="New Patients"
@@ -342,6 +356,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           variant="info"
           loading={summaryLoading}
           description="Registered in period"
+          href="/patients"
         />
         <StatsCard
           title="Revenue"
@@ -350,6 +365,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           variant="success"
           loading={summaryLoading}
           description="Completed payments"
+          href="/billing/invoices"
         />
         <StatsCard
           title="Bed Occupancy"
@@ -358,6 +374,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           variant={avgOccupancy > 85 ? 'warning' : 'default'}
           loading={summaryLoading}
           description="Average occupancy"
+          href="/inpatient/bed-board"
         />
       </div>
 
@@ -370,6 +387,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           variant="info"
           loading={summaryLoading}
           description={`${periodLabel}-day returners`}
+          href="/patients"
         />
         <StatsCard
           title="Follow-ups"
@@ -378,6 +396,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           variant="default"
           loading={summaryLoading}
           description="Follow-up visits"
+          href="/encounters?tab=all"
         />
         <StatsCard
           title="Walk-ins"
@@ -386,6 +405,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           variant="default"
           loading={summaryLoading}
           description="Self-referral registrations"
+          href="/patients"
         />
         <StatsCard
           title="Referrals In"
@@ -394,6 +414,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           variant={totalReferralIns > 0 ? 'success' : 'default'}
           loading={summaryLoading}
           description="From other facilities"
+          href="/patients"
         />
       </div>
 
@@ -723,8 +744,15 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
                 </thead>
                 <tbody>
                   {(deptData?.results ?? []).map((dept) => (
-                    <tr key={dept.id} className="border-b last:border-0">
-                      <td className="py-2.5 pr-4 font-medium">{dept.department_display}</td>
+                    <tr key={dept.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                      <td className="py-2.5 pr-4 font-medium">
+                        <Link
+                          href={deptRouteMap[dept.department] || '/encounters?tab=all'}
+                          className="hover:underline text-primary"
+                        >
+                          {dept.department_display}
+                        </Link>
+                      </td>
                       <td className="py-2.5 pr-4 text-right tabular-nums">{dept.visit_count.toLocaleString()}</td>
                       <td className="py-2.5 pr-4 text-right tabular-nums">{dept.unique_patients.toLocaleString()}</td>
                       <td className="py-2.5 pr-4 text-right tabular-nums">{formatKes(dept.revenue)}</td>

@@ -31,6 +31,7 @@ const nextConfig = {
   // Route aliases: /billing/* → /transactions/*
   // Allows cleaner URLs while keeping existing folder structure
   async rewrites() {
+    const metabaseUrl = process.env.METABASE_INTERNAL_URL || 'http://localhost:3333';
     return [
       {
         source: '/billing',
@@ -39,6 +40,12 @@ const nextConfig = {
       {
         source: '/billing/:path*',
         destination: '/transactions/:path*',
+      },
+      // Proxy Metabase embed through Next.js so the browser doesn't need
+      // direct access to the Metabase port (fixes VS Code remote dev)
+      {
+        source: '/metabase-embed/:path*',
+        destination: `${metabaseUrl}/:path*`,
       },
     ];
   },
