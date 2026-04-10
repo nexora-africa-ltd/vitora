@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { FlaskConical, Pill, CreditCard, Activity } from 'lucide-react';
 import { DashboardOverview } from '@/components/reports/dashboard-overview';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { PageHeader } from '@/components/shared/page-header';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { HelpPopover } from '@/components/shared/help-popover';
 
 export const metadata = {
   title: 'Reports & Analytics | Vitora HMIS',
@@ -37,26 +39,30 @@ const moduleReports = [
 
 export default function ReportsPage() {
   return (
-    <div className="container mx-auto py-6 space-y-8">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Reports & Analytics</h1>
-        <p className="text-muted-foreground mt-1">
-          Monitor facility performance with real-time KPIs and reports
-        </p>
-      </div>
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+      <PageHeader
+        title="Reports & Analytics"
+        helpContent="Monitor facility performance with real-time KPIs, charts, and module-specific analytics dashboards."
+      />
 
       {/* Dashboard Overview */}
       <DashboardOverview />
 
       {/* Module-Specific Reports */}
       <section>
-        <h2 className="text-xl font-semibold mb-4">Module Analytics</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold">Module Analytics</h2>
+          <HelpPopover content="Quick links to detailed analytics for each clinical and administrative module." />
+        </div>
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {moduleReports.map((report) => (
             <Link key={report.href} href={report.href}>
-              <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer">
-                <CardHeader className="pb-2">
+              <Card variant="interactive" className="h-full relative overflow-hidden">
+                <div
+                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                  aria-hidden="true"
+                />
+                <CardHeader className="relative pb-2">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-primary/10">
                       <report.icon className="h-5 w-5 text-primary" />
@@ -64,8 +70,8 @@ export default function ReportsPage() {
                     <CardTitle className="text-base">{report.title}</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <CardDescription>{report.description}</CardDescription>
+                <CardContent className="relative">
+                  <p className="text-sm text-muted-foreground">{report.description}</p>
                 </CardContent>
               </Card>
             </Link>

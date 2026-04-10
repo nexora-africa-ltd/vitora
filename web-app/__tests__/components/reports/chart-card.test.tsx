@@ -12,14 +12,14 @@ describe('ChartCard', () => {
     expect(screen.getByText('Test Chart')).toBeInTheDocument();
   });
 
-  it('renders description when provided', () => {
+  it('renders help popover trigger when description is provided', () => {
     render(
       <ChartCard title="Test Chart" description="Chart description">
         <div>Chart content</div>
       </ChartCard>
     );
 
-    expect(screen.getByText('Chart description')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Help' })).toBeInTheDocument();
   });
 
   it('renders children content', () => {
