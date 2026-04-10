@@ -1,13 +1,15 @@
 # Business Intelligence Integration — Single Source of Truth
 
-> **Status**: All 4 phases complete — analytics ETL, dashboards, MOH reporting, Metabase embedding
-> **Last Updated**: April 10, 2026
+> **Status**: All 4 phases complete + permissions & multi-scope endpoints
+> **Last Updated**: April 11, 2026
 
 ---
 
 ## Overview
 
 The BI integration provides facility-level operational intelligence, automated Kenya MOH reporting (705/711/717), and embedded Metabase dashboards for ad-hoc exploration. Data flows from transactional tables through a nightly ETL pipeline into pre-aggregated analytics models, which are consumed by both the built-in dashboards and Metabase.
+
+**Access Control**: All analytics endpoints require authentication plus `CanViewAnalytics` permission (ADMIN, MANAGEMENT, CLINICAL_SENIOR, DOC, DOCTOR, NURSING_MGR, HEAD_NURSE, MEDICAL_OFFICER, FACILITY_ADMIN roles). Platform-wide endpoints require superuser access (`IsSuperUser`). See `hmis/apps/analytics/permissions.py`.
 
 **Architecture:**
 
@@ -32,9 +34,10 @@ Prescription, Triage    nightly   PatientDemographicSnapshot   Metabase Embeds
 | Phase | Name | Status | Key Deliverables |
 |-------|------|--------|------------------|
 | **A** | Analytics Schema & ETL Pipeline | ✅ Complete | 4 aggregate models, ETL services, Celery tasks, API |
-| **B** | Enhanced Operational Dashboards | ✅ Complete | Analytics page with KPIs, charts, department table |
+| **B** | Enhanced Operational Dashboards | ✅ Complete | Analytics page with KPIs, charts, department table, demographics |
 | **C** | MOH Automated Reporting | ✅ Complete | MOH 705/711/717 generators, DHIS2 preview, approve/submit workflow |
 | **D** | Metabase Embedded Analytics | ✅ Complete | Signed JWT embedding, ACA deployment, Explore tab |
+| **E** | Permissions & Multi-Scope Endpoints | ✅ Complete | `CanViewAnalytics`, org-level, platform-wide endpoints, enhanced demographics |
 
 ---
 
@@ -85,14 +88,21 @@ DNS records needed at your DNS provider:
 
 ## Backend: Analytics App
 
+### Permissions (`hmis/apps/analytics/permissions.py`)
+
+| Class | Access Rule | Used By |
+|-------|-------------|---------|
+| `CanViewAnalytics` | Superusers, `is_staff`, or roles: ADMIN, MANAGEMENT, CLINICAL_SENIOR, DOC, DOCTOR, NURSING_MGR, HEAD_NURSE, MEDICAL_OFFICER, FACILITY_ADMIN (+ MANAGEMENT category) | All analytics & MOH reporting endpoints |
+| `IsSuperUser` | Superusers only | Platform-wide cross-tenant endpoints |
+
 ### Models (`hmis/apps/analytics/models.py`)
 
 | Model | Scope | Grain | Key Fields |
 |-------|-------|-------|------------|
-| `FacilityDailySummary` | Facility | 1 row/facility/day | encounters (OPD/IPD/Emergency), revenue (cash/mpesa/insurance), lab, pharmacy, triage, bed occupancy |
+| `FacilityDailySummary` | Facility | 1 row/facility/day | encounters (OPD/IPD/Emergency), revenue (cash/mpesa/insurance), lab, pharmacy, triage, bed occupancy, return_patients, walk_ins, referral_ins, clinic_referrals, follow_up_encounters |
 | `DepartmentMonthlySummary` | Facility | 1 row/facility/dept/month | visit_count, unique_patients, revenue, top_diagnoses (JSON), avg_length_of_stay_days |
 | `DiagnosisTrend` | Facility | 1 row/ICD-10/period | icd10_code, case_count, age_band_breakdown (JSON), gender_breakdown (JSON) |
-| `PatientDemographicSnapshot` | Facility | 1 row/facility/date | total_patients, age_distribution (JSON), gender_distribution (JSON), county_distribution (JSON) |
+| `PatientDemographicSnapshot` | Facility | 1 row/facility/date | total_patients, age_distribution (JSON), gender_distribution (JSON), county_distribution (JSON), referral_source_distribution (JSON), new_vs_return (JSON), insurance_coverage (JSON) |
 
 All models inherit `FacilityScopedModel` + `TimeStampedModel`.
 
@@ -100,10 +110,10 @@ All models inherit `FacilityScopedModel` + `TimeStampedModel`.
 
 | Function | Input | Output | Called By |
 |----------|-------|--------|-----------|
-| `compute_daily_summary(facility, date)` | Facility + date | Creates/updates `FacilityDailySummary` | `refresh_daily_analytics` task |
+| `compute_daily_summary(facility, date)` | Facility + date | Creates/updates `FacilityDailySummary` (includes return patients, walk-ins, referrals, follow-ups) | `refresh_daily_analytics` task |
 | `compute_department_monthly(facility, year, month)` | Facility + year/month | Creates/updates `DepartmentMonthlySummary` per dept | `refresh_monthly_analytics` task |
 | `compute_diagnosis_trends(facility, start, end, granularity)` | Facility + date range | Creates/updates `DiagnosisTrend` per ICD-10 code | `refresh_monthly_analytics` task |
-| `compute_demographics_snapshot(facility, date)` | Facility + date | Creates/updates `PatientDemographicSnapshot` | `refresh_demographics_snapshot` task |
+| `compute_demographics_snapshot(facility, date)` | Facility + date | Creates/updates `PatientDemographicSnapshot` (includes referral source, new vs return, insurance coverage) | `refresh_demographics_snapshot` task |
 
 ### Celery Tasks & Schedule
 
@@ -119,16 +129,36 @@ All models inherit `FacilityScopedModel` + `TimeStampedModel`.
 
 All under `/api/analytics/`:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `facility-summary/` | GET | List facility daily summaries (filterable: `date_from`, `date_to`) |
-| `facility-summary/{id}/` | GET | Single summary detail |
-| `department-performance/` | GET | List department monthly summaries (filterable: `year`, `month`, `department`) |
-| `diagnosis-trends/` | GET | List diagnosis trends (filterable: `granularity`, `icd10_code`, `date_from`, `date_to`, `top_n`) |
-| `demographics/` | GET | List demographic snapshots |
-| `metabase-embed/` | GET | Generate signed Metabase embed URL (`?resource_type=dashboard&resource_id=1`) |
+#### Facility-Level (Tenant-Scoped)
 
-All endpoints require authentication and are tenant-scoped (facility).
+| Endpoint | Method | Permission | Description |
+|----------|--------|------------|-------------|
+| `facility-summary/` | GET | `CanViewAnalytics` | List facility daily summaries (filterable: `date_from`, `date_to`) |
+| `facility-summary/{id}/` | GET | `CanViewAnalytics` | Single summary detail |
+| `department-performance/` | GET | `CanViewAnalytics` | List department monthly summaries (filterable: `year`, `month`, `department`) |
+| `diagnosis-trends/` | GET | `CanViewAnalytics` | List diagnosis trends (filterable: `granularity`, `icd10_code`, `date_from`, `date_to`, `top_n`) |
+| `demographics/` | GET | `CanViewAnalytics` | List demographic snapshots |
+| `metabase-embed/` | GET | `CanViewAnalytics` | Generate signed Metabase embed URL (`?resource_type=dashboard&resource_id=1`) |
+
+#### Organization-Level (Cross-Facility)
+
+| Endpoint | Method | Permission | Description |
+|----------|--------|------------|-------------|
+| `org/facility-summary/` | GET | `CanViewAnalytics` | Daily summaries across all org facilities |
+| `org/department-performance/` | GET | `CanViewAnalytics` | Department performance across all org facilities |
+| `org/diagnosis-trends/` | GET | `CanViewAnalytics` | Diagnosis trends across all org facilities |
+| `org/demographics/` | GET | `CanViewAnalytics` | Demographics across all org facilities |
+
+#### Platform-Wide (Nexora Superusers Only)
+
+| Endpoint | Method | Permission | Description |
+|----------|--------|------------|-------------|
+| `platform/facility-summary/` | GET | `IsSuperUser` | Daily summaries across all tenants |
+| `platform/department-performance/` | GET | `IsSuperUser` | Department performance across all tenants |
+| `platform/diagnosis-trends/` | GET | `IsSuperUser` | Diagnosis trends across all tenants |
+| `platform/demographics/` | GET | `IsSuperUser` | Demographics across all tenants |
+
+All endpoints require authentication. Facility-level endpoints use `TenantScopedViewMixin` with `X-Facility-Id` header. Organization-level uses `tenant_scope = "organization"`. Platform-wide has no tenant scoping.
 
 ### Metabase Embed Endpoint
 
@@ -193,11 +223,11 @@ All under `/api/moh-reports/`:
 
 | File | Purpose |
 |------|---------|
-| `lib/types/analytics.ts` | TypeScript interfaces: `FacilityDailySummary`, `DepartmentMonthlySummary`, `DiagnosisTrend`, `PatientDemographicSnapshot`, `MetabaseEmbedResponse` |
-| `lib/schemas/analytics.schema.ts` | Zod validation schemas for all analytics API responses |
+| `lib/types/analytics.ts` | TypeScript interfaces: `FacilityDailySummary` (incl. return_patients, walk_ins, referral_ins, follow_up_encounters), `DepartmentMonthlySummary`, `DiagnosisTrend`, `PatientDemographicSnapshot` (incl. referral_source_distribution, new_vs_return, insurance_coverage), `MetabaseEmbedResponse` |
+| `lib/schemas/analytics.schema.ts` | Zod validation schemas for all analytics API responses (matches TypeScript types) |
 | `lib/api/analytics.ts` | API client: `getFacilitySummary`, `getDepartmentPerformance`, `getDiagnosisTrends`, `getDemographics`, `getMetabaseEmbedUrl` |
 | `lib/hooks/use-analytics.ts` | React Query hooks: `useFacilitySummary`, `useDepartmentPerformance`, `useDiagnosisTrends`, `useDemographics`, `useMetabaseEmbedUrl` |
-| `components/analytics/analytics-dashboard.tsx` | Main dashboard: KPI cards, encounter volume line chart, revenue stacked bar, top 10 diagnoses, gender donut, department table |
+| `components/analytics/analytics-dashboard.tsx` | Main dashboard: KPI cards (encounters, revenue, labs, pharmacy, return rate, follow-ups, walk-ins, referrals), encounter volume line chart with 3-day projection, revenue stacked bar, top 10 diagnoses (bar/pie toggle), gender donut, referral source donut, new vs returning donut, insurance coverage donut, age distribution bar, department table |
 | `components/analytics/analytics-page-content.tsx` | Tabbed wrapper: Dashboard tab + Explore (Metabase) tab |
 | `components/analytics/metabase-embed.tsx` | Metabase iframe with loading/error states, 503 "not configured" handling |
 | `app/(dashboard)/analytics/page.tsx` | Next.js page with PageHeader |
@@ -258,6 +288,7 @@ metabase:
 | `tests/analytics/test_api.py` | — | Auth, filtering, tenant isolation |
 | `tests/analytics/test_tasks.py` | 5 | Task execution, defaults |
 | `tests/analytics/test_metabase_embed.py` | 10 | JWT signing, auth, validation, 503 handling |
+| `tests/analytics/test_permissions.py` | 23 | CanViewAnalytics role checks, org-level access, platform superuser access |
 | `tests/moh_reporting/test_models.py` | — | MOH report model tests |
 | `tests/moh_reporting/test_services.py` | — | Generator logic tests |
 | `tests/moh_reporting/test_api.py` | — | API endpoint tests |
@@ -296,6 +327,13 @@ refresh_daily_analytics('2026-04-09')
 
 - `METABASE_SITE_URL` doesn't match the actual Metabase URL
 - Embedding is not enabled in Metabase admin (should be auto-enabled via `MB_ENABLE_EMBEDDING=true`)
+
+### Metabase iframe shows "localhost refused to connect"
+
+- In VS Code remote development, port 3333 must be **forwarded** through the remote tunnel
+- Open VS Code Ports panel (Ctrl+Shift+P → "Forward a Port") and forward port 3333
+- Verify Metabase is running: `curl http://localhost:3333/api/health` on the server should return `{"status":"ok"}`
+- In production, `METABASE_SITE_URL` must point to the browser-accessible URL (e.g., `https://metabase.staging.vitora.digital`)
 
 ### MOH reports show zero counts
 

@@ -58,6 +58,10 @@ export interface PieChartProps {
   centerLabelValue?: string | number;
   /** Minimum height for the chart container */
   minHeight?: string;
+  /** Maximum height for the chart container (default: 300px) */
+  maxHeight?: string;
+  /** Use compact square layout (default: true). Set false for charts with many legend items */
+  compact?: boolean;
   /** Additional className for the container */
   className?: string;
   /** Tooltip indicator style */
@@ -132,6 +136,8 @@ export function PieChart({
   centerLabelTitle,
   centerLabelValue,
   minHeight = "250px",
+  maxHeight = "300px",
+  compact = true,
   className,
   tooltipIndicator = "dot",
   tooltipFormatter,
@@ -164,7 +170,12 @@ export function PieChart({
       )}
       <ChartContainer
         config={config}
-        className={cn(`min-h-[${minHeight}] mx-auto aspect-square max-h-[300px]`)}
+        className={cn(
+          `min-h-[${minHeight}]`,
+          "mx-auto",
+          compact && "aspect-square",
+          compact && `max-h-[${maxHeight}]`,
+        )}
       >
         <RechartsPieChart accessibilityLayer>
           {showTooltip && (

@@ -86,6 +86,23 @@ class FacilityDailySummary(FacilityScopedModel, TimeStampedModel):
         help_text="Percentage of beds occupied (0–100).",
     )
 
+    # Patient flow KPIs
+    return_patients = models.PositiveIntegerField(
+        default=0, help_text="Patients with a prior encounter before this date.",
+    )
+    walk_ins = models.PositiveIntegerField(
+        default=0, help_text="Patients registered with referral_source='self'.",
+    )
+    referral_ins = models.PositiveIntegerField(
+        default=0, help_text="Patients registered referred from another facility.",
+    )
+    clinic_referrals = models.PositiveIntegerField(
+        default=0, help_text="Patients referred from a clinic.",
+    )
+    follow_up_encounters = models.PositiveIntegerField(
+        default=0, help_text="Encounters of type FOLLOW_UP.",
+    )
+
     class Meta:
         verbose_name = "Facility Daily Summary"
         verbose_name_plural = "Facility Daily Summaries"
@@ -211,6 +228,15 @@ class PatientDemographicSnapshot(FacilityScopedModel, TimeStampedModel):
 
     # Top 10 counties (JSON list: [{"county": "Nairobi", "count": 200}, ...])
     county_distribution = models.JSONField(default=list, blank=True)
+
+    # Referral source breakdown (JSON: {"self": 300, "clinic": 100, "other_facility": 50})
+    referral_source_distribution = models.JSONField(default=dict, blank=True)
+
+    # New vs returning patient split (JSON: {"new": 200, "return": 300})
+    new_vs_return = models.JSONField(default=dict, blank=True)
+
+    # Insurance coverage (JSON: {"sha": 150, "none": 200})
+    insurance_coverage = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name = "Patient Demographic Snapshot"

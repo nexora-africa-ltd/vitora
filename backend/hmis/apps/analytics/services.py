@@ -75,6 +75,33 @@ def compute_daily_summary(facility, target_date: date) -> dict:
         encounter_type__in=["OPD", "IPD", "EMERGENCY"]
     ).count()
     encounters_total = enc_qs.count()
+    follow_up_encounters = enc_qs.filter(encounter_type="FOLLOW_UP").count()
+
+    # -- Patient flow KPIs --
+    # Return patients: seen today who had at least one prior encounter
+    return_patient_ids = (
+        enc_qs.values_list("patient_id", flat=True).distinct()
+    )
+    return_patients = 0
+    if return_patient_ids:
+        return_patients = (
+            Encounter.objects.filter(
+                patient_id__in=list(return_patient_ids),
+                encounter_date__lt=target_date,
+                **scope,
+            )
+            .values("patient_id")
+            .distinct()
+            .count()
+        )
+
+    # Walk-ins / referrals from today's new registrations
+    new_reg_qs = Patient.objects.filter(
+        created_at__date=target_date, **patient_scope
+    )
+    walk_ins = new_reg_qs.filter(referral_source="self").count()
+    referral_ins = new_reg_qs.filter(referral_source="other_facility").count()
+    clinic_referrals = new_reg_qs.filter(referral_source="clinic").count()
 
     # -- Revenue --
     payments = Payment.objects.filter(
@@ -130,6 +157,11 @@ def compute_daily_summary(facility, target_date: date) -> dict:
         "revenue_insurance": revenue_insurance,
         "invoices_created": invoices_created,
         "outstanding_balance": outstanding,
+        "return_patients": return_patients,
+        "walk_ins": walk_ins,
+        "referral_ins": referral_ins,
+        "clinic_referrals": clinic_referrals,
+        "follow_up_encounters": follow_up_encounters,
         **lab_stats,
         **pharmacy_stats,
         **triage_stats,
@@ -550,6 +582,7 @@ def compute_demographics_snapshot(facility, snapshot_date: date) -> dict:
 
     Returns a dict of field values for ``PatientDemographicSnapshot``.
     """
+    from hmis.apps.encounters.models import Encounter
     from hmis.apps.patients.models import Patient
 
     qs = Patient.objects.filter(registered_at_facility=facility)
@@ -577,10 +610,33 @@ def compute_demographics_snapshot(facility, snapshot_date: date) -> dict:
         for c in county_dist
     ]
 
+    # Referral source distribution
+    referral_dist = {}
+    for row in qs.values("referral_source").annotate(count=Count("id")):
+        src = row["referral_source"] or "unknown"
+        referral_dist[src] = row["count"]
+
+    # New vs return (patients with >1 encounter are returners)
+    encounter_counts = (
+        Encounter.objects.filter(facility=facility)
+        .values("patient_id")
+        .annotate(enc_count=Count("id"))
+    )
+    return_count = sum(1 for ec in encounter_counts if ec["enc_count"] > 1)
+    new_count = total - return_count
+    new_vs_return = {"new": max(new_count, 0), "return": return_count}
+
+    # Insurance coverage (SHA vs none)
+    sha_count = qs.exclude(sha_number__isnull=True).exclude(sha_number="").count()
+    insurance_coverage = {"sha": sha_count, "none": total - sha_count}
+
     return {
         "snapshot_date": snapshot_date,
         "total_patients": total,
         "age_distribution": age_dist,
         "gender_distribution": gender_dist,
         "county_distribution": county_list,
+        "referral_source_distribution": referral_dist,
+        "new_vs_return": new_vs_return,
+        "insurance_coverage": insurance_coverage,
     }

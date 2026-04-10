@@ -151,7 +151,7 @@ export function LineChart<T extends Record<string, unknown>>({
           )}
         </div>
       )}
-      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, "aspect-auto w-full")}>
+      <ChartContainer config={config} className={cn(`min-h-[${minHeight}]`, "w-full")}>
         <RechartsLineChart accessibilityLayer data={data}>
           {showGrid && (
             <CartesianGrid
