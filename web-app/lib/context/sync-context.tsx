@@ -28,11 +28,27 @@ export interface SyncStatus {
   lastError: string | null;
 }
 
+/** PowerSync connection health exposed to consumers (e.g. status indicator). */
+export interface PowerSyncHealth {
+  /** Whether a PowerSync URL is configured at all */
+  configured: boolean;
+  /** Whether the streaming connection to PowerSync Cloud is active */
+  connected: boolean;
+  /** Whether at least one full sync cycle has completed (data exists locally) */
+  hasSynced: boolean;
+  /** Last time data was synced from PowerSync Cloud */
+  lastSyncedAt: Date | null;
+}
+
 interface SyncContextValue extends SyncStatus {
   /** The PowerSync database instance (for direct queries) */
   db: PowerSyncDatabase | null;
   /** Whether the PowerSync DB has finished initializing (safe to query) */
   isReady: boolean;
+  /** Whether PowerSync has completed at least one sync (safe to read local data) */
+  hasSynced: boolean;
+  /** PowerSync connection health details */
+  powerSyncHealth: PowerSyncHealth;
   /** Report a successful sync */
   reportSync: () => void;
   /** Report sync started */
@@ -69,6 +85,13 @@ function getOrCreateDatabase(): PowerSyncDatabase {
 export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<PowerSyncDatabase | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [hasSynced, setHasSynced] = useState(false);
+  const [psHealth, setPsHealth] = useState<PowerSyncHealth>(() => ({
+    configured: !!process.env.NEXT_PUBLIC_POWERSYNC_URL,
+    connected: false,
+    hasSynced: false,
+    lastSyncedAt: null,
+  }));
   const [status, setStatus] = useState<SyncStatus>(() => ({
     lastSyncTime: null,
     isSyncing: false,
@@ -148,11 +171,24 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = db.registerListener({
       statusChanged: (newStatus) => {
+        const synced = newStatus.hasSynced === true;
+        const connected = newStatus.connected === true;
+        const syncedAt = newStatus.lastSyncedAt ? new Date(newStatus.lastSyncedAt) : null;
+
         setStatus(prev => ({
           ...prev,
           isSyncing: newStatus.dataFlowStatus?.downloading === true ||
                      newStatus.dataFlowStatus?.uploading === true,
-          lastSyncTime: newStatus.lastSyncedAt ? new Date(newStatus.lastSyncedAt) : prev.lastSyncTime,
+          lastSyncTime: syncedAt ?? prev.lastSyncTime,
+        }));
+
+        if (synced) setHasSynced(true);
+
+        setPsHealth(prev => ({
+          ...prev,
+          connected,
+          hasSynced: synced || prev.hasSynced,
+          lastSyncedAt: syncedAt ?? prev.lastSyncedAt,
         }));
       },
     });
@@ -270,6 +306,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     ...status,
     db,
     isReady,
+    hasSynced,
+    powerSyncHealth: psHealth,
     reportSync,
     reportSyncStart,
     reportSyncError,
@@ -278,7 +316,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     setPendingCount,
     triggerSync,
     setTriggerSync,
-  }), [status, db, isReady, reportSync, reportSyncStart, reportSyncError, incrementPending, decrementPending, setPendingCount, triggerSync, setTriggerSync]);
+  }), [status, db, isReady, hasSynced, psHealth, reportSync, reportSyncStart, reportSyncError, incrementPending, decrementPending, setPendingCount, triggerSync, setTriggerSync]);
 
   return (
     <SyncContext.Provider value={value}>
@@ -294,6 +332,8 @@ export function useSyncStatus(): SyncContextValue {
     return {
       db: null,
       isReady: false,
+      hasSynced: false,
+      powerSyncHealth: { configured: false, connected: false, hasSynced: false, lastSyncedAt: null },
       lastSyncTime: null,
       isSyncing: false,
       pendingChanges: 0,
