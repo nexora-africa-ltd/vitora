@@ -50,7 +50,7 @@ import {
   type TriageVitalsFormValues,
   type VitalAlert,
 } from '@/lib/vitals';
-import { getAgeGroup } from '@/lib/types/triage';
+import { getAgeGroup, isPediatric, isNeonateOrInfant } from '@/lib/types/triage';
 
 // Use shared schema
 const vitalsSchema = triageVitalsSchema;
@@ -236,12 +236,17 @@ export default function TriageVitalsPage() {
   // Watch for vital changes to generate alerts
   const watchedVitals = watch();
 
-  // Calculate BMI if weight and height are available
+  // Calculate BMI if weight and height are available (age-aware)
   const weight = watchedVitals.weight;
   const height = watchedVitals.height;
-  const bmiResult = weight && height ? calculateBMI(weight, height) : null;
+  const bmiResult = weight && height
+    ? calculateBMI(weight, height, patient?.date_of_birth, patient?.gender as 'M' | 'F' | 'O' | undefined)
+    : null;
   const bmiValue = bmiResult?.bmi;
   const bmiColor = bmiResult?.classification ? getBMIColorClass(bmiResult.classification) : '';
+  const showNeonatalFields = patientAgeGroup ? isNeonateOrInfant(patientAgeGroup) : false;
+  const showPediatricFields = patientAgeGroup ? isPediatric(patientAgeGroup) : false;
+  const isUnder2 = patientAgeGroup === 'neonate' || patientAgeGroup === 'infant' || patientAgeGroup === 'toddler';
 
   // Real-time vital evaluation for inline field color-coding (age-adjusted)
   const temperatureSeverity = evaluateVitalSeverity(watchedVitals.temperature, ageThresholds.temperature!, 'temperature');
@@ -526,7 +531,7 @@ export default function TriageVitalsPage() {
                     id="weight"
                     type="number"
                     step="0.1"
-                    placeholder="70"
+                    placeholder={showNeonatalFields ? '3.5' : showPediatricFields ? '15' : '70'}
                     {...register('weight', {
                       setValueAs: parseNumberInput,
                     })}
@@ -538,17 +543,17 @@ export default function TriageVitalsPage() {
                 )}
               </div>
 
-              {/* Height */}
+              {/* Height / Length */}
               <div className="space-y-2">
                 <Label htmlFor="height" className="flex items-center gap-1.5 h-5">
                   <Ruler className="h-4 w-4 text-muted-foreground" />
-                  Height
+                  {isUnder2 ? 'Length (recumbent)' : 'Height'}
                 </Label>
                 <InputGroup>
                   <InputGroupInput
                     id="height"
                     type="number"
-                    placeholder="170"
+                    placeholder={showNeonatalFields ? '50' : showPediatricFields ? '95' : '170'}
                     {...register('height', {
                       setValueAs: parseNumberInput,
                     })}
@@ -560,27 +565,37 @@ export default function TriageVitalsPage() {
                 )}
               </div>
 
-              {/* BMI (calculated) */}
+              {/* BMI (calculated) — only for age ≥ 2 years */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5 h-5">
                   <Activity className="h-4 w-4 text-muted-foreground" />
-                  BMI
+                  {isUnder2 ? 'Growth' : 'BMI'}
                 </Label>
-                <div className="h-9 flex items-center justify-between px-3 rounded-md border bg-muted/50">
-                  {bmiValue ? (
-                    <>
-                      <span className={cn('font-medium', bmiColor)}>{bmiValue.toFixed(1)}</span>
-                      {bmiResult?.classification && (
-                        <Badge variant="outline" className={cn('ml-2', bmiColor)}>
-                          {bmiResult.classification}
-                        </Badge>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </div>
-                {bmiResult?.message && (
+                {isUnder2 ? (
+                  <div className="h-9 flex items-center px-3 rounded-md border bg-muted/50">
+                    <span className="text-xs text-muted-foreground">
+                      {weight && height
+                        ? 'Use weight-for-length z-scores (WHO charts)'
+                        : 'Enter weight & length'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="h-9 flex items-center justify-between px-3 rounded-md border bg-muted/50">
+                    {bmiValue ? (
+                      <>
+                        <span className={cn('font-medium', bmiColor)}>{bmiValue.toFixed(1)}</span>
+                        {bmiResult?.classification && (
+                          <Badge variant="outline" className={cn('ml-2', bmiColor)}>
+                            {bmiResult.classification}
+                          </Badge>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </div>
+                )}
+                {!isUnder2 && bmiResult?.message && (
                   <p className="text-xs text-muted-foreground">{bmiResult.message}</p>
                 )}
               </div>

@@ -1,9 +1,19 @@
 /**
  * TriageAssessmentForm Component
  *
- * Main form for performing patient triage assessments according to
- * KETA (Kenya Emergency Triage Assessment) standards.
+ * @deprecated This is the LEGACY single-page triage form. The active triage flow
+ * is the step-based wizard at /triage/assess/[patientId]/[encounterId]/ with
+ * separate pages for Vitals, History, Assessment, and Routing.
  *
+ * This component is only rendered when NEXT_PUBLIC_LEGACY_TRIAGE_FLOW=1.
+ * It is kept for backward compatibility and test coverage but should NOT
+ * receive new feature work. All enhancements go to the step-based flow:
+ *   - vitals/page.tsx
+ *   - history/page.tsx
+ *   - assessment/page.tsx
+ *   - route/page.tsx
+ *
+ * KETA (Kenya Emergency Triage Assessment) standards.
  * Sprint 1.5-1.6 Track E: Triage MVP
  *
  * @see features/triage/triage-assessment.feature for BDD scenarios
@@ -1929,7 +1939,7 @@ export function TriageAssessmentForm({
                     type="number"
                     step="0.1"
                     inputMode="decimal"
-                    placeholder="e.g. 70"
+                    placeholder={showNeonatalFields ? 'e.g. 3.5' : isPediatric(patientAgeGroup) ? 'e.g. 15' : 'e.g. 70'}
                     aria-invalid={!!errors.weight}
                     disabled={disabled}
                     {...register('weight', {
@@ -1947,16 +1957,20 @@ export function TriageAssessmentForm({
                 )}
               </div>
 
-              {/* Height (optional) */}
+              {/* Height / Length (optional) */}
               <div className="space-y-2">
-                <Label htmlFor="height">Height</Label>
+                <Label htmlFor="height">
+                  {isNeonateOrInfant(patientAgeGroup) || patientAgeGroup === 'toddler'
+                    ? 'Length (recumbent)'
+                    : 'Height'}
+                </Label>
                 <InputGroup>
                   <InputGroupInput
                     id="height"
                     type="number"
                     step="0.1"
                     inputMode="decimal"
-                    placeholder="e.g. 170"
+                    placeholder={showNeonatalFields ? 'e.g. 50' : isPediatric(patientAgeGroup) ? 'e.g. 95' : 'e.g. 170'}
                     aria-invalid={!!errors.height}
                     disabled={disabled}
                     {...register('height', {
@@ -1974,7 +1988,7 @@ export function TriageAssessmentForm({
                 )}
               </div>
 
-              {/* BMI (Calculated - Only show when we have values) */}
+              {/* BMI (Calculated) — only for age ≥ 2 years */}
               {bmiResult.bmi !== null && bmiResult.isAgeAppropriate && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-muted-foreground">
@@ -2008,6 +2022,20 @@ export function TriageAssessmentForm({
                   {bmiResult.message && (
                     <p className="text-xs text-muted-foreground">{bmiResult.message}</p>
                   )}
+                </div>
+              )}
+
+              {/* Weight-for-length guidance for children under 2 */}
+              {!bmiResult.isAgeAppropriate && weight != null && height != null && (
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-2 text-muted-foreground">
+                    <Info className="h-4 w-4" />
+                    Growth Assessment
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    BMI is not used for children under 2. Use weight-for-length z-scores
+                    (WHO growth charts) to assess nutritional status.
+                  </p>
                 </div>
               )}
             </div>
