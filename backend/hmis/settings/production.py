@@ -58,6 +58,8 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # These are read by powersync/powersync.yaml, not by Django directly.
 # Listed here for documentation and .env template purposes.
 POWERSYNC_URL = os.getenv("POWERSYNC_URL", "")  # e.g. https://ps.example.com
+POWERSYNC_JWT_KID = os.getenv("POWERSYNC_JWT_KID", "vitora-hmis-1")
+POWERSYNC_JWT_AUDIENCE = os.getenv("POWERSYNC_JWT_AUDIENCE", "powersync")
 
 # Security settings for production
 # Note: Render handles SSL termination, so we may need to disable redirect

@@ -133,6 +133,14 @@ FIELD_ENCRYPTION_KEY = ENCRYPTION_KEY
 # The frontend reads NEXT_PUBLIC_POWERSYNC_URL separately.
 POWERSYNC_URL = os.getenv("POWERSYNC_URL", "")
 
+# Key ID for JWT kid header — must match the KID configured in the
+# PowerSync Cloud dashboard under "HS256 Authentication Tokens (ADVANCED)".
+POWERSYNC_JWT_KID = os.getenv("POWERSYNC_JWT_KID", "vitora-hmis-1")
+
+# JWT audience — must match the custom audience in the PowerSync Cloud
+# instance settings (or default to the instance URL).
+POWERSYNC_JWT_AUDIENCE = os.getenv("POWERSYNC_JWT_AUDIENCE", "powersync")
+
 # =============================================================================
 # SHA Integration - Sandbox mode for demos
 # =============================================================================

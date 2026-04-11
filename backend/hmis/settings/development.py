@@ -78,6 +78,8 @@ SYNC_MAX_RETRIES = int(os.getenv("SYNC_MAX_RETRIES", "3"))
 # PowerSync — offline-first data sync (set NEXT_PUBLIC_POWERSYNC_URL on the frontend)
 # In development, PowerSync is optional. Leave empty to use API-only mode.
 POWERSYNC_URL = os.getenv("POWERSYNC_URL", "")
+POWERSYNC_JWT_KID = os.getenv("POWERSYNC_JWT_KID", "vitora-hmis-1")
+POWERSYNC_JWT_AUDIENCE = os.getenv("POWERSYNC_JWT_AUDIENCE", "powersync")
 
 # Development-specific apps
 INSTALLED_APPS += ["django_extensions"]  # noqa: F405
