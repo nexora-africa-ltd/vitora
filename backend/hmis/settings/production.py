@@ -123,3 +123,17 @@ else:
     # PaaS like Render - console only
     LOGGING["root"]["handlers"] = ["console"]  # noqa: F405
     LOGGING["loggers"]["django"]["handlers"] = ["console"]  # noqa: F405
+
+# Channel Layers — Use Redis in production for cross-process WebSocket support
+REDIS_URL = os.getenv("REDIS_URL", "")
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+                "capacity": 1500,  # Max messages per channel before oldest dropped
+                "expiry": 60,  # Message TTL in seconds
+            },
+        },
+    }

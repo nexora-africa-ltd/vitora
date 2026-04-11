@@ -268,6 +268,8 @@ urlpatterns = [
     path("api/imaging/", include("hmis.apps.imaging.urls")),
     # Projection read-model APIs
     path("api/projections/", include("hmis.apps.core.projections.urls", namespace="projections")),
+    # WebSocket health check
+    path("api/ws/health/", include("hmis.apps.core.websockets.urls")),
     # Clinics API
     path("api/", include("hmis.apps.clinics.urls")),
     # Check-in API
