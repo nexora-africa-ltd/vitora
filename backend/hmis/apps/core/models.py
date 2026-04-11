@@ -3509,3 +3509,6 @@ from hmis.apps.core.mfa.models import (  # noqa: E402, F401
     UserTOTPDevice,
     UserWebAuthnCredential,
 )
+
+# Import EventStore so Django discovers it for migrations
+from hmis.apps.core.events.store import EventStore  # noqa: E402, F401

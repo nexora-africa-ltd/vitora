@@ -2,11 +2,14 @@
 Signal handlers for core app.
 
 These signals handle automatic audit logging when certain events occur.
+Publishes domain events for cross-cutting observability.
 """
 
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+
+from hmis.apps.core.events import ClinicalEvents, CoreEvents, publish_event
 
 
 @receiver(user_logged_in)
@@ -25,6 +28,14 @@ def log_user_login(sender, request, user, **kwargs):
         details={"username": user.username},
     )
 
+    publish_event(
+        event_type=CoreEvents.USER_LOGGED_IN,
+        aggregate_type="User",
+        aggregate_id=user.id,
+        payload={"username": user.username},
+        user_id=user.id,
+    )
+
 
 @receiver(user_logged_out)
 def log_user_logout(sender, request, user, **kwargs):
@@ -41,6 +52,14 @@ def log_user_logout(sender, request, user, **kwargs):
             ip_address=get_client_ip(request) if request else None,
             user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
             details={"username": user.username},
+        )
+
+        publish_event(
+            event_type=CoreEvents.USER_LOGGED_OUT,
+            aggregate_type="User",
+            aggregate_id=user.id,
+            payload={"username": user.username},
+            user_id=user.id,
         )
 
 
@@ -112,6 +131,16 @@ def patient_activity_signal(sender, instance, created, **kwargs):
             },
         )
 
+        publish_event(
+            event_type=CoreEvents.PATIENT_CREATED,
+            aggregate_type="Patient",
+            aggregate_id=instance.id,
+            payload={"mrn": instance.mrn},
+            user_id=getattr(getattr(instance, "registered_by", None), "id", None),
+            facility_id=getattr(instance, "facility_id", None),
+            organization_id=getattr(instance, "organization_id", None),
+        )
+
 
 @receiver(post_save, sender="encounters.Encounter")
 def encounter_activity_signal(sender, instance, created, **kwargs):
@@ -136,6 +165,19 @@ def encounter_activity_signal(sender, instance, created, **kwargs):
                 "encounter_type": instance.encounter_type,
                 "patient_mrn": instance.patient.mrn if instance.patient else None,
             },
+        )
+
+        publish_event(
+            event_type=ClinicalEvents.ENCOUNTER_CREATED,
+            aggregate_type="Encounter",
+            aggregate_id=instance.id,
+            payload={
+                "encounter_type": instance.encounter_type,
+                "patient_id": instance.patient_id,
+            },
+            user_id=getattr(getattr(instance, "created_by", None), "id", None),
+            facility_id=getattr(instance, "facility_id", None),
+            organization_id=getattr(instance, "organization_id", None),
         )
 
 

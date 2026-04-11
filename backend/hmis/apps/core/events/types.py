@@ -1,0 +1,103 @@
+"""
+Domain Event Type Catalog.
+
+Central registry of all event type constants used across the HMIS.
+Organized by domain to prevent naming collisions and enable discovery.
+
+Convention: <domain>.<aggregate>.<action>
+"""
+
+
+class BillingEvents:
+    """Billing domain event types."""
+
+    INVOICE_CREATED = "billing.invoice.created"
+    INVOICE_UPDATED = "billing.invoice.updated"
+    INVOICE_FINALIZED = "billing.invoice.finalized"
+    INVOICE_ITEM_ADDED = "billing.invoice_item.added"
+    PAYMENT_RECEIVED = "billing.payment.received"
+    PAYMENT_REVERSED = "billing.payment.reversed"
+    SHA_CLAIM_SUBMITTED = "billing.sha_claim.submitted"
+    SHA_CLAIM_STATUS_CHANGED = "billing.sha_claim.status_changed"
+    DISCHARGE_BILLING = "billing.discharge.processed"
+    ADMISSION_BILLING = "billing.admission.processed"
+    IMMUNIZATION_BILLING = "billing.immunization.processed"
+
+
+class PharmacyEvents:
+    """Pharmacy domain event types."""
+
+    PRESCRIPTION_CREATED = "pharmacy.prescription.created"
+    PRESCRIPTION_ITEM_CREATED = "pharmacy.prescription_item.created"
+    DISPENSING_COMPLETED = "pharmacy.dispensing.completed"
+    DISPENSING_BILLING_LINKED = "pharmacy.dispensing.billing_linked"
+    STOCK_CRITICAL = "pharmacy.stock.critical"
+    STOCK_LOW_WARNING = "pharmacy.stock.low_warning"
+    PRESCRIPTION_EXPIRED = "pharmacy.prescription.expired"
+
+
+class LaboratoryEvents:
+    """Laboratory domain event types."""
+
+    ORDER_CREATED = "laboratory.order.created"
+    ORDER_STATUS_CHANGED = "laboratory.order.status_changed"
+    ORDER_COMPLETED = "laboratory.order.completed"
+    QUEUE_CREATED = "laboratory.queue.created"
+    QUEUE_STATUS_CHANGED = "laboratory.queue.status_changed"
+    SPECIMEN_CREATED = "laboratory.specimen.created"
+    RESULT_ENTERED = "laboratory.result.entered"
+    RESULT_VERIFIED = "laboratory.result.verified"
+    CRITICAL_RESULT = "laboratory.result.critical"
+    ORDER_BILLING = "laboratory.order.billed"
+
+
+class ClinicalEvents:
+    """Clinical / encounter domain event types."""
+
+    ENCOUNTER_CREATED = "clinical.encounter.created"
+    ENCOUNTER_UPDATED = "clinical.encounter.updated"
+    TRIAGE_ASSESSED = "clinical.triage.assessed"
+    CLINIC_VISIT_CREATED = "clinical.clinic_visit.created"
+    CLINIC_VISIT_STATUS_CHANGED = "clinical.clinic_visit.status_changed"
+
+
+class InpatientEvents:
+    """Inpatient domain event types."""
+
+    ADMISSION_CREATED = "inpatient.admission.created"
+    DISCHARGE_COMPLETED = "inpatient.discharge.completed"
+    WARD_CAPACITY_CHANGED = "inpatient.ward.capacity_changed"
+
+
+class MCHEvents:
+    """Mother & Child Health domain event types."""
+
+    REGISTRATION_CREATED = "mch.registration.created"
+    DELIVERY_COMPLETED = "mch.delivery.completed"
+    ANC_VISIT_CREATED = "mch.anc_visit.created"
+    BABY_PATIENT_CREATED = "mch.baby_patient.created"
+
+
+class ImmunizationEvents:
+    """Immunization domain event types."""
+
+    RECORD_ADMINISTERED = "immunization.record.administered"
+    AEFI_REPORTED = "immunization.aefi.reported"
+    SCHEDULE_GENERATED = "immunization.schedule.generated"
+
+
+class SurveillanceEvents:
+    """Surveillance domain event types."""
+
+    NOTIFIABLE_DISEASE_DETECTED = "surveillance.disease.detected"
+    ALERT_CREATED = "surveillance.alert.created"
+
+
+class CoreEvents:
+    """Core / audit domain event types."""
+
+    USER_LOGGED_IN = "core.user.logged_in"
+    USER_LOGGED_OUT = "core.user.logged_out"
+    USER_LOGIN_FAILED = "core.user.login_failed"
+    PATIENT_CREATED = "core.patient.created"
+    PATIENT_UPDATED = "core.patient.updated"
