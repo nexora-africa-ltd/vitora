@@ -593,6 +593,50 @@ function getVitalThresholdStatus(
 }
 
 /**
+ * Get age-specific normal range hint for a vital sign.
+ * Returns a short string like "Normal: 100-150 bpm" or null for SpO2 (same for all ages).
+ */
+function getVitalRangeHint(
+  vitalType: 'heart_rate' | 'respiratory_rate' | 'temperature',
+  ageGroup: AgeGroup
+): string | null {
+  const ranges: Record<string, Record<AgeGroup, string>> = {
+    heart_rate: {
+      neonate: '100-160 bpm',
+      infant: '100-150 bpm',
+      toddler: '80-130 bpm',
+      preschool: '80-120 bpm',
+      child: '70-110 bpm',
+      adolescent: '60-100 bpm',
+      adult: '60-100 bpm',
+    },
+    respiratory_rate: {
+      neonate: '30-60 /min',
+      infant: '25-50 /min',
+      toddler: '20-30 /min',
+      preschool: '20-30 /min',
+      child: '18-25 /min',
+      adolescent: '12-20 /min',
+      adult: '12-20 /min',
+    },
+    temperature: {
+      neonate: '36.5-37.5 °C',
+      infant: '36.0-37.5 °C',
+      toddler: '36.0-37.5 °C',
+      preschool: '36.0-37.5 °C',
+      child: '36.0-37.5 °C',
+      adolescent: '36.0-37.5 °C',
+      adult: '36.0-37.5 °C',
+    },
+  };
+  const range = ranges[vitalType]?.[ageGroup];
+  if (!range) return null;
+  // Only show for pediatric patients (adults don't need the hint since thresholds match the badge)
+  if (ageGroup === 'adult' || ageGroup === 'adolescent') return null;
+  return `Normal (${ageGroup}): ${range}`;
+}
+
+/**
  * Inline vital alert badge component
  * Color coding:
  * - Emergency: Dark red/purple (life-threatening)
@@ -1004,19 +1048,36 @@ function calculateSuggestedCategory(
       ? formData.respiratory_rate
       : encounter.respiratory_rate;
 
+  // --- ETAT danger signs → immediate RED (children <12y) ---
+  if (formData.etat_danger_signs && formData.etat_danger_signs.length > 0) {
+    return 'RED';
+  }
+
+  // --- ETAT dehydration ---
+  if (formData.dehydration_level === 'SEVERE') return 'RED';
+
+  // --- Capillary refill ---
+  if (typeof formData.capillary_refill_seconds === 'number') {
+    if (formData.capillary_refill_seconds >= 5) return 'RED';
+  }
+
+  // --- Fontanelle: bulging → RED (meningitis sign) ---
+  if (formData.fontanelle_status === 'BULGING') return 'RED';
+
+  // --- Unable to breastfeed for neonate/infant → RED ---
+  if (formData.breastfeeding_ability === 'UNABLE' && patientAgeYears < 1) return 'RED';
+
   // Calculate MAP if both BP values are present
   let mapCritical = false;
   if (typeof systolicBp === 'number' && typeof diastolicBp === 'number') {
     const map = calculateMAP(systolicBp, diastolicBp);
     const ageGroup = getMAPAgeGroup(patientAgeYears);
     const thresholds = MAP_THRESHOLDS[ageGroup];
-    // MAP below critical threshold indicates inadequate organ perfusion
     mapCritical = map < thresholds.criticalLow || map > thresholds.elevatedHigh + 15;
   }
 
   // Critical conditions → RED
   if (formData.mental_status === 'U') return 'RED';
-  // GCS ≤8 (severe brain injury) → RED
   const gcsEye = formData.gcs_eye;
   const gcsVerbal = formData.gcs_verbal;
   const gcsMotor = formData.gcs_motor;
@@ -1024,13 +1085,21 @@ function calculateSuggestedCategory(
     const gcsTotal = gcsEye + gcsVerbal + gcsMotor;
     if (gcsTotal <= 8) return 'RED';
   }
-  if (typeof spo2 === 'number' && spo2 <= 90) return 'RED'; // Moderate-severe hypoxemia
+  if (typeof spo2 === 'number' && spo2 <= 90) return 'RED';
   if (typeof heartRate === 'number' && (heartRate < 40 || heartRate > 150))
     return 'RED';
-  if (mapCritical) return 'RED'; // MAP-based critical BP
-  // Temperature critical: <32°C (severe hypothermia), ≥40°C (high fever)
+  if (mapCritical) return 'RED';
   if (typeof temperature === 'number' && (temperature < 32 || temperature >= 40))
     return 'RED';
+
+  // --- ETAT ORANGE-level escalations ---
+  if (formData.dehydration_level === 'SOME') return 'ORANGE';
+  if (typeof formData.capillary_refill_seconds === 'number' && formData.capillary_refill_seconds >= 3) {
+    return 'ORANGE';
+  }
+  if (typeof formData.muac_cm === 'number' && formData.muac_cm < 11.5) return 'ORANGE';
+  if (formData.fontanelle_status === 'SUNKEN') return 'ORANGE';
+  if (formData.breastfeeding_ability === 'REDUCED') return 'ORANGE';
 
   // High-risk complaints or warning vitals → ORANGE
   const highRiskComplaints: ChiefComplaintCategory[] = [
@@ -1314,8 +1383,16 @@ export function TriageAssessmentForm({
         diastolic_bp: diastolicBp,
         temperature,
         respiratory_rate: respiratoryRate,
+        // ETAT fields for pediatric category preview
+        etat_danger_signs: watchedValues.etat_danger_signs,
+        dehydration_level: watchedValues.dehydration_level,
+        fontanelle_status: watchedValues.fontanelle_status,
+        breastfeeding_ability: watchedValues.breastfeeding_ability,
+        capillary_refill_seconds: watchedValues.capillary_refill_seconds,
+        muac_cm: watchedValues.muac_cm,
       },
-      encounter
+      encounter,
+      patientAge
     );
     if (newSuggested !== autoCalculatedCategory) {
       setValue('auto_calculated_category', newSuggested);
@@ -1335,6 +1412,13 @@ export function TriageAssessmentForm({
     autoCalculatedCategory,
     hasInitialCategory,
     hasUserInteracted,
+    patientAge,
+    watchedValues.etat_danger_signs,
+    watchedValues.dehydration_level,
+    watchedValues.fontanelle_status,
+    watchedValues.breastfeeding_ability,
+    watchedValues.capillary_refill_seconds,
+    watchedValues.muac_cm,
   ]);
 
   // Use backend calculate-category when vitals are provided
@@ -1691,6 +1775,9 @@ export function TriageAssessmentForm({
                   <p className="text-sm text-destructive">{errors.heart_rate.message}</p>
                 )}
                 {heartRateStatus && <VitalThresholdBadge status={heartRateStatus} />}
+                {showPediatricSection && !heartRateStatus && (
+                  <p className="text-xs text-muted-foreground mt-1">{getVitalRangeHint('heart_rate', patientAgeGroup)}</p>
+                )}
               </div>
 
               {/* Blood Pressure - with MAP calculation */}
@@ -1795,6 +1882,9 @@ export function TriageAssessmentForm({
                   <p className="text-sm text-destructive">{errors.temperature.message}</p>
                 )}
                 {temperatureStatus && <VitalThresholdBadge status={temperatureStatus} />}
+                {showPediatricSection && !temperatureStatus && (
+                  <p className="text-xs text-muted-foreground mt-1">{getVitalRangeHint('temperature', patientAgeGroup)}</p>
+                )}
               </div>
 
               {/* Respiratory Rate */}
@@ -1825,6 +1915,9 @@ export function TriageAssessmentForm({
                   <p className="text-sm text-destructive">{errors.respiratory_rate.message}</p>
                 )}
                 {respiratoryRateStatus && <VitalThresholdBadge status={respiratoryRateStatus} />}
+                {showPediatricSection && !respiratoryRateStatus && (
+                  <p className="text-xs text-muted-foreground mt-1">{getVitalRangeHint('respiratory_rate', patientAgeGroup)}</p>
+                )}
               </div>
 
               {/* Weight */}
@@ -2309,7 +2402,9 @@ export function TriageAssessmentForm({
           )}
 
           {/* Glasgow Coma Scale - conditional for trauma/neuro cases */}
-          {(chiefComplaintCategory === 'TRAUMA' ||
+          {/* Hidden for neonates/infants — AVPU is used instead (GCS unreliable for pre-verbal children) */}
+          {!showNeonatalFields &&
+           (chiefComplaintCategory === 'TRAUMA' ||
             chiefComplaintCategory === 'ALTERED_CONSCIOUSNESS' ||
             mentalStatus === 'P' ||
             mentalStatus === 'U') && (

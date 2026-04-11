@@ -81,14 +81,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const powersyncUrl = process.env.NEXT_PUBLIC_POWERSYNC_URL;
 
-    // If no PowerSync URL is configured, run in "offline-only" mode
-    // where we still have a local SQLite DB but no server sync.
+    // If no PowerSync URL is configured, run in pure API-only mode.
+    // Don't initialize any local database — leave db=null, isReady=false.
+    // useOfflineQuery checks isReady and falls through to React Query API.
+    // usePowerSyncQuery handles db=null by returning isLoading=true (harmless).
     if (!powersyncUrl) {
-      const database = getOrCreateDatabase();
-      database.init();
-      setDb(database);
-      setIsReady(true);
-      setStatus(prev => ({ ...prev, lastSyncTime: new Date() }));
       return;
     }
 

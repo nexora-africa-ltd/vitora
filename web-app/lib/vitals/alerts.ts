@@ -397,10 +397,16 @@ export function evaluateVitals(
 
 /**
  * Generate simple alerts for triage vitals page
- * Returns TriageAlert-compatible format
+ * Returns TriageAlert-compatible format.
+ *
+ * @param vitals - Vital sign values
+ * @param customThresholds - Optional age-adjusted thresholds (defaults to adult thresholds)
  */
-export function generateVitalAlerts(vitals: VitalValues): VitalAlert[] {
-  return evaluateVitals(vitals, DEFAULT_THRESHOLDS);
+export function generateVitalAlerts(
+  vitals: VitalValues,
+  customThresholds?: Record<VitalType, Pick<VitalThreshold, 'vital_type' | 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'>>,
+): VitalAlert[] {
+  return evaluateVitals(vitals, customThresholds ?? DEFAULT_THRESHOLDS);
 }
 
 // =============================================================================

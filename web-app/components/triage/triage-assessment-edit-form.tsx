@@ -50,7 +50,13 @@ import {
   MOBILITY_CONFIG,
   TRIAGE_CATEGORY_CONFIG,
   CHIEF_COMPLAINT_CONFIG,
+  ETAT_DANGER_SIGNS_CONFIG,
+  DEHYDRATION_CONFIG,
+  FONTANELLE_CONFIG,
+  BREASTFEEDING_CONFIG,
+  type EtATDangerSign,
 } from '@/lib/types/triage';
+import { Badge } from '@/components/ui/badge';
 
 // =============================================================================
 // TYPES
@@ -512,6 +518,77 @@ export function TriageAssessmentEditForm({
           </div>
         </CardContent>
       </Card>
+
+      {/* ETAT Pediatric Summary (read-only, shown if ETAT data was captured) */}
+      {((assessment.etat_danger_signs && assessment.etat_danger_signs.length > 0) ||
+        assessment.dehydration_level ||
+        assessment.fontanelle_status ||
+        assessment.breastfeeding_ability ||
+        assessment.capillary_refill_seconds != null ||
+        assessment.muac_cm != null) && (
+        <Card className="border-orange-200 dark:border-orange-800">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base text-orange-700 dark:text-orange-300">
+                Pediatric Assessment (ETAT)
+              </CardTitle>
+              {assessment.age_group && (
+                <Badge variant="outline" className="text-xs">{assessment.age_group}</Badge>
+              )}
+              <Lock className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
+            </div>
+            <CardDescription>Captured during initial triage. Not editable in re-triage.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {assessment.etat_danger_signs && assessment.etat_danger_signs.length > 0 && (
+              <div>
+                <span className="font-medium text-muted-foreground">Danger Signs: </span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {assessment.etat_danger_signs.map((sign) => (
+                    <Badge key={sign} variant="destructive" className="text-xs">
+                      {ETAT_DANGER_SIGNS_CONFIG[sign as EtATDangerSign]?.label || sign}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="grid gap-2 sm:grid-cols-3">
+              {assessment.dehydration_level && assessment.dehydration_level !== 'NONE' && (
+                <div>
+                  <span className="font-medium text-muted-foreground">Dehydration: </span>
+                  {DEHYDRATION_CONFIG[assessment.dehydration_level as keyof typeof DEHYDRATION_CONFIG]?.label || assessment.dehydration_level}
+                </div>
+              )}
+              {assessment.capillary_refill_seconds != null && (
+                <div>
+                  <span className="font-medium text-muted-foreground">Cap Refill: </span>
+                  {assessment.capillary_refill_seconds}s
+                </div>
+              )}
+              {assessment.muac_cm != null && (
+                <div>
+                  <span className="font-medium text-muted-foreground">MUAC: </span>
+                  {assessment.muac_cm} cm
+                  {assessment.muac_cm < 11.5 && <span className="text-red-600 ml-1">(SAM)</span>}
+                  {assessment.muac_cm >= 11.5 && assessment.muac_cm < 12.5 && <span className="text-orange-600 ml-1">(MAM)</span>}
+                </div>
+              )}
+              {assessment.fontanelle_status && (
+                <div>
+                  <span className="font-medium text-muted-foreground">Fontanelle: </span>
+                  {FONTANELLE_CONFIG[assessment.fontanelle_status as keyof typeof FONTANELLE_CONFIG]?.label || assessment.fontanelle_status}
+                </div>
+              )}
+              {assessment.breastfeeding_ability && (
+                <div>
+                  <span className="font-medium text-muted-foreground">Feeding: </span>
+                  {BREASTFEEDING_CONFIG[assessment.breastfeeding_ability as keyof typeof BREASTFEEDING_CONFIG]?.label || assessment.breastfeeding_ability}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Triage Category Section */}
       <Card>

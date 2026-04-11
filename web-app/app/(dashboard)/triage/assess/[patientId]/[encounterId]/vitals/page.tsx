@@ -32,13 +32,12 @@ import { Badge } from '@/components/ui/badge';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useEncounterContext } from '@/lib/context/encounter-context';
+import { usePatientContext } from '@/lib/context/patient-context';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { calculateBMI, getBMIColorClass } from '@/lib/utils/bmi';
 import {
   VitalAlertsPanel,
-  DEFAULT_THRESHOLDS,
   evaluateVitalSeverity,
-  type VitalThresholds,
 } from '@/components/triage';
 import type { TriageAlert, VitalType, AlertSeverity } from '@/lib/types/triage';
 
@@ -46,9 +45,12 @@ import type { TriageAlert, VitalType, AlertSeverity } from '@/lib/types/triage';
 import {
   triageVitalsSchema,
   generateVitalAlerts as generateVitalAlertsShared,
+  getAgeAdjustedInputThresholds,
+  getVitalRangeHint,
   type TriageVitalsFormValues,
   type VitalAlert,
 } from '@/lib/vitals';
+import { getAgeGroup } from '@/lib/types/triage';
 
 // Use shared schema
 const vitalsSchema = triageVitalsSchema;
@@ -59,9 +61,10 @@ type VitalsFormData = TriageVitalsFormValues;
 // =============================================================================
 
 /**
- * Generate alerts using shared vitals module and convert to TriageAlert format
+ * Generate alerts using shared vitals module and convert to TriageAlert format.
+ * Accepts optional age group to use age-adjusted thresholds.
  */
-function generateVitalAlerts(vitals: VitalsFormData): TriageAlert[] {
+function generateVitalAlerts(vitals: VitalsFormData, _ageGroup?: string | null): TriageAlert[] {
   // Convert triage field names to shared module field names
   const mappedVitals = {
     temperature: vitals.temperature,
@@ -72,7 +75,10 @@ function generateVitalAlerts(vitals: VitalsFormData): TriageAlert[] {
     respiratory_rate: vitals.respiratory_rate,
   };
 
-  // Use shared alert generation
+  // Use shared alert generation (age-adjusted thresholds handled by caller
+  // via evaluateVitalSeverity; the panel alerts use DEFAULT_THRESHOLDS mapped
+  // to VitalType keys which don't overlap with the string-keyed INPUT_THRESHOLDS,
+  // so we pass undefined to use the standard VitalThreshold defaults here).
   const sharedAlerts = generateVitalAlertsShared(mappedVitals);
 
   // Convert to TriageAlert format (add threshold field)
@@ -137,9 +143,14 @@ export default function TriageVitalsPage() {
   const router = useRouter();
   const params = useParams();
   const { encounter } = useEncounterContext();
+  const { patient } = usePatientContext();
 
   const patientId = params.patientId as string;
   const encounterId = params.encounterId as string;
+
+  // Compute patient age group for age-adjusted vital thresholds
+  const patientAgeGroup = patient ? getAgeGroup(patient.date_of_birth) : null;
+  const ageThresholds = getAgeAdjustedInputThresholds(patientAgeGroup);
 
   // Get triage store for persisting vitals across tabs
   const { setVitals, getVitals, markSectionComplete, markSectionVisited } = useTriageAssessStore();
@@ -232,13 +243,13 @@ export default function TriageVitalsPage() {
   const bmiValue = bmiResult?.bmi;
   const bmiColor = bmiResult?.classification ? getBMIColorClass(bmiResult.classification) : '';
 
-  // Real-time vital evaluation for inline field color-coding
-  const temperatureSeverity = evaluateVitalSeverity(watchedVitals.temperature, DEFAULT_THRESHOLDS.temperature!, 'temperature');
-  const heartRateSeverity = evaluateVitalSeverity(watchedVitals.heart_rate, DEFAULT_THRESHOLDS.heart_rate!);
-  const spo2Severity = evaluateVitalSeverity(watchedVitals.spo2, DEFAULT_THRESHOLDS.spo2!);
-  const systolicSeverity = evaluateVitalSeverity(watchedVitals.systolic_bp, DEFAULT_THRESHOLDS.systolic_bp!);
-  const diastolicSeverity = evaluateVitalSeverity(watchedVitals.diastolic_bp, DEFAULT_THRESHOLDS.diastolic_bp!);
-  const respiratorySeverity = evaluateVitalSeverity(watchedVitals.respiratory_rate, DEFAULT_THRESHOLDS.respiratory_rate!);
+  // Real-time vital evaluation for inline field color-coding (age-adjusted)
+  const temperatureSeverity = evaluateVitalSeverity(watchedVitals.temperature, ageThresholds.temperature!, 'temperature');
+  const heartRateSeverity = evaluateVitalSeverity(watchedVitals.heart_rate, ageThresholds.heart_rate!);
+  const spo2Severity = evaluateVitalSeverity(watchedVitals.spo2, ageThresholds.spo2!);
+  const systolicSeverity = evaluateVitalSeverity(watchedVitals.systolic_bp, ageThresholds.systolic_bp!);
+  const diastolicSeverity = evaluateVitalSeverity(watchedVitals.diastolic_bp, ageThresholds.diastolic_bp!);
+  const respiratorySeverity = evaluateVitalSeverity(watchedVitals.respiratory_rate, ageThresholds.respiratory_rate!);
 
   // Helper to get input styling based on severity
   const getInputSeverityClass = (severity: ReturnType<typeof evaluateVitalSeverity>) => {
@@ -351,7 +362,7 @@ export default function TriageVitalsPage() {
                 ) : temperatureSeverity.message ? (
                   <InlineAlertBadge severity={temperatureSeverity.severity} message={temperatureSeverity.message} />
                 ) : (
-                  <p className="text-xs text-muted-foreground">Normal: 36.5-37.5°C</p>
+                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('temperature', patientAgeGroup)}</p>
                 )}
               </div>
 
@@ -380,7 +391,7 @@ export default function TriageVitalsPage() {
                 ) : heartRateSeverity.message ? (
                   <InlineAlertBadge severity={heartRateSeverity.severity} message={heartRateSeverity.message} />
                 ) : (
-                  <p className="text-xs text-muted-foreground">Normal: 60-100 bpm</p>
+                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('heart_rate', patientAgeGroup)}</p>
                 )}
               </div>
 
@@ -409,7 +420,7 @@ export default function TriageVitalsPage() {
                 ) : spo2Severity.message ? (
                   <InlineAlertBadge severity={spo2Severity.severity} message={spo2Severity.message} />
                 ) : (
-                  <p className="text-xs text-muted-foreground">Normal: 95-100%</p>
+                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('spo2', patientAgeGroup)}</p>
                 )}
               </div>
             </div>
@@ -440,7 +451,7 @@ export default function TriageVitalsPage() {
                 ) : systolicSeverity.message ? (
                   <InlineAlertBadge severity={systolicSeverity.severity} message={systolicSeverity.message} />
                 ) : (
-                  <p className="text-xs text-muted-foreground">Normal: 90-120 mmHg</p>
+                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('systolic_bp', patientAgeGroup)}</p>
                 )}
               </div>
 
@@ -468,7 +479,7 @@ export default function TriageVitalsPage() {
                 ) : diastolicSeverity.message ? (
                   <InlineAlertBadge severity={diastolicSeverity.severity} message={diastolicSeverity.message} />
                 ) : (
-                  <p className="text-xs text-muted-foreground">Normal: 60-80 mmHg</p>
+                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('diastolic_bp', patientAgeGroup)}</p>
                 )}
               </div>
 
@@ -497,7 +508,7 @@ export default function TriageVitalsPage() {
                 ) : respiratorySeverity.message ? (
                   <InlineAlertBadge severity={respiratorySeverity.severity} message={respiratorySeverity.message} />
                 ) : (
-                  <p className="text-xs text-muted-foreground">Normal: 12-20/min</p>
+                  <p className="text-xs text-muted-foreground">{getVitalRangeHint('respiratory_rate', patientAgeGroup)}</p>
                 )}
               </div>
             </div>

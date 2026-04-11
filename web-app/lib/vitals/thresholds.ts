@@ -196,3 +196,83 @@ export const VITAL_RANGES = {
   height: { min: 20, max: 300, unit: 'cm' },
   pain_score: { min: 0, max: 10, unit: '' },
 } as const;
+
+// =============================================================================
+// AGE-SPECIFIC THRESHOLDS
+// =============================================================================
+
+/**
+ * Age group classification (mirrors types/triage.ts AgeGroup)
+ */
+type AgeGroupKey = 'neonate' | 'infant' | 'toddler' | 'preschool' | 'child' | 'adolescent' | 'adult';
+
+/**
+ * Pediatric vital sign thresholds by age group.
+ * Heart rate, respiratory rate, and temperature have clinically different
+ * normal ranges in children vs adults.
+ *
+ * Sources: WHO ETAT, Kenya Emergency Triage Assessment (KETA),
+ * Nelson Textbook of Pediatrics reference ranges.
+ */
+const PEDIATRIC_INPUT_THRESHOLDS: Record<string, Record<string, VitalInputThresholds>> = {
+  neonate: {
+    heart_rate:       { criticalLow: 80,  criticalHigh: 200, warningLow: 100, warningHigh: 160, unit: 'bpm',  normalRange: '100-160 bpm' },
+    respiratory_rate: { criticalLow: 20,  criticalHigh: 70,  warningLow: 30,  warningHigh: 60,  unit: '/min', normalRange: '30-60/min' },
+    temperature:      { criticalLow: 32,  criticalHigh: 40,  warningLow: 36.5,warningHigh: 37.5,unit: '°C',   normalRange: '36.5-37.5°C' },
+  },
+  infant: {
+    heart_rate:       { criticalLow: 80,  criticalHigh: 190, warningLow: 100, warningHigh: 150, unit: 'bpm',  normalRange: '100-150 bpm' },
+    respiratory_rate: { criticalLow: 15,  criticalHigh: 60,  warningLow: 25,  warningHigh: 50,  unit: '/min', normalRange: '25-50/min' },
+    temperature:      { criticalLow: 32,  criticalHigh: 40,  warningLow: 36,  warningHigh: 37.5,unit: '°C',   normalRange: '36.0-37.5°C' },
+  },
+  toddler: {
+    heart_rate:       { criticalLow: 60,  criticalHigh: 170, warningLow: 80,  warningHigh: 130, unit: 'bpm',  normalRange: '80-130 bpm' },
+    respiratory_rate: { criticalLow: 12,  criticalHigh: 40,  warningLow: 20,  warningHigh: 30,  unit: '/min', normalRange: '20-30/min' },
+    temperature:      { criticalLow: 32,  criticalHigh: 40,  warningLow: 36,  warningHigh: 37.5,unit: '°C',   normalRange: '36.0-37.5°C' },
+  },
+  preschool: {
+    heart_rate:       { criticalLow: 60,  criticalHigh: 160, warningLow: 80,  warningHigh: 120, unit: 'bpm',  normalRange: '80-120 bpm' },
+    respiratory_rate: { criticalLow: 12,  criticalHigh: 40,  warningLow: 20,  warningHigh: 30,  unit: '/min', normalRange: '20-30/min' },
+    temperature:      { criticalLow: 32,  criticalHigh: 40,  warningLow: 36,  warningHigh: 37.5,unit: '°C',   normalRange: '36.0-37.5°C' },
+  },
+  child: {
+    heart_rate:       { criticalLow: 50,  criticalHigh: 150, warningLow: 70,  warningHigh: 110, unit: 'bpm',  normalRange: '70-110 bpm' },
+    respiratory_rate: { criticalLow: 10,  criticalHigh: 35,  warningLow: 18,  warningHigh: 25,  unit: '/min', normalRange: '18-25/min' },
+    temperature:      { criticalLow: 32,  criticalHigh: 40,  warningLow: 36,  warningHigh: 37.5,unit: '°C',   normalRange: '36.0-37.5°C' },
+  },
+};
+
+/**
+ * Get age-adjusted INPUT_THRESHOLDS.
+ * Returns standard adult thresholds merged with pediatric overrides for
+ * heart_rate, respiratory_rate, and temperature.
+ * SpO2 and BP thresholds are the same across all age groups.
+ */
+export function getAgeAdjustedInputThresholds(ageGroup: string | null): Record<string, VitalInputThresholds> {
+  if (!ageGroup || ageGroup === 'adult' || ageGroup === 'adolescent') {
+    return INPUT_THRESHOLDS;
+  }
+  const overrides = PEDIATRIC_INPUT_THRESHOLDS[ageGroup];
+  if (!overrides) return INPUT_THRESHOLDS;
+  return { ...INPUT_THRESHOLDS, ...overrides };
+}
+
+/**
+ * Get age-specific normal range hint for a vital sign.
+ * Returns a string like "Normal (infant): 100-150 bpm" for pediatric patients,
+ * or the standard adult range string for adults/adolescents.
+ */
+export function getVitalRangeHint(
+  vitalKey: string,
+  ageGroup: string | null,
+): string {
+  const adultThreshold = INPUT_THRESHOLDS[vitalKey];
+  if (!ageGroup || ageGroup === 'adult' || ageGroup === 'adolescent') {
+    return adultThreshold ? `Normal: ${adultThreshold.normalRange}` : '';
+  }
+  const override = PEDIATRIC_INPUT_THRESHOLDS[ageGroup]?.[vitalKey];
+  if (override) {
+    return `Normal (${ageGroup}): ${override.normalRange}`;
+  }
+  return adultThreshold ? `Normal: ${adultThreshold.normalRange}` : '';
+}
