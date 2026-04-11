@@ -7,3 +7,6 @@ class SchedulingConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "hmis.apps.scheduling"
     verbose_name = "Scheduling"
+
+    def ready(self):
+        import hmis.apps.scheduling.signals  # noqa: F401

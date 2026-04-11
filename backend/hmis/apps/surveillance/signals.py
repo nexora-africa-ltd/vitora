@@ -9,7 +9,7 @@ import logging
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
+from hmis.apps.core.events import SurveillanceEvents, publish_event
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +45,20 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
             logger.info(
                 f"Auto-created notifiable case for {disease.name} "
                 f"from diagnosis {instance.id}"
+            )
+
+            # Publish domain event
+            publish_event(
+                event_type=SurveillanceEvents.NOTIFIABLE_DISEASE_DETECTED,
+                aggregate_type="NotifiableCase",
+                aggregate_id=case.id,
+                payload={
+                    "disease_name": disease.name,
+                    "diagnosis_id": instance.id,
+                    "icd10_code": instance.icd10_code.code if instance.icd10_code else None,
+                    "patient_id": getattr(instance.encounter, "patient_id", None),
+                },
+                facility_id=getattr(instance.encounter, "facility_id", None),
             )
         except Exception as e:
             logger.error(

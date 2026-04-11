@@ -12,6 +12,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.billing.models import Invoice, InvoiceItem
+from hmis.apps.core.events import ImagingEvents, publish_event
 
 from .models import ImagingOrderItem
 
@@ -88,6 +89,19 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
         logger.info(
             f"Created invoice item for imaging order item - "
             f"{procedure.name} on order {imaging_order.order_number}"
+        )
+
+        # Publish domain event
+        publish_event(
+            event_type=ImagingEvents.ORDER_ITEM_CREATED,
+            aggregate_type="ImagingOrderItem",
+            aggregate_id=instance.id,
+            payload={
+                "order_number": imaging_order.order_number,
+                "procedure_name": procedure.name,
+                "unit_price": str(unit_price),
+            },
+            facility_id=getattr(imaging_order, "facility_id", None),
         )
     except Exception as e:
         logger.error(f"Failed to create invoice item for imaging order item " f"{instance.id}: {e}")

@@ -67,6 +67,8 @@ class InpatientEvents:
     ADMISSION_CREATED = "inpatient.admission.created"
     DISCHARGE_COMPLETED = "inpatient.discharge.completed"
     WARD_CAPACITY_CHANGED = "inpatient.ward.capacity_changed"
+    WARD_CONSTRAINTS_UPDATED = "inpatient.ward.constraints_updated"
+    COMPATIBILITY_VIOLATION = "inpatient.admission.compatibility_violation"
 
 
 class MCHEvents:
@@ -101,3 +103,23 @@ class CoreEvents:
     USER_LOGIN_FAILED = "core.user.login_failed"
     PATIENT_CREATED = "core.patient.created"
     PATIENT_UPDATED = "core.patient.updated"
+
+
+class SchedulingEvents:
+    """Scheduling domain event types."""
+
+    APPOINTMENT_CREATED = "scheduling.appointment.created"
+    APPOINTMENT_CONFIRMED = "scheduling.appointment.confirmed"
+    APPOINTMENT_CHECKED_IN = "scheduling.appointment.checked_in"
+    APPOINTMENT_STARTED = "scheduling.appointment.started"
+    APPOINTMENT_COMPLETED = "scheduling.appointment.completed"
+    APPOINTMENT_CANCELLED = "scheduling.appointment.cancelled"
+    APPOINTMENT_NO_SHOW = "scheduling.appointment.no_show"
+
+
+class ImagingEvents:
+    """Imaging domain event types."""
+
+    ORDER_CREATED = "imaging.order.created"
+    ORDER_ITEM_CREATED = "imaging.order_item.created"
+    RESULT_COMPLETED = "imaging.result.completed"
