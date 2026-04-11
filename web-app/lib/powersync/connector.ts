@@ -69,34 +69,58 @@ const TABLE_TO_ENDPOINT: Record<string, string> = {
 export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
   /**
    * Returns credentials for the PowerSync service.
-   * Re-uses the JWT access token from Django auth (already in localStorage).
-   * The token now contains facility_id and organization_id claims
-   * that PowerSync uses to evaluate sync rules.
+   *
+   * Calls the dedicated /api/powersync/credentials/ endpoint which
+   * returns a purpose-built JWT with the required `kid` header, `sub`
+   * claim, and correct `aud` claim that PowerSync Cloud verifies.
+   *
+   * Falls back to the main access token if the endpoint fails (e.g.
+   * backend doesn't have the endpoint yet during a rolling deploy).
    */
   async fetchCredentials() {
-    const token = tokenStorage.getAccessToken();
+    const accessToken = tokenStorage.getAccessToken();
 
-    if (!token) {
+    if (!accessToken) {
       throw new Error('No access token available — user must log in first.');
     }
 
-    // Decode token expiry without a library (JWT is base64url)
-    let expiresAt: Date | undefined;
+    // Try the dedicated PowerSync credentials endpoint first
     try {
-      const parts = token.split('.');
-      const payload = JSON.parse(atob(parts[1] ?? ''));
-      if (payload.exp) {
-        expiresAt = new Date(payload.exp * 1000);
-      }
-    } catch {
-      // If decode fails, let PowerSync handle expiry via 401
-    }
+      const response = await apiClient.get<{
+        token: string;
+        powersync_url: string;
+        expires_at: number;
+      }>('/api/powersync/credentials/');
 
-    return {
-      endpoint: POWERSYNC_URL,
-      token,
-      expiresAt,
-    };
+      const { token, powersync_url, expires_at } = response.data;
+
+      return {
+        endpoint: powersync_url || POWERSYNC_URL,
+        token,
+        expiresAt: new Date(expires_at * 1000),
+      };
+    } catch (error) {
+      // Fallback: use the main access token directly (old behavior).
+      // This path runs if the backend doesn't have the endpoint yet.
+      console.warn('[PowerSync] Credentials endpoint failed, falling back to access token:', error);
+
+      let expiresAt: Date | undefined;
+      try {
+        const parts = accessToken.split('.');
+        const payload = JSON.parse(atob(parts[1] ?? ''));
+        if (payload.exp) {
+          expiresAt = new Date(payload.exp * 1000);
+        }
+      } catch {
+        // If decode fails, let PowerSync handle expiry via 401
+      }
+
+      return {
+        endpoint: POWERSYNC_URL,
+        token: accessToken,
+        expiresAt,
+      };
+    }
   }
 
   /**

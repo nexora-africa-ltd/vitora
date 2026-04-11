@@ -195,11 +195,24 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         const connected = newStatus.connected === true;
         const syncedAt = newStatus.lastSyncedAt ? new Date(newStatus.lastSyncedAt) : null;
 
+        // Surface download errors (JWT rejection, network failure, bad sync rules)
+        // These happen asynchronously after connect() resolves — they're the real
+        // reason PowerSync fails silently in staging.
+        const downloadError = newStatus.dataFlowStatus?.downloadError;
+        const uploadError = newStatus.dataFlowStatus?.uploadError;
+        const errorMsg = downloadError?.message || uploadError?.message || null;
+
+        if (downloadError) {
+          console.error('[PowerSync] Download/connection error:', downloadError);
+        }
+
         setStatus(prev => ({
           ...prev,
           isSyncing: newStatus.dataFlowStatus?.downloading === true ||
                      newStatus.dataFlowStatus?.uploading === true,
           lastSyncTime: syncedAt ?? prev.lastSyncTime,
+          // Only overwrite lastError if there's a new error, or clear it on successful connection
+          lastError: errorMsg ?? (connected ? null : prev.lastError),
         }));
 
         if (synced) setHasSynced(true);

@@ -16,6 +16,7 @@ from rest_framework import routers
 from rest_framework_simplejwt.views import TokenVerifyView
 
 from hmis.apps.core.mfa.views import MFAAwareTokenRefreshView
+from hmis.apps.core.powersync_tokens import PowerSyncCredentialsView
 from hmis.apps.core.views import (
     AuditedTokenObtainPairView,
     AuditLogViewSet,
@@ -310,6 +311,12 @@ urlpatterns = [
     path("api/token/", AuditedTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", MFAAwareTokenRefreshView.as_view(), name="token_refresh"),
     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    # PowerSync credentials endpoint (returns purpose-built JWT for PowerSync Cloud)
+    path(
+        "api/powersync/credentials/",
+        PowerSyncCredentialsView.as_view(),
+        name="powersync_credentials",
+    ),
     # OpenAPI schema & docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
