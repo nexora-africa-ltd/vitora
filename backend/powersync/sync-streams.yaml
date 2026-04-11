@@ -23,15 +23,26 @@ streams:
   # auto_subscribe: true → syncs automatically on connect (offline-first)
   # ───────────────────────────────────────────────────────────────────────────
 
-  global_locations:
-    # Kenya location hierarchy — 47 counties, ~289 sub-counties, ~1448 wards
-    # Small dataset, rarely changes. Sync once, query locally forever.
+  global_counties:
+    # Kenya counties — 47 rows. Small, rarely changes.
     auto_subscribe: true
     priority: 2
+    query: SELECT id, code, name FROM core_county
+
+  global_subcounties:
+    # Kenya sub-counties — ~289 rows. Small, rarely changes.
+    auto_subscribe: true
+    priority: 2
+    query: SELECT id, county_id, name FROM core_subcounty
+
+  global_wards:
+    # Kenya wards — ~1448 rows. Exceeds 1000-row limit if combined.
+    # Split into two batches by sub_county_id to stay under the limit.
+    auto_subscribe: true
+    priority: 3
     queries:
-      - SELECT id, code, name FROM core_county
-      - SELECT id, county_id, name FROM core_subcounty
-      - SELECT id, sub_county_id, name FROM core_ward
+      - SELECT id, sub_county_id, name FROM core_ward WHERE id <= 750
+      - SELECT id, sub_county_id, name FROM core_ward WHERE id > 750
 
   global_icd10_codes:
     # ICD-10 diagnosis codes — global reference data (~70k codes)
@@ -77,66 +88,70 @@ streams:
   # Organization-scoped data — synced to users in the same organization
   # ───────────────────────────────────────────────────────────────────────────
 
-  org_patients:
-    # Patients are organization-scoped (visible across all org facilities).
-    # EXCLUDES: national_id, phone_number, identification_number (encrypted/PII)
-    auto_subscribe: true
-    priority: 1
-    query: >
-      SELECT
-        id,
-        organization_id,
-        registered_at_facility_id,
-        mrn,
-        first_name,
-        middle_name,
-        last_name,
-        title,
-        date_of_birth,
-        gender,
-        cr_number,
-        sha_number,
-        email,
-        address,
-        citizenship,
-        identification_type,
-        is_person_with_disability,
-        is_sensitive,
-        consent_given,
-        consent_date,
-        consent_deferred,
-        registered_by_id,
-        referral_source,
-        referred_from_facility,
-        county_id,
-        sub_county_id,
-        ward_id,
-        is_deceased,
-        created_at,
-        updated_at
-      FROM patients_patient
-      WHERE organization_id = auth.parameter('organization_id')
+  # ───────────────────────────────────────────────────────────────────────────
+  # Organization-scoped: patients + emergency contacts
+  # Uses CTE so emergency contacts share bucket keys with patients,
+  # avoiding a separate bucket per patient.
+  # ───────────────────────────────────────────────────────────────────────────
 
-  org_emergency_contacts:
-    # Emergency contacts for patients in the organization
+  org_patient_data:
     auto_subscribe: true
     priority: 1
-    query: >
-      SELECT
-        ec.id,
-        ec.patient_id,
-        ec.full_name,
-        ec.relationship,
-        ec.phone_number,
-        ec.alternative_phone,
-        ec.created_at,
-        ec.updated_at
-      FROM patients_emergencycontact ec
-      INNER JOIN patients_patient p ON ec.patient_id = p.id
-      WHERE p.organization_id = auth.parameter('organization_id')
+    with:
+      org_pids: >
+        SELECT id FROM patients_patient
+        WHERE organization_id = auth.parameter('organization_id')
+    queries:
+      - >
+        SELECT
+          id,
+          organization_id,
+          registered_at_facility_id,
+          mrn,
+          first_name,
+          middle_name,
+          last_name,
+          title,
+          date_of_birth,
+          gender,
+          cr_number,
+          sha_number,
+          email,
+          address,
+          citizenship,
+          identification_type,
+          is_person_with_disability,
+          is_sensitive,
+          consent_given,
+          consent_date,
+          consent_deferred,
+          registered_by_id,
+          referral_source,
+          referred_from_facility,
+          county_id,
+          sub_county_id,
+          ward_id,
+          is_deceased,
+          created_at,
+          updated_at
+        FROM patients_patient
+        WHERE id IN org_pids
+      - >
+        SELECT
+          id,
+          patient_id,
+          full_name,
+          relationship,
+          phone_number,
+          alternative_phone,
+          created_at,
+          updated_at
+        FROM patients_emergencycontact
+        WHERE patient_id IN org_pids
 
   # ───────────────────────────────────────────────────────────────────────────
-  # Facility-scoped data — synced only to users at the same facility
+  # Facility-scoped: encounters + triage (direct facility_id filter)
+  # These have a direct facility_id column → 1 bucket each, no JOIN needed.
   # ───────────────────────────────────────────────────────────────────────────
 
   facility_encounters:
@@ -169,12 +184,7 @@ streams:
       FROM encounters_encounter
       WHERE facility_id = auth.parameter('facility_id')
 
-  # ───────────────────────────────────────────────────────────────────────────
-  # Phase 2: Clinical workflow tables
-  # ───────────────────────────────────────────────────────────────────────────
-
   facility_triage:
-    # Triage assessments — facility-scoped
     auto_subscribe: true
     priority: 1
     query: >
@@ -219,232 +229,241 @@ streams:
       FROM triage_triageassessment
       WHERE facility_id = auth.parameter('facility_id')
 
-  facility_diagnoses:
-    # Diagnoses — scoped via encounter's facility
-    auto_subscribe: true
-    priority: 1
-    query: >
-      SELECT
-        d.id,
-        d.encounter_id,
-        d.icd10_code_id,
-        d.icd11_code,
-        d.icd11_display,
-        d.snomed_code,
-        d.snomed_display,
-        d.diagnosis_type,
-        d.free_text_diagnosis,
-        d.notes,
-        d.is_confirmed,
-        d.certainty,
-        d.diagnosed_by_id,
-        d.diagnosed_at,
-        d.created_at,
-        d.updated_at
-      FROM encounters_diagnosis d
-      INNER JOIN encounters_encounter e ON d.encounter_id = e.id
-      WHERE e.facility_id = auth.parameter('facility_id')
-
-  facility_treatment_plans:
-    # Treatment plans — scoped via encounter's facility
-    auto_subscribe: true
-    priority: 1
-    query: >
-      SELECT
-        tp.id,
-        tp.encounter_id,
-        tp.template_id,
-        tp.medications_json,
-        tp.procedures_json,
-        tp.clinical_notes,
-        tp.follow_up_instructions,
-        tp.follow_up_date,
-        tp.diet_recommendations,
-        tp.activity_restrictions,
-        tp.referral_needed,
-        tp.referral_specialty,
-        tp.referral_notes,
-        tp.status,
-        tp.created_by_id,
-        tp.approved_by_id,
-        tp.created_at,
-        tp.updated_at
-      FROM encounters_treatmentplan tp
-      INNER JOIN encounters_encounter e ON tp.encounter_id = e.id
-      WHERE e.facility_id = auth.parameter('facility_id')
-
-  facility_medications:
-    # Medications — scoped via treatment_plan → encounter → facility
-    auto_subscribe: true
-    priority: 1
-    query: >
-      SELECT
-        m.id,
-        m.treatment_plan_id,
-        m.name,
-        m.dosage,
-        m.frequency,
-        m.duration,
-        m.route,
-        m.quantity,
-        m.instructions,
-        m.start_date,
-        m.end_date,
-        m.created_at,
-        m.updated_at
-      FROM encounters_medication m
-      INNER JOIN encounters_treatmentplan tp ON m.treatment_plan_id = tp.id
-      INNER JOIN encounters_encounter e ON tp.encounter_id = e.id
-      WHERE e.facility_id = auth.parameter('facility_id')
-
   # ───────────────────────────────────────────────────────────────────────────
-  # Phase 3: Pharmacy, Laboratory, Billing tables
+  # Facility clinical: diagnoses + treatment plans + medications
+  # Consolidated into ONE stream with a shared encounter CTE.
+  # Diagnoses and treatment plans share the same bucket keys (encounter IDs),
+  # saving ~E duplicate buckets vs separate streams.
   # ───────────────────────────────────────────────────────────────────────────
 
-  facility_prescriptions:
-    # Prescriptions — facility-scoped
+  facility_clinical:
     auto_subscribe: true
     priority: 1
-    query: >
-      SELECT
-        id,
-        prescription_number,
-        organization_id,
-        facility_id,
-        encounter_id,
-        admission_id,
-        patient_id,
-        prescribed_by_id,
-        prescribed_at,
-        valid_until,
-        status,
-        dispensing_type,
-        is_discharge_medication,
-        clinical_notes,
-        created_at,
-        updated_at
-      FROM pharmacy_prescription
-      WHERE facility_id = auth.parameter('facility_id')
+    with:
+      fac_enc_ids: >
+        SELECT id FROM encounters_encounter
+        WHERE facility_id = auth.parameter('facility_id')
+      fac_tp_ids: >
+        SELECT tp.id FROM encounters_treatmentplan tp
+        WHERE tp.encounter_id IN (
+          SELECT id FROM encounters_encounter
+          WHERE facility_id = auth.parameter('facility_id')
+        )
+    queries:
+      # Diagnoses — keyed by encounter (shares fac_enc_ids)
+      - >
+        SELECT
+          id,
+          encounter_id,
+          icd10_code_id,
+          icd11_code,
+          icd11_display,
+          snomed_code,
+          snomed_display,
+          diagnosis_type,
+          free_text_diagnosis,
+          notes,
+          is_confirmed,
+          certainty,
+          diagnosed_by_id,
+          diagnosed_at,
+          created_at,
+          updated_at
+        FROM encounters_diagnosis
+        WHERE encounter_id IN fac_enc_ids
+      # Treatment plans — keyed by encounter (shares fac_enc_ids)
+      - >
+        SELECT
+          id,
+          encounter_id,
+          template_id,
+          medications_json,
+          procedures_json,
+          clinical_notes,
+          follow_up_instructions,
+          follow_up_date,
+          diet_recommendations,
+          activity_restrictions,
+          referral_needed,
+          referral_specialty,
+          referral_notes,
+          status,
+          created_by_id,
+          approved_by_id,
+          created_at,
+          updated_at
+        FROM encounters_treatmentplan
+        WHERE encounter_id IN fac_enc_ids
+      # Medications — keyed by treatment plan (separate CTE)
+      - >
+        SELECT
+          id,
+          treatment_plan_id,
+          name,
+          dosage,
+          frequency,
+          duration,
+          route,
+          quantity,
+          instructions,
+          start_date,
+          end_date,
+          created_at,
+          updated_at
+        FROM encounters_medication
+        WHERE treatment_plan_id IN fac_tp_ids
 
-  facility_prescription_items:
-    # Prescription line items — scoped via prescription → facility
-    auto_subscribe: true
-    priority: 1
-    query: >
-      SELECT
-        pi.id,
-        pi.prescription_id,
-        pi.drug_id,
-        pi.quantity,
-        pi.dosage,
-        pi.frequency,
-        pi.duration,
-        pi.route,
-        pi.instructions,
-        pi.quantity_dispensed,
-        pi.is_substitutable,
-        pi.is_cancelled,
-        pi.cancellation_reason,
-        pi.created_at,
-        pi.updated_at
-      FROM pharmacy_prescriptionitem pi
-      INNER JOIN pharmacy_prescription p ON pi.prescription_id = p.id
-      WHERE p.facility_id = auth.parameter('facility_id')
+  # ───────────────────────────────────────────────────────────────────────────
+  # Facility pharmacy: prescriptions + line items
+  # Consolidated with shared CTE for prescription IDs.
+  # ───────────────────────────────────────────────────────────────────────────
 
-  facility_lab_orders:
-    # Lab orders — facility-scoped
+  facility_pharmacy:
     auto_subscribe: true
     priority: 1
-    query: >
-      SELECT
-        id,
-        order_number,
-        organization_id,
-        facility_id,
-        patient_id,
-        encounter_id,
-        admission_id,
-        ordered_by_id,
-        order_type,
-        priority,
-        clinical_notes,
-        status,
-        status_changed_at,
-        status_changed_by_id,
-        specimen_collected,
-        specimen_collected_at,
-        specimen_collected_by_id,
-        sample_type,
-        total_cost,
-        is_paid,
-        ordered_at,
-        completed_at,
-        created_at,
-        updated_at
-      FROM laboratory_laborder
-      WHERE facility_id = auth.parameter('facility_id')
+    with:
+      fac_rx_ids: >
+        SELECT id FROM pharmacy_prescription
+        WHERE facility_id = auth.parameter('facility_id')
+    queries:
+      - >
+        SELECT
+          id,
+          prescription_number,
+          organization_id,
+          facility_id,
+          encounter_id,
+          admission_id,
+          patient_id,
+          prescribed_by_id,
+          prescribed_at,
+          valid_until,
+          status,
+          dispensing_type,
+          is_discharge_medication,
+          clinical_notes,
+          created_at,
+          updated_at
+        FROM pharmacy_prescription
+        WHERE id IN fac_rx_ids
+      - >
+        SELECT
+          id,
+          prescription_id,
+          drug_id,
+          quantity,
+          dosage,
+          frequency,
+          duration,
+          route,
+          instructions,
+          quantity_dispensed,
+          is_substitutable,
+          is_cancelled,
+          cancellation_reason,
+          created_at,
+          updated_at
+        FROM pharmacy_prescriptionitem
+        WHERE prescription_id IN fac_rx_ids
 
-  facility_lab_order_items:
-    # Lab order line items — scoped via lab_order → facility
-    auto_subscribe: true
-    priority: 1
-    query: >
-      SELECT
-        li.id,
-        li.lab_order_id,
-        li.test_id,
-        li.status,
-        li.unit_cost,
-        li.special_instructions,
-        li.created_at,
-        li.updated_at
-      FROM laboratory_laborderitem li
-      INNER JOIN laboratory_laborder lo ON li.lab_order_id = lo.id
-      WHERE lo.facility_id = auth.parameter('facility_id')
+  # ───────────────────────────────────────────────────────────────────────────
+  # Facility laboratory: orders + items + results
+  # Consolidated with shared CTEs for order and item IDs.
+  # ───────────────────────────────────────────────────────────────────────────
 
-  facility_lab_results:
-    # Lab results — scoped via order_item → lab_order → facility
-    # EXCLUDES: FileField (external_result_attachment) — binary data not synced
+  facility_laboratory:
     auto_subscribe: true
     priority: 1
-    query: >
-      SELECT
-        lr.id,
-        lr.order_item_id,
-        lr.specimen_id,
-        lr.numeric_value,
-        lr.text_value,
-        lr.option_value,
-        lr.result_unit,
-        lr.reference_low,
-        lr.reference_high,
-        lr.reference_range_text,
-        lr.result_flag,
-        lr.interpretation,
-        lr.is_critical_result,
-        lr.method,
-        lr.equipment,
-        lr.verification_status,
-        lr.verified_by_id,
-        lr.verified_at,
-        lr.entered_by_id,
-        lr.entered_at,
-        lr.is_amended,
-        lr.amendment_reason,
-        lr.original_value,
-        lr.amended_by_id,
-        lr.amended_at,
-        lr.is_external_result,
-        lr.external_result_date,
-        lr.created_at,
-        lr.updated_at
-      FROM laboratory_labresult lr
-      INNER JOIN laboratory_laborderitem li ON lr.order_item_id = li.id
-      INNER JOIN laboratory_laborder lo ON li.lab_order_id = lo.id
-      WHERE lo.facility_id = auth.parameter('facility_id')
+    with:
+      fac_lo_ids: >
+        SELECT id FROM laboratory_laborder
+        WHERE facility_id = auth.parameter('facility_id')
+      fac_loi_ids: >
+        SELECT li.id FROM laboratory_laborderitem li
+        WHERE li.lab_order_id IN (
+          SELECT id FROM laboratory_laborder
+          WHERE facility_id = auth.parameter('facility_id')
+        )
+    queries:
+      - >
+        SELECT
+          id,
+          order_number,
+          organization_id,
+          facility_id,
+          patient_id,
+          encounter_id,
+          admission_id,
+          ordered_by_id,
+          order_type,
+          priority,
+          clinical_notes,
+          status,
+          status_changed_at,
+          status_changed_by_id,
+          specimen_collected,
+          specimen_collected_at,
+          specimen_collected_by_id,
+          sample_type,
+          total_cost,
+          is_paid,
+          ordered_at,
+          completed_at,
+          created_at,
+          updated_at
+        FROM laboratory_laborder
+        WHERE id IN fac_lo_ids
+      - >
+        SELECT
+          id,
+          lab_order_id,
+          test_id,
+          status,
+          unit_cost,
+          special_instructions,
+          created_at,
+          updated_at
+        FROM laboratory_laborderitem
+        WHERE lab_order_id IN fac_lo_ids
+      - >
+        SELECT
+          id,
+          order_item_id,
+          specimen_id,
+          numeric_value,
+          text_value,
+          option_value,
+          result_unit,
+          reference_low,
+          reference_high,
+          reference_range_text,
+          result_flag,
+          interpretation,
+          is_critical_result,
+          method,
+          equipment,
+          verification_status,
+          verified_by_id,
+          verified_at,
+          entered_by_id,
+          entered_at,
+          is_amended,
+          amendment_reason,
+          original_value,
+          amended_by_id,
+          amended_at,
+          is_external_result,
+          external_result_date,
+          created_at,
+          updated_at
+        FROM laboratory_labresult
+        WHERE order_item_id IN fac_loi_ids
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Facility billing: invoices (direct facility_id filter → 1 bucket)
+  # ───────────────────────────────────────────────────────────────────────────
 
   facility_invoices:
-    # Billing invoices — facility-scoped
     auto_subscribe: true
     priority: 1
     query: >
