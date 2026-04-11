@@ -3512,3 +3512,10 @@ from hmis.apps.core.mfa.models import (  # noqa: E402, F401
 
 # Import EventStore so Django discovers it for migrations
 from hmis.apps.core.events.store import EventStore  # noqa: E402, F401
+
+# Import projection models so Django discovers them for migrations
+from hmis.apps.core.projections.models import (  # noqa: E402, F401
+    ClinicQueueStats,
+    PharmacyQueueStats,
+    WardOccupancyStats,
+)
