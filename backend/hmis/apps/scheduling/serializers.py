@@ -766,3 +766,171 @@ class ManualOverrideResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     override = AssignmentOverrideSerializer(allow_null=True)
     error = serializers.CharField(allow_null=True, required=False)
+
+
+# =============================================================================
+# Phase 3: Shift / Duty Roster Serializers
+# =============================================================================
+
+
+class ShiftSerializer(serializers.ModelSerializer):
+    """Serializer for Shift model."""
+
+    staff_resource_name = serializers.CharField(source="staff_resource.name", read_only=True)
+    staff_resource_code = serializers.CharField(source="staff_resource.code", read_only=True)
+    shift_type_display = serializers.CharField(source="get_shift_type_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    duration_hours = serializers.FloatField(read_only=True)
+    created_by_name = serializers.SerializerMethodField()
+    cancelled_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        """Meta options for ShiftSerializer."""
+
+        from hmis.apps.scheduling.models import Shift
+
+        model = Shift
+        fields = [
+            "id",
+            "staff_resource",
+            "staff_resource_name",
+            "staff_resource_code",
+            "shift_date",
+            "start_time",
+            "end_time",
+            "shift_type",
+            "shift_type_display",
+            "status",
+            "status_display",
+            "department",
+            "notes",
+            "duration_hours",
+            "started_at",
+            "completed_at",
+            "created_by",
+            "created_by_name",
+            "cancelled_by",
+            "cancelled_by_name",
+            "cancellation_reason",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "staff_resource_name",
+            "staff_resource_code",
+            "shift_type_display",
+            "status_display",
+            "duration_hours",
+            "started_at",
+            "completed_at",
+            "created_by",
+            "created_by_name",
+            "cancelled_by",
+            "cancelled_by_name",
+            "cancellation_reason",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_created_by_name(self, obj) -> str | None:
+        """Get creator name."""
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}"
+        return None
+
+    def get_cancelled_by_name(self, obj) -> str | None:
+        """Get canceller name."""
+        if obj.cancelled_by:
+            return f"{obj.cancelled_by.first_name} {obj.cancelled_by.last_name}"
+        return None
+
+
+class ShiftCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating shifts."""
+
+    class Meta:
+        """Meta options for ShiftCreateSerializer."""
+
+        from hmis.apps.scheduling.models import Shift
+
+        model = Shift
+        fields = [
+            "staff_resource",
+            "shift_date",
+            "start_time",
+            "end_time",
+            "shift_type",
+            "department",
+            "notes",
+        ]
+
+    def validate(self, attrs):
+        """Validate shift data."""
+        start_time = attrs.get("start_time")
+        end_time = attrs.get("end_time")
+        if start_time and end_time and end_time <= start_time:
+            raise serializers.ValidationError(
+                {"end_time": "End time must be after start time"}
+            )
+
+        staff_resource = attrs.get("staff_resource")
+        if staff_resource and staff_resource.resource_type != "PERSON":
+            raise serializers.ValidationError(
+                {"staff_resource": "Only PERSON-type resources can be assigned shifts"}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        """Create shift with created_by set."""
+        validated_data["created_by"] = self.context["request"].user
+        return super().create(validated_data)
+
+
+class ShiftListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for shift listings."""
+
+    staff_resource_name = serializers.CharField(source="staff_resource.name", read_only=True)
+    shift_type_display = serializers.CharField(source="get_shift_type_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    duration_hours = serializers.FloatField(read_only=True)
+
+    class Meta:
+        """Meta options for ShiftListSerializer."""
+
+        from hmis.apps.scheduling.models import Shift
+
+        model = Shift
+        fields = [
+            "id",
+            "staff_resource",
+            "staff_resource_name",
+            "shift_date",
+            "start_time",
+            "end_time",
+            "shift_type",
+            "shift_type_display",
+            "status",
+            "status_display",
+            "department",
+            "duration_hours",
+        ]
+
+
+class ShiftCancelSerializer(serializers.Serializer):
+    """Serializer for cancelling a shift."""
+
+    reason = serializers.CharField(required=False, allow_blank=True)
+
+
+class StaffWorkloadSerializer(serializers.Serializer):
+    """Serializer for staff workload summary."""
+
+    resource_id = serializers.IntegerField()
+    resource_name = serializers.CharField()
+    resource_code = serializers.CharField()
+    shift_count = serializers.IntegerField()
+    total_hours = serializers.FloatField()
+    appointment_count = serializers.IntegerField()
+    active_shifts = serializers.IntegerField()
+    completed_shifts = serializers.IntegerField()

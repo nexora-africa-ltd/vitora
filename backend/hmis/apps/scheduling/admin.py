@@ -16,6 +16,7 @@ from hmis.apps.scheduling.models import (
     Resource,
     Schedule,
     ScheduleBreak,
+    Shift,
     TimeSlot,
 )
 
@@ -236,4 +237,49 @@ class AssignmentOverrideAdmin(admin.ModelAdmin):
             '<span style="color: {}; font-weight: bold;">{}</span>',
             color,
             obj.approval_status,
+        )
+
+
+# =============================================================================
+# Phase 3: Shift / Duty Roster Admin
+# =============================================================================
+
+
+@admin.register(Shift)
+class ShiftAdmin(admin.ModelAdmin):
+    """Admin for Shift model — staff shift / duty roster management."""
+
+    list_display = [
+        "staff_resource",
+        "shift_date",
+        "start_time",
+        "end_time",
+        "shift_type",
+        "status_badge",
+        "department",
+        "facility",
+    ]
+    list_filter = ["shift_type", "status", "department", "facility"]
+    search_fields = [
+        "staff_resource__name",
+        "staff_resource__code",
+        "department",
+    ]
+    date_hierarchy = "shift_date"
+    readonly_fields = ["started_at", "completed_at", "created_at", "updated_at"]
+    raw_id_fields = ["facility", "organization", "staff_resource"]
+
+    @admin.display(description="Status")
+    def status_badge(self, obj):
+        colors = {
+            "SCHEDULED": "#007bff",
+            "ACTIVE": "#28a745",
+            "COMPLETED": "#6c757d",
+            "CANCELLED": "#dc3545",
+        }
+        color = colors.get(obj.status, "#6c757d")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display(),
         )

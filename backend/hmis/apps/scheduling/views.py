@@ -31,6 +31,7 @@ from hmis.apps.scheduling.models import (
     AssignmentRule,
     Resource,
     Schedule,
+    Shift,
 )
 from hmis.apps.scheduling.serializers import (
     AppointmentCancelSerializer,
@@ -48,7 +49,12 @@ from hmis.apps.scheduling.serializers import (
     ScheduleBreakSerializer,
     ScheduleCreateSerializer,
     ScheduleSerializer,
+    ShiftCancelSerializer,
+    ShiftCreateSerializer,
+    ShiftListSerializer,
+    ShiftSerializer,
     SlotCheckQuerySerializer,
+    StaffWorkloadSerializer,
     WeeklyAvailabilityQuerySerializer,
 )
 from hmis.apps.scheduling.services import (
@@ -113,6 +119,30 @@ class AppointmentFilter(filters.FilterSet):
             "status",
             "appointment_type",
             "priority",
+            "from_date",
+            "to_date",
+        ]
+
+
+class ShiftFilter(filters.FilterSet):
+    """Filter for Shift model."""
+
+    staff_resource = filters.NumberFilter(field_name="staff_resource__id")
+    shift_type = filters.CharFilter(field_name="shift_type")
+    status = filters.CharFilter(field_name="status")
+    department = filters.CharFilter(field_name="department", lookup_expr="icontains")
+    from_date = filters.DateFilter(field_name="shift_date", lookup_expr="gte")
+    to_date = filters.DateFilter(field_name="shift_date", lookup_expr="lte")
+
+    class Meta:
+        """Meta options for ShiftFilter."""
+
+        model = Shift
+        fields = [
+            "staff_resource",
+            "shift_type",
+            "status",
+            "department",
             "from_date",
             "to_date",
         ]
@@ -806,3 +836,177 @@ class AssignmentViewSet(viewsets.ViewSet):
         }
 
         return Response(response_data)
+
+
+# =============================================================================
+# Phase 3: Shift / Duty Roster ViewSets
+# =============================================================================
+
+
+class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing staff shifts / duty roster.
+
+    Endpoints:
+        GET    /api/scheduling/shifts/              - List shifts (duty roster)
+        POST   /api/scheduling/shifts/              - Create shift
+        GET    /api/scheduling/shifts/{id}/         - Retrieve shift
+        PATCH  /api/scheduling/shifts/{id}/         - Update shift
+        DELETE /api/scheduling/shifts/{id}/         - Delete shift
+
+    Lifecycle actions:
+        POST   /api/scheduling/shifts/{id}/start/   - Start shift (clock in)
+        POST   /api/scheduling/shifts/{id}/complete/ - Complete shift (clock out)
+        POST   /api/scheduling/shifts/{id}/cancel/  - Cancel shift
+
+    Aggregation:
+        GET    /api/scheduling/shifts/staff-workload/ - Staff workload summary
+    """
+
+    queryset = Shift.objects.select_related(
+        "staff_resource", "created_by", "cancelled_by"
+    )
+    serializer_class = ShiftSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_class = ShiftFilter
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        """Get appropriate serializer class."""
+        if self.action == "create":
+            return ShiftCreateSerializer
+        if self.action == "list":
+            return ShiftListSerializer
+        return ShiftSerializer
+
+    def perform_create(self, serializer):
+        """Create shift with tenant scoping and audit."""
+        shift = serializer.save(**self.get_tenant_save_kwargs())
+        AuditLog.log(
+            action="shift_create",
+            user=self.request.user,
+            resource_type="Shift",
+            resource_id=shift.id,
+            details={"staff_resource": shift.staff_resource.name, "shift_date": str(shift.shift_date)},
+            ip_address=self._get_client_ip(),
+        )
+
+    def _get_client_ip(self) -> str:
+        """Get client IP address from request."""
+        xff = self.request.META.get("HTTP_X_FORWARDED_FOR")
+        if xff:
+            return xff.split(",")[0].strip()
+        return self.request.META.get("REMOTE_ADDR", "")
+
+    @action(detail=True, methods=["post"])
+    def start(self, request, pk=None):
+        """Start a shift (clock in)."""
+        shift = self.get_object()
+        try:
+            shift.start_shift()
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ShiftSerializer(shift)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def complete(self, request, pk=None):
+        """Complete a shift (clock out)."""
+        shift = self.get_object()
+        try:
+            shift.complete_shift()
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ShiftSerializer(shift)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Cancel a shift."""
+        shift = self.get_object()
+        cancel_serializer = ShiftCancelSerializer(data=request.data)
+        cancel_serializer.is_valid(raise_exception=True)
+        try:
+            shift.cancel(
+                user=request.user,
+                reason=cancel_serializer.validated_data.get("reason", ""),
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ShiftSerializer(shift)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="staff-workload")
+    def staff_workload(self, request):
+        """
+        Get staff workload summary for a date range.
+
+        Query params:
+            from_date: Start date (required)
+            to_date: End date (required)
+        """
+        from datetime import date as date_type
+        from django.db.models import Count, Q, Sum, F
+        from django.db.models.functions import Coalesce
+
+        from_date_str = request.query_params.get("from_date")
+        to_date_str = request.query_params.get("to_date")
+
+        if not from_date_str or not to_date_str:
+            return Response(
+                {"error": "from_date and to_date are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from_date = date_type.fromisoformat(from_date_str)
+            to_date = date_type.fromisoformat(to_date_str)
+        except ValueError:
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get all person resources for this facility
+        qs = self.get_queryset()
+        staff_resources = Resource.objects.filter(
+            resource_type="PERSON",
+            is_active=True,
+            facility=getattr(request, "facility", None) or request.user.staff_profile.facility
+            if hasattr(request.user, "staff_profile")
+            else None,
+        )
+
+        # For each staff resource, aggregate shifts and appointments
+        workload = []
+        for resource in staff_resources:
+            shifts = Shift.objects.filter(
+                staff_resource=resource,
+                shift_date__gte=from_date,
+                shift_date__lte=to_date,
+            ).exclude(status="CANCELLED")
+
+            appointments = Appointment.objects.filter(
+                resource=resource,
+                scheduled_start__date__gte=from_date,
+                scheduled_start__date__lte=to_date,
+            ).exclude(status__in=["CANCELLED", "NO_SHOW"])
+
+            shift_list = list(shifts)
+            total_hours = sum(s.duration_hours for s in shift_list)
+            active_count = sum(1 for s in shift_list if s.status == "ACTIVE")
+            completed_count = sum(1 for s in shift_list if s.status == "COMPLETED")
+
+            workload.append({
+                "resource_id": resource.id,
+                "resource_name": resource.name,
+                "resource_code": resource.code,
+                "shift_count": len(shift_list),
+                "total_hours": round(total_hours, 1),
+                "appointment_count": appointments.count(),
+                "active_shifts": active_count,
+                "completed_shifts": completed_count,
+            })
+
+        serializer = StaffWorkloadSerializer(workload, many=True)
+        return Response(serializer.data)
