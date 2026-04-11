@@ -47,6 +47,7 @@ import { usePatientContext } from '@/lib/context/patient-context';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { useCreateTriageAssessment, useCompleteTriageAssessment } from '@/lib/hooks/use-triage';
+import { triageApi } from '@/lib/api/triage';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { toast } from '@/lib/hooks/use-toast';
 import {
@@ -241,12 +242,11 @@ export default function TriageRoutePage() {
         };
 
         // Create the assessment (sets triage_start_time, status = IN_PROGRESS)
-        const assessment = await createAssessment(payload);
-
+        let assessment = await createAssessment(payload);
+        // Offline mutation returns null — fall back to direct API call
+        // because completeAssessment and routing need a server-generated ID.
         if (!assessment) {
-          toast({ title: 'Triage Saved', description: 'Assessment saved locally — will sync when online.' });
-          router.push('/triage');
-          return;
+          assessment = await triageApi.createAssessment(payload);
         }
 
         // Complete the assessment (sets triage_end_time, status = COMPLETED)
