@@ -25,14 +25,17 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 
 ## Environment Configuration
 
-| Env Var | Where | Dev | Staging | Production |
-|---------|-------|-----|---------|------------|
-| `NEXT_PUBLIC_POWERSYNC_URL` | Web-app `.env` | *(empty — disabled)* | `https://<id>.powersync.journeyapps.com` | `https://<id>.powersync.journeyapps.com` |
-| `POWERSYNC_URL` | Backend `.env` | *(empty)* | Same as above | Same as above |
-| `DJANGO_SECRET_KEY` | Backend `.env` | Dev key | Production key | Production key |
+| Env Var | Where | Dev | Staging / Production |
+|---------|-------|-----|----------------------|
+| `NEXT_PUBLIC_POWERSYNC_URL` | Web-app `.env` | *(empty — disabled)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
+| `POWERSYNC_URL` | Backend `.env` | *(empty)* | Same as above |
+| `DJANGO_SECRET_KEY` | Backend `.env` | Dev key | Production key |
+| `POWERSYNC_JWT_KID` | Backend `.env` | `vitora-dev` | `vitora-hmis` |
+| `POWERSYNC_JWT_AUDIENCE` | Backend `.env` | *(empty)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` (must equal the PowerSync instance URL) |
 
 - **Local dev**: Leave `NEXT_PUBLIC_POWERSYNC_URL` empty. App runs in API-only mode (React Query → Django). No PowerSync needed.
 - **Staging/Production**: PowerSync Cloud connects to Neon PostgreSQL via logical replication.
+- **`POWERSYNC_JWT_AUDIENCE`** must be the PowerSync instance URL (not a custom string like `"powersync"`). PowerSync Cloud validates this claim strictly.
 
 ---
 
@@ -51,12 +54,30 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 
 ### JWT Configuration
 
-| Setting | Value |
-|---------|-------|
-| **Algorithm** | HS256 |
-| **Secret** | `DJANGO_SECRET_KEY` value (SimpleJWT default signing key) |
-| **Audience** | `powersync` |
-| **Issuer** | `vitora-hmis` |
+PowerSync Cloud authenticates clients via JWT. Vitora generates these tokens at a **dedicated credentials endpoint** (`GET /api/powersync/credentials/`) using PyJWT directly, because Django SimpleJWT does not support custom JWT headers like `kid`.
+
+| Setting | Value | Notes |
+|---------|-------|-------|
+| **Algorithm** | HS256 | |
+| **Shared Secret** | `DJANGO_SECRET_KEY` — **base64url-encoded** in the PowerSync dashboard | See "Dashboard Setup" below |
+| **`kid` (Key ID)** | `POWERSYNC_JWT_KID` env var (default `vitora-hmis`) | **Required** — PowerSync uses `kid` to look up the signing key |
+| **`sub` (Subject)** | `str(user.id)` | Required by PowerSync |
+| **`aud` (Audience)** | PowerSync instance URL: `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` | Must match the instance URL exactly, NOT a custom string |
+| **`iss` (Issuer)** | `vitora-hmis` | |
+| **Custom claims** | `facility_id`, `organization_id` | Used by sync-streams `auth.parameter()` for tenant scoping |
+
+### PowerSync Cloud Dashboard — Shared Secret Setup
+
+The dashboard expects the shared secret to be **base64url-encoded**. If you paste the raw `DJANGO_SECRET_KEY`, signature verification will fail.
+
+```bash
+# Generate the base64url-encoded secret for the dashboard:
+python3 -c "import base64; print(base64.urlsafe_b64encode(b'YOUR_DJANGO_SECRET_KEY_HERE').decode())"
+```
+
+Paste the output into **PowerSync Dashboard → Settings → Client Auth → HS256 → Shared Secret**.
+
+> ⚠️ **Pitfall**: If you get `[PSYNC_S2101] signature verification failed`, the secret in the dashboard is likely the raw key instead of base64url-encoded.
 
 ---
 
@@ -66,9 +87,10 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 
 | File | Purpose |
 |------|---------|
-| `backend/hmis/apps/core/powersync_tokens.py` | Custom JWT serializer — adds `facility_id`, `organization_id`, `iss`, `aud` claims |
+| `backend/hmis/apps/core/powersync_tokens.py` | `PowerSyncCredentialsView` (dedicated JWT endpoint with `kid` header via PyJWT) + `PowerSyncTokenObtainPairSerializer` (login token customization) |
+| `backend/hmis/urls.py` | Routes `api/powersync/credentials/` to `PowerSyncCredentialsView` |
 | `backend/hmis/settings/base.py` | Registers `TOKEN_OBTAIN_SERIALIZER` in SIMPLE_JWT config |
-| `backend/hmis/settings/{staging,production,development}.py` | `POWERSYNC_URL` env var |
+| `backend/hmis/settings/{staging,production,development}.py` | `POWERSYNC_URL`, `POWERSYNC_JWT_KID`, `POWERSYNC_JWT_AUDIENCE` env vars |
 | `backend/powersync/powersync.yaml` | PowerSync service config (self-hosted reference) |
 | `backend/powersync/sync-streams.yaml` | Sync Streams config (edition 3) — deploy to PowerSync Cloud dashboard |
 | `backend/scripts/setup_powersync_replication.sql` | PostgreSQL publication + replication user DDL |
@@ -79,15 +101,15 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 | File | Purpose |
 |------|--------|
 | `web-app/lib/powersync/schema.ts` | Client-side SQLite schema (mirrors sync streams) |
-| `web-app/lib/powersync/connector.ts` | `fetchCredentials()` + `uploadData()` + `SyncUploadEvent` bus |
+| `web-app/lib/powersync/connector.ts` | `fetchCredentials()` (calls `/api/powersync/credentials/`) + `uploadData()` + `SyncUploadEvent` bus |
 | `web-app/lib/powersync/hooks.ts` | `usePowerSyncQuery()`, `usePowerSyncQueryFirst()`, `usePowerSyncDatabase()` |
-| `web-app/lib/powersync/use-offline-query.ts` | Dual-mode read hook — PowerSync SQL with React Query API fallback |
+| `web-app/lib/powersync/use-offline-query.ts` | Dual-mode read hook — PowerSync SQL with React Query API fallback. Uses `hasSynced` gate to prevent reads from empty local SQLite |
 | `web-app/lib/powersync/use-offline-mutation.ts` | Dual-mode write hook — local SQLite INSERT/UPDATE/DELETE with API fallback |
 | `web-app/lib/powersync/sql-builders.ts` | Parameterized SQL builders (`buildListQuery`, `buildInsertQuery`, etc.) |
 | `web-app/lib/powersync/transforms.ts` | Row → TypeScript type mappers (12 transform functions) |
 | `web-app/lib/powersync/uuid.ts` | Client-side UUID generation (`generateId()`) |
 | `web-app/lib/powersync/index.ts` | Barrel export |
-| `web-app/lib/context/sync-context.tsx` | `SyncProvider` — `isReady`, `pendingChanges`, `lastError`, CRUD queue polling |
+| `web-app/lib/context/sync-context.tsx` | `SyncProvider` — `isReady`, `hasSynced`, `pendingChanges`, `lastError`, `powerSyncHealth`, CRUD queue polling |
 | `web-app/next.config.js` | COOP/COEP headers + WASM webpack config |
 
 ### Web-app — Sync UI Components
@@ -200,15 +222,17 @@ These remain API-only. The `usePatient` hook implements a **hybrid PII pattern**
 
 ### Dual-Mode Hook Architecture
 
-All data hooks use `useOfflineQuery` (reads) and `useOfflineMutation` (writes) — generic wrappers that internally call both `usePowerSyncQuery` and React Query's `useQuery`/`useMutation`, toggling which is active via `enabled` flags based on `SyncProvider.isReady`.
+All data hooks use `useOfflineQuery` (reads) and `useOfflineMutation` (writes) — generic wrappers that internally call both `usePowerSyncQuery` and React Query's `useQuery`/`useMutation`, toggling which is active via `enabled` flags based on `SyncProvider.isReady` **and** `hasSynced`.
 
 ```
 useOfflineQuery({ sql, params, transform, queryKey, queryFn })
-  ├─ When PowerSync ready → usePowerSyncQuery(sql, params) → transform(rows) → data
-  └─ When API-only mode  → useQuery({ queryKey, queryFn }) → data
+  ├─ When PowerSync ready AND hasSynced → usePowerSyncQuery(sql, params) → transform(rows) → data
+  └─ When API-only mode OR not yet synced → useQuery({ queryKey, queryFn }) → data
 ```
 
 Both paths are always called (React rules of hooks). The `enabled` flag prevents execution on the inactive path.
+
+> **`hasSynced` gate**: The local SQLite is empty until PowerSync completes its first sync. Without the `hasSynced` check, queries would read from the empty database and return no results — making the app appear broken even though the API has data. The `hasSynced` flag is set to `true` once the `statusChanged` listener reports a completed download. Until then, the hook falls back to the API path.
 
 ### Read Flow (Offline-capable)
 
@@ -237,6 +261,14 @@ Component → useOfflineQuery() → isReady=false → useQuery() → Django REST
 ```
 
 This is the default in local development.
+
+### Graceful Degradation (PowerSync configured but failing)
+
+```
+Component → useOfflineQuery() → isReady=true, hasSynced=false → useQuery() → Django REST API
+```
+
+If `NEXT_PUBLIC_POWERSYNC_URL` is set but the connection fails (e.g., JWT errors, network issues), `hasSynced` stays `false` and the app falls back to API mode. The `powerSyncHealth` object in SyncProvider exposes `connected`, `lastSyncTime`, `downloadError`, and `uploadError` for diagnostic UI.
 
 ### Sync Status UI
 
@@ -280,9 +312,13 @@ This is the default in local development.
 | "Publication not found" | Name mismatch | Ensure publication name matches PowerSync Cloud config (`powersync`) |
 | No data syncing | Pooler host used | Remove `-pooler` from Neon hostname — logical replication needs direct connection |
 | `SharedArrayBuffer` undefined | Missing COOP/COEP headers | Check `next.config.js` headers for `Cross-Origin-Opener-Policy: same-origin` |
-| JWT verification fails | Wrong secret | PowerSync Cloud JWT secret must match `DJANGO_SECRET_KEY` exactly |
-| Empty local SQLite | Missing `NEXT_PUBLIC_POWERSYNC_URL` | Set the env var (empty = API-only mode) |
-| Data from wrong facility | JWT claims missing | Check that `powersync_tokens.py` is registered in SIMPLE_JWT settings |
+| `[PSYNC_S2101] Could not find an appropriate key in the keystore. The key is missing or no key matched the token KID` | JWT missing `kid` header | Use the dedicated `/api/powersync/credentials/` endpoint (PyJWT with `kid` header), not raw SimpleJWT access tokens |
+| `[PSYNC_S2101] signature verification failed` | Dashboard has raw secret instead of base64url-encoded | Run `python3 -c "import base64; print(base64.urlsafe_b64encode(b'YOUR_KEY').decode())"` and paste the result in the dashboard |
+| `[PSYNC_S2105] Unexpected "aud" claim value` | `aud` claim doesn't match instance URL | Set `POWERSYNC_JWT_AUDIENCE` to the full PowerSync instance URL (e.g., `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com`), not a custom string like `"powersync"` |
+| Empty local SQLite, app shows no data | PowerSync connected but first sync not complete; `hasSynced=false` gate missing | Ensure `useOfflineQuery` checks `hasSynced` before using the local path. If `hasSynced` is false, the hook falls back to the API |
+| JWT verification fails (generic) | Wrong secret | PowerSync Cloud JWT secret must be the **base64url-encoded** `DJANGO_SECRET_KEY` |
+| Empty local SQLite (no PowerSync) | Missing `NEXT_PUBLIC_POWERSYNC_URL` | Set the env var (empty = API-only mode) |
+| Data from wrong facility | JWT claims missing | Check that `PowerSyncCredentialsView` includes `facility_id` and `organization_id` in token parameters |
 | 3rd-party embed broken | COEP too strict | We use `credentialless` (not `require-corp`) to mitigate this |
 
 ---

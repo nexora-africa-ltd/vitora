@@ -387,6 +387,8 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 |---------|-------|-----|--------------------|
 | `NEXT_PUBLIC_POWERSYNC_URL` | Vercel | *(empty)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
 | `POWERSYNC_URL` | Azure Container App | *(empty)* | Same as above |
+| `POWERSYNC_JWT_KID` | Azure Container App | `vitora-dev` | `vitora-hmis` |
+| `POWERSYNC_JWT_AUDIENCE` | Azure Container App | *(empty)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
 
 ### PowerSync Cloud Configuration
 
@@ -395,7 +397,12 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 | **Region** | EU Central (matches Neon `eu-central-1`) |
 | **DB Host** | `ep-patient-cake-almonm9l.c-3.eu-central-1.aws.neon.tech` (**no** `-pooler`) |
 | **Publication** | `powersync` |
-| **JWT** | HS256, secret=`DJANGO_SECRET_KEY`, aud=`powersync`, iss=`vitora-hmis` |
+| **JWT** | HS256, `kid`=`POWERSYNC_JWT_KID`, `aud`=PowerSync instance URL, `iss`=`vitora-hmis`, `sub`=user ID |
+
+> ⚠️ **JWT Pitfalls** (resolved in production):
+> - **`kid` header is required**: PowerSync Cloud uses `kid` to look up the signing key. Django SimpleJWT does not support custom headers, so we use a **dedicated endpoint** (`GET /api/powersync/credentials/`) that generates JWTs with PyJWT directly.
+> - **Dashboard secret must be base64url-encoded**: Paste the output of `python3 -c "import base64; print(base64.urlsafe_b64encode(b'YOUR_SECRET_KEY').decode())"` into the dashboard, not the raw key.
+> - **`aud` must be the instance URL**: Set `POWERSYNC_JWT_AUDIENCE` to `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com`, not a custom string like `"powersync"`.
 
 ### Synced Tables (18 tables across 3 phases)
 
@@ -410,11 +417,12 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 | File | Purpose |
 |------|--------|
 | `backend/powersync/sync-streams.yaml` | **Sync Streams config** — paste into PowerSync Cloud dashboard to deploy |
-| `backend/hmis/apps/core/powersync_tokens.py` | Custom JWT serializer — adds `facility_id`, `organization_id`, `iss`, `aud` claims |
+| `backend/hmis/apps/core/powersync_tokens.py` | `PowerSyncCredentialsView` (dedicated JWT endpoint with `kid` header) + `PowerSyncTokenObtainPairSerializer` |
+| `backend/hmis/urls.py` | Routes `api/powersync/credentials/` to `PowerSyncCredentialsView` |
 | `web-app/lib/powersync/schema.ts` | Client-side SQLite schema (must mirror sync-streams.yaml) |
-| `web-app/lib/powersync/connector.ts` | `fetchCredentials()` + `uploadData()` — bridges PowerSync ↔ Django API |
+| `web-app/lib/powersync/connector.ts` | `fetchCredentials()` (calls `/api/powersync/credentials/`) + `uploadData()` — bridges PowerSync ↔ Django API |
 | `web-app/lib/powersync/hooks.ts` | `usePowerSyncQuery()`, `usePowerSyncQueryFirst()`, `usePowerSyncDatabase()` |
-| `web-app/lib/context/sync-context.tsx` | `SyncProvider` — initializes PowerSync SDK, falls back to API-only mode |
+| `web-app/lib/context/sync-context.tsx` | `SyncProvider` — initializes PowerSync SDK, exposes `hasSynced` + `powerSyncHealth`, falls back to API-only mode |
 | `backend/scripts/setup_powersync_replication.sql` | One-time Neon publication setup (reference — already run) |
 | `backend/tests/test_powersync_tokens.py` | JWT claims tests |
 
