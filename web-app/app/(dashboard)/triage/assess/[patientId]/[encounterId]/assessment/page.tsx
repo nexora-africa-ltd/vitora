@@ -49,6 +49,7 @@ import {
   PainScoreSlider,
   AVPUCardGroup,
   GCSScorePanel,
+  AIRiskAssessmentPanel,
 } from '@/components/triage';
 import type { GCSScores } from '@/components/triage/gcs-score-panel';
 import { useEncounterContext } from '@/lib/context/encounter-context';
@@ -891,6 +892,25 @@ export default function TriageAssessmentPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* AI Risk Assessment */}
+        <AIRiskAssessmentPanel
+          patientAge={patientAge ?? 30}
+          patientGender={patient?.gender || 'O'}
+          chiefComplaint={watch('chief_complaint')}
+          chiefComplaintCategory={watch('chief_complaint_category')}
+          vitals={{
+            spo2: currentVitals?.spo2,
+            heart_rate: currentVitals?.heart_rate,
+            systolic_bp: currentVitals?.systolic_bp,
+            diastolic_bp: currentVitals?.diastolic_bp,
+            temperature: currentVitals?.temperature,
+            respiratory_rate: currentVitals?.respiratory_rate,
+          }}
+          painScore={watch('pain_score')}
+          mentalStatus={watch('mental_status')}
+          mobility={watch('mobility')}
+        />
 
         {/* Triage Category */}
         <Card className={!canCalculate ? 'relative' : ''}>
