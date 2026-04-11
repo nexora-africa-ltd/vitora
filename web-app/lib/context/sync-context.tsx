@@ -118,24 +118,45 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     let disposed = false;
 
     async function connect() {
+      // Step 1: Initialize the WASM/SQLite database.
+      // If this fails (SharedArrayBuffer unavailable, WASM load error),
+      // leave db=null so the app stays in pure API-only mode.
       try {
-        // Only connect if user has an access token
-        const token = tokenStorage.getAccessToken();
-        if (!token) {
-          // Wait for auth — the provider will re-mount or the user will log in
-          database.init();
-          setDb(database);
-          setIsReady(true);
-          return;
-        }
-
         await database.init();
+      } catch (initError) {
+        console.error('[PowerSync] Database init failed — falling back to API-only mode:', initError);
+        if (!disposed) {
+          setPsHealth(prev => ({ ...prev, connected: false }));
+          setStatus(prev => ({
+            ...prev,
+            lastError: initError instanceof Error ? initError.message : 'DB init failed',
+          }));
+        }
+        return; // db stays null, isReady stays false → pure API mode
+      }
+
+      // Init succeeded — expose the db so local queries are possible,
+      // and mark ready so useOfflineQuery can proceed (it also checks hasSynced).
+      if (!disposed) {
+        setDb(database);
+        setIsReady(true);
+      }
+
+      // Step 2: Connect to PowerSync Cloud for streaming sync.
+      // If this fails (bad JWT, cloud unreachable), the db is still usable
+      // but hasSynced stays false → useOfflineQuery falls back to API.
+      const token = tokenStorage.getAccessToken();
+      if (!token) {
+        // No auth token yet — db is ready for local use.
+        // PowerSync will connect once the user logs in.
+        return;
+      }
+
+      try {
         await database.connect(connector);
         connectedRef.current = true;
 
         if (!disposed) {
-          setDb(database);
-          setIsReady(true);
           setStatus(prev => ({
             ...prev,
             isSyncing: false,
@@ -146,8 +167,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('[PowerSync] Connection error:', error);
         if (!disposed) {
-          setDb(database);
-          setIsReady(true);
+          setPsHealth(prev => ({ ...prev, connected: false }));
           setStatus(prev => ({
             ...prev,
             isSyncing: false,
