@@ -47,7 +47,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const { user } = useAuth();
   const logout = useLogout();
   const { isOnline } = useNetworkStatus();
-  const { lastSyncTime, isSyncing, pendingChanges, lastError, triggerSync } = useSyncStatus();
+  const { lastSyncTime, isSyncing, pendingChanges, lastError, triggerSync, powerSyncHealth } = useSyncStatus();
   const { lastFetchTime, isRefreshing, refresh } = usePageRefresh();
   const [isClearingCache, setIsClearingCache] = useState(false);
   const { navigationMode, setNavigationMode, isClinicalNavigationEligible } = useNavigationMode();
@@ -175,6 +175,39 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     {lastError && (
                       <div className="mt-1 text-destructive">
                         Error: {lastError}
+                      </div>
+                    )}
+                  </div>
+                  {/* PowerSync health */}
+                  <div className="pt-1.5 border-t border-border text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Offline sync:</span>
+                      <span className={cn(
+                        'font-medium',
+                        !powerSyncHealth.configured
+                          ? 'text-muted-foreground'
+                          : powerSyncHealth.connected
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400'
+                      )}>
+                        {!powerSyncHealth.configured
+                          ? 'Not configured'
+                          : powerSyncHealth.connected
+                            ? 'Connected'
+                            : 'Disconnected'}
+                      </span>
+                    </div>
+                    {powerSyncHealth.configured && (
+                      <div className="flex justify-between mt-1">
+                        <span className="text-muted-foreground">Data synced:</span>
+                        <span className={cn(
+                          'font-medium',
+                          powerSyncHealth.hasSynced
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-yellow-600 dark:text-yellow-400'
+                        )}>
+                          {powerSyncHealth.hasSynced ? 'Yes' : 'No — using API'}
+                        </span>
                       </div>
                     )}
                   </div>

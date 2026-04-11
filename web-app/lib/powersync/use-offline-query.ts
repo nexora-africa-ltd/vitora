@@ -77,9 +77,12 @@ export function useOfflineQuery<
     enabled = true,
   } = options;
 
-  const { isReady } = useSyncStatus();
+  const { isReady, hasSynced } = useSyncStatus();
   const isEnabled = enabled !== false;
-  const useLocal = isReady && !forceApi && isEnabled;
+  // Only read from local SQLite when PowerSync has actually synced data.
+  // If PowerSync is initialized but hasn't synced (auth failure, network issue),
+  // fall back to API so the app remains functional.
+  const useLocal = isReady && hasSynced && !forceApi && isEnabled;
 
   // --- Path 1: PowerSync local query (always called, toggled by `useLocal`) ---
   const localResult = usePowerSyncQuery<TRow>(
