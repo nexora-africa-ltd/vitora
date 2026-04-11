@@ -30,6 +30,8 @@ import { parseBPAndCalculateMAP } from '@/lib/vitals';
 import { toast } from '@/lib/hooks/use-toast';
 import { useIdempotencyKey } from '@/lib/utils';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
+import { encountersApi } from '@/lib/api/encounters';
+import { triageApi } from '@/lib/api/triage';
 import type { TriageAssessmentCreateData } from '@/lib/types/triage';
 import type { Patient } from '@/lib/types/patient';
 import type { AIQuickAction } from '@/lib/types/ai';
@@ -98,15 +100,17 @@ export default function NewTriagePage() {
     // Create a new encounter for this patient
     setIsCreatingEncounter(true);
     try {
-      const newEncounter = await createEncounter({
+      const encounterPayload = {
         patient: patientToSelect.id,
-        encounter_type: 'OPD',
+        encounter_type: 'OPD' as const,
         encounter_date: new Date().toISOString().split('T')[0],
         chief_complaint: 'Pending triage',
-      });
+      };
+      let newEncounter = await createEncounter(encounterPayload);
+      // Offline mutation returns null — fall back to direct API call
+      // because the triage flow needs a server-generated encounter ID.
       if (!newEncounter) {
-        toast({ title: 'Created', description: 'Encounter created locally — will sync when online.' });
-        return;
+        newEncounter = await encountersApi.create(encounterPayload);
       }
       setSelectedEncounterId(newEncounter.id);
 
@@ -157,15 +161,14 @@ export default function NewTriagePage() {
 
       try {
         // Create the assessment (sets triage_start_time, status = IN_PROGRESS)
-        const assessment = await createAssessment({
+        const assessmentPayload = {
           ...data,
           encounter: selectedEncounterId,
-        });
-
+        };
+        let assessment = await createAssessment(assessmentPayload);
+        // Offline mutation returns null — fall back to direct API call
         if (!assessment) {
-          toast({ title: 'Triage Saved', description: 'Assessment saved locally — will sync when online.' });
-          router.push('/triage');
-          return;
+          assessment = await triageApi.createAssessment(assessmentPayload);
         }
 
         // Complete the assessment (sets triage_end_time, status = COMPLETED)
