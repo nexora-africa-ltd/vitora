@@ -6,6 +6,8 @@ This module contains Django signals for billing integration:
 - Auto-finalize invoice and create SHA claim on discharge
 - Auto-bill admission fee on inpatient admission
 - Update invoice totals when items are added/modified
+- Broadcast real-time WebSocket events for billing updates
+- Publish domain events for cross-cutting observability
 """
 
 import logging
@@ -16,7 +18,8 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from hmis.apps.billing.models import Invoice
+from hmis.apps.billing.models import Invoice, Payment
+from hmis.apps.core.events import BillingEvents, publish_event
 from hmis.apps.encounters.models import Encounter
 
 logger = logging.getLogger(__name__)
@@ -83,6 +86,20 @@ def create_invoice_for_encounter(sender, instance, created, **kwargs):
             organization=getattr(instance, "organization", None),
         )
 
+    # Publish domain event for encounter-triggered invoice creation
+    publish_event(
+        event_type=BillingEvents.INVOICE_CREATED,
+        aggregate_type="Invoice",
+        aggregate_id=instance.id,
+        payload={
+            "encounter_id": instance.id,
+            "patient_id": instance.patient_id,
+            "trigger": "encounter_created",
+        },
+        facility_id=getattr(instance, "facility_id", None),
+        organization_id=getattr(instance, "organization_id", None),
+    )
+
 
 def handle_discharge_billing(sender, instance, created, **kwargs):
     """Auto-finalize invoice and create SHA claim on patient discharge."""
@@ -93,6 +110,14 @@ def handle_discharge_billing(sender, instance, created, **kwargs):
         from hmis.apps.billing.agent import BillingAgentService
 
         BillingAgentService.handle_discharge(instance)
+
+        publish_event(
+            event_type=BillingEvents.DISCHARGE_BILLING,
+            aggregate_type="Discharge",
+            aggregate_id=instance.id,
+            payload={"admission_id": getattr(instance, "admission_id", None)},
+            facility_id=getattr(instance, "facility_id", None),
+        )
     except Exception:
         logger.exception(
             "Billing agent: discharge billing failed for discharge %s", instance.id
@@ -108,6 +133,14 @@ def handle_admission_billing(sender, instance, created, **kwargs):
         from hmis.apps.billing.agent import BillingAgentService
 
         BillingAgentService.handle_admission_created(instance)
+
+        publish_event(
+            event_type=BillingEvents.ADMISSION_BILLING,
+            aggregate_type="Admission",
+            aggregate_id=instance.id,
+            payload={"patient_id": getattr(instance, "patient_id", None)},
+            facility_id=getattr(instance, "facility_id", None),
+        )
     except Exception:
         logger.exception(
             "Billing agent: admission billing failed for admission %s", instance.id
@@ -124,7 +157,83 @@ def handle_immunization_billing(sender, instance, created, **kwargs):
         from hmis.apps.billing.agent import BillingAgentService
 
         BillingAgentService.handle_immunization_administered(instance)
+
+        publish_event(
+            event_type=BillingEvents.IMMUNIZATION_BILLING,
+            aggregate_type="ImmunizationRecord",
+            aggregate_id=instance.id,
+            payload={"patient_id": getattr(instance, "patient_id", None)},
+            facility_id=getattr(instance, "facility_id", None),
+        )
     except Exception:
         logger.exception(
             "Billing agent: immunization billing failed for record %s", instance.id
         )
+
+
+# =============================================================================
+# WebSocket broadcast signals
+# =============================================================================
+
+
+@receiver(post_save, sender=Invoice)
+def broadcast_invoice_change(sender, instance, created, **kwargs):
+    """
+    Broadcast WebSocket event and publish domain event when an invoice changes.
+    """
+    event_type = BillingEvents.INVOICE_CREATED if created else BillingEvents.INVOICE_UPDATED
+    publish_event(
+        event_type=event_type,
+        aggregate_type="Invoice",
+        aggregate_id=instance.id,
+        payload={
+            "invoice_number": getattr(instance, "invoice_number", ""),
+            "status": getattr(instance, "status", ""),
+            "total_amount": str(getattr(instance, "total_amount", 0)),
+            "patient_id": getattr(instance, "patient_id", None),
+        },
+        facility_id=getattr(instance, "facility_id", None),
+        organization_id=getattr(instance, "organization_id", None),
+    )
+
+    try:
+        from hmis.apps.billing.websockets import (
+            broadcast_invoice_created,
+            broadcast_invoice_updated,
+        )
+
+        if created:
+            broadcast_invoice_created(instance)
+        else:
+            broadcast_invoice_updated(instance)
+    except Exception as e:
+        logger.error(f"Failed to broadcast invoice change for {instance.id}: {e}")
+
+
+@receiver(post_save, sender=Payment)
+def broadcast_payment_change(sender, instance, created, **kwargs):
+    """
+    Broadcast WebSocket event and publish domain event when a payment is recorded.
+    """
+    if not created:
+        return
+
+    publish_event(
+        event_type=BillingEvents.PAYMENT_RECEIVED,
+        aggregate_type="Payment",
+        aggregate_id=instance.id,
+        payload={
+            "amount": str(getattr(instance, "amount", 0)),
+            "payment_method": getattr(instance, "payment_method", ""),
+            "invoice_id": getattr(instance, "invoice_id", None),
+        },
+        facility_id=getattr(instance, "facility_id", None),
+        organization_id=getattr(instance, "organization_id", None),
+    )
+
+    try:
+        from hmis.apps.billing.websockets import broadcast_payment_received
+
+        broadcast_payment_received(instance)
+    except Exception as e:
+        logger.error(f"Failed to broadcast payment received for {instance.id}: {e}")

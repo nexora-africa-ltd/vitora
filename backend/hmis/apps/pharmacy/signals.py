@@ -4,6 +4,8 @@ Pharmacy signals for Vitora HMIS.
 This module contains Django signals for pharmacy-billing integration:
 - Auto-create invoice item when prescription item is created
 - Link dispensing to invoice item or create new for direct dispensing
+- Broadcast real-time WebSocket events for pharmacy queue updates
+- Publish domain events for cross-cutting observability
 """
 
 import logging
@@ -13,8 +15,9 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.billing.models import Invoice, InvoiceItem
+from hmis.apps.core.events import PharmacyEvents, publish_event
 
-from .models import Dispensing, PrescriptionItem
+from .models import Dispensing, Prescription, PrescriptionItem, StockBatch
 
 logger = logging.getLogger(__name__)
 
@@ -110,8 +113,52 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
             f"Created invoice item for prescription item {instance.id} - "
             f"{drug.generic_name} x{instance.quantity}"
         )
+
+        publish_event(
+            event_type=PharmacyEvents.PRESCRIPTION_ITEM_CREATED,
+            aggregate_type="PrescriptionItem",
+            aggregate_id=instance.id,
+            payload={
+                "prescription_id": prescription.id,
+                "drug_id": drug.id,
+                "drug_name": drug.generic_name,
+                "quantity": instance.quantity,
+                "unit_price": str(unit_price),
+            },
+            facility_id=getattr(prescription, "facility_id", None),
+            organization_id=getattr(prescription, "organization_id", None),
+        )
     except Exception as e:
         logger.error(f"Failed to create invoice item for prescription item {instance.id}: {e}")
+
+
+@receiver(post_save, sender=Prescription)
+def broadcast_prescription_on_create(sender, instance, created, **kwargs):
+    """
+    Broadcast WebSocket event and publish domain event when a prescription is created.
+    """
+    if not created:
+        return
+
+    publish_event(
+        event_type=PharmacyEvents.PRESCRIPTION_CREATED,
+        aggregate_type="Prescription",
+        aggregate_id=instance.id,
+        payload={
+            "prescription_number": getattr(instance, "prescription_number", ""),
+            "patient_id": getattr(instance, "patient_id", None),
+            "encounter_id": getattr(instance, "encounter_id", None),
+        },
+        facility_id=getattr(instance, "facility_id", None),
+        organization_id=getattr(instance, "organization_id", None),
+    )
+
+    try:
+        from hmis.apps.pharmacy.websockets import broadcast_prescription_created
+
+        broadcast_prescription_created(instance)
+    except Exception as e:
+        logger.error(f"Failed to broadcast prescription created for {instance.id}: {e}")
 
 
 @receiver(post_save, sender=Dispensing)
@@ -210,3 +257,84 @@ def handle_dispensing_billing(sender, instance, created, **kwargs):
         )
     except Exception as e:
         logger.error(f"Failed to create invoice item for dispensing {instance.id}: {e}")
+
+
+@receiver(post_save, sender=Dispensing)
+def broadcast_dispensing_on_create(sender, instance, created, **kwargs):
+    """
+    Broadcast WebSocket event and publish domain event when dispensing is completed.
+    """
+    if not created:
+        return
+
+    publish_event(
+        event_type=PharmacyEvents.DISPENSING_COMPLETED,
+        aggregate_type="Dispensing",
+        aggregate_id=instance.id,
+        payload={
+            "drug_id": getattr(instance.drug, "id", None) if instance.drug else None,
+            "drug_name": getattr(instance.drug, "generic_name", "") if instance.drug else "",
+            "quantity_dispensed": getattr(instance, "quantity_dispensed", 0),
+            "patient_id": getattr(instance, "patient_id", None),
+        },
+        facility_id=getattr(instance, "facility_id", None),
+        organization_id=getattr(instance, "organization_id", None),
+    )
+
+    try:
+        from hmis.apps.pharmacy.websockets import broadcast_dispensing_completed
+
+        broadcast_dispensing_completed(instance)
+    except Exception as e:
+        logger.error(f"Failed to broadcast dispensing completed for {instance.id}: {e}")
+
+
+@receiver(post_save, sender=StockBatch)
+def broadcast_stock_level_change(sender, instance, **kwargs):
+    """
+    Broadcast WebSocket event and publish domain event when stock levels change.
+
+    Emits stock_critical when quantity reaches 0, or stock_low_warning
+    when quantity drops below the drug's reorder level.
+    """
+    facility_id = getattr(instance, "facility_id", None)
+    if not facility_id:
+        return
+
+    try:
+        from hmis.apps.pharmacy.websockets import (
+            broadcast_stock_critical,
+            broadcast_stock_low_warning,
+        )
+
+        if instance.quantity_available == 0 and instance.status != "EXPIRED":
+            publish_event(
+                event_type=PharmacyEvents.STOCK_CRITICAL,
+                aggregate_type="StockBatch",
+                aggregate_id=instance.id,
+                payload={
+                    "drug_name": getattr(instance.drug, "generic_name", "") if instance.drug else "",
+                    "remaining_quantity": 0,
+                },
+                facility_id=facility_id,
+            )
+            broadcast_stock_critical(instance, facility_id)
+        elif (
+            instance.quantity_available > 0
+            and instance.drug
+            and instance.quantity_available < instance.drug.default_reorder_level
+        ):
+            publish_event(
+                event_type=PharmacyEvents.STOCK_LOW_WARNING,
+                aggregate_type="StockBatch",
+                aggregate_id=instance.id,
+                payload={
+                    "drug_name": instance.drug.generic_name,
+                    "remaining_quantity": instance.quantity_available,
+                    "reorder_level": instance.drug.default_reorder_level,
+                },
+                facility_id=facility_id,
+            )
+            broadcast_stock_low_warning(instance, facility_id)
+    except Exception as e:
+        logger.error(f"Failed to broadcast stock level change for batch {instance.id}: {e}")

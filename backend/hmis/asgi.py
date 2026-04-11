@@ -19,10 +19,12 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hmis.settings")
 django_asgi_app = get_asgi_application()
 
 # Import websocket routing after Django is initialized
+from hmis.apps.billing.routing import websocket_urlpatterns as billing_ws_patterns  # noqa: E402
 from hmis.apps.clinics.routing import websocket_urlpatterns as clinic_ws_patterns  # noqa: E402
 from hmis.apps.inpatient.routing import websocket_urlpatterns as inpatient_ws_patterns  # noqa: E402
 from hmis.apps.laboratory.routing import websocket_urlpatterns as lab_ws_patterns  # noqa: E402
 from hmis.apps.mch.routing import websocket_urlpatterns as mch_ws_patterns  # noqa: E402
+from hmis.apps.pharmacy.routing import websocket_urlpatterns as pharmacy_ws_patterns  # noqa: E402
 from hmis.apps.surveillance.routing import websocket_urlpatterns as surveillance_ws_patterns  # noqa: E402
 from hmis.apps.triage.routing import websocket_urlpatterns as triage_ws_patterns  # noqa: E402
 
@@ -34,6 +36,8 @@ websocket_urlpatterns = (
     + inpatient_ws_patterns
     + triage_ws_patterns
     + surveillance_ws_patterns
+    + pharmacy_ws_patterns
+    + billing_ws_patterns
 )
 
 application = ProtocolTypeRouter(

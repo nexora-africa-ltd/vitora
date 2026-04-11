@@ -3,12 +3,15 @@ Django signals for laboratory app.
 
 This module handles automatic creation of LabQueue entries when LabOrders are created,
 and status synchronization between LabOrder, LabQueue, and LabResult.
+Publishes domain events for cross-cutting observability.
 """
 
 import logging
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
+from hmis.apps.core.events import LaboratoryEvents, publish_event
 
 from .models import LabOrder, LabOrderItem, LabQueue, LabResult, Specimen
 
@@ -45,6 +48,17 @@ def create_lab_queue_entry(sender, instance, created, **kwargs):
                 queue_status="PENDING",
             )
             logger.info(f"Created LabQueue entry for order {instance.order_number}")
+
+            publish_event(
+                event_type=LaboratoryEvents.QUEUE_CREATED,
+                aggregate_type="LabQueue",
+                aggregate_id=instance.id,
+                payload={
+                    "order_number": instance.order_number,
+                    "priority": instance.priority,
+                },
+                facility_id=getattr(instance, "facility_id", None),
+            )
         except Exception as e:
             logger.error(f"Failed to create LabQueue entry for order {instance.order_number}: {e}")
 
@@ -168,6 +182,19 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
         # Get the user who entered the result for status update
         user = instance.entered_by
 
+        publish_event(
+            event_type=LaboratoryEvents.RESULT_ENTERED,
+            aggregate_type="LabResult",
+            aggregate_id=instance.id,
+            payload={
+                "order_number": lab_order.order_number,
+                "items_with_results": items_with_results,
+                "total_items": total_items,
+            },
+            user_id=getattr(user, "id", None),
+            facility_id=getattr(lab_order, "facility_id", None),
+        )
+
         if items_with_results == 1:
             # First result - transition to IN_PROGRESS
             if lab_order.status == "SPECIMEN_COLLECTED":
@@ -232,6 +259,18 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
             broadcast_result_verified(instance)
             logger.info(f"Broadcasted verification notification for result {instance.id}")
 
+            publish_event(
+                event_type=LaboratoryEvents.RESULT_VERIFIED,
+                aggregate_type="LabResult",
+                aggregate_id=instance.id,
+                payload={
+                    "order_number": instance.order_item.lab_order.order_number,
+                    "is_critical": getattr(instance, "is_critical_result", False),
+                },
+                user_id=getattr(instance.verified_by, "id", None) if instance.verified_by else None,
+                facility_id=getattr(instance.order_item.lab_order, "facility_id", None),
+            )
+
             # If critical, also send critical alert
             if instance.is_critical_result:
                 broadcast_critical_alert(instance)
@@ -247,6 +286,17 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
                 lab_order.update_status("COMPLETED", instance.verified_by)
                 broadcast_order_completed(lab_order)
                 logger.info(f"Order {lab_order.order_number} completed - all results verified")
+
+                publish_event(
+                    event_type=LaboratoryEvents.ORDER_COMPLETED,
+                    aggregate_type="LabOrder",
+                    aggregate_id=lab_order.id,
+                    payload={
+                        "order_number": lab_order.order_number,
+                        "total_items": total_items,
+                    },
+                    facility_id=getattr(lab_order, "facility_id", None),
+                )
 
                 # Create in-app notification for the ordering clinician
                 from hmis.apps.laboratory.services.notifications import LabNotificationService
@@ -274,6 +324,14 @@ def handle_lab_order_billing(sender, instance, **kwargs):
         from hmis.apps.billing.agent import BillingAgentService
 
         BillingAgentService.handle_lab_order_confirmed(instance)
+
+        publish_event(
+            event_type=LaboratoryEvents.ORDER_BILLING,
+            aggregate_type="LabOrder",
+            aggregate_id=instance.id,
+            payload={"order_number": instance.order_number},
+            facility_id=getattr(instance, "facility_id", None),
+        )
     except Exception as e:
         logger.error(
             "Billing agent: failed to bill lab order %s: %s",

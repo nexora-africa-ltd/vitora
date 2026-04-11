@@ -1,13 +1,16 @@
 """
 Django Signals for Clinic WebSocket Broadcasts.
 
-Automatically broadcasts WebSocket events when clinic models change.
+Automatically broadcasts WebSocket events and publishes domain events
+when clinic models change.
 """
 
 import logging
 
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+
+from hmis.apps.core.events import ClinicalEvents, publish_event
 
 from .models import ClinicVisit
 from .websockets import (
@@ -34,6 +37,18 @@ def clinic_visit_post_save(sender, instance, created, **kwargs):
             # New patient added to queue
             broadcast_patient_added(instance)
             logger.debug(f"Broadcasted patient_added for visit {instance.id}")
+
+            publish_event(
+                event_type=ClinicalEvents.CLINIC_VISIT_CREATED,
+                aggregate_type="ClinicVisit",
+                aggregate_id=instance.id,
+                payload={
+                    "patient_id": getattr(instance, "patient_id", None),
+                    "clinic_id": getattr(instance, "clinic_id", None),
+                    "status": instance.status,
+                },
+                facility_id=getattr(instance, "facility_id", None),
+            )
     except Exception as e:
         # Don't let WebSocket errors break the save operation
         logger.error(f"Error broadcasting clinic visit event: {e}")
@@ -93,6 +108,19 @@ def clinic_visit_status_change(sender, instance, created, **kwargs):
             reason = "cancelled" if instance.status == "CANCELLED" else "no_show"
             broadcast_patient_removed(instance, reason=reason)
             logger.debug(f"Broadcasted patient_removed for visit {instance.id}")
+
+        publish_event(
+            event_type=ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
+            aggregate_type="ClinicVisit",
+            aggregate_id=instance.id,
+            payload={
+                "old_status": old_status,
+                "new_status": instance.status,
+                "patient_id": getattr(instance, "patient_id", None),
+                "clinic_id": getattr(instance, "clinic_id", None),
+            },
+            facility_id=getattr(instance, "facility_id", None),
+        )
 
     except Exception as e:
         # Don't let WebSocket errors break the save operation
