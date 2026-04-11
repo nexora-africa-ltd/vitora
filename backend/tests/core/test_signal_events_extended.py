@@ -216,6 +216,284 @@ class TestSchedulingSignalEvents:
 
 
 # ---------------------------------------------------------------------------
+# Schedule (Timetable) Signal Events
+# ---------------------------------------------------------------------------
+
+
+class TestScheduleTimetableSignalEvents:
+    """Test domain event publishing for schedule/timetable changes."""
+
+    @pytest.mark.django_db
+    def test_schedule_created_publishes_event(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.SCHEDULE_CREATED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_schedule_event
+
+        resource = MagicMock()
+        resource.facility_id = 1
+
+        instance = MagicMock()
+        instance.id = 20
+        instance.resource_id = 5
+        instance.resource = resource
+        instance.schedule_type = "RECURRING"
+        instance.day_of_week = 0
+        instance.is_active = True
+
+        publish_schedule_event(sender=None, instance=instance, created=True)
+
+        assert len(received) == 1
+        assert received[0].event_type == SchedulingEvents.SCHEDULE_CREATED
+        assert received[0].aggregate_type == "Schedule"
+        assert received[0].payload["resource_id"] == 5
+        assert received[0].payload["day_of_week"] == 0
+
+    @pytest.mark.django_db
+    def test_schedule_updated_publishes_event(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.SCHEDULE_UPDATED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_schedule_event
+
+        resource = MagicMock()
+        resource.facility_id = 1
+
+        instance = MagicMock()
+        instance.id = 20
+        instance.resource_id = 5
+        instance.resource = resource
+        instance.schedule_type = "ONE_TIME"
+        instance.day_of_week = None
+        instance.is_active = False
+
+        publish_schedule_event(sender=None, instance=instance, created=False)
+
+        assert len(received) == 1
+        assert received[0].event_type == SchedulingEvents.SCHEDULE_UPDATED
+        assert received[0].payload["is_active"] is False
+
+
+# ---------------------------------------------------------------------------
+# Assignment Engine Signal Events
+# ---------------------------------------------------------------------------
+
+
+class TestAssignmentSignalEvents:
+    """Test domain event publishing for assignment engine."""
+
+    @pytest.mark.django_db
+    def test_assignment_decision_publishes_event(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.ASSIGNMENT_DECIDED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_assignment_decision_event
+
+        instance = MagicMock()
+        instance.id = 30
+        instance.assignment_type = "APPOINTMENT"
+        instance.target_type = "Appointment"
+        instance.target_id = 100
+        instance.decision_outcome = "ASSIGNED"
+        instance.assigned_resource_id = 5
+        instance.rule_applied_id = 2
+        instance.evaluation_time_ms = 12
+
+        publish_assignment_decision_event(sender=None, instance=instance, created=True)
+
+        assert len(received) == 1
+        assert received[0].event_type == SchedulingEvents.ASSIGNMENT_DECIDED
+        assert received[0].aggregate_type == "AssignmentDecision"
+        assert received[0].payload["outcome"] == "ASSIGNED"
+        assert received[0].payload["target_id"] == 100
+        assert received[0].payload["evaluation_time_ms"] == 12
+
+    @pytest.mark.django_db
+    def test_assignment_decision_update_does_not_publish(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.ASSIGNMENT_DECIDED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_assignment_decision_event
+
+        instance = MagicMock()
+        instance.id = 30
+
+        publish_assignment_decision_event(sender=None, instance=instance, created=False)
+
+        assert len(received) == 0
+
+    @pytest.mark.django_db
+    def test_override_created_publishes_event(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.OVERRIDE_CREATED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_override_event
+
+        instance = MagicMock()
+        instance.id = 40
+        instance.target_type = "Appointment"
+        instance.target_id = 100
+        instance.override_reason = "PATIENT_REQUEST"
+        instance.approval_status = "PENDING"
+        instance.original_resource_id = 3
+        instance.new_resource_id = 7
+
+        publish_override_event(sender=None, instance=instance, created=True)
+
+        assert len(received) == 1
+        assert received[0].event_type == SchedulingEvents.OVERRIDE_CREATED
+        assert received[0].aggregate_type == "AssignmentOverride"
+        assert received[0].payload["override_reason"] == "PATIENT_REQUEST"
+
+    @pytest.mark.django_db
+    def test_override_approved_publishes_event(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.OVERRIDE_APPROVED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_override_event
+
+        instance = MagicMock()
+        instance.id = 40
+        instance.target_type = "Appointment"
+        instance.target_id = 100
+        instance.override_reason = "EMERGENCY"
+        instance.approval_status = "APPROVED"
+        instance.original_resource_id = 3
+        instance.new_resource_id = 7
+
+        publish_override_event(sender=None, instance=instance, created=False)
+
+        assert len(received) == 1
+        assert received[0].event_type == SchedulingEvents.OVERRIDE_APPROVED
+
+    @pytest.mark.django_db
+    def test_override_rejected_publishes_event(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.OVERRIDE_REJECTED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_override_event
+
+        instance = MagicMock()
+        instance.id = 40
+        instance.target_type = "Appointment"
+        instance.target_id = 100
+        instance.override_reason = "OTHER"
+        instance.approval_status = "REJECTED"
+        instance.original_resource_id = 3
+        instance.new_resource_id = 7
+
+        publish_override_event(sender=None, instance=instance, created=False)
+
+        assert len(received) == 1
+        assert received[0].event_type == SchedulingEvents.OVERRIDE_REJECTED
+
+    @pytest.mark.django_db
+    def test_override_not_required_does_not_publish(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.OVERRIDE_CREATED, lambda e: received.append(e))
+        bus.subscribe(SchedulingEvents.OVERRIDE_APPROVED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_override_event
+
+        instance = MagicMock()
+        instance.id = 40
+        instance.approval_status = "NOT_REQUIRED"
+
+        publish_override_event(sender=None, instance=instance, created=False)
+
+        assert len(received) == 0
+
+    @pytest.mark.django_db
+    def test_rule_activated_publishes_event(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.RULE_ACTIVATED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_rule_toggle_event
+
+        instance = MagicMock()
+        instance.id = 50
+        instance.rule_code = "assign_doctor_opd"
+        instance.applies_to = "APPOINTMENT"
+        instance.priority = 100
+        instance.is_active = True
+        instance.facility_id = 1
+
+        publish_rule_toggle_event(
+            sender=None, instance=instance, created=False, update_fields=["is_active", "updated_at"]
+        )
+
+        assert len(received) == 1
+        assert received[0].event_type == SchedulingEvents.RULE_ACTIVATED
+        assert received[0].payload["rule_code"] == "assign_doctor_opd"
+
+    @pytest.mark.django_db
+    def test_rule_deactivated_publishes_event(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.RULE_DEACTIVATED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_rule_toggle_event
+
+        instance = MagicMock()
+        instance.id = 50
+        instance.rule_code = "assign_doctor_opd"
+        instance.applies_to = "APPOINTMENT"
+        instance.priority = 100
+        instance.is_active = False
+        instance.facility_id = 1
+
+        publish_rule_toggle_event(
+            sender=None, instance=instance, created=False, update_fields=["is_active", "updated_at"]
+        )
+
+        assert len(received) == 1
+        assert received[0].event_type == SchedulingEvents.RULE_DEACTIVATED
+
+    @pytest.mark.django_db
+    def test_rule_created_does_not_publish(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.RULE_ACTIVATED, lambda e: received.append(e))
+        bus.subscribe(SchedulingEvents.RULE_DEACTIVATED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_rule_toggle_event
+
+        instance = MagicMock()
+        instance.id = 50
+
+        publish_rule_toggle_event(sender=None, instance=instance, created=True)
+
+        assert len(received) == 0
+
+    @pytest.mark.django_db
+    def test_rule_non_active_field_update_does_not_publish(self):
+        received = []
+        bus = get_event_bus()
+        bus.subscribe(SchedulingEvents.RULE_ACTIVATED, lambda e: received.append(e))
+        bus.subscribe(SchedulingEvents.RULE_DEACTIVATED, lambda e: received.append(e))
+
+        from hmis.apps.scheduling.signals import publish_rule_toggle_event
+
+        instance = MagicMock()
+        instance.id = 50
+
+        publish_rule_toggle_event(
+            sender=None, instance=instance, created=False, update_fields=["priority", "updated_at"]
+        )
+
+        assert len(received) == 0
+
+
+# ---------------------------------------------------------------------------
 # Encounter Signal Events (post_save handler)
 # ---------------------------------------------------------------------------
 

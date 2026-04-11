@@ -643,13 +643,14 @@ Execute these layers **sequentially in one pass** — do NOT implement backend a
 4. BACKEND URLS        → Register in app router + verify in main urls.py
 5. BACKEND MIGRATION   → makemigrations + migrate
 6. BACKEND ADMIN       → Admin class with colored badges, fieldsets, raw_id_fields
-7. BACKEND TESTS       → Comprehensive tests: model, workflow, serializer validation, API
-8. FRONTEND TYPES      → TypeScript interfaces in lib/types/{module}.ts
-9. FRONTEND SCHEMAS    → Zod schemas in lib/schemas/{module}.schema.ts
-10. FRONTEND API       → API client methods with parseResponse() in lib/api/{module}.ts
-11. FRONTEND PAGES     → List page, Detail page, Create/New page
-12. FRONTEND NAV       → Sidebar entry in lib/config/navigation.ts
-13. DOCS UPDATE        → Update DHA compliance roadmap status
+7. BACKEND SIGNALS     → Domain event publishing via publish_event() in signals.py
+8. BACKEND TESTS       → Comprehensive tests: model, workflow, serializer validation, API, events
+9. FRONTEND TYPES      → TypeScript interfaces in lib/types/{module}.ts
+10. FRONTEND SCHEMAS   → Zod schemas in lib/schemas/{module}.schema.ts
+11. FRONTEND API       → API client methods with parseResponse() in lib/api/{module}.ts
+12. FRONTEND PAGES     → List page, Detail page, Create/New page
+13. FRONTEND NAV       → Sidebar entry in lib/config/navigation.ts
+14. DOCS UPDATE        → Update DHA compliance roadmap status + domain-events.md SSOT
 ```
 
 ### Key Principles
@@ -730,11 +731,15 @@ Every module needs at minimum:
 - **Detail page** — with summary bar, status badges, action buttons/dialogs, related data cards
 - **Create page** — with form cards, dropdowns fetched from API, validation, cancel/submit
 
-**6. Verify at Each Layer**
+**6. Domain Event Wiring Is Part of Every Feature**
 
-After completing the backend (steps 1-7), verify with `poetry run pytest tests/test_{feature}.py --no-cov`.
-After completing the frontend (steps 8-12), verify with `npx tsc --noEmit`.
-Only then update docs (step 13) and commit.
+Any model with state transitions (status changes, creation of clinically significant records) **MUST** publish domain events. This enables real-time WebSocket notifications, read-model projections, and audit trails. See `docs/domain-events.md` for the full SSOT.
+
+**7. Verify at Each Layer**
+
+After completing the backend (steps 1-8), verify with `poetry run pytest tests/test_{feature}.py --no-cov`.
+After completing the frontend (steps 9-13), verify with `npx tsc --noEmit`.
+Only then update docs (step 14) and commit.
 
 ### Commit Convention
 
@@ -1020,6 +1025,76 @@ class MyViewSet(viewsets.ModelViewSet):
 
 The mixin re-queries the instance through `get_queryset()` (honouring `select_related`/`prefetch_related`) and re-serializes with the read serializer.
 
+### 13. Domain Event Wiring Is MANDATORY for New Models with State Transitions
+
+> ⚠️ **CRITICAL**: Every new model that has state transitions (status fields, clinically significant creation, workflow actions) **MUST** publish domain events via `publish_event()` in `signals.py`. Failure to wire events means WebSocket consumers, read-model projections, and the EventStore audit trail will be blind to those changes.
+
+> **SSOT**: `docs/domain-events.md` — full architecture, event catalog, signal wiring tables, testing patterns, how-to guides.
+
+**When to wire events:**
+
+| Scenario | Required? | Example |
+|----------|-----------|--------|
+| New model with status field (TextChoices enum) | ✅ Always | Admission, LabOrder, Prescription |
+| Creation of clinically significant records | ✅ Always | Encounter, TriageAssessment, ImmunizationRecord |
+| Soft-delete / archival | ✅ Always | Patient deactivation |
+| Reference data updates (read-only catalogues) | ❌ Skip | ICD10Code, DrugCatalogue |
+| Intermediate join tables with no business meaning | ❌ Skip | M2M through tables |
+
+**Step 1: Define event type constants** in `hmis/apps/core/events/types.py`:
+
+```python
+class MyModuleEvents:
+    """Events for my_module app."""
+    RECORD_CREATED = "my_module.record.created"
+    RECORD_UPDATED = "my_module.record.updated"
+    STATUS_CHANGED = "my_module.record.status_changed"
+```
+
+**Step 2: Wire signals** in `hmis/apps/{module}/signals.py`:
+
+```python
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from hmis.apps.core.events import publish_event
+from hmis.apps.core.events.types import MyModuleEvents
+
+@receiver(post_save, sender=MyModel)
+def publish_my_model_event(sender, instance, created, **kwargs):
+    event_type = MyModuleEvents.RECORD_CREATED if created else MyModuleEvents.RECORD_UPDATED
+    publish_event(event_type, {
+        "id": instance.pk,
+        "status": instance.status,
+        # Include fields needed by WebSocket consumers / projections
+    })
+```
+
+**Step 3: Register signals** in `hmis/apps/{module}/apps.py`:
+
+```python
+def ready(self):
+    import hmis.apps.my_module.signals  # noqa: F401
+```
+
+**Step 4: Write event tests** in `tests/core/test_signal_events_extended.py` or `tests/test_{module}_events.py`:
+
+```python
+def test_my_model_creation_publishes_event(self, db, mocker):
+    mock_publish = mocker.patch("hmis.apps.my_module.signals.publish_event")
+    instance = MyModel.objects.create(...)
+    mock_publish.assert_called_once_with(MyModuleEvents.RECORD_CREATED, mocker.ANY)
+```
+
+**Step 5: Update the SSOT** — add your new events to `docs/domain-events.md` (event catalog table + signal wiring table).
+
+**Checklist for every new model with state transitions:**
+- [ ] Event type constants defined in `core/events/types.py`
+- [ ] Constants exported in `core/events/__init__.py`
+- [ ] `post_save` signal handler calls `publish_event()` in `{module}/signals.py`
+- [ ] `apps.py` `ready()` imports signals module
+- [ ] Tests verify event publication (mock `publish_event`)
+- [ ] `docs/domain-events.md` SSOT updated with new events
+
 ---
 
 ## 🔐 Security & Compliance
@@ -1154,6 +1229,7 @@ See `ROADMAP.md` for complete sprint breakdown.
 | `docs/coding-standards.md` | Code style, naming conventions |
 | `docs/dpia.md` | Data Protection Impact Assessment |
 | `docs/sprint-*.md` | Sprint deliverables with implementation details |
+| `docs/domain-events.md` | Domain events SSOT: architecture, catalog, wiring tables, projections |
 | `docs/contract-testing-recommendations.md` | API contract testing strategy (Layer 1-4) |
 
 ---
@@ -1216,6 +1292,8 @@ Before submitting a PR, verify:
 - [ ] Pre-commit hooks pass: `pre-commit run --all-files`
 - [ ] Tests written BEFORE implementation (TDD)
 - [ ] Audit logging added for new CRUD operations
+- [ ] **Domain events wired** for models with state transitions (see Gotcha #13)
+- [ ] `docs/domain-events.md` SSOT updated if new events added
 - [ ] Sensitive fields use encryption
 - [ ] Kenya locations validated (county → sub_county → ward cascade)
 - [ ] API endpoints require authentication
@@ -1721,6 +1799,6 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: April 9, 2026
+**Last Updated**: July 2, 2026
 **Maintainer**: Engineering Lead
-**Version**: 2.9 (PowerSync offline-first sync implementation)
+**Version**: 3.0 (Domain events wiring mandatory for all stateful models)
