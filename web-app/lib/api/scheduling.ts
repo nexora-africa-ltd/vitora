@@ -14,6 +14,9 @@ import {
   AppointmentSchema,
   ResourceAvailabilitySchema,
   SlotCheckResultSchema,
+  PaginatedShiftListSchema,
+  ShiftSchema,
+  StaffWorkloadSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -32,6 +35,11 @@ import type {
   PaginatedAppointments,
   ResourceAvailability,
   SlotCheckResult,
+  Shift,
+  ShiftCreateData,
+  ShiftListParams,
+  PaginatedShifts,
+  StaffWorkload,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -239,6 +247,76 @@ export const appointmentsApi = {
     const response = await apiClient.post(`${BASE_URL}/appointments/${id}/no-show/`);
     return parseResponse(AppointmentSchema, response.data, {
       context: 'appointmentsApi.noShow',
+    });
+  },
+};
+
+// =============================================================================
+// Shifts / Duty Roster API
+// =============================================================================
+
+export const shiftsApi = {
+  list: async (params?: ShiftListParams): Promise<PaginatedShifts> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/`, { params });
+    return parseResponse(PaginatedShiftListSchema, response.data, {
+      context: 'shiftsApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<Shift> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/${id}/`);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'shiftsApi.get',
+    });
+  },
+
+  create: async (data: ShiftCreateData): Promise<Shift> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/`, data);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'shiftsApi.create',
+    });
+  },
+
+  update: async (id: number, data: Partial<ShiftCreateData>): Promise<Shift> => {
+    const response = await apiClient.patch(`${BASE_URL}/shifts/${id}/`, data);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'shiftsApi.update',
+    });
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`${BASE_URL}/shifts/${id}/`);
+  },
+
+  /** Clock in / start a shift. */
+  start: async (id: number): Promise<Shift> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/${id}/start/`);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'shiftsApi.start',
+    });
+  },
+
+  /** Clock out / complete a shift. */
+  complete: async (id: number): Promise<Shift> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/${id}/complete/`);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'shiftsApi.complete',
+    });
+  },
+
+  /** Cancel a shift. */
+  cancel: async (id: number, reason: string): Promise<Shift> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/${id}/cancel/`, { reason });
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'shiftsApi.cancel',
+    });
+  },
+
+  /** Get staff workload aggregation for a date range. */
+  staffWorkload: async (params?: { from_date?: string; to_date?: string }): Promise<StaffWorkload[]> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/staff-workload/`, { params });
+    return parseResponse(StaffWorkloadSchema.array(), response.data, {
+      context: 'shiftsApi.staffWorkload',
     });
   },
 };

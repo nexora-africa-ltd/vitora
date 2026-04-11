@@ -20,6 +20,7 @@ from hmis.apps.scheduling.models import (
     AssignmentOverride,
     AssignmentRule,
     Schedule,
+    Shift,
 )
 
 logger = logging.getLogger(__name__)
@@ -167,4 +168,42 @@ def publish_rule_toggle_event(sender, instance, created, **kwargs):
             "priority": instance.priority,
         },
         facility_id=getattr(instance, "facility_id", None),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Shift / duty roster events
+# ---------------------------------------------------------------------------
+
+_SHIFT_STATUS_EVENT_MAP = {
+    "SCHEDULED": SchedulingEvents.SHIFT_CREATED,
+    "ACTIVE": SchedulingEvents.SHIFT_STARTED,
+    "COMPLETED": SchedulingEvents.SHIFT_COMPLETED,
+    "CANCELLED": SchedulingEvents.SHIFT_CANCELLED,
+}
+
+
+@receiver(post_save, sender=Shift)
+def publish_shift_event(sender, instance, created, **kwargs):
+    """Publish domain event when a shift is created or changes status."""
+    if created:
+        event_type = SchedulingEvents.SHIFT_CREATED
+    else:
+        event_type = _SHIFT_STATUS_EVENT_MAP.get(instance.status)
+        if not event_type:
+            return
+
+    publish_event(
+        event_type=event_type,
+        aggregate_type="Shift",
+        aggregate_id=instance.id,
+        payload={
+            "staff_resource_id": instance.staff_resource_id,
+            "shift_date": str(instance.shift_date),
+            "shift_type": instance.shift_type,
+            "status": instance.status,
+            "department": instance.department or "",
+        },
+        facility_id=getattr(instance, "facility_id", None),
+        organization_id=getattr(instance, "organization_id", None),
     )

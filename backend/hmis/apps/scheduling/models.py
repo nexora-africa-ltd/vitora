@@ -1497,3 +1497,208 @@ class AssignmentOverride(TimeStampedModel):
         self.rejected_at = timezone.now()
         self.rejection_reason = reason
         self.save()
+
+
+# =============================================================================
+# Phase 3: Shift / Duty Roster Management
+# =============================================================================
+
+
+class Shift(FacilityScopedModel, TimeStampedModel):
+    """
+    Represents a work shift assigned to a staff member.
+
+    Shifts define when a staff member is on duty. They link a staff Resource
+    to a specific date and time range, optionally associated with a department.
+
+    Status Flow:
+        SCHEDULED -> ACTIVE -> COMPLETED
+                   |
+                   v
+                CANCELLED
+
+    Attributes:
+        staff_resource: The PERSON-type resource assigned to this shift
+        shift_date: The date of the shift
+        start_time: Shift start time
+        end_time: Shift end time
+        shift_type: Category of shift (DAY, NIGHT, ON_CALL, etc.)
+        status: Current status of the shift
+        department: Optional department assignment
+        notes: Additional notes
+    """
+
+    SHIFT_TYPE_CHOICES = [
+        ("DAY", "Day Shift"),
+        ("NIGHT", "Night Shift"),
+        ("MORNING", "Morning Shift"),
+        ("AFTERNOON", "Afternoon Shift"),
+        ("ON_CALL", "On-Call"),
+        ("OVERTIME", "Overtime"),
+    ]
+
+    STATUS_CHOICES = [
+        ("SCHEDULED", "Scheduled"),
+        ("ACTIVE", "Active"),
+        ("COMPLETED", "Completed"),
+        ("CANCELLED", "Cancelled"),
+    ]
+
+    VALID_TRANSITIONS = {
+        "SCHEDULED": ["ACTIVE", "CANCELLED"],
+        "ACTIVE": ["COMPLETED"],
+        "COMPLETED": [],
+        "CANCELLED": [],
+    }
+
+    staff_resource = models.ForeignKey(
+        Resource,
+        on_delete=models.PROTECT,
+        related_name="shifts",
+        limit_choices_to={"resource_type": "PERSON"},
+        help_text="Staff member assigned to this shift",
+    )
+    shift_date = models.DateField(
+        db_index=True,
+        help_text="Date of the shift",
+    )
+    start_time = models.TimeField(
+        help_text="Shift start time",
+    )
+    end_time = models.TimeField(
+        help_text="Shift end time",
+    )
+    shift_type = models.CharField(
+        max_length=20,
+        choices=SHIFT_TYPE_CHOICES,
+        default="DAY",
+        db_index=True,
+        help_text="Type of shift",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="SCHEDULED",
+        db_index=True,
+        help_text="Current shift status",
+    )
+    department = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Department for this shift (e.g., OPD, Emergency, Ward A)",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional notes about this shift",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_shifts",
+        help_text="User who created the shift",
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Actual shift start timestamp",
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Actual shift end timestamp",
+    )
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cancelled_shifts",
+        help_text="User who cancelled the shift",
+    )
+    cancellation_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for cancellation",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        """Meta options for Shift model."""
+
+        ordering = ["shift_date", "start_time"]
+        verbose_name = "Shift"
+        verbose_name_plural = "Shifts"
+        indexes = [
+            models.Index(fields=["shift_date", "status"]),
+            models.Index(fields=["staff_resource", "shift_date"]),
+        ]
+
+    def __str__(self) -> str:
+        """Return string representation."""
+        return (
+            f"{self.staff_resource.name} - {self.shift_date} "
+            f"{self.start_time}-{self.end_time} ({self.get_shift_type_display()})"
+        )
+
+    def clean(self) -> None:
+        """Validate shift data."""
+        super().clean()
+        errors = {}
+
+        if self.end_time and self.start_time and self.end_time <= self.start_time:
+            # Allow overnight shifts via 24h logic if needed later
+            errors["end_time"] = "End time must be after start time"
+
+        if self.staff_resource_id:
+            try:
+                resource = Resource.objects.get(pk=self.staff_resource_id)
+                if resource.resource_type != "PERSON":
+                    errors["staff_resource"] = "Only PERSON-type resources can be assigned shifts"
+            except Resource.DoesNotExist:
+                pass
+
+        if errors:
+            raise ValidationError(errors)
+
+    def _transition_to(self, new_status: str) -> None:
+        """Validate and perform status transition."""
+        valid_next = self.VALID_TRANSITIONS.get(self.status, [])
+        if new_status not in valid_next:
+            raise ValueError(
+                f"Cannot transition from {self.status} to {new_status}. "
+                f"Valid transitions: {valid_next}"
+            )
+        self.status = new_status
+
+    def start_shift(self) -> None:
+        """Mark shift as active (clock in)."""
+        self._transition_to("ACTIVE")
+        self.started_at = timezone.now()
+        self.save()
+
+    def complete_shift(self) -> None:
+        """Mark shift as completed (clock out)."""
+        self._transition_to("COMPLETED")
+        self.completed_at = timezone.now()
+        self.save()
+
+    def cancel(self, user, reason: str = "") -> None:
+        """Cancel the shift."""
+        self._transition_to("CANCELLED")
+        self.cancelled_by = user
+        self.cancellation_reason = reason
+        self.save()
+
+    @property
+    def duration_hours(self) -> float:
+        """Calculate shift duration in hours."""
+        if not self.start_time or not self.end_time:
+            return 0.0
+        start_dt = datetime.combine(self.shift_date, self.start_time)
+        end_dt = datetime.combine(self.shift_date, self.end_time)
+        delta = end_dt - start_dt
+        return round(delta.total_seconds() / 3600, 1)

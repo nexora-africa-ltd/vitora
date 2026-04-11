@@ -128,6 +128,12 @@ class SchedulingEvents:
     RULE_ACTIVATED = "scheduling.rule.activated"
     RULE_DEACTIVATED = "scheduling.rule.deactivated"
 
+    # Shift / duty roster
+    SHIFT_CREATED = "scheduling.shift.created"
+    SHIFT_STARTED = "scheduling.shift.started"
+    SHIFT_COMPLETED = "scheduling.shift.completed"
+    SHIFT_CANCELLED = "scheduling.shift.cancelled"
+
 
 class ImagingEvents:
     """Imaging domain event types."""

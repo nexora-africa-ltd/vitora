@@ -175,3 +175,51 @@ export const SlotCheckResultSchema = z.object({
   reason: z.string().nullable(),
   conflicting_appointment: z.string().nullable().optional(),
 });
+
+// =============================================================================
+// Shifts / Duty Roster
+// =============================================================================
+
+export const ShiftTypeSchema = z.enum(['DAY', 'NIGHT', 'MORNING', 'AFTERNOON', 'ON_CALL', 'OVERTIME']);
+export const ShiftStatusSchema = z.enum(['SCHEDULED', 'ACTIVE', 'COMPLETED', 'CANCELLED']);
+
+export const ShiftListItemSchema = z.object({
+  id: z.number(),
+  staff_resource: z.number(),
+  staff_resource_name: z.string(),
+  shift_date: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  shift_type: ShiftTypeSchema,
+  shift_type_display: z.string(),
+  status: ShiftStatusSchema,
+  status_display: z.string(),
+  department: z.string(),
+  duration_hours: z.number().nullable(),
+});
+
+export const ShiftSchema = ShiftListItemSchema.extend({
+  notes: z.string(),
+  created_by: z.number().nullable(),
+  created_by_name: z.string().nullable(),
+  started_at: z.string().nullable(),
+  completed_at: z.string().nullable(),
+  cancelled_by: z.number().nullable(),
+  cancelled_by_name: z.string().nullable(),
+  cancellation_reason: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedShiftListSchema = createPaginatedSchema(ShiftListItemSchema);
+
+export const StaffWorkloadSchema = z.object({
+  resource_id: z.number(),
+  resource_name: z.string(),
+  resource_code: z.string(),
+  shift_count: z.number(),
+  total_hours: z.number(),
+  appointment_count: z.number(),
+  active_shifts: z.number(),
+  completed_shifts: z.number(),
+});

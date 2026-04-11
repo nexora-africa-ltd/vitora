@@ -236,3 +236,73 @@ export interface SlotCheckResult {
 export type PaginatedAppointments = PaginatedResponse<AppointmentListItem>;
 export type PaginatedSchedules = PaginatedResponse<Schedule>;
 export type PaginatedResources = PaginatedResponse<ResourceListItem>;
+
+// =============================================================================
+// Shifts / Duty Roster
+// =============================================================================
+
+export type ShiftType = 'DAY' | 'NIGHT' | 'MORNING' | 'AFTERNOON' | 'ON_CALL' | 'OVERTIME';
+export type ShiftStatus = 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+
+export interface ShiftListItem {
+  id: number;
+  staff_resource: number;
+  staff_resource_name: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  shift_type: ShiftType;
+  shift_type_display: string;
+  status: ShiftStatus;
+  status_display: string;
+  department: string;
+  duration_hours: number | null;
+}
+
+export interface Shift extends ShiftListItem {
+  notes: string;
+  created_by: number | null;
+  created_by_name: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  cancelled_by: number | null;
+  cancelled_by_name: string | null;
+  cancellation_reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShiftCreateData {
+  staff_resource: number;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  shift_type: ShiftType;
+  department?: string;
+  notes?: string;
+}
+
+export interface ShiftListParams {
+  page?: number;
+  page_size?: number;
+  staff_resource?: number;
+  shift_type?: ShiftType;
+  status?: ShiftStatus;
+  department?: string;
+  from_date?: string;
+  to_date?: string;
+  ordering?: string;
+}
+
+export interface StaffWorkload {
+  resource_id: number;
+  resource_name: string;
+  resource_code: string;
+  shift_count: number;
+  total_hours: number;
+  appointment_count: number;
+  active_shifts: number;
+  completed_shifts: number;
+}
+
+export type PaginatedShifts = PaginatedResponse<ShiftListItem>;
