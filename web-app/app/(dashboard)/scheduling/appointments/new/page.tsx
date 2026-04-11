@@ -71,7 +71,7 @@ export default function NewAppointmentPage() {
   });
 
   // Resources list
-  const { data: resourceData } = useQuery({
+  const { data: resourceData, isLoading: resourcesLoading } = useQuery({
     queryKey: ['scheduling-resources-all'],
     queryFn: () => resourcesApi.list({ is_active: true, page_size: 200, ordering: 'resource_type,name' }),
   });
@@ -274,11 +274,25 @@ export default function NewAppointmentPage() {
                     <SelectValue placeholder="Select resource..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {resources.map((r) => (
-                      <SelectItem key={r.id} value={r.id.toString()}>
-                        {r.name} ({r.resource_type})
-                      </SelectItem>
-                    ))}
+                    {resourcesLoading ? (
+                      <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Loading resources...
+                      </div>
+                    ) : resources.length === 0 ? (
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        No resources available. Create one in{' '}
+                        <a href="/scheduling/resources" className="underline text-primary">
+                          Resources
+                        </a>.
+                      </div>
+                    ) : (
+                      resources.map((r) => (
+                        <SelectItem key={r.id} value={r.id.toString()}>
+                          {r.name} ({r.resource_type})
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
