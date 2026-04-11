@@ -37,6 +37,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
+import { useImmunizationSocket } from '@/lib/hooks/use-websocket';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
 import { immunizationRecordsApi, vaccineDefinitionsApi, vaccineStockApi } from '@/lib/api/immunizations';
@@ -102,6 +104,8 @@ export default function ImmunizationsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { facility } = useFacility();
+  useImmunizationSocket(facility?.id ?? null);
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(initialPatientId);
   const [statusFilter, setStatusFilter] = useState<ImmunizationStatus | ''>('');
   const [programFilter, setProgramFilter] = useState<VaccineProgram | ''>('');

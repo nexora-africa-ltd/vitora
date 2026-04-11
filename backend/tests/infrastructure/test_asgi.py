@@ -30,7 +30,7 @@ class TestAsgiConfiguration:
         assert "websocket" in application.application_mapping
 
     def test_websocket_urlpatterns_combined(self):
-        """WebSocket URL patterns should combine clinic, lab, MCH, and inpatient patterns."""
+        """WebSocket URL patterns should combine all module patterns."""
         # Verify clinic patterns are included
         clinic_patterns = [p for p in websocket_urlpatterns if "clinics" in p.pattern.regex.pattern]
         assert len(clinic_patterns) >= 1, "Clinic WebSocket patterns should be included"
@@ -49,12 +49,37 @@ class TestAsgiConfiguration:
         mch_patterns = [p for p in websocket_urlpatterns if "mch" in p.pattern.regex.pattern]
         assert len(mch_patterns) >= 1, "MCH WebSocket patterns should be included"
 
+        # Verify scheduling patterns are included
+        scheduling_patterns = [
+            p for p in websocket_urlpatterns if "scheduling" in p.pattern.regex.pattern
+        ]
+        assert len(scheduling_patterns) >= 1, "Scheduling WebSocket patterns should be included"
+
+        # Verify imaging patterns are included
+        imaging_patterns = [
+            p for p in websocket_urlpatterns if "imaging" in p.pattern.regex.pattern
+        ]
+        assert len(imaging_patterns) >= 1, "Imaging WebSocket patterns should be included"
+
+        # Verify immunization patterns are included
+        immunization_patterns = [
+            p for p in websocket_urlpatterns if "immunization" in p.pattern.regex.pattern
+        ]
+        assert len(immunization_patterns) >= 1, "Immunization WebSocket patterns should be included"
+
+        # Verify dashboard patterns are included
+        dashboard_patterns = [
+            p for p in websocket_urlpatterns if "dashboard" in p.pattern.regex.pattern
+        ]
+        assert len(dashboard_patterns) >= 1, "Dashboard WebSocket patterns should be included"
+
     def test_websocket_urlpatterns_count(self):
-        """Should have 12 total WebSocket URL patterns."""
-        # 1 clinic queue + 3 lab + 1 MCH partograph + 2 inpatient
+        """Should have 17 total WebSocket URL patterns."""
+        # 1 clinic queue + 3 lab + 2 MCH (partograph + facility) + 2 inpatient
         # + 1 triage/emergency + 1 surveillance alerts
-        # + 1 pharmacy queue + 2 billing (invoices + sha-claims) = 12 patterns
-        assert len(websocket_urlpatterns) == 12
+        # + 1 pharmacy queue + 2 billing (invoices + sha-claims)
+        # + 1 scheduling + 1 imaging + 1 immunizations + 1 dashboard = 17 patterns
+        assert len(websocket_urlpatterns) == 17
 
     def test_clinic_queue_pattern_exists(self):
         """Clinic queue WebSocket pattern should exist."""
@@ -85,6 +110,36 @@ class TestAsgiConfiguration:
         pattern_paths = [p.pattern.regex.pattern for p in websocket_urlpatterns]
         mch_partograph_pattern = r"ws/mch/partographs/(?P<partograph_id>\d+)/$"
         assert any(mch_partograph_pattern in p for p in pattern_paths)
+
+    def test_mch_facility_pattern_exists(self):
+        """MCH facility WebSocket pattern should exist."""
+        pattern_paths = [p.pattern.regex.pattern for p in websocket_urlpatterns]
+        mch_facility_pattern = r"ws/mch/facility/(?P<facility_id>\d+)/$"
+        assert any(mch_facility_pattern in p for p in pattern_paths)
+
+    def test_scheduling_pattern_exists(self):
+        """Scheduling appointments WebSocket pattern should exist."""
+        pattern_paths = [p.pattern.regex.pattern for p in websocket_urlpatterns]
+        scheduling_pattern = r"ws/scheduling/(?P<facility_id>\d+)/appointments/$"
+        assert any(scheduling_pattern in p for p in pattern_paths)
+
+    def test_imaging_pattern_exists(self):
+        """Imaging orders WebSocket pattern should exist."""
+        pattern_paths = [p.pattern.regex.pattern for p in websocket_urlpatterns]
+        imaging_pattern = r"ws/imaging/(?P<facility_id>\d+)/orders/$"
+        assert any(imaging_pattern in p for p in pattern_paths)
+
+    def test_immunization_pattern_exists(self):
+        """Immunization records WebSocket pattern should exist."""
+        pattern_paths = [p.pattern.regex.pattern for p in websocket_urlpatterns]
+        immunization_pattern = r"ws/immunizations/(?P<facility_id>\d+)/records/$"
+        assert any(immunization_pattern in p for p in pattern_paths)
+
+    def test_dashboard_pattern_exists(self):
+        """Dashboard WebSocket pattern should exist."""
+        pattern_paths = [p.pattern.regex.pattern for p in websocket_urlpatterns]
+        dashboard_pattern = r"ws/dashboard/(?P<facility_id>\d+)/$"
+        assert any(dashboard_pattern in p for p in pattern_paths)
 
 
 @pytest.mark.django_db
@@ -182,4 +237,8 @@ class TestAsgiWebsocketRouting:
                 or "triage" in pattern
                 or "pharmacy" in pattern
                 or "billing" in pattern
+                or "scheduling" in pattern
+                or "imaging" in pattern
+                or "immunization" in pattern
+                or "dashboard" in pattern
             )

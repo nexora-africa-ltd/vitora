@@ -17,10 +17,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDailyCollectionReport, useInvoices, usePayments } from '@/lib/hooks/billing';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useBillingStore } from '@/lib/stores/billing';
+import { useFacility } from '@/lib/context/facility-context';
+import { useBillingSocket } from '@/lib/hooks/use-websocket';
 import type { Invoice, Payment, InvoiceStatus, PaymentMethod, PaymentStatus } from '@/lib/types/billing';
 
 export default function TransactionsPage() {
   const router = useRouter();
+  const { facility } = useFacility();
+  useBillingSocket(facility?.id ?? null);
   const { activeTab, setActiveTab } = useBillingStore();
 
   // Invoice filter state

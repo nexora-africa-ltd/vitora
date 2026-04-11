@@ -49,6 +49,8 @@ import {
 import { ClaimsStatusChart } from '@/components/widgets';
 import { useClaims } from '@/lib/hooks/use-sha';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useFacility } from '@/lib/context/facility-context';
+import { useSHAClaimSocket } from '@/lib/hooks/use-websocket';
 import type { Claim, ClaimStatus } from '@/lib/types/sha';
 import { formatCurrency } from '@/lib/utils/format';
 import { format, parseISO } from 'date-fns';
@@ -254,6 +256,8 @@ function ClaimsTable({ claims, isLoading, onClaimClick }: ClaimsTableProps) {
 export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHeader = true }: SHAClaimsPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { facility } = useFacility();
+  useSHAClaimSocket(facility?.id ?? null);
 
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
   const [searchQuery, setSearchQuery] = useState('');

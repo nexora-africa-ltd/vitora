@@ -17,6 +17,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
+import { useSchedulingSocket } from '@/lib/hooks/use-websocket';
 import { appointmentsApi } from '@/lib/api/scheduling';
 import { formatDate } from '@/lib/utils/format';
 
@@ -25,6 +27,8 @@ const today = new Date().toISOString().split('T')[0];
 export default function SchedulingDashboardPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { facility } = useFacility();
+  useSchedulingSocket(facility?.id ?? null);
 
   const { data: todayData } = useQuery({
     queryKey: ['scheduling-appointments-today'],

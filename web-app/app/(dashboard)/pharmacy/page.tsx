@@ -40,9 +40,13 @@ import {
 } from '@/lib/hooks/use-pharmacy';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { StockStatus, PrescriptionStatus, DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
+import { useFacility } from '@/lib/context/facility-context';
+import { usePharmacySocket } from '@/lib/hooks/use-websocket';
 
 export default function PharmacyPage() {
   const router = useRouter();
+  const { facility } = useFacility();
+  usePharmacySocket(facility?.id ?? null);
 
   // Direct dispense dialog state
   const [showDirectDispenseDialog, setShowDirectDispenseDialog] = useState(false);
