@@ -52,9 +52,13 @@ import {
   MODALITY_LABELS,
 } from '@/lib/types/imaging';
 import { formatDate, formatBytes } from '@/lib/utils/format';
+import { useFacility } from '@/lib/context/facility-context';
+import { useImagingSocket } from '@/lib/hooks/use-websocket';
 
 export default function ImagingPage() {
   const router = useRouter();
+  const { facility } = useFacility();
+  useImagingSocket(facility?.id ?? null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<ImagingOrderStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<ImagingPriority | ''>('');

@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
+import { useSchedulingSocket } from '@/lib/hooks/use-websocket';
 import { appointmentsApi } from '@/lib/api/scheduling';
 import { formatDate } from '@/lib/utils/format';
 import type {
@@ -92,6 +94,8 @@ export default function AppointmentsListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { facility } = useFacility();
+  useSchedulingSocket(facility?.id ?? null);
 
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | ''>(
     (searchParams.get('status') as AppointmentStatus) || '',

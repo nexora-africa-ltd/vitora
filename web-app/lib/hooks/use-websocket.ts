@@ -999,6 +999,769 @@ export function useLabourPartographSocket(
 }
 
 // =============================================================================
+// Scheduling WebSocket Hook
+// =============================================================================
+
+/**
+ * Scheduling WebSocket event types (from backend scheduling/consumers.py)
+ */
+export type SchedulingEventType =
+  | 'scheduling.appointment_created'
+  | 'scheduling.appointment_confirmed'
+  | 'scheduling.appointment_checked_in'
+  | 'scheduling.appointment_started'
+  | 'scheduling.appointment_completed'
+  | 'scheduling.appointment_cancelled'
+  | 'scheduling.appointment_no_show'
+  | 'scheduling.schedule_updated'
+  | 'scheduling.assignment_decided'
+  | 'scheduling.stats_updated';
+
+/**
+ * Scheduling WebSocket message structure
+ */
+export interface SchedulingWebSocketMessage<T = unknown> {
+  event: SchedulingEventType;
+  data: T;
+}
+
+/**
+ * Scheduling appointment event data
+ */
+export interface SchedulingAppointmentEvent {
+  appointment_id: number;
+  patient_id: number;
+  patient_name: string;
+  resource_id: number;
+  resource_name: string;
+  status: string;
+  appointment_type: string;
+  scheduled_date: string;
+  scheduled_time: string;
+}
+
+/**
+ * WebSocket hook for scheduling/appointment real-time updates.
+ *
+ * Automatically invalidates React Query cache on appointment lifecycle events
+ * and schedule availability changes. Falls back to polling if WebSocket fails.
+ *
+ * @param facilityId - The facility ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function useSchedulingSocket(
+  facilityId: number | null,
+  options: UseWebSocketOptions<SchedulingWebSocketMessage> = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = facilityId ? getWebSocketUrl(`/ws/scheduling/${facilityId}/appointments/`) : null;
+
+  const handleMessage = useCallback(
+    (message: SchedulingWebSocketMessage) => {
+      if (!facilityId) return;
+
+      console.log(`[WebSocket] Scheduling facility ${facilityId} event:`, message.event, message.data);
+
+      switch (message.event) {
+        case 'scheduling.appointment_created':
+        case 'scheduling.appointment_confirmed':
+        case 'scheduling.appointment_checked_in':
+        case 'scheduling.appointment_started':
+        case 'scheduling.appointment_completed':
+        case 'scheduling.appointment_cancelled':
+        case 'scheduling.appointment_no_show':
+          // Invalidate all appointment-related queries
+          queryClient.invalidateQueries({ queryKey: ['scheduling-appointments'] });
+          queryClient.invalidateQueries({ queryKey: ['scheduling-appointments-today'] });
+          queryClient.invalidateQueries({ queryKey: ['scheduling-appointments-upcoming'] });
+          queryClient.invalidateQueries({ queryKey: ['appointments'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'scheduling.schedule_updated':
+        case 'scheduling.assignment_decided':
+          // Invalidate schedule and resource queries
+          queryClient.invalidateQueries({ queryKey: ['scheduling-appointments'] });
+          queryClient.invalidateQueries({ queryKey: ['scheduling-appointments-today'] });
+          break;
+
+        case 'scheduling.stats_updated':
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+      }
+
+      options.onMessage?.(message);
+    },
+    [facilityId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+// =============================================================================
+// Pharmacy WebSocket Hook
+// =============================================================================
+
+/**
+ * Pharmacy WebSocket event types (from backend pharmacy/consumers.py)
+ */
+export type PharmacyEventType =
+  | 'pharmacy.prescription_created'
+  | 'pharmacy.dispensing_completed'
+  | 'pharmacy.stock_critical'
+  | 'pharmacy.stock_low_warning'
+  | 'pharmacy.prescription_expired'
+  | 'pharmacy.stats_updated';
+
+/**
+ * Pharmacy WebSocket message structure
+ */
+export interface PharmacyWebSocketMessage<T = unknown> {
+  event: PharmacyEventType;
+  data: T;
+}
+
+/**
+ * Pharmacy stock alert event data
+ */
+export interface PharmacyStockAlertEvent {
+  drug_id: number;
+  drug_name: string;
+  generic_name: string;
+  current_quantity: number;
+  reorder_level: number;
+  alert_type: 'critical' | 'low_warning';
+}
+
+/**
+ * Pharmacy prescription event data
+ */
+export interface PharmacyPrescriptionEvent {
+  prescription_id: number;
+  prescription_number: string;
+  patient_id: number;
+  patient_name: string;
+  encounter_id: number | null;
+  item_count: number;
+  status: string;
+}
+
+/**
+ * WebSocket hook for pharmacy queue real-time updates.
+ *
+ * Automatically invalidates React Query cache for prescriptions, dispensing,
+ * and stock queries. Shows toast notifications for critical stock alerts.
+ *
+ * @param facilityId - The facility ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function usePharmacySocket(
+  facilityId: number | null,
+  options: UseWebSocketOptions<PharmacyWebSocketMessage> = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = facilityId ? getWebSocketUrl(`/ws/pharmacy/${facilityId}/queue/`) : null;
+
+  const handleMessage = useCallback(
+    (message: PharmacyWebSocketMessage) => {
+      if (!facilityId) return;
+
+      console.log(`[WebSocket] Pharmacy facility ${facilityId} event:`, message.event, message.data);
+
+      switch (message.event) {
+        case 'pharmacy.prescription_created':
+        case 'pharmacy.prescription_expired':
+          queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+          queryClient.invalidateQueries({ queryKey: ['prescriptions', 'pending'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'pharmacy.dispensing_completed':
+          queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+          queryClient.invalidateQueries({ queryKey: ['dispensings'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'pharmacy.stock_critical':
+          queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
+          queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
+          queryClient.invalidateQueries({ queryKey: ['drugs'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          // Show critical stock toast
+          import('@/lib/hooks/use-toast').then(({ toast }) => {
+            const data = message.data as PharmacyStockAlertEvent;
+            toast({
+              variant: 'destructive',
+              title: `🚨 Critical Stock: ${data.drug_name}`,
+              description: `Only ${data.current_quantity} units remaining (reorder level: ${data.reorder_level})`,
+              duration: 10000,
+            });
+          });
+          break;
+
+        case 'pharmacy.stock_low_warning':
+          queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
+          queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
+          queryClient.invalidateQueries({ queryKey: ['drugs'] });
+          break;
+
+        case 'pharmacy.stats_updated':
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+      }
+
+      options.onMessage?.(message);
+    },
+    [facilityId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+// =============================================================================
+// Billing WebSocket Hooks
+// =============================================================================
+
+/**
+ * Billing WebSocket event types (from backend billing/consumers.py)
+ */
+export type BillingEventType =
+  | 'billing.invoice_created'
+  | 'billing.invoice_updated'
+  | 'billing.payment_received'
+  | 'billing.payment_reversed'
+  | 'billing.stats_updated';
+
+/**
+ * SHA Claim WebSocket event types
+ */
+export type SHAClaimEventType =
+  | 'sha.claim_submitted'
+  | 'sha.claim_status_changed'
+  | 'sha.stats_updated';
+
+/**
+ * Billing WebSocket message structure
+ */
+export interface BillingWebSocketMessage<T = unknown> {
+  event: BillingEventType;
+  data: T;
+}
+
+/**
+ * SHA Claim WebSocket message structure
+ */
+export interface SHAClaimWebSocketMessage<T = unknown> {
+  event: SHAClaimEventType;
+  data: T;
+}
+
+/**
+ * Payment received event data
+ */
+export interface PaymentReceivedEvent {
+  payment_id: number;
+  invoice_id: number;
+  invoice_number: string;
+  patient_name: string;
+  amount: number;
+  payment_method: string;
+  received_at: string;
+}
+
+/**
+ * Invoice updated event data
+ */
+export interface InvoiceUpdatedEvent {
+  invoice_id: number;
+  invoice_number: string;
+  patient_name: string;
+  status: string;
+  total_amount: number;
+  balance_due: number;
+}
+
+/**
+ * WebSocket hook for billing (invoices/payments) real-time updates.
+ *
+ * Automatically invalidates React Query cache for invoices, payments,
+ * and billing reports. Shows toast for payment confirmations.
+ *
+ * @param facilityId - The facility ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function useBillingSocket(
+  facilityId: number | null,
+  options: UseWebSocketOptions<BillingWebSocketMessage> = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = facilityId ? getWebSocketUrl(`/ws/billing/${facilityId}/invoices/`) : null;
+
+  const handleMessage = useCallback(
+    (message: BillingWebSocketMessage) => {
+      if (!facilityId) return;
+
+      console.log(`[WebSocket] Billing facility ${facilityId} event:`, message.event, message.data);
+
+      switch (message.event) {
+        case 'billing.invoice_created':
+        case 'billing.invoice_updated':
+          queryClient.invalidateQueries({ queryKey: ['billing', 'invoices'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'billing.payment_received':
+          queryClient.invalidateQueries({ queryKey: ['billing', 'invoices'] });
+          queryClient.invalidateQueries({ queryKey: ['billing', 'payments'] });
+          queryClient.invalidateQueries({ queryKey: ['billing', 'reports'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          // Toast for payment confirmation
+          import('@/lib/hooks/use-toast').then(({ toast }) => {
+            const data = message.data as PaymentReceivedEvent;
+            toast({
+              title: '💰 Payment Received',
+              description: `KES ${data.amount.toLocaleString()} for ${data.patient_name} (${data.invoice_number})`,
+              duration: 5000,
+            });
+          });
+          break;
+
+        case 'billing.payment_reversed':
+          queryClient.invalidateQueries({ queryKey: ['billing', 'invoices'] });
+          queryClient.invalidateQueries({ queryKey: ['billing', 'payments'] });
+          queryClient.invalidateQueries({ queryKey: ['billing', 'reports'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'billing.stats_updated':
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+      }
+
+      options.onMessage?.(message);
+    },
+    [facilityId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+/**
+ * WebSocket hook for SHA claim real-time updates.
+ *
+ * @param facilityId - The facility ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function useSHAClaimSocket(
+  facilityId: number | null,
+  options: UseWebSocketOptions<SHAClaimWebSocketMessage> = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = facilityId ? getWebSocketUrl(`/ws/billing/${facilityId}/sha-claims/`) : null;
+
+  const handleMessage = useCallback(
+    (message: SHAClaimWebSocketMessage) => {
+      if (!facilityId) return;
+
+      console.log(`[WebSocket] SHA Claims facility ${facilityId} event:`, message.event, message.data);
+
+      switch (message.event) {
+        case 'sha.claim_submitted':
+        case 'sha.claim_status_changed':
+          queryClient.invalidateQueries({ queryKey: ['billing', 'invoices'] });
+          queryClient.invalidateQueries({ queryKey: ['billing'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'sha.stats_updated':
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+      }
+
+      options.onMessage?.(message);
+    },
+    [facilityId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+// =============================================================================
+// Imaging WebSocket Hook
+// =============================================================================
+
+/**
+ * Imaging WebSocket event types (from backend imaging/consumers.py)
+ */
+export type ImagingEventType =
+  | 'imaging.order_created'
+  | 'imaging.order_item_created'
+  | 'imaging.result_completed'
+  | 'imaging.stats_updated';
+
+/**
+ * Imaging WebSocket message structure
+ */
+export interface ImagingWebSocketMessage<T = unknown> {
+  event: ImagingEventType;
+  data: T;
+}
+
+/**
+ * Imaging order event data
+ */
+export interface ImagingOrderEvent {
+  order_id: number;
+  order_number: string;
+  patient_id: number;
+  patient_name: string;
+  encounter_id: number | null;
+  modality: string;
+  status: string;
+}
+
+/**
+ * WebSocket hook for imaging order real-time updates.
+ *
+ * Invalidates React Query cache for imaging orders, worklist, and stats.
+ *
+ * @param facilityId - The facility ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function useImagingSocket(
+  facilityId: number | null,
+  options: UseWebSocketOptions<ImagingWebSocketMessage> = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = facilityId ? getWebSocketUrl(`/ws/imaging/${facilityId}/orders/`) : null;
+
+  const handleMessage = useCallback(
+    (message: ImagingWebSocketMessage) => {
+      if (!facilityId) return;
+
+      console.log(`[WebSocket] Imaging facility ${facilityId} event:`, message.event, message.data);
+
+      switch (message.event) {
+        case 'imaging.order_created':
+        case 'imaging.order_item_created':
+          queryClient.invalidateQueries({ queryKey: ['imaging', 'orders'] });
+          queryClient.invalidateQueries({ queryKey: ['imaging', 'orders', 'worklist'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'imaging.result_completed':
+          queryClient.invalidateQueries({ queryKey: ['imaging', 'orders'] });
+          queryClient.invalidateQueries({ queryKey: ['imaging', 'orders', 'worklist'] });
+          queryClient.invalidateQueries({ queryKey: ['imaging', 'orders', 'worklist-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'imaging.stats_updated':
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+      }
+
+      options.onMessage?.(message);
+    },
+    [facilityId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+// =============================================================================
+// Immunization WebSocket Hook
+// =============================================================================
+
+/**
+ * Immunization WebSocket event types (from backend immunizations/consumers.py)
+ */
+export type ImmunizationEventType =
+  | 'immunization.record_administered'
+  | 'immunization.aefi_reported'
+  | 'immunization.schedule_generated'
+  | 'immunization.stats_updated';
+
+/**
+ * Immunization WebSocket message structure
+ */
+export interface ImmunizationWebSocketMessage<T = unknown> {
+  event: ImmunizationEventType;
+  data: T;
+}
+
+/**
+ * Immunization record event data
+ */
+export interface ImmunizationRecordEvent {
+  record_id: number;
+  patient_id: number;
+  patient_name: string;
+  vaccine_name: string;
+  dose_number: number;
+  administered_at: string;
+}
+
+/**
+ * AEFI report event data
+ */
+export interface AEFIReportedEvent {
+  aefi_id: number;
+  patient_id: number;
+  patient_name: string;
+  vaccine_name: string;
+  severity: string;
+  reported_at: string;
+}
+
+/**
+ * WebSocket hook for immunization real-time updates.
+ *
+ * Invalidates React Query cache for immunization records and schedules.
+ * Shows toast for AEFI reports.
+ *
+ * @param facilityId - The facility ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function useImmunizationSocket(
+  facilityId: number | null,
+  options: UseWebSocketOptions<ImmunizationWebSocketMessage> = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = facilityId ? getWebSocketUrl(`/ws/immunizations/${facilityId}/records/`) : null;
+
+  const handleMessage = useCallback(
+    (message: ImmunizationWebSocketMessage) => {
+      if (!facilityId) return;
+
+      console.log(`[WebSocket] Immunization facility ${facilityId} event:`, message.event, message.data);
+
+      switch (message.event) {
+        case 'immunization.record_administered':
+          queryClient.invalidateQueries({ queryKey: ['immunization-records'] });
+          queryClient.invalidateQueries({ queryKey: ['vaccine-stock'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'immunization.aefi_reported':
+          queryClient.invalidateQueries({ queryKey: ['immunization-records'] });
+          queryClient.invalidateQueries({ queryKey: ['aefi-reports'] });
+          // Toast for AEFI alert
+          import('@/lib/hooks/use-toast').then(({ toast }) => {
+            const data = message.data as AEFIReportedEvent;
+            toast({
+              variant: 'destructive',
+              title: `⚠️ AEFI Reported: ${data.vaccine_name}`,
+              description: `Patient: ${data.patient_name} — Severity: ${data.severity}`,
+              duration: 10000,
+            });
+          });
+          break;
+
+        case 'immunization.schedule_generated':
+          queryClient.invalidateQueries({ queryKey: ['immunization-records'] });
+          queryClient.invalidateQueries({ queryKey: ['immunization-schedule'] });
+          break;
+
+        case 'immunization.stats_updated':
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+      }
+
+      options.onMessage?.(message);
+    },
+    [facilityId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+// =============================================================================
+// MCH Extended WebSocket Hook (Registration, Delivery, ANC)
+// =============================================================================
+
+/**
+ * MCH extended event types (beyond partograph)
+ */
+export type MCHEventType =
+  | 'mch.registration_created'
+  | 'mch.delivery_completed'
+  | 'mch.anc_visit_created'
+  | 'mch.baby_patient_created'
+  | 'mch.stats_updated';
+
+/**
+ * MCH WebSocket message structure
+ */
+export interface MCHWebSocketMessage<T = unknown> {
+  event: MCHEventType;
+  data: T;
+}
+
+/**
+ * MCH registration event data
+ */
+export interface MCHRegistrationEvent {
+  registration_id: number;
+  patient_id: number;
+  patient_name: string;
+  edd: string | null;
+  risk_level: string;
+}
+
+/**
+ * MCH delivery event data
+ */
+export interface MCHDeliveryEvent {
+  registration_id: number;
+  patient_name: string;
+  delivery_date: string;
+  baby_count: number;
+  delivery_mode: string;
+}
+
+/**
+ * WebSocket hook for MCH module real-time updates (beyond partograph).
+ *
+ * Covers registration, delivery completion, ANC visits, and baby creation events.
+ * Complements useLabourPartographSocket which handles partograph observations.
+ *
+ * @param facilityId - The facility ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function useMCHSocket(
+  facilityId: number | null,
+  options: UseWebSocketOptions<MCHWebSocketMessage> = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = facilityId ? getWebSocketUrl(`/ws/mch/facility/${facilityId}/`) : null;
+
+  const handleMessage = useCallback(
+    (message: MCHWebSocketMessage) => {
+      if (!facilityId) return;
+
+      console.log(`[WebSocket] MCH facility ${facilityId} event:`, message.event, message.data);
+
+      switch (message.event) {
+        case 'mch.registration_created':
+          queryClient.invalidateQueries({ queryKey: ['mch-registrations'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'mch.delivery_completed':
+          queryClient.invalidateQueries({ queryKey: ['mch-registrations'] });
+          queryClient.invalidateQueries({ queryKey: ['mch-partographs'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'mch.anc_visit_created':
+          queryClient.invalidateQueries({ queryKey: ['mch-registrations'] });
+          queryClient.invalidateQueries({ queryKey: ['appointments'] });
+          break;
+
+        case 'mch.baby_patient_created':
+          queryClient.invalidateQueries({ queryKey: ['mch-registrations'] });
+          queryClient.invalidateQueries({ queryKey: ['patients'] });
+          break;
+
+        case 'mch.stats_updated':
+          queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+      }
+
+      options.onMessage?.(message);
+    },
+    [facilityId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+// =============================================================================
+// Dashboard WebSocket Hook (Projection Broadcasts)
+// =============================================================================
+
+/**
+ * Dashboard broadcast event types
+ */
+export type DashboardEventType = 'stats_updated';
+
+/**
+ * Dashboard WebSocket message
+ */
+export interface DashboardWebSocketMessage {
+  event: DashboardEventType;
+  data: unknown;
+}
+
+/**
+ * WebSocket hook for dashboard projection broadcasts.
+ *
+ * Listens for aggregated stats_updated events from clinic queue, ward occupancy,
+ * and pharmacy queue projections. Invalidates the dashboard stats React Query
+ * cache for near-instant dashboard updates without polling.
+ *
+ * @param facilityId - The facility ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function useDashboardSocket(
+  facilityId: number | null,
+  options: UseWebSocketOptions<DashboardWebSocketMessage> = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = facilityId ? getWebSocketUrl(`/ws/dashboard/${facilityId}/`) : null;
+
+  const handleMessage = useCallback(
+    (message: DashboardWebSocketMessage) => {
+      if (!facilityId) return;
+
+      console.log(`[WebSocket] Dashboard facility ${facilityId} event:`, message.event);
+
+      if (message.event === 'stats_updated') {
+        queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+      }
+
+      options.onMessage?.(message);
+    },
+    [facilityId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+// =============================================================================
 // Connection Status Component Helper
 // =============================================================================
 

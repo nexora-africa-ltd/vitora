@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/select';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
+import { useMCHSocket } from '@/lib/hooks/use-websocket';
 import { formatDate } from '@/lib/utils/format';
 import { mchRegistrationsApi } from '@/lib/api/mch';
 import type { MCHRegistrationListItem, MCHRegistrationStatus } from '@/lib/types/mch';
@@ -49,6 +51,8 @@ const statusColors: Record<MCHRegistrationStatus, string> = {
 export default function MCHRegistrationsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { facility } = useFacility();
+  useMCHSocket(facility?.id ?? null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<MCHRegistrationStatus | ''>('');
   const [riskFilter, setRiskFilter] = useState<'all' | 'high'>('all');

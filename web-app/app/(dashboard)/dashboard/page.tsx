@@ -39,7 +39,7 @@ import { MyClaimedEncountersWidget } from '@/components/dashboard/my-claimed-wid
 import { useDashboardStats, formatCurrency, formatNumber } from '@/lib/hooks/use-dashboard-stats';
 import { useMyStaffProfile } from '@/lib/hooks/use-rbac';
 import { useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
-import { useEmergencySocket } from '@/lib/hooks/use-websocket';
+import { useEmergencySocket, useDashboardSocket } from '@/lib/hooks/use-websocket';
 import { useIsSupervisor, useUser } from '@/lib/auth';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
@@ -142,6 +142,8 @@ export default function DashboardPage() {
   const { data: stats, isLoading, isError } = useDashboardStats();
   const { data: triageStats, isLoading: isTriageLoading } = useTriageWaitTimeStats({ dateRange: 'today' });
   const { connectionState, reconnectAttempts, lastUpdate } = useEmergencySocket();
+  const { facility, hasModule } = useFacility();
+  useDashboardSocket(facility?.id ?? null);
   const isSupervisor = useIsSupervisor();
   const user = useUser();
   const { canAccessModule } = usePermissions();
@@ -162,7 +164,6 @@ export default function DashboardPage() {
   const canViewAlliedHealth = canAccessModule('allied_health');
   const canViewAdmin = canAccessModule('admin');
   const { data: staffProfile } = useMyStaffProfile();
-  const { hasModule } = useFacility();
   const { refresh, isRefreshing } = usePageRefresh();
 
   // Triage queue metrics
