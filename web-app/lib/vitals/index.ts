@@ -47,6 +47,8 @@ export {
   DEFAULT_THRESHOLDS,
   INPUT_THRESHOLDS,
   VITAL_RANGES,
+  getAgeAdjustedInputThresholds,
+  getVitalRangeHint,
 } from './thresholds';
 
 // Schemas

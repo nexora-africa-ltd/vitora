@@ -13,7 +13,7 @@
  */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { TriageCategory, AVPUStatus, MobilityStatus, ArrivalMode, ChiefComplaintCategory, AssignedArea } from '@/lib/types/triage';
+import type { TriageCategory, AVPUStatus, MobilityStatus, ArrivalMode, ChiefComplaintCategory, AssignedArea, EtATDangerSign, DehydrationLevel, FontanelleStatus, BreastfeedingAbility } from '@/lib/types/triage';
 
 // =============================================================================
 // Types
@@ -53,6 +53,13 @@ export interface TriageAssessmentData {
   triage_category?: TriageCategory;
   auto_calculated_category?: TriageCategory;
   category_override_reason?: string;
+  // ETAT pediatric fields
+  etat_danger_signs?: EtATDangerSign[];
+  dehydration_level?: DehydrationLevel | '';
+  fontanelle_status?: FontanelleStatus | '';
+  breastfeeding_ability?: BreastfeedingAbility | '';
+  capillary_refill_seconds?: number | null;
+  muac_cm?: number | null;
 }
 
 export interface TriageRouting {
