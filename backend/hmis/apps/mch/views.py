@@ -1082,10 +1082,18 @@ class GrowthMeasurementViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="chart-data")
     def chart_data(self, request):
-        """Return growth chart data for a patient."""
+        """Return growth chart data for a patient.
+
+        Supports an optional ``age_range`` query parameter:
+        - ``0_5``  – WHO Child Growth Standards (0-5 years, default)
+        - ``5_19`` – WHO Growth Reference 2007 (5-19 years)
+        - ``5_10`` – WHO Growth Reference 2007 weight-for-age only (5-10 years)
+        - ``all``  – Combined 0-5 + 5-19/5-10 data for full range charts
+        """
         patient_id = request.query_params.get("patient")
         chart_type = request.query_params.get("chart_type", "weight_for_age")
         sex = request.query_params.get("sex")
+        age_range = request.query_params.get("age_range", "0_5")
 
         measurements = self.get_queryset()
         if patient_id:
@@ -1098,18 +1106,37 @@ class GrowthMeasurementViewSet(viewsets.ModelViewSet):
 
                 calculator = WHOGrowthCalculator()
                 indicator_map = {
-                    "weight_for_age": ("wfa", "age_days"),
-                    "height_for_age": ("lhfa", "age_days"),
-                    "bmi_for_age": ("bfa", "age_days"),
-                    "head_circumference_for_age": ("hcfa", "age_days"),
+                    "weight_for_age": "wfa",
+                    "height_for_age": "lhfa",
+                    "bmi_for_age": "bfa",
+                    "head_circumference_for_age": "hcfa",
                 }
 
                 if chart_type in indicator_map:
-                    indicator, target_key = indicator_map[chart_type]
-                    data = calculator._load_data(
-                        calculator._get_sex_filename(indicator, sex)
-                    )
-                    percentile_lines = calculator.get_percentile_lines(data, target_key)
+                    indicator = indicator_map[chart_type]
+                    target_key = "age_days"
+
+                    if age_range == "all":
+                        # Combine 0-5 and 5-19/5-10 data for a full range chart
+                        data_0_5 = calculator._load_data(
+                            calculator._get_sex_filename(indicator, sex, age_days=0)
+                        )
+                        # Use a large age_days to get the extended file
+                        data_ext = calculator._load_data(
+                            calculator._get_sex_filename(indicator, sex, age_days=2000)
+                        )
+                        data = data_0_5 + data_ext
+                    elif age_range in ("5_19", "5_10"):
+                        data = calculator._load_data(
+                            calculator._get_sex_filename(indicator, sex, age_days=2000)
+                        )
+                    else:
+                        data = calculator._load_data(
+                            calculator._get_sex_filename(indicator, sex, age_days=0)
+                        )
+
+                    if data:
+                        percentile_lines = calculator.get_percentile_lines(data, target_key)
                 elif chart_type == "weight_for_height":
                     # Prefer weight-for-length if data exists, else weight-for-height.
                     sex_label = "boys" if sex.upper() == "M" else "girls"

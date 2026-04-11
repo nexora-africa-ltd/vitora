@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, Plus, Loader2 } from 'lucide-react';
@@ -24,7 +24,7 @@ import { PatientSearchInput } from '@/components/patients/patient-search-input';
 import { growthMeasurementsApi } from '@/lib/api/mch';
 import { patientsApi } from '@/lib/api/patients';
 import type { GrowthChartType } from '@/lib/types/mch';
-import type { Sex } from '@/lib/data/who-growth';
+import type { Sex, AgeRange } from '@/lib/data/who-growth';
 
 export default function GrowthChartPage() {
   const searchParams = useSearchParams();
@@ -61,14 +61,23 @@ export default function GrowthChartPage() {
   const measurements = measurementsData?.results || [];
   const sex: Sex = (patient?.gender as Sex) || 'M';
 
+  // Determine age range based on patient DOB
+  const ageRange: AgeRange = useMemo(() => {
+    if (!patient?.date_of_birth) return '0_5';
+    const dob = new Date(patient.date_of_birth);
+    const ageYears = (Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+    if (ageYears > 5) return 'all';
+    return '0_5';
+  }, [patient?.date_of_birth]);
+
   // Fetch chart data with precomputed percentile lines from API
   const {
     data: chartData,
     isLoading: chartLoading,
   } = useQuery({
-    queryKey: ['growth-chart-data', selectedPatientId, 'weight_for_age', sex],
+    queryKey: ['growth-chart-data', selectedPatientId, 'weight_for_age', sex, ageRange],
     queryFn: () =>
-      growthMeasurementsApi.getChartData(selectedPatientId!, 'weight_for_age', sex as 'M' | 'F'),
+      growthMeasurementsApi.getChartData(selectedPatientId!, 'weight_for_age', sex as 'M' | 'F', ageRange),
     enabled: !!selectedPatientId,
   });
 
@@ -100,6 +109,7 @@ export default function GrowthChartPage() {
                   </DialogHeader>
                   <GrowthMeasurementForm
                     patientId={selectedPatientId}
+                    patientDob={patient?.date_of_birth}
                     onSuccess={() => setMeasureDialogOpen(false)}
                     onCancel={() => setMeasureDialogOpen(false)}
                   />
@@ -174,6 +184,7 @@ export default function GrowthChartPage() {
                     sex={sex}
                     patientDob={patient?.date_of_birth}
                     apiPercentileLines={chartData?.percentile_lines as Record<string, { x: number; y: number }[]> | undefined}
+                    ageRange={ageRange}
                   />
                 </CardContent>
               </Card>
@@ -200,7 +211,11 @@ export default function GrowthChartPage() {
                         {[...measurements].reverse().map((m) => (
                           <tr key={m.id} className={`border-b ${m.has_critical_flag ? 'bg-red-50' : ''}`}>
                             <td className="py-2">{m.measurement_date}</td>
-                            <td className="py-2">{Math.floor(m.age_in_days / 30)} mo</td>
+                            <td className="py-2">
+                              {m.age_in_days >= 1826
+                                ? `${Math.floor(m.age_in_days / 365.25)}y ${Math.round((m.age_in_days % 365.25) / 30.4)}mo`
+                                : `${Math.floor(m.age_in_days / 30)} mo`}
+                            </td>
                             <td className="py-2">{m.weight ? `${m.weight} kg` : '—'}</td>
                             <td className="py-2">{m.height ? `${m.height} cm` : '—'}</td>
                             <td className="py-2">{m.muac ? `${m.muac} cm` : '—'}</td>

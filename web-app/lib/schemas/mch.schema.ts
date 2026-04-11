@@ -529,6 +529,7 @@ export const GrowthMeasurementSchema = z.object({
   measured_by_name: z.string().nullable(),
   measurement_date: z.string(),
   age_in_days: z.number(),
+  age_in_months: z.coerce.number().nullable(),
   weight: z.coerce.number().nullable(),
   height: z.coerce.number().nullable(),
   head_circumference: z.coerce.number().nullable(),
