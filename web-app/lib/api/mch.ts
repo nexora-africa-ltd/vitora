@@ -545,10 +545,12 @@ export const growthMeasurementsApi = {
   getChartData: async (
     patientId: number,
     chartType: GrowthChartType = 'weight_for_age',
-    sex?: 'M' | 'F'
+    sex?: 'M' | 'F',
+    ageRange?: '0_5' | '5_19' | '5_10' | 'all'
   ): Promise<GrowthChartData> => {
     const params: Record<string, unknown> = { patient: patientId, chart_type: chartType };
     if (sex) params.sex = sex;
+    if (ageRange) params.age_range = ageRange;
     const response = await apiClient.get<GrowthChartData>(
       `${BASE_URL}/growth-measurements/chart-data/`,
       { params }

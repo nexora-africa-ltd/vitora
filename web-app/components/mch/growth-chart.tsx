@@ -28,6 +28,7 @@ import {
   getIndicatorMeta,
   type GrowthIndicator,
   type Sex,
+  type AgeRange,
 } from '@/lib/data/who-growth';
 import type { GrowthMeasurementListItem } from '@/lib/types/mch';
 
@@ -38,6 +39,8 @@ interface GrowthChartProps {
   defaultIndicator?: GrowthIndicator;
   /** Precomputed percentile lines from API (optional, falls back to client-side calculation) */
   apiPercentileLines?: Record<string, { x: number; y: number }[]>;
+  /** Age range for reference data: '0_5' (default), '5_19', '5_10', or 'all' */
+  ageRange?: AgeRange;
 }
 
 const INDICATOR_OPTIONS: { value: GrowthIndicator; label: string }[] = [
@@ -120,17 +123,29 @@ export function GrowthChart({
   sex,
   defaultIndicator = 'weight_for_age',
   apiPercentileLines,
+  ageRange = '0_5',
 }: GrowthChartProps) {
   const [indicator, setIndicator] = useState<GrowthIndicator>(defaultIndicator);
   const [displaySex, setDisplaySex] = useState<Sex>(sex);
 
   const meta = getIndicatorMeta(indicator);
 
+  // Determine effective age range for the selected indicator
+  const effectiveAgeRange = useMemo(() => {
+    // Head circumference only has 0-5y data
+    if (indicator === 'head_circumference_for_age') return '0_5' as AgeRange;
+    // Weight-for-age only goes to 10y
+    if (indicator === 'weight_for_age' && (ageRange === '5_19' || ageRange === 'all')) {
+      return ageRange === '5_19' ? '5_10' as AgeRange : 'all' as AgeRange;
+    }
+    return ageRange;
+  }, [indicator, ageRange]);
+
   // Compute or use API percentile lines
   const percentileLines = useMemo(() => {
     if (apiPercentileLines) return apiPercentileLines;
-    return generatePercentileLines(indicator, displaySex);
-  }, [indicator, displaySex, apiPercentileLines]);
+    return generatePercentileLines(indicator, displaySex, effectiveAgeRange);
+  }, [indicator, displaySex, apiPercentileLines, effectiveAgeRange]);
 
   // Build merged chart data
   const chartData = useMemo(

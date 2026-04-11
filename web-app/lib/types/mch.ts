@@ -738,6 +738,7 @@ export interface GrowthMeasurement {
   measured_by_name: string | null;
   measurement_date: string;
   age_in_days: number;
+  age_in_months: number | null;
   weight: number | null;
   height: number | null;
   head_circumference: number | null;

@@ -2079,8 +2079,15 @@ class GrowthMeasurement(HistoryMixin, TimeStampedModel):
                 self.muac_classification = "NORMAL"
 
     def _classify_nutritional_status(self):
-        """Classify overall nutritional status from weight-for-age Z-score."""
+        """Classify overall nutritional status from Z-scores.
+
+        Uses weight-for-age Z-score for children ≤10y.
+        Falls back to BMI-for-age Z-score for children >10y
+        (WHO does not provide weight-for-age after 10 years).
+        """
         z = self.weight_for_age_z
+        if z is None:
+            z = self.bmi_for_age_z
         if z is None:
             return
 

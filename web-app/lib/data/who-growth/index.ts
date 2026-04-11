@@ -33,7 +33,7 @@ export type GrowthIndicator =
 
 export type Sex = 'M' | 'F';
 
-// Import all reference data
+// Import all reference data — 0-5y (WHO Child Growth Standards)
 import wfaBoys from './wfa_boys_0_5.json';
 import wfaGirls from './wfa_girls_0_5.json';
 import lhfaBoys from './lhfa_boys_0_5.json';
@@ -47,26 +47,73 @@ import wflGirls from './wfl_girls.json';
 import wfhBoys from './wfh_boys.json';
 import wfhGirls from './wfh_girls.json';
 
+// Import 5-19y data (WHO Growth Reference 2007)
+import bfaBoys5_19 from './bfa_boys_5_19.json';
+import bfaGirls5_19 from './bfa_girls_5_19.json';
+import lhfaBoys5_19 from './lhfa_boys_5_19.json';
+import lhfaGirls5_19 from './lhfa_girls_5_19.json';
+import wfaBoys5_10 from './wfa_boys_5_10.json';
+import wfaGirls5_10 from './wfa_girls_5_10.json';
+
+/** Age range for growth data selection */
+export type AgeRange = '0_5' | '5_19' | '5_10' | 'all';
+
 /**
- * Get the LMS reference data for a given indicator and sex.
+ * Get the LMS reference data for a given indicator, sex, and age range.
+ *
+ * @param indicator - Growth indicator type
+ * @param sex - 'M' or 'F'
+ * @param ageRange - '0_5' (default), '5_19', '5_10', or 'all' (combined)
  */
 export function getLMSData(
   indicator: GrowthIndicator,
   sex: Sex,
+  ageRange: AgeRange = '0_5',
 ): LMSDataPoint[] | LMSLengthDataPoint[] {
-  const dataMap: Record<string, LMSDataPoint[] | LMSLengthDataPoint[]> = {
+  // Weight-for-height is not age-based, return as-is
+  if (indicator === 'weight_for_height') {
+    return sex === 'M'
+      ? [...(wflBoys as LMSLengthDataPoint[]), ...(wfhBoys as LMSLengthDataPoint[])]
+      : [...(wflGirls as LMSLengthDataPoint[]), ...(wfhGirls as LMSLengthDataPoint[])];
+  }
+
+  // Head circumference: only 0-5y data exists
+  if (indicator === 'head_circumference_for_age') {
+    return sex === 'M' ? (hcfaBoys as LMSDataPoint[]) : (hcfaGirls as LMSDataPoint[]);
+  }
+
+  // Age-based indicators with 0-5 / 5-19 / 5-10 selection
+  const data0_5: Record<string, LMSDataPoint[]> = {
     weight_for_age_M: wfaBoys as LMSDataPoint[],
     weight_for_age_F: wfaGirls as LMSDataPoint[],
     height_for_age_M: lhfaBoys as LMSDataPoint[],
     height_for_age_F: lhfaGirls as LMSDataPoint[],
-    head_circumference_for_age_M: hcfaBoys as LMSDataPoint[],
-    head_circumference_for_age_F: hcfaGirls as LMSDataPoint[],
     bmi_for_age_M: bfaBoys as LMSDataPoint[],
     bmi_for_age_F: bfaGirls as LMSDataPoint[],
-    weight_for_height_M: [...(wflBoys as LMSLengthDataPoint[]), ...(wfhBoys as LMSLengthDataPoint[])],
-    weight_for_height_F: [...(wflGirls as LMSLengthDataPoint[]), ...(wfhGirls as LMSLengthDataPoint[])],
   };
-  return dataMap[`${indicator}_${sex}`] || [];
+
+  const dataExt: Record<string, LMSDataPoint[]> = {
+    weight_for_age_M: wfaBoys5_10 as LMSDataPoint[],
+    weight_for_age_F: wfaGirls5_10 as LMSDataPoint[],
+    height_for_age_M: lhfaBoys5_19 as LMSDataPoint[],
+    height_for_age_F: lhfaGirls5_19 as LMSDataPoint[],
+    bmi_for_age_M: bfaBoys5_19 as LMSDataPoint[],
+    bmi_for_age_F: bfaGirls5_19 as LMSDataPoint[],
+  };
+
+  const key = `${indicator}_${sex}`;
+  const base = data0_5[key] || [];
+  const ext = dataExt[key] || [];
+
+  switch (ageRange) {
+    case '5_19':
+    case '5_10':
+      return ext;
+    case 'all':
+      return [...base, ...ext];
+    default:
+      return base;
+  }
 }
 
 /**
@@ -165,8 +212,9 @@ export const PERCENTILE_MAP: Record<string, number> = {
 export function generatePercentileLines(
   indicator: GrowthIndicator,
   sex: Sex,
+  ageRange: AgeRange = '0_5',
 ): Record<string, { x: number; y: number }[]> {
-  const data = getLMSData(indicator, sex) as LMSDataPoint[];
+  const data = getLMSData(indicator, sex, ageRange) as LMSDataPoint[];
   const lines: Record<string, { x: number; y: number }[]> = {};
 
   const zLabels: Record<number, string> = {

@@ -160,25 +160,40 @@ class WHOGrowthCalculator:
 
         return (l, m, s)
 
-    def _get_sex_filename(self, indicator: str, sex: str) -> str:
+    def _get_sex_filename(self, indicator: str, sex: str, age_days: int | None = None) -> str:
         """
-        Get the correct filename for the given indicator and sex.
+        Get the correct filename for the given indicator, sex, and age.
+
+        Selects between 0-5y (WHO Child Growth Standards) and 5-19y / 5-10y
+        (WHO Growth Reference 2007) data files based on age_days.
 
         Args:
             indicator: e.g., 'wfa', 'lhfa', 'wfl', 'wfh', 'hcfa', 'bfa'
             sex: 'M' or 'F'
+            age_days: Age in days (used to select 0-5 vs 5-19/5-10 file)
 
         Returns:
             Filename string
         """
         sex_label = "boys" if sex.upper() == "M" else "girls"
+
+        # For age > 1856 days (>5y), use extended reference data
+        if age_days is not None and age_days > 1856:
+            if indicator == "wfa":
+                return f"{indicator}_{sex_label}_5_10.json"
+            elif indicator in ("bfa", "lhfa"):
+                return f"{indicator}_{sex_label}_5_19.json"
+            # hcfa: no 5-19y data exists, fall through to 0-5y
+
         return f"{indicator}_{sex_label}_0_5.json"
 
     def weight_for_age_z(self, weight_kg: float, age_days: int, sex: str) -> Decimal | None:
         """
         Calculate weight-for-age Z-score.
 
-        Valid for ages 0-1856 days (0-5 years).
+        Valid for ages 0-3652 days (0-10 years).
+        WHO stops providing weight-for-age after 10y because it is not
+        meaningful during puberty.
 
         Args:
             weight_kg: Weight in kilograms
@@ -188,10 +203,10 @@ class WHOGrowthCalculator:
         Returns:
             Z-score as Decimal, or None
         """
-        if age_days < 0 or age_days > 1856:
+        if age_days < 0 or age_days > 3652:
             return None
 
-        filename = self._get_sex_filename("wfa", sex)
+        filename = self._get_sex_filename("wfa", sex, age_days)
         data = self._load_data(filename)
         lms = self._interpolate_lms(data, "age_days", age_days)
         if lms is None:
@@ -204,7 +219,7 @@ class WHOGrowthCalculator:
         Calculate height/length-for-age Z-score.
 
         Uses length for children < 730 days (2 years), height for >= 730 days.
-        Valid for ages 0-1856 days (0-5 years).
+        Valid for ages 0-6940 days (0-19 years).
 
         Args:
             height_cm: Height or length in centimeters
@@ -214,10 +229,10 @@ class WHOGrowthCalculator:
         Returns:
             Z-score as Decimal, or None
         """
-        if age_days < 0 or age_days > 1856:
+        if age_days < 0 or age_days > 6940:
             return None
 
-        filename = self._get_sex_filename("lhfa", sex)
+        filename = self._get_sex_filename("lhfa", sex, age_days)
         data = self._load_data(filename)
         lms = self._interpolate_lms(data, "age_days", age_days)
         if lms is None:
@@ -264,7 +279,7 @@ class WHOGrowthCalculator:
         """
         Calculate BMI-for-age Z-score.
 
-        Valid for ages 0-1856 days (0-5 years).
+        Valid for ages 0-6940 days (0-19 years).
 
         Args:
             bmi: Body Mass Index
@@ -274,10 +289,10 @@ class WHOGrowthCalculator:
         Returns:
             Z-score as Decimal, or None
         """
-        if age_days < 0 or age_days > 1856:
+        if age_days < 0 or age_days > 6940:
             return None
 
-        filename = self._get_sex_filename("bfa", sex)
+        filename = self._get_sex_filename("bfa", sex, age_days)
         data = self._load_data(filename)
         lms = self._interpolate_lms(data, "age_days", age_days)
         if lms is None:

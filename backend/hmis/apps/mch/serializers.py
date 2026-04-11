@@ -964,6 +964,7 @@ class GrowthMeasurementSerializer(serializers.ModelSerializer):
     measured_by_name = serializers.SerializerMethodField()
     has_critical_flag = serializers.BooleanField(read_only=True)
     alerts = serializers.SerializerMethodField()
+    age_in_months = serializers.SerializerMethodField()
 
     class Meta:
         model = GrowthMeasurement
@@ -979,6 +980,7 @@ class GrowthMeasurementSerializer(serializers.ModelSerializer):
             "measured_by_name",
             "measurement_date",
             "age_in_days",
+            "age_in_months",
             "weight",
             "height",
             "head_circumference",
@@ -1017,6 +1019,11 @@ class GrowthMeasurementSerializer(serializers.ModelSerializer):
 
     def get_alerts(self, obj):
         return obj.get_alerts()
+
+    def get_age_in_months(self, obj) -> float | None:
+        if obj.age_in_days is not None:
+            return round(obj.age_in_days / 30.4375, 1)
+        return None
 
 
 class GrowthMeasurementListSerializer(serializers.ModelSerializer):

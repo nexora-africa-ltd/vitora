@@ -15,6 +15,8 @@ import type { GrowthMeasurementCreateData } from '@/lib/types/mch';
 
 interface GrowthMeasurementFormProps {
   patientId: number;
+  /** Patient date of birth — used to hide age-inappropriate fields (HC, MUAC) for >5y */
+  patientDob?: string;
   /** Called after successful submission */
   onSuccess?: () => void;
   /** Called when cancel is clicked */
@@ -27,11 +29,19 @@ interface GrowthMeasurementFormProps {
  */
 export function GrowthMeasurementForm({
   patientId,
+  patientDob,
   onSuccess,
   onCancel,
 }: GrowthMeasurementFormProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Determine age in years for conditional field display
+  const ageYears = patientDob
+    ? (Date.now() - new Date(patientDob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+    : 0;
+  const showHcField = ageYears < 5;
+  const showMuacField = ageYears < 5;
 
   const [measurementDate, setMeasurementDate] = useState(
     new Date().toISOString().split('T')[0],
@@ -110,7 +120,10 @@ export function GrowthMeasurementForm({
       <CardHeader>
         <div className="flex items-center gap-2">
           <CardTitle className="text-base">Record Growth Measurement</CardTitle>
-          <HelpPopover content="Enter the child's measurements. Z-scores are automatically calculated against WHO growth standards. MUAC is measured for children 6-59 months: SAM < 11.5cm, MAM 11.5-12.4cm." />
+          <HelpPopover content={showMuacField
+            ? "Enter the child's measurements. Z-scores are automatically calculated against WHO growth standards. MUAC is measured for children 6-59 months: SAM < 11.5cm, MAM 11.5-12.4cm."
+            : "Enter the child's measurements. Z-scores are automatically calculated against WHO growth reference data (5-19 years). BMI-for-age and height-for-age are the primary indicators for school-age children."
+          } />
         </div>
       </CardHeader>
       <CardContent>
@@ -132,7 +145,7 @@ export function GrowthMeasurementForm({
                 type="number"
                 step="0.01"
                 min="0"
-                max="50"
+                max={ageYears > 5 ? 100 : 50}
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
                 placeholder="e.g., 5.75"
@@ -150,33 +163,37 @@ export function GrowthMeasurementForm({
                 placeholder="e.g., 65.0"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Head Circumference (cm)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                min="0"
-                max="80"
-                value={headCircumference}
-                onChange={(e) => setHeadCircumference(e.target.value)}
-                placeholder="e.g., 40.0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>MUAC (cm)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                min="0"
-                max="30"
-                value={muac}
-                onChange={(e) => setMuac(e.target.value)}
-                placeholder="e.g., 13.5"
-              />
-              <p className="text-xs text-muted-foreground">
-                SAM: &lt;11.5cm | MAM: 11.5–12.4cm (6–59 months)
-              </p>
-            </div>
+            {showHcField && (
+              <div className="space-y-2">
+                <Label>Head Circumference (cm)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="80"
+                  value={headCircumference}
+                  onChange={(e) => setHeadCircumference(e.target.value)}
+                  placeholder="e.g., 40.0"
+                />
+              </div>
+            )}
+            {showMuacField && (
+              <div className="space-y-2">
+                <Label>MUAC (cm)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="30"
+                  value={muac}
+                  onChange={(e) => setMuac(e.target.value)}
+                  placeholder="e.g., 13.5"
+                />
+                <p className="text-xs text-muted-foreground">
+                  SAM: &lt;11.5cm | MAM: 11.5–12.4cm (6–59 months)
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
