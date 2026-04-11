@@ -12,6 +12,7 @@ from datetime import datetime
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.core.events import InpatientEvents, publish_event
 from hmis.apps.inpatient.models import Admission, Ward
 from hmis.apps.inpatient.tasks import notify_supervisors_critical_violation
 from hmis.apps.inpatient.websockets import (
@@ -72,6 +73,19 @@ def notify_ward_constraints_updated(sender, instance, created, **kwargs):
     except Exception as e:
         # Don't fail the save operation if broadcast fails
         logger.exception(f"Failed to broadcast ward constraint update: {e}")
+
+    # Publish domain event
+    publish_event(
+        event_type=InpatientEvents.WARD_CONSTRAINTS_UPDATED,
+        aggregate_type="Ward",
+        aggregate_id=instance.id,
+        payload={
+            "ward_name": instance.name,
+            "gender_restriction": instance.gender_restriction,
+            "isolation_capable": instance.isolation_capable,
+        },
+        facility_id=getattr(instance, "facility_id", None),
+    )
 
 
 @receiver(post_save, sender=Admission)
@@ -146,3 +160,29 @@ def notify_compatibility_violation(sender, instance, created, **kwargs):
     except Exception as e:
         # Don't fail admission creation if notifications fail
         logger.exception(f"Failed to send violation notifications: {e}")
+
+    # Publish domain events for admission + violation
+    publish_event(
+        event_type=InpatientEvents.ADMISSION_CREATED,
+        aggregate_type="Admission",
+        aggregate_id=instance.id,
+        payload={
+            "admission_number": instance.admission_number,
+            "patient_id": instance.patient_id,
+            "ward_id": instance.ward_id,
+            "has_violations": bool(violations),
+        },
+        facility_id=getattr(instance, "facility_id", None),
+    )
+    if violations:
+        publish_event(
+            event_type=InpatientEvents.COMPATIBILITY_VIOLATION,
+            aggregate_type="Admission",
+            aggregate_id=instance.id,
+            payload={
+                "admission_number": instance.admission_number,
+                "violation_count": len(violations),
+                "has_critical": has_critical,
+            },
+            facility_id=getattr(instance, "facility_id", None),
+        )

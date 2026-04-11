@@ -6,8 +6,10 @@ Auto-releases ER beds when an encounter is closed or cancelled.
 
 import logging
 
-from django.db.models.signals import pre_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+
+from hmis.apps.core.events import ClinicalEvents, publish_event
 
 logger = logging.getLogger(__name__)
 
@@ -138,3 +140,21 @@ def _broadcast_bed_auto_release(bed, encounter) -> None:
                 new_loop.close()
     except Exception:
         logger.exception("Failed to broadcast bed auto-release")
+
+
+@receiver(post_save, sender="encounters.Encounter")
+def publish_encounter_event(sender, instance, created, **kwargs):
+    """Publish domain event when an encounter is created or updated."""
+    event_type = ClinicalEvents.ENCOUNTER_CREATED if created else ClinicalEvents.ENCOUNTER_UPDATED
+    publish_event(
+        event_type=event_type,
+        aggregate_type="Encounter",
+        aggregate_id=instance.id,
+        payload={
+            "patient_id": instance.patient_id,
+            "encounter_type": getattr(instance, "encounter_type", ""),
+            "status": getattr(instance, "status", ""),
+        },
+        facility_id=getattr(instance, "facility_id", None),
+        organization_id=getattr(instance, "organization_id", None),
+    )

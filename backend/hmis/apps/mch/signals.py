@@ -6,6 +6,7 @@ from datetime import date, datetime, time, timedelta
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from hmis.apps.core.events import ImmunizationEvents, MCHEvents, publish_event
 from hmis.apps.mch.models import (
     ANCVisit,
     Delivery,
@@ -60,6 +61,20 @@ def auto_generate_immunization_schedule(sender, instance, created, **kwargs):
                 len(records),
                 instance.id,
                 age_days,
+            )
+
+            # Publish domain event
+            publish_event(
+                event_type=ImmunizationEvents.SCHEDULE_GENERATED,
+                aggregate_type="Patient",
+                aggregate_id=instance.id,
+                payload={
+                    "patient_id": instance.id,
+                    "records_count": len(records),
+                    "age_days": age_days,
+                },
+                facility_id=getattr(instance, "facility_id", None),
+                organization_id=getattr(instance, "organization_id", None),
             )
     except Exception as exc:
         # Don't prevent patient creation if immunization scheduling fails
@@ -127,6 +142,20 @@ def auto_create_anc_enrollment(sender, instance, created, **kwargs):
             instance.mother.id,
         )
 
+        # Publish domain event
+        publish_event(
+            event_type=MCHEvents.REGISTRATION_CREATED,
+            aggregate_type="MCHRegistration",
+            aggregate_id=instance.id,
+            payload={
+                "mch_number": instance.mch_number,
+                "mother_id": instance.mother_id,
+                "is_high_risk": instance.is_high_risk,
+            },
+            facility_id=getattr(instance, "facility_id", None),
+            organization_id=getattr(instance, "organization_id", None),
+        )
+
     except Exception as exc:
         # Don't prevent MCH registration if ANC enrollment fails
         logger.error(
@@ -156,6 +185,20 @@ def auto_transition_mch_to_delivered(sender, instance, created, **kwargs):
                 registration.mch_number,
                 instance.id,
             )
+
+        # Publish domain event
+        publish_event(
+            event_type=MCHEvents.DELIVERY_COMPLETED,
+            aggregate_type="Delivery",
+            aggregate_id=instance.id,
+            payload={
+                "registration_id": instance.registration_id,
+                "mch_number": registration.mch_number,
+                "delivery_date": str(instance.delivery_date) if instance.delivery_date else None,
+            },
+            facility_id=getattr(instance, "facility_id", None),
+            organization_id=getattr(instance, "organization_id", None),
+        )
     except Exception as exc:
         logger.error(
             "Failed to auto-transition MCH registration for delivery %s: %s",
@@ -244,6 +287,20 @@ def auto_create_anc_appointment(sender, instance, **kwargs):
             instance.registration.mch_number,
         )
 
+        # Publish domain event
+        publish_event(
+            event_type=MCHEvents.ANC_VISIT_CREATED,
+            aggregate_type="ANCVisit",
+            aggregate_id=instance.id,
+            payload={
+                "registration_id": instance.registration_id,
+                "visit_number": instance.visit_number,
+                "next_visit_date": str(instance.next_visit_date),
+            },
+            facility_id=getattr(instance, "facility_id", None),
+            organization_id=getattr(instance, "organization_id", None),
+        )
+
     except Exception as exc:
         # Don't prevent ANC visit save if appointment creation fails
         logger.warning(
@@ -288,6 +345,20 @@ def create_baby_patient_on_delivery(sender, instance, created, **kwargs):
             registration.save(update_fields=["baby"])
 
         logger.info("Created baby patient %s for delivery %s", baby.id, instance.id)
+
+        # Publish domain event
+        publish_event(
+            event_type=MCHEvents.BABY_PATIENT_CREATED,
+            aggregate_type="Delivery",
+            aggregate_id=instance.id,
+            payload={
+                "baby_patient_id": baby.id,
+                "mother_id": mother.id,
+                "delivery_date": str(instance.delivery_date) if instance.delivery_date else None,
+            },
+            facility_id=getattr(instance, "facility_id", None),
+            organization_id=getattr(instance, "organization_id", None),
+        )
 
     except Exception as exc:
         logger.error("Failed to create baby patient for delivery %s: %s", instance.id, exc)

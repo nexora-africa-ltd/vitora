@@ -8,6 +8,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
+from hmis.apps.core.events import ClinicalEvents, publish_event
 from hmis.apps.core.models import AuditLog
 
 
@@ -145,3 +146,18 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
 
     updated_fields.add("updated_at")
     encounter.save(update_fields=sorted(updated_fields))
+
+    # Publish domain event for triage assessment
+    publish_event(
+        event_type=ClinicalEvents.TRIAGE_ASSESSED,
+        aggregate_type="TriageAssessment",
+        aggregate_id=instance.id,
+        payload={
+            "encounter_id": encounter.id,
+            "patient_id": getattr(encounter, "patient_id", None),
+            "triage_category": getattr(instance, "triage_category", None),
+            "triage_status": new_status,
+            "created": created,
+        },
+        facility_id=getattr(encounter, "facility_id", None),
+    )
