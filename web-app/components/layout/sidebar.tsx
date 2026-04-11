@@ -684,6 +684,11 @@ export function Sidebar({
   const searchParamsString = searchParams.toString();
   const badgeCounts = useSidebarBadges();
 
+  // On mobile (hamburger overlay), always show the sidebar expanded — the
+  // collapsed (icon-only) state is only meaningful on xl+ where the sidebar
+  // is persistently visible.
+  const effectiveCollapsed = collapsed && !mobileOpen;
+
   const navScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -763,14 +768,14 @@ export function Sidebar({
       <aside
         className={cn(
           'fixed left-0 top-0 z-50 h-dvh border-r bg-card/95 backdrop-blur transition-all duration-300 overscroll-contain',
-          collapsed ? 'w-20' : 'w-64',
+          effectiveCollapsed ? 'w-20' : 'w-64',
           mobileOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-0'
         )}
       >
         <div className="flex h-full flex-col">
           <div className="flex h-20 items-center justify-between px-3 mt-2">
             <Link href="/" className="flex flex-1 items-center py-2">
-              <SidebarLogo collapsed={collapsed} />
+              <SidebarLogo collapsed={effectiveCollapsed} />
             </Link>
             <Button
               variant="ghost"
@@ -783,10 +788,10 @@ export function Sidebar({
             </Button>
           </div>
 
-          {!collapsed && <CurrentPatientCard onMobileClose={onMobileClose} />}
+          {!effectiveCollapsed && <CurrentPatientCard onMobileClose={onMobileClose} />}
 
           {/* Collapse All button — sits above the scrollable area */}
-          {!collapsed && (
+          {!effectiveCollapsed && (
             <div
               className={cn(
                 "flex shrink-0 justify-end px-3 pb-1",
@@ -829,7 +834,7 @@ export function Sidebar({
                     <NavGroup
                       key={item.label}
                       item={item}
-                      collapsed={collapsed}
+                      collapsed={effectiveCollapsed}
                       pathname={pathname}
                       isOpen={openMenus.includes(item.label)}
                       onToggle={() =>
@@ -846,7 +851,7 @@ export function Sidebar({
                     <NavLink
                       key={item.href}
                       item={item}
-                      collapsed={collapsed}
+                      collapsed={effectiveCollapsed}
                       pathname={pathname}
                       searchParamsString={searchParamsString}
                       onMobileClose={onMobileClose}
@@ -861,7 +866,7 @@ export function Sidebar({
           </div>
 
           <div className="border-t px-2 py-2">
-            <div className={cn('grid gap-1', collapsed ? 'grid-cols-1' : 'grid-cols-3')}>
+            <div className={cn('grid gap-1', effectiveCollapsed ? 'grid-cols-1' : 'grid-cols-3')}>
               {bottomNavItems.map((item) => {
                 const ItemIcon = item.icon;
                 const link = (
@@ -905,6 +910,7 @@ export function Sidebar({
                 <TooltipContent side="right">Logout</TooltipContent>
               </Tooltip>
 
+              {/* Collapse toggle — only on xl+ where the sidebar is persistent */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -912,7 +918,7 @@ export function Sidebar({
                     onClick={() => onCollapse(!collapsed)}
                     aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     className={cn(
-                      'inline-flex h-9 items-center justify-center rounded-md text-muted-foreground transition-colors',
+                      'hidden xl:inline-flex h-9 items-center justify-center rounded-md text-muted-foreground transition-colors',
                       'hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300',
                       collapsed ? 'w-full' : 'w-full',
                       collapsed && 'rotate-180'
