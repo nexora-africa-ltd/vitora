@@ -1,8 +1,11 @@
 """
 Scheduling signals for Vitora HMIS.
 
-Publishes domain events when appointments are created or change status.
-Uses post_save on Appointment to detect status transitions.
+Publishes domain events for:
+- Appointment status transitions
+- Schedule (timetable) changes
+- Assignment engine decisions and overrides
+- Rule activation/deactivation
 """
 
 import logging
@@ -11,7 +14,13 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import SchedulingEvents, publish_event
-from hmis.apps.scheduling.models import Appointment
+from hmis.apps.scheduling.models import (
+    Appointment,
+    AssignmentDecision,
+    AssignmentOverride,
+    AssignmentRule,
+    Schedule,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,4 +62,109 @@ def publish_appointment_event(sender, instance, created, **kwargs):
         },
         facility_id=getattr(instance, "facility_id", None),
         organization_id=getattr(instance, "organization_id", None),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Timetable / Schedule events
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender=Schedule)
+def publish_schedule_event(sender, instance, created, **kwargs):
+    """Publish domain event when a schedule (timetable entry) is created or updated."""
+    event_type = (
+        SchedulingEvents.SCHEDULE_CREATED if created else SchedulingEvents.SCHEDULE_UPDATED
+    )
+    publish_event(
+        event_type=event_type,
+        aggregate_type="Schedule",
+        aggregate_id=instance.id,
+        payload={
+            "resource_id": instance.resource_id,
+            "schedule_type": getattr(instance, "schedule_type", ""),
+            "day_of_week": instance.day_of_week,
+            "is_active": instance.is_active,
+        },
+        facility_id=getattr(instance.resource, "facility_id", None),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Assignment engine events
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender=AssignmentDecision)
+def publish_assignment_decision_event(sender, instance, created, **kwargs):
+    """Publish domain event when the assignment engine records a decision."""
+    if not created:
+        return
+
+    publish_event(
+        event_type=SchedulingEvents.ASSIGNMENT_DECIDED,
+        aggregate_type="AssignmentDecision",
+        aggregate_id=instance.id,
+        payload={
+            "assignment_type": instance.assignment_type,
+            "target_type": instance.target_type,
+            "target_id": instance.target_id,
+            "outcome": instance.decision_outcome,
+            "resource_id": instance.assigned_resource_id,
+            "rule_id": instance.rule_applied_id,
+            "evaluation_time_ms": instance.evaluation_time_ms,
+        },
+    )
+
+
+@receiver(post_save, sender=AssignmentOverride)
+def publish_override_event(sender, instance, created, **kwargs):
+    """Publish domain event when an override is created, approved, or rejected."""
+    if created:
+        event_type = SchedulingEvents.OVERRIDE_CREATED
+    elif instance.approval_status == "APPROVED":
+        event_type = SchedulingEvents.OVERRIDE_APPROVED
+    elif instance.approval_status == "REJECTED":
+        event_type = SchedulingEvents.OVERRIDE_REJECTED
+    else:
+        return
+
+    publish_event(
+        event_type=event_type,
+        aggregate_type="AssignmentOverride",
+        aggregate_id=instance.id,
+        payload={
+            "target_type": instance.target_type,
+            "target_id": instance.target_id,
+            "override_reason": instance.override_reason,
+            "approval_status": instance.approval_status,
+            "original_resource_id": instance.original_resource_id,
+            "new_resource_id": instance.new_resource_id,
+        },
+    )
+
+
+@receiver(post_save, sender=AssignmentRule)
+def publish_rule_toggle_event(sender, instance, created, **kwargs):
+    """Publish domain event when a rule is activated or deactivated."""
+    if created:
+        return  # Skip initial creation
+
+    update_fields = kwargs.get("update_fields")
+    if update_fields is not None and "is_active" not in update_fields:
+        return
+
+    event_type = (
+        SchedulingEvents.RULE_ACTIVATED if instance.is_active else SchedulingEvents.RULE_DEACTIVATED
+    )
+    publish_event(
+        event_type=event_type,
+        aggregate_type="AssignmentRule",
+        aggregate_id=instance.id,
+        payload={
+            "rule_code": instance.rule_code,
+            "applies_to": instance.applies_to,
+            "priority": instance.priority,
+        },
+        facility_id=getattr(instance, "facility_id", None),
     )

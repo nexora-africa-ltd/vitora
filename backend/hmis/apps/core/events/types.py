@@ -116,6 +116,18 @@ class SchedulingEvents:
     APPOINTMENT_CANCELLED = "scheduling.appointment.cancelled"
     APPOINTMENT_NO_SHOW = "scheduling.appointment.no_show"
 
+    # Timetable / resource availability
+    SCHEDULE_CREATED = "scheduling.schedule.created"
+    SCHEDULE_UPDATED = "scheduling.schedule.updated"
+
+    # Assignment engine
+    ASSIGNMENT_DECIDED = "scheduling.assignment.decided"
+    OVERRIDE_CREATED = "scheduling.override.created"
+    OVERRIDE_APPROVED = "scheduling.override.approved"
+    OVERRIDE_REJECTED = "scheduling.override.rejected"
+    RULE_ACTIVATED = "scheduling.rule.activated"
+    RULE_DEACTIVATED = "scheduling.rule.deactivated"
+
 
 class ImagingEvents:
     """Imaging domain event types."""
