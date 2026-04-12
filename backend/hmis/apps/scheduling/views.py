@@ -274,15 +274,12 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         """
         from hmis.apps.core.models import StaffProfile
 
-        facility = getattr(request, "facility", None)
+        facility = self._get_facility(request)
         if not facility:
-            try:
-                facility = request.user.staff_profile.primary_facility
-            except (AttributeError, StaffProfile.DoesNotExist):
-                return Response(
-                    {"error": "No facility context available"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Find staff profiles that don't have a scheduling resource yet
         staff_without_resource = StaffProfile.objects.filter(
@@ -321,6 +318,124 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response({
             "created": created_count,
             "message": f"Created {created_count} resource(s) from staff profiles",
+        })
+
+    def _get_facility(self, request):
+        """Resolve the current facility from request context or user profile."""
+        facility = getattr(request, "facility", None)
+        if not facility:
+            try:
+                facility = request.user.staff_profile.primary_facility
+            except (AttributeError, Exception):
+                return None
+        return facility
+
+    @action(detail=False, methods=["post"], url_path="sync-from-clinics")
+    def sync_from_clinics(self, request):
+        """
+        Auto-create PLACE resources from Clinics that don't have one yet.
+
+        Only creates resources for active clinics at the current facility.
+        Returns the count of newly created resources.
+        """
+        from hmis.apps.clinics.models import Clinic
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        clinics_without_resource = Clinic.objects.filter(
+            status="ACTIVE",
+            facility=facility,
+            scheduling_resource__isnull=True,
+        )
+
+        created_count = 0
+        for clinic in clinics_without_resource:
+            code = f"CLINIC-{clinic.code}"
+            if Resource.objects.filter(code=code, facility=facility).exists():
+                code = f"CLINIC-{clinic.pk}"
+
+            resource = Resource.objects.create(
+                name=clinic.name,
+                resource_type="PLACE",
+                code=code,
+                is_active=True,
+                capacity=clinic.capacity,
+                description=clinic.description or "",
+                facility=facility,
+                organization=facility.organization,
+                metadata={
+                    "synced_from": "clinic",
+                    "source_code": clinic.code,
+                    "clinic_type": clinic.clinic_type,
+                    "location": clinic.location or "",
+                },
+            )
+            clinic.scheduling_resource = resource
+            clinic.save(update_fields=["scheduling_resource"])
+            created_count += 1
+
+        return Response({
+            "created": created_count,
+            "message": f"Created {created_count} resource(s) from clinics",
+        })
+
+    @action(detail=False, methods=["post"], url_path="sync-from-wards")
+    def sync_from_wards(self, request):
+        """
+        Auto-create PLACE resources from inpatient Wards that don't have one yet.
+
+        Only creates resources for active wards at the current facility.
+        Returns the count of newly created resources.
+        """
+        from hmis.apps.inpatient.models import Ward
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        wards_without_resource = Ward.objects.filter(
+            is_active=True,
+            facility=facility,
+            scheduling_resource__isnull=True,
+        )
+
+        created_count = 0
+        for ward in wards_without_resource:
+            code = f"WARD-{ward.code}"
+            if Resource.objects.filter(code=code, facility=facility).exists():
+                code = f"WARD-{ward.pk}"
+
+            resource = Resource.objects.create(
+                name=ward.name,
+                resource_type="PLACE",
+                code=code,
+                is_active=True,
+                capacity=ward.capacity,
+                description=ward.description or "",
+                facility=facility,
+                organization=facility.organization,
+                metadata={
+                    "synced_from": "ward",
+                    "source_code": ward.code,
+                    "ward_type": ward.ward_type,
+                    "floor": ward.floor or "",
+                },
+            )
+            ward.scheduling_resource = resource
+            ward.save(update_fields=["scheduling_resource"])
+            created_count += 1
+
+        return Response({
+            "created": created_count,
+            "message": f"Created {created_count} resource(s) from wards",
         })
 
 

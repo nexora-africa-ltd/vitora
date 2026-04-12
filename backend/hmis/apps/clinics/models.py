@@ -245,6 +245,18 @@ class Clinic(TimeStampedModel):
         help_text="Permission required to access this clinic's data",
     )
 
+    # =========================================================================
+    # Scheduling Integration
+    # =========================================================================
+    scheduling_resource = models.OneToOneField(
+        "scheduling.Resource",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clinic",
+        help_text="Linked scheduling resource (auto-created for PLACE type)",
+    )
+
     class Meta:
         """Meta options for Clinic model."""
 

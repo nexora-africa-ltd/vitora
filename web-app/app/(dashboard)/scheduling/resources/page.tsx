@@ -10,6 +10,10 @@ import {
   Box,
   Power,
   PowerOff,
+  RefreshCw,
+  Users,
+  Building2,
+  BedDouble,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -34,6 +38,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { resourcesApi } from '@/lib/api/scheduling';
@@ -121,6 +131,35 @@ export default function SchedulingResourcesPage() {
     },
   });
 
+  const syncStaffMutation = useMutation({
+    mutationFn: () => resourcesApi.syncFromStaff(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
+      toast({ title: 'Staff Synced', description: result.message });
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to sync staff.', variant: 'destructive' }),
+  });
+
+  const syncClinicsMutation = useMutation({
+    mutationFn: () => resourcesApi.syncFromClinics(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
+      toast({ title: 'Clinics Synced', description: result.message });
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to sync clinics.', variant: 'destructive' }),
+  });
+
+  const syncWardsMutation = useMutation({
+    mutationFn: () => resourcesApi.syncFromWards(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
+      toast({ title: 'Wards Synced', description: result.message });
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to sync wards.', variant: 'destructive' }),
+  });
+
+  const isSyncing = syncStaffMutation.isPending || syncClinicsMutation.isPending || syncWardsMutation.isPending;
+
   function closeDialog() {
     setShowCreate(false);
     setEditingId(null);
@@ -171,11 +210,39 @@ export default function SchedulingResourcesPage() {
           title="Scheduling Resources"
           helpContent="Manage schedulable resources — rooms, clinics, staff, and equipment. Resources are used by the scheduling module for appointments. Immunizations require an IMM-CLINIC resource to auto-generate vaccination appointments."
           actions={
-            <Button size="sm" onClick={() => setShowCreate(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Add Resource</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={isSyncing}>
+                    {isSyncing ? (
+                      <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                    )}
+                    <span className="hidden sm:inline">Sync</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => syncStaffMutation.mutate()} disabled={isSyncing}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Sync Staff Profiles
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => syncClinicsMutation.mutate()} disabled={isSyncing}>
+                    <Building2 className="h-4 w-4 mr-2" />
+                    Sync Clinics
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => syncWardsMutation.mutate()} disabled={isSyncing}>
+                    <BedDouble className="h-4 w-4 mr-2" />
+                    Sync Wards
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button size="sm" onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Add Resource</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            </div>
           }
         />
 

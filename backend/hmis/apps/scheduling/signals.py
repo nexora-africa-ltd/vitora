@@ -19,6 +19,7 @@ from hmis.apps.scheduling.models import (
     AssignmentDecision,
     AssignmentOverride,
     AssignmentRule,
+    Resource,
     Schedule,
     Shift,
 )
@@ -207,3 +208,85 @@ def publish_shift_event(sender, instance, created, **kwargs):
         facility_id=getattr(instance, "facility_id", None),
         organization_id=getattr(instance, "organization_id", None),
     )
+
+
+# ---------------------------------------------------------------------------
+# Auto-create PLACE resources for Clinics & Wards
+# ---------------------------------------------------------------------------
+
+
+def _auto_create_place_resource(instance, code_prefix, source_field, extra_metadata=None):
+    """
+    Create a PLACE scheduling resource for a Clinic or Ward if it doesn't have one.
+
+    Skips creation if the instance already has a linked scheduling_resource,
+    or if the instance has no facility (can't scope the resource).
+    """
+    if instance.scheduling_resource_id:
+        return  # Already linked
+
+    facility = getattr(instance, "facility", None)
+    if not facility:
+        return
+
+    code = f"{code_prefix}-{instance.code}"
+    if Resource.objects.filter(code=code, facility=facility).exists():
+        code = f"{code_prefix}-{instance.pk}"
+
+    metadata = {"synced_from": source_field, "source_code": instance.code}
+    if extra_metadata:
+        metadata.update(extra_metadata)
+
+    resource = Resource.objects.create(
+        name=instance.name,
+        resource_type="PLACE",
+        code=code,
+        is_active=getattr(instance, "is_active", True),
+        capacity=getattr(instance, "capacity", 1),
+        description=getattr(instance, "description", ""),
+        facility=facility,
+        organization=getattr(facility, "organization", None),
+        metadata=metadata,
+    )
+    # Link back without triggering another save signal
+    type(instance).objects.filter(pk=instance.pk).update(scheduling_resource=resource)
+    instance.scheduling_resource = resource
+    instance.scheduling_resource_id = resource.pk
+
+
+@receiver(post_save, sender="clinics.Clinic")
+def auto_create_clinic_resource(sender, instance, created, **kwargs):
+    """Auto-create a PLACE resource when a Clinic is created."""
+    if not created:
+        return
+    try:
+        _auto_create_place_resource(
+            instance,
+            code_prefix="CLINIC",
+            source_field="clinic",
+            extra_metadata={
+                "clinic_type": getattr(instance, "clinic_type", ""),
+                "location": getattr(instance, "location", ""),
+            },
+        )
+    except Exception:
+        logger.exception("Failed to auto-create scheduling resource for Clinic %s", instance.pk)
+
+
+@receiver(post_save, sender="inpatient.Ward")
+def auto_create_ward_resource(sender, instance, created, **kwargs):
+    """Auto-create a PLACE resource when a Ward is created."""
+    if not created:
+        return
+    try:
+        _auto_create_place_resource(
+            instance,
+            code_prefix="WARD",
+            source_field="ward",
+            extra_metadata={
+                "ward_type": getattr(instance, "ward_type", ""),
+                "floor": getattr(instance, "floor", ""),
+            },
+        )
+    except Exception:
+        logger.exception("Failed to auto-create scheduling resource for Ward %s", instance.pk)
