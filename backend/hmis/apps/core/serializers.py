@@ -292,6 +292,9 @@ class StaffProfileSerializer(serializers.ModelSerializer):
     primary_facility_name = serializers.CharField(
         source="primary_facility.name", read_only=True, default=None
     )
+    organization_name = serializers.CharField(
+        source="organization.name", read_only=True, default=None
+    )
     is_license_valid = serializers.SerializerMethodField()
 
     class Meta:
@@ -319,6 +322,7 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             "primary_facility_name",
             "secondary_facilities",
             "organization",
+            "organization_name",
             "secondary_organizations",
             "hwr_id",
             "license_number",

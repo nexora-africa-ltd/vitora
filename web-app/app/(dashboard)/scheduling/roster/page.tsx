@@ -47,7 +47,7 @@ import {
 } from '@/components/ui/tooltip';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { toast } from 'sonner';
-import { resourcesApi, shiftsApi } from '@/lib/api/scheduling';
+import { resourcesApi, shiftsApi, staffConstraintsApi, schedulingSettingsApi } from '@/lib/api/scheduling';
 import type {
   ShiftType,
   ShiftListItem,
@@ -186,6 +186,53 @@ export default function WeeklyRosterPage() {
     }
     return map;
   }, [conflicts]);
+
+  // Fetch staff constraints and scheduling settings for auto-fill
+  const { data: constraintsData } = useQuery({
+    queryKey: ['scheduling-constraints-active'],
+    queryFn: () => staffConstraintsApi.list({ is_active: true, page_size: 500 }),
+  });
+  const { data: schedulingSettings } = useQuery({
+    queryKey: ['scheduling-settings-current'],
+    queryFn: () => schedulingSettingsApi.getCurrent(),
+  });
+
+  // Build per-resource blocked shift types from constraints
+  const blockedTypes = useMemo(() => {
+    const map = new Map<number, Set<ShiftType>>();
+    for (const c of constraintsData?.results ?? []) {
+      if (!map.has(c.staff_resource)) map.set(c.staff_resource, new Set());
+      const blocked = map.get(c.staff_resource)!;
+      switch (c.constraint_type) {
+        case 'NO_NIGHTS':
+          blocked.add('NIGHT');
+          blocked.add('NIGHT_OFF');
+          break;
+        case 'LIGHT_DUTY':
+          // Only DAY allowed
+          for (const st of SHIFT_TYPES) {
+            if (st.value !== 'DAY' && !st.isOff) blocked.add(st.value);
+          }
+          break;
+        case 'NO_OVERTIME':
+          blocked.add('OVERTIME');
+          break;
+        case 'NO_WEEKENDS':
+          // Tracked in separate set below
+          break;
+      }
+    }
+    return map;
+  }, [constraintsData]);
+
+  // Staff IDs with NO_WEEKENDS constraint
+  const noWeekendStaff = useMemo(() => {
+    const set = new Set<number>();
+    for (const c of constraintsData?.results ?? []) {
+      if (c.constraint_type === 'NO_WEEKENDS') set.add(c.staff_resource);
+    }
+    return set;
+  }, [constraintsData]);
 
   // Build a lookup: cellKey → ShiftListItem
   const existingShifts = useMemo(() => {
@@ -354,6 +401,15 @@ export default function WeeklyRosterPage() {
   const [maxDaysPerStaff, setMaxDaysPerStaff] = useState(5);
 
   const handleAutoFill = useCallback(() => {
+    // Build the shift pattern to use. If settings has a pattern, use it; otherwise
+    // cycle the selected paint type for every slot.
+    const pattern: ShiftType[] =
+      schedulingSettings?.default_shift_pattern?.length
+        ? (schedulingSettings.default_shift_pattern as ShiftType[])
+        : [paintType];
+
+    const maxNights = schedulingSettings?.max_night_shifts_per_week ?? 4;
+
     setDraft((prev) => {
       const next = new Map(prev);
       let filled = 0;
@@ -371,21 +427,28 @@ export default function WeeklyRosterPage() {
       });
 
       for (const staff of staffList) {
-        // Count how many shifts this staff already has (saved + drafted)
+        const staffBlocked = blockedTypes.get(staff.id);
+        const isNoWeekend = noWeekendStaff.has(staff.id);
+
+        // Count existing shifts and night shifts for this staff
         let staffShiftCount = 0;
+        let staffNightCount = 0;
         const emptyDayIndices: number[] = [];
 
         for (let i = 0; i < weekDates.length; i++) {
-          const key = cellKey(staff.id, weekDates[i]!);
-          const hasSaved = existingShifts.has(key);
+          const date = weekDates[i]!;
+          const key = cellKey(staff.id, date);
+          const saved = existingShifts.get(key);
           const draftVal = next.get(key);
           const hasDraft = next.has(key) && draftVal !== null;
           const markedForRemoval = next.has(key) && draftVal === null;
 
           if (markedForRemoval) {
             emptyDayIndices.push(i);
-          } else if (hasSaved || hasDraft) {
+          } else if (saved || hasDraft) {
             staffShiftCount++;
+            const shiftType = hasDraft ? draftVal : saved?.shift_type;
+            if (shiftType === 'NIGHT') staffNightCount++;
           } else {
             emptyDayIndices.push(i);
           }
@@ -399,12 +462,54 @@ export default function WeeklyRosterPage() {
           (a, b) => (dayCoverage[a] ?? 0) - (dayCoverage[b] ?? 0)
         );
 
-        const toFill = sorted.slice(0, slotsToFill);
-        for (const dayIdx of toFill) {
-          const key = cellKey(staff.id, weekDates[dayIdx]!);
-          next.set(key, paintType);
-          // Update coverage count for subsequent staff
+        let slotsFilled = 0;
+        for (const dayIdx of sorted) {
+          if (slotsFilled >= slotsToFill) break;
+
+          const date = weekDates[dayIdx]!;
+          const dayOfWeek = new Date(date + 'T00:00:00').getDay(); // 0=Sun, 6=Sat
+
+          // Skip weekends for NO_WEEKENDS staff
+          if (isNoWeekend && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+
+          // Pick the shift type from the pattern (cycle through)
+          const patternIdx = slotsFilled % pattern.length;
+          let shiftType = pattern[patternIdx]!;
+
+          // If this type is blocked for this staff, try the next pattern entries
+          if (staffBlocked?.has(shiftType)) {
+            let found = false;
+            for (let p = 1; p < pattern.length; p++) {
+              const alt = pattern[(patternIdx + p) % pattern.length]!;
+              if (!staffBlocked.has(alt)) {
+                // Also check night limit
+                if (alt === 'NIGHT' && staffNightCount >= maxNights) continue;
+                shiftType = alt;
+                found = true;
+                break;
+              }
+            }
+            if (!found) continue; // All pattern types blocked for this staff — skip
+          }
+
+          // Enforce max night shifts per week
+          if (shiftType === 'NIGHT' && staffNightCount >= maxNights) {
+            // Try to fall back to a non-night type from the pattern
+            const fallback = pattern.find(
+              (t) => t !== 'NIGHT' && !staffBlocked?.has(t)
+            );
+            if (fallback) {
+              shiftType = fallback;
+            } else {
+              continue; // Can't assign anything useful
+            }
+          }
+
+          const key = cellKey(staff.id, date);
+          next.set(key, shiftType);
           dayCoverage[dayIdx] = (dayCoverage[dayIdx] ?? 0) + 1;
+          if (shiftType === 'NIGHT') staffNightCount++;
+          slotsFilled++;
           filled++;
         }
       }
@@ -415,11 +520,11 @@ export default function WeeklyRosterPage() {
       }
 
       toast.success(`Auto-filled ${filled} shift(s)`, {
-        description: `${paintType} shifts, max ${maxDaysPerStaff} days/staff`,
+        description: `Max ${maxDaysPerStaff} days/staff, constraints applied`,
       });
       return next;
     });
-  }, [paintType, staffList, weekDates, existingShifts, maxDaysPerStaff]);
+  }, [paintType, staffList, weekDates, existingShifts, maxDaysPerStaff, blockedTypes, noWeekendStaff, schedulingSettings]);
 
   // ==========================================================================
   // Print

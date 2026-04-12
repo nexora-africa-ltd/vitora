@@ -86,6 +86,11 @@ Only after the web app implementation is complete should we shift focus to offli
 - ✅ Django admin restricted to Nexora superusers (tenant staff use web-app admin)
 - ✅ Admin MFA enforcement (TOTP verification before accessing `/admin/`)
 - ✅ MFA onboarding grace period (72h configurable, then mandatory for required roles)
+- ✅ Staff scheduling: weekly roster grid, 13 shift types, constraint-aware auto-fill
+- ✅ Staff constraints (NO_NIGHTS, NO_WEEKENDS, LIGHT_DUTY, NO_OVERTIME, MAX_HOURS, MAX_CONSECUTIVE, PREFERRED_SHIFTS)
+- ✅ Cross-facility conflict detection (org-scoped) for shift scheduling
+- ✅ Scheduling settings per facility (max days/staff, max night shifts/week, default shift pattern)
+- ✅ Staff detail page shows organization and primary facility (read-only)
 
 ---
 
@@ -520,6 +525,19 @@ GET    /api/locations/wards/?sub_county={id}           # Wards for sub-county
 GET    /api/auditlogs/                   # List audit logs (admin only)
 GET    /api/auditlogs/?user={id}         # Filter by user
 GET    /api/auditlogs/?action=patient_view  # Filter by action
+```
+
+### Scheduling (Roster & Shifts)
+```
+GET|POST        /api/scheduling/shifts/                       # List/bulk-create shifts
+PATCH|DELETE    /api/scheduling/shifts/{id}/                   # Update/delete shift
+POST            /api/scheduling/shifts/bulk_delete/            # Bulk delete by ID list
+GET             /api/scheduling/shifts/cross_facility_conflicts/  # Detect same-staff overlaps (org-scoped)
+GET|POST|PATCH  /api/scheduling/settings/                      # Per-facility scheduling settings
+GET             /api/scheduling/settings/current/              # Current facility's settings
+GET|POST        /api/scheduling/staff-constraints/             # Staff scheduling constraints
+PATCH|DELETE    /api/scheduling/staff-constraints/{id}/        # Update/delete constraint
+POST            /api/scheduling/resources/sync_from_staff/     # Sync resources from staff profiles
 ```
 
 ### AI Stored Results (Persisted TibaBot Outputs)

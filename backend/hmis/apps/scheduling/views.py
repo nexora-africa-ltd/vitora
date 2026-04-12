@@ -1328,12 +1328,14 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         if not profile_to_local:
             return Response([])
 
-        # Query shifts at OTHER facilities for these staff profiles
+        # Query shifts at OTHER facilities (same organization) for these staff profiles
+        current_org = current_facility.organization
         other_shifts = (
             Shift.objects.filter(
                 staff_resource__staff_profile_id__in=profile_to_local.keys(),
                 shift_date__gte=from_date,
                 shift_date__lte=to_date,
+                organization=current_org,
             )
             .exclude(status="CANCELLED")
             .exclude(facility=current_facility)

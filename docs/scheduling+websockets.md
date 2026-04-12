@@ -18,6 +18,7 @@ Key principles:
 |-------|--------|-------|----------|
 | **Phase 1: Scheduling Foundation** | ✅ Complete | 70 | `hmis.apps.scheduling` |
 | **Phase 2: Assignment Engine** | ✅ Complete | 47 | `hmis.apps.scheduling.services.assignment` |
+| **Phase 2b: Roster & Shift Management** | ✅ Complete | 170 | `hmis.apps.scheduling`, `tests/scheduling/` |
 | **Phase 3: Domain Events** | 📋 Planned | - | - |
 | **Phase 4: Read Models** | 📋 Planned | - | - |
 | **Phase 5: WebSocket Infrastructure** | ✅ Complete | 16 ASGI routing tests + module suites | `hmis.asgi`, `hmis.apps.{clinics,laboratory,inpatient,triage,mch,surveillance}` |
@@ -236,6 +237,56 @@ Every assignment decision logs:
 - Justification required for all overrides
 - Optional approval workflow (PENDING → APPROVED/REJECTED)
 - Full audit trail with approver/rejector tracking
+
+---
+
+## Phase 2b: Roster & Shift Management ✅ COMPLETE
+
+> **Implemented**: April 2026
+> **Test Coverage**: 170 tests passing
+> **Location**: `backend/hmis/apps/scheduling/`, `web-app/app/(dashboard)/scheduling/roster/`
+
+### Objectives
+Provide a weekly duty roster for staff shift management with constraint-aware auto-fill, cross-facility conflict detection, and printable views.
+
+### Models Added
+
+| Model | Purpose |
+|-------|--------|
+| `Shift` | Day-level shift assignment (13 shift types: DAY, NIGHT, EVENING, OVERTIME, ON_CALL, STANDBY, etc.) |
+| `SchedulingSettings` | Per-facility settings: max days/week, max night shifts/week, default shift pattern, overtime rules |
+| `StaffConstraint` | Per-staff scheduling constraints (NO_NIGHTS, NO_WEEKENDS, MAX_HOURS, MAX_CONSECUTIVE, PREFERRED_SHIFTS, NO_OVERTIME, LIGHT_DUTY) |
+
+### API Endpoints
+
+| Endpoint | Methods | Notes |
+|----------|---------|-------|
+| `/api/scheduling/shifts/` | GET, POST, PATCH, DELETE | Bulk create via POST with `shifts` array |
+| `/api/scheduling/shifts/bulk_delete/` | POST | Bulk delete shifts by ID list |
+| `/api/scheduling/shifts/cross_facility_conflicts/` | GET | Detect same-staff overlaps across facilities within the same organization |
+| `/api/scheduling/settings/` | GET, POST, PATCH | Per-facility scheduling settings |
+| `/api/scheduling/settings/current/` | GET | Current facility's settings |
+| `/api/scheduling/staff-constraints/` | GET, POST, PATCH, DELETE | Per-staff scheduling constraints |
+| `/api/scheduling/resources/sync_from_staff/` | POST | Sync scheduling resources from active staff profiles |
+
+### Frontend Features
+
+| Feature | Description |
+|---------|------------|
+| **Weekly Roster Grid** | 7-day grid showing staff × days, with paint-brush shift assignment |
+| **Paint Selector** | Dropdown selector for shift type with color-coded badges |
+| **Auto-Fill** | Constraint-aware auto-assignment: respects NO_NIGHTS, NO_WEEKENDS, LIGHT_DUTY, NO_OVERTIME, max night shifts/week; cycles through `default_shift_pattern` or selected paint type |
+| **Cross-Facility Conflicts** | Real-time detection of staff scheduled at multiple facilities on the same date (scoped to same organization) |
+| **Settings Page** | Configure max days/staff, shift patterns, overtime rules |
+| **Constraints Page** | Manage per-staff scheduling constraints |
+| **Print View** | Printable weekly roster with facility header |
+| **Bulk Operations** | Bulk shift assignment and removal via paint-brush drag |
+
+### Security & Scoping
+
+- Shifts are `FacilityScopedModel` — queries are automatically scoped to the user's facility
+- Cross-facility conflict detection is scoped to the same organization (prevents cross-org data leaks)
+- All shift CRUD operations are audit-logged
 
 ---
 
