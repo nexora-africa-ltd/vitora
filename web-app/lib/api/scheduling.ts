@@ -81,6 +81,12 @@ export const resourcesApi = {
     await apiClient.delete(`${BASE_URL}/resources/${id}/`);
   },
 
+  /** Auto-create PERSON resources from staff profiles that don't have one yet. */
+  syncFromStaff: async (): Promise<{ created: number; message: string }> => {
+    const response = await apiClient.post(`${BASE_URL}/resources/sync-from-staff/`);
+    return response.data;
+  },
+
   /** Get available slots for a resource on a specific date. */
   getAvailability: async (id: number, date: string, appointmentType?: string): Promise<ResourceAvailability> => {
     const params: Record<string, string> = { date };

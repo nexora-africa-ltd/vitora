@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -8,12 +8,24 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  CalendarDays,
+  Users,
+  Activity,
+  RefreshCw,
+  Sun,
+  Moon,
+  Sunrise,
+  Sunset,
+  Phone,
+  Timer,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { StatsCard } from '@/components/dashboard/stats-card';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,12 +42,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useSchedulingSocket } from '@/lib/hooks/use-websocket';
-import { shiftsApi } from '@/lib/api/scheduling';
-import { resourcesApi } from '@/lib/api/scheduling';
+import { shiftsApi, resourcesApi } from '@/lib/api/scheduling';
 import { formatDate, formatTime } from '@/lib/utils/format';
 import { toast } from 'sonner';
 import type {
@@ -44,6 +62,10 @@ import type {
   ShiftListItem,
   ShiftCreateData,
 } from '@/lib/types/scheduling';
+
+// =============================================================================
+// Constants
+// =============================================================================
 
 const SHIFT_TYPE_OPTIONS: { value: ShiftType | ''; label: string }[] = [
   { value: '', label: 'All Types' },
@@ -79,24 +101,40 @@ const shiftTypeColors: Record<ShiftType, string> = {
   OVERTIME: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400',
 };
 
+const shiftTypeIcons: Record<ShiftType, typeof Sun> = {
+  DAY: Sun,
+  NIGHT: Moon,
+  MORNING: Sunrise,
+  AFTERNOON: Sunset,
+  ON_CALL: Phone,
+  OVERTIME: Timer,
+};
+
+// =============================================================================
+// Main Component
+// =============================================================================
+
 export default function DutyRosterPage() {
   const queryClient = useQueryClient();
   const { refresh, isRefreshing } = usePageRefresh();
   const { facility } = useFacility();
   useSchedulingSocket(facility?.id ?? null);
 
+  const today = new Date().toISOString().split('T')[0] ?? '';
+
   const [typeFilter, setTypeFilter] = useState<ShiftType | ''>('');
   const [statusFilter, setStatusFilter] = useState<ShiftStatus | ''>('');
   const [departmentFilter, setDepartmentFilter] = useState('');
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
+  const [fromDate, setFromDate] = useState<string>(today);
+  const [toDate, setToDate] = useState<string>(today);
   const [page, setPage] = useState(1);
+  const [activeTab, setActiveTab] = useState('today');
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<ShiftCreateData>({
     staff_resource: 0,
-    shift_date: '',
+    shift_date: today,
     start_time: '',
     end_time: '',
     shift_type: 'DAY',
@@ -107,6 +145,28 @@ export default function DutyRosterPage() {
   // Cancel dialog state
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+
+  // Handle tab changes for quick date filtering
+  function handleTabChange(tab: string) {
+    setActiveTab(tab);
+    setPage(1);
+    const now = new Date();
+    if (tab === 'today') {
+      const d = now.toISOString().split('T')[0] ?? '';
+      setFromDate(d);
+      setToDate(d);
+    } else if (tab === 'week') {
+      const start = new Date(now);
+      start.setDate(now.getDate() - now.getDay()); // Sunday
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      setFromDate(start.toISOString().split('T')[0] ?? '');
+      setToDate(end.toISOString().split('T')[0] ?? '');
+    } else if (tab === 'all') {
+      setFromDate('');
+      setToDate('');
+    }
+  }
 
   // Fetch shifts
   const { data, isLoading } = useQuery({
@@ -125,7 +185,7 @@ export default function DutyRosterPage() {
   });
 
   // Fetch PERSON resources for create dialog
-  const { data: resourcesData } = useQuery({
+  const { data: resourcesData, isLoading: resourcesLoading } = useQuery({
     queryKey: ['scheduling-resources-person'],
     queryFn: () => resourcesApi.list({ resource_type: 'PERSON', is_active: true, page_size: 200 }),
     enabled: createOpen,
@@ -135,9 +195,18 @@ export default function DutyRosterPage() {
   const totalCount = data?.count || 0;
   const totalPages = Math.ceil(totalCount / 20);
 
+  // Compute stats from visible shifts
+  const stats = useMemo(() => {
+    const active = shifts.filter(s => s.status === 'ACTIVE').length;
+    const scheduled = shifts.filter(s => s.status === 'SCHEDULED').length;
+    const completed = shifts.filter(s => s.status === 'COMPLETED').length;
+    const totalHours = shifts.reduce((sum, s) => sum + (s.duration_hours || 0), 0);
+    return { active, scheduled, completed, totalHours };
+  }, [shifts]);
+
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (data: ShiftCreateData) => shiftsApi.create(data),
+    mutationFn: (d: ShiftCreateData) => shiftsApi.create(d),
     onSuccess: () => {
       toast.success('Shift created');
       queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
@@ -150,7 +219,7 @@ export default function DutyRosterPage() {
   const startMutation = useMutation({
     mutationFn: (id: number) => shiftsApi.start(id),
     onSuccess: () => {
-      toast.success('Shift started');
+      toast.success('Shift started — clock in recorded');
       queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
     },
     onError: () => toast.error('Failed to start shift'),
@@ -159,7 +228,7 @@ export default function DutyRosterPage() {
   const completeMutation = useMutation({
     mutationFn: (id: number) => shiftsApi.complete(id),
     onSuccess: () => {
-      toast.success('Shift completed');
+      toast.success('Shift completed — clock out recorded');
       queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
     },
     onError: () => toast.error('Failed to complete shift'),
@@ -176,10 +245,23 @@ export default function DutyRosterPage() {
     onError: () => toast.error('Failed to cancel shift'),
   });
 
+  const syncMutation = useMutation({
+    mutationFn: () => resourcesApi.syncFromStaff(),
+    onSuccess: (result) => {
+      if (result.created > 0) {
+        toast.success(`Synced ${result.created} staff member(s) as scheduling resources`);
+        queryClient.invalidateQueries({ queryKey: ['scheduling-resources-person'] });
+      } else {
+        toast.info('All staff already have scheduling resources');
+      }
+    },
+    onError: () => toast.error('Failed to sync staff'),
+  });
+
   function resetCreateForm() {
     setCreateForm({
       staff_resource: 0,
-      shift_date: '',
+      shift_date: today,
       start_time: '',
       end_time: '',
       shift_type: 'DAY',
@@ -196,12 +278,33 @@ export default function DutyRosterPage() {
     createMutation.mutate(createForm);
   }
 
+  // Pre-fill times when shift type changes
+  function handleShiftTypeChange(type: ShiftType) {
+    const timeDefaults: Record<ShiftType, { start: string; end: string }> = {
+      DAY: { start: '07:00', end: '19:00' },
+      NIGHT: { start: '19:00', end: '07:00' },
+      MORNING: { start: '06:00', end: '14:00' },
+      AFTERNOON: { start: '14:00', end: '22:00' },
+      ON_CALL: { start: '00:00', end: '23:59' },
+      OVERTIME: { start: '', end: '' },
+    };
+    const defaults = timeDefaults[type];
+    setCreateForm(prev => ({
+      ...prev,
+      shift_type: type,
+      start_time: defaults.start || prev.start_time,
+      end_time: defaults.end || prev.end_time,
+    }));
+  }
+
+  const hasResources = (resourcesData?.results?.length ?? 0) > 0;
+
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Duty Roster"
-          helpContent="View and manage staff shifts and duty roster. Create new shifts, clock in/out, and track shift assignments across departments."
+          helpContent="Manage staff shifts and duty assignments. Create shifts, clock in/out, and track coverage across departments. Use the 'Sync Staff' button in the New Shift dialog to import staff profiles as scheduling resources."
           actions={
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
@@ -211,260 +314,397 @@ export default function DutyRosterPage() {
           }
         />
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2">
-          <Select
-            value={typeFilter || '_all'}
-            onValueChange={(v) => { setTypeFilter(v === '_all' ? '' : (v as ShiftType)); setPage(1); }}
-          >
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Shift Type" />
-            </SelectTrigger>
-            <SelectContent>
-              {SHIFT_TYPE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value || '_all'} value={opt.value || '_all'}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={statusFilter || '_all'}
-            onValueChange={(v) => { setStatusFilter(v === '_all' ? '' : (v as ShiftStatus)); setPage(1); }}
-          >
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value || '_all'} value={opt.value || '_all'}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Input
-            placeholder="Department"
-            value={departmentFilter}
-            onChange={(e) => { setDepartmentFilter(e.target.value); setPage(1); }}
-            className="w-full sm:w-[150px]"
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatsCard
+            title="On Duty"
+            value={stats.active}
+            icon={Activity}
+            variant={stats.active > 0 ? 'success' : 'default'}
+            meta="Currently active"
           />
-
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
-            className="w-full sm:w-[150px]"
+          <StatsCard
+            title="Upcoming"
+            value={stats.scheduled}
+            icon={CalendarDays}
+            variant={stats.scheduled === 0 && stats.active === 0 ? 'warning' : 'default'}
+            meta="Scheduled shifts"
           />
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => { setToDate(e.target.value); setPage(1); }}
-            className="w-full sm:w-[150px]"
+          <StatsCard
+            title="Completed"
+            value={stats.completed}
+            icon={CheckCircle}
+            meta="Finished shifts"
+          />
+          <StatsCard
+            title="Coverage"
+            value={`${stats.totalHours.toFixed(0)}h`}
+            icon={Clock}
+            meta="Total shift hours"
           />
         </div>
 
-        {/* Results count */}
-        <p className="text-sm text-muted-foreground">
-          {totalCount} shift{totalCount !== 1 ? 's' : ''}
-        </p>
+        {/* Quick Date Tabs + Filters */}
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <TabsList>
+              <TabsTrigger value="today" className="text-xs sm:text-sm">Today</TabsTrigger>
+              <TabsTrigger value="week" className="text-xs sm:text-sm">This Week</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
+            </TabsList>
 
-        {/* Table */}
-        <ResponsiveTable
-          data={shifts}
-          keyExtractor={(s) => s.id}
-          isLoading={isLoading}
-          emptyMessage="No shifts found"
-          defaultSortColumn="shift_date"
-          defaultSortDirection="desc"
-          columns={[
-            {
-              key: 'staff_resource_name',
-              header: 'Staff',
-              sortable: true,
-              cell: (s) => <span className="font-medium">{s.staff_resource_name}</span>,
-            },
-            {
-              key: 'shift_date',
-              header: 'Date',
-              sortable: true,
-              sortType: 'date',
-              cell: (s) => formatDate(s.shift_date),
-            },
-            {
-              key: 'start_time',
-              header: 'Time',
-              cell: (s) => (
-                <span className="text-sm">
-                  {formatTime(s.start_time)} – {formatTime(s.end_time)}
-                </span>
-              ),
-            },
-            {
-              key: 'shift_type',
-              header: 'Type',
-              sortable: true,
-              cell: (s) => (
-                <Badge className={`${shiftTypeColors[s.shift_type]} shrink-0 w-fit`} variant="secondary">
-                  {s.shift_type_display}
-                </Badge>
-              ),
-            },
-            {
-              key: 'department',
-              header: 'Department',
-              sortable: true,
-              hideOnMobile: true,
-              cell: (s) => s.department || '—',
-            },
-            {
-              key: 'duration_hours',
-              header: 'Hours',
-              sortable: true,
-              sortType: 'number',
-              hideOnMobile: true,
-              cell: (s) => (s.duration_hours != null ? `${s.duration_hours.toFixed(1)}h` : '—'),
-            },
-            {
-              key: 'status',
-              header: 'Status',
-              sortable: true,
-              cell: (s) => (
-                <Badge className={`${statusColors[s.status]} shrink-0 w-fit`} variant="secondary">
-                  {s.status_display}
-                </Badge>
-              ),
-            },
-            {
-              key: 'actions',
-              header: '',
-              cell: (s) => (
-                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  {s.status === 'SCHEDULED' && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => startMutation.mutate(s.id)}
-                        title="Start shift"
-                      >
-                        <Play className="h-3.5 w-3.5 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setCancelId(s.id)}
-                        title="Cancel shift"
-                      >
-                        <XCircle className="h-3.5 w-3.5 text-red-600" />
-                      </Button>
-                    </>
-                  )}
-                  {s.status === 'ACTIVE' && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => completeMutation.mutate(s.id)}
-                      title="Complete shift"
-                    >
-                      <CheckCircle className="h-3.5 w-3.5 text-blue-600" />
-                    </Button>
-                  )}
-                </div>
-              ),
-            },
-          ]}
-          mobileCard={(s: ShiftListItem) => (
-            <div className="p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">{s.staff_resource_name}</span>
-                <Badge className={`${statusColors[s.status]} shrink-0 w-fit text-xs`} variant="secondary">
-                  {s.status_display}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                {formatDate(s.shift_date)} · {formatTime(s.start_time)} – {formatTime(s.end_time)}
-              </div>
-              <div className="flex items-center justify-between">
-                <Badge className={`${shiftTypeColors[s.shift_type]} text-xs`} variant="secondary">
-                  {s.shift_type_display}
-                </Badge>
-                {s.department && (
-                  <span className="text-xs text-muted-foreground">{s.department}</span>
-                )}
-              </div>
-              <div className="flex gap-1 pt-1">
-                {s.status === 'SCHEDULED' && (
-                  <>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => startMutation.mutate(s.id)}>
-                      <Play className="h-3 w-3 mr-1" /> Start
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs text-red-600" onClick={() => setCancelId(s.id)}>
-                      <XCircle className="h-3 w-3 mr-1" /> Cancel
-                    </Button>
-                  </>
-                )}
-                {s.status === 'ACTIVE' && (
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => completeMutation.mutate(s.id)}>
-                    <CheckCircle className="h-3 w-3 mr-1" /> Complete
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        />
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={typeFilter || '_all'}
+                onValueChange={(v) => { setTypeFilter(v === '_all' ? '' : (v as ShiftType)); setPage(1); }}
+              >
+                <SelectTrigger className="w-[130px] h-8 text-xs">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SHIFT_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value || '_all'} value={opt.value || '_all'}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-2">
-            <p className="text-sm text-muted-foreground">
-              Page {page} of {totalPages}
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                Previous
-              </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-                Next
-              </Button>
+              <Select
+                value={statusFilter || '_all'}
+                onValueChange={(v) => { setStatusFilter(v === '_all' ? '' : (v as ShiftStatus)); setPage(1); }}
+              >
+                <SelectTrigger className="w-[130px] h-8 text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value || '_all'} value={opt.value || '_all'}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Input
+                placeholder="Department"
+                value={departmentFilter}
+                onChange={(e) => { setDepartmentFilter(e.target.value); setPage(1); }}
+                className="w-[130px] h-8 text-xs"
+              />
             </div>
           </div>
-        )}
+
+          {/* Custom date range (visible on "All" tab) */}
+          {activeTab === 'all' && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Input
+                type="date"
+                value={fromDate}
+                onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
+                className="w-full sm:w-[150px] h-8 text-xs"
+              />
+              <span className="hidden sm:flex items-center text-xs text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={toDate}
+                onChange={(e) => { setToDate(e.target.value); setPage(1); }}
+                className="w-full sm:w-[150px] h-8 text-xs"
+              />
+            </div>
+          )}
+
+          <TabsContent value={activeTab || 'today'} className="mt-4 space-y-3">
+            {/* Results count */}
+            <p className="text-sm text-muted-foreground">
+              {totalCount} shift{totalCount !== 1 ? 's' : ''}
+              {fromDate && toDate && fromDate === toDate && ` for ${formatDate(fromDate)}`}
+              {fromDate && toDate && fromDate !== toDate && ` from ${formatDate(fromDate)} to ${formatDate(toDate)}`}
+            </p>
+
+            {/* Table */}
+            <ResponsiveTable
+              data={shifts}
+              keyExtractor={(s) => s.id}
+              isLoading={isLoading}
+              emptyMessage={
+                activeTab === 'today'
+                  ? 'No shifts scheduled for today'
+                  : 'No shifts found for the selected period'
+              }
+              defaultSortColumn="shift_date"
+              defaultSortDirection="desc"
+              columns={[
+                {
+                  key: 'staff_resource_name',
+                  header: 'Staff',
+                  sortable: true,
+                  cell: (s) => <span className="font-medium">{s.staff_resource_name}</span>,
+                },
+                {
+                  key: 'shift_date',
+                  header: 'Date',
+                  sortable: true,
+                  sortType: 'date',
+                  cell: (s) => formatDate(s.shift_date),
+                },
+                {
+                  key: 'start_time',
+                  header: 'Time',
+                  cell: (s) => {
+                    const Icon = shiftTypeIcons[s.shift_type];
+                    return (
+                      <div className="flex items-center gap-1.5">
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-sm">{formatTime(s.start_time)} – {formatTime(s.end_time)}</span>
+                      </div>
+                    );
+                  },
+                },
+                {
+                  key: 'shift_type',
+                  header: 'Type',
+                  sortable: true,
+                  hideOnMobile: true,
+                  cell: (s) => (
+                    <Badge className={`${shiftTypeColors[s.shift_type]} shrink-0 w-fit`} variant="secondary">
+                      {s.shift_type_display}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: 'department',
+                  header: 'Department',
+                  sortable: true,
+                  hideOnMobile: true,
+                  cell: (s) => s.department || '—',
+                },
+                {
+                  key: 'duration_hours',
+                  header: 'Hours',
+                  sortable: true,
+                  sortType: 'number',
+                  hideOnMobile: true,
+                  cell: (s) => (s.duration_hours != null ? `${s.duration_hours.toFixed(1)}h` : '—'),
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  sortable: true,
+                  cell: (s) => (
+                    <Badge className={`${statusColors[s.status]} shrink-0 w-fit`} variant="secondary">
+                      {s.status_display}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: 'actions',
+                  header: '',
+                  cell: (s) => (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      {s.status === 'SCHEDULED' && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => startMutation.mutate(s.id)}
+                            title="Clock in"
+                          >
+                            <Play className="h-3.5 w-3.5 text-green-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setCancelId(s.id)}
+                            title="Cancel"
+                          >
+                            <XCircle className="h-3.5 w-3.5 text-red-600" />
+                          </Button>
+                        </>
+                      )}
+                      {s.status === 'ACTIVE' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => completeMutation.mutate(s.id)}
+                          title="Clock out"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5 text-blue-600" />
+                        </Button>
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+              mobileCard={(s: ShiftListItem) => {
+                const Icon = shiftTypeIcons[s.shift_type];
+                return (
+                  <div className="p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`shrink-0 rounded-md p-1.5 ${shiftTypeColors[s.shift_type]}`}>
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{s.staff_resource_name}</p>
+                          <p className="text-xs text-muted-foreground">{s.department || 'No department'}</p>
+                        </div>
+                      </div>
+                      <Badge className={`${statusColors[s.status]} shrink-0 w-fit text-xs`} variant="secondary">
+                        {s.status_display}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="h-3 w-3" />
+                        {formatDate(s.shift_date)}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-3 w-3" />
+                        {formatTime(s.start_time)} – {formatTime(s.end_time)}
+                        {s.duration_hours != null && (
+                          <span className="font-medium text-foreground">({s.duration_hours.toFixed(1)}h)</span>
+                        )}
+                      </div>
+                    </div>
+                    {(s.status === 'SCHEDULED' || s.status === 'ACTIVE') && (
+                      <div className="flex gap-2 pt-0.5">
+                        {s.status === 'SCHEDULED' && (
+                          <>
+                            <Button size="sm" variant="default" className="h-7 text-xs flex-1" onClick={() => startMutation.mutate(s.id)}>
+                              <Play className="h-3 w-3 mr-1" /> Clock In
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setCancelId(s.id)}>
+                              <XCircle className="h-3 w-3 mr-1" /> Cancel
+                            </Button>
+                          </>
+                        )}
+                        {s.status === 'ACTIVE' && (
+                          <Button size="sm" variant="default" className="h-7 text-xs flex-1" onClick={() => completeMutation.mutate(s.id)}>
+                            <CheckCircle className="h-3 w-3 mr-1" /> Clock Out
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
+            />
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                    Previous
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Create Shift Dialog */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>New Shift</DialogTitle>
+              <DialogDescription>
+                Schedule a new shift assignment for a staff member.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
+              {/* Staff Member Selection */}
               <div className="space-y-2">
                 <Label>Staff Member *</Label>
+                {resourcesLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    Loading staff...
+                  </div>
+                ) : !hasResources ? (
+                  <Card className="border-dashed">
+                    <CardContent className="p-4 text-center space-y-3">
+                      <Users className="h-8 w-8 mx-auto text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">No staff resources found</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Staff profiles need to be synced as scheduling resources before they can be assigned shifts.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => syncMutation.mutate()}
+                        disabled={syncMutation.isPending}
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                        {syncMutation.isPending ? 'Syncing...' : 'Sync Staff Profiles'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Select
+                    value={createForm.staff_resource ? String(createForm.staff_resource) : ''}
+                    onValueChange={(v) => setCreateForm({ ...createForm, staff_resource: Number(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select staff member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {resourcesData?.results?.map((r) => (
+                        <SelectItem key={r.id} value={String(r.id)}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Shift Type with time pre-fill */}
+              <div className="space-y-2">
+                <Label>Shift Type</Label>
                 <Select
-                  value={createForm.staff_resource ? String(createForm.staff_resource) : ''}
-                  onValueChange={(v) => setCreateForm({ ...createForm, staff_resource: Number(v) })}
+                  value={createForm.shift_type}
+                  onValueChange={(v) => handleShiftTypeChange(v as ShiftType)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select staff member" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {resourcesData?.results?.map((r) => (
-                      <SelectItem key={r.id} value={String(r.id)}>
-                        {r.name}
-                      </SelectItem>
-                    ))}
-                    {(!resourcesData?.results || resourcesData.results.length === 0) && (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">No staff resources found</div>
-                    )}
+                    <SelectItem value="DAY">
+                      <div className="flex items-center gap-2"><Sun className="h-3.5 w-3.5" /> Day (7am–7pm)</div>
+                    </SelectItem>
+                    <SelectItem value="NIGHT">
+                      <div className="flex items-center gap-2"><Moon className="h-3.5 w-3.5" /> Night (7pm–7am)</div>
+                    </SelectItem>
+                    <SelectItem value="MORNING">
+                      <div className="flex items-center gap-2"><Sunrise className="h-3.5 w-3.5" /> Morning (6am–2pm)</div>
+                    </SelectItem>
+                    <SelectItem value="AFTERNOON">
+                      <div className="flex items-center gap-2"><Sunset className="h-3.5 w-3.5" /> Afternoon (2pm–10pm)</div>
+                    </SelectItem>
+                    <SelectItem value="ON_CALL">
+                      <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> On-Call (24h)</div>
+                    </SelectItem>
+                    <SelectItem value="OVERTIME">
+                      <div className="flex items-center gap-2"><Timer className="h-3.5 w-3.5" /> Overtime</div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Date */}
               <div className="space-y-2">
                 <Label>Date *</Label>
                 <Input
@@ -473,6 +713,8 @@ export default function DutyRosterPage() {
                   onChange={(e) => setCreateForm({ ...createForm, shift_date: e.target.value })}
                 />
               </div>
+
+              {/* Time Range */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Start Time *</Label>
@@ -491,25 +733,8 @@ export default function DutyRosterPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Shift Type</Label>
-                <Select
-                  value={createForm.shift_type}
-                  onValueChange={(v) => setCreateForm({ ...createForm, shift_type: v as ShiftType })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DAY">Day</SelectItem>
-                    <SelectItem value="NIGHT">Night</SelectItem>
-                    <SelectItem value="MORNING">Morning</SelectItem>
-                    <SelectItem value="AFTERNOON">Afternoon</SelectItem>
-                    <SelectItem value="ON_CALL">On Call</SelectItem>
-                    <SelectItem value="OVERTIME">Overtime</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
+              {/* Department */}
               <div className="space-y-2">
                 <Label>Department</Label>
                 <Input
@@ -518,6 +743,8 @@ export default function DutyRosterPage() {
                   onChange={(e) => setCreateForm({ ...createForm, department: e.target.value })}
                 />
               </div>
+
+              {/* Notes */}
               <div className="space-y-2">
                 <Label>Notes</Label>
                 <Textarea
@@ -530,7 +757,7 @@ export default function DutyRosterPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              <Button onClick={handleCreate} disabled={createMutation.isPending || !hasResources}>
                 {createMutation.isPending ? 'Creating...' : 'Create Shift'}
               </Button>
             </DialogFooter>
@@ -542,12 +769,15 @@ export default function DutyRosterPage() {
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Cancel Shift</DialogTitle>
+              <DialogDescription>
+                This will remove the shift from the roster. Please provide a reason.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-2">
               <div className="space-y-2">
-                <Label>Reason *</Label>
+                <Label>Reason</Label>
                 <Textarea
-                  placeholder="Reason for cancellation"
+                  placeholder="e.g. Staff called in sick, coverage already arranged"
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                   rows={3}
@@ -560,8 +790,8 @@ export default function DutyRosterPage() {
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => { if (cancelId && cancelReason.trim()) cancelMutation.mutate({ id: cancelId, reason: cancelReason }); }}
-                disabled={cancelMutation.isPending || !cancelReason.trim()}
+                onClick={() => { if (cancelId) cancelMutation.mutate({ id: cancelId, reason: cancelReason }); }}
+                disabled={cancelMutation.isPending}
               >
                 {cancelMutation.isPending ? 'Cancelling...' : 'Cancel Shift'}
               </Button>

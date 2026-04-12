@@ -385,3 +385,82 @@ class TestShiftDomainEvents:
         last_call = mock_publish.call_args
         event_type = last_call[1].get("event_type") or last_call[0][0]
         assert event_type == "scheduling.shift.completed"
+
+
+# =============================================================================
+# Sync from Staff Tests
+# =============================================================================
+
+
+class TestSyncFromStaff:
+    """Tests for POST /api/scheduling/resources/sync-from-staff/."""
+
+    def test_sync_creates_resources_from_staff_profiles(
+        self, authenticated_client, test_staff_profile, sample_facility
+    ):
+        """Should create PERSON resources for staff profiles without one."""
+        from hmis.apps.scheduling.models import Resource
+
+        # Ensure no resource exists yet for this staff
+        assert not Resource.objects.filter(staff_profile=test_staff_profile).exists()
+
+        response = authenticated_client.post("/api/scheduling/resources/sync-from-staff/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] >= 1
+
+        # Verify resource was created and linked
+        resource = Resource.objects.get(staff_profile=test_staff_profile)
+        assert resource.resource_type == "PERSON"
+        assert resource.is_active is True
+        assert resource.facility == sample_facility
+        assert resource.code.startswith("STAFF-")
+
+    def test_sync_skips_staff_with_existing_resource(
+        self, authenticated_client, test_staff_profile, sample_person_resource, sample_facility
+    ):
+        """Should not create duplicate resources for staff who already have one."""
+        from hmis.apps.scheduling.models import Resource
+
+        # Link the existing resource to the staff profile
+        sample_person_resource.staff_profile = test_staff_profile
+        sample_person_resource.save()
+
+        response = authenticated_client.post("/api/scheduling/resources/sync-from-staff/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] == 0
+
+    def test_sync_idempotent(self, authenticated_client, test_staff_profile, sample_facility):
+        """Calling sync twice should not create duplicate resources."""
+        from hmis.apps.scheduling.models import Resource
+
+        # First sync
+        response1 = authenticated_client.post("/api/scheduling/resources/sync-from-staff/")
+        assert response1.status_code == status.HTTP_200_OK
+        count1 = response1.data["created"]
+
+        # Second sync
+        response2 = authenticated_client.post("/api/scheduling/resources/sync-from-staff/")
+        assert response2.status_code == status.HTTP_200_OK
+        assert response2.data["created"] == 0
+
+        # Only one resource exists
+        assert Resource.objects.filter(staff_profile=test_staff_profile).count() == 1
+
+    def test_sync_requires_authentication(self, api_client):
+        """Should reject unauthenticated requests."""
+        response = api_client.post("/api/scheduling/resources/sync-from-staff/")
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_sync_sets_metadata(self, authenticated_client, test_staff_profile, sample_facility):
+        """Should populate metadata from staff profile."""
+        from hmis.apps.scheduling.models import Resource
+
+        response = authenticated_client.post("/api/scheduling/resources/sync-from-staff/")
+
+        assert response.status_code == status.HTTP_200_OK
+        resource = Resource.objects.get(staff_profile=test_staff_profile)
+        assert resource.metadata.get("synced_from_staff") is True
+        assert resource.metadata.get("employee_id") == test_staff_profile.employee_id

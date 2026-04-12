@@ -264,6 +264,65 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         return Response(result)
 
+    @action(detail=False, methods=["post"], url_path="sync-from-staff")
+    def sync_from_staff(self, request):
+        """
+        Auto-create PERSON resources from StaffProfiles that don't have one yet.
+
+        Only creates resources for active staff at the current facility.
+        Returns the count of newly created resources.
+        """
+        from hmis.apps.core.models import StaffProfile
+
+        facility = getattr(request, "facility", None)
+        if not facility:
+            try:
+                facility = request.user.staff_profile.primary_facility
+            except (AttributeError, StaffProfile.DoesNotExist):
+                return Response(
+                    {"error": "No facility context available"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Find staff profiles that don't have a scheduling resource yet
+        staff_without_resource = StaffProfile.objects.filter(
+            employment_status="ACTIVE",
+            primary_facility=facility,
+        ).exclude(
+            scheduling_resource__isnull=False,
+        ).select_related("user")
+
+        created_count = 0
+        for profile in staff_without_resource:
+            full_name = profile.user.get_full_name() or profile.user.username
+            code = f"STAFF-{profile.employee_id or profile.pk}"
+
+            # Avoid duplicate codes
+            if Resource.objects.filter(code=code, facility=facility).exists():
+                code = f"STAFF-{profile.pk}-{profile.user.username[:8]}"
+
+            Resource.objects.create(
+                name=full_name,
+                resource_type="PERSON",
+                code=code,
+                is_active=True,
+                staff_profile=profile,
+                facility=facility,
+                organization=facility.organization,
+                metadata={
+                    "employee_id": profile.employee_id or "",
+                    "role": str(profile.primary_role) if profile.primary_role else "",
+                    "department": str(profile.primary_department) if profile.primary_department else "",
+                    "synced_from_staff": True,
+                },
+            )
+            created_count += 1
+
+        return Response({
+            "created": created_count,
+            "message": f"Created {created_count} resource(s) from staff profiles",
+        })
+
 
 class ScheduleViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     """
