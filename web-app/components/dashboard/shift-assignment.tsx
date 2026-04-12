@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Coffee,
   Play,
+  MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +24,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { attendanceApi } from '@/lib/api/scheduling';
 import { getApiErrorMessage } from '@/lib/api/client';
-import type { AttendanceStatus, Shift } from '@/lib/types/scheduling';
+import { ClockInDialog } from './clock-in-dialog';
+import type { AttendanceStatus, Shift, ClockInPayload } from '@/lib/types/scheduling';
 
 // =============================================================================
 // Helpers
@@ -188,6 +190,7 @@ export function ShiftGreetingLine({ greetingLabel, nameWithTitle, attendanceStat
 
 export function TodayAssignmentCard() {
   const queryClient = useQueryClient();
+  const [clockInDialogOpen, setClockInDialogOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-shift-today'],
@@ -196,13 +199,19 @@ export function TodayAssignmentCard() {
   });
 
   const clockInMutation = useMutation({
-    mutationFn: (shiftId: number) => attendanceApi.clockIn(shiftId),
-    onSuccess: () => {
+    mutationFn: ({ shiftId, payload }: { shiftId: number; payload?: ClockInPayload }) =>
+      attendanceApi.clockIn(shiftId, payload),
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
       queryClient.invalidateQueries({ queryKey: ['my-shift-upcoming'] });
       queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
-      toast.success('Clocked in successfully');
+      setClockInDialogOpen(false);
+      const messages: string[] = ['Clocked in successfully'];
+      if (response.session_auto_opened) {
+        messages.push('Clinic session opened');
+      }
+      toast.success(messages.join('. '));
     },
     onError: (error: unknown) => {
       toast.error(getApiErrorMessage(error));
@@ -211,12 +220,16 @@ export function TodayAssignmentCard() {
 
   const clockOutMutation = useMutation({
     mutationFn: (shiftId: number) => attendanceApi.clockOut(shiftId),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
       queryClient.invalidateQueries({ queryKey: ['my-shift-upcoming'] });
       queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
-      toast.success('Clocked out successfully');
+      const messages: string[] = ['Clocked out successfully'];
+      if (response.session_auto_closed) {
+        messages.push('Clinic session closed');
+      }
+      toast.success(messages.join('. '));
     },
     onError: () => toast.error('Failed to clock out'),
   });
@@ -280,6 +293,7 @@ export function TodayAssignmentCard() {
   const isPending = clockInMutation.isPending || clockOutMutation.isPending || takeBreakMutation.isPending || resumeMutation.isPending;
 
   return (
+    <>
     <Card className="relative overflow-hidden">
       <div
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
@@ -333,6 +347,13 @@ export function TodayAssignmentCard() {
                     <span>·</span>
                     <span className="font-medium text-foreground">{progress.remaining} remaining</span>
                   </div>
+                  {(shift.clinic_name || shift.room_name) && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      {shift.clinic_name}
+                      {shift.room_name && <span>· {shift.room_name}</span>}
+                    </div>
+                  )}
                   <Progress value={progress.percent} className="h-1.5" />
                 </div>
               )}
@@ -341,6 +362,13 @@ export function TodayAssignmentCard() {
                   <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
                     On break — {progress.remaining} remaining in shift
                   </p>
+                  {(shift.clinic_name || shift.room_name) && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      {shift.clinic_name}
+                      {shift.room_name && <span>· {shift.room_name}</span>}
+                    </div>
+                  )}
                   <Progress value={progress.percent} className="h-1.5" />
                 </div>
               )}
@@ -358,7 +386,7 @@ export function TodayAssignmentCard() {
               <Button
                 size="sm"
                 variant={status === 'SHOULD_CLOCK_IN' ? 'default' : 'outline'}
-                onClick={() => clockInMutation.mutate(shift.id)}
+                onClick={() => setClockInDialogOpen(true)}
                 disabled={isPending}
               >
                 <LogIn className="h-4 w-4 mr-1" />
@@ -417,6 +445,14 @@ export function TodayAssignmentCard() {
         </div>
       </CardContent>
     </Card>
+
+    <ClockInDialog
+      open={clockInDialogOpen}
+      onOpenChange={setClockInDialogOpen}
+      onConfirm={(payload) => clockInMutation.mutate({ shiftId: shift.id, payload })}
+      isPending={clockInMutation.isPending}
+    />
+    </>
   );
 }
 

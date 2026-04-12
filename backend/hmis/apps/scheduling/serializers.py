@@ -799,6 +799,8 @@ class ShiftSerializer(serializers.ModelSerializer):
     duration_hours = serializers.FloatField(read_only=True)
     created_by_name = serializers.SerializerMethodField()
     cancelled_by_name = serializers.SerializerMethodField()
+    room_name = serializers.SerializerMethodField()
+    clinic_name = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ShiftSerializer."""
@@ -821,6 +823,10 @@ class ShiftSerializer(serializers.ModelSerializer):
             "department",
             "notes",
             "duration_hours",
+            "room",
+            "room_name",
+            "clinic",
+            "clinic_name",
             "started_at",
             "completed_at",
             "break_started_at",
@@ -839,6 +845,10 @@ class ShiftSerializer(serializers.ModelSerializer):
             "shift_type_display",
             "status_display",
             "duration_hours",
+            "room",
+            "room_name",
+            "clinic",
+            "clinic_name",
             "started_at",
             "completed_at",
             "break_started_at",
@@ -861,6 +871,18 @@ class ShiftSerializer(serializers.ModelSerializer):
         """Get canceller name."""
         if obj.cancelled_by:
             return f"{obj.cancelled_by.first_name} {obj.cancelled_by.last_name}"
+        return None
+
+    def get_room_name(self, obj) -> str | None:
+        """Get room name."""
+        if obj.room:
+            return obj.room.name
+        return None
+
+    def get_clinic_name(self, obj) -> str | None:
+        """Get clinic name."""
+        if obj.clinic:
+            return obj.clinic.name
         return None
 
     def to_representation(self, instance):
@@ -929,6 +951,8 @@ class ShiftListSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     duration_hours = serializers.FloatField(read_only=True)
     department = serializers.SerializerMethodField()
+    room_name = serializers.SerializerMethodField()
+    clinic_name = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ShiftListSerializer."""
@@ -949,6 +973,10 @@ class ShiftListSerializer(serializers.ModelSerializer):
             "status_display",
             "department",
             "duration_hours",
+            "room",
+            "room_name",
+            "clinic",
+            "clinic_name",
         ]
 
     def get_department(self, obj) -> str:
@@ -960,11 +988,61 @@ class ShiftListSerializer(serializers.ModelSerializer):
             return resource.staff_profile.primary_department.name
         return ""
 
+    def get_room_name(self, obj) -> str | None:
+        """Get room name."""
+        if obj.room:
+            return obj.room.name
+        return None
+
+    def get_clinic_name(self, obj) -> str | None:
+        """Get clinic name."""
+        if obj.clinic:
+            return obj.clinic.name
+        return None
+
 
 class ShiftCancelSerializer(serializers.Serializer):
     """Serializer for cancelling a shift."""
 
     reason = serializers.CharField(required=False, allow_blank=True)
+
+
+class ShiftStartSerializer(serializers.Serializer):
+    """Serializer for clock-in (start shift) with optional room and clinic."""
+
+    room_id = serializers.IntegerField(required=False, allow_null=True)
+    clinic_id = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate_room_id(self, value):
+        """Validate room is a PLACE resource in the same facility."""
+        if value is None:
+            return value
+        try:
+            resource = Resource.objects.get(pk=value)
+        except Resource.DoesNotExist:
+            raise serializers.ValidationError("Room not found.")
+        if resource.resource_type != "PLACE":
+            raise serializers.ValidationError("Resource must be of type PLACE.")
+        shift = self.context.get("shift")
+        if shift and resource.facility_id != shift.facility_id:
+            raise serializers.ValidationError("Room must belong to the same facility.")
+        return value
+
+    def validate_clinic_id(self, value):
+        """Validate clinic is active and in the same facility."""
+        if value is None:
+            return value
+        from hmis.apps.clinics.models import Clinic
+        try:
+            clinic = Clinic.objects.get(pk=value)
+        except Clinic.DoesNotExist:
+            raise serializers.ValidationError("Clinic not found.")
+        if clinic.status != "ACTIVE":
+            raise serializers.ValidationError("Clinic is not active.")
+        shift = self.context.get("shift")
+        if shift and clinic.facility_id != shift.facility_id:
+            raise serializers.ValidationError("Clinic must belong to the same facility.")
+        return value
 
 
 class StaffWorkloadSerializer(serializers.Serializer):

@@ -351,6 +351,16 @@ export function ClinicQueueTable({
           <ClinicVisitStatusBadge status={visit.status} statusDisplay={visit.status_display} />
         ),
       },
+      {
+        key: 'room',
+        header: 'Room',
+        hideOnMobile: true,
+        cell: (visit: ClinicVisit) => (
+          <span className="text-sm text-muted-foreground">
+            {visit.room_name || '—'}
+          </span>
+        ),
+      },
       ...(showActions
         ? [
             {

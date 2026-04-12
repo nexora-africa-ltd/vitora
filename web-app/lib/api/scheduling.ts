@@ -22,6 +22,8 @@ import {
   PaginatedStaffConstraintSchema,
   MyTodayResponseSchema,
   MyHistoryResponseSchema,
+  ClockInResponseSchema,
+  ClockOutResponseSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -54,6 +56,9 @@ import type {
   MyTodayResponse,
   MyHistoryResponse,
   MyHistoryParams,
+  ClockInPayload,
+  ClockInResponse,
+  ClockOutResponse,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -456,17 +461,17 @@ export const attendanceApi = {
   },
 
   /** Clock in to a shift. */
-  clockIn: async (shiftId: number): Promise<Shift> => {
-    const response = await apiClient.post(`${BASE_URL}/shifts/${shiftId}/start/`);
-    return parseResponse(ShiftSchema, response.data, {
+  clockIn: async (shiftId: number, payload?: ClockInPayload): Promise<ClockInResponse> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/${shiftId}/start/`, payload ?? {});
+    return parseResponse(ClockInResponseSchema, response.data, {
       context: 'attendanceApi.clockIn',
     });
   },
 
   /** Clock out of a shift. */
-  clockOut: async (shiftId: number): Promise<Shift> => {
+  clockOut: async (shiftId: number): Promise<ClockOutResponse> => {
     const response = await apiClient.post(`${BASE_URL}/shifts/${shiftId}/complete/`);
-    return parseResponse(ShiftSchema, response.data, {
+    return parseResponse(ClockOutResponseSchema, response.data, {
       context: 'attendanceApi.clockOut',
     });
   },

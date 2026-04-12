@@ -323,6 +323,58 @@ class Clinic(TimeStampedModel):
 
 
 # =============================================================================
+# ClinicRoom Model - Room-Clinic association
+# =============================================================================
+
+
+class ClinicRoom(TimeStampedModel):
+    """
+    Associates rooms (PLACE resources) with clinics.
+
+    A room can be linked to multiple clinics (e.g., a shared procedure room).
+    A clinic can have multiple rooms (e.g., General OPD has Rooms 1-4).
+    """
+
+    clinic = models.ForeignKey(
+        Clinic,
+        on_delete=models.CASCADE,
+        related_name="clinic_rooms",
+    )
+    room = models.ForeignKey(
+        "scheduling.Resource",
+        on_delete=models.CASCADE,
+        related_name="clinic_rooms",
+        limit_choices_to={"resource_type": "PLACE"},
+        help_text="Room (PLACE resource) linked to this clinic",
+    )
+    is_default = models.BooleanField(
+        default=False,
+        help_text="Whether this is a default room for the clinic",
+    )
+    display_order = models.PositiveIntegerField(
+        default=0,
+        help_text="Display order for room listing",
+    )
+
+    class Meta:
+        """Meta options for ClinicRoom model."""
+
+        ordering = ["display_order", "room__name"]
+        verbose_name = "Clinic Room"
+        verbose_name_plural = "Clinic Rooms"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["clinic", "room"],
+                name="unique_clinic_room",
+            ),
+        ]
+
+    def __str__(self):
+        """Return string representation."""
+        return f"{self.clinic.name} - {self.room.name}"
+
+
+# =============================================================================
 # ClinicSchedule Model - Operating Hours
 # =============================================================================
 
@@ -813,6 +865,19 @@ class ClinicVisit(TimeStampedModel):
     )
 
     # =========================================================================
+    # Room Assignment (set when patient is called)
+    # =========================================================================
+    room = models.ForeignKey(
+        "scheduling.Resource",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clinic_visits",
+        limit_choices_to={"resource_type": "PLACE"},
+        help_text="Room assigned to this visit (auto-set from clinician's active shift)",
+    )
+
+    # =========================================================================
     # Chief Complaint (from triage or direct entry)
     # =========================================================================
     chief_complaint = models.TextField(
@@ -910,10 +975,31 @@ class ClinicVisit(TimeStampedModel):
             )
 
     def call_patient(self, clinician):
-        """Call patient for consultation."""
+        """Call patient for consultation.
+
+        Auto-assigns the room from the clinician's active shift for this clinic.
+        """
         self.status = "CALLED"
         self.called_at = timezone.now()
         self.assigned_clinician = clinician
+
+        # Auto-assign room from clinician's active shift
+        from hmis.apps.scheduling.models import Shift
+
+        active_shift = (
+            Shift.objects.filter(
+                staff_resource__staff_profile__user=clinician,
+                shift_date=timezone.localdate(),
+                status__in=["ACTIVE", "ON_BREAK"],
+                clinic=self.session.clinic,
+                room__isnull=False,
+            )
+            .select_related("room")
+            .first()
+        )
+        if active_shift:
+            self.room = active_shift.room
+
         self.save()
 
     def ensure_consultation_encounter(self, existing_encounter=None):

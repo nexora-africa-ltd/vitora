@@ -261,6 +261,10 @@ export interface ShiftListItem {
   status_display: string;
   department: string;
   duration_hours: number | null;
+  room: number | null;
+  room_name: string | null;
+  clinic: number | null;
+  clinic_name: string | null;
 }
 
 export interface Shift extends ShiftListItem {
@@ -362,6 +366,19 @@ export type AttendanceStatus = 'NO_SHIFT' | 'UPCOMING' | 'SHOULD_CLOCK_IN' | 'CL
 export interface MyTodayResponse {
   shifts: Shift[];
   attendance_status: AttendanceStatus;
+}
+
+export interface ClockInPayload {
+  room_id?: number | null;
+  clinic_id?: number | null;
+}
+
+export interface ClockInResponse extends Shift {
+  session_auto_opened: boolean;
+}
+
+export interface ClockOutResponse extends Shift {
+  session_auto_closed: boolean;
 }
 
 export interface AttendanceStats {
