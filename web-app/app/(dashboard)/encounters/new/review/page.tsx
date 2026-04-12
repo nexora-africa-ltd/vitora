@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dialog';
 import { useNewEncounterStore } from '@/lib/stores/new-encounter-store';
 import { useCreateEncounterWithValidation } from '@/lib/hooks/use-encounter-form';
+import { ShiftGate } from '@/components/shared/shift-gate';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useCreateAdmission } from '@/lib/hooks/use-inpatient';
 import { useUser } from '@/lib/auth';
@@ -752,6 +753,7 @@ export default function NewEncounterReviewPage() {
             Back
           </Button>
           <div className="flex flex-col gap-2 sm:flex-row">
+            <ShiftGate>
             <Button
               variant="outline"
               onClick={handleSaveDraft}
@@ -765,6 +767,8 @@ export default function NewEncounterReviewPage() {
               <span className="sm:hidden">Draft</span>
               <span className="hidden sm:inline">Save Draft</span>
             </Button>
+            </ShiftGate>
+            <ShiftGate>
             <Button
               onClick={handleCreate}
               disabled={createEncounter.isPending || !canCreate}
@@ -777,6 +781,7 @@ export default function NewEncounterReviewPage() {
               <span className="sm:hidden">Create</span>
               <span className="hidden sm:inline">Create Encounter</span>
             </Button>
+            </ShiftGate>
           </div>
         </div>
 

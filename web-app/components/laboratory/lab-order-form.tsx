@@ -33,6 +33,7 @@ import { useAuth } from '@/lib/auth';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
 import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { ShiftGate } from '@/components/shared/shift-gate';
 
 const orderSchema = z.object({
   patient: z.number().positive('Patient is required'),
@@ -606,9 +607,11 @@ export function LabOrderForm({
                 Cancel
               </Button>
             )}
+            <ShiftGate>
             <Button type="submit" disabled={createOrder.isPending}>
               {createOrder.isPending ? 'Creating...' : 'Create Lab Order'}
             </Button>
+            </ShiftGate>
           </div>
         </div>
 

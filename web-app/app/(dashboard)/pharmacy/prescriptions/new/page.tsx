@@ -88,6 +88,7 @@ import {
   type DosageSuggestion,
 } from '@/lib/utils/dosage';
 import { PageHeader } from '@/components/shared/page-header';
+import { ShiftGate } from '@/components/shared/shift-gate';
 import { PatientSelector } from '@/components/encounters/patient-selector';
 import type { Drug, PrescriptionItemCreateData } from '@/lib/types/pharmacy';
 
@@ -1232,6 +1233,7 @@ Prescribed by: ${prescriberName}
           <Button variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
             Cancel
           </Button>
+          <ShiftGate>
           <Button
             className="w-full sm:w-auto"
             onClick={handleSubmit}
@@ -1244,6 +1246,7 @@ Prescribed by: ${prescriberName}
             )}
             Create Prescription ({items.length} item{items.length !== 1 ? 's' : ''})
           </Button>
+          </ShiftGate>
         </div>
 
         {/* Drug-Allergy Interaction Warning Dialog */}

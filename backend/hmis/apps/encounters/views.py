@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
+from hmis.apps.core.permissions import RequiresActiveShiftPermission
 from hmis.apps.core.history_views import ModelHistoryMixin
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
@@ -141,7 +142,7 @@ class DiagnosisViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     serializer_class = DiagnosisSerializer
     queryset = Diagnosis.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["diagnosis_type", "is_confirmed"]
     ordering_fields = ["diagnosis_type", "created_at"]
@@ -279,7 +280,7 @@ class EncounterViewSet(TenantScopedViewMixin, ModelHistoryMixin, viewsets.ModelV
 
     queryset = Encounter.objects.select_related("patient").all()
     serializer_class = EncounterSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = EncounterFilter
     search_fields = ["chief_complaint", "notes", "patient__first_name", "patient__last_name"]
@@ -1823,7 +1824,7 @@ class MedicationViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     serializer_class = MedicationSerializer
     queryset = Medication.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["name", "created_at"]
     ordering = ["name"]

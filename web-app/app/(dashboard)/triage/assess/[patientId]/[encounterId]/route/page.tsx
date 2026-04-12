@@ -33,6 +33,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ShiftGate } from '@/components/shared/shift-gate';
 import {
   Select,
   SelectContent,
@@ -659,6 +660,7 @@ export default function TriageRoutePage() {
           <Button type="button" variant="outline" onClick={handleBack}>
             Back: Assessment
           </Button>
+          <ShiftGate>
           <Button
             type="submit"
             disabled={isSubmitting || isCreating || isCompleting || !hasAssessment}
@@ -666,6 +668,7 @@ export default function TriageRoutePage() {
             <CheckCircle2 className="h-4 w-4 mr-1.5" />
             Complete Triage
           </Button>
+          </ShiftGate>
         </div>
       </form>
 

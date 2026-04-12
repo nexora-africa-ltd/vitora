@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.permissions import RequiresActiveShiftPermission
 from hmis.apps.pharmacy.models import (
     Dispensing,
     Drug,
@@ -284,7 +285,7 @@ class PrescriptionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         .all()
     )
     serializer_class = PrescriptionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["patient", "status", "encounter", "admission", "dispensing_type", "is_discharge_medication"]
     search_fields = [
@@ -359,7 +360,7 @@ class DispensingViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "patient", "drug", "batch", "dispensed_by", "verified_by"
     ).all()
     serializer_class = DispensingSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["patient", "drug", "prescription_item"]
     ordering_fields = ["dispensed_at", "created_at"]
