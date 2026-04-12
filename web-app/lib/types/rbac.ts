@@ -150,6 +150,8 @@ export interface StaffProfile {
   primary_department?: number | null;
   primary_department_name?: string | null;
   secondary_departments?: number[];
+  primary_facility?: number | null;
+  primary_facility_name?: string | null;
   hwr_id?: string | null;
   license_number?: string | null;
   license_expiry?: string | null;

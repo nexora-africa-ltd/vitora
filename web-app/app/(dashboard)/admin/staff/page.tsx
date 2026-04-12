@@ -375,6 +375,14 @@ function StaffTableView({
           cell: (member) => member.primary_role_name || 'Unassigned',
         },
         {
+          key: 'facility',
+          header: 'Facility',
+          hideOnMobile: true,
+          sortable: true,
+          sortFn: (a, b) => (a.primary_facility_name || '').localeCompare(b.primary_facility_name || ''),
+          cell: (member) => member.primary_facility_name || 'Unassigned',
+        },
+        {
           key: 'contact',
           header: 'Contact',
           hideOnMobile: true,
@@ -447,6 +455,11 @@ function StaffGridView({ staff }: { staff: StaffProfile[] }) {
               icon: <Building2 className="h-3 w-3" />,
               label: 'Dept',
               value: member.primary_department_name || 'Unassigned',
+            },
+            {
+              icon: <Building2 className="h-3 w-3" />,
+              label: 'Facility',
+              value: member.primary_facility_name || 'Unassigned',
             },
             ...(member.user_email
               ? [{

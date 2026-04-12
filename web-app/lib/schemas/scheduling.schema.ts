@@ -25,6 +25,7 @@ export const ResourceListItemSchema = z.object({
   resource_type: ResourceTypeSchema,
   code: z.string(),
   is_active: z.boolean(),
+  department_name: z.string().nullable(),
 });
 
 export const ResourceSchema = z.object({

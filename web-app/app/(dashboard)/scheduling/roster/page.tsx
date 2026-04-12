@@ -53,6 +53,7 @@ import type {
   ShiftListItem,
   ShiftCreateData,
   ResourceListItem,
+  CrossFacilityConflict,
 } from '@/lib/types/scheduling';
 import {
   printRoster,
@@ -151,7 +152,11 @@ export default function WeeklyRosterPage() {
     queryKey: ['scheduling-resources-person'],
     queryFn: () => resourcesApi.list({ resource_type: 'PERSON', page_size: 200, ordering: 'name' }),
   });
-  const staffList = resourcesData?.results ?? [];
+  const allStaff = resourcesData?.results ?? [];
+  const staffList = useMemo(
+    () => departmentFilter ? allStaff.filter((r) => r.department_name === departmentFilter) : allStaff,
+    [allStaff, departmentFilter],
+  );
 
   // Fetch existing shifts for the week
   const { data: shiftsData, isLoading: shiftsLoading } = useQuery({
@@ -166,6 +171,22 @@ export default function WeeklyRosterPage() {
     enabled: weekDates.length === 7,
   });
 
+  // Check for cross-facility scheduling conflicts
+  const { data: conflicts } = useQuery({
+    queryKey: ['roster-conflicts', weekDates[0], weekDates[6]],
+    queryFn: () => shiftsApi.crossFacilityConflicts({ from_date: weekDates[0], to_date: weekDates[6] }),
+    enabled: weekDates.length === 7,
+  });
+
+  // Build a conflict lookup: `resourceId-date` → conflict details
+  const conflictMap = useMemo(() => {
+    const map = new Map<string, CrossFacilityConflict>();
+    for (const c of conflicts ?? []) {
+      map.set(cellKey(c.staff_resource_id, c.shift_date), c);
+    }
+    return map;
+  }, [conflicts]);
+
   // Build a lookup: cellKey → ShiftListItem
   const existingShifts = useMemo(() => {
     const map = new Map<CellKey, ShiftListItem>();
@@ -178,14 +199,14 @@ export default function WeeklyRosterPage() {
     return map;
   }, [shiftsData]);
 
-  // Get departments from existing data
+  // Get departments from staff resources
   const departments = useMemo(() => {
     const set = new Set<string>();
-    for (const shift of shiftsData?.results ?? []) {
-      if (shift.department) set.add(shift.department);
+    for (const r of allStaff) {
+      if (r.department_name) set.add(r.department_name);
     }
     return Array.from(set).sort();
-  }, [shiftsData]);
+  }, [allStaff]);
 
   // ==========================================================================
   // Cell interaction
@@ -613,6 +634,22 @@ export default function WeeklyRosterPage() {
           ))}
         </div>
 
+        {/* Cross-facility conflicts banner */}
+        {conflicts && conflicts.length > 0 && (
+          <div className="flex items-start gap-2 rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 p-3">
+            <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+            <div className="text-sm">
+              <p className="font-medium text-orange-800 dark:text-orange-300">
+                {conflicts.length} cross-facility conflict{conflicts.length !== 1 ? 's' : ''} detected
+              </p>
+              <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">
+                {Array.from(new Set(conflicts.map((c) => c.staff_resource_name))).join(', ')}
+                {' — '}also scheduled at other facilities on overlapping dates. Check orange indicators on the grid.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Roster Grid */}
         <Card>
           <CardContent className="p-0">
@@ -670,31 +707,52 @@ export default function WeeklyRosterPage() {
                           const cell = getCellState(staff.id, date);
                           const isToday = date === today;
                           const shiftInfo = cell.type ? SHIFT_MAP[cell.type] : null;
+                          const conflict = conflictMap.get(cellKey(staff.id, date));
 
                           return (
                             <td
                               key={date}
                               className={`px-1 py-1 text-center cursor-pointer transition-colors ${
                                 isToday ? 'bg-primary/5' : ''
-                              } hover:bg-muted/50`}
+                              } ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50`}
                               onClick={() => handleCellClick(staff.id, date)}
                             >
-                              {cell.type && shiftInfo ? (
-                                <div
-                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${
-                                    shiftInfo.color
-                                  } ${cell.isDraft ? 'border-dashed border-2 border-primary/50' : ''}`}
-                                >
-                                  {shiftInfo.icon}
-                                  <span className="hidden sm:inline">{shiftInfo.short}</span>
-                                </div>
-                              ) : cell.isRemoval ? (
-                                <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] text-destructive/60 border border-dashed border-destructive/30">
-                                  —
-                                </div>
-                              ) : (
-                                <div className="h-6 w-full rounded hover:bg-muted/60 transition-colors" />
-                              )}
+                              <div className="relative inline-block">
+                                {cell.type && shiftInfo ? (
+                                  <div
+                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${
+                                      shiftInfo.color
+                                    } ${cell.isDraft ? 'border-dashed border-2 border-primary/50' : ''}`}
+                                  >
+                                    {shiftInfo.icon}
+                                    <span className="hidden sm:inline">{shiftInfo.short}</span>
+                                  </div>
+                                ) : cell.isRemoval ? (
+                                  <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] text-destructive/60 border border-dashed border-destructive/30">
+                                    —
+                                  </div>
+                                ) : (
+                                  <div className="h-6 w-full rounded hover:bg-muted/60 transition-colors" />
+                                )}
+                                {conflict && (
+                                  <TooltipProvider delayDuration={200}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                                          <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500 text-white text-[7px] font-bold items-center justify-center">!</span>
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="max-w-[220px]">
+                                        <p className="text-xs font-medium">Cross-facility conflict</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          Also scheduled at {conflict.other_facility.name} ({conflict.other_shift.shift_type} {conflict.other_shift.start_time}–{conflict.other_shift.end_time})
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
                             </td>
                           );
                         })}

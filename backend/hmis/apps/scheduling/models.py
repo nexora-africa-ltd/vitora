@@ -81,13 +81,13 @@ class Resource(FacilityScopedModel, TimeStampedModel):
         default=1,
         help_text="Capacity (for places/assets, e.g., room capacity)",
     )
-    staff_profile = models.OneToOneField(
+    staff_profile = models.ForeignKey(
         "core.StaffProfile",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="scheduling_resource",
-        help_text="Link to StaffProfile for person resources",
+        related_name="scheduling_resources",
+        help_text="Link to StaffProfile for person resources (one per facility)",
     )
     metadata = models.JSONField(
         default=dict,
