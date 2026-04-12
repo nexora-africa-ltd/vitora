@@ -307,3 +307,148 @@ class TestMyHistory:
         """Unauthenticated requests should be rejected."""
         response = api_client.get("/api/scheduling/shifts/my-history/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# =============================================================================
+# Night Shift Validation
+# =============================================================================
+
+
+class TestNightShiftValidation:
+    """Tests for overnight shift serializer acceptance."""
+
+    def test_night_shift_accepted(self, authenticated_client, my_resource, sample_facility):
+        """NIGHT shifts with end_time < start_time should be valid (crosses midnight)."""
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/",
+            {
+                "staff_resource": my_resource.id,
+                "shift_date": date.today().isoformat(),
+                "start_time": "19:00",
+                "end_time": "07:00",
+                "shift_type": "NIGHT",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["shift_type"] == "NIGHT"
+
+    def test_night_off_accepted(self, authenticated_client, my_resource, sample_facility):
+        """NIGHT_OFF shifts with end_time < start_time should be valid."""
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/",
+            {
+                "staff_resource": my_resource.id,
+                "shift_date": date.today().isoformat(),
+                "start_time": "19:00",
+                "end_time": "07:00",
+                "shift_type": "NIGHT_OFF",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_day_shift_rejects_bad_times(self, authenticated_client, my_resource, sample_facility):
+        """DAY shift with end_time < start_time should be rejected."""
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/",
+            {
+                "staff_resource": my_resource.id,
+                "shift_date": date.today().isoformat(),
+                "start_time": "19:00",
+                "end_time": "07:00",
+                "shift_type": "DAY",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "end_time" in response.data
+
+    def test_bulk_create_night_shifts(self, authenticated_client, my_resource, sample_facility):
+        """Bulk-create should accept night shifts without errors."""
+        payload = {
+            "shifts": [
+                {
+                    "staff_resource": my_resource.id,
+                    "shift_date": (date.today() + timedelta(days=1)).isoformat(),
+                    "start_time": "19:00",
+                    "end_time": "07:00",
+                    "shift_type": "NIGHT",
+                },
+            ],
+        }
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/bulk-create/", payload, format="json"
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["created"] == 1
+        assert response.data["errors"] == 0
+
+
+# =============================================================================
+# Bulk Delete
+# =============================================================================
+
+
+class TestBulkDelete:
+    """Tests for POST /api/scheduling/shifts/bulk-delete/."""
+
+    def test_bulk_delete_scheduled_shifts(self, authenticated_client, my_resource, sample_facility):
+        """Should delete SCHEDULED shifts in the given date range."""
+        from hmis.apps.scheduling.models import Shift
+
+        tomorrow = date.today() + timedelta(days=1)
+        for i in range(3):
+            Shift.objects.create(
+                staff_resource=my_resource,
+                shift_date=tomorrow + timedelta(days=i),
+                start_time=time(7, 0),
+                end_time=time(19, 0),
+                shift_type="DAY",
+                status="SCHEDULED",
+                facility=sample_facility,
+                organization=sample_facility.organization,
+            )
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/bulk-delete/",
+            {
+                "from_date": tomorrow.isoformat(),
+                "to_date": (tomorrow + timedelta(days=2)).isoformat(),
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["deleted"] == 3
+
+    def test_bulk_delete_preserves_active_shifts(self, authenticated_client, my_resource, sample_facility):
+        """Should NOT delete ACTIVE shifts."""
+        from hmis.apps.scheduling.models import Shift
+
+        tomorrow = date.today() + timedelta(days=1)
+        Shift.objects.create(
+            staff_resource=my_resource,
+            shift_date=tomorrow,
+            start_time=time(7, 0),
+            end_time=time(19, 0),
+            shift_type="DAY",
+            status="ACTIVE",
+            facility=sample_facility,
+            organization=sample_facility.organization,
+        )
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/bulk-delete/",
+            {
+                "from_date": tomorrow.isoformat(),
+                "to_date": tomorrow.isoformat(),
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["deleted"] == 0
+
+    def test_bulk_delete_requires_dates(self, authenticated_client):
+        """Should reject if dates are missing."""
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/bulk-delete/", {}, format="json"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST

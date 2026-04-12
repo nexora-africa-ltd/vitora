@@ -26,12 +26,24 @@ import {
   Thermometer,
   Coffee,
   Settings,
+  Trash2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
@@ -365,6 +377,21 @@ export default function WeeklyRosterPage() {
       }
     },
     onError: () => toast.error('Failed to save roster'),
+  });
+
+  const clearRosterMutation = useMutation({
+    mutationFn: () => shiftsApi.bulkDelete(weekDates[0]!, weekDates[6]!),
+    onSuccess: (result) => {
+      setDraft(new Map());
+      queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
+      if (result.deleted > 0) {
+        toast.success(`Cleared ${result.deleted} shift(s) from this week`);
+      } else {
+        toast.info('No scheduled shifts to clear');
+      }
+    },
+    onError: () => toast.error('Failed to clear roster'),
   });
 
   // ==========================================================================
@@ -864,6 +891,42 @@ export default function WeeklyRosterPage() {
                 <Printer className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">Print</span>
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    {clearRosterMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-1" />
+                    )}
+                    <span className="hidden sm:inline">Clear Week</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear this week&apos;s roster?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will delete all <strong>scheduled</strong> shifts for {weekLabel}.
+                      Active, completed, and cancelled shifts will not be affected.
+                      This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => clearRosterMutation.mutate()}
+                      className="bg-destructive text-white hover:bg-destructive/90"
+                    >
+                      Clear Roster
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>

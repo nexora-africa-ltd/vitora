@@ -358,6 +358,15 @@ export const shiftsApi = {
     return response.data;
   },
 
+  /** Bulk-delete SCHEDULED shifts in a date range. */
+  bulkDelete: async (fromDate: string, toDate: string): Promise<{ deleted: number }> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/bulk-delete/`, {
+      from_date: fromDate,
+      to_date: toDate,
+    });
+    return response.data;
+  },
+
   /** Check for cross-facility scheduling conflicts. */
   crossFacilityConflicts: async (params: { from_date: string; to_date: string }): Promise<CrossFacilityConflict[]> => {
     const response = await apiClient.get(`${BASE_URL}/shifts/cross-facility-conflicts/`, { params });

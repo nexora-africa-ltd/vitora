@@ -1247,6 +1247,47 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             "error_details": errors,
         }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
+    @action(detail=False, methods=["post"], url_path="bulk-delete")
+    def bulk_delete(self, request):
+        """
+        Bulk-delete shifts by date range.
+
+        Deletes all SCHEDULED shifts within [from_date, to_date] for
+        the current facility.  Active / completed shifts are preserved.
+
+        Request body:
+            { "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD" }
+        """
+        from datetime import date as date_type
+
+        from_date_str = request.data.get("from_date")
+        to_date_str = request.data.get("to_date")
+
+        if not from_date_str or not to_date_str:
+            return Response(
+                {"error": "from_date and to_date are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from_date = date_type.fromisoformat(from_date_str)
+            to_date = date_type.fromisoformat(to_date_str)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        qs = self.get_queryset().filter(
+            shift_date__gte=from_date,
+            shift_date__lte=to_date,
+            status="SCHEDULED",
+        )
+        count = qs.count()
+        qs.delete()
+
+        return Response({"deleted": count})
+
     @action(detail=False, methods=["get"], url_path="staff-workload")
     def staff_workload(self, request):
         """
