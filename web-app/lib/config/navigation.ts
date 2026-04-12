@@ -160,8 +160,9 @@ const _allNavItems: NavItemType[] = [
       { label: 'Schedules', href: '/scheduling/schedules', icon: Clock, actionKey: 'scheduling.view_schedules' },
       { label: 'Resources', href: '/scheduling/resources', icon: Settings, actionKey: 'scheduling.manage_schedules' },
       { label: 'Weekly Roster', href: '/scheduling/roster', icon: ChartNoAxesGantt, actionKey: 'scheduling.view_appointments' },
-      { label: 'Duty Roster', href: '/scheduling/shifts', icon: ClipboardList, actionKey: 'scheduling.view_appointments' },
+      { label: 'Duty Roster', href: '/scheduling/shifts', icon: ClipboardList, actionKey: 'scheduling.manage_schedules' },
       { label: 'Staff Workload', href: '/scheduling/workload', icon: BarChart3, actionKey: 'scheduling.view_appointments' },
+      { label: 'My Shifts', href: '/scheduling/my-shifts', icon: UserCheck, actionKey: 'scheduling.view_appointments' },
     ],
   },
   {

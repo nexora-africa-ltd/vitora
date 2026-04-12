@@ -1777,6 +1777,14 @@ class SchedulingSettings(FacilityScopedModel, TimeStampedModel):
         default=True,
         help_text="When True, the roster grid warns on constraint violations",
     )
+    enforce_punctuality = models.BooleanField(
+        default=False,
+        help_text="When True, clock-in is blocked if staff is more than late_cutoff_minutes late",
+    )
+    late_cutoff_minutes = models.PositiveIntegerField(
+        default=30,
+        help_text="Minutes after shift start after which clock-in is blocked (0 = no limit)",
+    )
 
     class Meta(TimeStampedModel.Meta):
         verbose_name = "Scheduling Settings"

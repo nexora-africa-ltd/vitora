@@ -108,6 +108,9 @@ export interface ScheduleListParams {
   schedule_type?: ScheduleType;
   day_of_week?: number;
   is_active?: boolean;
+  page?: number;
+  page_size?: number;
+  ordering?: string;
 }
 
 export interface ScheduleBreakCreateData {
@@ -348,6 +351,39 @@ export interface CrossFacilityConflict {
 
 // =============================================================================
 // Scheduling Settings & Staff Constraints
+
+// =============================================================================
+// Attendance / Clock-In
+// =============================================================================
+
+export type AttendanceStatus = 'NO_SHIFT' | 'UPCOMING' | 'SHOULD_CLOCK_IN' | 'CLOCKED_IN' | 'COMPLETED';
+
+export interface MyTodayResponse {
+  shifts: Shift[];
+  attendance_status: AttendanceStatus;
+}
+
+export interface AttendanceStats {
+  total_shifts: number;
+  total_hours: number;
+  on_time_count: number;
+  late_count: number;
+  on_time_rate: number;
+  overtime_hours: number;
+}
+
+export interface MyHistoryResponse {
+  results: ShiftListItem[];
+  count: number;
+  stats: AttendanceStats;
+}
+
+export interface MyHistoryParams {
+  from_date?: string;
+  to_date?: string;
+  page?: number;
+  page_size?: number;
+}
 // =============================================================================
 
 export interface SchedulingSettings {
@@ -362,6 +398,8 @@ export interface SchedulingSettings {
   active_shift_types: string[];
   overtime_threshold_hours: number;
   enforce_constraints: boolean;
+  enforce_punctuality: boolean;
+  late_cutoff_minutes: number;
   created_at: string;
   updated_at: string;
 }

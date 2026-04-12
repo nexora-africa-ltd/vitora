@@ -15,6 +15,9 @@ This module contains ViewSets for:
 - Auto-assign and manual override actions
 """
 
+from datetime import datetime
+
+from django.utils import timezone
 from django_filters import rest_framework as filters
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -1047,7 +1050,11 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
     """
 
     queryset = Shift.objects.select_related(
-        "staff_resource", "created_by", "cancelled_by"
+        "staff_resource",
+        "staff_resource__staff_profile",
+        "staff_resource__staff_profile__primary_department",
+        "created_by",
+        "cancelled_by",
     )
     serializer_class = ShiftSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1083,8 +1090,42 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
     @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
-        """Start a shift (clock in)."""
+        """Start a shift (clock in).
+
+        Checks facility punctuality settings — if enforce_punctuality is enabled
+        and the staff member is more than late_cutoff_minutes late, clock-in is
+        blocked unless the user has manage_schedules permission (admin override).
+        """
         shift = self.get_object()
+
+        # Punctuality enforcement
+        from hmis.apps.scheduling.models import SchedulingSettings
+
+        settings = SchedulingSettings.objects.filter(facility=shift.facility).first()
+        if settings and settings.enforce_punctuality and settings.late_cutoff_minutes:
+            now = timezone.now()
+            shift_start_dt = timezone.make_aware(
+                datetime.combine(shift.shift_date, shift.start_time)
+            ) if timezone.is_naive(
+                datetime.combine(shift.shift_date, shift.start_time)
+            ) else datetime.combine(shift.shift_date, shift.start_time)
+            minutes_late = (now - shift_start_dt).total_seconds() / 60
+            is_admin = request.user.has_perm("scheduling.manage_schedules")
+            if minutes_late > settings.late_cutoff_minutes and not is_admin:
+                return Response(
+                    {
+                        "error": (
+                            f"Clock-in blocked: you are {int(minutes_late)} minutes late. "
+                            f"Facility policy allows clock-in within {settings.late_cutoff_minutes} minutes "
+                            f"of shift start. Contact a supervisor for an override."
+                        ),
+                        "code": "late_cutoff_exceeded",
+                        "minutes_late": int(minutes_late),
+                        "cutoff": settings.late_cutoff_minutes,
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         try:
             shift.start_shift()
         except ValueError as e:
@@ -1258,6 +1299,189 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         serializer = StaffWorkloadSerializer(workload, many=True)
         return Response(serializer.data)
+
+    # ---- Personal / Clock-In Endpoints ----
+
+    def _get_my_resource(self, request):
+        """Resolve the scheduling Resource linked to the current user's StaffProfile."""
+        staff_profile = getattr(request.user, "staff_profile", None)
+        if not staff_profile:
+            return None
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return None
+        return (
+            Resource.objects.filter(
+                staff_profile=staff_profile,
+                facility=facility,
+                resource_type="PERSON",
+            )
+            .first()
+        )
+
+    @action(detail=False, methods=["get"], url_path="my-today")
+    def my_today(self, request):
+        """
+        Get the current user's shift(s) for today.
+
+        Returns a list of shifts plus an attendance_status field:
+        - NO_SHIFT: no shift scheduled today
+        - UPCOMING: shift hasn't started yet
+        - SHOULD_CLOCK_IN: shift start time has passed, not yet clocked in
+        - CLOCKED_IN: currently on duty
+        - COMPLETED: shift done for the day
+        """
+        from datetime import date as date_type
+
+        resource = self._get_my_resource(request)
+        if not resource:
+            return Response({"shifts": [], "attendance_status": "NO_SHIFT"})
+
+        today = date_type.today()
+        shifts = list(
+            Shift.objects.filter(
+                staff_resource=resource,
+                shift_date=today,
+            )
+            .exclude(status="CANCELLED")
+            .exclude(shift_type__in=["OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF", "LEAVE", "SICK_LEAVE", "REST"])
+            .order_by("start_time")
+        )
+
+        if not shifts:
+            return Response({"shifts": [], "attendance_status": "NO_SHIFT"})
+
+        # Determine overall attendance status from the primary (first) shift
+        primary = shifts[0]
+        now = timezone.now()
+        shift_start_dt = timezone.make_aware(
+            datetime.combine(primary.shift_date, primary.start_time)
+        ) if timezone.is_naive(
+            datetime.combine(primary.shift_date, primary.start_time)
+        ) else datetime.combine(primary.shift_date, primary.start_time)
+
+        if primary.status == "COMPLETED":
+            att_status = "COMPLETED"
+        elif primary.status == "ACTIVE":
+            att_status = "CLOCKED_IN"
+        elif now >= shift_start_dt:
+            att_status = "SHOULD_CLOCK_IN"
+        else:
+            att_status = "UPCOMING"
+
+        serializer = ShiftSerializer(shifts, many=True)
+        return Response({
+            "shifts": serializer.data,
+            "attendance_status": att_status,
+        })
+
+    @action(detail=False, methods=["get"], url_path="my-history")
+    def my_history(self, request):
+        """
+        Get the current user's shift history (paginated) with attendance stats.
+
+        Query params:
+            from_date: Start date (optional, YYYY-MM-DD, default: 30 days ago)
+            to_date:   End date (optional, YYYY-MM-DD, default: today)
+            page / page_size: Pagination
+        """
+        from datetime import date as date_type, timedelta as td
+
+        resource = self._get_my_resource(request)
+        if not resource:
+            return Response({
+                "results": [],
+                "count": 0,
+                "stats": {
+                    "total_shifts": 0,
+                    "total_hours": 0,
+                    "on_time_count": 0,
+                    "late_count": 0,
+                    "on_time_rate": 0,
+                    "overtime_hours": 0,
+                },
+            })
+
+        today = date_type.today()
+        from_date_str = request.query_params.get("from_date")
+        to_date_str = request.query_params.get("to_date")
+        try:
+            from_date = date_type.fromisoformat(from_date_str) if from_date_str else today - td(days=30)
+            to_date = date_type.fromisoformat(to_date_str) if to_date_str else today
+        except ValueError:
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        shifts = (
+            Shift.objects.filter(
+                staff_resource=resource,
+                shift_date__gte=from_date,
+                shift_date__lte=to_date,
+            )
+            .exclude(status="CANCELLED")
+            .exclude(shift_type__in=["OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF", "LEAVE", "SICK_LEAVE", "REST"])
+            .order_by("-shift_date", "-start_time")
+        )
+
+        # Compute attendance stats
+        total_shifts = shifts.count()
+        completed = shifts.filter(status="COMPLETED")
+
+        total_hours = 0.0
+        on_time_count = 0
+        late_count = 0
+        overtime_hours = 0.0
+        late_threshold_minutes = 15
+
+        for s in completed:
+            # Duration from actual start/end
+            if s.started_at and s.completed_at:
+                actual_hours = (s.completed_at - s.started_at).total_seconds() / 3600
+                total_hours += actual_hours
+                # Overtime: actual hours - scheduled hours
+                if s.duration_hours and actual_hours > s.duration_hours:
+                    overtime_hours += actual_hours - s.duration_hours
+            elif s.duration_hours:
+                total_hours += s.duration_hours
+
+            # Late check: started_at vs scheduled start
+            if s.started_at:
+                scheduled_start = timezone.make_aware(
+                    datetime.combine(s.shift_date, s.start_time)
+                ) if timezone.is_naive(
+                    datetime.combine(s.shift_date, s.start_time)
+                ) else datetime.combine(s.shift_date, s.start_time)
+                diff_minutes = (s.started_at - scheduled_start).total_seconds() / 60
+                if diff_minutes > late_threshold_minutes:
+                    late_count += 1
+                else:
+                    on_time_count += 1
+
+        on_time_rate = round((on_time_count / (on_time_count + late_count) * 100), 1) if (on_time_count + late_count) > 0 else 0
+
+        # Paginate
+        page_size = int(request.query_params.get("page_size", 20))
+        page_num = int(request.query_params.get("page", 1))
+        start = (page_num - 1) * page_size
+        end = start + page_size
+        page_shifts = shifts[start:end]
+
+        serializer = ShiftListSerializer(page_shifts, many=True)
+        return Response({
+            "results": serializer.data,
+            "count": total_shifts,
+            "stats": {
+                "total_shifts": total_shifts,
+                "total_hours": round(total_hours, 1),
+                "on_time_count": on_time_count,
+                "late_count": late_count,
+                "on_time_rate": on_time_rate,
+                "overtime_hours": round(overtime_hours, 1),
+            },
+        })
 
     @action(detail=False, methods=["get"], url_path="cross-facility-conflicts")
     def cross_facility_conflicts(self, request):
