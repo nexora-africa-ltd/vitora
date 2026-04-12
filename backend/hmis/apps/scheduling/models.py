@@ -1547,13 +1547,15 @@ class Shift(FacilityScopedModel, TimeStampedModel):
     STATUS_CHOICES = [
         ("SCHEDULED", "Scheduled"),
         ("ACTIVE", "Active"),
+        ("ON_BREAK", "On Break"),
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
     ]
 
     VALID_TRANSITIONS = {
         "SCHEDULED": ["ACTIVE", "CANCELLED"],
-        "ACTIVE": ["COMPLETED"],
+        "ACTIVE": ["ON_BREAK", "COMPLETED"],
+        "ON_BREAK": ["ACTIVE", "COMPLETED"],
         "COMPLETED": [],
         "CANCELLED": [],
     }
@@ -1618,6 +1620,11 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         null=True,
         blank=True,
         help_text="Actual shift end timestamp",
+    )
+    break_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when current break started",
     )
     cancelled_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -1685,6 +1692,18 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         """Mark shift as active (clock in)."""
         self._transition_to("ACTIVE")
         self.started_at = timezone.now()
+        self.save()
+
+    def take_break(self) -> None:
+        """Mark shift as on break."""
+        self._transition_to("ON_BREAK")
+        self.break_started_at = timezone.now()
+        self.save()
+
+    def resume_shift(self) -> None:
+        """Resume shift from break."""
+        self._transition_to("ACTIVE")
+        self.break_started_at = None
         self.save()
 
     def complete_shift(self) -> None:

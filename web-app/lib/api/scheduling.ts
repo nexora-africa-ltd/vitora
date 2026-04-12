@@ -461,4 +461,20 @@ export const attendanceApi = {
       context: 'attendanceApi.clockOut',
     });
   },
+
+  /** Take a break during an active shift. */
+  takeBreak: async (shiftId: number): Promise<Shift> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/${shiftId}/take-break/`);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'attendanceApi.takeBreak',
+    });
+  },
+
+  /** Resume shift from break. */
+  resume: async (shiftId: number): Promise<Shift> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/${shiftId}/resume/`);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'attendanceApi.resume',
+    });
+  },
 };

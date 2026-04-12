@@ -1144,6 +1144,28 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         serializer = ShiftSerializer(shift)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"], url_path="take-break")
+    def take_break(self, request, pk=None):
+        """Take a break during an active shift."""
+        shift = self.get_object()
+        try:
+            shift.take_break()
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ShiftSerializer(shift)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def resume(self, request, pk=None):
+        """Resume shift from break."""
+        shift = self.get_object()
+        try:
+            shift.resume_shift()
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ShiftSerializer(shift)
+        return Response(serializer.data)
+
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         """Cancel a shift."""
@@ -1365,6 +1387,8 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             att_status = "COMPLETED"
         elif primary.status == "ACTIVE":
             att_status = "CLOCKED_IN"
+        elif primary.status == "ON_BREAK":
+            att_status = "ON_BREAK"
         elif now >= shift_start_dt:
             att_status = "SHOULD_CLOCK_IN"
         else:

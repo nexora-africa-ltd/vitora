@@ -183,7 +183,7 @@ export const SlotCheckResultSchema = z.object({
 // =============================================================================
 
 export const ShiftTypeSchema = z.enum(['DAY', 'NIGHT', 'MORNING', 'AFTERNOON', 'ON_CALL', 'OVERTIME', 'DAY_OFF', 'NIGHT_OFF', 'OFF', 'AFTERNOON_OFF', 'LEAVE', 'SICK_LEAVE', 'REST']);
-export const ShiftStatusSchema = z.enum(['SCHEDULED', 'ACTIVE', 'COMPLETED', 'CANCELLED']);
+export const ShiftStatusSchema = z.enum(['SCHEDULED', 'ACTIVE', 'ON_BREAK', 'COMPLETED', 'CANCELLED']);
 
 export const ShiftListItemSchema = z.object({
   id: z.number(),
@@ -206,6 +206,7 @@ export const ShiftSchema = ShiftListItemSchema.extend({
   created_by_name: z.string().nullable(),
   started_at: z.string().nullable(),
   completed_at: z.string().nullable(),
+  break_started_at: z.string().nullable(),
   cancelled_by: z.number().nullable(),
   cancelled_by_name: z.string().nullable(),
   cancellation_reason: z.string(),
@@ -274,7 +275,7 @@ export const PaginatedStaffConstraintSchema = createPaginatedSchema(StaffConstra
 // Attendance / Clock-In
 // =============================================================================
 
-export const AttendanceStatusSchema = z.enum(['NO_SHIFT', 'UPCOMING', 'SHOULD_CLOCK_IN', 'CLOCKED_IN', 'COMPLETED']);
+export const AttendanceStatusSchema = z.enum(['NO_SHIFT', 'UPCOMING', 'SHOULD_CLOCK_IN', 'CLOCKED_IN', 'ON_BREAK', 'COMPLETED']);
 
 export const MyTodayResponseSchema = z.object({
   shifts: z.array(ShiftSchema),
