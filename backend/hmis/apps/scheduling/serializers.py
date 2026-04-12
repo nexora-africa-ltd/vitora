@@ -934,3 +934,63 @@ class StaffWorkloadSerializer(serializers.Serializer):
     appointment_count = serializers.IntegerField()
     active_shifts = serializers.IntegerField()
     completed_shifts = serializers.IntegerField()
+
+
+# =============================================================================
+# Scheduling Settings & Staff Constraints
+# =============================================================================
+
+
+class SchedulingSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for facility scheduling settings."""
+
+    class Meta:
+        from hmis.apps.scheduling.models import SchedulingSettings
+
+        model = SchedulingSettings
+        fields = [
+            "id",
+            "max_hours_per_week",
+            "max_consecutive_days",
+            "min_rest_hours",
+            "max_night_shifts_per_week",
+            "max_day_hours",
+            "max_night_hours",
+            "default_shift_pattern",
+            "overtime_threshold_hours",
+            "enforce_constraints",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class StaffConstraintSerializer(serializers.ModelSerializer):
+    """Serializer for staff scheduling constraints."""
+
+    staff_resource_name = serializers.CharField(
+        source="staff_resource.name", read_only=True
+    )
+    constraint_type_display = serializers.CharField(
+        source="get_constraint_type_display", read_only=True
+    )
+
+    class Meta:
+        from hmis.apps.scheduling.models import StaffConstraint
+
+        model = StaffConstraint
+        fields = [
+            "id",
+            "staff_resource",
+            "staff_resource_name",
+            "constraint_type",
+            "constraint_type_display",
+            "value",
+            "reason",
+            "is_active",
+            "effective_from",
+            "effective_until",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]

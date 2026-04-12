@@ -16,7 +16,9 @@ from hmis.apps.scheduling.models import (
     Resource,
     Schedule,
     ScheduleBreak,
+    SchedulingSettings,
     Shift,
+    StaffConstraint,
     TimeSlot,
 )
 
@@ -283,3 +285,38 @@ class ShiftAdmin(admin.ModelAdmin):
             color,
             obj.get_status_display(),
         )
+
+
+@admin.register(SchedulingSettings)
+class SchedulingSettingsAdmin(admin.ModelAdmin):
+    """Admin for per-facility scheduling settings."""
+
+    list_display = [
+        "facility",
+        "max_hours_per_week",
+        "max_consecutive_days",
+        "min_rest_hours",
+        "max_night_shifts_per_week",
+        "enforce_constraints",
+    ]
+    list_filter = ["enforce_constraints", "facility"]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["facility", "organization"]
+
+
+@admin.register(StaffConstraint)
+class StaffConstraintAdmin(admin.ModelAdmin):
+    """Admin for staff scheduling constraints."""
+
+    list_display = [
+        "staff_resource",
+        "constraint_type",
+        "is_active",
+        "effective_from",
+        "effective_until",
+        "facility",
+    ]
+    list_filter = ["constraint_type", "is_active", "facility"]
+    search_fields = ["staff_resource__name", "reason"]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["facility", "organization", "staff_resource"]

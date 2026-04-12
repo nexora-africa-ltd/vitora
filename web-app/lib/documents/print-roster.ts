@@ -56,6 +56,13 @@ export const SHIFT_PRINT_COLORS: Record<string, string> = {
   AFTERNOON: '#ffe4e6',
   ON_CALL: '#d1fae5',
   OVERTIME: '#f3e8ff',
+  DAY_OFF: '#f1f5f9',
+  NIGHT_OFF: '#f1f5f9',
+  OFF: '#e2e8f0',
+  AFTERNOON_OFF: '#f1f5f9',
+  LEAVE: '#fef9c3',
+  SICK_LEAVE: '#fecaca',
+  REST: '#f0fdf4',
 };
 
 // =============================================================================
