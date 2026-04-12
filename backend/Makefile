@@ -557,6 +557,8 @@ staging-deploy:
 	az containerapp update -n $(ACA_NAME) -g $(ACA_RG) \
 		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG \
 		--output none && \
+	echo "=== Syncing environment variables ===" && \
+	DJANGO_SETTINGS_MODULE=hmis.settings.staging bash scripts/azure-update-env.sh && \
 	echo "✅ Deployed $$TAG to ACA. Wait ~60s for rollout."
 
 # Quick login test against staging API
