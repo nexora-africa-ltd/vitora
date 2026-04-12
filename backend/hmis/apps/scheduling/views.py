@@ -49,11 +49,13 @@ from hmis.apps.scheduling.serializers import (
     ScheduleBreakSerializer,
     ScheduleCreateSerializer,
     ScheduleSerializer,
+    SchedulingSettingsSerializer,
     ShiftCancelSerializer,
     ShiftCreateSerializer,
     ShiftListSerializer,
     ShiftSerializer,
     SlotCheckQuerySerializer,
+    StaffConstraintSerializer,
     StaffWorkloadSerializer,
     WeeklyAvailabilityQuerySerializer,
 )
@@ -1249,3 +1251,83 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         serializer = StaffWorkloadSerializer(workload, many=True)
         return Response(serializer.data)
+
+
+# =============================================================================
+# Scheduling Settings & Staff Constraints
+# =============================================================================
+
+
+class SchedulingSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for per-facility scheduling settings.
+
+    GET    /api/scheduling/settings/       → list (returns 1 settings object or empty)
+    POST   /api/scheduling/settings/       → create settings for the facility
+    GET    /api/scheduling/settings/{id}/  → retrieve
+    PATCH  /api/scheduling/settings/{id}/  → update
+    GET    /api/scheduling/settings/current/ → get-or-create current facility settings
+    """
+
+    from hmis.apps.scheduling.models import SchedulingSettings
+
+    queryset = SchedulingSettings.objects.all()
+    serializer_class = SchedulingSettingsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    tenant_scope = "facility"
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    @action(detail=False, methods=["get"], url_path="current")
+    def current(self, request):
+        """Get or create the scheduling settings for the current facility."""
+        from hmis.apps.scheduling.models import SchedulingSettings
+
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        settings_obj, _created = SchedulingSettings.objects.get_or_create(
+            facility=facility,
+            defaults={"organization": getattr(facility, "organization", None)},
+        )
+        serializer = self.get_serializer(settings_obj)
+        return Response(serializer.data)
+
+
+class StaffConstraintViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """
+    CRUD for staff scheduling constraints.
+
+    GET    /api/scheduling/constraints/               → list constraints
+    POST   /api/scheduling/constraints/               → create constraint
+    GET    /api/scheduling/constraints/{id}/          → retrieve
+    PATCH  /api/scheduling/constraints/{id}/          → update
+    DELETE /api/scheduling/constraints/{id}/          → delete
+    GET    /api/scheduling/constraints/?staff_resource=1  → filter by staff
+    """
+
+    from hmis.apps.scheduling.models import StaffConstraint
+
+    queryset = StaffConstraint.objects.select_related("staff_resource").all()
+    serializer_class = StaffConstraintSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    tenant_scope = "facility"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        staff_resource = self.request.query_params.get("staff_resource")
+        if staff_resource:
+            qs = qs.filter(staff_resource_id=staff_resource)
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() in ("true", "1"))
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())

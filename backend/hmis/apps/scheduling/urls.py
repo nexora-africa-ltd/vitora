@@ -16,7 +16,9 @@ from hmis.apps.scheduling.views import (
     AssignmentViewSet,
     ResourceViewSet,
     ScheduleViewSet,
+    SchedulingSettingsViewSet,
     ShiftViewSet,
+    StaffConstraintViewSet,
 )
 
 router = DefaultRouter()
@@ -24,6 +26,8 @@ router.register(r"resources", ResourceViewSet, basename="resource")
 router.register(r"schedules", ScheduleViewSet, basename="schedule")
 router.register(r"appointments", AppointmentViewSet, basename="appointment")
 router.register(r"shifts", ShiftViewSet, basename="shift")
+router.register(r"settings", SchedulingSettingsViewSet, basename="scheduling-settings")
+router.register(r"constraints", StaffConstraintViewSet, basename="staff-constraint")
 
 # Phase 2: Assignment Engine
 router.register(r"assignment-rules", AssignmentRuleViewSet, basename="assignment-rule")

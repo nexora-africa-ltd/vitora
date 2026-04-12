@@ -180,7 +180,7 @@ export const SlotCheckResultSchema = z.object({
 // Shifts / Duty Roster
 // =============================================================================
 
-export const ShiftTypeSchema = z.enum(['DAY', 'NIGHT', 'MORNING', 'AFTERNOON', 'ON_CALL', 'OVERTIME']);
+export const ShiftTypeSchema = z.enum(['DAY', 'NIGHT', 'MORNING', 'AFTERNOON', 'ON_CALL', 'OVERTIME', 'DAY_OFF', 'NIGHT_OFF', 'OFF', 'AFTERNOON_OFF', 'LEAVE', 'SICK_LEAVE', 'REST']);
 export const ShiftStatusSchema = z.enum(['SCHEDULED', 'ACTIVE', 'COMPLETED', 'CANCELLED']);
 
 export const ShiftListItemSchema = z.object({
@@ -223,3 +223,44 @@ export const StaffWorkloadSchema = z.object({
   active_shifts: z.number(),
   completed_shifts: z.number(),
 });
+
+// =============================================================================
+// Scheduling Settings & Staff Constraints
+// =============================================================================
+
+export const SchedulingSettingsSchema = z.object({
+  id: z.number(),
+  max_hours_per_week: z.number(),
+  max_consecutive_days: z.number(),
+  min_rest_hours: z.number(),
+  max_night_shifts_per_week: z.number(),
+  max_day_hours: z.number(),
+  max_night_hours: z.number(),
+  default_shift_pattern: z.array(z.string()),
+  overtime_threshold_hours: z.number(),
+  enforce_constraints: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const ConstraintTypeSchema = z.enum([
+  'NO_NIGHTS', 'NO_WEEKENDS', 'MAX_HOURS', 'MAX_CONSECUTIVE',
+  'PREFERRED_SHIFTS', 'NO_OVERTIME', 'LIGHT_DUTY',
+]);
+
+export const StaffConstraintSchema = z.object({
+  id: z.number(),
+  staff_resource: z.number(),
+  staff_resource_name: z.string(),
+  constraint_type: ConstraintTypeSchema,
+  constraint_type_display: z.string(),
+  value: z.record(z.unknown()),
+  reason: z.string(),
+  is_active: z.boolean(),
+  effective_from: z.string().nullable(),
+  effective_until: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedStaffConstraintSchema = createPaginatedSchema(StaffConstraintSchema);

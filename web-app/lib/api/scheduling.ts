@@ -17,6 +17,9 @@ import {
   PaginatedShiftListSchema,
   ShiftSchema,
   StaffWorkloadSchema,
+  SchedulingSettingsSchema,
+  StaffConstraintSchema,
+  PaginatedStaffConstraintSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -42,6 +45,9 @@ import type {
   StaffWorkload,
   BulkCreateShiftsPayload,
   BulkCreateShiftsResult,
+  SchedulingSettings,
+  StaffConstraint,
+  StaffConstraintCreateData,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -344,5 +350,65 @@ export const shiftsApi = {
   bulkCreate: async (payload: BulkCreateShiftsPayload): Promise<BulkCreateShiftsResult> => {
     const response = await apiClient.post(`${BASE_URL}/shifts/bulk-create/`, payload);
     return response.data;
+  },
+};
+
+// =============================================================================
+// Scheduling Settings API
+// =============================================================================
+
+export const schedulingSettingsApi = {
+  /** Get or create the current facility's scheduling settings. */
+  getCurrent: async (): Promise<SchedulingSettings> => {
+    const response = await apiClient.get(`${BASE_URL}/settings/current/`);
+    return parseResponse(SchedulingSettingsSchema, response.data, {
+      context: 'schedulingSettingsApi.getCurrent',
+    });
+  },
+
+  /** Update scheduling settings. */
+  update: async (id: number, data: Partial<SchedulingSettings>): Promise<SchedulingSettings> => {
+    const response = await apiClient.patch(`${BASE_URL}/settings/${id}/`, data);
+    return parseResponse(SchedulingSettingsSchema, response.data, {
+      context: 'schedulingSettingsApi.update',
+    });
+  },
+};
+
+// =============================================================================
+// Staff Constraints API
+// =============================================================================
+
+export const staffConstraintsApi = {
+  list: async (params?: { staff_resource?: number; is_active?: boolean; page?: number; page_size?: number }): Promise<{ count: number; results: StaffConstraint[] }> => {
+    const response = await apiClient.get(`${BASE_URL}/constraints/`, { params });
+    return parseResponse(PaginatedStaffConstraintSchema, response.data, {
+      context: 'staffConstraintsApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<StaffConstraint> => {
+    const response = await apiClient.get(`${BASE_URL}/constraints/${id}/`);
+    return parseResponse(StaffConstraintSchema, response.data, {
+      context: 'staffConstraintsApi.get',
+    });
+  },
+
+  create: async (data: StaffConstraintCreateData): Promise<StaffConstraint> => {
+    const response = await apiClient.post(`${BASE_URL}/constraints/`, data);
+    return parseResponse(StaffConstraintSchema, response.data, {
+      context: 'staffConstraintsApi.create',
+    });
+  },
+
+  update: async (id: number, data: Partial<StaffConstraintCreateData>): Promise<StaffConstraint> => {
+    const response = await apiClient.patch(`${BASE_URL}/constraints/${id}/`, data);
+    return parseResponse(StaffConstraintSchema, response.data, {
+      context: 'staffConstraintsApi.update',
+    });
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`${BASE_URL}/constraints/${id}/`);
   },
 };

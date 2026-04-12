@@ -18,6 +18,12 @@ import {
   Sunset,
   Phone,
   Timer,
+  SunMedium,
+  MoonStar,
+  CalendarOff,
+  Palmtree,
+  Thermometer,
+  Coffee,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -75,6 +81,13 @@ const SHIFT_TYPE_OPTIONS: { value: ShiftType | ''; label: string }[] = [
   { value: 'AFTERNOON', label: 'Afternoon' },
   { value: 'ON_CALL', label: 'On Call' },
   { value: 'OVERTIME', label: 'Overtime' },
+  { value: 'DAY_OFF', label: 'Day Off' },
+  { value: 'NIGHT_OFF', label: 'Night Off' },
+  { value: 'OFF', label: 'Off' },
+  { value: 'AFTERNOON_OFF', label: 'Afternoon Off' },
+  { value: 'LEAVE', label: 'Leave' },
+  { value: 'SICK_LEAVE', label: 'Sick Leave' },
+  { value: 'REST', label: 'Rest Day' },
 ];
 
 const STATUS_OPTIONS: { value: ShiftStatus | ''; label: string }[] = [
@@ -92,22 +105,36 @@ const statusColors: Record<ShiftStatus, string> = {
   CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-const shiftTypeColors: Record<ShiftType, string> = {
+const shiftTypeColors: Partial<Record<ShiftType, string>> = {
   DAY: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   NIGHT: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400',
   MORNING: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400',
   AFTERNOON: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
   ON_CALL: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
   OVERTIME: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400',
+  DAY_OFF: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  NIGHT_OFF: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  OFF: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  AFTERNOON_OFF: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  LEAVE: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+  SICK_LEAVE: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+  REST: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400',
 };
 
-const shiftTypeIcons: Record<ShiftType, typeof Sun> = {
+const shiftTypeIcons: Partial<Record<ShiftType, typeof Sun>> = {
   DAY: Sun,
   NIGHT: Moon,
   MORNING: Sunrise,
   AFTERNOON: Sunset,
   ON_CALL: Phone,
   OVERTIME: Timer,
+  DAY_OFF: SunMedium,
+  NIGHT_OFF: MoonStar,
+  OFF: CalendarOff,
+  AFTERNOON_OFF: Sunset,
+  LEAVE: Palmtree,
+  SICK_LEAVE: Thermometer,
+  REST: Coffee,
 };
 
 // =============================================================================
@@ -280,20 +307,26 @@ export default function DutyRosterPage() {
 
   // Pre-fill times when shift type changes
   function handleShiftTypeChange(type: ShiftType) {
-    const timeDefaults: Record<ShiftType, { start: string; end: string }> = {
+    const timeDefaults: Partial<Record<ShiftType, { start: string; end: string }>> = {
       DAY: { start: '07:00', end: '19:00' },
       NIGHT: { start: '19:00', end: '07:00' },
       MORNING: { start: '06:00', end: '14:00' },
       AFTERNOON: { start: '14:00', end: '22:00' },
       ON_CALL: { start: '00:00', end: '23:59' },
-      OVERTIME: { start: '', end: '' },
+      OFF: { start: '00:00', end: '23:59' },
+      DAY_OFF: { start: '07:00', end: '19:00' },
+      NIGHT_OFF: { start: '19:00', end: '07:00' },
+      AFTERNOON_OFF: { start: '14:00', end: '22:00' },
+      LEAVE: { start: '00:00', end: '23:59' },
+      SICK_LEAVE: { start: '00:00', end: '23:59' },
+      REST: { start: '00:00', end: '23:59' },
     };
     const defaults = timeDefaults[type];
     setCreateForm(prev => ({
       ...prev,
       shift_type: type,
-      start_time: defaults.start || prev.start_time,
-      end_time: defaults.end || prev.end_time,
+      start_time: defaults?.start || prev.start_time,
+      end_time: defaults?.end || prev.end_time,
     }));
   }
 
@@ -452,7 +485,7 @@ export default function DutyRosterPage() {
                   key: 'start_time',
                   header: 'Time',
                   cell: (s) => {
-                    const Icon = shiftTypeIcons[s.shift_type];
+                    const Icon = shiftTypeIcons[s.shift_type] || Clock;
                     return (
                       <div className="flex items-center gap-1.5">
                         <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -540,7 +573,7 @@ export default function DutyRosterPage() {
                 },
               ]}
               mobileCard={(s: ShiftListItem) => {
-                const Icon = shiftTypeIcons[s.shift_type];
+                const Icon = shiftTypeIcons[s.shift_type] || Clock;
                 return (
                   <div className="p-3 space-y-2.5">
                     <div className="flex items-center justify-between">

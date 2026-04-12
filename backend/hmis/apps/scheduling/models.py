@@ -1535,6 +1535,13 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         ("AFTERNOON", "Afternoon Shift"),
         ("ON_CALL", "On-Call"),
         ("OVERTIME", "Overtime"),
+        ("DAY_OFF", "Day Off"),
+        ("NIGHT_OFF", "Night Off"),
+        ("OFF", "Off (Full Day)"),
+        ("AFTERNOON_OFF", "Afternoon Off"),
+        ("LEAVE", "Leave"),
+        ("SICK_LEAVE", "Sick Leave"),
+        ("REST", "Rest Day"),
     ]
 
     STATUS_CHOICES = [
@@ -1569,7 +1576,7 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         help_text="Shift end time",
     )
     shift_type = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=SHIFT_TYPE_CHOICES,
         default="DAY",
         db_index=True,
@@ -1702,3 +1709,141 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         end_dt = datetime.combine(self.shift_date, self.end_time)
         delta = end_dt - start_dt
         return round(delta.total_seconds() / 3600, 1)
+
+
+# =============================================================================
+# Phase 3b: Scheduling Settings & Staff Constraints
+# =============================================================================
+
+
+class SchedulingSettings(FacilityScopedModel, TimeStampedModel):
+    """
+    Per-facility scheduling configuration for the duty roster.
+
+    Stores global scheduling rules such as maximum hours, minimum rest,
+    and default shift patterns. Only one row per facility (enforced by
+    unique_together on facility from FacilityScopedModel).
+    """
+
+    max_hours_per_week = models.PositiveIntegerField(
+        default=48,
+        help_text="Maximum scheduled hours per staff member per week",
+    )
+    max_consecutive_days = models.PositiveIntegerField(
+        default=6,
+        help_text="Maximum consecutive working days before a mandatory rest day",
+    )
+    min_rest_hours = models.PositiveIntegerField(
+        default=11,
+        help_text="Minimum rest hours between shifts",
+    )
+    max_night_shifts_per_week = models.PositiveIntegerField(
+        default=4,
+        help_text="Maximum night shifts per staff per week",
+    )
+    max_day_hours = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        default=12.0,
+        help_text="Maximum hours per day shift",
+    )
+    max_night_hours = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        default=12.0,
+        help_text="Maximum hours per night shift",
+    )
+    default_shift_pattern = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Default weekly shift pattern for auto-fill, e.g. ['DAY','DAY','NIGHT','NIGHT','OFF','OFF','REST']",
+    )
+    overtime_threshold_hours = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        default=40.0,
+        help_text="Weekly hours threshold after which shifts count as overtime",
+    )
+    enforce_constraints = models.BooleanField(
+        default=True,
+        help_text="When True, the roster grid warns on constraint violations",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        verbose_name = "Scheduling Settings"
+        verbose_name_plural = "Scheduling Settings"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility"],
+                name="unique_scheduling_settings_per_facility",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        fac = getattr(self, "facility", None)
+        return f"Scheduling Settings ({fac})" if fac else "Scheduling Settings"
+
+
+class StaffConstraint(FacilityScopedModel, TimeStampedModel):
+    """
+    Per-staff scheduling constraints / restrictions.
+
+    Allows admins to configure individual staff rules, e.g. "cannot work
+    night shifts", "max 36 hours/week", "preferred shift types".
+    """
+
+    CONSTRAINT_CHOICES = [
+        ("NO_NIGHTS", "Cannot work night shifts"),
+        ("NO_WEEKENDS", "Cannot work weekends"),
+        ("MAX_HOURS", "Custom max hours per week"),
+        ("MAX_CONSECUTIVE", "Custom max consecutive days"),
+        ("PREFERRED_SHIFTS", "Preferred shift types only"),
+        ("NO_OVERTIME", "No overtime shifts"),
+        ("LIGHT_DUTY", "Light duty — day shifts only"),
+    ]
+
+    staff_resource = models.ForeignKey(
+        Resource,
+        on_delete=models.CASCADE,
+        related_name="scheduling_constraints",
+        limit_choices_to={"resource_type": "PERSON"},
+        help_text="Staff member this constraint applies to",
+    )
+    constraint_type = models.CharField(
+        max_length=30,
+        choices=CONSTRAINT_CHOICES,
+        help_text="Type of scheduling constraint",
+    )
+    value = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Configuration value, e.g. {\"max_hours\": 36} or {\"shift_types\": [\"DAY\", \"MORNING\"]}",
+    )
+    reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for this constraint (e.g. medical, personal request)",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this constraint is currently enforced",
+    )
+    effective_from = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date from which this constraint is effective",
+    )
+    effective_until = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date until which this constraint is effective (null = indefinite)",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        verbose_name = "Staff Constraint"
+        verbose_name_plural = "Staff Constraints"
+        ordering = ["staff_resource__name", "constraint_type"]
+
+    def __str__(self) -> str:
+        return f"{self.staff_resource.name} — {self.get_constraint_type_display()}"

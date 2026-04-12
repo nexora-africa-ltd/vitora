@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft,
@@ -18,6 +19,13 @@ import {
   CheckCircle2,
   Printer,
   Wand2,
+  SunMedium,
+  MoonStar,
+  CalendarOff,
+  Palmtree,
+  Thermometer,
+  Coffee,
+  Settings,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -56,13 +64,22 @@ import {
 // Constants
 // =============================================================================
 
-const SHIFT_TYPES: { value: ShiftType; label: string; short: string; icon: React.ReactNode; color: string; start: string; end: string }[] = [
+const SHIFT_TYPES: { value: ShiftType; label: string; short: string; icon: React.ReactNode; color: string; start: string; end: string; isOff?: boolean }[] = [
+  // Working shifts
   { value: 'DAY',       label: 'Day',       short: 'D', icon: <Sun className="h-3 w-3" />,     color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-700',     start: '07:00', end: '19:00' },
   { value: 'NIGHT',     label: 'Night',     short: 'N', icon: <Moon className="h-3 w-3" />,    color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700', start: '19:00', end: '07:00' },
   { value: 'MORNING',   label: 'Morning',   short: 'M', icon: <Sunrise className="h-3 w-3" />, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border-orange-300 dark:border-orange-700', start: '06:00', end: '14:00' },
   { value: 'AFTERNOON', label: 'Afternoon', short: 'A', icon: <Sunset className="h-3 w-3" />,  color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300 dark:border-rose-700',           start: '14:00', end: '22:00' },
   { value: 'ON_CALL',   label: 'On-Call',   short: 'C', icon: <Phone className="h-3 w-3" />,   color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700', start: '00:00', end: '23:59' },
-  { value: 'OVERTIME',  label: 'Overtime',  short: 'O', icon: <Timer className="h-3 w-3" />,   color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-300 dark:border-purple-700', start: '08:00', end: '16:00' },
+  { value: 'OVERTIME',  label: 'Overtime',  short: 'OT', icon: <Timer className="h-3 w-3" />,   color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-300 dark:border-purple-700', start: '08:00', end: '16:00' },
+  // Off / Leave types
+  { value: 'DAY_OFF',       label: 'Day Off',       short: 'DO', icon: <SunMedium className="h-3 w-3" />,    color: 'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300 dark:border-slate-600',   start: '07:00', end: '19:00', isOff: true },
+  { value: 'NIGHT_OFF',     label: 'Night Off',     short: 'NO', icon: <MoonStar className="h-3 w-3" />,     color: 'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300 dark:border-slate-600',   start: '19:00', end: '07:00', isOff: true },
+  { value: 'OFF',           label: 'Off',           short: 'O',  icon: <CalendarOff className="h-3 w-3" />,   color: 'bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400 border-gray-300 dark:border-gray-600',         start: '00:00', end: '23:59', isOff: true },
+  { value: 'AFTERNOON_OFF', label: 'Afternoon Off', short: 'AO', icon: <Sunset className="h-3 w-3" />,       color: 'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300 dark:border-slate-600',   start: '14:00', end: '22:00', isOff: true },
+  { value: 'LEAVE',         label: 'Leave',         short: 'L',  icon: <Palmtree className="h-3 w-3" />,      color: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700', start: '00:00', end: '23:59', isOff: true },
+  { value: 'SICK_LEAVE',    label: 'Sick Leave',    short: 'SL', icon: <Thermometer className="h-3 w-3" />,   color: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 border-red-300 dark:border-red-700',                 start: '00:00', end: '23:59', isOff: true },
+  { value: 'REST',          label: 'Rest Day',      short: 'R',  icon: <Coffee className="h-3 w-3" />,        color: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700',     start: '00:00', end: '23:59', isOff: true },
 ];
 
 const SHIFT_MAP = Object.fromEntries(SHIFT_TYPES.map((s) => [s.value, s]));
@@ -121,7 +138,7 @@ export default function WeeklyRosterPage() {
   const weekLabel = useMemo(() => formatWeekRange(weekDates), [weekDates]);
 
   // Active paint brush
-  const [paintType, setPaintType] = useState<ShiftType | 'CLEAR'>('DAY');
+  const [paintType, setPaintType] = useState<ShiftType>('DAY');
   const [departmentFilter, setDepartmentFilter] = useState('');
 
   // Draft assignments (unsaved changes)
@@ -179,22 +196,28 @@ export default function WeeklyRosterPage() {
       const key = cellKey(resourceId, date);
       setDraft((prev) => {
         const next = new Map(prev);
-        if (paintType === 'CLEAR') {
-          // If there's an existing shift, mark for removal; if it's a draft addition, just remove it
-          if (existingShifts.has(key)) {
-            next.set(key, null); // mark for deletion
+        const existing = existingShifts.get(key);
+        const draftValue = prev.get(key);
+        const currentType = prev.has(key) ? draftValue : existing?.shift_type ?? null;
+
+        // Toggle off: if cell already has a shift (saved or drafted), remove it
+        if (currentType !== null) {
+          if (existing && !prev.has(key)) {
+            // Saved shift — mark for deletion
+            next.set(key, null);
+          } else if (prev.has(key) && draftValue !== null) {
+            // Draft addition — just remove the draft entry
+            next.delete(key);
+            // If there was a saved shift underneath, it reappears
           } else {
-            next.delete(key); // remove draft addition
+            // Already marked for deletion — undo the removal
+            next.delete(key);
           }
-        } else {
-          // If existing shift already matches, toggle it off
-          const existing = existingShifts.get(key);
-          if (existing && existing.shift_type === paintType && !prev.has(key)) {
-            // Already correct, no change needed
-            return prev;
-          }
-          next.set(key, paintType);
+          return next;
         }
+
+        // Paint: assign the selected shift type to an empty cell
+        next.set(key, paintType);
         return next;
       });
     },
@@ -310,11 +333,6 @@ export default function WeeklyRosterPage() {
   const [maxDaysPerStaff, setMaxDaysPerStaff] = useState(5);
 
   const handleAutoFill = useCallback(() => {
-    if (paintType === 'CLEAR') {
-      toast.error('Select a shift type first — cannot auto-fill with the eraser');
-      return;
-    }
-
     setDraft((prev) => {
       const next = new Map(prev);
       let filled = 0;
@@ -427,7 +445,7 @@ export default function WeeklyRosterPage() {
                       size="sm"
                       variant="outline"
                       onClick={handleAutoFill}
-                      disabled={staffList.length === 0 || paintType === 'CLEAR'}
+                      disabled={staffList.length === 0}
                     >
                       <Wand2 className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">Auto-Fill</span>
@@ -447,6 +465,18 @@ export default function WeeklyRosterPage() {
                 <Printer className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">Print</span>
               </Button>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href="/scheduling/roster/settings">
+                        <Settings className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Roster Settings & Staff Constraints</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {hasDraftChanges && (
                 <Button
                   size="sm"
@@ -497,48 +527,42 @@ export default function WeeklyRosterPage() {
           {/* Paint Brush Selector + Department */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-muted-foreground shrink-0">Paint:</span>
-            <div className="flex items-center gap-1 flex-wrap">
-              {SHIFT_TYPES.map((st) => (
-                <TooltipProvider key={st.value} delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className={`flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium transition-all ${
-                          paintType === st.value
-                            ? `${st.color} ring-2 ring-offset-1 ring-primary/50`
-                            : 'bg-muted/50 text-muted-foreground border-transparent hover:border-border'
-                        }`}
-                        onClick={() => setPaintType(st.value)}
-                      >
+            <Select value={paintType} onValueChange={(v) => setPaintType(v as ShiftType)}>
+              <SelectTrigger className="w-[160px] h-8 text-xs">
+                <SelectValue>
+                  {(() => {
+                    const st = SHIFT_MAP[paintType];
+                    return st ? (
+                      <span className="flex items-center gap-1.5">
                         {st.icon}
-                        <span className="hidden lg:inline">{st.short}</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{st.label} ({st.start}–{st.end})</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className={`flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium transition-all ${
-                        paintType === 'CLEAR'
-                          ? 'bg-destructive/10 text-destructive border-destructive/30 ring-2 ring-offset-1 ring-destructive/50'
-                          : 'bg-muted/50 text-muted-foreground border-transparent hover:border-border'
-                      }`}
-                      onClick={() => setPaintType('CLEAR')}
-                    >
-                      <Eraser className="h-3 w-3" />
-                      <span className="hidden lg:inline">Clear</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>Clear assignment</p></TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+                        <span>{st.label}</span>
+                      </span>
+                    ) : paintType;
+                  })()}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Working</div>
+                {SHIFT_TYPES.filter((st) => !st.isOff).map((st) => (
+                  <SelectItem key={st.value} value={st.value}>
+                    <span className="flex items-center gap-2">
+                      {st.icon}
+                      <span>{st.label}</span>
+                      <span className="text-muted-foreground ml-auto">({st.start}–{st.end})</span>
+                    </span>
+                  </SelectItem>
+                ))}
+                <div className="px-2 py-1 mt-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-t">Off / Leave</div>
+                {SHIFT_TYPES.filter((st) => st.isOff).map((st) => (
+                  <SelectItem key={st.value} value={st.value}>
+                    <span className="flex items-center gap-2">
+                      {st.icon}
+                      <span>{st.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Select value={departmentFilter || '_none'} onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}>
               <SelectTrigger className="w-[130px] h-8 text-xs">

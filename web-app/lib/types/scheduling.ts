@@ -241,7 +241,7 @@ export type PaginatedResources = PaginatedResponse<ResourceListItem>;
 // Shifts / Duty Roster
 // =============================================================================
 
-export type ShiftType = 'DAY' | 'NIGHT' | 'MORNING' | 'AFTERNOON' | 'ON_CALL' | 'OVERTIME';
+export type ShiftType = 'DAY' | 'NIGHT' | 'MORNING' | 'AFTERNOON' | 'ON_CALL' | 'OVERTIME' | 'DAY_OFF' | 'NIGHT_OFF' | 'OFF' | 'AFTERNOON_OFF' | 'LEAVE' | 'SICK_LEAVE' | 'REST';
 export type ShiftStatus = 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 
 export interface ShiftListItem {
@@ -318,4 +318,57 @@ export interface BulkCreateShiftsResult {
   created_ids: number[];
   skipped_details: Array<{ index: number; reason: string }>;
   error_details: Array<{ index: number; errors: string | Record<string, string[]> }>;
+}
+
+// =============================================================================
+// Scheduling Settings & Staff Constraints
+// =============================================================================
+
+export interface SchedulingSettings {
+  id: number;
+  max_hours_per_week: number;
+  max_consecutive_days: number;
+  min_rest_hours: number;
+  max_night_shifts_per_week: number;
+  max_day_hours: number;
+  max_night_hours: number;
+  default_shift_pattern: string[];
+  overtime_threshold_hours: number;
+  enforce_constraints: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ConstraintType =
+  | 'NO_NIGHTS'
+  | 'NO_WEEKENDS'
+  | 'MAX_HOURS'
+  | 'MAX_CONSECUTIVE'
+  | 'PREFERRED_SHIFTS'
+  | 'NO_OVERTIME'
+  | 'LIGHT_DUTY';
+
+export interface StaffConstraint {
+  id: number;
+  staff_resource: number;
+  staff_resource_name: string;
+  constraint_type: ConstraintType;
+  constraint_type_display: string;
+  value: Record<string, unknown>;
+  reason: string;
+  is_active: boolean;
+  effective_from: string | null;
+  effective_until: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffConstraintCreateData {
+  staff_resource: number;
+  constraint_type: ConstraintType;
+  value?: Record<string, unknown>;
+  reason?: string;
+  is_active?: boolean;
+  effective_from?: string | null;
+  effective_until?: string | null;
 }
