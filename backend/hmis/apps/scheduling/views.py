@@ -23,7 +23,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.scheduling.models import (
     Appointment,
     AssignmentDecision,
@@ -443,9 +443,12 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         })
 
 
-class ScheduleViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+class ScheduleViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing resource schedules.
+
+    Scoped to the current facility via the resource FK chain
+    (Schedule → Resource → facility).
 
     Endpoints:
         GET    /api/scheduling/schedules/          - List schedules
@@ -463,6 +466,8 @@ class ScheduleViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     serializer_class = ScheduleSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = ScheduleFilter
+    tenant_facility_chain = "resource__facility"
+    tenant_org_chain = "resource__organization"
 
     def get_serializer_class(self):
         """Get appropriate serializer class."""

@@ -256,8 +256,14 @@ def _auto_create_place_resource(instance, code_prefix, source_field, extra_metad
 
 @receiver(post_save, sender="clinics.Clinic")
 def auto_create_clinic_resource(sender, instance, created, **kwargs):
-    """Auto-create a PLACE resource when a Clinic is created."""
+    """Auto-create a PLACE resource when a Clinic is created.
+
+    Respects ``_skip_resource_sync`` for test fixtures / management commands
+    that need to suppress auto-creation.
+    """
     if not created:
+        return
+    if getattr(instance, "_skip_resource_sync", False):
         return
     try:
         _auto_create_place_resource(
