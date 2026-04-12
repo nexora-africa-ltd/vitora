@@ -306,3 +306,16 @@ export interface StaffWorkload {
 }
 
 export type PaginatedShifts = PaginatedResponse<ShiftListItem>;
+
+export interface BulkCreateShiftsPayload {
+  shifts: ShiftCreateData[];
+}
+
+export interface BulkCreateShiftsResult {
+  created: number;
+  skipped: number;
+  errors: number;
+  created_ids: number[];
+  skipped_details: Array<{ index: number; reason: string }>;
+  error_details: Array<{ index: number; errors: string | Record<string, string[]> }>;
+}

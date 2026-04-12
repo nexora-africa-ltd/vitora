@@ -40,6 +40,8 @@ import type {
   ShiftListParams,
   PaginatedShifts,
   StaffWorkload,
+  BulkCreateShiftsPayload,
+  BulkCreateShiftsResult,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -336,5 +338,11 @@ export const shiftsApi = {
     return parseResponse(StaffWorkloadSchema.array(), response.data, {
       context: 'shiftsApi.staffWorkload',
     });
+  },
+
+  /** Bulk-create shifts for a roster grid. Skips duplicates. */
+  bulkCreate: async (payload: BulkCreateShiftsPayload): Promise<BulkCreateShiftsResult> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/bulk-create/`, payload);
+    return response.data;
   },
 };

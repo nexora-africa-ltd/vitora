@@ -1110,6 +1110,71 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         serializer = ShiftSerializer(shift)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["post"], url_path="bulk-create")
+    def bulk_create(self, request):
+        """
+        Bulk-create shifts for a roster grid.
+
+        Accepts an array of shift data objects. Validates each item,
+        skips duplicates (same staff + date + shift_type), and returns
+        counts of created/skipped/errors.
+
+        Request body:
+            { "shifts": [ { staff_resource, shift_date, start_time, end_time, shift_type, department?, notes? }, ... ] }
+        """
+        shifts_data = request.data.get("shifts", [])
+        if not isinstance(shifts_data, list) or len(shifts_data) == 0:
+            return Response(
+                {"error": "Request body must contain a non-empty 'shifts' array"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(shifts_data) > 200:
+            return Response(
+                {"error": "Maximum 200 shifts per bulk request"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        tenant_kwargs = self.get_tenant_save_kwargs()
+        created, skipped, errors = [], [], []
+
+        for idx, item in enumerate(shifts_data):
+            serializer = ShiftCreateSerializer(data=item, context={"request": request})
+            if not serializer.is_valid():
+                errors.append({"index": idx, "errors": serializer.errors})
+                continue
+
+            vd = serializer.validated_data
+            # Skip duplicates: same staff + date + type already exists
+            exists = Shift.objects.filter(
+                staff_resource=vd["staff_resource"],
+                shift_date=vd["shift_date"],
+                shift_type=vd["shift_type"],
+                **{k: v for k, v in tenant_kwargs.items() if k == "facility"},
+            ).exclude(status="CANCELLED").exists()
+
+            if exists:
+                skipped.append({
+                    "index": idx,
+                    "reason": f"Shift already exists for this staff on {vd['shift_date']} ({vd['shift_type']})",
+                })
+                continue
+
+            try:
+                shift = serializer.save(**tenant_kwargs)
+                created.append(shift.id)
+            except Exception as e:
+                errors.append({"index": idx, "errors": str(e)})
+
+        return Response({
+            "created": len(created),
+            "skipped": len(skipped),
+            "errors": len(errors),
+            "created_ids": created,
+            "skipped_details": skipped,
+            "error_details": errors,
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
     @action(detail=False, methods=["get"], url_path="staff-workload")
     def staff_workload(self, request):
         """
