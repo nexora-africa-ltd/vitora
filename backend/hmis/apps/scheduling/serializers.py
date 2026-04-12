@@ -892,14 +892,21 @@ class ShiftCreateSerializer(serializers.ModelSerializer):
             "notes",
         ]
 
+    # Shift types where end_time < start_time is valid (crosses midnight)
+    OVERNIGHT_TYPES = {"NIGHT", "NIGHT_OFF"}
+
     def validate(self, attrs):
         """Validate shift data."""
         start_time = attrs.get("start_time")
         end_time = attrs.get("end_time")
+        shift_type = attrs.get("shift_type", "")
+
         if start_time and end_time and end_time <= start_time:
-            raise serializers.ValidationError(
-                {"end_time": "End time must be after start time"}
-            )
+            # Allow overnight shifts where end_time is next-day
+            if shift_type not in self.OVERNIGHT_TYPES:
+                raise serializers.ValidationError(
+                    {"end_time": "End time must be after start time"}
+                )
 
         staff_resource = attrs.get("staff_resource")
         if staff_resource and staff_resource.resource_type != "PERSON":
