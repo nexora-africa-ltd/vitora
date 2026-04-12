@@ -392,7 +392,7 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 |---------|-------|-----|--------------------|
 | `NEXT_PUBLIC_POWERSYNC_URL` | Vercel | *(empty)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
 | `POWERSYNC_URL` | Azure Container App | *(empty)* | Same as above |
-| `POWERSYNC_JWT_KID` | Azure Container App | `vitora-dev` | `vitora-hmis` |
+| `POWERSYNC_JWT_KID` | Azure Container App | `vitora-dev` | `vitora-hmis-1` |
 | `POWERSYNC_JWT_AUDIENCE` | Azure Container App | *(empty)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
 
 ### PowerSync Cloud Configuration
