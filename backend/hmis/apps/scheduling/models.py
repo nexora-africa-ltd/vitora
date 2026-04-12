@@ -1646,6 +1646,9 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         ordering = ["shift_date", "start_time"]
         verbose_name = "Shift"
         verbose_name_plural = "Shifts"
+        permissions = [
+            ("manage_schedules", "Can manage schedules"),
+        ]
         indexes = [
             models.Index(fields=["shift_date", "status"]),
             models.Index(fields=["staff_resource", "shift_date"]),

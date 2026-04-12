@@ -23,12 +23,16 @@ from rest_framework import status
 
 @pytest.fixture
 def sample_shift(db, sample_person_resource, sample_facility):
-    """Create a sample shift scoped to a facility."""
+    """Create a sample shift scoped to a facility.
+
+    Uses tomorrow's date so the shift end-time is always in the future,
+    preventing the end-time guard from blocking clock-in during tests.
+    """
     from hmis.apps.scheduling.models import Shift
 
     return Shift.objects.create(
         staff_resource=sample_person_resource,
-        shift_date=date.today(),
+        shift_date=date.today() + timedelta(days=1),
         start_time=time(8, 0),
         end_time=time(16, 0),
         shift_type="DAY",
@@ -146,9 +150,9 @@ class TestShiftAPI:
 
     def test_list_shifts_filter_by_date_range(self, authenticated_client, sample_shift):
         """Should filter shifts by date range."""
-        today = str(date.today())
+        target = str(sample_shift.shift_date)
         response = authenticated_client.get(
-            f"/api/scheduling/shifts/?from_date={today}&to_date={today}"
+            f"/api/scheduling/shifts/?from_date={target}&to_date={target}"
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -292,10 +296,12 @@ class TestStaffWorkloadAPI:
         """Should return correct shift counts."""
         from hmis.apps.scheduling.models import Shift
 
-        # Create a second shift
+        tomorrow = sample_shift.shift_date  # sample_shift uses tomorrow
+
+        # Create a second shift on the same day
         Shift.objects.create(
             staff_resource=sample_person_resource,
-            shift_date=date.today(),
+            shift_date=tomorrow,
             start_time=time(17, 0),
             end_time=time(23, 0),
             shift_type="NIGHT",
@@ -303,9 +309,9 @@ class TestStaffWorkloadAPI:
             organization=sample_facility.organization,
         )
 
-        today = str(date.today())
+        target = str(tomorrow)
         response = authenticated_client.get(
-            f"/api/scheduling/shifts/staff-workload/?from_date={today}&to_date={today}"
+            f"/api/scheduling/shifts/staff-workload/?from_date={target}&to_date={target}"
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -516,12 +522,12 @@ class TestBulkCreateShifts:
         self, authenticated_client, sample_shift, sample_person_resource
     ):
         """Should skip shifts that already exist for same staff+date+type."""
-        today = str(date.today())
+        target = str(sample_shift.shift_date)
         payload = {
             "shifts": [
                 {
                     "staff_resource": sample_person_resource.id,
-                    "shift_date": today,
+                    "shift_date": target,
                     "start_time": "08:00",
                     "end_time": "16:00",
                     "shift_type": "DAY",
