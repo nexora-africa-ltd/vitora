@@ -174,7 +174,7 @@ export default function WeeklyRosterPage() {
   // Check for cross-facility scheduling conflicts
   const { data: conflicts } = useQuery({
     queryKey: ['roster-conflicts', weekDates[0], weekDates[6]],
-    queryFn: () => shiftsApi.crossFacilityConflicts({ from_date: weekDates[0], to_date: weekDates[6] }),
+    queryFn: () => shiftsApi.crossFacilityConflicts({ from_date: weekDates[0]!, to_date: weekDates[6]! }),
     enabled: weekDates.length === 7,
   });
 

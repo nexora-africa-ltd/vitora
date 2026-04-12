@@ -34,6 +34,7 @@ export const ResourceSchema = z.object({
   resource_type: ResourceTypeSchema,
   code: z.string(),
   is_active: z.boolean(),
+  department_name: z.string().nullable(),
   capacity: z.number(),
   staff_profile: z.number().nullable(),
   staff_profile_name: z.string().nullable(),

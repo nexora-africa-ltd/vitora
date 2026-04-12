@@ -30,7 +30,7 @@ Browser (SQLite/WASM)  ←→  PowerSync Cloud  ←→  PostgreSQL (Neon)
 | `NEXT_PUBLIC_POWERSYNC_URL` | Web-app `.env` | *(empty — disabled)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` |
 | `POWERSYNC_URL` | Backend `.env` | *(empty)* | Same as above |
 | `DJANGO_SECRET_KEY` | Backend `.env` | Dev key | Production key |
-| `POWERSYNC_JWT_KID` | Backend `.env` | `vitora-dev` | `vitora-hmis` |
+| `POWERSYNC_JWT_KID` | Backend `.env` | `vitora-dev` | `vitora-hmis-1` |
 | `POWERSYNC_JWT_AUDIENCE` | Backend `.env` | *(empty)* | `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` (must equal the PowerSync instance URL) |
 
 - **Local dev**: Leave `NEXT_PUBLIC_POWERSYNC_URL` empty. App runs in API-only mode (React Query → Django). No PowerSync needed.
@@ -60,7 +60,7 @@ PowerSync Cloud authenticates clients via JWT. Vitora generates these tokens at 
 |---------|-------|-------|
 | **Algorithm** | HS256 | |
 | **Shared Secret** | `DJANGO_SECRET_KEY` — **base64url-encoded** in the PowerSync dashboard | See "Dashboard Setup" below |
-| **`kid` (Key ID)** | `POWERSYNC_JWT_KID` env var (default `vitora-hmis`) | **Required** — PowerSync uses `kid` to look up the signing key |
+| **`kid` (Key ID)** | `POWERSYNC_JWT_KID` env var (default `vitora-hmis-1`) | **Required** — PowerSync uses `kid` to look up the signing key |
 | **`sub` (Subject)** | `str(user.id)` | Required by PowerSync |
 | **`aud` (Audience)** | PowerSync instance URL: `https://69d7e1b30e377e689729cf08.powersync.journeyapps.com` | Must match the instance URL exactly, NOT a custom string |
 | **`iss` (Issuer)** | `vitora-hmis` | |
