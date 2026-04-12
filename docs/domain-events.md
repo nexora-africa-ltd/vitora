@@ -272,7 +272,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | `PATIENT_CREATED` | `core.patient.created` | `core/signals.py` |
 | `PATIENT_UPDATED` | `core.patient.updated` | — (defined, not yet wired) |
 
-### SchedulingEvents (15 constants)
+### SchedulingEvents (19 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -291,6 +291,10 @@ Convention: `<domain>.<aggregate>.<action>`
 | `OVERRIDE_REJECTED` | `scheduling.override.rejected` | `scheduling/signals.py` |
 | `RULE_ACTIVATED` | `scheduling.rule.activated` | `scheduling/signals.py` |
 | `RULE_DEACTIVATED` | `scheduling.rule.deactivated` | `scheduling/signals.py` |
+| `SHIFT_CREATED` | `scheduling.shift.created` | `scheduling/signals.py` |
+| `SHIFT_STARTED` | `scheduling.shift.started` | `scheduling/signals.py` |
+| `SHIFT_COMPLETED` | `scheduling.shift.completed` | `scheduling/signals.py` |
+| `SHIFT_CANCELLED` | `scheduling.shift.cancelled` | `scheduling/signals.py` |
 
 ### ImagingEvents (3 constants)
 
@@ -313,9 +317,9 @@ Convention: `<domain>.<aggregate>.<action>`
 | ImmunizationEvents | 3 | 1 | 33% |
 | SurveillanceEvents | 2 | 1 | 50% |
 | CoreEvents | 5 | 3 | 60% |
-| SchedulingEvents | 15 | 15 | 100% |
+| SchedulingEvents | 19 | 19 | 100% |
 | ImagingEvents | 3 | 1 | 33% |
-| **Total** | **70** | **49** | **70%** |
+| **Total** | **74** | **53** | **72%** |
 
 ---
 
@@ -395,6 +399,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | `publish_assignment_decision_event` | `post_save` | `AssignmentDecision` | `ASSIGNMENT_DECIDED` | `assignment_type`, `target_type`, `target_id`, `outcome`, `resource_id`, `rule_id`, `evaluation_time_ms` |
 | `publish_override_event` | `post_save` | `AssignmentOverride` | `OVERRIDE_CREATED` / `OVERRIDE_APPROVED` / `OVERRIDE_REJECTED` | `target_type`, `target_id`, `override_reason`, `approval_status`, `original_resource_id`, `new_resource_id` |
 | `publish_rule_toggle_event` | `post_save` | `AssignmentRule` | `RULE_ACTIVATED` / `RULE_DEACTIVATED` | `rule_code`, `applies_to`, `priority` |
+| `publish_shift_event` | `post_save` | `Shift` | `SHIFT_CREATED` / `SHIFT_STARTED` / `SHIFT_COMPLETED` / `SHIFT_CANCELLED` | `shift_id`, `staff_resource_id`, `shift_date`, `status`, `shift_type` |
 
 Appointment status → Event mapping:
 

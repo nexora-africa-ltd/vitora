@@ -290,6 +290,70 @@ Provide a weekly duty roster for staff shift management with constraint-aware au
 
 ---
 
+## Phase 2c: Shift Attendance, Clock-In/Out & Roster RBAC ✅ COMPLETE
+
+> **Implemented**: April 2026
+> **Location**: `backend/hmis/apps/scheduling/views.py`, `backend/hmis/apps/core/permissions.py`, `web-app/`
+
+### Objectives
+Enable staff to clock in and out of shifts through a state machine lifecycle, enforce punctuality policies, gate roster management behind RBAC, and exempt administrative roles from active-shift enforcement.
+
+### Shift Lifecycle State Machine
+
+```
+  SCHEDULED ──start()──▸ ACTIVE ──complete()──▸ COMPLETED
+      │                   ↕
+      │            take_break() / resume()
+      │                ON_BREAK
+      │
+      └──cancel()──▸ CANCELLED
+```
+
+### API Endpoints Added
+
+| Endpoint | Method | Notes |
+|----------|--------|-------|
+| `/api/scheduling/shifts/{id}/start/` | POST | Clock in — blocks after shift end time; punctuality enforcement with late cutoff |
+| `/api/scheduling/shifts/{id}/complete/` | POST | Clock out |
+| `/api/scheduling/shifts/{id}/cancel/` | POST | Cancel a scheduled shift |
+| `/api/scheduling/shifts/{id}/take_break/` | POST | ACTIVE → ON_BREAK |
+| `/api/scheduling/shifts/{id}/resume/` | POST | ON_BREAK → ACTIVE |
+| `/api/scheduling/shifts/staff-workload/` | GET | Staff workload stats for a date range |
+| `/api/scheduling/shifts/my-shift-today/` | GET | Current user's shift for today |
+
+### Backend Permissions Added
+
+| Permission / Class | Purpose |
+|--------------------|---------|
+| `scheduling.manage_schedules` | Custom model permission on `Shift` (migration 0012). Required for roster write operations |
+| `ManageSchedulesWritePermission` | DRF permission class — gates POST/PUT/PATCH/DELETE on shifts behind `scheduling.manage_schedules`. Exempts personal lifecycle actions (start, complete, take_break, resume, cancel) and superusers |
+| `RequiresActiveShiftPermission` (updated) | Now exempts ADMIN, ORG-ADMIN, OWNER roles via `staff_profile.primary_role.code` in addition to superusers |
+
+### Clock-In Guards
+
+1. **End-time guard**: Cannot clock in after shift end time (`now > shift_end_dt`). Night shift aware: if `end_time <= start_time`, end is treated as next day.
+2. **Punctuality enforcement**: If facility `SchedulingSettings.enforce_punctuality` is enabled, staff exceeding `late_cutoff_minutes` are blocked. Users with `scheduling.manage_schedules` permission can override.
+
+### Frontend Changes
+
+| Component / Hook | Change |
+|------------------|--------|
+| `useRequiresActiveShift()` | Admin users (via `usePermissions().isAdmin`) auto-bypass the shift gate |
+| `ShiftGate` component | Already supports bypass — inherits admin exemption from the hook |
+| Roster page (`scheduling/roster/page.tsx`) | All write controls (Auto-Fill, Clear Week, Settings, Discard, Save, Paint selector, Max Days) gated behind `canPerformAction('scheduling.manage_schedules')`. Read-only view for unauthorized users |
+| `shift-assignment.tsx` | Clock-in/out mutations invalidate broader query keys: `my-shift-today`, `my-shift-upcoming`, `scheduling-shifts`, `roster-shifts` |
+| My Shifts page | Same broader invalidation; error messages use `getApiErrorMessage()` for proper API error extraction |
+
+### Admin Role Exemptions
+
+| Layer | Exempt Roles | Mechanism |
+|-------|-------------|-----------|
+| Backend `RequiresActiveShiftPermission` | ADMIN, ORG-ADMIN, OWNER + superusers | `staff_profile.primary_role.code` check |
+| Frontend `useRequiresActiveShift` | Admin users | `usePermissions().isAdmin` → `isOnDuty = true` |
+| Backend `ManageSchedulesWritePermission` | superusers | `request.user.is_superuser` check |
+
+---
+
 ## Phase 3: Internal Domain Events (No WebSockets Yet)
 
 ### Objectives

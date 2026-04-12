@@ -91,6 +91,12 @@ Only after the web app implementation is complete should we shift focus to offli
 - ✅ Cross-facility conflict detection (org-scoped) for shift scheduling
 - ✅ Scheduling settings per facility (max days/staff, max night shifts/week, default shift pattern)
 - ✅ Staff detail page shows organization and primary facility (read-only)
+- ✅ Shift lifecycle: clock-in/out with state machine (SCHEDULED → ACTIVE ↔ ON_BREAK → COMPLETED)
+- ✅ Clock-in guards: block after shift end time, punctuality enforcement with late cutoff
+- ✅ Active shift enforcement (`RequiresActiveShiftPermission`): write ops require an active/on-break shift
+- ✅ Admin role exemption: ADMIN, ORG-ADMIN, OWNER bypass active-shift enforcement
+- ✅ Roster RBAC: `ManageSchedulesWritePermission` gates roster write ops; view-only for non-managers
+- ✅ `scheduling.manage_schedules` custom permission on Shift model
 
 ---
 
@@ -538,6 +544,15 @@ GET             /api/scheduling/settings/current/              # Current facilit
 GET|POST        /api/scheduling/staff-constraints/             # Staff scheduling constraints
 PATCH|DELETE    /api/scheduling/staff-constraints/{id}/        # Update/delete constraint
 POST            /api/scheduling/resources/sync_from_staff/     # Sync resources from staff profiles
+
+# Shift lifecycle (clock-in/out) — requires scheduling.manage_schedules for roster writes
+POST            /api/scheduling/shifts/{id}/start/             # Clock in (blocks after shift end time)
+POST            /api/scheduling/shifts/{id}/complete/          # Clock out
+POST            /api/scheduling/shifts/{id}/cancel/            # Cancel shift
+POST            /api/scheduling/shifts/{id}/take_break/        # Start break (ACTIVE → ON_BREAK)
+POST            /api/scheduling/shifts/{id}/resume/            # Resume from break (ON_BREAK → ACTIVE)
+GET             /api/scheduling/shifts/staff-workload/         # Staff workload stats for date range
+GET             /api/scheduling/shifts/my-shift-today/         # Current user's shift for today
 ```
 
 ### AI Stored Results (Persisted TibaBot Outputs)
@@ -1181,6 +1196,31 @@ class SensitiveAccessPermission(permissions.BasePermission):
 
 # MFA is enforced on admin login when the superuser has a TOTP device.
 # Flow: /admin/login/ → TOTP verify at /admin/mfa-verify/ → admin dashboard
+```
+
+### Active Shift Enforcement
+
+```python
+# When ACTIVE_SHIFT_ENFORCEMENT is True, write operations (POST/PUT/PATCH/DELETE)
+# require the user to have an ACTIVE or ON_BREAK shift for today.
+# See: hmis/apps/core/permissions.py → RequiresActiveShiftPermission
+
+# Settings:
+ACTIVE_SHIFT_ENFORCEMENT = True       # base.py (True in production)
+ACTIVE_SHIFT_ENFORCEMENT = False      # development.py / test.py
+
+# Exempt roles (bypass active-shift requirement):
+# - Superusers (is_superuser=True)
+# - ADMIN, ORG-ADMIN, OWNER (checked via staff_profile.primary_role.code)
+
+# Frontend: useRequiresActiveShift() hook + ShiftGate component
+# - ShiftGate wraps action buttons; shows overlay when user has no active shift
+# - Admin users (isAdmin from usePermissions()) auto-bypass the gate
+
+# Roster RBAC: ManageSchedulesWritePermission
+# - Roster write operations require scheduling.manage_schedules permission
+# - Personal shift actions (start, complete, take_break, resume, cancel) are exempt
+# - Frontend hides roster edit controls for users without the permission
 ```
 
 ### MFA Onboarding Grace Period
