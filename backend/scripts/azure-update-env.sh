@@ -89,7 +89,7 @@ az containerapp update \
   --name "$APP_NAME" \
   --resource-group "$RG" \
   --set-env-vars \
-    "DJANGO_SETTINGS_MODULE=hmis.settings.production" \
+    "DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-hmis.settings.staging}" \
     "DJANGO_SECRET_KEY=secretref:django-secret-key" \
     "DATABASE_URL=secretref:database-url" \
     "ENCRYPTION_KEY=secretref:encryption-key" \

@@ -1318,6 +1318,7 @@ Before submitting a PR, verify:
 - [ ] **API responses validated with Zod schemas** (see below)
 - [ ] Documentation updated (docstrings, README if needed)
 - [ ] Contract tests pass: `make test-contracts` (if serializer changed)
+- [ ] **Environment variables synced** across all deploy surfaces (see below)
 
 ---
 
@@ -1817,6 +1818,43 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: July 2, 2026
+## 🔄 Environment Variable Sync (Required)
+
+> ⚠️ **CRITICAL**: When adding, renaming, or removing environment variables in Django settings or backend code, you **MUST** update all four deploy surfaces. Failing to do so causes staging/production to silently fall back to code defaults, which may be incorrect or empty.
+
+### The Four Files to Keep in Sync
+
+| # | File | Purpose | Sensitive values |
+|---|------|---------|------------------|
+| 1 | `backend/.env` | Local development & source of truth for variable names | Plain text |
+| 2 | `backend/scripts/azure-update-env.sh` | Manual Azure deploy (secrets dict + `--set-env-vars`) | `secretref:` for secrets |
+| 3 | `.github/workflows/deploy-backend.yml` | CI/CD deploy (`environmentVariables:` block) | `secretref:` for secrets, `${{ vars.* }}` for configurable values |
+| 4 | `backend/Makefile` | `make staging-deploy` chains `azure-update-env.sh` | Inherits from #2 |
+
+### Decision: Plain Env Var vs Secret
+
+| Contains | Example | Treatment |
+|----------|---------|-----------|
+| API keys, passwords, tokens, crypto keys | `DJANGO_SECRET_KEY`, `ENCRYPTION_KEY`, `METABASE_EMBEDDING_SECRET` | **Secret**: add to `SECRETS` dict in `azure-update-env.sh`, reference as `secretref:secret-name` in env vars |
+| URLs, feature flags, non-sensitive config | `POWERSYNC_URL`, `TIBABOT_ENABLED`, `FACILITY_LEVEL` | **Plain env var**: add directly to `--set-env-vars` |
+
+### Decision: Hardcoded vs `${{ vars.* }}` in CI Workflow
+
+| Value is... | Example | Treatment in workflow |
+|-------------|---------|----------------------|
+| Same across all environments | `SHA_AGENT=DHABP05113`, `POWERSYNC_JWT_KID=vitora-hmis-1` | Hardcode in the workflow |
+| Different per environment (staging vs prod) | `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `POWERSYNC_URL` | Use `${{ vars.VAR_NAME }}` and set in GitHub environment settings |
+
+### Checklist for Every New Environment Variable
+
+- [ ] Added to `backend/.env` with comment
+- [ ] Added to `backend/scripts/azure-update-env.sh` (secret dict or `--set-env-vars`)
+- [ ] Added to `.github/workflows/deploy-backend.yml` `environmentVariables:` block
+- [ ] If using `${{ vars.* }}`, documented which GitHub environment vars need to be set
+- [ ] Verified `backend/Makefile` `staging-deploy` still works (it chains `azure-update-env.sh`)
+
+---
+
+**Last Updated**: April 12, 2026
 **Maintainer**: Engineering Lead
-**Version**: 3.0 (Domain events wiring mandatory for all stateful models)
+**Version**: 3.1 (Environment variable sync mandatory across deploy surfaces)
