@@ -91,6 +91,7 @@ pids
 *.pid.lock
 lib-cov
 coverage
+!**/immunizations/coverage/
 *.lcov
 .nyc_output
 .grunt
@@ -182,6 +183,7 @@ test-output/
 htmlcov/
 .coverage
 coverage/
+!**/immunizations/coverage/
 *.lcov
 
 # Media uploads (user-generated content)
