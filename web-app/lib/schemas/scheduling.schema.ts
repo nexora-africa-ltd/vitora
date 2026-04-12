@@ -239,6 +239,7 @@ export const SchedulingSettingsSchema = z.object({
   max_day_hours: z.coerce.number(),
   max_night_hours: z.coerce.number(),
   default_shift_pattern: z.array(z.string()),
+  active_shift_types: z.array(z.string()),
   overtime_threshold_hours: z.coerce.number(),
   enforce_constraints: z.boolean(),
   created_at: z.string(),

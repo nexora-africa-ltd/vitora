@@ -359,6 +359,7 @@ export interface SchedulingSettings {
   max_day_hours: number;
   max_night_hours: number;
   default_shift_pattern: string[];
+  active_shift_types: string[];
   overtime_threshold_hours: number;
   enforce_constraints: boolean;
   created_at: string;

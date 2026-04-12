@@ -973,6 +973,7 @@ class SchedulingSettingsSerializer(serializers.ModelSerializer):
             "max_day_hours",
             "max_night_hours",
             "default_shift_pattern",
+            "active_shift_types",
             "overtime_threshold_hours",
             "enforce_constraints",
             "created_at",

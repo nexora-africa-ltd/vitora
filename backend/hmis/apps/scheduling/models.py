@@ -1758,6 +1758,15 @@ class SchedulingSettings(FacilityScopedModel, TimeStampedModel):
         blank=True,
         help_text="Default weekly shift pattern for auto-fill, e.g. ['DAY','DAY','NIGHT','NIGHT','OFF','OFF','REST']",
     )
+    active_shift_types = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Working shift types this facility uses for auto-fill coverage, "
+            "e.g. ['MORNING','AFTERNOON','NIGHT']. "
+            "When set, auto-fill distributes staff across ALL listed types each day."
+        ),
+    )
     overtime_threshold_hours = models.DecimalField(
         max_digits=5,
         decimal_places=1,

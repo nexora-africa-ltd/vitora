@@ -401,40 +401,87 @@ export default function WeeklyRosterPage() {
   const [maxDaysPerStaff, setMaxDaysPerStaff] = useState(5);
 
   const handleAutoFill = useCallback(() => {
-    // Build the shift pattern to use. If settings has a pattern, use it; otherwise
-    // cycle the selected paint type for every slot.
-    const pattern: ShiftType[] =
-      schedulingSettings?.default_shift_pattern?.length
-        ? (schedulingSettings.default_shift_pattern as ShiftType[])
-        : [paintType];
+    // Determine which shift types the facility wants to cover each day.
+    // If active_shift_types is configured, distribute staff across ALL of them.
+    // Otherwise fall back to the old pattern/paint behaviour.
+    const activeTypes: ShiftType[] =
+      schedulingSettings?.active_shift_types?.length
+        ? (schedulingSettings.active_shift_types as ShiftType[])
+        : schedulingSettings?.default_shift_pattern?.length
+          ? (schedulingSettings.default_shift_pattern as ShiftType[])
+          : [paintType];
+
+    const useMultiType = (schedulingSettings?.active_shift_types?.length ?? 0) > 0;
 
     const maxNights = schedulingSettings?.max_night_shifts_per_week ?? 4;
+    const minRestHours = schedulingSettings?.min_rest_hours ?? 11;
+
+    // ---- Shift transition helpers ----
+    // Shift end hours (approximate, for continuity checks)
+    const SHIFT_END_HOUR: Record<string, number> = {
+      DAY: 19, NIGHT: 7, MORNING: 14, AFTERNOON: 22,
+      ON_CALL: 24, OVERTIME: 16,
+      DAY_OFF: 19, NIGHT_OFF: 7, OFF: 0, AFTERNOON_OFF: 22,
+      LEAVE: 0, SICK_LEAVE: 0, REST: 0,
+    };
+    const SHIFT_START_HOUR: Record<string, number> = {
+      DAY: 7, NIGHT: 19, MORNING: 6, AFTERNOON: 14,
+      ON_CALL: 0, OVERTIME: 8,
+      DAY_OFF: 7, NIGHT_OFF: 19, OFF: 0, AFTERNOON_OFF: 14,
+      LEAVE: 0, SICK_LEAVE: 0, REST: 0,
+    };
+
+    /** Check if assigning nextType on the day after prevType violates rest. */
+    const violatesRest = (prevType: ShiftType | null | undefined, nextType: ShiftType): boolean => {
+      if (!prevType) return false;
+      const prevEnd = SHIFT_END_HOUR[prevType] ?? 0;
+      const nextStart = SHIFT_START_HOUR[nextType] ?? 0;
+      // If prev shift ends after midnight (NIGHT ends at 7am next day),
+      // rest = nextStart - prevEnd on the SAME next day
+      // NIGHT(19:00-07:00): ends at 07:00 next day → rest until next shift start
+      if (prevType === 'NIGHT') {
+        // Night ends at ~07:00 the next morning. Next shift on that SAME day:
+        // rest hours = nextStart - 7
+        const rest = nextStart - 7;
+        return rest < minRestHours;
+      }
+      // For non-night previous shifts ending on day N, next shift is day N+1:
+      // rest = (24 - prevEnd) + nextStart
+      const rest = (24 - prevEnd) + nextStart;
+      return rest < minRestHours;
+    };
 
     setDraft((prev) => {
       const next = new Map(prev);
       let filled = 0;
 
-      // Count coverage per day (to prioritise under-staffed days)
-      const dayCoverage: number[] = weekDates.map((date) => {
-        let count = 0;
+      // ---- Coverage tracking per (day, shiftType) ----
+      const dayCoverage: Map<string, number>[] = weekDates.map((date) => {
+        const map = new Map<string, number>();
         for (const staff of staffList) {
           const key = cellKey(staff.id, date);
-          const hasSaved = existingShifts.has(key);
-          const hasDraft = next.has(key) && next.get(key) !== null;
-          if (hasSaved || hasDraft) count++;
+          const saved = existingShifts.get(key);
+          const draftVal = next.get(key);
+          const hasDraft = next.has(key) && draftVal !== null;
+          const markedForRemoval = next.has(key) && draftVal === null;
+          if (markedForRemoval) continue;
+          const type = hasDraft ? draftVal : saved?.shift_type;
+          if (type) map.set(type, (map.get(type) ?? 0) + 1);
         }
-        return count;
+        return map;
       });
 
+      const dayTotalCoverage = (dayIdx: number) => {
+        let sum = 0;
+        for (const count of dayCoverage[dayIdx]!.values()) sum += count;
+        return sum;
+      };
+
+      // ---- Per-staff shift-type tracker (for continuity checks) ----
+      // staffDayType[staffId][dayIdx] = ShiftType assigned
+      const staffDayType = new Map<number, (ShiftType | null)[]>();
       for (const staff of staffList) {
-        const staffBlocked = blockedTypes.get(staff.id);
-        const isNoWeekend = noWeekendStaff.has(staff.id);
-
-        // Count existing shifts and night shifts for this staff
-        let staffShiftCount = 0;
-        let staffNightCount = 0;
-        const emptyDayIndices: number[] = [];
-
+        const types: (ShiftType | null)[] = [];
         for (let i = 0; i < weekDates.length; i++) {
           const date = weekDates[i]!;
           const key = cellKey(staff.id, date);
@@ -442,75 +489,293 @@ export default function WeeklyRosterPage() {
           const draftVal = next.get(key);
           const hasDraft = next.has(key) && draftVal !== null;
           const markedForRemoval = next.has(key) && draftVal === null;
-
           if (markedForRemoval) {
-            emptyDayIndices.push(i);
-          } else if (saved || hasDraft) {
-            staffShiftCount++;
-            const shiftType = hasDraft ? draftVal : saved?.shift_type;
-            if (shiftType === 'NIGHT') staffNightCount++;
+            types.push(null);
+          } else if (hasDraft) {
+            types.push(draftVal as ShiftType);
+          } else if (saved) {
+            types.push(saved.shift_type as ShiftType);
           } else {
-            emptyDayIndices.push(i);
+            types.push(null);
+          }
+        }
+        staffDayType.set(staff.id, types);
+      }
+
+      /** Get what a staff member is assigned on a given day (including new assignments). */
+      const getAssignedType = (staffId: number, dayIdx: number): ShiftType | null => {
+        return staffDayType.get(staffId)?.[dayIdx] ?? null;
+      };
+
+      /** Record an assignment in the tracker. */
+      const recordAssignment = (staffId: number, dayIdx: number, type: ShiftType) => {
+        const arr = staffDayType.get(staffId);
+        if (arr) arr[dayIdx] = type;
+      };
+
+      /** Check if assigning shiftType on dayIdx violates rest relative to adjacent days. */
+      const wouldViolateRest = (staffId: number, dayIdx: number, shiftType: ShiftType): boolean => {
+        // Check previous day → this assignment
+        if (dayIdx > 0) {
+          const prevType = getAssignedType(staffId, dayIdx - 1);
+          if (prevType && violatesRest(prevType, shiftType)) return true;
+        }
+        // Check this assignment → next day
+        if (dayIdx < weekDates.length - 1) {
+          const nextType = getAssignedType(staffId, dayIdx + 1);
+          if (nextType && violatesRest(shiftType, nextType)) return true;
+        }
+        return false;
+      };
+
+      // ---- Per-staff helpers ----
+      const getStaffState = (staff: ResourceListItem) => {
+        let shiftCount = 0;
+        let nightCount = 0;
+        const emptyDays: number[] = [];
+
+        for (let i = 0; i < weekDates.length; i++) {
+          const t = getAssignedType(staff.id, i);
+          if (t) {
+            shiftCount++;
+            if (t === 'NIGHT') nightCount++;
+          } else {
+            emptyDays.push(i);
+          }
+        }
+        return { shiftCount, nightCount, emptyDays };
+      };
+
+      if (useMultiType) {
+        // ================================================================
+        // Multi-type mode: ensure every day has coverage for EACH active
+        // shift type. Iterate (day × shiftType), pick the best staff.
+        // ================================================================
+
+        type WorkSlot = { dayIdx: number; shiftType: ShiftType };
+        const slots: WorkSlot[] = [];
+
+        for (let dayIdx = 0; dayIdx < weekDates.length; dayIdx++) {
+          for (const st of activeTypes) {
+            const current = dayCoverage[dayIdx]!.get(st) ?? 0;
+            if (current === 0) {
+              slots.push({ dayIdx, shiftType: st });
+            }
           }
         }
 
-        const slotsToFill = Math.max(0, maxDaysPerStaff - staffShiftCount);
-        if (slotsToFill === 0 || emptyDayIndices.length === 0) continue;
+        // Sort: prioritise under-staffed days, then harder-to-fill types (NIGHT)
+        slots.sort((a, b) => {
+          const covDiff = dayTotalCoverage(a.dayIdx) - dayTotalCoverage(b.dayIdx);
+          if (covDiff !== 0) return covDiff;
+          if (a.shiftType === 'NIGHT' && b.shiftType !== 'NIGHT') return -1;
+          if (b.shiftType === 'NIGHT' && a.shiftType !== 'NIGHT') return 1;
+          return a.dayIdx - b.dayIdx;
+        });
 
-        // Sort empty days by ascending coverage so under-staffed days fill first
-        const sorted = [...emptyDayIndices].sort(
-          (a, b) => (dayCoverage[a] ?? 0) - (dayCoverage[b] ?? 0)
-        );
+        const staffShiftCount = new Map<number, number>();
+        const staffNightCount = new Map<number, number>();
+        const staffAssignedDays = new Map<number, Set<number>>();
 
-        let slotsFilled = 0;
-        for (const dayIdx of sorted) {
-          if (slotsFilled >= slotsToFill) break;
+        for (const staff of staffList) {
+          const s = getStaffState(staff);
+          staffShiftCount.set(staff.id, s.shiftCount);
+          staffNightCount.set(staff.id, s.nightCount);
+          const assigned = new Set<number>();
+          for (let i = 0; i < weekDates.length; i++) {
+            if (!s.emptyDays.includes(i)) assigned.add(i);
+          }
+          staffAssignedDays.set(staff.id, assigned);
+        }
 
+        for (const slot of slots) {
+          const { dayIdx, shiftType } = slot;
           const date = weekDates[dayIdx]!;
-          const dayOfWeek = new Date(date + 'T00:00:00').getDay(); // 0=Sun, 6=Sat
+          const dayOfWeek = new Date(date + 'T00:00:00').getDay();
 
-          // Skip weekends for NO_WEEKENDS staff
-          if (isNoWeekend && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+          let bestStaff: ResourceListItem | null = null;
+          let bestScore = Infinity;
 
-          // Pick the shift type from the pattern (cycle through)
-          const patternIdx = slotsFilled % pattern.length;
-          let shiftType = pattern[patternIdx]!;
+          for (const staff of staffList) {
+            const id = staff.id;
+            const sc = staffShiftCount.get(id) ?? 0;
+            if (sc >= maxDaysPerStaff) continue;
 
-          // If this type is blocked for this staff, try the next pattern entries
-          if (staffBlocked?.has(shiftType)) {
-            let found = false;
-            for (let p = 1; p < pattern.length; p++) {
-              const alt = pattern[(patternIdx + p) % pattern.length]!;
-              if (!staffBlocked.has(alt)) {
-                // Also check night limit
-                if (alt === 'NIGHT' && staffNightCount >= maxNights) continue;
-                shiftType = alt;
-                found = true;
-                break;
+            const assignedDays = staffAssignedDays.get(id)!;
+            if (assignedDays.has(dayIdx)) continue;
+
+            const blocked = blockedTypes.get(id);
+            if (blocked?.has(shiftType)) continue;
+
+            if (noWeekendStaff.has(id) && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+            if (shiftType === 'NIGHT' && (staffNightCount.get(id) ?? 0) >= maxNights) continue;
+
+            // Rest/continuity check
+            if (wouldViolateRest(id, dayIdx, shiftType)) continue;
+
+            const score = sc;
+            if (score < bestScore) {
+              bestScore = score;
+              bestStaff = staff;
+            }
+          }
+
+          if (!bestStaff) continue;
+
+          const key = cellKey(bestStaff.id, date);
+          next.set(key, shiftType);
+          recordAssignment(bestStaff.id, dayIdx, shiftType);
+
+          staffShiftCount.set(bestStaff.id, (staffShiftCount.get(bestStaff.id) ?? 0) + 1);
+          if (shiftType === 'NIGHT') {
+            staffNightCount.set(bestStaff.id, (staffNightCount.get(bestStaff.id) ?? 0) + 1);
+          }
+          staffAssignedDays.get(bestStaff.id)!.add(dayIdx);
+          dayCoverage[dayIdx]!.set(shiftType, (dayCoverage[dayIdx]!.get(shiftType) ?? 0) + 1);
+          filled++;
+        }
+
+        // Second pass: fill remaining staff capacity with active types
+        for (const staff of staffList) {
+          const id = staff.id;
+          const sc = staffShiftCount.get(id) ?? 0;
+          const slotsLeft = maxDaysPerStaff - sc;
+          if (slotsLeft <= 0) continue;
+
+          const assignedDays = staffAssignedDays.get(id)!;
+          const blocked = blockedTypes.get(id);
+          const isNoWeekend = noWeekendStaff.has(id);
+
+          const emptyDays: number[] = [];
+          for (let i = 0; i < weekDates.length; i++) {
+            if (!assignedDays.has(i)) emptyDays.push(i);
+          }
+          emptyDays.sort((a, b) => dayTotalCoverage(a) - dayTotalCoverage(b));
+
+          let slotsFilled = 0;
+          for (const dayIdx of emptyDays) {
+            if (slotsFilled >= slotsLeft) break;
+
+            const date = weekDates[dayIdx]!;
+            const dayOfWeek = new Date(date + 'T00:00:00').getDay();
+            if (isNoWeekend && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+
+            // Pick the active type with lowest coverage that doesn't violate rest
+            let bestType: ShiftType | null = null;
+            let bestCov = Infinity;
+            for (const st of activeTypes) {
+              if (blocked?.has(st)) continue;
+              if (st === 'NIGHT' && (staffNightCount.get(id) ?? 0) >= maxNights) continue;
+              if (wouldViolateRest(id, dayIdx, st)) continue;
+              const cov = dayCoverage[dayIdx]!.get(st) ?? 0;
+              if (cov < bestCov) {
+                bestCov = cov;
+                bestType = st;
               }
             }
-            if (!found) continue; // All pattern types blocked for this staff — skip
-          }
+            if (!bestType) continue;
 
-          // Enforce max night shifts per week
-          if (shiftType === 'NIGHT' && staffNightCount >= maxNights) {
-            // Try to fall back to a non-night type from the pattern
-            const fallback = pattern.find(
-              (t) => t !== 'NIGHT' && !staffBlocked?.has(t)
-            );
-            if (fallback) {
-              shiftType = fallback;
-            } else {
-              continue; // Can't assign anything useful
+            const key = cellKey(id, date);
+            next.set(key, bestType);
+            recordAssignment(id, dayIdx, bestType);
+            staffShiftCount.set(id, (staffShiftCount.get(id) ?? 0) + 1);
+            if (bestType === 'NIGHT') {
+              staffNightCount.set(id, (staffNightCount.get(id) ?? 0) + 1);
             }
+            assignedDays.add(dayIdx);
+            dayCoverage[dayIdx]!.set(bestType, (dayCoverage[dayIdx]!.get(bestType) ?? 0) + 1);
+            slotsFilled++;
+            filled++;
           }
+        }
 
-          const key = cellKey(staff.id, date);
-          next.set(key, shiftType);
-          dayCoverage[dayIdx] = (dayCoverage[dayIdx] ?? 0) + 1;
-          if (shiftType === 'NIGHT') staffNightCount++;
-          slotsFilled++;
-          filled++;
+        // Third pass: assign OFF/REST to remaining empty days
+        // Use REST for days following a night shift, OFF otherwise
+        for (const staff of staffList) {
+          const id = staff.id;
+          const assignedDays = staffAssignedDays.get(id)!;
+          for (let i = 0; i < weekDates.length; i++) {
+            if (assignedDays.has(i)) continue;
+            const date = weekDates[i]!;
+            const key = cellKey(id, date);
+            // If already has something saved, skip
+            const saved = existingShifts.get(key);
+            if (saved && !(next.has(key) && next.get(key) === null)) continue;
+
+            const prevType = i > 0 ? getAssignedType(id, i - 1) : null;
+            const offType: ShiftType = prevType === 'NIGHT' ? 'REST' as ShiftType : 'OFF' as ShiftType;
+            next.set(key, offType);
+            recordAssignment(id, i, offType);
+            assignedDays.add(i);
+            filled++;
+          }
+        }
+      } else {
+        // ================================================================
+        // Legacy mode: single pattern / paint type (backward-compatible)
+        // ================================================================
+        const pattern = activeTypes;
+
+        for (const staff of staffList) {
+          const staffBlocked = blockedTypes.get(staff.id);
+          const isNoWeekend = noWeekendStaff.has(staff.id);
+          const { shiftCount: staffShiftCount, nightCount: staffNightCount, emptyDays: emptyDayIndices } = getStaffState(staff);
+          let nightCount = staffNightCount;
+
+          const slotsToFill = Math.max(0, maxDaysPerStaff - staffShiftCount);
+          if (slotsToFill === 0 || emptyDayIndices.length === 0) continue;
+
+          const sorted = [...emptyDayIndices].sort(
+            (a, b) => dayTotalCoverage(a) - dayTotalCoverage(b)
+          );
+
+          let slotsFilled = 0;
+          for (const dayIdx of sorted) {
+            if (slotsFilled >= slotsToFill) break;
+
+            const date = weekDates[dayIdx]!;
+            const dayOfWeek = new Date(date + 'T00:00:00').getDay();
+            if (isNoWeekend && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+
+            const patternIdx = slotsFilled % pattern.length;
+            let shiftType = pattern[patternIdx]!;
+
+            if (staffBlocked?.has(shiftType)) {
+              let found = false;
+              for (let p = 1; p < pattern.length; p++) {
+                const alt = pattern[(patternIdx + p) % pattern.length]!;
+                if (!staffBlocked.has(alt)) {
+                  if (alt === 'NIGHT' && nightCount >= maxNights) continue;
+                  shiftType = alt;
+                  found = true;
+                  break;
+                }
+              }
+              if (!found) continue;
+            }
+
+            if (shiftType === 'NIGHT' && nightCount >= maxNights) {
+              const fallback = pattern.find(
+                (t) => t !== 'NIGHT' && !staffBlocked?.has(t)
+              );
+              if (fallback) {
+                shiftType = fallback;
+              } else {
+                continue;
+              }
+            }
+
+            // Rest/continuity check
+            if (wouldViolateRest(staff.id, dayIdx, shiftType)) continue;
+
+            const key = cellKey(staff.id, date);
+            next.set(key, shiftType);
+            recordAssignment(staff.id, dayIdx, shiftType);
+            dayCoverage[dayIdx]!.set(shiftType, (dayCoverage[dayIdx]!.get(shiftType) ?? 0) + 1);
+            if (shiftType === 'NIGHT') nightCount++;
+            slotsFilled++;
+            filled++;
+          }
         }
       }
 
@@ -519,8 +784,11 @@ export default function WeeklyRosterPage() {
         return prev;
       }
 
+      const typeLabel = useMultiType
+        ? `across ${activeTypes.length} shift types`
+        : `using ${activeTypes.map((t) => SHIFT_MAP[t]?.label ?? t).join(', ')}`;
       toast.success(`Auto-filled ${filled} shift(s)`, {
-        description: `Max ${maxDaysPerStaff} days/staff, constraints applied`,
+        description: `Max ${maxDaysPerStaff} days/staff, ${typeLabel}`,
       });
       return next;
     });
@@ -578,7 +846,12 @@ export default function WeeklyRosterPage() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Fill empty cells with the selected shift type (max {maxDaysPerStaff} days/staff)</p>
+                    <p>
+                      {(schedulingSettings?.active_shift_types?.length ?? 0) > 0
+                        ? `Fill all active shift types (${schedulingSettings!.active_shift_types.join(', ')}), max ${maxDaysPerStaff} days/staff`
+                        : `Fill empty cells with the selected shift type (max ${maxDaysPerStaff} days/staff)`
+                      }
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -724,19 +997,40 @@ export default function WeeklyRosterPage() {
 
         {/* Legend */}
         <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded border-2 border-dashed border-primary/50 bg-primary/5" />
-            Unsaved
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded bg-muted border border-border" />
-            Saved
-          </span>
-          {SHIFT_TYPES.map((st) => (
-            <span key={st.value} className="flex items-center gap-1">
-              {st.icon} {st.label}
-            </span>
-          ))}
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex items-center gap-1 cursor-default">
+                  <span className="inline-block w-3 h-3 rounded border-2 border-dashed border-primary/50 bg-primary/5" />
+                  Unsaved
+                </span>
+              </TooltipTrigger>
+              <TooltipContent><p>Draft changes not yet saved to the server</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex items-center gap-1 cursor-default">
+                  <span className="inline-block w-3 h-3 rounded bg-muted border border-border" />
+                  Saved
+                </span>
+              </TooltipTrigger>
+              <TooltipContent><p>Shift already saved on the server</p></TooltipContent>
+            </Tooltip>
+            {SHIFT_TYPES.map((st) => (
+              <Tooltip key={st.value}>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center gap-1 cursor-default">
+                    {st.icon} {st.label}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-medium">{st.label}{st.isOff ? '' : ` Shift`}</p>
+                  {!st.isOff && <p className="text-muted-foreground">{st.start} – {st.end}</p>}
+                  {st.isOff && <p className="text-muted-foreground">Non-working</p>}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </TooltipProvider>
         </div>
 
         {/* Cross-facility conflicts banner */}
