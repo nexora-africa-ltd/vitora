@@ -95,6 +95,33 @@ class TestSchedulingSettings:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["enforce_constraints"] is False
 
+    def test_default_active_shift_types_empty(self, authenticated_client, sample_facility):
+        """GET /current/ should return empty active_shift_types by default."""
+        response = authenticated_client.get("/api/scheduling/settings/current/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["active_shift_types"] == []
+
+    def test_update_active_shift_types(self, authenticated_client, scheduling_settings):
+        """PATCH should update active_shift_types."""
+        response = authenticated_client.patch(
+            f"/api/scheduling/settings/{scheduling_settings.id}/",
+            {"active_shift_types": ["MORNING", "AFTERNOON", "NIGHT"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["active_shift_types"] == ["MORNING", "AFTERNOON", "NIGHT"]
+
+    def test_active_shift_types_persists(self, authenticated_client, scheduling_settings):
+        """active_shift_types should persist after update and retrieval."""
+        types = ["DAY", "NIGHT"]
+        authenticated_client.patch(
+            f"/api/scheduling/settings/{scheduling_settings.id}/",
+            {"active_shift_types": types},
+            format="json",
+        )
+        response = authenticated_client.get("/api/scheduling/settings/current/")
+        assert response.data["active_shift_types"] == types
+
     def test_unauthenticated_rejected(self, api_client):
         """Unauthenticated request should be rejected."""
         response = api_client.get("/api/scheduling/settings/current/")

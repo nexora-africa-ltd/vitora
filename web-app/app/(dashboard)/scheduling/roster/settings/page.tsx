@@ -44,6 +44,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { schedulingSettingsApi, staffConstraintsApi, resourcesApi } from '@/lib/api/scheduling';
 import type { SchedulingSettings, StaffConstraint, StaffConstraintCreateData, ConstraintType } from '@/lib/types/scheduling';
@@ -60,6 +61,16 @@ const CONSTRAINT_OPTIONS: { value: ConstraintType; label: string; description: s
   { value: 'PREFERRED_SHIFTS', label: 'Preferred shift types only', description: 'Only assign specific shift types', icon: <UserCog className="h-4 w-4" /> },
   { value: 'NO_OVERTIME', label: 'No overtime', description: 'Staff will not be assigned overtime shifts', icon: <ShieldAlert className="h-4 w-4" /> },
   { value: 'LIGHT_DUTY', label: 'Light duty — days only', description: 'Only day/morning shifts (medical restriction)', icon: <ShieldAlert className="h-4 w-4" /> },
+];
+
+/** Working shift types eligible for auto-fill. Off/leave types are excluded. */
+const WORKING_SHIFT_TYPES: { value: string; label: string }[] = [
+  { value: 'DAY', label: 'Day' },
+  { value: 'NIGHT', label: 'Night' },
+  { value: 'MORNING', label: 'Morning' },
+  { value: 'AFTERNOON', label: 'Afternoon' },
+  { value: 'ON_CALL', label: 'On-Call' },
+  { value: 'OVERTIME', label: 'Overtime' },
 ];
 
 // =============================================================================
@@ -95,6 +106,7 @@ export default function RosterSettingsPage() {
     onSuccess: () => {
       setSettingsForm({});
       queryClient.invalidateQueries({ queryKey: ['scheduling-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduling-settings-current'] });
       toast.success('Settings saved');
     },
     onError: () => toast.error('Failed to save settings'),
@@ -324,6 +336,65 @@ export default function RosterSettingsPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Active Shift Types for Auto-Fill */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base">Active Shift Types</CardTitle>
+                <HelpPopover content="Select which working shift types your facility uses. Auto-fill will distribute staff across ALL selected types each day, ensuring every shift is covered. If none are selected, auto-fill will only use the paint brush type." />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Select the shift types your facility operates. Auto-fill will ensure every day has staff assigned to each active type.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {WORKING_SHIFT_TYPES.map((st) => {
+                    const active = (currentSettings.active_shift_types as string[] | undefined) ?? [];
+                    const isChecked = active.includes(st.value);
+                    return (
+                      <label
+                        key={st.value}
+                        className={`flex items-center gap-2.5 rounded-lg border p-3 cursor-pointer transition-colors ${
+                          isChecked
+                            ? 'border-primary/40 bg-primary/5'
+                            : 'border-border hover:bg-muted/50'
+                        }`}
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            const current = [...active];
+                            if (checked) {
+                              current.push(st.value);
+                            } else {
+                              const idx = current.indexOf(st.value);
+                              if (idx >= 0) current.splice(idx, 1);
+                            }
+                            updateSetting('active_shift_types', current);
+                          }}
+                        />
+                        <span className="text-sm font-medium">{st.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {((currentSettings.active_shift_types as string[] | undefined) ?? []).length > 0 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {(currentSettings.active_shift_types as string[]).length} type(s) active
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      Auto-fill will cover: {(currentSettings.active_shift_types as string[]).join(', ')}
+                    </span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
