@@ -224,6 +224,12 @@ MFA_ENFORCEMENT = True
 # Set to 0 to require immediate MFA setup (no grace period).
 MFA_GRACE_PERIOD_HOURS = 72
 
+# Active-shift enforcement for clinical write actions.
+# When True, clinical endpoints (encounters, prescriptions, lab orders, etc.)
+# require the user to have an ACTIVE or ON_BREAK shift today.
+# Override to False in development/test settings to allow unrestricted writes.
+ACTIVE_SHIFT_ENFORCEMENT = True
+
 # WebAuthn / FIDO2 / Passkey settings
 # RP ID must match the domain the site is served from (no port, no scheme).
 WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", "localhost")

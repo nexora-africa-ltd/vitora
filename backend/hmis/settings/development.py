@@ -95,6 +95,9 @@ LOGGING["loggers"]["django"]["level"] = "DEBUG"  # noqa: F405
 # MFA enforcement — disabled in development for convenience
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
 
+# Active-shift enforcement — disabled in development for convenience
+ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"
+
 # Email backend for development (console)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

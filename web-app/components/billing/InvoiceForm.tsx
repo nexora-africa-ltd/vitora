@@ -31,6 +31,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Plus, Trash2, Loader2, FileText, Clock } from 'lucide-react';
+import { ShiftGate } from '@/components/shared/shift-gate';
 import { format, addDays } from 'date-fns';
 import type { Invoice, InvoiceCreateData, InvoicePaymentType, Service, ProformaCreateData } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
@@ -522,6 +523,7 @@ export function InvoiceForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
+          <ShiftGate>
           <Button
             type="submit"
             disabled={isLoading || (isProforma && !onSubmitProforma)}
@@ -540,6 +542,7 @@ export function InvoiceForm({
               </>
             )}
           </Button>
+          </ShiftGate>
         </div>
       </form>
     </Form>

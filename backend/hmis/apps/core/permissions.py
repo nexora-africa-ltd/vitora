@@ -457,3 +457,109 @@ class SHAPermission(permissions.BasePermission):
             return view.queryset.model.__name__.lower()
 
         return None
+
+
+class RequiresActiveShiftPermission(permissions.BasePermission):
+    """
+    Permission that gates write actions behind an active shift.
+
+    Allows all safe (read-only) methods. For write methods (POST, PUT, PATCH,
+    DELETE), the user must have an ACTIVE or ON_BREAK shift today in the
+    current facility.
+
+    Supports emergency override via ``?emergency_override=true`` query param,
+    which bypasses the check but logs the override in AuditLog.
+
+    Superusers are exempt.
+    """
+
+    message = "You must have an active shift to perform this action."
+    code = "not_clocked_in"
+
+    # Shift statuses that count as "on duty"
+    ON_DUTY_STATUSES = {"ACTIVE", "ON_BREAK"}
+
+    # Off-type shift types that should be excluded from the check
+    OFF_SHIFT_TYPES = {"OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF", "LEAVE", "SICK_LEAVE", "REST"}
+
+    def has_permission(self, request, view):
+        """Allow reads; require active shift for writes."""
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # Check if enforcement is enabled
+        from django.conf import settings
+
+        if not getattr(settings, "ACTIVE_SHIFT_ENFORCEMENT", True):
+            return True
+
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+
+        # Superusers are exempt
+        if user.is_superuser:
+            return True
+
+        # Emergency override
+        if request.query_params.get("emergency_override") == "true":
+            self._log_emergency_override(request, view)
+            return True
+
+        return self._has_active_shift(request)
+
+    def _has_active_shift(self, request) -> bool:
+        """Check if the user has an active shift today in the current facility."""
+        from datetime import date as date_type
+
+        from hmis.apps.scheduling.models import Resource, Shift
+
+        staff_profile = getattr(request.user, "staff_profile", None)
+        if not staff_profile:
+            return False
+
+        facility = getattr(request, "facility", None)
+        if not facility:
+            # Try resolving from staff profile
+            facility_id = getattr(staff_profile, "primary_facility_id", None)
+            if not facility_id:
+                return False
+            from hmis.apps.core.models import Facility
+
+            try:
+                facility = Facility.objects.get(pk=facility_id, is_active=True)
+            except Facility.DoesNotExist:
+                return False
+
+        resource = Resource.objects.filter(
+            staff_profile=staff_profile,
+            facility=facility,
+            resource_type="PERSON",
+        ).first()
+
+        if not resource:
+            return False
+
+        return Shift.objects.filter(
+            staff_resource=resource,
+            shift_date=date_type.today(),
+            status__in=self.ON_DUTY_STATUSES,
+        ).exclude(
+            shift_type__in=self.OFF_SHIFT_TYPES,
+        ).exists()
+
+    def _log_emergency_override(self, request, view):
+        """Log emergency override in the audit trail."""
+        AuditLog.log(
+            action="emergency_override",
+            user=request.user,
+            resource_type=view.__class__.__name__,
+            resource_id=0,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "method": request.method,
+                "path": request.path,
+                "reason": "Emergency override — user bypassed active shift requirement",
+            },
+        )

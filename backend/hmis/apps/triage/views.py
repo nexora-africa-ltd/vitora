@@ -19,7 +19,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.core.permissions import RequiresActiveShiftPermission, get_client_ip
 
 from .models import ERBed, Escalation, TriageAssessment, TriageQueue, TriageVitalThreshold, WaitTimeBreach, WaitingQueue
 from .serializers import (
@@ -125,7 +125,7 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = TriageAssessment.objects.all().select_related(
         "encounter__patient", "triaged_by", "assigned_clinician"
     )
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["triage_category", "assigned_area", "mental_status", "encounter"]
     search_fields = [

@@ -22,6 +22,9 @@ TESTING = True
 # MFA enforcement — disabled in tests by default
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
 
+# Active-shift enforcement — disabled in tests by default
+ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"
+
 # In-memory SQLite for speed — migrations run once per pytest session (~2-4s).
 # WebSocket / Channels tests that need cross-thread visibility should use a
 # file-backed override (see conftest.py `ws_db` fixture).

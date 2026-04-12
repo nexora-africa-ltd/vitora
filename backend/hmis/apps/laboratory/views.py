@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.permissions import RequiresActiveShiftPermission
 
 from .models import (
     AnalyzerRun,
@@ -157,7 +158,7 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     tenant_scope = "facility"  # Lab orders are facility-scoped
 
     queryset = LabOrder.objects.all().select_related("patient", "encounter", "ordered_by")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ["patient", "encounter", "status", "priority", "order_type"]
     lookup_field = "order_number"
@@ -431,7 +432,7 @@ class LabResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
 
     queryset = LabResult.objects.all().select_related("order_item__test", "entered_by")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     tenant_facility_chain = "order_item__lab_order__facility"
     tenant_org_chain = "order_item__lab_order__organization"
 

@@ -24,6 +24,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.permissions import RequiresActiveShiftPermission
 from hmis.apps.billing.filters import CreditNoteFilter, InvoiceFilter, PaymentFilter
 from hmis.apps.billing.models import (
     CreditNote,
@@ -103,7 +104,7 @@ class InvoiceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         .all()
     )
     serializer_class = InvoiceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = InvoiceFilter
     search_fields = ["invoice_number", "patient__first_name", "patient__last_name", "patient__mrn"]
@@ -328,7 +329,7 @@ class PaymentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
     queryset = Payment.objects.select_related("invoice", "received_by").all()
     serializer_class = PaymentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PaymentFilter
     search_fields = ["reference", "mpesa_receipt_number", "transaction_reference"]
