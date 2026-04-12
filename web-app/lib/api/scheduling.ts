@@ -45,6 +45,7 @@ import type {
   StaffWorkload,
   BulkCreateShiftsPayload,
   BulkCreateShiftsResult,
+  CrossFacilityConflict,
   SchedulingSettings,
   StaffConstraint,
   StaffConstraintCreateData,
@@ -349,6 +350,12 @@ export const shiftsApi = {
   /** Bulk-create shifts for a roster grid. Skips duplicates. */
   bulkCreate: async (payload: BulkCreateShiftsPayload): Promise<BulkCreateShiftsResult> => {
     const response = await apiClient.post(`${BASE_URL}/shifts/bulk-create/`, payload);
+    return response.data;
+  },
+
+  /** Check for cross-facility scheduling conflicts. */
+  crossFacilityConflicts: async (params: { from_date: string; to_date: string }): Promise<CrossFacilityConflict[]> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/cross-facility-conflicts/`, { params });
     return response.data;
   },
 };

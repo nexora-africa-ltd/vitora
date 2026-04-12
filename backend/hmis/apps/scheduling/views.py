@@ -172,7 +172,9 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         GET    /api/scheduling/resources/{id}/availability/check/   - Check specific slot
     """
 
-    queryset = Resource.objects.all()
+    queryset = Resource.objects.select_related(
+        "staff_profile__primary_department", "staff_profile__user"
+    )
     serializer_class = ResourceSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = ResourceFilter
@@ -283,12 +285,12 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Find staff profiles that don't have a scheduling resource yet
+        # Find staff profiles that don't have a scheduling resource at this facility
         staff_without_resource = StaffProfile.objects.filter(
             employment_status="ACTIVE",
             primary_facility=facility,
         ).exclude(
-            scheduling_resource__isnull=False,
+            scheduling_resources__facility=facility,
         ).select_related("user")
 
         created_count = 0
@@ -1251,6 +1253,123 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         serializer = StaffWorkloadSerializer(workload, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="cross-facility-conflicts")
+    def cross_facility_conflicts(self, request):
+        """
+        Check for scheduling conflicts across facilities for multi-site staff.
+
+        For each staff resource in the current facility's roster for the given
+        date range, checks whether the linked StaffProfile has shifts at OTHER
+        facilities on the same dates.
+
+        Query params:
+            from_date: Start date (required, YYYY-MM-DD)
+            to_date:   End date   (required, YYYY-MM-DD)
+
+        Returns a list of conflicts:
+        [
+          {
+            "staff_resource_id": 42,
+            "staff_resource_name": "Dr. Kamau",
+            "staff_profile_id": 7,
+            "shift_date": "2026-04-14",
+            "this_facility_shift": { "shift_type": "DAY", "start_time": "07:00", "end_time": "19:00" },
+            "other_facility": { "id": 3, "name": "Clinic B" },
+            "other_shift": { "shift_type": "NIGHT", "start_time": "19:00", "end_time": "07:00" }
+          }
+        ]
+        """
+        from datetime import date as date_type
+
+        from_date_str = request.query_params.get("from_date")
+        to_date_str = request.query_params.get("to_date")
+        if not from_date_str or not to_date_str:
+            return Response(
+                {"error": "from_date and to_date are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            from_date = date_type.fromisoformat(from_date_str)
+            to_date = date_type.fromisoformat(to_date_str)
+        except ValueError:
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get the current facility from tenant context
+        self._resolve_tenant_context()
+        current_facility = getattr(request, "facility", None)
+        if not current_facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get all shifts for this facility in the date range
+        local_shifts = (
+            Shift.objects.filter(
+                facility=current_facility,
+                shift_date__gte=from_date,
+                shift_date__lte=to_date,
+            )
+            .exclude(status="CANCELLED")
+            .select_related("staff_resource__staff_profile", "facility")
+        )
+
+        # Collect staff_profile IDs and build a lookup
+        profile_to_local: dict[int, list] = {}
+        for shift in local_shifts:
+            sp = getattr(shift.staff_resource, "staff_profile", None)
+            if sp:
+                profile_to_local.setdefault(sp.pk, []).append(shift)
+
+        if not profile_to_local:
+            return Response([])
+
+        # Query shifts at OTHER facilities for these staff profiles
+        other_shifts = (
+            Shift.objects.filter(
+                staff_resource__staff_profile_id__in=profile_to_local.keys(),
+                shift_date__gte=from_date,
+                shift_date__lte=to_date,
+            )
+            .exclude(status="CANCELLED")
+            .exclude(facility=current_facility)
+            .select_related("staff_resource__staff_profile", "facility")
+        )
+
+        # Build conflict list
+        conflicts = []
+        for other in other_shifts:
+            sp_id = other.staff_resource.staff_profile_id
+            for local in profile_to_local.get(sp_id, []):
+                if local.shift_date == other.shift_date:
+                    conflicts.append(
+                        {
+                            "staff_resource_id": local.staff_resource_id,
+                            "staff_resource_name": local.staff_resource.name,
+                            "staff_profile_id": sp_id,
+                            "shift_date": str(other.shift_date),
+                            "this_facility_shift": {
+                                "shift_type": local.shift_type,
+                                "start_time": str(local.start_time),
+                                "end_time": str(local.end_time),
+                            },
+                            "other_facility": {
+                                "id": other.facility_id,
+                                "name": str(other.facility),
+                            },
+                            "other_shift": {
+                                "shift_type": other.shift_type,
+                                "start_time": str(other.start_time),
+                                "end_time": str(other.end_time),
+                            },
+                        }
+                    )
+
+        return Response(conflicts)
 
 
 # =============================================================================

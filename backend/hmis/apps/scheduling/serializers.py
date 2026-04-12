@@ -23,6 +23,7 @@ class ResourceSerializer(serializers.ModelSerializer):
     """Serializer for Resource model."""
 
     staff_profile_name = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ResourceSerializer."""
@@ -37,17 +38,24 @@ class ResourceSerializer(serializers.ModelSerializer):
             "capacity",
             "staff_profile",
             "staff_profile_name",
+            "department_name",
             "metadata",
             "description",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "staff_profile_name"]
+        read_only_fields = ["id", "created_at", "updated_at", "staff_profile_name", "department_name"]
 
     def get_staff_profile_name(self, obj) -> str | None:
         """Get staff profile display name if linked."""
         if obj.staff_profile:
             return f"{obj.staff_profile.user.first_name} {obj.staff_profile.user.last_name}"
+        return None
+
+    def get_department_name(self, obj) -> str | None:
+        """Get department name from linked staff profile."""
+        if obj.staff_profile and obj.staff_profile.primary_department:
+            return obj.staff_profile.primary_department.name
         return None
 
     def validate_code(self, value: str) -> str:
@@ -65,11 +73,19 @@ class ResourceSerializer(serializers.ModelSerializer):
 class ResourceListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for resource listings."""
 
+    department_name = serializers.SerializerMethodField()
+
     class Meta:
         """Meta options for ResourceListSerializer."""
 
         model = Resource
-        fields = ["id", "name", "resource_type", "code", "is_active"]
+        fields = ["id", "name", "resource_type", "code", "is_active", "department_name"]
+
+    def get_department_name(self, obj) -> str | None:
+        """Get department name from linked staff profile."""
+        if obj.staff_profile and obj.staff_profile.primary_department:
+            return obj.staff_profile.primary_department.name
+        return None
 
 
 # =============================================================================

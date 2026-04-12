@@ -18,6 +18,7 @@ export interface ResourceListItem {
   resource_type: ResourceType;
   code: string;
   is_active: boolean;
+  department_name: string | null;
 }
 
 export interface Resource extends ResourceListItem {
@@ -318,6 +319,31 @@ export interface BulkCreateShiftsResult {
   created_ids: number[];
   skipped_details: Array<{ index: number; reason: string }>;
   error_details: Array<{ index: number; errors: string | Record<string, string[]> }>;
+}
+
+// =============================================================================
+// Cross-Facility Conflicts
+// =============================================================================
+
+export interface CrossFacilityConflict {
+  staff_resource_id: number;
+  staff_resource_name: string;
+  staff_profile_id: number;
+  shift_date: string;
+  this_facility_shift: {
+    shift_type: string;
+    start_time: string;
+    end_time: string;
+  };
+  other_facility: {
+    id: number;
+    name: string;
+  };
+  other_shift: {
+    shift_type: string;
+    start_time: string;
+    end_time: string;
+  };
 }
 
 // =============================================================================
