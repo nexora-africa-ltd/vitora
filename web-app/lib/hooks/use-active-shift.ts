@@ -11,11 +11,13 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { attendanceApi } from '@/lib/api/scheduling';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { AttendanceStatus } from '@/lib/types/scheduling';
 
 const ON_DUTY_STATUSES: Set<AttendanceStatus> = new Set(['CLOCKED_IN', 'ON_BREAK']);
 
 export function useRequiresActiveShift() {
+  const { isAdmin } = usePermissions();
   const { data, isLoading } = useQuery({
     queryKey: ['my-shift-today'],
     queryFn: () => attendanceApi.myToday(),
@@ -24,7 +26,7 @@ export function useRequiresActiveShift() {
   });
 
   const status = data?.attendance_status ?? 'NO_SHIFT';
-  const isOnDuty = ON_DUTY_STATUSES.has(status as AttendanceStatus);
+  const isOnDuty = isAdmin || ON_DUTY_STATUSES.has(status as AttendanceStatus);
 
   return {
     /** Whether the user is currently clocked in (ACTIVE or ON_BREAK). */

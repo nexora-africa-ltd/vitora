@@ -501,6 +501,14 @@ class RequiresActiveShiftPermission(permissions.BasePermission):
         if user.is_superuser:
             return True
 
+        # Admin-level roles are exempt (they manage the facility, not clinical work)
+        EXEMPT_ROLE_CODES = {"ADMIN", "ORG-ADMIN", "OWNER"}
+        staff_profile = getattr(user, "staff_profile", None)
+        if staff_profile:
+            primary_role = getattr(staff_profile, "primary_role", None)
+            if primary_role and getattr(primary_role, "code", "") in EXEMPT_ROLE_CODES:
+                return True
+
         # Emergency override
         if request.query_params.get("emergency_override") == "true":
             self._log_emergency_override(request, view)

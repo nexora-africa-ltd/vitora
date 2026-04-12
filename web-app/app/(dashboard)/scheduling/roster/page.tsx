@@ -58,6 +58,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from 'sonner';
 import { resourcesApi, shiftsApi, staffConstraintsApi, schedulingSettingsApi } from '@/lib/api/scheduling';
 import type {
@@ -144,6 +145,8 @@ function cellKey(resourceId: number, date: string): CellKey {
 export default function WeeklyRosterPage() {
   const queryClient = useQueryClient();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { canPerformAction } = usePermissions();
+  const canManageSchedules = canPerformAction('scheduling.manage_schedules');
 
   // Week navigation
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
@@ -273,6 +276,7 @@ export default function WeeklyRosterPage() {
 
   const handleCellClick = useCallback(
     (resourceId: number, date: string) => {
+      if (!canManageSchedules) return;
       const key = cellKey(resourceId, date);
       setDraft((prev) => {
         const next = new Map(prev);
@@ -301,7 +305,7 @@ export default function WeeklyRosterPage() {
         return next;
       });
     },
-    [paintType, existingShifts],
+    [paintType, existingShifts, canManageSchedules],
   );
 
   // Determine what's displayed in a cell
@@ -859,29 +863,31 @@ export default function WeeklyRosterPage() {
           helpContent="Plan shifts for the week ahead. Click cells to assign shift types. Use the paint brush selector to choose a shift type, then click staff×day cells. Save when done."
           actions={
             <div className="flex items-center gap-2">
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleAutoFill}
-                      disabled={staffList.length === 0}
-                    >
-                      <Wand2 className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Auto-Fill</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>
-                      {(schedulingSettings?.active_shift_types?.length ?? 0) > 0
-                        ? `Fill all active shift types (${schedulingSettings!.active_shift_types.join(', ')}), max ${maxDaysPerStaff} days/staff`
-                        : `Fill empty cells with the selected shift type (max ${maxDaysPerStaff} days/staff)`
-                      }
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {canManageSchedules && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleAutoFill}
+                        disabled={staffList.length === 0}
+                      >
+                        <Wand2 className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline">Auto-Fill</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        {(schedulingSettings?.active_shift_types?.length ?? 0) > 0
+                          ? `Fill all active shift types (${schedulingSettings!.active_shift_types.join(', ')}), max ${maxDaysPerStaff} days/staff`
+                          : `Fill empty cells with the selected shift type (max ${maxDaysPerStaff} days/staff)`
+                        }
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -891,55 +897,59 @@ export default function WeeklyRosterPage() {
                 <Printer className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">Print</span>
               </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    {clearRosterMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4 mr-1" />
-                    )}
-                    <span className="hidden sm:inline">Clear Week</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Clear this week&apos;s roster?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will delete all <strong>scheduled</strong> shifts for {weekLabel}.
-                      Active, completed, and cancelled shifts will not be affected.
-                      This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => clearRosterMutation.mutate()}
-                      className="bg-destructive text-white hover:bg-destructive/90"
+              {canManageSchedules && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
+                      className="text-destructive hover:text-destructive"
                     >
-                      Clear Roster
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="sm" variant="outline" asChild>
-                      <Link href="/scheduling/roster/settings">
-                        <Settings className="h-4 w-4" />
-                      </Link>
+                      {clearRosterMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-1" />
+                      )}
+                      <span className="hidden sm:inline">Clear Week</span>
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>Roster Settings & Staff Constraints</p></TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              {hasDraftChanges && (
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear this week&apos;s roster?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will delete all <strong>scheduled</strong> shifts for {weekLabel}.
+                        Active, completed, and cancelled shifts will not be affected.
+                        This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => clearRosterMutation.mutate()}
+                        className="bg-destructive text-white hover:bg-destructive/90"
+                      >
+                        Clear Roster
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              {canManageSchedules && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href="/scheduling/roster/settings">
+                          <Settings className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>Roster Settings & Staff Constraints</p></TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {canManageSchedules && hasDraftChanges && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -949,21 +959,23 @@ export default function WeeklyRosterPage() {
                   <span className="hidden sm:inline">Discard</span>
                 </Button>
               )}
-              <Button
-                size="sm"
-                onClick={() => saveMutation.mutate()}
-                disabled={!hasDraftChanges || saveMutation.isPending}
-              >
-                {saveMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-1" />
-                )}
-                <span className="hidden sm:inline">
-                  Save Roster{hasDraftChanges ? ` (${draft.size})` : ''}
-                </span>
-                <span className="sm:hidden">Save</span>
-              </Button>
+              {canManageSchedules && (
+                <Button
+                  size="sm"
+                  onClick={() => saveMutation.mutate()}
+                  disabled={!hasDraftChanges || saveMutation.isPending}
+                >
+                  {saveMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-1" />
+                  )}
+                  <span className="hidden sm:inline">
+                    Save Roster{hasDraftChanges ? ` (${draft.size})` : ''}
+                  </span>
+                  <span className="sm:hidden">Save</span>
+                </Button>
+              )}
             </div>
           }
         />
@@ -988,43 +1000,47 @@ export default function WeeklyRosterPage() {
 
           {/* Paint Brush Selector + Department */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground shrink-0">Paint:</span>
-            <Select value={paintType} onValueChange={(v) => setPaintType(v as ShiftType)}>
-              <SelectTrigger className="w-[160px] h-8 text-xs">
-                <SelectValue>
-                  {(() => {
-                    const st = SHIFT_MAP[paintType];
-                    return st ? (
-                      <span className="flex items-center gap-1.5">
-                        {st.icon}
-                        <span>{st.label}</span>
-                      </span>
-                    ) : paintType;
-                  })()}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Working</div>
-                {SHIFT_TYPES.filter((st) => !st.isOff).map((st) => (
-                  <SelectItem key={st.value} value={st.value}>
-                    <span className="flex items-center gap-2">
-                      {st.icon}
-                      <span>{st.label}</span>
-                      <span className="text-muted-foreground ml-auto">({st.start}–{st.end})</span>
-                    </span>
-                  </SelectItem>
-                ))}
-                <div className="px-2 py-1 mt-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-t">Off / Leave</div>
-                {SHIFT_TYPES.filter((st) => st.isOff).map((st) => (
-                  <SelectItem key={st.value} value={st.value}>
-                    <span className="flex items-center gap-2">
-                      {st.icon}
-                      <span>{st.label}</span>
-                    </span>
+            {canManageSchedules && (
+              <>
+                <span className="text-xs text-muted-foreground shrink-0">Paint:</span>
+                <Select value={paintType} onValueChange={(v) => setPaintType(v as ShiftType)}>
+                  <SelectTrigger className="w-[160px] h-8 text-xs">
+                    <SelectValue>
+                      {(() => {
+                        const st = SHIFT_MAP[paintType];
+                        return st ? (
+                          <span className="flex items-center gap-1.5">
+                            {st.icon}
+                            <span>{st.label}</span>
+                          </span>
+                        ) : paintType;
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Working</div>
+                    {SHIFT_TYPES.filter((st) => !st.isOff).map((st) => (
+                      <SelectItem key={st.value} value={st.value}>
+                        <span className="flex items-center gap-2">
+                          {st.icon}
+                          <span>{st.label}</span>
+                          <span className="text-muted-foreground ml-auto">({st.start}–{st.end})</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                    <div className="px-2 py-1 mt-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-t">Off / Leave</div>
+                    {SHIFT_TYPES.filter((st) => st.isOff).map((st) => (
+                      <SelectItem key={st.value} value={st.value}>
+                        <span className="flex items-center gap-2">
+                          {st.icon}
+                          <span>{st.label}</span>
+                        </span>
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+                </Select>
+              </>
+            )}
 
             <Select value={departmentFilter || '_none'} onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}>
               <SelectTrigger className="w-[130px] h-8 text-xs">
@@ -1038,23 +1054,25 @@ export default function WeeklyRosterPage() {
               </SelectContent>
             </Select>
 
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Select value={String(maxDaysPerStaff)} onValueChange={(v) => setMaxDaysPerStaff(Number(v))}>
-                    <SelectTrigger className="w-[80px] h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[3, 4, 5, 6, 7].map((n) => (
-                        <SelectItem key={n} value={String(n)}>{n} days</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TooltipTrigger>
-                <TooltipContent><p>Max days per staff for Auto-Fill</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {canManageSchedules && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Select value={String(maxDaysPerStaff)} onValueChange={(v) => setMaxDaysPerStaff(Number(v))}>
+                      <SelectTrigger className="w-[80px] h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[3, 4, 5, 6, 7].map((n) => (
+                          <SelectItem key={n} value={String(n)}>{n} days</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Max days per staff for Auto-Fill</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
 
@@ -1174,7 +1192,7 @@ export default function WeeklyRosterPage() {
                           return (
                             <td
                               key={date}
-                              className={`px-1 py-1 text-center cursor-pointer transition-colors ${
+                              className={`px-1 py-1 text-center ${canManageSchedules ? 'cursor-pointer' : ''} transition-colors ${
                                 isToday ? 'bg-primary/5' : ''
                               } ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50`}
                               onClick={() => handleCellClick(staff.id, date)}
@@ -1228,7 +1246,7 @@ export default function WeeklyRosterPage() {
         </Card>
 
         {/* Summary bar */}
-        {hasDraftChanges && (
+        {canManageSchedules && hasDraftChanges && (
           <div className="sticky bottom-4 z-20">
             <Card className="border-primary/20 shadow-lg">
               <CardContent className="py-3 px-4 flex items-center justify-between gap-4">

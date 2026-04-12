@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { attendanceApi } from '@/lib/api/scheduling';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import type { ShiftListItem, AttendanceStats } from '@/lib/types/scheduling';
 
@@ -188,16 +189,24 @@ export default function MyShiftsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
       queryClient.invalidateQueries({ queryKey: ['my-shift-upcoming'] });
+      queryClient.invalidateQueries({ queryKey: ['my-shift-history'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
       toast.success('Clocked in successfully');
     },
-    onError: () => toast.error('Failed to clock in'),
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error));
+    },
   });
 
   const clockOutMutation = useMutation({
     mutationFn: (shiftId: number) => attendanceApi.clockOut(shiftId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
+      queryClient.invalidateQueries({ queryKey: ['my-shift-upcoming'] });
       queryClient.invalidateQueries({ queryKey: ['my-shift-history'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
       toast.success('Clocked out successfully');
     },
     onError: () => toast.error('Failed to clock out'),

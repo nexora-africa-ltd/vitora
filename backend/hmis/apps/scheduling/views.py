@@ -15,7 +15,7 @@ This module contains ViewSets for:
 - Auto-assign and manual override actions
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.utils import timezone
 from django_filters import rest_framework as filters
@@ -1029,6 +1029,30 @@ class AssignmentViewSet(viewsets.ViewSet):
 # =============================================================================
 
 
+class ManageSchedulesWritePermission(permissions.BasePermission):
+    """Allow reads for all authenticated users; require ``scheduling.manage_schedules`` for writes.
+
+    Lifecycle actions (start, complete, take-break, resume, cancel) are NOT
+    gated — they are personal clock-in/out operations.
+    """
+
+    WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+    # Personal clock-in/out actions that should NOT be gated
+    PERSONAL_ACTIONS = {"start", "complete", "take_break", "resume", "cancel"}
+
+    def has_permission(self, request, view):
+        if request.method not in self.WRITE_METHODS:
+            return True
+        # Allow personal lifecycle actions
+        action_name = getattr(view, "action", None)
+        if action_name in self.PERSONAL_ACTIONS:
+            return True
+        # Superusers always pass
+        if request.user and request.user.is_superuser:
+            return True
+        return request.user.has_perm("scheduling.manage_schedules")
+
+
 class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing staff shifts / duty roster.
@@ -1057,7 +1081,7 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         "cancelled_by",
     )
     serializer_class = ShiftSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, ManageSchedulesWritePermission]
     filterset_class = ShiftFilter
     tenant_scope = "facility"
 
@@ -1092,18 +1116,40 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
     def start(self, request, pk=None):
         """Start a shift (clock in).
 
+        Blocks clock-in if the shift has already ended (now > shift end time).
+
         Checks facility punctuality settings — if enforce_punctuality is enabled
         and the staff member is more than late_cutoff_minutes late, clock-in is
         blocked unless the user has manage_schedules permission (admin override).
         """
         shift = self.get_object()
 
+        now = timezone.now()
+
+        # Block clock-in after shift end time
+        shift_end_naive = datetime.combine(shift.shift_date, shift.end_time)
+        # Night shifts: end_time < start_time means end is next day
+        if shift.end_time <= shift.start_time:
+            shift_end_naive += timedelta(days=1)
+        shift_end_dt = (
+            timezone.make_aware(shift_end_naive)
+            if timezone.is_naive(shift_end_naive)
+            else shift_end_naive
+        )
+        if now > shift_end_dt:
+            return Response(
+                {
+                    "error": "Cannot clock in after shift end time. This shift has already ended.",
+                    "code": "shift_ended",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Punctuality enforcement
         from hmis.apps.scheduling.models import SchedulingSettings
 
         settings = SchedulingSettings.objects.filter(facility=shift.facility).first()
         if settings and settings.enforce_punctuality and settings.late_cutoff_minutes:
-            now = timezone.now()
             shift_start_dt = timezone.make_aware(
                 datetime.combine(shift.shift_date, shift.start_time)
             ) if timezone.is_naive(

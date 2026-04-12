@@ -8,6 +8,23 @@ Depends on global conftest fixtures: sample_facility, sample_organization.
 from datetime import date, time, timedelta
 
 import pytest  # type: ignore
+from django.contrib.auth.models import Permission
+
+
+@pytest.fixture(autouse=True)
+def _grant_manage_schedules(test_user):
+    """Grant ``scheduling.manage_schedules`` to the test user for all scheduling tests."""
+    perm = Permission.objects.filter(
+        codename="manage_schedules",
+        content_type__app_label="scheduling",
+    ).first()
+    if perm:
+        test_user.user_permissions.add(perm)
+        # Clear cached permissions
+        if hasattr(test_user, "_perm_cache"):
+            del test_user._perm_cache
+        if hasattr(test_user, "_user_perm_cache"):
+            del test_user._user_perm_cache
 from django.utils import timezone
 
 
