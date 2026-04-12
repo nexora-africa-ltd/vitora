@@ -181,7 +181,7 @@ export const ACTION_PERMISSIONS = {
   'scheduling.create_appointment': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
   'scheduling.manage_appointment': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
   'scheduling.view_schedules': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
-  'scheduling.manage_schedules': ['ADMIN', 'ORG-ADMIN'],
+  'scheduling.manage_schedules': ['ADMIN', 'ORG-ADMIN', 'HR_OFFICER'],
 
   // === Theatre Module ===
   'theatre.view_schedule': ['SURGEON', 'ANAESTHETIST', 'THEATRE_NURSE', 'DOCTOR', 'ADMIN'],
