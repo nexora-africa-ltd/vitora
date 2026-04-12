@@ -464,3 +464,136 @@ class TestSyncFromStaff:
         resource = Resource.objects.get(staff_profile=test_staff_profile)
         assert resource.metadata.get("synced_from_staff") is True
         assert resource.metadata.get("employee_id") == test_staff_profile.employee_id
+
+
+# =============================================================================
+# Bulk Create Tests
+# =============================================================================
+
+
+class TestBulkCreateShifts:
+    """Tests for POST /api/scheduling/shifts/bulk-create/."""
+
+    def test_bulk_create_multiple_shifts(
+        self, authenticated_client, sample_person_resource
+    ):
+        """Should create multiple shifts in one request."""
+        today = str(date.today())
+        tomorrow = str(date.today() + timedelta(days=1))
+
+        payload = {
+            "shifts": [
+                {
+                    "staff_resource": sample_person_resource.id,
+                    "shift_date": today,
+                    "start_time": "08:00",
+                    "end_time": "16:00",
+                    "shift_type": "DAY",
+                    "department": "Outpatient",
+                },
+                {
+                    "staff_resource": sample_person_resource.id,
+                    "shift_date": tomorrow,
+                    "start_time": "08:00",
+                    "end_time": "16:00",
+                    "shift_type": "DAY",
+                    "department": "Outpatient",
+                },
+            ]
+        }
+
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/bulk-create/", payload, format="json"
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["created"] == 2
+        assert response.data["skipped"] == 0
+        assert response.data["errors"] == 0
+        assert len(response.data["created_ids"]) == 2
+
+    def test_bulk_create_skips_duplicates(
+        self, authenticated_client, sample_shift, sample_person_resource
+    ):
+        """Should skip shifts that already exist for same staff+date+type."""
+        today = str(date.today())
+        payload = {
+            "shifts": [
+                {
+                    "staff_resource": sample_person_resource.id,
+                    "shift_date": today,
+                    "start_time": "08:00",
+                    "end_time": "16:00",
+                    "shift_type": "DAY",
+                },
+            ]
+        }
+
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/bulk-create/", payload, format="json"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] == 0
+        assert response.data["skipped"] == 1
+
+    def test_bulk_create_reports_validation_errors(
+        self, authenticated_client, sample_person_resource
+    ):
+        """Should report validation errors per item."""
+        payload = {
+            "shifts": [
+                {
+                    "staff_resource": sample_person_resource.id,
+                    "shift_date": str(date.today()),
+                    "start_time": "16:00",
+                    "end_time": "08:00",  # Invalid: end before start
+                    "shift_type": "DAY",
+                },
+            ]
+        }
+
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/bulk-create/", payload, format="json"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] == 0
+        assert response.data["errors"] == 1
+
+    def test_bulk_create_empty_array_rejected(self, authenticated_client):
+        """Should reject empty shifts array."""
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/bulk-create/", {"shifts": []}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_create_requires_auth(self, api_client, sample_person_resource):
+        """Should reject unauthenticated requests."""
+        response = api_client.post(
+            "/api/scheduling/shifts/bulk-create/",
+            {"shifts": [{"staff_resource": sample_person_resource.id}]},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_bulk_create_max_200(self, authenticated_client, sample_person_resource):
+        """Should reject requests with more than 200 shifts."""
+        shifts = [
+            {
+                "staff_resource": sample_person_resource.id,
+                "shift_date": str(date.today() + timedelta(days=i % 365)),
+                "start_time": "08:00",
+                "end_time": "16:00",
+                "shift_type": "DAY",
+            }
+            for i in range(201)
+        ]
+
+        response = authenticated_client.post(
+            "/api/scheduling/shifts/bulk-create/", {"shifts": shifts}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
