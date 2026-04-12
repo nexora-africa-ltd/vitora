@@ -17,6 +17,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Printer,
+  Wand2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -303,6 +304,85 @@ export default function WeeklyRosterPage() {
   }
 
   // ==========================================================================
+  // Auto-Fill
+  // ==========================================================================
+
+  const [maxDaysPerStaff, setMaxDaysPerStaff] = useState(5);
+
+  const handleAutoFill = useCallback(() => {
+    if (paintType === 'CLEAR') {
+      toast.error('Select a shift type first — cannot auto-fill with the eraser');
+      return;
+    }
+
+    setDraft((prev) => {
+      const next = new Map(prev);
+      let filled = 0;
+
+      // Count coverage per day (to prioritise under-staffed days)
+      const dayCoverage: number[] = weekDates.map((date) => {
+        let count = 0;
+        for (const staff of staffList) {
+          const key = cellKey(staff.id, date);
+          const hasSaved = existingShifts.has(key);
+          const hasDraft = next.has(key) && next.get(key) !== null;
+          if (hasSaved || hasDraft) count++;
+        }
+        return count;
+      });
+
+      for (const staff of staffList) {
+        // Count how many shifts this staff already has (saved + drafted)
+        let staffShiftCount = 0;
+        const emptyDayIndices: number[] = [];
+
+        for (let i = 0; i < weekDates.length; i++) {
+          const key = cellKey(staff.id, weekDates[i]!);
+          const hasSaved = existingShifts.has(key);
+          const draftVal = next.get(key);
+          const hasDraft = next.has(key) && draftVal !== null;
+          const markedForRemoval = next.has(key) && draftVal === null;
+
+          if (markedForRemoval) {
+            emptyDayIndices.push(i);
+          } else if (hasSaved || hasDraft) {
+            staffShiftCount++;
+          } else {
+            emptyDayIndices.push(i);
+          }
+        }
+
+        const slotsToFill = Math.max(0, maxDaysPerStaff - staffShiftCount);
+        if (slotsToFill === 0 || emptyDayIndices.length === 0) continue;
+
+        // Sort empty days by ascending coverage so under-staffed days fill first
+        const sorted = [...emptyDayIndices].sort(
+          (a, b) => (dayCoverage[a] ?? 0) - (dayCoverage[b] ?? 0)
+        );
+
+        const toFill = sorted.slice(0, slotsToFill);
+        for (const dayIdx of toFill) {
+          const key = cellKey(staff.id, weekDates[dayIdx]!);
+          next.set(key, paintType);
+          // Update coverage count for subsequent staff
+          dayCoverage[dayIdx] = (dayCoverage[dayIdx] ?? 0) + 1;
+          filled++;
+        }
+      }
+
+      if (filled === 0) {
+        toast.info('All staff already have enough shifts — nothing to fill');
+        return prev;
+      }
+
+      toast.success(`Auto-filled ${filled} shift(s)`, {
+        description: `${paintType} shifts, max ${maxDaysPerStaff} days/staff`,
+      });
+      return next;
+    });
+  }, [paintType, staffList, weekDates, existingShifts, maxDaysPerStaff]);
+
+  // ==========================================================================
   // Print
   // ==========================================================================
 
@@ -340,6 +420,24 @@ export default function WeeklyRosterPage() {
           helpContent="Plan shifts for the week ahead. Click cells to assign shift types. Use the paint brush selector to choose a shift type, then click staff×day cells. Save when done."
           actions={
             <div className="flex items-center gap-2">
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleAutoFill}
+                      disabled={staffList.length === 0 || paintType === 'CLEAR'}
+                    >
+                      <Wand2 className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Auto-Fill</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Fill empty cells with the selected shift type (max {maxDaysPerStaff} days/staff)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Button
                 size="sm"
                 variant="outline"
@@ -453,6 +551,24 @@ export default function WeeklyRosterPage() {
                 ))}
               </SelectContent>
             </Select>
+
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Select value={String(maxDaysPerStaff)} onValueChange={(v) => setMaxDaysPerStaff(Number(v))}>
+                    <SelectTrigger className="w-[80px] h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[3, 4, 5, 6, 7].map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n} days</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TooltipTrigger>
+                <TooltipContent><p>Max days per staff for Auto-Fill</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
