@@ -375,6 +375,17 @@ export default function EditStaffPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Read-only facility & organization context */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Organization</Label>
+                <p className="text-sm font-medium">{staff?.organization_name || 'Not assigned'}</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Primary Facility</Label>
+                <p className="text-sm font-medium">{staff?.primary_facility_name || 'Not assigned'}</p>
+              </div>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="department">

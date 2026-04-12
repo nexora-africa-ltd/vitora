@@ -120,6 +120,8 @@ Important fields:
 
 - `user`
 - `employee_id`
+- `organization` (FK to Organization)
+- `primary_facility` (FK to Facility)
 - `title`
 - `middle_name`
 - `primary_role`
@@ -243,6 +245,7 @@ Important behavior:
 - `POST /api/staff/` uses a dedicated create serializer that creates both the `User` and the `StaffProfile`
 - `PATCH /api/staff/me/` is intentionally limited to a small set of self-editable fields
 - `DELETE /api/staff/{id}/` is implemented as a soft termination by setting `employment_status = TERMINATED` and `date_left`
+- `GET /api/staff/{id}/` returns `organization_name` and `primary_facility_name` as read-only computed fields (source: related Organization/Facility `name`)
 
 List filters exposed in the viewset:
 
@@ -332,6 +335,7 @@ Capabilities:
 - filter by department, role, and status
 - create staff profiles with user accounts
 - edit staff profile assignments and professional metadata
+- view organization and primary facility (read-only, on detail page)
 - terminate staff profiles
 - validate username availability
 - suggest usernames from names
