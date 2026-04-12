@@ -228,6 +228,16 @@ class Ward(TimeStampedModel):
         help_text="Percentage of beds reserved for emergency admissions (0-100)",
     )
 
+    # Scheduling Integration
+    scheduling_resource = models.OneToOneField(
+        "scheduling.Resource",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ward",
+        help_text="Linked scheduling resource (auto-created for PLACE type)",
+    )
+
     class Meta(TimeStampedModel.Meta):
         """Meta options for Ward model."""
 

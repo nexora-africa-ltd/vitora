@@ -87,6 +87,18 @@ export const resourcesApi = {
     return response.data;
   },
 
+  /** Auto-create PLACE resources from active clinics that don't have one yet. */
+  syncFromClinics: async (): Promise<{ created: number; message: string }> => {
+    const response = await apiClient.post(`${BASE_URL}/resources/sync-from-clinics/`);
+    return response.data;
+  },
+
+  /** Auto-create PLACE resources from active inpatient wards that don't have one yet. */
+  syncFromWards: async (): Promise<{ created: number; message: string }> => {
+    const response = await apiClient.post(`${BASE_URL}/resources/sync-from-wards/`);
+    return response.data;
+  },
+
   /** Get available slots for a resource on a specific date. */
   getAvailability: async (id: number, date: string, appointmentType?: string): Promise<ResourceAvailability> => {
     const params: Record<string, string> = { date };
