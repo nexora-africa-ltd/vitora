@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
+  Coffee,
+  Play,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -158,6 +160,18 @@ export function ShiftGreetingLine({ greetingLabel, nameWithTitle, attendanceStat
         </div>
       );
 
+    case 'ON_BREAK':
+      return (
+        <div className="space-y-0.5">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+            {greetingLabel}, {nameWithTitle} <span aria-hidden="true">☕</span>
+          </h2>
+          <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+            On break — remember to resume when you&apos;re back
+          </p>
+        </div>
+      );
+
     default:
       return (
         <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
@@ -198,6 +212,24 @@ export function TodayAssignmentCard() {
     onError: () => toast.error('Failed to clock out'),
   });
 
+  const takeBreakMutation = useMutation({
+    mutationFn: (shiftId: number) => attendanceApi.takeBreak(shiftId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
+      toast.success('Break started');
+    },
+    onError: () => toast.error('Failed to take break'),
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: (shiftId: number) => attendanceApi.resume(shiftId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
+      toast.success('Resumed shift');
+    },
+    onError: () => toast.error('Failed to resume shift'),
+  });
+
   if (isLoading) {
     return (
       <Card>
@@ -234,9 +266,9 @@ export function TodayAssignmentCard() {
 
   if (!shift) return null;
 
-  const progress = status === 'CLOCKED_IN' ? getShiftProgress(shift) : null;
+  const progress = (status === 'CLOCKED_IN' || status === 'ON_BREAK') ? getShiftProgress(shift) : null;
   const timeInfo = (status === 'UPCOMING' || status === 'SHOULD_CLOCK_IN') ? getTimeUntilShift(shift) : null;
-  const isPending = clockInMutation.isPending || clockOutMutation.isPending;
+  const isPending = clockInMutation.isPending || clockOutMutation.isPending || takeBreakMutation.isPending || resumeMutation.isPending;
 
   return (
     <Card className="relative overflow-hidden">
@@ -251,6 +283,8 @@ export function TodayAssignmentCard() {
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
               {status === 'CLOCKED_IN' ? (
                 <Timer className="h-5 w-5 text-primary" />
+              ) : status === 'ON_BREAK' ? (
+                <Coffee className="h-5 w-5 text-amber-600" />
               ) : status === 'COMPLETED' ? (
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
               ) : status === 'SHOULD_CLOCK_IN' ? (
@@ -293,6 +327,14 @@ export function TodayAssignmentCard() {
                   <Progress value={progress.percent} className="h-1.5" />
                 </div>
               )}
+              {status === 'ON_BREAK' && progress && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                    On break — {progress.remaining} remaining in shift
+                  </p>
+                  <Progress value={progress.percent} className="h-1.5" />
+                </div>
+              )}
               {status === 'COMPLETED' && (
                 <p className="text-xs text-green-600 dark:text-green-400 font-medium">
                   Shift completed
@@ -315,15 +357,47 @@ export function TodayAssignmentCard() {
               </Button>
             )}
             {status === 'CLOCKED_IN' && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => clockOutMutation.mutate(shift.id)}
-                disabled={isPending}
-              >
-                <LogOut className="h-4 w-4 mr-1" />
-                Clock Out
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => takeBreakMutation.mutate(shift.id)}
+                  disabled={isPending}
+                >
+                  <Coffee className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Break</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => clockOutMutation.mutate(shift.id)}
+                  disabled={isPending}
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Clock Out</span>
+                </Button>
+              </>
+            )}
+            {status === 'ON_BREAK' && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => resumeMutation.mutate(shift.id)}
+                  disabled={isPending}
+                >
+                  <Play className="h-4 w-4 mr-1" />
+                  Resume
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => clockOutMutation.mutate(shift.id)}
+                  disabled={isPending}
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Clock Out</span>
+                </Button>
+              </>
             )}
             <Button variant="ghost" size="sm" asChild>
               <Link href="/scheduling/my-shifts">

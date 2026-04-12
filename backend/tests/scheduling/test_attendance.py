@@ -204,6 +204,69 @@ class TestClockInOut:
 
 
 # =============================================================================
+# Break / Resume Tests
+# =============================================================================
+
+
+class TestBreakResume:
+    """Tests for POST /shifts/{id}/take-break/ and /shifts/{id}/resume/."""
+
+    def test_take_break(self, authenticated_client, my_shift_today):
+        """Should transition ACTIVE → ON_BREAK."""
+        my_shift_today.start_shift()
+        response = authenticated_client.post(
+            f"/api/scheduling/shifts/{my_shift_today.id}/take-break/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "ON_BREAK"
+        assert response.data["break_started_at"] is not None
+
+    def test_resume_from_break(self, authenticated_client, my_shift_today):
+        """Should transition ON_BREAK → ACTIVE."""
+        my_shift_today.start_shift()
+        my_shift_today.take_break()
+        response = authenticated_client.post(
+            f"/api/scheduling/shifts/{my_shift_today.id}/resume/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "ACTIVE"
+        assert response.data["break_started_at"] is None
+
+    def test_cannot_break_without_clocking_in(self, authenticated_client, my_shift_today):
+        """Cannot take break on a SCHEDULED shift."""
+        response = authenticated_client.post(
+            f"/api/scheduling/shifts/{my_shift_today.id}/take-break/"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_cannot_resume_active_shift(self, authenticated_client, my_shift_today):
+        """Cannot resume a shift that is already ACTIVE."""
+        my_shift_today.start_shift()
+        response = authenticated_client.post(
+            f"/api/scheduling/shifts/{my_shift_today.id}/resume/"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_on_break_shows_in_my_today(self, authenticated_client, my_shift_today):
+        """ON_BREAK shift should return ON_BREAK attendance status."""
+        my_shift_today.start_shift()
+        my_shift_today.take_break()
+        response = authenticated_client.get("/api/scheduling/shifts/my-today/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["attendance_status"] == "ON_BREAK"
+
+    def test_complete_from_break(self, authenticated_client, my_shift_today):
+        """Should be able to clock out directly from ON_BREAK."""
+        my_shift_today.start_shift()
+        my_shift_today.take_break()
+        response = authenticated_client.post(
+            f"/api/scheduling/shifts/{my_shift_today.id}/complete/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "COMPLETED"
+
+
+# =============================================================================
 # My History / Stats Tests
 # =============================================================================
 

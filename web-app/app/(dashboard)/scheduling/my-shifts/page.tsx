@@ -13,6 +13,8 @@ import {
   LogOut,
   Hourglass,
   BarChart3,
+  Coffee,
+  Play,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -58,6 +60,7 @@ function formatDate(dateStr: string): string {
 const STATUS_COLORS: Record<string, string> = {
   SCHEDULED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
   ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  ON_BREAK: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   COMPLETED: 'bg-slate-100 text-slate-700 dark:bg-slate-800/30 dark:text-slate-300',
   CANCELLED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
 };
@@ -167,14 +170,15 @@ export default function MyShiftsPage() {
     queryFn: () => attendanceApi.myHistory({ from_date: fromDate, to_date: toDate, page_size: 50 }),
   });
 
-  // Fetch upcoming shifts (next 7 days)
+  // Fetch upcoming shifts (next 7 days, excluding today)
   const { data: upcomingData, isLoading: upcomingLoading } = useQuery({
     queryKey: ['my-shift-upcoming'],
     queryFn: () => {
-      const today = new Date().toISOString().split('T')[0]!;
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
       const next7 = new Date();
       next7.setDate(next7.getDate() + 7);
-      return attendanceApi.myHistory({ from_date: today, to_date: next7.toISOString().split('T')[0]!, page_size: 20 });
+      return attendanceApi.myHistory({ from_date: tomorrow.toISOString().split('T')[0]!, to_date: next7.toISOString().split('T')[0]!, page_size: 20 });
     },
   });
 
@@ -199,12 +203,30 @@ export default function MyShiftsPage() {
     onError: () => toast.error('Failed to clock out'),
   });
 
+  const takeBreakMutation = useMutation({
+    mutationFn: (shiftId: number) => attendanceApi.takeBreak(shiftId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
+      toast.success('Break started');
+    },
+    onError: () => toast.error('Failed to take break'),
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: (shiftId: number) => attendanceApi.resume(shiftId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
+      toast.success('Resumed shift');
+    },
+    onError: () => toast.error('Failed to resume shift'),
+  });
+
   const todayShift = todayData?.shifts?.[0];
   const todayStatus = todayData?.attendance_status ?? 'NO_SHIFT';
   const stats = historyData?.stats ?? null;
   const history = historyData?.results ?? [];
   const upcoming = upcomingData?.results ?? [];
-  const isPending = clockInMutation.isPending || clockOutMutation.isPending;
+  const isPending = clockInMutation.isPending || clockOutMutation.isPending || takeBreakMutation.isPending || resumeMutation.isPending;
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
@@ -223,15 +245,49 @@ export default function MyShiftsPage() {
                 Clock In
               </Button>
             ) : todayShift && todayStatus === 'CLOCKED_IN' ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => clockOutMutation.mutate(todayShift.id)}
-                disabled={isPending}
-              >
-                <LogOut className="h-4 w-4 mr-1" />
-                Clock Out
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => takeBreakMutation.mutate(todayShift.id)}
+                  disabled={isPending}
+                >
+                  <Coffee className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Take Break</span>
+                  <span className="sm:hidden">Break</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => clockOutMutation.mutate(todayShift.id)}
+                  disabled={isPending}
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Clock Out</span>
+                  <span className="sm:hidden">Out</span>
+                </Button>
+              </div>
+            ) : todayShift && todayStatus === 'ON_BREAK' ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => resumeMutation.mutate(todayShift.id)}
+                  disabled={isPending}
+                >
+                  <Play className="h-4 w-4 mr-1" />
+                  Resume
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => clockOutMutation.mutate(todayShift.id)}
+                  disabled={isPending}
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Clock Out</span>
+                  <span className="sm:hidden">Out</span>
+                </Button>
+              </div>
             ) : null
           }
         />
