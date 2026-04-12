@@ -1,13 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Clock, Users, CheckCircle, Activity } from 'lucide-react';
+import {
+  Clock,
+  Users,
+  CheckCircle,
+  Activity,
+  CalendarDays,
+  BarChart3,
+  TrendingUp,
+} from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { StatsCard } from '@/components/dashboard/stats-card';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useSchedulingSocket } from '@/lib/hooks/use-websocket';
@@ -37,90 +47,71 @@ export default function StaffWorkloadPage() {
   const staffList = workload || [];
 
   // Summary stats
-  const totalStaff = staffList.length;
-  const totalShifts = staffList.reduce((sum, s) => sum + s.shift_count, 0);
-  const totalHours = staffList.reduce((sum, s) => sum + s.total_hours, 0);
-  const activeNow = staffList.reduce((sum, s) => sum + s.active_shifts, 0);
+  const summary = useMemo(() => {
+    const totalStaff = staffList.length;
+    const totalShifts = staffList.reduce((sum, s) => sum + s.shift_count, 0);
+    const totalHours = staffList.reduce((sum, s) => sum + s.total_hours, 0);
+    const activeNow = staffList.reduce((sum, s) => sum + s.active_shifts, 0);
+    const totalAppointments = staffList.reduce((sum, s) => sum + s.appointment_count, 0);
+    const avgHoursPerStaff = totalStaff > 0 ? totalHours / totalStaff : 0;
+    const maxHours = Math.max(...staffList.map(s => s.total_hours), 1);
+    return { totalStaff, totalShifts, totalHours, activeNow, totalAppointments, avgHoursPerStaff, maxHours };
+  }, [staffList]);
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Staff Workload"
-          helpContent="View staff workload aggregations including shift counts, total hours, and appointment volumes for a selected date range."
+          helpContent="Analyse staff workload distribution across a date range. Track shift counts, hours worked, and appointment volumes to identify overworked or underutilised staff."
         />
 
         {/* Date Range */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <CalendarDays className="h-4 w-4 text-muted-foreground hidden sm:block" />
           <Input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="w-full sm:w-[160px]"
+            className="w-full sm:w-[160px] h-8 text-xs"
           />
-          <span className="hidden sm:flex items-center text-sm text-muted-foreground">to</span>
+          <span className="hidden sm:flex items-center text-xs text-muted-foreground">to</span>
           <Input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="w-full sm:w-[160px]"
+            className="w-full sm:w-[160px] h-8 text-xs"
           />
         </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="relative overflow-hidden">
-            <div
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-              aria-hidden="true"
-            />
-            <CardContent className="relative pt-4 pb-3 px-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Users className="h-4 w-4" />
-                <span className="text-xs font-medium">Staff</span>
-              </div>
-              <p className="text-2xl font-bold">{totalStaff}</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden">
-            <div
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-              aria-hidden="true"
-            />
-            <CardContent className="relative pt-4 pb-3 px-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <CheckCircle className="h-4 w-4" />
-                <span className="text-xs font-medium">Shifts</span>
-              </div>
-              <p className="text-2xl font-bold">{totalShifts}</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden">
-            <div
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-              aria-hidden="true"
-            />
-            <CardContent className="relative pt-4 pb-3 px-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Clock className="h-4 w-4" />
-                <span className="text-xs font-medium">Total Hours</span>
-              </div>
-              <p className="text-2xl font-bold">{totalHours.toFixed(1)}</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden">
-            <div
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-              aria-hidden="true"
-            />
-            <CardContent className="relative pt-4 pb-3 px-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Activity className="h-4 w-4" />
-                <span className="text-xs font-medium">Active Now</span>
-              </div>
-              <p className="text-2xl font-bold">{activeNow}</p>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Staff Members"
+            value={summary.totalStaff}
+            icon={Users}
+            meta="With scheduling resources"
+          />
+          <StatsCard
+            title="Total Shifts"
+            value={summary.totalShifts}
+            icon={CheckCircle}
+            meta={`${summary.totalHours.toFixed(0)} hours total`}
+          />
+          <StatsCard
+            title="Avg Hours / Staff"
+            value={summary.avgHoursPerStaff.toFixed(1)}
+            icon={BarChart3}
+            variant={summary.avgHoursPerStaff > 50 ? 'warning' : 'default'}
+            meta="In selected period"
+          />
+          <StatsCard
+            title="Active Now"
+            value={summary.activeNow}
+            icon={Activity}
+            variant={summary.activeNow > 0 ? 'success' : 'default'}
+            meta="Currently on shift"
+          />
         </div>
 
         {/* Workload Table */}
@@ -137,9 +128,16 @@ export default function StaffWorkloadPage() {
               header: 'Staff Member',
               sortable: true,
               cell: (s) => (
-                <div>
-                  <span className="font-medium">{s.resource_name}</span>
-                  <span className="text-xs text-muted-foreground ml-2">{s.resource_code}</span>
+                <div className="flex items-center gap-2">
+                  <div className="shrink-0 rounded-full bg-primary/10 border border-primary/20 w-7 h-7 flex items-center justify-center">
+                    <span className="text-xs font-medium text-primary">
+                      {s.resource_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{s.resource_name}</p>
+                    <p className="text-xs text-muted-foreground">{s.resource_code}</p>
+                  </div>
                 </div>
               ),
             },
@@ -148,14 +146,24 @@ export default function StaffWorkloadPage() {
               header: 'Shifts',
               sortable: true,
               sortType: 'number',
-              cell: (s) => s.shift_count,
+              cell: (s) => (
+                <span className="font-medium tabular-nums">{s.shift_count}</span>
+              ),
             },
             {
               key: 'total_hours',
               header: 'Hours',
               sortable: true,
               sortType: 'number',
-              cell: (s) => `${s.total_hours.toFixed(1)}h`,
+              cell: (s) => (
+                <div className="flex items-center gap-2 min-w-[120px]">
+                  <Progress
+                    value={summary.maxHours > 0 ? (s.total_hours / summary.maxHours) * 100 : 0}
+                    className="h-1.5 flex-1"
+                  />
+                  <span className="text-sm font-medium tabular-nums w-12 text-right">{s.total_hours.toFixed(1)}h</span>
+                </div>
+              ),
             },
             {
               key: 'appointment_count',
@@ -163,19 +171,22 @@ export default function StaffWorkloadPage() {
               sortable: true,
               sortType: 'number',
               hideOnMobile: true,
-              cell: (s) => s.appointment_count,
+              cell: (s) => (
+                <span className="tabular-nums">{s.appointment_count}</span>
+              ),
             },
             {
               key: 'active_shifts',
-              header: 'Active',
+              header: 'Status',
               sortable: true,
               sortType: 'number',
-              hideOnMobile: true,
               cell: (s) =>
                 s.active_shifts > 0 ? (
-                  <span className="text-green-600 dark:text-green-400 font-medium">{s.active_shifts}</span>
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 shrink-0 w-fit" variant="secondary">
+                    On Duty ({s.active_shifts})
+                  </Badge>
                 ) : (
-                  <span className="text-muted-foreground">0</span>
+                  <span className="text-sm text-muted-foreground">Off duty</span>
                 ),
             },
             {
@@ -184,34 +195,54 @@ export default function StaffWorkloadPage() {
               sortable: true,
               sortType: 'number',
               hideOnMobile: true,
-              cell: (s) => s.completed_shifts,
+              cell: (s) => (
+                <span className="tabular-nums text-muted-foreground">{s.completed_shifts}</span>
+              ),
             },
           ]}
           mobileCard={(s: StaffWorkload) => (
-            <div className="p-3 space-y-2">
+            <div className="p-3 space-y-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-medium text-sm">{s.resource_name}</span>
-                  <span className="text-xs text-muted-foreground ml-2">{s.resource_code}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="shrink-0 rounded-full bg-primary/10 border border-primary/20 w-8 h-8 flex items-center justify-center">
+                    <span className="text-xs font-bold text-primary">
+                      {s.resource_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{s.resource_name}</p>
+                    <p className="text-xs text-muted-foreground">{s.resource_code}</p>
+                  </div>
                 </div>
-                {s.active_shifts > 0 && (
-                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                    {s.active_shifts} active
-                  </span>
+                {s.active_shifts > 0 ? (
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs shrink-0" variant="secondary">
+                    On Duty
+                  </Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Off duty</span>
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
+              {/* Hours bar */}
+              <div className="flex items-center gap-2">
+                <Progress
+                  value={summary.maxHours > 0 ? (s.total_hours / summary.maxHours) * 100 : 0}
+                  className="h-2 flex-1"
+                />
+                <span className="text-xs font-medium tabular-nums">{s.total_hours.toFixed(1)}h</span>
+              </div>
+              {/* Stats row */}
+              <div className="grid grid-cols-3 gap-2 text-center pt-1">
                 <div>
-                  <p className="text-lg font-bold">{s.shift_count}</p>
-                  <p className="text-xs text-muted-foreground">Shifts</p>
+                  <p className="text-lg font-bold tabular-nums">{s.shift_count}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Shifts</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold">{s.total_hours.toFixed(1)}</p>
-                  <p className="text-xs text-muted-foreground">Hours</p>
+                  <p className="text-lg font-bold tabular-nums">{s.appointment_count}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Appts</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold">{s.appointment_count}</p>
-                  <p className="text-xs text-muted-foreground">Appts</p>
+                  <p className="text-lg font-bold tabular-nums">{s.completed_shifts}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Done</p>
                 </div>
               </div>
             </div>
