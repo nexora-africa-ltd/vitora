@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -8,16 +8,23 @@ import {
   CalendarDays,
   Trash2,
   Coffee,
+  ChevronDown,
+  ChevronRight,
+  Users,
+  Settings,
+  Calendar,
+  Repeat,
+  Ban,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
-import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -32,9 +39,22 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
-import { useToast } from '@/lib/hooks/use-toast';
+import { toast } from 'sonner';
 import { schedulesApi, resourcesApi } from '@/lib/api/scheduling';
 import type {
   ScheduleType,
@@ -60,14 +80,285 @@ const typeColors: Record<ScheduleType, string> = {
   BLOCK: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
+const typeIcons: Record<ScheduleType, typeof Repeat> = {
+  RECURRING: Repeat,
+  ONE_TIME: Calendar,
+  BLOCK: Ban,
+};
+
+// =============================================================================
+// Collapsible Resource Group
+// =============================================================================
+
+function ResourceGroup({
+  resourceName,
+  schedules,
+  defaultOpen,
+  onAddBreak,
+  onDelete,
+  onRowClick,
+  selectedId,
+}: {
+  resourceName: string;
+  schedules: Schedule[];
+  defaultOpen: boolean;
+  onAddBreak: (id: number) => void;
+  onDelete: (id: number) => void;
+  onRowClick: (s: Schedule) => void;
+  selectedId: number | null;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const recurringCount = schedules.filter(s => s.schedule_type === 'RECURRING').length;
+  const oneTimeCount = schedules.filter(s => s.schedule_type === 'ONE_TIME').length;
+  const blockCount = schedules.filter(s => s.schedule_type === 'BLOCK').length;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                {open ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
+                <CardTitle className="text-sm font-semibold truncate">{resourceName}</CardTitle>
+                <Badge variant="secondary" className="text-xs shrink-0">{schedules.length}</Badge>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {recurringCount > 0 && (
+                  <Badge className={`${typeColors.RECURRING} text-xs`} variant="secondary">
+                    {recurringCount} weekly
+                  </Badge>
+                )}
+                {oneTimeCount > 0 && (
+                  <Badge className={`${typeColors.ONE_TIME} text-xs`} variant="secondary">
+                    {oneTimeCount} one-time
+                  </Badge>
+                )}
+                {blockCount > 0 && (
+                  <Badge className={`${typeColors.BLOCK} text-xs`} variant="secondary">
+                    {blockCount} block
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="pt-0 px-0 sm:px-4 pb-2">
+            {/* Desktop table */}
+            <div className="hidden sm:block">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">Type</TableHead>
+                      <TableHead>Day / Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Slot</TableHead>
+                      <TableHead>Breaks</TableHead>
+                      <TableHead>Active</TableHead>
+                      <TableHead className="w-[60px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {schedules.map((s) => {
+                      const Icon = typeIcons[s.schedule_type];
+                      return (
+                        <TableRow
+                          key={s.id}
+                          className={`cursor-pointer transition-colors ${
+                            selectedId === s.id ? 'bg-primary/5' : 'hover:bg-muted/50'
+                          }`}
+                          onClick={() => onRowClick(s)}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Badge className={`${typeColors[s.schedule_type]} text-xs`} variant="secondary">
+                                {s.schedule_type === 'RECURRING' ? 'Weekly' : s.schedule_type === 'ONE_TIME' ? 'Once' : 'Block'}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {s.schedule_type === 'RECURRING'
+                              ? s.day_of_week_display || DAY_LABELS[s.day_of_week!]
+                              : s.specific_date || '—'}
+                          </TableCell>
+                          <TableCell>{s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {s.slot_duration_minutes}min{s.buffer_minutes ? ` +${s.buffer_minutes}buf` : ''}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <span>{s.breaks.length}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={(e) => { e.stopPropagation(); onAddBreak(s.id); }}
+                                title="Add break"
+                              >
+                                <Coffee className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={s.is_active ? 'default' : 'secondary'} className="text-xs">
+                              {s.is_active ? 'Yes' : 'No'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-destructive"
+                              onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}
+                              title="Delete schedule"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="sm:hidden space-y-2 px-3">
+              {schedules.map((s) => {
+                const Icon = typeIcons[s.schedule_type];
+                return (
+                  <div
+                    key={s.id}
+                    className={`rounded-lg border p-3 cursor-pointer transition-colors ${
+                      selectedId === s.id ? 'border-primary/40 bg-primary/5' : 'hover:bg-muted/50'
+                    }`}
+                    onClick={() => onRowClick(s)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <Badge className={`${typeColors[s.schedule_type]} text-xs`} variant="secondary">
+                            {s.schedule_type === 'RECURRING' ? 'Weekly' : s.schedule_type === 'ONE_TIME' ? 'Once' : 'Block'}
+                          </Badge>
+                          <Badge variant={s.is_active ? 'default' : 'secondary'} className="text-xs">
+                            {s.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm font-medium">
+                          {s.schedule_type === 'RECURRING'
+                            ? s.day_of_week_display || DAY_LABELS[s.day_of_week!]
+                            : s.specific_date}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)} · {s.slot_duration_minutes}min slots
+                          {s.breaks.length > 0 && ` · ${s.breaks.length} break${s.breaks.length > 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => { e.stopPropagation(); onAddBreak(s.id); }}
+                        >
+                          <Coffee className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-destructive"
+                          onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Inline detail panel when a schedule is selected */}
+            {selectedId && schedules.find(s => s.id === selectedId) && (() => {
+              const s = schedules.find(s => s.id === selectedId)!;
+              return (
+                <div className="mx-3 sm:mx-0 mt-3 rounded-lg border bg-muted/30 p-3 sm:p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold">Schedule Details</p>
+                    <Badge variant={s.is_active ? 'default' : 'secondary'} className="text-xs">
+                      {s.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Time</p>
+                      <p className="font-medium">{s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Slot Duration</p>
+                      <p className="font-medium">{s.slot_duration_minutes} min</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Buffer</p>
+                      <p className="font-medium">{s.buffer_minutes} min</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Max Appointments</p>
+                      <p className="font-medium">{s.max_appointments ?? '∞'}</p>
+                    </div>
+                  </div>
+                  {s.breaks.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Breaks</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {s.breaks.map((b, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {b.start_time.slice(0, 5)}–{b.end_time.slice(0, 5)}
+                            {b.reason && ` (${b.reason})`}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {s.notes && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Notes</p>
+                      <p className="text-sm">{s.notes}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+}
+
+// =============================================================================
+// Main Page
+// =============================================================================
+
 export default function SchedulesPage() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { refresh, isRefreshing } = usePageRefresh();
 
   const [resourceFilter, setResourceFilter] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
   const [showCreate, setShowCreate] = useState(false);
   const [showBreakDialog, setShowBreakDialog] = useState<number | null>(null);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
 
   // Form state
   const [formResource, setFormResource] = useState('');
@@ -95,30 +386,47 @@ export default function SchedulesPage() {
 
   // Schedules
   const { data: scheduleData, isLoading } = useQuery({
-    queryKey: ['scheduling-schedules', resourceFilter],
+    queryKey: ['scheduling-schedules', resourceFilter, page],
     queryFn: () => schedulesApi.list({
       resource: resourceFilter ? Number(resourceFilter) : undefined,
+      page,
+      page_size: PAGE_SIZE,
     }),
   });
   const schedules = scheduleData?.results || [];
+  const totalCount = scheduleData?.count || 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  // Group schedules by resource
+  const groupedSchedules = useMemo(() => {
+    const groups: Record<string, Schedule[]> = {};
+    for (const s of schedules) {
+      const key = s.resource_name || `Resource ${s.resource}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    }
+    // Sort groups alphabetically
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [schedules]);
 
   const createMutation = useMutation({
     mutationFn: (d: ScheduleCreateData) => schedulesApi.create(d),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scheduling-schedules'] });
-      toast({ title: 'Schedule Created' });
+      toast.success('Schedule created');
       closeCreate();
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to create schedule.', variant: 'destructive' }),
+    onError: () => toast.error('Failed to create schedule'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => schedulesApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scheduling-schedules'] });
-      toast({ title: 'Schedule Deleted' });
+      toast.success('Schedule deleted');
+      if (selectedScheduleId) setSelectedScheduleId(null);
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to delete.', variant: 'destructive' }),
+    onError: () => toast.error('Failed to delete schedule'),
   });
 
   const addBreakMutation = useMutation({
@@ -126,10 +434,10 @@ export default function SchedulesPage() {
       schedulesApi.addBreak(scheduleId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scheduling-schedules'] });
-      toast({ title: 'Break Added' });
+      toast.success('Break added');
       setShowBreakDialog(null);
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to add break.', variant: 'destructive' }),
+    onError: () => toast.error('Failed to add break'),
   });
 
   function closeCreate() {
@@ -175,7 +483,7 @@ export default function SchedulesPage() {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Schedules"
-          helpContent="Define when resources are available for booking. Add recurring weekly schedules or one-time availability. Breaks exclude time blocks from scheduling."
+          helpContent="Define when resources are available for booking. Add recurring weekly schedules or one-time availability. Breaks exclude time blocks from scheduling. Schedules are grouped by resource — click a row to see details."
           actions={
             <Button size="sm" onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4 mr-1" />
@@ -185,11 +493,14 @@ export default function SchedulesPage() {
           }
         />
 
-        {/* Filter */}
-        <div className="flex flex-wrap gap-2">
+        {/* Summary + Filter */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            {totalCount} schedule{totalCount !== 1 ? 's' : ''} across {groupedSchedules.length} resource{groupedSchedules.length !== 1 ? 's' : ''}
+          </p>
           <Select
             value={resourceFilter || '_all'}
-            onValueChange={(v) => setResourceFilter(v === '_all' ? '' : v)}
+            onValueChange={(v) => { setResourceFilter(v === '_all' ? '' : v); setPage(1); }}
           >
             <SelectTrigger className="w-full sm:w-[220px]">
               <SelectValue placeholder="Filter by resource" />
@@ -205,130 +516,58 @@ export default function SchedulesPage() {
           </Select>
         </div>
 
-        {/* Table */}
-        <ResponsiveTable
-          data={schedules}
-          keyExtractor={(s) => s.id}
-          isLoading={isLoading}
-          emptyMessage="No schedules defined"
-          columns={[
-            {
-              key: 'resource_name',
-              header: 'Resource',
-              sortable: true,
-              cell: (s) => <span className="font-medium">{s.resource_name}</span>,
-            },
-            {
-              key: 'schedule_type',
-              header: 'Type',
-              sortable: true,
-              cell: (s) => (
-                <Badge className={`${typeColors[s.schedule_type]} w-fit`}>
-                  {s.schedule_type === 'RECURRING' ? 'Weekly' : s.schedule_type === 'ONE_TIME' ? 'One-Time' : 'Block'}
-                </Badge>
-              ),
-            },
-            {
-              key: 'day_of_week',
-              header: 'Day / Date',
-              sortable: true,
-              cell: (s) =>
-                s.schedule_type === 'RECURRING'
-                  ? s.day_of_week_display || DAY_LABELS[s.day_of_week!]
-                  : s.specific_date || '—',
-            },
-            {
-              key: 'start_time',
-              header: 'Time',
-              cell: (s) => `${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)}`,
-            },
-            {
-              key: 'slot_duration_minutes',
-              header: 'Slot',
-              hideOnMobile: true,
-              cell: (s) => `${s.slot_duration_minutes}min${s.buffer_minutes ? ` +${s.buffer_minutes}buf` : ''}`,
-            },
-            {
-              key: 'breaks',
-              header: 'Breaks',
-              hideOnMobile: true,
-              cell: (s) => (
-                <div className="flex items-center gap-1">
-                  <span className="text-sm">{s.breaks.length}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={(e) => { e.stopPropagation(); setShowBreakDialog(s.id); }}
-                    title="Add break"
-                  >
-                    <Coffee className="h-3 w-3" />
-                  </Button>
-                </div>
-              ),
-            },
-            {
-              key: 'is_active',
-              header: 'Active',
-              cell: (s) => (
-                <Badge variant={s.is_active ? 'default' : 'secondary'}>
-                  {s.is_active ? 'Yes' : 'No'}
-                </Badge>
-              ),
-            },
-            {
-              key: 'actions',
-              header: '',
-              cell: (s) => (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-destructive"
-                  onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(s.id); }}
-                  title="Delete schedule"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              ),
-            },
-          ]}
-          mobileCard={(s: Schedule) => (
-            <Card className="p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm">{s.resource_name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {s.schedule_type === 'RECURRING'
-                      ? s.day_of_week_display || DAY_LABELS[s.day_of_week!]
-                      : s.specific_date}
-                    {' · '}
-                    {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
-                    {' · '}
-                    {s.slot_duration_minutes}min slots
-                  </p>
-                  {s.breaks.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {s.breaks.length} break{s.breaks.length > 1 ? 's' : ''}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-1 items-center shrink-0">
-                  <Badge className={`${typeColors[s.schedule_type]} w-fit text-xs`}>
-                    {s.schedule_type === 'RECURRING' ? 'Weekly' : s.schedule_type === 'ONE_TIME' ? 'Once' : 'Block'}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => setShowBreakDialog(s.id)}
-                  >
-                    <Coffee className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          )}
-        />
+        {/* Collapsible Resource Groups */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }, (_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <Skeleton className="h-12 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : groupedSchedules.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="py-12 text-center">
+              <Settings className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-50" />
+              <p className="text-sm font-medium text-muted-foreground">No schedules defined</p>
+              <p className="text-xs text-muted-foreground mt-1">Add schedules to define when resources are available.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {groupedSchedules.map(([resourceName, groupSchedules], index) => (
+              <ResourceGroup
+                key={resourceName}
+                resourceName={resourceName}
+                schedules={groupSchedules}
+                defaultOpen={index < 3}
+                onAddBreak={setShowBreakDialog}
+                onDelete={(id) => deleteMutation.mutate(id)}
+                onRowClick={(s) => setSelectedScheduleId(selectedScheduleId === s.id ? null : s.id)}
+                selectedId={selectedScheduleId}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Create Schedule Dialog */}

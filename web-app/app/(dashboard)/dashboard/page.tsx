@@ -45,6 +45,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { getClinicianHonorific } from '@/lib/utils/clinician-role';
+import { ShiftGreetingLine, TodayAssignmentCard, useMyTodayShift } from '@/components/dashboard/shift-assignment';
 
 type DashboardStatCard = {
   title: string;
@@ -181,6 +182,7 @@ export default function DashboardPage() {
   const displayName = getDisplayName(user?.first_name, user?.username);
   const clinicianHonorific = getClinicianHonorific(user?.role, staffProfile?.primary_role_name);
   const nameWithTitle = clinicianHonorific ? `${clinicianHonorific} ${displayName}` : displayName;
+  const { attendanceStatus, primaryShift } = useMyTodayShift();
   const roleLabel = formatRoleLabel(user?.role);
   const currentDateLabel = new Intl.DateTimeFormat('en-KE', {
     weekday: 'long',
@@ -431,10 +433,13 @@ export default function DashboardPage() {
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                   {currentDateLabel}
                 </p>
-                <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-                  {greetingLabel}, {nameWithTitle} <span aria-hidden="true">👋</span>
-                </h2>
-                {roleLabel && (
+                <ShiftGreetingLine
+                  greetingLabel={greetingLabel}
+                  nameWithTitle={nameWithTitle}
+                  attendanceStatus={attendanceStatus}
+                  shift={primaryShift}
+                />
+                {attendanceStatus === 'NO_SHIFT' && roleLabel && (
                   <p className="text-sm text-muted-foreground">{roleLabel}</p>
                 )}
               </div>
@@ -467,6 +472,9 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Today's Assignment / Clock-In Card */}
+        <TodayAssignmentCard />
 
         {isError && (
           <Card className="border-warning/40 bg-warning/5">

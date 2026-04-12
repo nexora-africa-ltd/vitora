@@ -15,6 +15,7 @@ import {
   Clock,
   Moon,
   ShieldAlert,
+  Timer,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -336,6 +337,58 @@ export default function RosterSettingsPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Punctuality Enforcement */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Timer className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base">Punctuality Enforcement</CardTitle>
+                <HelpPopover content="When enabled, staff cannot clock in if they are more than the specified number of minutes late. Users with manage_schedules permission (supervisors/admins) can still override this restriction." />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 w-fit cursor-default">
+                        <Switch
+                          checked={currentSettings.enforce_punctuality ?? false}
+                          onCheckedChange={(v) => updateSetting('enforce_punctuality', v)}
+                        />
+                        <span className="text-sm font-medium">
+                          {currentSettings.enforce_punctuality ? 'Punctuality enforced' : 'Punctuality not enforced'}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Switch to {currentSettings.enforce_punctuality ? 'disable' : 'enable'} late clock-in blocking</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {currentSettings.enforce_punctuality && (
+                  <div className="space-y-1.5">
+                    <Label>Late cutoff (minutes)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={120}
+                      step={5}
+                      value={currentSettings.late_cutoff_minutes ?? 30}
+                      onChange={(e) => updateSetting('late_cutoff_minutes', Number(e.target.value))}
+                      className="h-9 w-[150px]"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Staff will be blocked from clocking in after {currentSettings.late_cutoff_minutes ?? 30} minutes past their shift start.
+                      Supervisors and admins can override this.
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

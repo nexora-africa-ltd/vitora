@@ -20,6 +20,8 @@ import {
   SchedulingSettingsSchema,
   StaffConstraintSchema,
   PaginatedStaffConstraintSchema,
+  MyTodayResponseSchema,
+  MyHistoryResponseSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -49,6 +51,9 @@ import type {
   SchedulingSettings,
   StaffConstraint,
   StaffConstraintCreateData,
+  MyTodayResponse,
+  MyHistoryResponse,
+  MyHistoryParams,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -417,5 +422,43 @@ export const staffConstraintsApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`${BASE_URL}/constraints/${id}/`);
+  },
+};
+
+// =============================================================================
+// Attendance / Clock-In API
+// =============================================================================
+
+export const attendanceApi = {
+  /** Get the current user's shift(s) for today with attendance status. */
+  myToday: async (): Promise<MyTodayResponse> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/my-today/`);
+    return parseResponse(MyTodayResponseSchema, response.data, {
+      context: 'attendanceApi.myToday',
+    });
+  },
+
+  /** Get the current user's shift history with stats. */
+  myHistory: async (params?: MyHistoryParams): Promise<MyHistoryResponse> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/my-history/`, { params });
+    return parseResponse(MyHistoryResponseSchema, response.data, {
+      context: 'attendanceApi.myHistory',
+    });
+  },
+
+  /** Clock in to a shift. */
+  clockIn: async (shiftId: number): Promise<Shift> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/${shiftId}/start/`);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'attendanceApi.clockIn',
+    });
+  },
+
+  /** Clock out of a shift. */
+  clockOut: async (shiftId: number): Promise<Shift> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/${shiftId}/complete/`);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'attendanceApi.clockOut',
+    });
   },
 };

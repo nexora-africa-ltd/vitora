@@ -242,6 +242,8 @@ export const SchedulingSettingsSchema = z.object({
   active_shift_types: z.array(z.string()),
   overtime_threshold_hours: z.coerce.number(),
   enforce_constraints: z.boolean(),
+  enforce_punctuality: z.boolean(),
+  late_cutoff_minutes: z.number(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -267,3 +269,29 @@ export const StaffConstraintSchema = z.object({
 });
 
 export const PaginatedStaffConstraintSchema = createPaginatedSchema(StaffConstraintSchema);
+
+// =============================================================================
+// Attendance / Clock-In
+// =============================================================================
+
+export const AttendanceStatusSchema = z.enum(['NO_SHIFT', 'UPCOMING', 'SHOULD_CLOCK_IN', 'CLOCKED_IN', 'COMPLETED']);
+
+export const MyTodayResponseSchema = z.object({
+  shifts: z.array(ShiftSchema),
+  attendance_status: AttendanceStatusSchema,
+});
+
+export const AttendanceStatsSchema = z.object({
+  total_shifts: z.number(),
+  total_hours: z.number(),
+  on_time_count: z.number(),
+  late_count: z.number(),
+  on_time_rate: z.number(),
+  overtime_hours: z.number(),
+});
+
+export const MyHistoryResponseSchema = z.object({
+  results: z.array(ShiftListItemSchema),
+  count: z.number(),
+  stats: AttendanceStatsSchema,
+});

@@ -861,6 +861,15 @@ class ShiftSerializer(serializers.ModelSerializer):
             return f"{obj.cancelled_by.first_name} {obj.cancelled_by.last_name}"
         return None
 
+    def to_representation(self, instance):
+        """Fall back department to resource's staff profile department."""
+        data = super().to_representation(instance)
+        if not data.get("department"):
+            resource = instance.staff_resource
+            if resource and resource.staff_profile and resource.staff_profile.primary_department:
+                data["department"] = resource.staff_profile.primary_department.name
+        return data
+
 
 class ShiftCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating shifts."""
@@ -910,6 +919,7 @@ class ShiftListSerializer(serializers.ModelSerializer):
     shift_type_display = serializers.CharField(source="get_shift_type_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     duration_hours = serializers.FloatField(read_only=True)
+    department = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ShiftListSerializer."""
@@ -931,6 +941,15 @@ class ShiftListSerializer(serializers.ModelSerializer):
             "department",
             "duration_hours",
         ]
+
+    def get_department(self, obj) -> str:
+        """Return shift department, falling back to resource's staff profile department."""
+        if obj.department:
+            return obj.department
+        resource = obj.staff_resource
+        if resource and resource.staff_profile and resource.staff_profile.primary_department:
+            return resource.staff_profile.primary_department.name
+        return ""
 
 
 class ShiftCancelSerializer(serializers.Serializer):
@@ -976,6 +995,8 @@ class SchedulingSettingsSerializer(serializers.ModelSerializer):
             "active_shift_types",
             "overtime_threshold_hours",
             "enforce_constraints",
+            "enforce_punctuality",
+            "late_cutoff_minutes",
             "created_at",
             "updated_at",
         ]
