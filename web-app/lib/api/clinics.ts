@@ -27,6 +27,8 @@ import {
   ClinicVisitArrayResponseSchema,
   ClinicStaffArrayResponseSchema,
   ClinicScheduleArrayResponseSchema,
+  ClinicRoomSchema,
+  ClinicRoomArrayResponseSchema,
 } from '@/lib/schemas/clinic.schema';
 import type {
   Clinic,
@@ -46,6 +48,8 @@ import type {
   ClinicEnrollmentListParams,
   ClinicQueueStats,
   ClinicDashboardStats,
+  ClinicRoom,
+  ClinicRoomCreateData,
 } from '@/lib/types/clinic';
 import type { ProcedureOrderListItem } from '@/lib/types/procedure';
 import type { PaginatedResponse } from '@/lib/types';
@@ -403,6 +407,47 @@ export const clinicsApi = {
   getDefaulters: async (): Promise<PaginatedResponse<ClinicEnrollment>> => {
     const response = await apiClient.get<PaginatedResponse<ClinicEnrollment>>('/api/clinic-enrollments/defaulters/');
     return parseResponse(PaginatedClinicEnrollmentSchema, response.data, { context: 'clinicsApi.getDefaulters' });
+  },
+
+  // -------------------------------------------------------------------------
+  // My Clinic Assignments
+  // -------------------------------------------------------------------------
+
+  /**
+   * Get clinics the current user is assigned to
+   */
+  myAssignments: async (): Promise<ClinicStaff[]> => {
+    const response = await apiClient.get<{ results: ClinicStaff[] }>('/api/clinics/my-assignments/');
+    const validated = parseResponse(ClinicStaffArrayResponseSchema, response.data, { context: 'clinicsApi.myAssignments' });
+    return validated.results;
+  },
+
+  // -------------------------------------------------------------------------
+  // Clinic Rooms
+  // -------------------------------------------------------------------------
+
+  /**
+   * List rooms for a clinic
+   */
+  listRooms: async (clinicId: number): Promise<ClinicRoom[]> => {
+    const response = await apiClient.get<{ results: ClinicRoom[] }>(`/api/clinics/${clinicId}/rooms/`);
+    const validated = parseResponse(ClinicRoomArrayResponseSchema, response.data, { context: 'clinicsApi.listRooms' });
+    return validated.results;
+  },
+
+  /**
+   * Add room to clinic
+   */
+  addRoom: async (clinicId: number, data: ClinicRoomCreateData): Promise<ClinicRoom> => {
+    const response = await apiClient.post<ClinicRoom>(`/api/clinics/${clinicId}/rooms/`, data);
+    return parseResponse(ClinicRoomSchema, response.data, { context: 'clinicsApi.addRoom' });
+  },
+
+  /**
+   * Remove room from clinic
+   */
+  removeRoom: async (clinicId: number, roomId: number): Promise<void> => {
+    await apiClient.delete(`/api/clinics/${clinicId}/rooms/${roomId}/`);
   },
 };
 

@@ -1626,6 +1626,23 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         blank=True,
         help_text="Timestamp when current break started",
     )
+    room = models.ForeignKey(
+        "scheduling.Resource",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="room_shifts",
+        limit_choices_to={"resource_type": "PLACE"},
+        help_text="Room/location where this shift is being served",
+    )
+    clinic = models.ForeignKey(
+        "clinics.Clinic",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shifts",
+        help_text="Clinic associated with this shift (set at clock-in)",
+    )
     cancelled_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -1691,11 +1708,23 @@ class Shift(FacilityScopedModel, TimeStampedModel):
             )
         self.status = new_status
 
-    def start_shift(self) -> None:
-        """Mark shift as active (clock in)."""
+    def start_shift(self, room=None, clinic=None) -> None:
+        """Mark shift as active (clock in).
+
+        Args:
+            room: Optional PLACE Resource for the room/location.
+            clinic: Optional Clinic the clinician is serving in.
+        """
         self._transition_to("ACTIVE")
         self.started_at = timezone.now()
-        self.save()
+        update_fields = ["status", "started_at", "updated_at"]
+        if room is not None:
+            self.room = room
+            update_fields.append("room")
+        if clinic is not None:
+            self.clinic = clinic
+            update_fields.append("clinic")
+        self.save(update_fields=update_fields)
 
     def take_break(self) -> None:
         """Mark shift as on break."""

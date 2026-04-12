@@ -24,6 +24,7 @@ from hmis.apps.core.mixins import TenantScopedViewMixin
 from .models import (
     Clinic,
     ClinicEnrollment,
+    ClinicRoom,
     ClinicSchedule,
     ClinicSession,
     ClinicStaff,
@@ -34,6 +35,8 @@ from .serializers import (
     ClinicEnrollmentListSerializer,
     ClinicEnrollmentSerializer,
     ClinicListSerializer,
+    ClinicRoomCreateSerializer,
+    ClinicRoomSerializer,
     ClinicScheduleSerializer,
     ClinicSerializer,
     ClinicSessionSerializer,
@@ -269,6 +272,17 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(Q(is_sensitive=False) | Q(id__in=allowed_ids))
 
         return queryset
+
+    @action(detail=False, methods=["get"], url_path="my-assignments")
+    def my_assignments(self, request):
+        """Return clinics the current user is assigned to via ClinicStaff."""
+        assignments = (
+            ClinicStaff.objects.filter(user=request.user, is_active=True)
+            .select_related("clinic")
+            .order_by("-is_primary", "clinic__name")
+        )
+        serializer = ClinicStaffSerializer(assignments, many=True)
+        return Response({"results": serializer.data})
 
     @action(detail=True, methods=["get", "post"])
     def queue(self, request, pk=None):
@@ -763,3 +777,39 @@ class ClinicEnrollmentViewSet(viewsets.ModelViewSet):
         enrollment.record_visit()
         serializer = ClinicEnrollmentSerializer(enrollment)
         return Response(serializer.data)
+
+
+# =============================================================================
+# ClinicRoomViewSet (Nested under Clinic)
+# =============================================================================
+
+
+class ClinicRoomViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for ClinicRoom operations nested under clinic.
+
+    Endpoints:
+    - GET    /api/clinics/{clinic_pk}/rooms/       - List rooms for clinic
+    - POST   /api/clinics/{clinic_pk}/rooms/       - Link room to clinic
+    - DELETE /api/clinics/{clinic_pk}/rooms/{pk}/   - Unlink room from clinic
+    """
+
+    serializer_class = ClinicRoomSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter rooms to the parent clinic."""
+        return ClinicRoom.objects.filter(
+            clinic_id=self.kwargs["clinic_pk"]
+        ).select_related("room")
+
+    def get_serializer_class(self):
+        """Get appropriate serializer class."""
+        if self.action == "create":
+            return ClinicRoomCreateSerializer
+        return ClinicRoomSerializer
+
+    def perform_create(self, serializer):
+        """Create clinic room association with parent clinic."""
+        clinic = Clinic.objects.get(pk=self.kwargs["clinic_pk"])
+        serializer.save(clinic=clinic)

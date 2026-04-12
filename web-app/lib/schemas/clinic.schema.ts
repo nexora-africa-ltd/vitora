@@ -206,6 +206,8 @@ export const ClinicVisitSchema = z.object({
   referral_reason: z.string().optional().default(''),
   registered_by: z.number().optional(),
   registered_by_name: z.string().optional().default(''),
+  room: z.number().optional().nullable(),
+  room_name: z.string().optional().nullable(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
@@ -422,6 +424,34 @@ export const ClinicDashboardStatsSchema = z.object({
 });
 
 // =============================================================================
+// CLINIC ROOM SCHEMAS
+// =============================================================================
+
+export const ClinicRoomActiveCliniciansSchema = z.object({
+  id: z.number().nullable(),
+  name: z.string(),
+  status: z.enum(['ACTIVE', 'ON_BREAK']),
+});
+
+export const ClinicRoomSchema = z.object({
+  id: z.number(),
+  clinic: z.number(),
+  room: z.number(),
+  room_name: z.string(),
+  room_code: z.string(),
+  room_capacity: z.number(),
+  is_default: z.boolean(),
+  display_order: z.number(),
+  active_clinicians: z.array(ClinicRoomActiveCliniciansSchema),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const ClinicRoomArrayResponseSchema = z.object({
+  results: z.array(ClinicRoomSchema),
+});
+
+// =============================================================================
 // PAGINATED RESPONSE SCHEMAS
 // =============================================================================
 
@@ -486,6 +516,7 @@ export type ClinicSchedule = z.infer<typeof ClinicScheduleSchema>;
 export type ClinicSession = z.infer<typeof ClinicSessionSchema>;
 export type ClinicVisit = z.infer<typeof ClinicVisitSchema>;
 export type ClinicEnrollment = z.infer<typeof ClinicEnrollmentSchema>;
+export type ClinicRoom = z.infer<typeof ClinicRoomSchema>;
 
 // Paginated types
 export type PaginatedClinicList = z.infer<typeof PaginatedClinicListSchema>;

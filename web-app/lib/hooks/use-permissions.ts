@@ -86,6 +86,8 @@ export interface PermissionsResult {
   isAuthenticated: boolean;
   /** Whether user is a superuser (has all permissions) */
   isSuperuser: boolean;
+  /** Whether user has an admin role (ADMIN, SUPERUSER, SYSTEM_ADMIN) */
+  isAdmin: boolean;
 }
 
 // =============================================================================
@@ -275,6 +277,7 @@ export function usePermissions(): PermissionsResult {
         roleCategory: null,
         isAuthenticated: false,
         isSuperuser: false,
+        isAdmin: false,
       };
     }
 
@@ -306,6 +309,7 @@ export function usePermissions(): PermissionsResult {
       roleCategory: (user as unknown as { role_category?: string }).role_category ?? null,
       isAuthenticated: true,
       isSuperuser,
+      isAdmin,
     };
   }, [user, isAuthenticated, isSuperuser, isAdmin, hasPermission, canAccessModule, canPerformAction]);
 }

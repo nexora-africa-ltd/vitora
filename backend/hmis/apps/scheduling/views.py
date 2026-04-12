@@ -57,6 +57,7 @@ from hmis.apps.scheduling.serializers import (
     ShiftCreateSerializer,
     ShiftListSerializer,
     ShiftSerializer,
+    ShiftStartSerializer,
     SlotCheckQuerySerializer,
     StaffConstraintSerializer,
     StaffWorkloadSerializer,
@@ -1079,6 +1080,8 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         "staff_resource__staff_profile__primary_department",
         "created_by",
         "cancelled_by",
+        "room",
+        "clinic",
     )
     serializer_class = ShiftSerializer
     permission_classes = [permissions.IsAuthenticated, ManageSchedulesWritePermission]
@@ -1115,6 +1118,12 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
     @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
         """Start a shift (clock in).
+
+        Accepts optional room_id and clinic_id in the request body to capture
+        which room and clinic the clinician is serving in.
+
+        If a clinic is specified (or auto-resolved from ClinicStaff), the system
+        auto-opens today's ClinicSession if none is open yet.
 
         Blocks clock-in if the shift has already ended (now > shift end time).
 
@@ -1172,23 +1181,98 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
+        # Validate optional room/clinic payload
+        start_serializer = ShiftStartSerializer(
+            data=request.data, context={"shift": shift, "request": request}
+        )
+        start_serializer.is_valid(raise_exception=True)
+
+        room_id = start_serializer.validated_data.get("room_id")
+        clinic_id = start_serializer.validated_data.get("clinic_id")
+
+        room = None
+        clinic = None
+
+        if room_id:
+            room = Resource.objects.get(pk=room_id)
+
+        if clinic_id:
+            from hmis.apps.clinics.models import Clinic as ClinicModel
+            clinic = ClinicModel.objects.get(pk=clinic_id)
+        else:
+            # Auto-resolve clinic from ClinicStaff (primary clinic)
+            from hmis.apps.clinics.models import ClinicStaff
+            staff_user = (
+                shift.staff_resource.staff_profile.user
+                if shift.staff_resource.staff_profile
+                else None
+            )
+            if staff_user:
+                primary_assignment = (
+                    ClinicStaff.objects.filter(user=staff_user, is_primary=True, is_active=True)
+                    .select_related("clinic")
+                    .first()
+                )
+                if primary_assignment and primary_assignment.clinic.status == "ACTIVE":
+                    clinic = primary_assignment.clinic
+
         try:
-            shift.start_shift()
+            shift.start_shift(room=room, clinic=clinic)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Auto-open clinic session if needed
+        session_auto_opened = False
+        if clinic:
+            session, created = clinic.get_or_create_session(shift.shift_date)
+            if session.status == "SCHEDULED":
+                session.open_session(request.user)
+                session_auto_opened = True
+
         serializer = ShiftSerializer(shift)
-        return Response(serializer.data)
+        data = serializer.data
+        data["session_auto_opened"] = session_auto_opened
+        return Response(data)
 
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
-        """Complete a shift (clock out)."""
+        """Complete a shift (clock out).
+
+        If the shift is linked to a clinic, checks whether any other active/on-break
+        shifts remain for that clinic today. If this was the last one, the clinic
+        session is auto-closed.
+        """
         shift = self.get_object()
+        clinic = shift.clinic
         try:
             shift.complete_shift()
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Auto-close clinic session if this was the last active shift
+        session_auto_closed = False
+        if clinic:
+            from datetime import date as date_type
+            remaining = Shift.objects.filter(
+                clinic=clinic,
+                shift_date=shift.shift_date,
+                status__in=["ACTIVE", "ON_BREAK"],
+            ).exclude(pk=shift.pk).exists()
+            if not remaining:
+                from hmis.apps.clinics.models import ClinicSession
+                session = ClinicSession.objects.filter(
+                    clinic=clinic,
+                    session_date=shift.shift_date,
+                    status="OPEN",
+                ).first()
+                if session:
+                    session.close_session(request.user)
+                    session_auto_closed = True
+
         serializer = ShiftSerializer(shift)
-        return Response(serializer.data)
+        data = serializer.data
+        data["session_auto_closed"] = session_auto_closed
+        return Response(data)
 
     @action(detail=True, methods=["post"], url_path="take-break")
     def take_break(self, request, pk=None):

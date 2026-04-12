@@ -198,6 +198,10 @@ export const ShiftListItemSchema = z.object({
   status_display: z.string(),
   department: z.string(),
   duration_hours: z.number().nullable(),
+  room: z.number().nullable(),
+  room_name: z.string().nullable(),
+  clinic: z.number().nullable(),
+  clinic_name: z.string().nullable(),
 });
 
 export const ShiftSchema = ShiftListItemSchema.extend({
@@ -280,6 +284,14 @@ export const AttendanceStatusSchema = z.enum(['NO_SHIFT', 'UPCOMING', 'SHOULD_CL
 export const MyTodayResponseSchema = z.object({
   shifts: z.array(ShiftSchema),
   attendance_status: AttendanceStatusSchema,
+});
+
+export const ClockInResponseSchema = ShiftSchema.extend({
+  session_auto_opened: z.boolean(),
+});
+
+export const ClockOutResponseSchema = ShiftSchema.extend({
+  session_auto_closed: z.boolean(),
 });
 
 export const AttendanceStatsSchema = z.object({

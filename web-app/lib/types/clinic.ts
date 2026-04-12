@@ -396,6 +396,8 @@ export interface ClinicVisit {
   referral_reason?: string;
   registered_by?: number;
   registered_by_name?: string;
+  room?: number | null;
+  room_name?: string | null;
   created_at?: string;
   updated_at?: string;
   // Optional fields that may be returned by some endpoints
@@ -404,6 +406,36 @@ export interface ClinicVisit {
   clinic_name?: string | null;
   consultation_fee_charged?: boolean;
   billing_line_item?: number | null;
+}
+
+// =============================================================================
+// Clinic Rooms
+// =============================================================================
+
+export interface ClinicRoomActiveClinician {
+  id: number | null;
+  name: string;
+  status: 'ACTIVE' | 'ON_BREAK';
+}
+
+export interface ClinicRoom {
+  id: number;
+  clinic: number;
+  room: number;
+  room_name: string;
+  room_code: string;
+  room_capacity: number;
+  is_default: boolean;
+  display_order: number;
+  active_clinicians: ClinicRoomActiveClinician[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ClinicRoomCreateData {
+  room: number;
+  is_default?: boolean;
+  display_order?: number;
 }
 
 export interface ClinicVisitCreateData {

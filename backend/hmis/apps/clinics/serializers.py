@@ -15,6 +15,7 @@ from rest_framework import serializers
 from .models import (
     Clinic,
     ClinicEnrollment,
+    ClinicRoom,
     ClinicSchedule,
     ClinicSession,
     ClinicStaff,
@@ -231,6 +232,7 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
     registered_by_name = serializers.SerializerMethodField()
     mch_registration_id = serializers.SerializerMethodField()
     mch_registration_number = serializers.SerializerMethodField()
+    room_name = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ClinicVisitSerializer."""
@@ -269,6 +271,8 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
             "assigned_clinician_name",
             "registered_by",
             "registered_by_name",
+            "room",
+            "room_name",
             "chief_complaint",
             "notes",
             "consultation_fee_charged",
@@ -288,6 +292,8 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
             "registered_by",
             "source_module",
             "source_record_id",
+            "room",
+            "room_name",
             "created_at",
             "updated_at",
         ]
@@ -319,6 +325,12 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
         if hasattr(obj, "pnc_visit") and obj.pnc_visit:
             return obj.pnc_visit.registration.mch_number
         return ""
+
+    def get_room_name(self, obj) -> str | None:
+        """Get room name."""
+        if obj.room:
+            return obj.room.name
+        return None
 
 
 class ClinicVisitCreateSerializer(serializers.ModelSerializer):
@@ -766,3 +778,72 @@ class MonthlyClinicReportSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+# =============================================================================
+# ClinicRoom Serializers
+# =============================================================================
+
+
+class ClinicRoomSerializer(serializers.ModelSerializer):
+    """Serializer for ClinicRoom model."""
+
+    room_name = serializers.CharField(source="room.name", read_only=True)
+    room_code = serializers.CharField(source="room.code", read_only=True)
+    room_capacity = serializers.IntegerField(source="room.capacity", read_only=True)
+    active_clinicians = serializers.SerializerMethodField()
+
+    class Meta:
+        """Meta options for ClinicRoomSerializer."""
+
+        model = ClinicRoom
+        fields = [
+            "id",
+            "clinic",
+            "room",
+            "room_name",
+            "room_code",
+            "room_capacity",
+            "is_default",
+            "display_order",
+            "active_clinicians",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_active_clinicians(self, obj) -> list[dict]:
+        """Get list of clinicians currently active in this room."""
+        from hmis.apps.scheduling.models import Shift
+        from django.utils import timezone as tz
+
+        active_shifts = Shift.objects.filter(
+            room=obj.room,
+            shift_date=tz.localdate(),
+            status__in=["ACTIVE", "ON_BREAK"],
+        ).select_related("staff_resource", "staff_resource__staff_profile__user")
+
+        return [
+            {
+                "id": s.staff_resource.staff_profile.user.id if s.staff_resource.staff_profile else None,
+                "name": s.staff_resource.name,
+                "status": s.status,
+            }
+            for s in active_shifts
+        ]
+
+
+class ClinicRoomCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating ClinicRoom associations."""
+
+    class Meta:
+        """Meta options for ClinicRoomCreateSerializer."""
+
+        model = ClinicRoom
+        fields = ["room", "is_default", "display_order"]
+
+    def validate_room(self, value):
+        """Validate room is a PLACE resource."""
+        if value.resource_type != "PLACE":
+            raise serializers.ValidationError("Resource must be of type PLACE.")
+        return value

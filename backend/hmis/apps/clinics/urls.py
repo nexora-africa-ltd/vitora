@@ -16,6 +16,7 @@ from rest_framework_nested import routers as nested_routers
 
 from .views import (
     ClinicEnrollmentViewSet,
+    ClinicRoomViewSet,
     ClinicScheduleViewSet,
     ClinicSessionViewSet,
     ClinicStaffViewSet,
@@ -34,6 +35,7 @@ clinics_router = nested_routers.NestedDefaultRouter(router, r"clinics", lookup="
 clinics_router.register(r"sessions", ClinicSessionViewSet, basename="clinic-sessions")
 clinics_router.register(r"staff", ClinicStaffViewSet, basename="clinic-staff")
 clinics_router.register(r"schedule", ClinicScheduleViewSet, basename="clinic-schedule")
+clinics_router.register(r"rooms", ClinicRoomViewSet, basename="clinic-rooms")
 
 urlpatterns = [
     path("", include(router.urls)),
