@@ -16,6 +16,7 @@ import {
   Building2,
   BedDouble,
   ChevronRight,
+  Pencil,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -63,6 +64,8 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { resourcesApi } from '@/lib/api/scheduling';
 import { departmentsApi } from '@/lib/api/rbac';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { AxiosError } from 'axios';
 import type { ResourceType, ResourceListItem, ResourceCreateData } from '@/lib/types/scheduling';
 import { cn } from '@/lib/utils/cn';
 
@@ -93,6 +96,25 @@ const TYPE_OPTIONS: { value: ResourceType | ''; label: string }[] = [
   { value: 'ASSET', label: 'Assets' },
 ];
 
+/** Extract per-field error strings from a DRF 400 response. */
+function extractFieldErrors(error: unknown): Record<string, string> {
+  if (error instanceof AxiosError && error.response?.status === 400) {
+    const data = error.response.data;
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const errors: Record<string, string> = {};
+      for (const [field, msgs] of Object.entries(data as Record<string, unknown>)) {
+        if (Array.isArray(msgs) && msgs.length > 0 && typeof msgs[0] === 'string') {
+          errors[field] = msgs[0];
+        } else if (typeof msgs === 'string') {
+          errors[field] = msgs;
+        }
+      }
+      return errors;
+    }
+  }
+  return {};
+}
+
 export default function SchedulingResourcesPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -112,6 +134,7 @@ export default function SchedulingResourcesPage() {
   const [formCapacity, setFormCapacity] = useState('1');
   const [formDescription, setFormDescription] = useState('');
   const [formDepartment, setFormDepartment] = useState<string>('');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Track which groups are open (all open by default)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -165,8 +188,12 @@ export default function SchedulingResourcesPage() {
       toast({ title: 'Resource Created', description: 'Scheduling resource has been created.' });
       closeDialog();
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to create resource.', variant: 'destructive' });
+    onError: (error: unknown) => {
+      const fieldErrors = extractFieldErrors(error);
+      if (Object.keys(fieldErrors).length > 0) {
+        setFormErrors(fieldErrors);
+      }
+      toast({ title: 'Error', description: getApiErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -178,8 +205,12 @@ export default function SchedulingResourcesPage() {
       toast({ title: 'Resource Updated' });
       closeDialog();
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to update resource.', variant: 'destructive' });
+    onError: (error: unknown) => {
+      const fieldErrors = extractFieldErrors(error);
+      if (Object.keys(fieldErrors).length > 0) {
+        setFormErrors(fieldErrors);
+      }
+      toast({ title: 'Error', description: getApiErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -230,6 +261,7 @@ export default function SchedulingResourcesPage() {
     setFormCapacity('1');
     setFormDescription('');
     setFormDepartment('');
+    setFormErrors({});
   }
 
   function openEdit(r: ResourceListItem) {
@@ -249,6 +281,7 @@ export default function SchedulingResourcesPage() {
   }
 
   function handleSubmit() {
+    setFormErrors({});
     const data: ResourceCreateData = {
       name: formName,
       code: formCode,
@@ -401,6 +434,7 @@ export default function SchedulingResourcesPage() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Code</TableHead>
                                 <TableHead className="w-[100px]">Status</TableHead>
+                                <TableHead className="w-[60px]"></TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -449,6 +483,20 @@ export default function SchedulingResourcesPage() {
                                       )}
                                     </Button>
                                   </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openEdit(r);
+                                      }}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                      <span className="sr-only">Edit</span>
+                                    </Button>
+                                  </TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
@@ -471,12 +519,26 @@ export default function SchedulingResourcesPage() {
                                 <code className="text-xs text-muted-foreground">{r.code}</code>
                               </div>
                             </div>
-                            <Badge
-                              variant={r.is_active ? 'default' : 'outline'}
-                              className="shrink-0 w-fit"
-                            >
-                              {r.is_active ? 'Active' : 'Off'}
-                            </Badge>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Badge
+                                variant={r.is_active ? 'default' : 'outline'}
+                                className="shrink-0 w-fit"
+                              >
+                                {r.is_active ? 'Active' : 'Off'}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(r);
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -516,13 +578,20 @@ export default function SchedulingResourcesPage() {
                   <Label>Name <span className="text-destructive">*</span></Label>
                   <Input
                     value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
+                    onChange={(e) => {
+                      setFormName(e.target.value);
+                      if (formErrors.name) setFormErrors((prev) => { const { name: _, ...rest } = prev; return rest; });
+                    }}
                     placeholder={
                       formType === 'PERSON' ? 'e.g. Dr. Jane Doe' :
                       formType === 'ASSET' ? 'e.g. MRI Machine 1' :
                       'e.g. Consultation Room 1'
                     }
+                    className={formErrors.name ? 'border-destructive' : ''}
                   />
+                  {formErrors.name && (
+                    <p className="text-xs text-destructive mt-1">{formErrors.name}</p>
+                  )}
                 </div>
               </div>
               <div className={cn('grid gap-3', formType === 'PERSON' ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2')}>
@@ -530,13 +599,20 @@ export default function SchedulingResourcesPage() {
                   <Label>Code <span className="text-destructive">*</span></Label>
                   <Input
                     value={formCode}
-                    onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      setFormCode(e.target.value.toUpperCase());
+                      if (formErrors.code) setFormErrors((prev) => { const { code: _, ...rest } = prev; return rest; });
+                    }}
                     placeholder={
                       formType === 'PERSON' ? 'e.g. STAFF-001' :
                       formType === 'ASSET' ? 'e.g. MRI-01' :
                       'e.g. ROOM-101'
                     }
+                    className={formErrors.code ? 'border-destructive' : ''}
                   />
+                  {formErrors.code && (
+                    <p className="text-xs text-destructive mt-1">{formErrors.code}</p>
+                  )}
                 </div>
                 {formType !== 'PERSON' && (
                   <div>
