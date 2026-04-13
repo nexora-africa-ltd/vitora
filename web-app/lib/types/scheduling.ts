@@ -246,7 +246,7 @@ export type PaginatedResources = PaginatedResponse<ResourceListItem>;
 // =============================================================================
 
 export type ShiftType = 'DAY' | 'NIGHT' | 'MORNING' | 'AFTERNOON' | 'ON_CALL' | 'OVERTIME' | 'DAY_OFF' | 'NIGHT_OFF' | 'OFF' | 'AFTERNOON_OFF' | 'LEAVE' | 'SICK_LEAVE' | 'REST';
-export type ShiftStatus = 'SCHEDULED' | 'ACTIVE' | 'ON_BREAK' | 'COMPLETED' | 'CANCELLED';
+export type ShiftStatus = 'SCHEDULED' | 'ACTIVE' | 'ON_BREAK' | 'COMPLETED' | 'CANCELLED' | 'ABSENT';
 
 export interface ShiftListItem {
   id: number;
@@ -274,6 +274,13 @@ export interface Shift extends ShiftListItem {
   started_at: string | null;
   completed_at: string | null;
   break_started_at: string | null;
+  total_break_minutes: number;
+  clock_in_method: string;
+  auto_clocked_out: boolean;
+  actual_hours: number | null;
+  late_minutes: number;
+  overtime_minutes: number;
+  is_early_departure: boolean;
   cancelled_by: number | null;
   cancelled_by_name: string | null;
   cancellation_reason: string;
@@ -401,6 +408,48 @@ export interface MyHistoryParams {
   to_date?: string;
   page?: number;
   page_size?: number;
+}
+
+// =============================================================================
+// Attendance Trends (Phase 2)
+// =============================================================================
+
+export interface AttendanceTrendWeek {
+  week_start: string;
+  hours_worked: number;
+  shifts_completed: number;
+  on_time_rate: number;
+  late_count: number;
+  overtime_hours: number;
+}
+
+export interface AttendanceTrendsParams {
+  weeks?: number;
+}
+
+// =============================================================================
+// QR Clock-In (Phase 3)
+// =============================================================================
+
+export interface QRTokenResponse {
+  qr_token: string;
+  facility_id: number;
+  facility_name: string;
+  valid_until: string;
+  generated_at: string;
+}
+
+export interface QRClockInPayload {
+  qr_token: string;
+}
+
+// =============================================================================
+// Payroll Export (Phase 3)
+// =============================================================================
+
+export interface PayrollExportParams {
+  from_date: string;
+  to_date: string;
 }
 // =============================================================================
 

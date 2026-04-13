@@ -24,6 +24,8 @@ import {
   MyHistoryResponseSchema,
   ClockInResponseSchema,
   ClockOutResponseSchema,
+  AttendanceTrendsResponseSchema,
+  QRTokenResponseSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -59,6 +61,11 @@ import type {
   ClockInPayload,
   ClockInResponse,
   ClockOutResponse,
+  AttendanceTrendWeek,
+  AttendanceTrendsParams,
+  QRTokenResponse,
+  QRClockInPayload,
+  PayrollExportParams,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -490,5 +497,38 @@ export const attendanceApi = {
     return parseResponse(ShiftSchema, response.data, {
       context: 'attendanceApi.resume',
     });
+  },
+
+  /** Get weekly attendance trends for chart rendering. */
+  trends: async (params?: AttendanceTrendsParams): Promise<AttendanceTrendWeek[]> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/attendance-trends/`, { params });
+    return parseResponse(AttendanceTrendsResponseSchema, response.data, {
+      context: 'attendanceApi.trends',
+    });
+  },
+
+  /** Clock in via QR code scan. */
+  qrClockIn: async (payload: QRClockInPayload): Promise<Shift> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/qr-clock-in/`, payload);
+    return parseResponse(ShiftSchema, response.data, {
+      context: 'attendanceApi.qrClockIn',
+    });
+  },
+
+  /** Generate a rotating QR token for the current facility. */
+  getQRToken: async (): Promise<QRTokenResponse> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/qr-token/`);
+    return parseResponse(QRTokenResponseSchema, response.data, {
+      context: 'attendanceApi.getQRToken',
+    });
+  },
+
+  /** Export attendance data as CSV for payroll processing. */
+  payrollExport: async (params: PayrollExportParams): Promise<Blob> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/payroll-export/`, {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
   },
 };

@@ -1550,14 +1550,21 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         ("ON_BREAK", "On Break"),
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
+        ("ABSENT", "Absent"),
+    ]
+
+    CLOCK_METHOD_CHOICES = [
+        ("MANUAL", "Manual"),
+        ("QR_CODE", "QR Code"),
     ]
 
     VALID_TRANSITIONS = {
-        "SCHEDULED": ["ACTIVE", "CANCELLED"],
+        "SCHEDULED": ["ACTIVE", "CANCELLED", "ABSENT"],
         "ACTIVE": ["ON_BREAK", "COMPLETED"],
         "ON_BREAK": ["ACTIVE", "COMPLETED"],
         "COMPLETED": [],
         "CANCELLED": [],
+        "ABSENT": [],
     }
 
     staff_resource = models.ForeignKey(
@@ -1625,6 +1632,21 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         null=True,
         blank=True,
         help_text="Timestamp when current break started",
+    )
+    total_break_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Cumulative break minutes across all breaks in this shift",
+    )
+    clock_in_method = models.CharField(
+        max_length=20,
+        choices=CLOCK_METHOD_CHOICES,
+        default="MANUAL",
+        blank=True,
+        help_text="Method used to clock in (MANUAL, QR_CODE)",
+    )
+    auto_clocked_out = models.BooleanField(
+        default=False,
+        help_text="True if system auto-closed this shift due to overtime/no-activity",
     )
     room = models.ForeignKey(
         "scheduling.Resource",
@@ -1708,16 +1730,18 @@ class Shift(FacilityScopedModel, TimeStampedModel):
             )
         self.status = new_status
 
-    def start_shift(self, room=None, clinic=None) -> None:
+    def start_shift(self, room=None, clinic=None, method="MANUAL") -> None:
         """Mark shift as active (clock in).
 
         Args:
             room: Optional PLACE Resource for the room/location.
             clinic: Optional Clinic the clinician is serving in.
+            method: Clock-in method (MANUAL, QR_CODE).
         """
         self._transition_to("ACTIVE")
         self.started_at = timezone.now()
-        update_fields = ["status", "started_at", "updated_at"]
+        self.clock_in_method = method
+        update_fields = ["status", "started_at", "clock_in_method", "updated_at"]
         if room is not None:
             self.room = room
             update_fields.append("room")
@@ -1733,16 +1757,81 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         self.save()
 
     def resume_shift(self) -> None:
-        """Resume shift from break."""
+        """Resume shift from break. Accumulates break duration."""
+        if self.break_started_at:
+            delta = timezone.now() - self.break_started_at
+            self.total_break_minutes += max(0, int(delta.total_seconds() / 60))
         self._transition_to("ACTIVE")
         self.break_started_at = None
         self.save()
 
     def complete_shift(self) -> None:
-        """Mark shift as completed (clock out)."""
+        """Mark shift as completed (clock out).
+
+        If on break, accumulates remaining break duration before completing.
+        """
+        if self.break_started_at:
+            delta = timezone.now() - self.break_started_at
+            self.total_break_minutes += max(0, int(delta.total_seconds() / 60))
+            self.break_started_at = None
         self._transition_to("COMPLETED")
         self.completed_at = timezone.now()
         self.save()
+
+    def mark_absent(self) -> None:
+        """Mark shift as absent (no clock-in detected)."""
+        self._transition_to("ABSENT")
+        self.save()
+
+    def auto_complete(self) -> None:
+        """System auto-clock-out for stale shifts."""
+        if self.break_started_at:
+            delta = timezone.now() - self.break_started_at
+            self.total_break_minutes += max(0, int(delta.total_seconds() / 60))
+            self.break_started_at = None
+        self._transition_to("COMPLETED")
+        self.completed_at = timezone.now()
+        self.auto_clocked_out = True
+        self.save()
+
+    @property
+    def late_minutes(self) -> int:
+        """Minutes late for clock-in. 0 if on-time or not started."""
+        if not self.started_at:
+            return 0
+        scheduled_start = timezone.make_aware(
+            datetime.combine(self.shift_date, self.start_time)
+        ) if timezone.is_naive(
+            datetime.combine(self.shift_date, self.start_time)
+        ) else datetime.combine(self.shift_date, self.start_time)
+        diff = (self.started_at - scheduled_start).total_seconds() / 60
+        return max(0, int(diff))
+
+    @property
+    def overtime_minutes(self) -> int:
+        """Minutes of overtime beyond scheduled duration. 0 if under."""
+        if not self.started_at or not self.completed_at:
+            return 0
+        actual_minutes = (self.completed_at - self.started_at).total_seconds() / 60
+        actual_minutes -= self.total_break_minutes  # subtract breaks
+        scheduled_minutes = self.duration_hours * 60
+        return max(0, int(actual_minutes - scheduled_minutes))
+
+    @property
+    def is_early_departure(self) -> bool:
+        """True if clocked out more than 30 min before shift end."""
+        if not self.completed_at or self.auto_clocked_out:
+            return False
+        shift_end_naive = datetime.combine(self.shift_date, self.end_time)
+        if self.end_time <= self.start_time:  # overnight
+            shift_end_naive += timedelta(days=1)
+        shift_end_dt = (
+            timezone.make_aware(shift_end_naive)
+            if timezone.is_naive(shift_end_naive)
+            else shift_end_naive
+        )
+        diff = (shift_end_dt - self.completed_at).total_seconds() / 60
+        return diff > 30
 
     def cancel(self, user, reason: str = "") -> None:
         """Cancel the shift."""
@@ -1753,13 +1842,24 @@ class Shift(FacilityScopedModel, TimeStampedModel):
 
     @property
     def duration_hours(self) -> float:
-        """Calculate shift duration in hours."""
+        """Calculate scheduled shift duration in hours."""
         if not self.start_time or not self.end_time:
             return 0.0
         start_dt = datetime.combine(self.shift_date, self.start_time)
         end_dt = datetime.combine(self.shift_date, self.end_time)
+        if self.end_time <= self.start_time:  # overnight shift
+            end_dt += timedelta(days=1)
         delta = end_dt - start_dt
         return round(delta.total_seconds() / 3600, 1)
+
+    @property
+    def actual_hours(self) -> float | None:
+        """Actual hours worked (started_at to completed_at minus breaks)."""
+        if not self.started_at or not self.completed_at:
+            return None
+        total = (self.completed_at - self.started_at).total_seconds() / 3600
+        total -= self.total_break_minutes / 60
+        return round(max(0, total), 2)
 
 
 # =============================================================================

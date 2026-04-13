@@ -1189,6 +1189,7 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         room_id = start_serializer.validated_data.get("room_id")
         clinic_id = start_serializer.validated_data.get("clinic_id")
+        clock_method = start_serializer.validated_data.get("method", "MANUAL")
 
         room = None
         clinic = None
@@ -1217,7 +1218,7 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                     clinic = primary_assignment.clinic
 
         try:
-            shift.start_shift(room=room, clinic=clinic)
+            shift.start_shift(room=room, clinic=clinic, method=clock_method)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1796,6 +1797,338 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                     )
 
         return Response(conflicts)
+
+    @action(detail=False, methods=["get"], url_path="attendance-trends")
+    def attendance_trends(self, request):
+        """
+        Get weekly attendance trends for the current user.
+
+        Returns aggregated data per ISO week for chart rendering:
+        - week_start: Monday of the week (YYYY-MM-DD)
+        - hours_worked: total actual hours worked
+        - shifts_completed: number of completed shifts
+        - on_time_rate: percentage of shifts that were on-time
+        - late_count: shifts where clock-in was >15min late
+        - overtime_hours: hours beyond scheduled duration
+
+        Query params:
+            weeks: Number of weeks to look back (default: 12, max: 52)
+        """
+        from collections import defaultdict
+        from datetime import date as date_type, timedelta as td
+        from hmis.apps.scheduling.models import Shift
+
+        resource = self._get_my_resource(request)
+        if not resource:
+            return Response([])
+
+        weeks = min(int(request.query_params.get("weeks", 12)), 52)
+        today = date_type.today()
+        # Align to Monday
+        start_of_week = today - td(days=today.weekday())
+        from_date = start_of_week - td(weeks=weeks - 1)
+
+        non_working_types = {
+            "OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF",
+            "LEAVE", "SICK_LEAVE", "REST",
+        }
+        shifts = (
+            Shift.objects.filter(
+                staff_resource=resource,
+                shift_date__gte=from_date,
+                shift_date__lte=today,
+                status__in=["COMPLETED", "ACTIVE", "ON_BREAK"],
+            )
+            .exclude(shift_type__in=non_working_types)
+            .order_by("shift_date")
+        )
+
+        # Group by ISO week
+        week_data: dict = defaultdict(lambda: {
+            "hours": 0.0, "shifts": 0, "on_time": 0, "late": 0, "overtime": 0.0,
+        })
+        late_threshold = 15  # minutes
+
+        for s in shifts:
+            iso = s.shift_date.isocalendar()
+            # Monday of that week
+            week_monday = s.shift_date - td(days=s.shift_date.weekday())
+            key = str(week_monday)
+            bucket = week_data[key]
+
+            if s.status == "COMPLETED":
+                bucket["shifts"] += 1
+                actual = s.actual_hours
+                if actual is not None:
+                    bucket["hours"] += actual
+                    scheduled = s.duration_hours
+                    if actual > scheduled:
+                        bucket["overtime"] += actual - scheduled
+
+                if s.late_minutes > late_threshold:
+                    bucket["late"] += 1
+                elif s.started_at:
+                    bucket["on_time"] += 1
+
+        # Build sorted result
+        result = []
+        for w in range(weeks):
+            monday = from_date + td(weeks=w)
+            key = str(monday)
+            d = week_data.get(key, {
+                "hours": 0.0, "shifts": 0, "on_time": 0, "late": 0, "overtime": 0.0,
+            })
+            total = d["on_time"] + d["late"]
+            result.append({
+                "week_start": key,
+                "hours_worked": round(d["hours"], 1),
+                "shifts_completed": d["shifts"],
+                "on_time_rate": round(d["on_time"] / total * 100, 1) if total > 0 else 0,
+                "late_count": d["late"],
+                "overtime_hours": round(d["overtime"], 1),
+            })
+
+        return Response(result)
+
+    @action(detail=False, methods=["get"], url_path="payroll-export")
+    def payroll_export(self, request):
+        """
+        Export attendance data as CSV for payroll processing.
+
+        Returns a CSV file with one row per completed shift:
+        staff_name, staff_code, date, shift_type, scheduled_start, scheduled_end,
+        clock_in, clock_out, scheduled_hours, actual_hours, break_minutes,
+        late_minutes, overtime_minutes, auto_clocked_out
+
+        Query params:
+            from_date: Start date (required)
+            to_date: End date (required)
+        """
+        import csv
+        import io
+        from datetime import date as date_type
+        from django.http import HttpResponse
+        from hmis.apps.scheduling.models import Shift
+
+        from_date_str = request.query_params.get("from_date")
+        to_date_str = request.query_params.get("to_date")
+
+        if not from_date_str or not to_date_str:
+            return Response(
+                {"error": "from_date and to_date are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            from_date = date_type.fromisoformat(from_date_str)
+            to_date = date_type.fromisoformat(to_date_str)
+        except ValueError:
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Only export for current facility
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        non_working_types = {
+            "OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF",
+            "LEAVE", "SICK_LEAVE", "REST",
+        }
+
+        shifts = (
+            Shift.objects.filter(
+                facility=facility,
+                shift_date__gte=from_date,
+                shift_date__lte=to_date,
+                status__in=["COMPLETED", "ABSENT"],
+            )
+            .exclude(shift_type__in=non_working_types)
+            .select_related("staff_resource")
+            .order_by("staff_resource__name", "shift_date", "start_time")
+        )
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Staff Name", "Staff Code", "Date", "Shift Type",
+            "Scheduled Start", "Scheduled End", "Clock In", "Clock Out",
+            "Scheduled Hours", "Actual Hours", "Break Minutes",
+            "Late Minutes", "Overtime Minutes", "Status", "Auto Clocked Out",
+        ])
+
+        for s in shifts:
+            writer.writerow([
+                s.staff_resource.name,
+                s.staff_resource.code,
+                str(s.shift_date),
+                s.shift_type,
+                str(s.start_time),
+                str(s.end_time),
+                str(s.started_at) if s.started_at else "",
+                str(s.completed_at) if s.completed_at else "",
+                s.duration_hours,
+                s.actual_hours if s.actual_hours is not None else "",
+                s.total_break_minutes,
+                s.late_minutes,
+                s.overtime_minutes,
+                s.status,
+                "Yes" if s.auto_clocked_out else "No",
+            ])
+
+        response = HttpResponse(output.getvalue(), content_type="text/csv")
+        response["Content-Disposition"] = (
+            f'attachment; filename="payroll_{from_date}_{to_date}.csv"'
+        )
+        return response
+
+    @action(detail=False, methods=["post"], url_path="qr-clock-in")
+    def qr_clock_in(self, request):
+        """
+        Clock in via QR code scan.
+
+        The QR code payload contains a facility-specific token. This endpoint
+        validates the token and clocks in the current user's shift for today.
+
+        Request body:
+            { "qr_token": "<facility_id>:<rotating_hash>" }
+        """
+        import hashlib
+        from datetime import date as date_type
+        from hmis.apps.scheduling.models import SchedulingSettings
+
+        qr_token = request.data.get("qr_token", "")
+        if not qr_token or ":" not in qr_token:
+            return Response(
+                {"error": "Invalid QR code", "code": "invalid_qr"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Parse facility_id:hash from QR token
+        parts = qr_token.split(":", 1)
+        try:
+            qr_facility_id = int(parts[0])
+        except (ValueError, IndexError):
+            return Response(
+                {"error": "Invalid QR code format", "code": "invalid_qr"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate rotating hash (based on facility_id + date + hour)
+        from django.conf import settings as django_settings
+        now = timezone.now()
+        secret = getattr(django_settings, "SECRET_KEY", "vitora")
+        expected_hash = hashlib.sha256(
+            f"{qr_facility_id}:{now.strftime('%Y-%m-%d:%H')}:{secret}".encode()
+        ).hexdigest()[:16]
+
+        if parts[1] != expected_hash:
+            # Also accept previous hour's hash for clock skew
+            prev_hour = (now - timedelta(hours=1)).strftime("%Y-%m-%d:%H")
+            prev_hash = hashlib.sha256(
+                f"{qr_facility_id}:{prev_hour}:{secret}".encode()
+            ).hexdigest()[:16]
+            if parts[1] != prev_hash:
+                return Response(
+                    {"error": "QR code expired or invalid", "code": "qr_expired"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Resolve user's shift
+        resource = self._get_my_resource(request)
+        if not resource:
+            return Response(
+                {"error": "No scheduling resource linked to your profile"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verify facility matches
+        if resource.facility_id != qr_facility_id:
+            return Response(
+                {"error": "QR code is for a different facility", "code": "wrong_facility"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        non_working_types = {
+            "OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF",
+            "LEAVE", "SICK_LEAVE", "REST",
+        }
+        today = date_type.today()
+        shift = (
+            Shift.objects.filter(
+                staff_resource=resource,
+                shift_date=today,
+                status="SCHEDULED",
+            )
+            .exclude(shift_type__in=non_working_types)
+            .order_by("start_time")
+            .first()
+        )
+
+        if not shift:
+            return Response(
+                {"error": "No scheduled shift found for today", "code": "no_shift"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Reuse clock-in logic but with QR method
+        try:
+            shift.start_shift(method="QR_CODE")
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = ShiftSerializer(shift)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="qr-token")
+    def qr_token(self, request):
+        """
+        Generate a rotating QR token for the current facility.
+
+        Returns a token that rotates every hour. Display as QR code
+        at the facility entrance for staff to scan.
+
+        Only accessible to users with manage_schedules permission.
+        """
+        import hashlib
+        from django.conf import settings as django_settings
+
+        if not request.user.has_perm("scheduling.manage_schedules"):
+            return Response(
+                {"error": "Permission denied"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        now = timezone.now()
+        secret = getattr(django_settings, "SECRET_KEY", "vitora")
+        token_hash = hashlib.sha256(
+            f"{facility.id}:{now.strftime('%Y-%m-%d:%H')}:{secret}".encode()
+        ).hexdigest()[:16]
+
+        qr_token = f"{facility.id}:{token_hash}"
+        # Valid until the end of current hour
+        valid_until = now.replace(minute=59, second=59, microsecond=0)
+
+        return Response({
+            "qr_token": qr_token,
+            "facility_id": facility.id,
+            "facility_name": str(facility),
+            "valid_until": valid_until.isoformat(),
+            "generated_at": now.isoformat(),
+        })
 
 
 # =============================================================================

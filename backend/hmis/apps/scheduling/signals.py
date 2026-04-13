@@ -181,6 +181,8 @@ _SHIFT_STATUS_EVENT_MAP = {
     "ACTIVE": SchedulingEvents.SHIFT_STARTED,
     "COMPLETED": SchedulingEvents.SHIFT_COMPLETED,
     "CANCELLED": SchedulingEvents.SHIFT_CANCELLED,
+    "ABSENT": SchedulingEvents.SHIFT_ABSENT,
+    "ON_BREAK": SchedulingEvents.SHIFT_BREAK_STARTED,
 }
 
 
@@ -204,6 +206,9 @@ def publish_shift_event(sender, instance, created, **kwargs):
             "shift_type": instance.shift_type,
             "status": instance.status,
             "department": instance.department or "",
+            "clock_in_method": getattr(instance, "clock_in_method", ""),
+            "auto_clocked_out": getattr(instance, "auto_clocked_out", False),
+            "late_minutes": instance.late_minutes,
         },
         facility_id=getattr(instance, "facility_id", None),
         organization_id=getattr(instance, "organization_id", None),
