@@ -512,6 +512,164 @@ class TestModuleSettings:
 
 See `backend/tests/triage/test_triage_room_routing.py` for the reference implementation (28 tests).
 
+### 9. Public Queue Display (TV/Tablet Screens)
+
+Each module with a queue should expose a **public, unauthenticated** endpoint for patient-facing displays in waiting areas. These screens show position/status/room only — **zero PII**.
+
+#### Backend View
+
+```python
+# hmis/apps/{module}/views.py
+
+class PublicLabQueueView(viewsets.ViewSet):
+    """Public queue display — no auth, no PII."""
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def list(self, request):
+        facility_id = request.query_params.get("facility_id")
+        if not facility_id:
+            return Response({"error": "facility_id required."}, status=400)
+
+        try:
+            facility = Facility.objects.get(pk=facility_id)
+        except Facility.DoesNotExist:
+            return Response({"error": "Facility not found."}, status=404)
+
+        today = date.today()
+        entries = (
+            LabQueue.objects.filter(
+                encounter__facility=facility,
+                status__in=["WAITING", "IN_PROGRESS"],
+                check_in_time__date=today,
+            )
+            .select_related("assigned_room")
+            .order_by("check_in_time")
+        )
+
+        queue = []
+        for position, entry in enumerate(entries, start=1):
+            queue.append({
+                "position": position,
+                "status": entry.status,
+                "room_name": entry.assigned_room.name if entry.assigned_room else None,
+                "check_in_time": entry.check_in_time.isoformat(),
+                "priority": entry.priority or None,
+            })
+
+        return Response({
+            "facility_name": facility.name,
+            "date": str(today),
+            "updated_at": timezone.now().isoformat(),
+            "total_waiting": len(queue),
+            "queue": queue,
+        })
+```
+
+**Key rules:**
+- `permission_classes = [AllowAny]` + `authentication_classes = []`
+- Expose ONLY: position number, status, room name, timestamps, priority hint
+- **NEVER** expose: patient name, MRN, age, gender, or any identifiers
+- Scope by `facility_id` query parameter (for facility-level queues like triage)
+- Or scope by model PK in the URL path (for entity-level queues like clinic sessions)
+
+#### URL Registration
+
+```python
+# Register BEFORE the router.urls include (manual path, not router-registered)
+urlpatterns = [
+    path("public-queue/", PublicLabQueueView.as_view({"get": "list"}), name="lab-public-queue"),
+    path("", include(router.urls)),
+]
+```
+
+#### Frontend Display Page
+
+Create a standalone page **outside** the dashboard layout (no sidebar, no auth):
+
+```
+web-app/app/{module}-display/layout.tsx          # Dark theme wrapper
+web-app/app/{module}-display/[facilityId]/page.tsx  # Queue display page
+```
+
+Layout (reuse the same dark theme):
+```tsx
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <div className="min-h-screen bg-slate-950 text-white">{children}</div>;
+}
+```
+
+Page pattern:
+- **Direct `fetch()`** to `API_BASE_URL` (not `apiClient` — no auth token)
+- **React Query** with `refetchInterval: 10_000` (10-second polling)
+- **LiveClock** component (local `setInterval`, `en-KE` locale)
+- **Section split**: "Now Active" (pulse animation) vs "Waiting" (static)
+- **QueueCard**: Large position number, status badge, room name, wait time
+- **Footer**: "Updated Xs ago" + "Vitora HMIS"
+
+See `web-app/app/triage-display/[facilityId]/page.tsx` for the reference.
+
+#### Centralized Displays Hub
+
+All public display URLs are managed from `/displays` (inside the dashboard):
+- Lists all available display types (triage queue, clinic queue, etc.)
+- Generates the correct URL using current facility context
+- Copy-to-clipboard and open-in-new-tab buttons
+- Located at `web-app/app/(dashboard)/displays/page.tsx`
+
+### 10. Django Admin Registration
+
+Register the module settings model in Django admin for superuser access:
+
+```python
+# hmis/apps/{module}/admin.py
+
+@admin.register(LabSettings)
+class LabSettingsAdmin(admin.ModelAdmin):
+    list_display = ["facility", "auto_route_to_room", "lab_department", "updated_at"]
+    list_filter = ["auto_route_to_room"]
+    list_select_related = ["facility", "lab_department"]
+    raw_id_fields = ["facility", "lab_department"]
+    readonly_fields = ["created_at", "updated_at"]
+
+    fieldsets = (
+        ("Facility", {"fields": ("facility",)}),
+        ("Routing", {"fields": ("auto_route_to_room", "lab_department")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
+```
+
+### 11. Settings Page — Department Selector
+
+The module settings page should include a **dropdown** to select the department (not just a read-only badge). Use the existing `useDepartments()` hook:
+
+```tsx
+import { useDepartments } from '@/lib/hooks/use-rbac';
+
+const { data: allDepartments } = useDepartments({ is_active: true, page_size: 100 });
+
+<Select
+  value={settings.lab_department?.toString() ?? 'none'}
+  onValueChange={async (value) => {
+    await updateSettings({
+      id: settings.id,
+      data: { lab_department: value === 'none' ? null : parseInt(value) },
+    });
+  }}
+>
+  <SelectTrigger className="max-w-xs">
+    <SelectValue placeholder="Select department" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="none">None</SelectItem>
+    {(allDepartments?.results ?? []).map((dept) => (
+      <SelectItem key={dept.id} value={dept.id.toString()}>{dept.name}</SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+```
+
 ---
 
 ## Reference Implementations
@@ -521,13 +679,19 @@ See `backend/tests/triage/test_triage_room_routing.py` for the reference impleme
 | `backend/hmis/apps/triage/models.py` → `WaitingQueue.triage_room`, `TriageSettings` | Queue model + settings model |
 | `backend/hmis/apps/triage/services.py` → `find_best_triage_room()` | Auto-routing algorithm |
 | `backend/hmis/apps/triage/serializers.py` → `WaitingQueueSerializer`, `TriageSettingsSerializer` | Serializers |
-| `backend/hmis/apps/triage/views.py` → `WaitingQueueViewSet`, `TriageSettingsViewSet` | ViewSets with `assign-room` and `available-triage-rooms` actions |
+| `backend/hmis/apps/triage/views.py` → `WaitingQueueViewSet`, `TriageSettingsViewSet`, `PublicTriageQueueView` | ViewSets + public queue endpoint |
+| `backend/hmis/apps/triage/admin.py` → `TriageSettingsAdmin` | Django admin for per-facility settings |
 | `backend/tests/triage/test_triage_room_routing.py` | 28 comprehensive tests |
 | `web-app/lib/schemas/triage.schema.ts` → `AvailableTriageRoomSchema`, `TriageSettingsSchema` | Frontend Zod schemas |
 | `web-app/lib/api/triage.ts` → `assignTriageRoom()`, `getAvailableTriageRooms()`, `getTriageSettings()` | API client methods |
 | `web-app/lib/hooks/use-triage.ts` → `useAvailableTriageRooms()`, `useAssignTriageRoom()`, `useTriageSettings()` | React Query hooks |
 | `web-app/app/(dashboard)/triage/page.tsx` | Queue UI with room badges + dropdown |
-| `web-app/app/(dashboard)/triage/settings/page.tsx` | Settings UI with toggle + room overview |
+| `web-app/app/(dashboard)/triage/settings/page.tsx` | Settings UI with department selector, toggle + room overview |
+| `web-app/app/triage-display/[facilityId]/page.tsx` | Public triage queue display (TV/tablet, no auth) |
+| `web-app/app/triage-display/layout.tsx` | Dark theme layout for public display |
+| `backend/hmis/apps/clinics/views.py` → `PublicQueueView` | Clinic public queue endpoint (reference) |
+| `web-app/app/queue-display/[clinicId]/page.tsx` | Clinic public queue display (reference) |
+| `web-app/app/(dashboard)/displays/page.tsx` | Centralized displays hub (URL generator + launcher) |
 
 ---
 
@@ -548,6 +712,14 @@ See `backend/tests/triage/test_triage_room_routing.py` for the reference impleme
 7. **Graceful degradation** — If no eligible room is found (all full, no staff, no settings), the patient is simply queued without a room assignment. The system never blocks check-in.
 
 8. **Tenant scoping: use the right mixin** — Queue entries typically lack a direct `facility` FK and connect through a parent chain (e.g., `encounter__facility`). Use `NestedTenantScopeMixin` for queue ViewSets and `TenantScopedViewMixin` with `tenant_scope = "facility"` for settings ViewSets. **Never** use `tenant_scope = "none"` with a manual `get_queryset` that calls `viewsets.ModelViewSet.get_queryset(self)` — this bypasses `_resolve_tenant_context()`, so the `X-Facility-Id` header is never read and `request.facility` stays `None`.
+
+9. **Public displays: no auth, no PII, auto-refresh** — TV/tablet queue screens use `AllowAny` + `authentication_classes = []`. Only expose position numbers, status, room names, and timestamps. Queue entries scoped by `facility_id` query param (triage) or entity PK in URL (clinic). PKs are globally unique in PostgreSQL so cross-tenant ID collision is impossible. Cross-tenant queue _viewing_ is technically possible by guessing PKs but is low-risk since zero PII is exposed — this is operationally public data (patients see it on screens).
+
+10. **Department selector in settings UI** — The module settings page should include a `<Select>` dropdown populated from `useDepartments()` so admins can change the department directly in the UI (not just via admin panel or API). This was a UX gap fixed in the triage module.
+
+11. **Always register settings in Django admin** — Register the per-facility settings model (`TriageSettingsAdmin`, etc.) in the module's `admin.py` for superuser access. Include `facility`, `auto_route_to_room`, and the department FK in `list_display`.
+
+12. **Centralized displays hub** — All public display URLs are accessible from `/displays` inside the dashboard. Each module that adds a public queue display should add a card to `web-app/app/(dashboard)/displays/page.tsx` with URL generation, copy-to-clipboard, and open-in-new-tab.
 
 ---
 
