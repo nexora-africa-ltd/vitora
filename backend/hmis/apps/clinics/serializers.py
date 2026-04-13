@@ -847,3 +847,27 @@ class ClinicRoomCreateSerializer(serializers.ModelSerializer):
         if value.resource_type != "PLACE":
             raise serializers.ValidationError("Resource must be of type PLACE.")
         return value
+
+
+# =============================================================================
+# Public Queue Serializer (No PII)
+# =============================================================================
+
+
+class PublicQueueItemSerializer(serializers.ModelSerializer):
+    """Serializer for public queue display — NO patient-identifying info.
+
+    Only exposes queue number, status, room name, and called_at.
+    """
+
+    room_name = serializers.SerializerMethodField()
+
+    class Meta:
+        """Meta options for PublicQueueItemSerializer."""
+
+        model = ClinicVisit
+        fields = ["queue_number", "status", "room_name", "called_at"]
+
+    def get_room_name(self, obj):
+        """Return room name if assigned."""
+        return obj.room.name if obj.room else None

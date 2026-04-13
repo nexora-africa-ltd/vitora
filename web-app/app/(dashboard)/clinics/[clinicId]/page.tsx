@@ -21,6 +21,7 @@ import {
   Play,
   Pause,
   AlertCircle,
+  Monitor,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -226,6 +227,12 @@ export default function ClinicDashboardPage() {
             <Button size="sm" onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Add Patient</span>
+            </Button>
+
+            <Button variant="ghost" size="icon" asChild>
+              <Link href={`/queue-display/${clinicId}`} target="_blank">
+                <Monitor className="h-4 w-4" />
+              </Link>
             </Button>
 
             <Button variant="ghost" size="icon" asChild>

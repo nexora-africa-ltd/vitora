@@ -59,6 +59,8 @@ class ClinicalEvents:
     TRIAGE_ASSESSED = "clinical.triage.assessed"
     CLINIC_VISIT_CREATED = "clinical.clinic_visit.created"
     CLINIC_VISIT_STATUS_CHANGED = "clinical.clinic_visit.status_changed"
+    CLINIC_SESSION_OPENED = "clinical.clinic_session.opened"
+    CLINIC_SESSION_CLOSED = "clinical.clinic_session.closed"
 
 
 class InpatientEvents:

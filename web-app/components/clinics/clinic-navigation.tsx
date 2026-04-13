@@ -16,6 +16,7 @@ import {
   CalendarClock,
   BarChart3,
   Settings,
+  DoorOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: '/patients', label: 'Patients', icon: Users },
   { href: '/sessions', label: 'Sessions', icon: History },
   { href: '/staff', label: 'Staff', icon: UserCog },
+  { href: '/rooms', label: 'Rooms', icon: DoorOpen },
   { href: '/schedule', label: 'Schedule', icon: CalendarClock },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/settings', label: 'Settings', icon: Settings },

@@ -813,3 +813,94 @@ class ClinicRoomViewSet(viewsets.ModelViewSet):
         """Create clinic room association with parent clinic."""
         clinic = Clinic.objects.get(pk=self.kwargs["clinic_pk"])
         serializer.save(clinic=clinic)
+
+    @action(detail=False, methods=["get"], url_path="available")
+    def available(self, request, clinic_pk=None):
+        """List rooms linked to this clinic that have no active shift right now.
+
+        Useful for showing which rooms are free for the clock-in room picker.
+        """
+        from datetime import date as date_type
+
+        from hmis.apps.scheduling.models import Shift
+
+        today = date_type.today()
+        occupied_room_ids = (
+            Shift.objects.filter(
+                shift_date=today,
+                status__in=["ACTIVE", "ON_BREAK"],
+                room__isnull=False,
+            )
+            .values_list("room_id", flat=True)
+        )
+        qs = (
+            ClinicRoom.objects.filter(clinic_id=clinic_pk)
+            .exclude(room_id__in=occupied_room_ids)
+            .select_related("room")
+        )
+        serializer = ClinicRoomSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+# =============================================================================
+# Public Queue Display (Unauthenticated)
+# =============================================================================
+
+
+class PublicQueueView(viewsets.ViewSet):
+    """
+    Public, unauthenticated queue display for TV/tablet screens.
+
+    Returns only non-PII fields: queue number, status, room name, called_at.
+    No patient names, MRNs, or any identifying information.
+
+    GET /api/clinics/{clinic_id}/public-queue/
+    """
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def list(self, request, clinic_id=None):
+        """Get today's queue for the specified clinic."""
+        from datetime import date as date_type
+
+        from .serializers import PublicQueueItemSerializer
+
+        today = date_type.today()
+
+        try:
+            clinic = Clinic.objects.get(pk=clinic_id)
+        except Clinic.DoesNotExist:
+            return Response(
+                {"error": "Clinic not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        session = (
+            ClinicSession.objects.filter(clinic=clinic, session_date=today)
+            .order_by("-created_at")
+            .first()
+        )
+
+        visits = []
+        if session:
+            visits = (
+                ClinicVisit.objects.filter(
+                    session=session,
+                    status__in=["WAITING", "CALLED", "IN_CONSULTATION"],
+                )
+                .select_related("room")
+                .order_by("queue_number")
+            )
+
+        serializer = PublicQueueItemSerializer(visits, many=True)
+
+        return Response(
+            {
+                "clinic_name": clinic.name,
+                "session_date": str(today),
+                "session_status": session.status if session else None,
+                "updated_at": timezone.now().isoformat(),
+                "queue": serializer.data,
+            }
+        )

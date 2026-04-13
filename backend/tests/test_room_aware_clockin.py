@@ -15,6 +15,18 @@ from datetime import date, time, timedelta
 from django.utils import timezone
 from rest_framework import status
 
+
+def _safe_shift_times():
+    """Return start/end times that guarantee the shift hasn't ended yet.
+
+    Uses timezone.localtime() for Africa/Nairobi, sets start 1 hour ago
+    and end 8 hours from now so tests pass at any time of day.
+    """
+    now = timezone.localtime()
+    start = (now - timedelta(hours=1)).time().replace(microsecond=0)
+    end = (now + timedelta(hours=8)).time().replace(microsecond=0)
+    return start, end
+
 from hmis.apps.clinics.models import Clinic, ClinicRoom, ClinicSession, ClinicStaff, ClinicVisit
 from hmis.apps.scheduling.models import Resource, Shift
 
@@ -78,12 +90,13 @@ def staff_resource(db, test_staff_profile, sample_facility, sample_organization)
 
 @pytest.fixture
 def today_shift(db, staff_resource, sample_facility, sample_organization):
-    """Create a SCHEDULED shift for today."""
+    """Create a SCHEDULED shift for today with dynamic times."""
+    start, end = _safe_shift_times()
     return Shift.objects.create(
         staff_resource=staff_resource,
         shift_date=date.today(),
-        start_time=time(6, 0),
-        end_time=time(18, 0),
+        start_time=start,
+        end_time=end,
         shift_type="DAY",
         status="SCHEDULED",
         facility=sample_facility,
@@ -263,11 +276,12 @@ class TestAutoSessionLifecycle:
             facility=sample_facility,
             organization=sample_organization,
         )
+        start, end = _safe_shift_times()
         shift2 = Shift.objects.create(
             staff_resource=staff2_resource,
             shift_date=date.today(),
-            start_time=time(6, 0),
-            end_time=time(18, 0),
+            start_time=start,
+            end_time=end,
             shift_type="DAY",
             status="SCHEDULED",
             facility=sample_facility,
@@ -328,11 +342,12 @@ class TestAutoSessionLifecycle:
             facility=sample_facility,
             organization=sample_organization,
         )
+        start, end = _safe_shift_times()
         shift2 = Shift.objects.create(
             staff_resource=staff2_resource,
             shift_date=date.today(),
-            start_time=time(6, 0),
-            end_time=time(18, 0),
+            start_time=start,
+            end_time=end,
             shift_type="DAY",
             status="SCHEDULED",
             facility=sample_facility,
@@ -524,3 +539,227 @@ class TestClinicRoomCrud:
 
         with pytest.raises(IntegrityError):
             ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource)
+
+
+# =============================================================================
+# Session Domain Events
+# =============================================================================
+
+
+class TestSessionDomainEvents:
+    """Tests for ClinicSession open/close domain events."""
+
+    def test_session_open_publishes_event(
+        self, db, mocker, facility_clinic, sample_facility, sample_organization, test_user
+    ):
+        """Opening a session publishes CLINIC_SESSION_OPENED event."""
+        mock_publish = mocker.patch("hmis.apps.clinics.signals.publish_event")
+
+        session = ClinicSession.objects.create(
+            clinic=facility_clinic,
+            session_date=date.today(),
+            status="SCHEDULED",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        mock_publish.reset_mock()  # Clear creation calls
+
+        session.open_session(test_user)
+
+        mock_publish.assert_called_once()
+        call_kwargs = mock_publish.call_args
+        assert call_kwargs[1]["event_type"] == "clinical.clinic_session.opened"
+        assert call_kwargs[1]["payload"]["clinic_id"] == facility_clinic.id
+
+    def test_session_close_publishes_event(
+        self, db, mocker, facility_clinic, sample_facility, sample_organization, test_user
+    ):
+        """Closing a session publishes CLINIC_SESSION_CLOSED event."""
+        mock_publish = mocker.patch("hmis.apps.clinics.signals.publish_event")
+
+        session = ClinicSession.objects.create(
+            clinic=facility_clinic,
+            session_date=date.today(),
+            status="OPEN",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        mock_publish.reset_mock()
+
+        session.close_session(test_user)
+
+        mock_publish.assert_called_once()
+        call_kwargs = mock_publish.call_args
+        assert call_kwargs[1]["event_type"] == "clinical.clinic_session.closed"
+        assert call_kwargs[1]["payload"]["clinic_id"] == facility_clinic.id
+
+
+# =============================================================================
+# Available Rooms Endpoint
+# =============================================================================
+
+
+class TestAvailableRooms:
+    """Tests for the available rooms endpoint."""
+
+    def test_available_rooms_excludes_occupied(
+        self, authenticated_client, facility_clinic, room_resource, room_resource_2,
+        today_shift, sample_facility
+    ):
+        """Available endpoint excludes rooms with active shifts."""
+        ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource)
+        ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource_2)
+
+        # Clock in to room_resource
+        today_shift.start_shift(room=room_resource, clinic=facility_clinic)
+
+        response = authenticated_client.get(
+            f"/api/clinics/{facility_clinic.id}/rooms/available/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        room_ids = [r["room"] for r in response.data]
+        assert room_resource.id not in room_ids
+        assert room_resource_2.id in room_ids
+
+    def test_available_rooms_includes_unoccupied(
+        self, authenticated_client, facility_clinic, room_resource, room_resource_2
+    ):
+        """All rooms are available when none have active shifts."""
+        ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource)
+        ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource_2)
+
+        response = authenticated_client.get(
+            f"/api/clinics/{facility_clinic.id}/rooms/available/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 2
+
+
+# =============================================================================
+# Public Queue Display
+# =============================================================================
+
+
+class TestPublicQueueDisplay:
+    """Tests for the unauthenticated patient-facing queue display."""
+
+    def test_public_queue_requires_no_auth(
+        self, api_client, facility_clinic, sample_facility, sample_organization
+    ):
+        """Public queue is accessible without authentication."""
+        ClinicSession.objects.create(
+            clinic=facility_clinic,
+            session_date=date.today(),
+            status="OPEN",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        response = api_client.get(
+            f"/api/clinics/{facility_clinic.id}/public-queue/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["clinic_name"] == "General OPD"
+
+    def test_public_queue_returns_no_pii(
+        self, api_client, facility_clinic, sample_patient,
+        sample_facility, sample_organization, room_resource
+    ):
+        """Public queue does NOT expose patient name, MRN, or other PII."""
+        session = ClinicSession.objects.create(
+            clinic=facility_clinic,
+            session_date=date.today(),
+            status="OPEN",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        ClinicVisit.objects.create(
+            session=session,
+            patient=sample_patient,
+            status="CALLED",
+            priority="STANDARD",
+            queue_number=1,
+            room=room_resource,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = api_client.get(
+            f"/api/clinics/{facility_clinic.id}/public-queue/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        queue = response.data["queue"]
+        assert len(queue) == 1
+
+        item = queue[0]
+        # MUST have these safe fields
+        assert "queue_number" in item
+        assert "status" in item
+        assert "room_name" in item
+        assert item["room_name"] == "Room 1"
+
+        # MUST NOT have any PII
+        assert "patient" not in item
+        assert "patient_name" not in item
+        assert "patient_mrn" not in item
+        assert "id" not in item
+
+    def test_public_queue_only_shows_active_visits(
+        self, api_client, facility_clinic, sample_patient,
+        sample_facility, sample_organization, sample_county, sample_sub_county
+    ):
+        """Public queue only shows WAITING, CALLED, IN_CONSULTATION visits."""
+        from hmis.apps.patients.models import Patient
+
+        session = ClinicSession.objects.create(
+            clinic=facility_clinic,
+            session_date=date.today(),
+            status="OPEN",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        # Helper to create unique patients for the unique constraint
+        def make_patient(suffix):
+            return Patient.objects.create(
+                first_name=f"Test{suffix}",
+                last_name="Queue",
+                date_of_birth="1990-01-01",
+                gender="M",
+                county=sample_county,
+                sub_county=sample_sub_county,
+                organization=sample_organization,
+            )
+
+        # Active visits
+        for i, s in enumerate(["WAITING", "CALLED", "IN_CONSULTATION"], start=1):
+            ClinicVisit.objects.create(
+                session=session,
+                patient=make_patient(f"A{i}"),
+                status=s,
+                priority="STANDARD",
+                queue_number=i,
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+        # Inactive visits (should be excluded)
+        for i, s in enumerate(["COMPLETED", "CANCELLED", "NO_SHOW"], start=10):
+            ClinicVisit.objects.create(
+                session=session,
+                patient=make_patient(f"I{i}"),
+                status=s,
+                priority="STANDARD",
+                queue_number=i,
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+
+        response = api_client.get(
+            f"/api/clinics/{facility_clinic.id}/public-queue/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["queue"]) == 3
+
+    def test_public_queue_nonexistent_clinic(self, api_client):
+        """Returns 404 for nonexistent clinic."""
+        response = api_client.get("/api/clinics/99999/public-queue/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND

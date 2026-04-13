@@ -81,12 +81,22 @@ class ResourceFilter(filters.FilterSet):
     is_active = filters.BooleanFilter(field_name="is_active")
     code = filters.CharFilter(field_name="code", lookup_expr="icontains")
     name = filters.CharFilter(field_name="name", lookup_expr="icontains")
+    exclude_clinic_resources = filters.BooleanFilter(
+        method="filter_exclude_clinic_resources",
+        label="Exclude resources auto-created for clinics",
+    )
+
+    def filter_exclude_clinic_resources(self, queryset, name, value):
+        """Exclude PLACE resources that are a clinic's scheduling_resource."""
+        if value:
+            return queryset.exclude(clinic__isnull=False)
+        return queryset
 
     class Meta:
         """Meta options for ResourceFilter."""
 
         model = Resource
-        fields = ["resource_type", "is_active", "code", "name"]
+        fields = ["resource_type", "is_active", "code", "name", "exclude_clinic_resources"]
 
 
 class ScheduleFilter(filters.FilterSet):

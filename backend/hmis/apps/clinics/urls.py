@@ -22,6 +22,7 @@ from .views import (
     ClinicStaffViewSet,
     ClinicViewSet,
     ClinicVisitViewSet,
+    PublicQueueView,
 )
 
 # Main router for top-level endpoints
@@ -40,4 +41,9 @@ clinics_router.register(r"rooms", ClinicRoomViewSet, basename="clinic-rooms")
 urlpatterns = [
     path("", include(router.urls)),
     path("", include(clinics_router.urls)),
+    path(
+        "clinics/<int:clinic_id>/public-queue/",
+        PublicQueueView.as_view({"get": "list"}),
+        name="clinic-public-queue",
+    ),
 ]

@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { Clock, Phone, Play, MoreHorizontal } from 'lucide-react';
+import { Clock, Phone, Play, MoreHorizontal, DoorOpen } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClinicPriorityBadge } from './clinic-priority-badge';
@@ -70,6 +70,14 @@ export function ClinicQueueMobileCard({
           <span>{waitTime}</span>
         </div>
       </div>
+
+      {/* Room Assignment (shown when CALLED or IN_CONSULTATION) */}
+      {visit.room_name && (visit.status === 'CALLED' || visit.status === 'IN_CONSULTATION') && (
+        <div className="flex items-center gap-1.5 text-sm mb-2">
+          <DoorOpen className="h-3.5 w-3.5 text-blue-500" />
+          <span className="font-medium text-blue-700 dark:text-blue-400">{visit.room_name}</span>
+        </div>
+      )}
 
       {/* Chief Complaint */}
       {(visit.chief_complaint || visit.notes) && (
