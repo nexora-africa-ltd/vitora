@@ -38,6 +38,7 @@ class ResourceSerializer(serializers.ModelSerializer):
             "capacity",
             "staff_profile",
             "staff_profile_name",
+            "department",
             "department_name",
             "metadata",
             "description",
@@ -53,7 +54,9 @@ class ResourceSerializer(serializers.ModelSerializer):
         return None
 
     def get_department_name(self, obj) -> str | None:
-        """Get department name from linked staff profile."""
+        """Get department name — from direct FK first, then staff profile fallback."""
+        if obj.department:
+            return obj.department.name
         if obj.staff_profile and obj.staff_profile.primary_department:
             return obj.staff_profile.primary_department.name
         return None
@@ -79,10 +82,12 @@ class ResourceListSerializer(serializers.ModelSerializer):
         """Meta options for ResourceListSerializer."""
 
         model = Resource
-        fields = ["id", "name", "resource_type", "code", "is_active", "department_name"]
+        fields = ["id", "name", "resource_type", "code", "is_active", "department", "department_name"]
 
     def get_department_name(self, obj) -> str | None:
-        """Get department name from linked staff profile."""
+        """Get department name — from direct FK first, then staff profile fallback."""
+        if obj.department:
+            return obj.department.name
         if obj.staff_profile and obj.staff_profile.primary_department:
             return obj.staff_profile.primary_department.name
         return None
@@ -801,6 +806,7 @@ class ShiftSerializer(serializers.ModelSerializer):
     late_minutes = serializers.IntegerField(read_only=True)
     overtime_minutes = serializers.IntegerField(read_only=True)
     is_early_departure = serializers.BooleanField(read_only=True)
+    department_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     cancelled_by_name = serializers.SerializerMethodField()
     room_name = serializers.SerializerMethodField()
@@ -825,6 +831,7 @@ class ShiftSerializer(serializers.ModelSerializer):
             "status",
             "status_display",
             "department",
+            "department_name",
             "notes",
             "duration_hours",
             "actual_hours",
@@ -864,6 +871,7 @@ class ShiftSerializer(serializers.ModelSerializer):
             "room_name",
             "clinic",
             "clinic_name",
+            "department_name",
             "started_at",
             "completed_at",
             "break_started_at",
@@ -903,14 +911,18 @@ class ShiftSerializer(serializers.ModelSerializer):
             return obj.clinic.name
         return None
 
-    def to_representation(self, instance):
-        """Fall back department to resource's staff profile department."""
-        data = super().to_representation(instance)
-        if not data.get("department"):
-            resource = instance.staff_resource
-            if resource and resource.staff_profile and resource.staff_profile.primary_department:
-                data["department"] = resource.staff_profile.primary_department.name
-        return data
+    def get_department_name(self, obj) -> str:
+        """Return department name, falling back through resource/staff profile."""
+        if obj.department:
+            return obj.department.name
+        if obj.department_legacy:
+            return obj.department_legacy
+        resource = obj.staff_resource
+        if resource and resource.department:
+            return resource.department.name
+        if resource and resource.staff_profile and resource.staff_profile.primary_department:
+            return resource.staff_profile.primary_department.name
+        return ""
 
 
 class ShiftCreateSerializer(serializers.ModelSerializer):
@@ -998,10 +1010,14 @@ class ShiftListSerializer(serializers.ModelSerializer):
         ]
 
     def get_department(self, obj) -> str:
-        """Return shift department, falling back to resource's staff profile department."""
+        """Return shift department name, falling back to resource's staff profile department."""
         if obj.department:
-            return obj.department
+            return obj.department.name
+        if obj.department_legacy:
+            return obj.department_legacy
         resource = obj.staff_resource
+        if resource and resource.department:
+            return resource.department.name
         if resource and resource.staff_profile and resource.staff_profile.primary_department:
             return resource.staff_profile.primary_department.name
         return ""

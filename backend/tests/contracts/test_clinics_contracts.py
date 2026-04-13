@@ -22,6 +22,7 @@ from hmis.apps.clinics.serializers import (
     ClinicVisitReferSerializer,
     ClinicVisitSerializer,
     MonthlyClinicReportSerializer,
+    PublicQueueItemSerializer,
     QueueStatsSerializer,
 )
 
@@ -193,6 +194,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "created_at",
             "default_clinical_template",
             "default_service_fee",
+            "department",
+            "department_name",
             "description",
             "dhis2_org_unit_id",
             "eligibility_rules",
@@ -371,6 +374,15 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "under_5_visits",
             "updated_at",
             "year",
+        }),
+    ),
+    (
+        PublicQueueItemSerializer,
+        frozenset({
+            "called_at",
+            "queue_number",
+            "room_name",
+            "status",
         }),
     ),
     (

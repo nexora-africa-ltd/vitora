@@ -264,11 +264,13 @@ export default function WeeklyRosterPage() {
 
   // Get departments from staff resources
   const departments = useMemo(() => {
-    const set = new Set<string>();
+    const map = new Map<string, number>();
     for (const r of allStaff) {
-      if (r.department_name) set.add(r.department_name);
+      if (r.department_name && r.department) map.set(r.department_name, r.department);
     }
-    return Array.from(set).sort();
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, id]) => ({ name, id }));
   }, [allStaff]);
 
   // ==========================================================================
@@ -352,7 +354,7 @@ export default function WeeklyRosterPage() {
           start_time: config.start,
           end_time: config.end,
           shift_type: shiftType,
-          department: departmentFilter || undefined,
+          department: departments.find((d) => d.name === departmentFilter)?.id,
         });
       }
 
@@ -1053,7 +1055,7 @@ export default function WeeklyRosterPage() {
               <SelectContent>
                 <SelectItem value="_none">All Depts</SelectItem>
                 {departments.map((d) => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                  <SelectItem key={d.name} value={d.name}>{d.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -60,6 +60,7 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useSchedulingSocket } from '@/lib/hooks/use-websocket';
 import { shiftsApi, resourcesApi } from '@/lib/api/scheduling';
+import { departmentsApi } from '@/lib/api/rbac';
 import { formatDate, formatTime } from '@/lib/utils/format';
 import { toast } from 'sonner';
 import type {
@@ -153,7 +154,7 @@ export default function DutyRosterPage() {
 
   const [typeFilter, setTypeFilter] = useState<ShiftType | ''>('');
   const [statusFilter, setStatusFilter] = useState<ShiftStatus | ''>('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState<number | ''>('');
   const [fromDate, setFromDate] = useState<string>(today);
   const [toDate, setToDate] = useState<string>(today);
   const [page, setPage] = useState(1);
@@ -167,7 +168,7 @@ export default function DutyRosterPage() {
     start_time: '',
     end_time: '',
     shift_type: 'DAY',
-    department: '',
+    department: undefined,
     notes: '',
   });
 
@@ -219,6 +220,12 @@ export default function DutyRosterPage() {
     queryFn: () => resourcesApi.list({ resource_type: 'PERSON', is_active: true, page_size: 200 }),
     enabled: createOpen,
   });
+
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments-list'],
+    queryFn: () => departmentsApi.list({ page_size: 200, is_active: true }),
+  });
+  const departmentsList = departmentsData?.results || [];
 
   const shifts = data?.results || [];
   const totalCount = data?.count || 0;
@@ -294,7 +301,7 @@ export default function DutyRosterPage() {
       start_time: '',
       end_time: '',
       shift_type: 'DAY',
-      department: '',
+      department: undefined,
       notes: '',
     });
   }
@@ -421,12 +428,20 @@ export default function DutyRosterPage() {
                 </SelectContent>
               </Select>
 
-              <Input
-                placeholder="Department"
-                value={departmentFilter}
-                onChange={(e) => { setDepartmentFilter(e.target.value); setPage(1); }}
-                className="w-[130px] h-8 text-xs"
-              />
+              <Select
+                value={departmentFilter ? String(departmentFilter) : '_all'}
+                onValueChange={(v) => { setDepartmentFilter(v === '_all' ? '' : Number(v)); setPage(1); }}
+              >
+                <SelectTrigger className="w-[130px] h-8 text-xs">
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">All Depts</SelectItem>
+                  {departmentsList.map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -772,11 +787,20 @@ export default function DutyRosterPage() {
               {/* Department */}
               <div className="space-y-2">
                 <Label>Department</Label>
-                <Input
-                  placeholder="e.g. Emergency, Outpatient"
-                  value={createForm.department || ''}
-                  onChange={(e) => setCreateForm({ ...createForm, department: e.target.value })}
-                />
+                <Select
+                  value={createForm.department ? String(createForm.department) : '_none'}
+                  onValueChange={(v) => setCreateForm({ ...createForm, department: v === '_none' ? undefined : Number(v) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">No department</SelectItem>
+                    {departmentsList.map((d) => (
+                      <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Notes */}

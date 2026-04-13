@@ -99,6 +99,14 @@ class Resource(FacilityScopedModel, TimeStampedModel):
         default="",
         help_text="Description of the resource",
     )
+    department = models.ForeignKey(
+        "core.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="scheduling_resources",
+        help_text="Department this resource belongs to (e.g., Laboratory, Pharmacy, Outpatient)",
+    )
 
     class Meta(TimeStampedModel.Meta):
         """Meta options for Resource model."""
@@ -1598,12 +1606,20 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         db_index=True,
         help_text="Current shift status",
     )
-    department = models.CharField(
+    department = models.ForeignKey(
+        "core.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shifts",
+        db_index=True,
+        help_text="Department for this shift",
+    )
+    department_legacy = models.CharField(
         max_length=200,
         blank=True,
         default="",
-        db_index=True,
-        help_text="Department for this shift (e.g., OPD, Emergency, Ward A)",
+        help_text="Legacy text department (migrating to FK). Do not use for new code.",
     )
     notes = models.TextField(
         blank=True,

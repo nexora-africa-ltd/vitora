@@ -35,6 +35,7 @@ class ClinicSerializer(serializers.ModelSerializer):
     is_scheduled_today = serializers.SerializerMethodField()
     clinic_type_display = serializers.CharField(source="get_clinic_type_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    department_name = serializers.CharField(source="department.name", read_only=True, default=None)
 
     class Meta:
         """Meta options for ClinicSerializer."""
@@ -50,6 +51,8 @@ class ClinicSerializer(serializers.ModelSerializer):
             "location",
             "floor",
             "capacity",
+            "department",
+            "department_name",
             "status",
             "status_display",
             "requires_appointment",

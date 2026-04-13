@@ -81,6 +81,7 @@ class ResourceFilter(filters.FilterSet):
     is_active = filters.BooleanFilter(field_name="is_active")
     code = filters.CharFilter(field_name="code", lookup_expr="icontains")
     name = filters.CharFilter(field_name="name", lookup_expr="icontains")
+    department = filters.NumberFilter(field_name="department__id")
     exclude_clinic_resources = filters.BooleanFilter(
         method="filter_exclude_clinic_resources",
         label="Exclude resources auto-created for clinics",
@@ -96,7 +97,7 @@ class ResourceFilter(filters.FilterSet):
         """Meta options for ResourceFilter."""
 
         model = Resource
-        fields = ["resource_type", "is_active", "code", "name", "exclude_clinic_resources"]
+        fields = ["resource_type", "is_active", "code", "name", "department", "exclude_clinic_resources"]
 
 
 class ScheduleFilter(filters.FilterSet):
@@ -146,7 +147,7 @@ class ShiftFilter(filters.FilterSet):
     staff_resource = filters.NumberFilter(field_name="staff_resource__id")
     shift_type = filters.CharFilter(field_name="shift_type")
     status = filters.CharFilter(field_name="status")
-    department = filters.CharFilter(field_name="department", lookup_expr="icontains")
+    department = filters.NumberFilter(field_name="department__id")
     from_date = filters.DateFilter(field_name="shift_date", lookup_expr="gte")
     to_date = filters.DateFilter(field_name="shift_date", lookup_expr="lte")
     room = filters.NumberFilter(field_name="room__id")
@@ -212,7 +213,7 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
 
     queryset = Resource.objects.select_related(
-        "staff_profile__primary_department", "staff_profile__user"
+        "staff_profile__primary_department", "staff_profile__user", "department"
     )
     serializer_class = ResourceSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1132,6 +1133,8 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         "staff_resource",
         "staff_resource__staff_profile",
         "staff_resource__staff_profile__primary_department",
+        "staff_resource__department",
+        "department",
         "created_by",
         "cancelled_by",
         "room",
