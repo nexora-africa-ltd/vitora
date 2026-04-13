@@ -149,6 +149,28 @@ class ShiftFilter(filters.FilterSet):
     department = filters.CharFilter(field_name="department", lookup_expr="icontains")
     from_date = filters.DateFilter(field_name="shift_date", lookup_expr="gte")
     to_date = filters.DateFilter(field_name="shift_date", lookup_expr="lte")
+    room = filters.NumberFilter(field_name="room__id")
+    clinic = filters.NumberFilter(field_name="clinic__id")
+    room_or_linked_clinic = filters.NumberFilter(
+        method="filter_room_or_linked_clinic",
+        label="Shifts in this room OR any clinic linked to it",
+    )
+
+    def filter_room_or_linked_clinic(self, queryset, name, value):
+        """Return shifts that either clocked into this room OR belong to a linked clinic."""
+        from hmis.apps.clinics.models import ClinicRoom
+
+        # Get clinic IDs linked to this PLACE resource
+        linked_clinic_ids = list(
+            ClinicRoom.objects.filter(room_id=value).values_list("clinic_id", flat=True)
+        )
+
+        from django.db.models import Q
+
+        q = Q(room_id=value)
+        if linked_clinic_ids:
+            q |= Q(clinic_id__in=linked_clinic_ids)
+        return queryset.filter(q)
 
     class Meta:
         """Meta options for ShiftFilter."""
@@ -161,6 +183,9 @@ class ShiftFilter(filters.FilterSet):
             "department",
             "from_date",
             "to_date",
+            "room",
+            "clinic",
+            "room_or_linked_clinic",
         ]
 
 
@@ -281,6 +306,25 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
 
         return Response(result)
+
+    @action(detail=True, methods=["get"], url_path="linked-clinics")
+    def linked_clinics(self, request, pk=None):
+        """Return clinics that this PLACE resource is linked to via ClinicRoom."""
+        from hmis.apps.clinics.models import ClinicRoom
+
+        resource = self.get_object()
+        clinic_rooms = ClinicRoom.objects.filter(room=resource).select_related("clinic")
+        data = [
+            {
+                "clinic_room_id": cr.id,
+                "clinic_id": cr.clinic_id,
+                "clinic_name": cr.clinic.name,
+                "clinic_code": cr.clinic.code,
+                "is_default": cr.is_default,
+            }
+            for cr in clinic_rooms
+        ]
+        return Response(data)
 
     @action(detail=False, methods=["post"], url_path="sync-from-staff")
     def sync_from_staff(self, request):

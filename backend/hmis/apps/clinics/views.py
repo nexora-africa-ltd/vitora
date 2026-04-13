@@ -15,7 +15,7 @@ from django.db.models import Avg, Q
 from django.utils import timezone
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
-from rest_framework import permissions, status, viewsets
+from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -809,10 +809,21 @@ class ClinicRoomViewSet(viewsets.ModelViewSet):
             return ClinicRoomCreateSerializer
         return ClinicRoomSerializer
 
-    def perform_create(self, serializer):
-        """Create clinic room association with parent clinic."""
+    def create(self, request, *args, **kwargs):
+        """Create clinic room association, or return existing if already linked."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         clinic = Clinic.objects.get(pk=self.kwargs["clinic_pk"])
+        room = serializer.validated_data["room"]
+        room_id = room.pk if hasattr(room, "pk") else room
+        existing = ClinicRoom.objects.filter(clinic=clinic, room_id=room_id).first()
+        if existing:
+            return Response(
+                ClinicRoomSerializer(existing).data, status=status.HTTP_200_OK
+            )
         serializer.save(clinic=clinic)
+        read_serializer = ClinicRoomSerializer(serializer.instance)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["get"], url_path="available")
     def available(self, request, clinic_pk=None):

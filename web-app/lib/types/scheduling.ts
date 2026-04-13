@@ -308,6 +308,9 @@ export interface ShiftListParams {
   department?: string;
   from_date?: string;
   to_date?: string;
+  room?: number;
+  clinic?: number;
+  room_or_linked_clinic?: number;
   ordering?: string;
 }
 
