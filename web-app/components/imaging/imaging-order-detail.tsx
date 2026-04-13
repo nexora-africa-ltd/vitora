@@ -382,7 +382,7 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                 {order.is_paid ? 'Paid' : 'Unpaid'}
               </Badge>
             </div>
-            {order.items.some((item) => item.procedure_code) && (
+            {(order.items ?? []).some((item) => item.procedure_code) && (
               <div className="pt-2">
                 <p className="text-xs sm:text-sm text-muted-foreground mb-2">SHA Coverage</p>
                 <Badge variant="outline" className="gap-1 text-xs">
@@ -399,12 +399,12 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
       <Card>
         <CardHeader className="pb-2 sm:pb-3">
           <CardTitle className="text-base sm:text-lg">
-            Imaging Procedures ({order.items.length})
+            Imaging Procedures ({(order.items ?? []).length})
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 sm:px-6">
           <div className="space-y-2 sm:space-y-3">
-            {order.items.map((item) => (
+            {(order.items ?? []).map((item) => (
               <div
                 key={item.id}
                 className="flex flex-col gap-2 sm:gap-3 p-2.5 sm:p-3 border rounded-lg"

@@ -10,6 +10,7 @@
 
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
+import { formatDate, formatDateTime } from '@/lib/utils/format';
 import {
   Calendar,
   User,
@@ -162,7 +163,7 @@ export function DispensingHistoryTable({
           </div>
           <div>
             <span className="text-muted-foreground">Date:</span>
-            <span className="ml-1">{format(new Date(dispensing.dispensed_at), 'MMM d, h:mm a')}</span>
+            <span className="ml-1">{formatDateTime(dispensing.dispensed_at, 'MMM d, h:mm a')}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Cost:</span>
@@ -248,9 +249,9 @@ export function DispensingHistoryTable({
       header: 'Date',
       cell: (dispensing: Dispensing) => (
         <div className="text-sm">
-          <p>{format(new Date(dispensing.dispensed_at), 'MMM d, yyyy')}</p>
+          <p>{formatDate(dispensing.dispensed_at)}</p>
           <p className="text-xs text-muted-foreground">
-            {format(new Date(dispensing.dispensed_at), 'h:mm a')}
+            {formatDateTime(dispensing.dispensed_at, 'h:mm a')}
           </p>
         </div>
       ),

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
+import { formatDate } from '@/lib/utils/format';
 import {
   AlertCircle,
   AlertTriangle,
@@ -305,7 +306,7 @@ function PatientCheckinCard({
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-4 w-4 shrink-0" />
             <span>
-              Last visit: {format(new Date(patient.last_encounter_date), 'MMM d, yyyy')}
+              Last visit: {formatDate(patient.last_encounter_date)}
               {snapshot.last_visit_clinic && ` at ${snapshot.last_visit_clinic}`}
             </span>
           </div>

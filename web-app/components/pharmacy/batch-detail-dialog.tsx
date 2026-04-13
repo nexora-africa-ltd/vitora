@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { StockBatch } from '@/lib/types/pharmacy';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/utils/format';
 import { Package, Calendar, DollarSign, MapPin, Barcode, User, Edit } from 'lucide-react';
 
 interface BatchDetailDialogProps {
@@ -114,12 +114,12 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
               {batch.manufacture_date && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Manufacture Date:</span>
-                  <span>{format(new Date(batch.manufacture_date), 'MMM d, yyyy')}</span>
+                  <span>{formatDate(batch.manufacture_date)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Expiry Date:</span>
-                <span>{format(new Date(batch.expiry_date), 'MMM d, yyyy')}</span>
+                <span>{formatDate(batch.expiry_date)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Days to Expiry:</span>
@@ -129,7 +129,7 @@ export function BatchDetailDialog({ batch, open, onOpenChange, onEdit }: BatchDe
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Received Date:</span>
-                <span>{format(new Date(batch.received_date), 'MMM d, yyyy')}</span>
+                <span>{formatDate(batch.received_date)}</span>
               </div>
             </div>
           </div>

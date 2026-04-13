@@ -11,7 +11,7 @@
 'use client';
 
 import { useState } from 'react';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/utils/format';
 import { Printer, AlertTriangle, Settings2 } from 'lucide-react';
 import {
   Dialog,
@@ -95,7 +95,7 @@ export function LabelDialog({
 
   if (!dispensing) return null;
 
-  const dispensedDate = format(new Date(dispensing.dispensed_at), 'MMM d, yyyy');
+  const dispensedDate = formatDate(dispensing.dispensed_at);
   const extendedDispensing = dispensing as Dispensing & {
     dosage?: string;
     instructions?: string;

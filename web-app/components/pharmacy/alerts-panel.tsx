@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
+import { formatDate, formatDateTime } from '@/lib/utils/format';
 import {
   AlertTriangle,
   XCircle,
@@ -238,7 +239,7 @@ export function AlertsPanel({
         alert.severity,
         alert.message,
         alert.batch_number || '',
-        format(new Date(alert.created_at), 'yyyy-MM-dd HH:mm:ss'),
+        formatDateTime(alert.created_at, 'yyyy-MM-dd HH:mm:ss'),
         alert.acknowledged ? 'Yes' : 'No',
         alert.resolved ? 'Yes' : 'No',
       ]);
@@ -484,7 +485,7 @@ export function AlertsPanel({
                             </Badge>
                           </div>
                           <span className="text-sm text-muted-foreground">
-                            {format(new Date(alert.created_at), 'MMM d, yyyy')}
+                            {formatDate(alert.created_at)}
                           </span>
                         </div>
 
@@ -500,7 +501,7 @@ export function AlertsPanel({
                             <Badge variant="outline" className="text-xs">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Acknowledged by {alert.acknowledged_by_name} on{' '}
-                              {alert.acknowledged_at && format(new Date(alert.acknowledged_at), 'MMM d')}
+                              {alert.acknowledged_at && formatDate(alert.acknowledged_at, 'MMM d')}
                             </Badge>
                           )}
                           {alert.batch_number && alert.stock_batch && (

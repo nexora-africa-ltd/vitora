@@ -176,7 +176,7 @@ export function ClinicalReferenceCard({
               <div className="space-y-1">
                 {labOrders.map((lo) => (
                   <div key={lo.id} className="text-xs">
-                    {lo.items.map((item, idx) => {
+                    {(lo.items ?? []).map((item, idx) => {
                       const r = item.result;
                       return (
                         <div key={idx} className="flex gap-2 py-0.5">

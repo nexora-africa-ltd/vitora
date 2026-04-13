@@ -316,7 +316,7 @@ export default function PrescriptionDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {prescription.items.map((item) => (
+              {(prescription.items ?? []).map((item) => (
                 <TableRow key={item.id} data-testid="prescription-item">
                   <TableCell>
                     <div>

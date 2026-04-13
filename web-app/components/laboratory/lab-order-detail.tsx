@@ -138,16 +138,17 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
   const priorityConfig = PRIORITY_CONFIG[order.priority];
   const StatusIcon = statusConfig.icon;
 
-  const canSubmit = order.status === 'DRAFT' && order.items.length > 0;
+  const orderItems = order.items ?? [];
+  const canSubmit = order.status === 'DRAFT' && orderItems.length > 0;
   const canCollectSpecimen = order.status === 'ORDERED';
   const canEnterResults = order.status === 'SPECIMEN_COLLECTED' || order.status === 'IN_PROGRESS';
   const canCancel = ['DRAFT', 'ORDERED'].includes(order.status);
-  const hasCriticalResults = order.items.some(item => item.result?.is_critical_result);
+  const hasCriticalResults = orderItems.some(item => item.result?.is_critical_result);
   const canGenerateReport = order.status === 'COMPLETED' && linkedReports.length === 0;
 
   // Check if all tests have results entered
-  const allResultsEntered = order.items.length > 0 && order.items.every(item => item.has_result);
-  const pendingResults = order.items.filter(item => !item.has_result).length;
+  const allResultsEntered = orderItems.length > 0 && orderItems.every(item => item.has_result);
+  const pendingResults = orderItems.filter(item => !item.has_result).length;
 
   const handleSubmit = async () => {
     try {
@@ -449,13 +450,13 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <CardTitle>Tests ({order.items.length})</CardTitle>
+            <CardTitle>Tests ({orderItems.length})</CardTitle>
             <HelpPopover content="Laboratory tests included in this order, with their result and verification status." />
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {order.items.map((item) => (
+            {orderItems.map((item) => (
               <div
                 key={item.id}
                 className={cn(
