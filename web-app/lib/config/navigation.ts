@@ -72,6 +72,7 @@ import {
   Wallet,
   ShieldAlert,
   Package,
+  Monitor,
 } from 'lucide-react';
 
 import {
@@ -417,6 +418,11 @@ const _allNavItems: NavItemType[] = [
       { label: 'KENHDD Compliance', href: '/admin/kenhdd-compliance', icon: BookCheck, actionKey: 'admin.view_audit_logs' },
       { label: 'Reports', href: '/reports', icon: FileText, actionKey: 'admin.view_reports' },
     ],
+  },
+  {
+    label: 'Displays',
+    href: '/displays',
+    icon: Monitor,
   },
 ];
 
