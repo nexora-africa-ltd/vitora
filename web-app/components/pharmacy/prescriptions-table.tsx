@@ -9,7 +9,7 @@
 
 import { useState, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/utils/format';
 import {
   Search,
   Eye,
@@ -179,7 +179,7 @@ export function PrescriptionsTable({
                 <p className="text-sm text-muted-foreground">{rx.patient_mrn}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-sm">{format(new Date(rx.prescribed_date), 'MMM d')}</p>
+                <p className="text-sm">{formatDate(rx.prescribed_date, 'MMM d')}</p>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                   <Pill className="h-3.5 w-3.5" />
                   <span>{rx.items.length}</span>
@@ -344,7 +344,7 @@ export function PrescriptionsTable({
       header: 'Date',
       sortable: true,
       sortType: 'date' as const,
-      cell: (rx: Prescription) => format(new Date(rx.prescribed_date), 'MMM d, yyyy'),
+      cell: (rx: Prescription) => formatDate(rx.prescribed_date),
       hideOnMobile: true,
     },
     {
