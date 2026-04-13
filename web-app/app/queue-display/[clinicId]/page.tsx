@@ -33,12 +33,15 @@ const STATUS_CONFIG: Record<string, { label: string; border: string; bg: string;
 };
 
 function LiveClock() {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {
+    setTime(new Date());
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  if (!time) return <span className="tabular-nums">--:--:--</span>;
 
   return (
     <span className="tabular-nums">
