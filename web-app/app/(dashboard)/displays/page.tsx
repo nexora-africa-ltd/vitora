@@ -114,7 +114,7 @@ export default function DisplaysPage() {
       </Card>
 
       {/* Clinic Queue Display */}
-      <Card className="relative overflow-hidden">
+      <Card className="relative">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
           aria-hidden="true"
@@ -132,8 +132,9 @@ export default function DisplaysPage() {
             Shows the queue for a specific clinic session with queue numbers, call status, and room assignments.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="w-full sm:flex-1 sm:max-w-md">
             <Select value={selectedClinic} onValueChange={setSelectedClinic}>
-              <SelectTrigger className="sm:max-w-xs">
+              <SelectTrigger>
                 <SelectValue placeholder="Select a clinic" />
               </SelectTrigger>
               <SelectContent>
@@ -144,6 +145,7 @@ export default function DisplaysPage() {
                 ))}
               </SelectContent>
             </Select>
+            </div>
           </div>
           {clinicUrl && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

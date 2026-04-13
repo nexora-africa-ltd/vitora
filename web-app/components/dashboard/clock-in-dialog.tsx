@@ -67,23 +67,38 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
     enabled: !!selectedClinicId,
   });
 
-  // Fetch department rooms (fallback when no clinic assignments)
+  // Fetch department rooms (always — covers rooms not linked to any clinic)
   const deptId = staffProfile?.primary_department;
   const { data: deptRooms, isLoading: deptRoomsLoading } = useQuery({
     queryKey: ['dept-rooms', deptId],
     queryFn: () => resourcesApi.list({ resource_type: 'PLACE', department: deptId!, is_active: true, page_size: 100 }),
-    enabled: open && !hasClinicAssignments && !!deptId,
+    enabled: open && !!deptId,
   });
 
-  // Auto-select default room
+  // Auto-select default room (clinic default, or single available room)
   useEffect(() => {
-    if (rooms && rooms.length > 0 && !selectedRoomId) {
+    if (selectedRoomId) return;
+
+    // 1. Try clinic default room
+    if (rooms && rooms.length > 0) {
       const defaultRoom = rooms.find((r) => r.is_default);
       if (defaultRoom) {
         setSelectedRoomId(String(defaultRoom.room));
+        return;
       }
     }
-  }, [rooms, selectedRoomId]);
+
+    // 2. If only one room total (clinic + dept), auto-select it
+    const clinicRoomIdSet = new Set((rooms ?? []).map((r: ClinicRoom) => r.room));
+    const extra = (deptRooms?.results ?? []).filter((r) => !clinicRoomIdSet.has(r.id));
+    const allRooms = [
+      ...(rooms ?? []).map((r) => String(r.room)),
+      ...extra.map((r) => String(r.id)),
+    ];
+    if (allRooms.length === 1) {
+      setSelectedRoomId(allRooms[0]);
+    }
+  }, [rooms, deptRooms, selectedRoomId]);
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -107,9 +122,14 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
 
   const deptRoomResults = deptRooms?.results ?? [];
 
+  // Build merged room list: clinic rooms + department rooms not already linked
+  const clinicRoomIds = new Set((rooms ?? []).map((r: ClinicRoom) => r.room));
+  const extraDeptRooms = deptRoomResults.filter((r) => !clinicRoomIds.has(r.id));
+  const hasAnyRooms = (rooms && rooms.length > 0) || extraDeptRooms.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg overflow-visible">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LogIn className="h-5 w-5" />
@@ -153,7 +173,7 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
                 </Select>
               </div>
 
-              {/* Clinic Room Selection */}
+              {/* Room Selection (clinic rooms + department rooms) */}
               {selectedClinicId && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-1.5">
@@ -161,11 +181,11 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
                     Room
                     <span className="text-xs text-muted-foreground font-normal">(optional)</span>
                   </label>
-                  {roomsLoading ? (
+                  {(roomsLoading || deptRoomsLoading) ? (
                     <Skeleton className="h-10 w-full" />
-                  ) : !rooms || rooms.length === 0 ? (
+                  ) : !hasAnyRooms ? (
                     <p className="text-sm text-muted-foreground">
-                      No rooms configured for this clinic.
+                      No rooms available. You can still clock in without selecting a room.
                     </p>
                   ) : (
                     <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
@@ -173,9 +193,9 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
                         <SelectValue placeholder="Select room (optional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        {rooms.map((room: ClinicRoom) => (
+                        {rooms && rooms.length > 0 && rooms.map((room: ClinicRoom) => (
                           <SelectItem
-                            key={room.room}
+                            key={`clinic-${room.room}`}
                             value={String(room.room)}
                             textValue={room.room_name}
                           >
@@ -192,6 +212,23 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
                                   Default
                                 </Badge>
                               )}
+                            </span>
+                          </SelectItem>
+                        ))}
+                        {extraDeptRooms.length > 0 && rooms && rooms.length > 0 && (
+                          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-t mt-1 pt-1.5">
+                            {staffProfile?.primary_department_name ?? 'Department'} Rooms
+                          </div>
+                        )}
+                        {extraDeptRooms.map((resource) => (
+                          <SelectItem
+                            key={`dept-${resource.id}`}
+                            value={String(resource.id)}
+                            textValue={resource.name}
+                          >
+                            <span className="flex items-center gap-2">
+                              <DoorOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                              {resource.name}
                             </span>
                           </SelectItem>
                         ))}
