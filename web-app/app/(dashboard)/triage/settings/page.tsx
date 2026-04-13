@@ -37,6 +37,7 @@ import {
   useUpdateTriageSettings,
   useAvailableTriageRooms,
 } from '@/lib/hooks/use-triage';
+import { useDepartments } from '@/lib/hooks/use-rbac';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFacility } from '@/lib/context/facility-context';
 import { toast } from '@/lib/hooks/use-toast';
@@ -61,6 +62,7 @@ export default function TriageSettingsPage() {
   const { data: triageSettings, isLoading: isSettingsLoading, isError: isSettingsError } = useTriageSettings({ enabled: hasFacility });
   const { mutateAsync: updateTriageSettings } = useUpdateTriageSettings();
   const { data: availableRooms } = useAvailableTriageRooms({ enabled: !!triageSettings?.auto_route_to_room });
+  const { data: allDepartments } = useDepartments({ is_active: true, page_size: 100 });
 
   // Mutations
   const { mutateAsync: updateThreshold } = useUpdateVitalThreshold();
@@ -279,16 +281,42 @@ export default function TriageSettingsPage() {
                     <p className="text-xs text-muted-foreground">
                       Only rooms (PLACE resources) assigned to this department are considered for triage routing.
                     </p>
-                    <div className="flex items-center gap-2">
-                      {triageSettings.triage_department_name ? (
-                        <Badge variant="secondary">{triageSettings.triage_department_name}</Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">No department selected</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      To change the triage department, update it via the admin panel or API.
-                    </p>
+                    <Select
+                      value={triageSettings.triage_department?.toString() ?? 'none'}
+                      onValueChange={async (value) => {
+                        try {
+                          await updateTriageSettings({
+                            id: triageSettings.id,
+                            data: { triage_department: value === 'none' ? null : parseInt(value) },
+                          });
+                          toast({
+                            title: 'Department updated',
+                            description: value === 'none'
+                              ? 'Triage department cleared.'
+                              : 'Triage department updated. Rooms in this department will be used for routing.',
+                          });
+                        } catch {
+                          toast({
+                            title: 'Error',
+                            description: 'Failed to update triage department.',
+                            variant: 'destructive',
+                          });
+                        }
+                      }}
+                      disabled={!canEdit}
+                    >
+                      <SelectTrigger className="max-w-xs">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {(allDepartments?.results ?? []).map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Room overview (when auto-routing is on) */}

@@ -1780,3 +1780,79 @@ class EscalationViewSet(viewsets.ReadOnlyModelViewSet):
             notes=serializer.validated_data.get("resolution_notes", ""),
         )
         return Response(EscalationSerializer(escalation).data)
+
+
+# =============================================================================
+# Public Triage Queue (no auth — for TV/tablet display)
+# =============================================================================
+
+
+class PublicTriageQueueView(viewsets.ViewSet):
+    """
+    Public, unauthenticated triage queue display for TV/tablet screens.
+
+    Returns only non-PII fields: position number, status, room name, check-in time.
+    No patient names, MRNs, or any identifying information.
+
+    GET /api/triage/public-queue/?facility_id={id}
+    """
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def list(self, request):
+        """Get today's triage waiting queue for the specified facility."""
+        from datetime import date as date_type
+
+        from rest_framework import serializers as drf_serializers
+
+        from hmis.apps.core.models import Facility
+
+        facility_id = request.query_params.get("facility_id")
+        if not facility_id:
+            return Response(
+                {"error": "facility_id query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            facility = Facility.objects.get(pk=facility_id)
+        except Facility.DoesNotExist:
+            return Response(
+                {"error": "Facility not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        today = date_type.today()
+
+        entries = (
+            WaitingQueue.objects.filter(
+                encounter__facility=facility,
+                status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
+                check_in_time__date=today,
+            )
+            .select_related("triage_room")
+            .order_by("check_in_time")
+        )
+
+        queue = []
+        for position, entry in enumerate(entries, start=1):
+            queue.append(
+                {
+                    "position": position,
+                    "status": entry.status,
+                    "room_name": entry.triage_room.name if entry.triage_room else None,
+                    "check_in_time": entry.check_in_time.isoformat(),
+                    "priority_hint": entry.priority_hint or None,
+                }
+            )
+
+        return Response(
+            {
+                "facility_name": facility.name,
+                "date": str(today),
+                "updated_at": timezone.now().isoformat(),
+                "total_waiting": len(queue),
+                "queue": queue,
+            }
+        )

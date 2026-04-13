@@ -7,7 +7,24 @@ Registers ERBed, WaitTimeBreach, Escalation models for the admin panel.
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import ERBed, Escalation, WaitTimeBreach
+from .models import ERBed, Escalation, TriageSettings, WaitTimeBreach
+
+
+@admin.register(TriageSettings)
+class TriageSettingsAdmin(admin.ModelAdmin):
+    """Admin for per-facility triage configuration."""
+
+    list_display = ["facility", "auto_route_to_room", "triage_department", "updated_at"]
+    list_filter = ["auto_route_to_room"]
+    list_select_related = ["facility", "triage_department"]
+    raw_id_fields = ["facility", "triage_department"]
+    readonly_fields = ["created_at", "updated_at"]
+
+    fieldsets = (
+        ("Facility", {"fields": ("facility",)}),
+        ("Routing", {"fields": ("auto_route_to_room", "triage_department")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
 
 
 @admin.register(ERBed)
