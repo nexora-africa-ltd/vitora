@@ -45,7 +45,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - ✅ Check-in module
 - ✅ HL7 interoperability
 - ✅ KenHDD (Kenya Health Data Dictionary)
-- ✅ Scheduling (appointments, resources, assignment rules)
+- ✅ Scheduling (appointments, resources, assignment rules, roster, room-aware clock-in)
 
 **🤖 AI / TibaBot Integration** (external AI service):
 - ✅ Clinical chat (multi-turn conversational AI for clinicians)
@@ -1070,7 +1070,7 @@ The following modules were built during Phase 2 development:
 - **Check-in** (`hmis/apps/checkin/`): Patient check-in workflow
 - **HL7** (`hmis/apps/hl7/`): HL7v2 message model, ADT service, queue service, ingestion command, Celery tasks
 - **KenHDD** (`hmis/apps/kenhdd/`): Kenya Health Data Dictionary elements, validation runs, failed record tracking
-- **Scheduling** (`hmis/apps/scheduling/`): Resources, time slots, schedules, breaks, appointments, assignment rules/decisions/overrides, availability & assignment services
+- **Scheduling** (`hmis/apps/scheduling/`): Resources (PERSON/PLACE/ASSET with department FK), time slots, schedules, breaks, appointments, assignment rules/decisions/overrides, availability & assignment services, roster & shift management, room-aware clock-in with auto ClinicSession lifecycle, ClinicRoom M2M
 
 **AI / TibaBot Integration** (`hmis/apps/ai/`):
 - External TibaBot AI service integration with feature-gated access

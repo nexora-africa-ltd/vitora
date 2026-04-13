@@ -354,6 +354,89 @@ Enable staff to clock in and out of shifts through a state machine lifecycle, en
 
 ---
 
+## Phase 2d: Room-Aware Clock-In & Department FK ✅ COMPLETE
+
+> **Implemented**: April 2026
+> **Location**: `backend/hmis/apps/scheduling/`, `backend/hmis/apps/clinics/`, `web-app/`
+
+### Objectives
+Enable staff to clock into specific rooms (PLACE resources) and clinics during shift start. Auto-manage ClinicSession lifecycle based on active shifts. Add department FK to Resource, Clinic, and Shift models so rooms can be assigned across all departments (triage, lab, pharmacy, imaging, wards — not just clinical).
+
+### Models Changed
+
+| Model | Change | Details |
+|-------|--------|---------|
+| `Resource` | Added `department` FK | Nullable FK to `core.Department`. PERSON resources backfill from `staff_profile.primary_department`. Replaces department derivation from staff profile only |
+| `Clinic` | Added `department` FK | Nullable FK to `core.Department`. Allows explicit department assignment for clinics |
+| `Shift` | Converted `department` CharField → FK | Nullable FK to `core.Department`. Old text values preserved in `department_legacy` CharField. Backfill migration resolves names to FK IDs |
+| `ClinicRoom` | New M2M model | Links `Clinic` ↔ `Resource(PLACE)`. One room can serve multiple clinics. Enables `room_or_linked_clinic` filter |
+
+### API Endpoints Added
+
+| Endpoint | Method | Notes |
+|----------|--------|-------|
+| `/api/scheduling/shifts/{id}/start/` | POST | Updated: accepts `{room_id?, clinic_id?, method?}`. Auto-resolves clinic from staff assignment if not provided. Blocks after shift end time |
+| `/api/scheduling/shifts/{id}/complete/` | POST | Updated: auto-closes ClinicSession if this is the last active shift for that clinic |
+| `/api/scheduling/shifts/available-rooms/` | GET | Returns unoccupied PLACE resources for clock-in (excludes rooms with active shifts) |
+| `/api/scheduling/resources/{id}/linked_clinics/` | GET | Returns clinics linked to a PLACE resource via ClinicRoom |
+| `/api/scheduling/resources/sync_from_clinics/` | POST | Sync PLACE resources from clinics |
+| `/api/scheduling/resources/sync_from_wards/` | POST | Sync PLACE resources from wards |
+| `/api/clinics/{id}/rooms/` | GET/POST | List or add rooms (ClinicRoom M2M) for a clinic |
+| `/api/clinics/{id}/rooms/{room_id}/` | DELETE | Remove room from clinic |
+| `/api/clinics/{id}/public-queue/` | GET | Public queue display — no authentication required, no PII exposed |
+
+### Auto-Session Lifecycle
+
+1. **First clock-in** to a clinic → auto-opens a `ClinicSession` (status=`IN_PROGRESS`) if none exists for today
+2. **Subsequent clock-ins** to the same clinic → reuse existing session (no duplicate)
+3. **Last clock-out** from a clinic → auto-closes the `ClinicSession` if no other active/on-break shifts remain for that clinic
+
+### Schedule Scoping for Rooms
+
+The `room_or_linked_clinic` filter on `ShiftFilter` returns shifts where:
+- `room = {resource_id}` (staff clocked into this room), **OR**
+- `clinic_id IN (clinics linked to this room via ClinicRoom)`
+
+This ensures the resource detail timeline shows all relevant shifts, not just post-clock-in data.
+
+### Serializer Changes
+
+| Serializer | Change |
+|------------|--------|
+| `ResourceSerializer` / `ResourceListSerializer` | Added `department` (FK ID) + `department_name` (resolved string with staff profile fallback) |
+| `ShiftSerializer` (detail) | `department` is writable FK ID; added `department_name` as read-only SerializerMethodField with fallback chain: shift.department → department_legacy → resource.department → staff_profile.primary_department |
+| `ShiftListSerializer` | `department` remains a string (SerializerMethodField) with same fallback chain |
+| `ShiftCreateSerializer` | `department` accepts integer FK ID |
+| `ClinicSerializer` | Added `department` (FK ID) + `department_name` |
+
+### Frontend Changes
+
+| Component | Change |
+|-----------|--------|
+| Resource list page | Department select dropdown in create/edit dialog (fetches from departments API) |
+| Resource detail page | 24h timeline (00:00–24:00) with horizontal scroll, off-day filtering (OFF/LEAVE/REST shifts excluded from timeline bars), linked clinics display |
+| Shifts page | Department filter and create form converted from text input to Select dropdown |
+| Roster page | Department filter passes FK IDs when bulk-creating shifts |
+| TypeScript types | `ResourceListItem.department`, `Shift.department` (number on detail, string on list), `ShiftCreateData.department` (number) |
+
+### Migrations
+
+| File | Type | Purpose |
+|------|------|---------|
+| `scheduling/0015_add_department_fk.py` | Schema | Add `department` FK to Resource + Shift (with `department_legacy`) |
+| `scheduling/0016_backfill_department_fk.py` | Data | Backfill Resource.department from staff profile; resolve Shift.department_legacy text to FK |
+| `clinics/0015_add_department_fk.py` | Schema | Add `department` FK to Clinic |
+
+### Domain Events
+
+| Event | Trigger | Payload additions |
+|-------|---------|-------------------|
+| `SHIFT_CREATED` / `SHIFT_STARTED` / ... | `post_save` on Shift | Now includes `department` (resolved name), `clock_in_method`, `auto_clocked_out`, `late_minutes` |
+| `CLINIC_SESSION_OPENED` | `post_save` on ClinicSession (new) | `clinic_id`, `clinic_name`, `session_date`, `status` |
+| `CLINIC_SESSION_CLOSED` | `post_save` on ClinicSession (status change) | `clinic_id`, `clinic_name`, `session_date`, `status` |
+
+---
+
 ## Phase 3: Internal Domain Events (No WebSockets Yet)
 
 ### Objectives

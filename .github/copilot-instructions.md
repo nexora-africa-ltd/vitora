@@ -97,6 +97,11 @@ Only after the web app implementation is complete should we shift focus to offli
 - ✅ Admin role exemption: ADMIN, ORG-ADMIN, OWNER bypass active-shift enforcement
 - ✅ Roster RBAC: `ManageSchedulesWritePermission` gates roster write ops; view-only for non-managers
 - ✅ `scheduling.manage_schedules` custom permission on Shift model
+- ✅ Department FK on Resource, Clinic, and Shift models (replaces legacy CharField; backfill migration preserves old data in `department_legacy`)
+- ✅ Room-aware clock-in: staff clock into a room (PLACE resource) + clinic; auto-opens/closes ClinicSession
+- ✅ ClinicRoom M2M: rooms can be linked to multiple clinics; `room_or_linked_clinic` filter for schedule scoping
+- ✅ Resource detail page: 24h timeline, off-day filtering, linked clinics display
+- ✅ Public queue display API (no auth): `/api/clinics/{id}/public-queue/`
 
 ---
 
@@ -544,15 +549,24 @@ GET             /api/scheduling/settings/current/              # Current facilit
 GET|POST        /api/scheduling/staff-constraints/             # Staff scheduling constraints
 PATCH|DELETE    /api/scheduling/staff-constraints/{id}/        # Update/delete constraint
 POST            /api/scheduling/resources/sync_from_staff/     # Sync resources from staff profiles
+POST            /api/scheduling/resources/sync_from_clinics/   # Sync PLACE resources from clinics
+POST            /api/scheduling/resources/sync_from_wards/     # Sync PLACE resources from wards
+GET             /api/scheduling/resources/{id}/linked_clinics/ # Clinics linked via ClinicRoom
 
-# Shift lifecycle (clock-in/out) — requires scheduling.manage_schedules for roster writes
-POST            /api/scheduling/shifts/{id}/start/             # Clock in (blocks after shift end time)
-POST            /api/scheduling/shifts/{id}/complete/          # Clock out
+# Room-aware clock-in/out — requires scheduling.manage_schedules for roster writes
+POST            /api/scheduling/shifts/{id}/start/             # Clock in {room_id?, clinic_id?, method?} — blocks after shift end time
+POST            /api/scheduling/shifts/{id}/complete/          # Clock out — auto-closes ClinicSession if last active shift
 POST            /api/scheduling/shifts/{id}/cancel/            # Cancel shift
 POST            /api/scheduling/shifts/{id}/take_break/        # Start break (ACTIVE → ON_BREAK)
 POST            /api/scheduling/shifts/{id}/resume/            # Resume from break (ON_BREAK → ACTIVE)
 GET             /api/scheduling/shifts/staff-workload/         # Staff workload stats for date range
 GET             /api/scheduling/shifts/my-shift-today/         # Current user's shift for today
+GET             /api/scheduling/shifts/available-rooms/        # Unoccupied PLACE resources for clock-in
+
+# Clinic rooms (ClinicRoom M2M)
+GET|POST        /api/clinics/{id}/rooms/                       # List/add rooms for a clinic
+DELETE          /api/clinics/{id}/rooms/{room_id}/             # Remove room from clinic
+GET             /api/clinics/{id}/public-queue/                # Public queue display (no auth required)
 ```
 
 ### AI Stored Results (Persisted TibaBot Outputs)

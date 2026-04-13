@@ -227,6 +227,8 @@ Convention: `<domain>.<aggregate>.<action>`
 | `TRIAGE_ASSESSED` | `clinical.triage.assessed` | `triage/signals.py` |
 | `CLINIC_VISIT_CREATED` | `clinical.clinic_visit.created` | `clinics/signals.py` |
 | `CLINIC_VISIT_STATUS_CHANGED` | `clinical.clinic_visit.status_changed` | `clinics/signals.py` |
+| `CLINIC_SESSION_OPENED` | `clinical.clinic_session.opened` | `clinics/signals.py` |
+| `CLINIC_SESSION_CLOSED` | `clinical.clinic_session.closed` | `clinics/signals.py` |
 
 ### InpatientEvents (5 constants)
 
@@ -360,6 +362,7 @@ Convention: `<domain>.<aggregate>.<action>`
 |---------|--------|-------|--------------------|---------|
 | `clinic_visit_post_save` | `post_save` | `ClinicVisit` | `CLINIC_VISIT_CREATED` | `patient_id`, `clinic_id`, `status` |
 | `clinic_visit_status_change` | `post_save` | `ClinicVisit` | `CLINIC_VISIT_STATUS_CHANGED` | `old_status`, `new_status`, `patient_id`, `clinic_id` |
+| `clinic_session_publish_event` | `post_save` | `ClinicSession` | `CLINIC_SESSION_OPENED` / `CLINIC_SESSION_CLOSED` | `clinic_id`, `clinic_name`, `session_date`, `status` |
 
 ### Core (`hmis/apps/core/signals.py`)
 
@@ -399,7 +402,7 @@ Convention: `<domain>.<aggregate>.<action>`
 | `publish_assignment_decision_event` | `post_save` | `AssignmentDecision` | `ASSIGNMENT_DECIDED` | `assignment_type`, `target_type`, `target_id`, `outcome`, `resource_id`, `rule_id`, `evaluation_time_ms` |
 | `publish_override_event` | `post_save` | `AssignmentOverride` | `OVERRIDE_CREATED` / `OVERRIDE_APPROVED` / `OVERRIDE_REJECTED` | `target_type`, `target_id`, `override_reason`, `approval_status`, `original_resource_id`, `new_resource_id` |
 | `publish_rule_toggle_event` | `post_save` | `AssignmentRule` | `RULE_ACTIVATED` / `RULE_DEACTIVATED` | `rule_code`, `applies_to`, `priority` |
-| `publish_shift_event` | `post_save` | `Shift` | `SHIFT_CREATED` / `SHIFT_STARTED` / `SHIFT_COMPLETED` / `SHIFT_CANCELLED` | `shift_id`, `staff_resource_id`, `shift_date`, `status`, `shift_type` |
+| `publish_shift_event` | `post_save` | `Shift` | `SHIFT_CREATED` / `SHIFT_STARTED` / `SHIFT_COMPLETED` / `SHIFT_CANCELLED` / `SHIFT_BREAK_STARTED` | `staff_resource_id`, `shift_date`, `status`, `shift_type`, `department`, `clock_in_method`, `auto_clocked_out`, `late_minutes` |
 
 Appointment status → Event mapping:
 
