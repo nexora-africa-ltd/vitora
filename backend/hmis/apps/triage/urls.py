@@ -11,6 +11,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ERBedViewSet,
     EscalationViewSet,
+    PublicTriageQueueView,
     ReportExportView,
     TriageAssessmentViewSet,
     TriageQueueViewSet,
@@ -35,6 +36,12 @@ router.register(r"settings", TriageSettingsViewSet, basename="triagesettings")
 app_name = "triage"
 
 urlpatterns = [
+    # Public queue display (no auth)
+    path(
+        "public-queue/",
+        PublicTriageQueueView.as_view({"get": "list"}),
+        name="triage-public-queue",
+    ),
     # Report endpoints
     path("reports/wait-times/", WaitTimesReportView.as_view(), name="wait-times-report"),
     path("reports/volume/", VolumeReportView.as_view(), name="volume-report"),
