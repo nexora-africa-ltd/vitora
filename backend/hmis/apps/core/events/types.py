@@ -133,6 +133,10 @@ class SchedulingEvents:
     SHIFT_STARTED = "scheduling.shift.started"
     SHIFT_COMPLETED = "scheduling.shift.completed"
     SHIFT_CANCELLED = "scheduling.shift.cancelled"
+    SHIFT_ABSENT = "scheduling.shift.absent"
+    SHIFT_AUTO_COMPLETED = "scheduling.shift.auto_completed"
+    SHIFT_BREAK_STARTED = "scheduling.shift.break_started"
+    SHIFT_BREAK_RESUMED = "scheduling.shift.break_resumed"
 
 
 class ImagingEvents:

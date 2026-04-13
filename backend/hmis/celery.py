@@ -62,6 +62,9 @@ app.conf.task_routes = {
     "hmis.apps.moh_reporting.tasks.generate_moh705_monthly": {"queue": "reporting"},
     "hmis.apps.moh_reporting.tasks.generate_moh711_monthly": {"queue": "reporting"},
     "hmis.apps.moh_reporting.tasks.generate_moh717_monthly": {"queue": "reporting"},
+    # Scheduling attendance tasks
+    "hmis.apps.scheduling.tasks.mark_absent_shifts": {"queue": "monitoring"},
+    "hmis.apps.scheduling.tasks.auto_clock_out_stale_shifts": {"queue": "monitoring"},
 }
 
 # Configure periodic tasks (Celery Beat)
@@ -181,6 +184,16 @@ app.conf.beat_schedule = {
     "generate-moh717-monthly": {
         "task": "hmis.apps.moh_reporting.tasks.generate_moh717_monthly",
         "schedule": crontab(minute=0, hour=6, day_of_month=1),
+    },
+    # Scheduling: Mark absent shifts — every 15 minutes during working hours
+    "scheduling-mark-absent-shifts": {
+        "task": "hmis.apps.scheduling.tasks.mark_absent_shifts",
+        "schedule": crontab(minute="*/15", hour="6-22"),
+    },
+    # Scheduling: Auto clock-out stale shifts — every 30 minutes
+    "scheduling-auto-clock-out-stale": {
+        "task": "hmis.apps.scheduling.tasks.auto_clock_out_stale_shifts",
+        "schedule": crontab(minute="*/30"),
     },
 }
 

@@ -61,6 +61,7 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from 'sonner';
 import { resourcesApi, shiftsApi, staffConstraintsApi, schedulingSettingsApi } from '@/lib/api/scheduling';
+import { QRCodeDisplay } from '@/components/scheduling/qr-clock-in';
 import type {
   ShiftType,
   ShiftListItem,
@@ -864,29 +865,32 @@ export default function WeeklyRosterPage() {
           actions={
             <div className="flex items-center gap-2">
               {canManageSchedules && (
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleAutoFill}
-                        disabled={staffList.length === 0}
-                      >
-                        <Wand2 className="h-4 w-4 mr-1" />
-                        <span className="hidden sm:inline">Auto-Fill</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>
-                        {(schedulingSettings?.active_shift_types?.length ?? 0) > 0
-                          ? `Fill all active shift types (${schedulingSettings!.active_shift_types.join(', ')}), max ${maxDaysPerStaff} days/staff`
-                          : `Fill empty cells with the selected shift type (max ${maxDaysPerStaff} days/staff)`
-                        }
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <>
+                  <QRCodeDisplay />
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleAutoFill}
+                          disabled={staffList.length === 0}
+                        >
+                          <Wand2 className="h-4 w-4 mr-1" />
+                          <span className="hidden sm:inline">Auto-Fill</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          {(schedulingSettings?.active_shift_types?.length ?? 0) > 0
+                            ? `Fill all active shift types (${schedulingSettings!.active_shift_types.join(', ')}), max ${maxDaysPerStaff} days/staff`
+                            : `Fill empty cells with the selected shift type (max ${maxDaysPerStaff} days/staff)`
+                          }
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </>
               )}
               <Button
                 size="sm"

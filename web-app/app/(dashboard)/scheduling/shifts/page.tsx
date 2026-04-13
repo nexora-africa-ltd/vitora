@@ -104,6 +104,7 @@ const statusColors: Record<ShiftStatus, string> = {
   ON_BREAK: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   COMPLETED: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
   CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  ABSENT: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
 };
 
 const shiftTypeColors: Partial<Record<ShiftType, string>> = {

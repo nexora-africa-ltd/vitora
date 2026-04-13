@@ -35,6 +35,9 @@ import { toast } from 'sonner';
 import { attendanceApi } from '@/lib/api/scheduling';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { AttendanceTrendsChart } from '@/components/scheduling/attendance-trends-chart';
+import { QRScannerDialog } from '@/components/scheduling/qr-clock-in';
+import { PayrollExportDialog } from '@/components/scheduling/payroll-export';
 import type { ShiftListItem, AttendanceStats } from '@/lib/types/scheduling';
 
 // =============================================================================
@@ -64,6 +67,7 @@ const STATUS_COLORS: Record<string, string> = {
   ON_BREAK: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   COMPLETED: 'bg-slate-100 text-slate-700 dark:bg-slate-800/30 dark:text-slate-300',
   CANCELLED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  ABSENT: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
 };
 
 // =============================================================================
@@ -301,6 +305,12 @@ export default function MyShiftsPage() {
           }
         />
 
+        {/* Secondary Actions: QR Scanner + Payroll Export */}
+        <div className="flex flex-wrap items-center gap-2">
+          <QRScannerDialog />
+          <PayrollExportDialog />
+        </div>
+
         {/* Today's Shift Summary */}
         {todayShift ? (
           <Card className="border-primary/20">
@@ -334,6 +344,9 @@ export default function MyShiftsPage() {
 
         {/* Attendance Stats */}
         <StatsCards stats={stats} isLoading={historyLoading} />
+
+        {/* Attendance Trends Chart (Phase 2) */}
+        <AttendanceTrendsChart weeks={12} />
 
         {/* Upcoming Shifts */}
         <Card>

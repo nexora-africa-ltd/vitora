@@ -797,6 +797,10 @@ class ShiftSerializer(serializers.ModelSerializer):
     shift_type_display = serializers.CharField(source="get_shift_type_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     duration_hours = serializers.FloatField(read_only=True)
+    actual_hours = serializers.FloatField(read_only=True)
+    late_minutes = serializers.IntegerField(read_only=True)
+    overtime_minutes = serializers.IntegerField(read_only=True)
+    is_early_departure = serializers.BooleanField(read_only=True)
     created_by_name = serializers.SerializerMethodField()
     cancelled_by_name = serializers.SerializerMethodField()
     room_name = serializers.SerializerMethodField()
@@ -823,6 +827,10 @@ class ShiftSerializer(serializers.ModelSerializer):
             "department",
             "notes",
             "duration_hours",
+            "actual_hours",
+            "late_minutes",
+            "overtime_minutes",
+            "is_early_departure",
             "room",
             "room_name",
             "clinic",
@@ -830,6 +838,9 @@ class ShiftSerializer(serializers.ModelSerializer):
             "started_at",
             "completed_at",
             "break_started_at",
+            "total_break_minutes",
+            "clock_in_method",
+            "auto_clocked_out",
             "created_by",
             "created_by_name",
             "cancelled_by",
@@ -845,6 +856,10 @@ class ShiftSerializer(serializers.ModelSerializer):
             "shift_type_display",
             "status_display",
             "duration_hours",
+            "actual_hours",
+            "late_minutes",
+            "overtime_minutes",
+            "is_early_departure",
             "room",
             "room_name",
             "clinic",
@@ -852,6 +867,9 @@ class ShiftSerializer(serializers.ModelSerializer):
             "started_at",
             "completed_at",
             "break_started_at",
+            "total_break_minutes",
+            "clock_in_method",
+            "auto_clocked_out",
             "created_by",
             "created_by_name",
             "cancelled_by",
@@ -1008,10 +1026,15 @@ class ShiftCancelSerializer(serializers.Serializer):
 
 
 class ShiftStartSerializer(serializers.Serializer):
-    """Serializer for clock-in (start shift) with optional room and clinic."""
+    """Serializer for clock-in (start shift) with optional room, clinic, and method."""
 
     room_id = serializers.IntegerField(required=False, allow_null=True)
     clinic_id = serializers.IntegerField(required=False, allow_null=True)
+    method = serializers.ChoiceField(
+        choices=["MANUAL", "QR_CODE"],
+        required=False,
+        default="MANUAL",
+    )
 
     def validate_room_id(self, value):
         """Validate room is a PLACE resource in the same facility."""

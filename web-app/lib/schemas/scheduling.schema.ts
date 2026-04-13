@@ -183,7 +183,7 @@ export const SlotCheckResultSchema = z.object({
 // =============================================================================
 
 export const ShiftTypeSchema = z.enum(['DAY', 'NIGHT', 'MORNING', 'AFTERNOON', 'ON_CALL', 'OVERTIME', 'DAY_OFF', 'NIGHT_OFF', 'OFF', 'AFTERNOON_OFF', 'LEAVE', 'SICK_LEAVE', 'REST']);
-export const ShiftStatusSchema = z.enum(['SCHEDULED', 'ACTIVE', 'ON_BREAK', 'COMPLETED', 'CANCELLED']);
+export const ShiftStatusSchema = z.enum(['SCHEDULED', 'ACTIVE', 'ON_BREAK', 'COMPLETED', 'CANCELLED', 'ABSENT']);
 
 export const ShiftListItemSchema = z.object({
   id: z.number(),
@@ -211,6 +211,13 @@ export const ShiftSchema = ShiftListItemSchema.extend({
   started_at: z.string().nullable(),
   completed_at: z.string().nullable(),
   break_started_at: z.string().nullable(),
+  total_break_minutes: z.number(),
+  clock_in_method: z.string(),
+  auto_clocked_out: z.boolean(),
+  actual_hours: z.number().nullable(),
+  late_minutes: z.number(),
+  overtime_minutes: z.number(),
+  is_early_departure: z.boolean(),
   cancelled_by: z.number().nullable(),
   cancelled_by_name: z.string().nullable(),
   cancellation_reason: z.string(),
@@ -307,4 +314,31 @@ export const MyHistoryResponseSchema = z.object({
   results: z.array(ShiftListItemSchema),
   count: z.number(),
   stats: AttendanceStatsSchema,
+});
+
+// =============================================================================
+// Attendance Trends (Phase 2)
+// =============================================================================
+
+export const AttendanceTrendWeekSchema = z.object({
+  week_start: z.string(),
+  hours_worked: z.number(),
+  shifts_completed: z.number(),
+  on_time_rate: z.number(),
+  late_count: z.number(),
+  overtime_hours: z.number(),
+});
+
+export const AttendanceTrendsResponseSchema = z.array(AttendanceTrendWeekSchema);
+
+// =============================================================================
+// QR Token (Phase 3)
+// =============================================================================
+
+export const QRTokenResponseSchema = z.object({
+  qr_token: z.string(),
+  facility_id: z.number(),
+  facility_name: z.string(),
+  valid_until: z.string(),
+  generated_at: z.string(),
 });
