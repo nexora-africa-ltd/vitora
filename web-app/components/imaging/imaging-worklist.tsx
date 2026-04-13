@@ -314,7 +314,7 @@ function WorklistOrderCard({
           </div>
 
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            {order.items.map((item) => (
+            {(order.items ?? []).map((item) => (
               <div
                 key={item.id}
                 className="flex items-center gap-1 text-xs sm:text-sm bg-muted rounded px-1.5 sm:px-2 py-0.5 sm:py-1"

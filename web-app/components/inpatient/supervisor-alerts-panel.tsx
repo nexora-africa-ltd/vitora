@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
+import { formatDateTime } from '@/lib/utils/format';
 import { AlertTriangle, Check, Clock, User, MapPin, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -313,7 +314,7 @@ function AlertCard({ alert, onAcknowledge }: AlertCardProps) {
               <span>
                 Acknowledged by {alert.acknowledged_by}
                 {alert.acknowledged_at && (
-                  <> on {format(new Date(alert.acknowledged_at), 'MMM d, yyyy h:mm a')}</>
+                  <> on {formatDateTime(alert.acknowledged_at)}</>
                 )}
               </span>
             </div>

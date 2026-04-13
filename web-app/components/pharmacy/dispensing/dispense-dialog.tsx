@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/utils/format';
 import { Pill, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -274,7 +274,7 @@ export function DispenseDialog({
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Expiry Date:</span>
                       <span className="font-medium">
-                        {format(new Date(selectedBatch.expiry_date), 'MMM dd, yyyy')}
+                        {formatDate(selectedBatch.expiry_date, 'MMM dd, yyyy')}
                         {selectedBatch.days_to_expiry < 90 && (
                           <Badge variant="destructive" className="ml-2">
                             {selectedBatch.days_to_expiry} days left

@@ -10,7 +10,7 @@
 'use client';
 
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/utils/format';
 import {
   AlertTriangle,
   User,
@@ -106,7 +106,7 @@ function PatientCard({
               </span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
-                <span>{format(new Date(match.date_of_birth), 'MMM d, yyyy')}</span>
+                <span>{formatDate(match.date_of_birth)}</span>
                 <span>•</span>
                 <span>{match.gender === 'M' ? 'Male' : match.gender === 'F' ? 'Female' : 'Other'}</span>
               </div>

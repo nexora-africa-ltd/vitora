@@ -7,7 +7,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/utils/format';
 import {
   Receipt,
   Printer,
@@ -147,7 +147,7 @@ export default function ReceiptsPage() {
               header: 'Date',
               cell: (payment) => (
                 <span className="text-sm text-muted-foreground">
-                  {format(new Date(payment.created_at), 'dd MMM yyyy')}
+                  {formatDate(payment.created_at, 'dd MMM yyyy')}
                 </span>
               ),
               hideOnMobile: true,
@@ -224,7 +224,7 @@ export default function ReceiptsPage() {
                   </div>
                   <p className="text-sm truncate">{payment.patient_name || 'Unknown patient'}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(payment.created_at), 'dd MMM yyyy')}
+                    {formatDate(payment.created_at, 'dd MMM yyyy')}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
