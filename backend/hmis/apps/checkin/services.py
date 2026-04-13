@@ -402,6 +402,13 @@ def process_checkin(
     # Create queue entries based on destination
     if destination_type in ("TRIAGE", "EMERGENCY"):
         # Add to triage waiting queue (ER patients also go through triage per KETA)
+        # Auto-route to a triage room if the facility has auto-routing enabled
+        triage_room = None
+        if facility:
+            from hmis.apps.triage.services import find_best_triage_room
+
+            triage_room = find_best_triage_room(facility)
+
         waiting_queue = WaitingQueue.objects.create(
             patient=patient,
             encounter=encounter,
@@ -409,6 +416,7 @@ def process_checkin(
             status="WAITING_TRIAGE",
             priority_hint="EMERGENCY" if destination_type == "EMERGENCY" else "",
             checked_in_by=user,
+            triage_room=triage_room,
         )
         checkin.waiting_queue_entry = waiting_queue
         checkin.save(update_fields=["waiting_queue_entry"])

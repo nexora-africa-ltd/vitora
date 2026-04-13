@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Building2, Users, Search, Filter, Network, CheckCircle2 } from 'lucide-react';
+import { Plus, Building2, Users, Search, Filter, Network, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
@@ -60,14 +60,20 @@ export default function DepartmentsPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<DepartmentType | 'all'>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const { refresh, isRefreshing } = usePageRefresh();
 
   const { data, isLoading, error, refetch } = useDepartments({
     search: search || undefined,
     department_type: typeFilter !== 'all' ? typeFilter : undefined,
+    page,
+    page_size: pageSize,
   });
 
   const departments = data?.results ?? [];
+  const totalCount = data?.count ?? 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
   const activeCount = departments.filter((dept) => dept.is_active).length;
   const topLevelCount = departments.filter((dept) => !dept.parent).length;
   const totalStaff = departments.reduce((sum, dept) => sum + dept.staff_count, 0);
@@ -159,12 +165,18 @@ export default function DepartmentsPage() {
                   name="department-search"
                   placeholder="Search by department name or code…"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                 />
               </div>
               <Select
                 value={typeFilter}
-                onValueChange={(value) => setTypeFilter(value as DepartmentType | 'all')}
+                onValueChange={(value) => {
+                  setTypeFilter(value as DepartmentType | 'all');
+                  setPage(1);
+                }}
               >
                 <SelectTrigger aria-label="Filter departments by type">
                   <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -189,7 +201,7 @@ export default function DepartmentsPage() {
               <Building2 className="h-5 w-5" />
               Department Directory
               <Badge variant="secondary" className="ml-1">
-                {data?.count ?? 0}
+                {totalCount}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -270,6 +282,36 @@ export default function DepartmentsPage() {
                   },
                 ]}
               />
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4">
+                <p className="text-sm text-muted-foreground">
+                  {totalCount} department{totalCount !== 1 ? 's' : ''}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm">
+                    {page} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

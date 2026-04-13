@@ -566,6 +566,17 @@ class TriageSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     tenant_scope = "facility"
     http_method_names = ["get", "patch", "head", "options"]
 
+    def partial_update(self, request, *args, **kwargs):
+        """Override to re-serialize with a fresh read serializer.
+
+        DRF's default partial_update caches serializer.data at validation
+        time, which drops read-only source fields (e.g. triage_department_name)
+        when the related object is null.  Re-querying avoids this.
+        """
+        super().partial_update(request, *args, **kwargs)
+        instance = self.get_queryset().get(pk=kwargs["pk"])
+        return Response(TriageSettingsSerializer(instance).data)
+
     @action(detail=False, methods=["get"], url_path="current")
     def current(self, request):
         """Get or create triage settings for the current facility."""
