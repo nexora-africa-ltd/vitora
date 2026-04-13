@@ -13,7 +13,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import BasePermission, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -1797,7 +1797,7 @@ class PublicTriageQueueView(viewsets.ViewSet):
     GET /api/triage/public-queue/?facility_id={id}
     """
 
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
     authentication_classes = []
 
     def list(self, request):

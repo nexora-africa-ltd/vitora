@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LogIn, MapPin, Stethoscope, Users } from 'lucide-react';
+import { DoorOpen, LogIn, MapPin, Stethoscope, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,6 +21,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { clinicsApi } from '@/lib/api/clinics';
+import { resourcesApi } from '@/lib/api/scheduling';
+import { useMyStaffProfile } from '@/lib/hooks/use-rbac';
 import type { ClinicRoom } from '@/lib/types/clinic';
 
 interface ClockInDialogProps {
@@ -34,12 +36,18 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
   const [selectedClinicId, setSelectedClinicId] = useState<string>('');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
 
+  // Fetch user's staff profile (for department fallback)
+  const { data: staffProfile } = useMyStaffProfile();
+
   // Fetch user's clinic assignments
   const { data: assignments, isLoading: assignmentsLoading } = useQuery({
     queryKey: ['my-clinic-assignments'],
     queryFn: () => clinicsApi.myAssignments(),
     enabled: open,
   });
+
+  const activeClinicAssignments = assignments?.filter((a) => a.is_active) ?? [];
+  const hasClinicAssignments = activeClinicAssignments.length > 0;
 
   // Auto-select primary clinic
   useEffect(() => {
@@ -57,6 +65,14 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
     queryKey: ['clinic-rooms', selectedClinicId],
     queryFn: () => clinicsApi.listRooms(Number(selectedClinicId)),
     enabled: !!selectedClinicId,
+  });
+
+  // Fetch department rooms (fallback when no clinic assignments)
+  const deptId = staffProfile?.primary_department;
+  const { data: deptRooms, isLoading: deptRoomsLoading } = useQuery({
+    queryKey: ['dept-rooms', deptId],
+    queryFn: () => resourcesApi.list({ resource_type: 'PLACE', department: deptId!, is_active: true, page_size: 100 }),
+    enabled: open && !hasClinicAssignments && !!deptId,
   });
 
   // Auto-select default room
@@ -89,7 +105,7 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
     onConfirm(payload);
   };
 
-  const activeClinicAssignments = assignments?.filter((a) => a.is_active) ?? [];
+  const deptRoomResults = deptRooms?.results ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -102,82 +118,32 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Clinic Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-1.5">
-              <Stethoscope className="h-4 w-4 text-muted-foreground" />
-              Clinic
-            </label>
-            {assignmentsLoading ? (
-              <Skeleton className="h-10 w-full" />
-            ) : activeClinicAssignments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No clinic assignments found. You can still clock in without selecting a clinic.
-              </p>
-            ) : (
-              <Select value={selectedClinicId} onValueChange={handleClinicChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select clinic" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeClinicAssignments.map((assignment) => (
-                    <SelectItem
-                      key={assignment.clinic}
-                      value={String(assignment.clinic)}
-                      textValue={assignment.clinic_name}
-                    >
-                      <span className="flex items-center gap-2">
-                        {assignment.clinic_name}
-                        {assignment.is_primary && (
-                          <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                            Primary
-                          </Badge>
-                        )}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
-          {/* Room Selection */}
-          {selectedClinicId && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                Room
-                <span className="text-xs text-muted-foreground font-normal">(optional)</span>
-              </label>
-              {roomsLoading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : !rooms || rooms.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No rooms configured for this clinic.
-                </p>
-              ) : (
-                <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
+          {assignmentsLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : hasClinicAssignments ? (
+            <>
+              {/* Clinic Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Stethoscope className="h-4 w-4 text-muted-foreground" />
+                  Clinic
+                </label>
+                <Select value={selectedClinicId} onValueChange={handleClinicChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select room (optional)" />
+                    <SelectValue placeholder="Select clinic" />
                   </SelectTrigger>
                   <SelectContent>
-                    {rooms.map((room: ClinicRoom) => (
+                    {activeClinicAssignments.map((assignment) => (
                       <SelectItem
-                        key={room.room}
-                        value={String(room.room)}
-                        textValue={room.room_name}
+                        key={assignment.clinic}
+                        value={String(assignment.clinic)}
+                        textValue={assignment.clinic_name}
                       >
                         <span className="flex items-center gap-2">
-                          <span>{room.room_name}</span>
-                          {room.active_clinicians.length > 0 && (
-                            <Badge variant="outline" className="text-[10px] px-1 py-0 gap-0.5">
-                              <Users className="h-3 w-3" />
-                              {room.active_clinicians.length}
-                            </Badge>
-                          )}
-                          {room.is_default && (
+                          {assignment.clinic_name}
+                          {assignment.is_primary && (
                             <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                              Default
+                              Primary
                             </Badge>
                           )}
                         </span>
@@ -185,8 +151,96 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Clinic Room Selection */}
+              {selectedClinicId && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Room
+                    <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                  </label>
+                  {roomsLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : !rooms || rooms.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No rooms configured for this clinic.
+                    </p>
+                  ) : (
+                    <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select room (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rooms.map((room: ClinicRoom) => (
+                          <SelectItem
+                            key={room.room}
+                            value={String(room.room)}
+                            textValue={room.room_name}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span>{room.room_name}</span>
+                              {room.active_clinicians.length > 0 && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 gap-0.5">
+                                  <Users className="h-3 w-3" />
+                                  {room.active_clinicians.length}
+                                </Badge>
+                              )}
+                              {room.is_default && (
+                                <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                  Default
+                                </Badge>
+                              )}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               )}
-            </div>
+            </>
+          ) : (
+            <>
+              {/* Department Room Selection (no clinic assignments) */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <DoorOpen className="h-4 w-4 text-muted-foreground" />
+                  {staffProfile?.primary_department_name
+                    ? `Room in ${staffProfile.primary_department_name}`
+                    : 'Room'}
+                  <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                </label>
+                {deptRoomsLoading ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : deptRoomResults.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {deptId
+                      ? 'No rooms found for your department.'
+                      : 'No clinic or department assigned.'}
+                    {' '}You can still clock in without selecting a room.
+                  </p>
+                ) : (
+                  <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select room (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deptRoomResults.map((resource) => (
+                        <SelectItem
+                          key={resource.id}
+                          value={String(resource.id)}
+                          textValue={resource.name}
+                        >
+                          {resource.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </>
           )}
         </div>
 
