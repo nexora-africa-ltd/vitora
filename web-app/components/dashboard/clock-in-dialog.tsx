@@ -93,7 +93,7 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LogIn className="h-5 w-5" />
@@ -121,7 +121,11 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
                 </SelectTrigger>
                 <SelectContent>
                   {activeClinicAssignments.map((assignment) => (
-                    <SelectItem key={assignment.clinic} value={String(assignment.clinic)}>
+                    <SelectItem
+                      key={assignment.clinic}
+                      value={String(assignment.clinic)}
+                      textValue={assignment.clinic_name}
+                    >
                       <span className="flex items-center gap-2">
                         {assignment.clinic_name}
                         {assignment.is_primary && (
@@ -158,8 +162,25 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
                   </SelectTrigger>
                   <SelectContent>
                     {rooms.map((room: ClinicRoom) => (
-                      <SelectItem key={room.room} value={String(room.room)}>
-                        <RoomOption room={room} />
+                      <SelectItem
+                        key={room.room}
+                        value={String(room.room)}
+                        textValue={room.room_name}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>{room.room_name}</span>
+                          {room.active_clinicians.length > 0 && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 gap-0.5">
+                              <Users className="h-3 w-3" />
+                              {room.active_clinicians.length}
+                            </Badge>
+                          )}
+                          {room.is_default && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                              Default
+                            </Badge>
+                          )}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -179,28 +200,5 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function RoomOption({ room }: { room: ClinicRoom }) {
-  const occupantCount = room.active_clinicians.length;
-  return (
-    <span className="flex items-center gap-2">
-      <span>{room.room_name}</span>
-      {room.room_code && (
-        <span className="text-xs text-muted-foreground">({room.room_code})</span>
-      )}
-      {occupantCount > 0 && (
-        <Badge variant="outline" className="text-[10px] px-1 py-0 gap-0.5">
-          <Users className="h-3 w-3" />
-          {occupantCount}
-        </Badge>
-      )}
-      {room.is_default && (
-        <Badge variant="secondary" className="text-[10px] px-1 py-0">
-          Default
-        </Badge>
-      )}
-    </span>
   );
 }

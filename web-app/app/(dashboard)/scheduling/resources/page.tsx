@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -14,17 +15,18 @@ import {
   Users,
   Building2,
   BedDouble,
+  ChevronRight,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
-import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -44,10 +46,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { resourcesApi } from '@/lib/api/scheduling';
 import type { ResourceType, ResourceListItem, ResourceCreateData } from '@/lib/types/scheduling';
+import { cn } from '@/lib/utils/cn';
 
 const typeIcons: Record<ResourceType, React.ReactNode> = {
   PERSON: <User className="h-4 w-4" />,
@@ -61,18 +77,28 @@ const typeColors: Record<ResourceType, string> = {
   ASSET: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
 };
 
+const GROUP_CONFIG: Record<ResourceType, { label: string; description: string }> = {
+  PERSON: { label: 'Staff', description: 'Doctors, nurses, lab technicians' },
+  PLACE: { label: 'Places', description: 'Rooms, clinics, wards' },
+  ASSET: { label: 'Assets', description: 'Beds, machines, equipment' },
+};
+
+const TYPE_ORDER: ResourceType[] = ['PERSON', 'PLACE', 'ASSET'];
+
 const TYPE_OPTIONS: { value: ResourceType | ''; label: string }[] = [
   { value: '', label: 'All Types' },
-  { value: 'PERSON', label: 'Person' },
-  { value: 'PLACE', label: 'Place' },
-  { value: 'ASSET', label: 'Asset' },
+  { value: 'PERSON', label: 'Staff (Person)' },
+  { value: 'PLACE', label: 'Places' },
+  { value: 'ASSET', label: 'Assets' },
 ];
 
 export default function SchedulingResourcesPage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { toast } = useToast();
   const { refresh, isRefreshing } = usePageRefresh();
   const [typeFilter, setTypeFilter] = useState<ResourceType | ''>('');
+  const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
   // Edit state
@@ -85,17 +111,43 @@ export default function SchedulingResourcesPage() {
   const [formCapacity, setFormCapacity] = useState('1');
   const [formDescription, setFormDescription] = useState('');
 
+  // Track which groups are open (all open by default)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    PERSON: true,
+    PLACE: true,
+    ASSET: true,
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ['scheduling-resources', typeFilter],
     queryFn: () =>
       resourcesApi.list({
         resource_type: typeFilter || undefined,
-        page_size: 200,
+        page_size: 500,
         ordering: 'resource_type,name',
       }),
   });
 
   const resources = data?.results || [];
+
+  // Client-side search filter + grouping
+  const grouped = useMemo(() => {
+    const filtered = search
+      ? resources.filter(
+          (r) =>
+            r.name.toLowerCase().includes(search.toLowerCase()) ||
+            r.code.toLowerCase().includes(search.toLowerCase()),
+        )
+      : resources;
+
+    const groups: Partial<Record<ResourceType, ResourceListItem[]>> = {};
+    for (const r of filtered) {
+      (groups[r.resource_type] ??= []).push(r);
+    }
+    return groups;
+  }, [resources, search]);
+
+  const visibleTypes = TYPE_ORDER.filter((t) => (grouped[t]?.length ?? 0) > 0);
 
   const createMutation = useMutation({
     mutationFn: (d: ResourceCreateData) => resourcesApi.create(d),
@@ -190,7 +242,7 @@ export default function SchedulingResourcesPage() {
       name: formName,
       code: formCode,
       resource_type: formType,
-      capacity: parseInt(formCapacity, 10) || 1,
+      capacity: formType === 'PERSON' ? 1 : (parseInt(formCapacity, 10) || 1),
       description: formDescription,
     };
     if (editingId) {
@@ -246,8 +298,14 @@ export default function SchedulingResourcesPage() {
           }
         />
 
-        {/* Filter */}
-        <div className="flex flex-wrap gap-2">
+        {/* Filter bar */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            placeholder="Search by name or code..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="sm:w-56"
+          />
           <Select
             value={typeFilter}
             onValueChange={(v) => setTypeFilter(v === '_all' ? '' : (v as ResourceType))}
@@ -263,95 +321,160 @@ export default function SchedulingResourcesPage() {
               ))}
             </SelectContent>
           </Select>
+          <div className="text-sm text-muted-foreground tabular-nums ml-auto hidden sm:block">
+            {resources.length} resource{resources.length !== 1 ? 's' : ''}
+          </div>
         </div>
 
-        {/* Table */}
-        <ResponsiveTable
-          data={resources}
-          keyExtractor={(r) => r.id}
-          isLoading={isLoading}
-          onRowClick={openEdit}
-          emptyMessage="No scheduling resources found. Create one to get started."
-          defaultSortColumn="name"
-          defaultSortDirection="asc"
-          columns={[
-            {
-              key: 'name',
-              header: 'Name',
-              sortable: true,
-              cell: (r) => (
-                <div className="flex items-center gap-2">
-                  {typeIcons[r.resource_type]}
-                  <span className="font-medium">{r.name}</span>
-                </div>
-              ),
-            },
-            {
-              key: 'code',
-              header: 'Code',
-              sortable: true,
-              cell: (r) => <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{r.code}</code>,
-            },
-            {
-              key: 'resource_type',
-              header: 'Type',
-              sortable: true,
-              cell: (r) => (
-                <Badge className={`${typeColors[r.resource_type]} shrink-0 w-fit`}>
-                  {r.resource_type}
-                </Badge>
-              ),
-              hideOnMobile: true,
-            },
-            {
-              key: 'is_active',
-              header: 'Status',
-              sortable: true,
-              sortFn: (a, b) => Number(a.is_active) - Number(b.is_active),
-              cell: (r) => (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className={r.is_active ? 'text-green-600' : 'text-muted-foreground'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleMutation.mutate({ id: r.id, is_active: !r.is_active });
-                  }}
+        {/* Grouped collapsible sections */}
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-48 rounded-lg" />
+            ))}
+          </div>
+        ) : visibleTypes.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <Box className="h-12 w-12 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {search ? 'No resources match your search.' : 'No scheduling resources found. Create one to get started.'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {visibleTypes.map((type) => {
+              const items = grouped[type] ?? [];
+              const config = GROUP_CONFIG[type];
+              const isOpen = openGroups[type] ?? true;
+
+              return (
+                <Collapsible
+                  key={type}
+                  open={isOpen}
+                  onOpenChange={(open) =>
+                    setOpenGroups((prev) => ({ ...prev, [type]: open }))
+                  }
                 >
-                  {r.is_active ? (
-                    <><Power className="h-3.5 w-3.5 mr-1" /> Active</>
-                  ) : (
-                    <><PowerOff className="h-3.5 w-3.5 mr-1" /> Inactive</>
-                  )}
-                </Button>
-              ),
-            },
-          ]}
-          mobileCard={(r: ResourceListItem) => (
-            <Card className="p-3">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2 min-w-0">
-                  {typeIcons[r.resource_type]}
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{r.name}</p>
-                    <code className="text-xs text-muted-foreground">{r.code}</code>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Badge className={`${typeColors[r.resource_type]} w-fit`}>
-                    {r.resource_type}
-                  </Badge>
-                  <Badge
-                    variant={r.is_active ? 'default' : 'outline'}
-                    className="w-fit"
-                  >
-                    {r.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                </div>
-              </div>
-            </Card>
-          )}
-        />
+                  <Card className="overflow-hidden">
+                    <CollapsibleTrigger className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors">
+                      <ChevronRight
+                        className={cn(
+                          'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                          isOpen && 'rotate-90',
+                        )}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Badge className={cn(typeColors[type], 'gap-1')}>
+                          {typeIcons[type]}
+                          {config.label}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground tabular-nums">
+                          ({items.length})
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground ml-auto hidden sm:block">
+                        {config.description}
+                      </span>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent>
+                      {/* Desktop table */}
+                      <div className="hidden md:block border-t">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Code</TableHead>
+                                <TableHead className="w-[100px]">Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {items.map((r) => (
+                                <TableRow
+                                  key={r.id}
+                                  className="cursor-pointer"
+                                  onClick={() => router.push(`/scheduling/resources/${r.id}`)}
+                                >
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      {typeIcons[r.resource_type]}
+                                      <span className="font-medium">{r.name}</span>
+                                      {r.department_name && (
+                                        <span className="text-xs text-muted-foreground">
+                                          • {r.department_name}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                      {r.code}
+                                    </code>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className={cn(
+                                        'h-7 px-2',
+                                        r.is_active ? 'text-green-600' : 'text-muted-foreground',
+                                      )}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleMutation.mutate({
+                                          id: r.id,
+                                          is_active: !r.is_active,
+                                        });
+                                      }}
+                                    >
+                                      {r.is_active ? (
+                                        <><Power className="h-3.5 w-3.5 mr-1" />Active</>
+                                      ) : (
+                                        <><PowerOff className="h-3.5 w-3.5 mr-1" />Inactive</>
+                                      )}
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+
+                      {/* Mobile cards */}
+                      <div className="md:hidden border-t divide-y">
+                        {items.map((r) => (
+                          <div
+                            key={r.id}
+                            className="flex items-center justify-between gap-2 px-4 py-3 cursor-pointer hover:bg-muted/50"
+                            onClick={() => router.push(`/scheduling/resources/${r.id}`)}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              {typeIcons[r.resource_type]}
+                              <div className="min-w-0">
+                                <p className="font-medium truncate text-sm">{r.name}</p>
+                                <code className="text-xs text-muted-foreground">{r.code}</code>
+                              </div>
+                            </div>
+                            <Badge
+                              variant={r.is_active ? 'default' : 'outline'}
+                              className="shrink-0 w-fit"
+                            >
+                              {r.is_active ? 'Active' : 'Off'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              );
+            })}
+          </div>
+        )}
 
         {/* Create / Edit Dialog */}
         <Dialog open={showCreate} onOpenChange={(open) => { if (!open) closeDialog(); }}>
@@ -363,24 +486,6 @@ export default function SchedulingResourcesPage() {
               </div>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label>Name <span className="text-destructive">*</span></Label>
-                  <Input
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder="e.g. Immunization Clinic"
-                  />
-                </div>
-                <div>
-                  <Label>Code <span className="text-destructive">*</span></Label>
-                  <Input
-                    value={formCode}
-                    onChange={(e) => setFormCode(e.target.value.toUpperCase())}
-                    placeholder="e.g. IMM-CLINIC"
-                  />
-                </div>
-              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Type</Label>
@@ -396,14 +501,47 @@ export default function SchedulingResourcesPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Capacity</Label>
+                  <Label>Name <span className="text-destructive">*</span></Label>
                   <Input
-                    type="number"
-                    min="1"
-                    value={formCapacity}
-                    onChange={(e) => setFormCapacity(e.target.value)}
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder={
+                      formType === 'PERSON' ? 'e.g. Dr. Jane Doe' :
+                      formType === 'ASSET' ? 'e.g. MRI Machine 1' :
+                      'e.g. Consultation Room 1'
+                    }
                   />
                 </div>
+              </div>
+              <div className={cn('grid gap-3', formType === 'PERSON' ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2')}>
+                <div>
+                  <Label>Code <span className="text-destructive">*</span></Label>
+                  <Input
+                    value={formCode}
+                    onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+                    placeholder={
+                      formType === 'PERSON' ? 'e.g. STAFF-001' :
+                      formType === 'ASSET' ? 'e.g. MRI-01' :
+                      'e.g. ROOM-101'
+                    }
+                  />
+                </div>
+                {formType !== 'PERSON' && (
+                  <div>
+                    <Label>
+                      Capacity
+                      <span className="text-xs text-muted-foreground font-normal ml-1">
+                        {formType === 'ASSET' ? '(units available)' : '(concurrent patients)'}
+                      </span>
+                    </Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={formCapacity}
+                      onChange={(e) => setFormCapacity(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <Label>Description</Label>

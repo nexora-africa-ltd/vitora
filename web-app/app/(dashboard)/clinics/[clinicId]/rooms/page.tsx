@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DoorOpen, Plus, Trash2, Loader2, Star, Users } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -46,6 +46,7 @@ import type { ClinicRoom } from '@/lib/types/clinic';
 export default function ClinicRoomsPage() {
   const params = useParams();
   const clinicId = Number(params.clinicId);
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
@@ -250,7 +251,11 @@ export default function ClinicRoomsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rooms.map((room: ClinicRoom) => (
-            <Card key={room.id} className="relative overflow-hidden">
+            <Card
+              key={room.id}
+              className="relative overflow-hidden cursor-pointer hover:border-primary/40 transition-colors"
+              onClick={() => router.push(`/scheduling/resources/${room.room}`)}
+            >
               <div
                 className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
                 aria-hidden="true"
@@ -277,6 +282,7 @@ export default function ClinicRoomsPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

@@ -107,6 +107,16 @@ export const resourcesApi = {
     await apiClient.delete(`${BASE_URL}/resources/${id}/`);
   },
 
+  /** Get clinics linked to a PLACE resource via ClinicRoom. */
+  linkedClinics: async (
+    id: number,
+  ): Promise<
+    { clinic_room_id: number; clinic_id: number; clinic_name: string; clinic_code: string; is_default: boolean }[]
+  > => {
+    const response = await apiClient.get(`${BASE_URL}/resources/${id}/linked-clinics/`);
+    return response.data;
+  },
+
   /** Auto-create PERSON resources from staff profiles that don't have one yet. */
   syncFromStaff: async (): Promise<{ created: number; message: string }> => {
     const response = await apiClient.post(`${BASE_URL}/resources/sync-from-staff/`);
