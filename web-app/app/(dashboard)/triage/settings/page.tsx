@@ -8,11 +8,23 @@
  */
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { TriageThresholdsSettings } from '@/components/triage';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   useTriageVitalThresholds,
   useUpdateVitalThreshold,
@@ -21,6 +33,9 @@ import {
   useResetAllThresholdsToDefaults,
   useExportThresholds,
   useImportThresholds,
+  useTriageSettings,
+  useUpdateTriageSettings,
+  useAvailableTriageRooms,
 } from '@/lib/hooks/use-triage';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from '@/lib/hooks/use-toast';
@@ -38,6 +53,11 @@ export default function TriageSettingsPage() {
     isLoading,
     refetch,
   } = useTriageVitalThresholds();
+
+  // Triage room routing settings
+  const { data: triageSettings, isLoading: isSettingsLoading } = useTriageSettings();
+  const { mutateAsync: updateTriageSettings } = useUpdateTriageSettings();
+  const { data: availableRooms } = useAvailableTriageRooms({ enabled: !!triageSettings?.auto_route_to_room });
 
   // Mutations
   const { mutateAsync: updateThreshold } = useUpdateVitalThreshold();
@@ -189,16 +209,120 @@ export default function TriageSettingsPage() {
         <TabsContent value="general">
           <Card>
             <CardHeader>
-              <CardTitle>General Settings</CardTitle>
-              <CardDescription>
-                Configure general triage module behavior
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                General settings will be available in a future update.
-                Current settings are managed via the backend configuration.
+              <div className="flex items-center gap-2">
+                <CardTitle>Room Routing</CardTitle>
+                <HelpPopover content="When enabled, patients are automatically assigned to a triage room at check-in. The system selects a room with available capacity and an active (clocked-in) staff member. You can also assign rooms manually from the queue." />
               </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {isSettingsLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : triageSettings ? (
+                <>
+                  {/* Auto-routing toggle */}
+                  <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="auto-route" className="text-sm font-medium">
+                        Auto-route to triage rooms
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Automatically assign patients to a triage room when they check in.
+                        Rooms must have available capacity and an active staff member.
+                      </p>
+                    </div>
+                    <Switch
+                      id="auto-route"
+                      checked={triageSettings.auto_route_to_room}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await updateTriageSettings({
+                            id: triageSettings.id,
+                            data: { auto_route_to_room: checked },
+                          });
+                          toast({
+                            title: checked ? 'Auto-routing Enabled' : 'Auto-routing Disabled',
+                            description: checked
+                              ? 'Patients will be assigned to triage rooms at check-in.'
+                              : 'Room assignment will be manual only.',
+                          });
+                        } catch {
+                          toast({
+                            title: 'Error',
+                            description: 'Failed to update setting.',
+                            variant: 'destructive',
+                          });
+                        }
+                      }}
+                      disabled={!canEdit}
+                    />
+                  </div>
+
+                  {/* Triage department selector */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Triage Department
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Only rooms (PLACE resources) assigned to this department are considered for triage routing.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {triageSettings.triage_department_name ? (
+                        <Badge variant="secondary">{triageSettings.triage_department_name}</Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No department selected</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      To change the triage department, update it via the admin panel or API.
+                    </p>
+                  </div>
+
+                  {/* Room overview (when auto-routing is on) */}
+                  {triageSettings.auto_route_to_room && availableRooms && availableRooms.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Active Triage Rooms</Label>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {availableRooms.map((room) => (
+                          <div
+                            key={room.id}
+                            className={`flex items-center justify-between rounded-lg border p-3 ${
+                              room.is_available
+                                ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
+                                : 'border-muted'
+                            }`}
+                          >
+                            <div>
+                              <p className="text-sm font-medium">{room.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {room.current_load}/{room.capacity} patients
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              {room.has_active_staff ? (
+                                <Badge variant="default" className="text-[10px] h-5">Staff active</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] h-5 text-muted-foreground">No staff</Badge>
+                              )}
+                              {room.is_available ? (
+                                <Badge variant="default" className="text-[10px] h-5 bg-green-600">Available</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] h-5 text-muted-foreground">Unavailable</Badge>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Unable to load triage settings. Ensure you have a facility context.
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

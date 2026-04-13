@@ -56,6 +56,9 @@ export const triageKeys = {
   erBeds: () => [...triageKeys.all, 'er-beds'] as const,
   erBedBoard: (zone?: string) => [...triageKeys.erBeds(), 'board', zone] as const,
   erBedSummary: () => [...triageKeys.erBeds(), 'summary'] as const,
+  // Triage room routing keys
+  availableTriageRooms: () => [...triageKeys.all, 'available-rooms'] as const,
+  triageSettings: () => [...triageKeys.all, 'settings'] as const,
 };
 
 // =============================================================================
@@ -86,6 +89,8 @@ interface WaitingQueueEntry {
   reason_for_visit: string;
   status: 'WAITING_TRIAGE' | 'IN_TRIAGE' | 'TRIAGED' | 'CANCELLED';
   priority_hint: string;
+  triage_room: number | null;
+  triage_room_name: string | null;
   notes: string;
   wait_time_minutes: number;
   created_at: string;
@@ -97,6 +102,7 @@ interface WaitingQueueCreateData {
   reason_for_visit?: string;
   priority_hint?: string;
   create_encounter?: boolean;
+  triage_room_id?: number | null;
   notes?: string;
 }
 
@@ -971,6 +977,61 @@ export function useCancelWaitingEntry() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: triageKeys.waitingQueue() });
+    },
+  });
+}
+
+/**
+ * Assign or clear a triage room for a waiting patient
+ */
+export function useAssignTriageRoom() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ waitingId, roomId }: { waitingId: number; roomId: number | null }) => {
+      return triageApi.assignTriageRoom(waitingId, roomId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: triageKeys.waitingQueue() });
+      queryClient.invalidateQueries({ queryKey: triageKeys.availableTriageRooms() });
+    },
+  });
+}
+
+/**
+ * Fetch available triage rooms with occupancy info
+ */
+export function useAvailableTriageRooms(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: triageKeys.availableTriageRooms(),
+    queryFn: () => triageApi.getAvailableTriageRooms(),
+    refetchInterval: 30000,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * Fetch triage settings for the current facility
+ */
+export function useTriageSettings() {
+  return useQuery({
+    queryKey: triageKeys.triageSettings(),
+    queryFn: () => triageApi.getTriageSettings(),
+  });
+}
+
+/**
+ * Update triage settings
+ */
+export function useUpdateTriageSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { auto_route_to_room?: boolean; triage_department?: number | null } }) => {
+      return triageApi.updateTriageSettings(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: triageKeys.triageSettings() });
     },
   });
 }

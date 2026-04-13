@@ -283,6 +283,8 @@ export const WaitingQueueEntrySchema = z.object({
   reason_for_visit: z.string(),
   status: WaitingQueueStatusSchema,
   priority_hint: z.string(),
+  triage_room: z.number().nullable(),
+  triage_room_name: z.string().nullable(),
   notes: z.string(),
   wait_time_minutes: z.number(),
   created_at: z.string(),
@@ -686,3 +688,31 @@ export const PaginatedEscalationSchema = z.object({
   previous: z.string().nullable(),
   results: z.array(EscalationSchema),
 });
+
+// =============================================================================
+// TRIAGE SETTINGS & ROOM ROUTING SCHEMAS
+// =============================================================================
+
+export const TriageSettingsSchema = z.object({
+  id: z.number(),
+  facility: z.number(),
+  auto_route_to_room: z.boolean(),
+  triage_department: z.number().nullable(),
+  triage_department_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type TriageSettings = z.infer<typeof TriageSettingsSchema>;
+
+export const AvailableTriageRoomSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  code: z.string(),
+  capacity: z.number(),
+  current_load: z.number(),
+  has_active_staff: z.boolean(),
+  is_available: z.boolean(),
+});
+
+export type AvailableTriageRoom = z.infer<typeof AvailableTriageRoomSchema>;

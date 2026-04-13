@@ -21,7 +21,7 @@ from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, get_client_ip
 
-from .models import ERBed, Escalation, TriageAssessment, TriageQueue, TriageVitalThreshold, WaitTimeBreach, WaitingQueue
+from .models import ERBed, Escalation, TriageAssessment, TriageQueue, TriageSettings, TriageVitalThreshold, WaitTimeBreach, WaitingQueue
 from .serializers import (
     ERBedAssignPatientSerializer,
     ERBedBoardSummarySerializer,
@@ -37,6 +37,7 @@ from .serializers import (
     TriageAssessmentSerializer,
     TriageCategoryCalculationSerializer,
     TriageQueueSerializer,
+    TriageSettingsSerializer,
     TriageVitalThresholdSerializer,
     WaitTimeBreachAcknowledgeSerializer,
     WaitTimeBreachSerializer,
@@ -375,7 +376,9 @@ class WaitingQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     tenant_scope = "none"
 
-    queryset = WaitingQueue.objects.all().select_related("patient", "encounter", "checked_in_by")
+    queryset = WaitingQueue.objects.all().select_related(
+        "patient", "encounter", "checked_in_by", "triage_room"
+    )
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["status", "priority_hint"]
@@ -413,6 +416,7 @@ class WaitingQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Check in a patient (add to waiting queue)."""
+        self._resolve_tenant_context()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
@@ -451,6 +455,139 @@ class WaitingQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         entry.cancel(reason)
         serializer = WaitingQueueSerializer(entry)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="assign-room")
+    def assign_room(self, request, pk=None):
+        """Manually assign or reassign a triage room to a waiting patient."""
+        entry = self.get_object()
+        room_id = request.data.get("triage_room_id")
+
+        if room_id is None:
+            # Clear assignment
+            entry.triage_room = None
+            entry.save(update_fields=["triage_room", "updated_at"])
+            return Response(WaitingQueueSerializer(entry).data)
+
+        from hmis.apps.scheduling.models import Resource
+
+        try:
+            room = Resource.objects.get(pk=room_id, resource_type="PLACE", is_active=True)
+        except Resource.DoesNotExist:
+            return Response(
+                {"error": "Triage room not found or is not an active PLACE resource."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        entry.triage_room = room
+        entry.save(update_fields=["triage_room", "updated_at"])
+        return Response(WaitingQueueSerializer(entry).data)
+
+    @action(detail=False, methods=["get"], url_path="available-triage-rooms")
+    def available_triage_rooms(self, request):
+        """
+        List triage rooms with occupancy info for the current facility.
+
+        Returns PLACE resources in the triage department with:
+        - current_load: number of active waiting queue entries in the room
+        - has_active_staff: whether a clocked-in staff member is in the room
+        """
+        self._resolve_tenant_context()
+        from datetime import date as date_cls
+
+        from django.db.models import Count, Q
+
+        from hmis.apps.scheduling.models import Resource, Shift
+
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response([])
+
+        try:
+            settings = TriageSettings.objects.select_related("triage_department").get(
+                facility=facility
+            )
+        except TriageSettings.DoesNotExist:
+            return Response([])
+
+        if not settings.triage_department_id:
+            return Response([])
+
+        rooms = (
+            Resource.objects.filter(
+                facility=facility,
+                resource_type="PLACE",
+                is_active=True,
+                department=settings.triage_department,
+            )
+            .annotate(
+                current_load=Count(
+                    "triage_queue_entries",
+                    filter=Q(
+                        triage_queue_entries__status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
+                    ),
+                )
+            )
+            .order_by("name")
+        )
+
+        today = date_cls.today()
+        rooms_with_staff = set(
+            Shift.objects.filter(
+                room__in=rooms,
+                shift_date=today,
+                status__in=["ACTIVE", "ON_BREAK"],
+            ).values_list("room_id", flat=True)
+        )
+
+        data = [
+            {
+                "id": room.pk,
+                "name": room.name,
+                "code": room.code,
+                "capacity": room.capacity,
+                "current_load": room.current_load,
+                "has_active_staff": room.pk in rooms_with_staff,
+                "is_available": room.current_load < room.capacity and room.pk in rooms_with_staff,
+            }
+            for room in rooms
+        ]
+        return Response(data)
+
+
+class TriageSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """
+    Per-facility triage settings (auto-routing toggle, triage department).
+
+    GET  /api/triage/settings/          → list (returns 0 or 1 row for current facility)
+    GET  /api/triage/settings/current/  → get-or-create for current facility
+    PATCH /api/triage/settings/{id}/    → update settings
+    """
+
+    queryset = TriageSettings.objects.select_related("triage_department")
+    serializer_class = TriageSettingsSerializer
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "none"
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_queryset(self):
+        queryset = viewsets.ModelViewSet.get_queryset(self)
+        facility = getattr(self.request, "facility", None)
+        if facility:
+            queryset = queryset.filter(facility=facility)
+        return queryset
+
+    @action(detail=False, methods=["get"], url_path="current")
+    def current(self, request):
+        """Get or create triage settings for the current facility."""
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        settings_obj, _created = TriageSettings.objects.get_or_create(facility=facility)
+        return Response(TriageSettingsSerializer(settings_obj).data)
 
 
 class VitalThresholdsViewSet(viewsets.ModelViewSet):

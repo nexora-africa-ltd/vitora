@@ -347,6 +347,15 @@ class WaitingQueue(models.Model):
         related_name="patient_check_ins",
         help_text="Staff who checked in the patient",
     )
+    triage_room = models.ForeignKey(
+        "scheduling.Resource",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="triage_queue_entries",
+        limit_choices_to={"resource_type": "PLACE"},
+        help_text="Triage room assigned to this patient (auto or manual).",
+    )
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1509,3 +1518,52 @@ class ERBed(models.Model):
             return None
         delta = timezone.now() - self.status_changed_at
         return int(delta.total_seconds() / 60)
+
+
+# =============================================================================
+# Triage Room Routing Settings
+# =============================================================================
+
+
+class TriageSettings(models.Model):
+    """
+    Per-facility triage settings.
+
+    Controls auto-routing of patients to triage rooms when they check in
+    to the waiting queue.
+    """
+
+    facility = models.OneToOneField(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="triage_settings",
+        help_text="Facility these settings belong to.",
+    )
+    auto_route_to_room = models.BooleanField(
+        default=False,
+        help_text=(
+            "When enabled, patients checking in are automatically assigned "
+            "to a triage room that has capacity and an active (clocked-in) staff member."
+        ),
+    )
+    triage_department = models.ForeignKey(
+        "core.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text=(
+            "Department used to identify triage rooms. "
+            "Only PLACE resources in this department are considered for auto-routing."
+        ),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Triage Settings"
+        verbose_name_plural = "Triage Settings"
+
+    def __str__(self) -> str:
+        fac = getattr(self, "facility", None)
+        return f"Triage Settings ({fac})" if fac else "Triage Settings"
