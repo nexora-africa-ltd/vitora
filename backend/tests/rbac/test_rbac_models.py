@@ -110,6 +110,99 @@ class TestDepartmentModel:
         assert department.head == staff
         assert department.head.user.username == "pharmacist1"
 
+    def test_department_head_auto_adds_secondary_department(self):
+        """Assigning department head should add dept to staff's secondary_departments."""
+        from hmis.apps.core.models import Department, Role, StaffProfile
+
+        primary_dept = Department.objects.create(
+            code="NURSING_AD", name="Nursing", department_type="CLINICAL"
+        )
+        other_dept = Department.objects.create(
+            code="LAB_AD", name="Laboratory", department_type="LABORATORY"
+        )
+        role = Role.objects.create(code="NURSE_AD", name="Nurse", category="CLINICAL")
+        user = User.objects.create_user(username="nurse_head", password="test123")
+        staff = StaffProfile.objects.create(
+            user=user,
+            employee_id="VH-2026-AD1",
+            primary_role=role,
+            primary_department=primary_dept,
+            date_joined=date.today(),
+        )
+
+        # Assign as head of a different department
+        other_dept.head = staff
+        other_dept.save()
+
+        assert other_dept.pk in list(
+            staff.secondary_departments.values_list("pk", flat=True)
+        )
+        # Primary department should not change
+        staff.refresh_from_db()
+        assert staff.primary_department == primary_dept
+
+    def test_department_head_skips_primary_department(self):
+        """Should not add to secondary if it's already the staff's primary department."""
+        from hmis.apps.core.models import Department, Role, StaffProfile
+
+        dept = Department.objects.create(
+            code="OPD_PH", name="OPD", department_type="CLINICAL"
+        )
+        role = Role.objects.create(code="DOC_PH", name="Doctor", category="CLINICAL")
+        user = User.objects.create_user(username="doc_head", password="test123")
+        staff = StaffProfile.objects.create(
+            user=user,
+            employee_id="VH-2026-PH1",
+            primary_role=role,
+            primary_department=dept,
+            date_joined=date.today(),
+        )
+
+        # Assign as head of the same department
+        dept.head = staff
+        dept.save()
+
+        assert dept.pk not in list(
+            staff.secondary_departments.values_list("pk", flat=True)
+        )
+
+    def test_department_head_auto_adds_supervisor_role(self):
+        """Assigning department head should add SUPERVISOR to staff's secondary_roles."""
+        from hmis.apps.core.models import Department, Role, StaffProfile
+
+        dept = Department.objects.create(
+            code="RAD_SR", name="Radiology", department_type="CLINICAL"
+        )
+        role = Role.objects.create(code="RAD_SR", name="Radiographer", category="CLINICAL")
+        supervisor_role = Role.objects.create(
+            code="SUPERVISOR", name="Department Supervisor", category="MANAGEMENT"
+        )
+        user = User.objects.create_user(username="rad_head", password="test123")
+        staff = StaffProfile.objects.create(
+            user=user,
+            employee_id="VH-2026-SR1",
+            primary_role=role,
+            primary_department=dept,
+            date_joined=date.today(),
+        )
+
+        dept.head = staff
+        dept.save()
+
+        assert supervisor_role.pk in list(
+            staff.secondary_roles.values_list("pk", flat=True)
+        )
+
+    def test_department_head_no_head_skips_signal(self):
+        """Signal should not error when department has no head."""
+        from hmis.apps.core.models import Department
+
+        dept = Department.objects.create(
+            code="ADM_NH", name="Admin", department_type="ADMINISTRATIVE"
+        )
+        # Should not raise
+        dept.save()
+
     def test_department_staff_count(self):
         """Should count active staff in department."""
         from hmis.apps.core.models import Department, Role, StaffProfile

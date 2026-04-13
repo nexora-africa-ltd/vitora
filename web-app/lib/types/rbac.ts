@@ -152,6 +152,7 @@ export interface StaffProfile {
   secondary_departments?: number[];
   primary_facility?: number | null;
   primary_facility_name?: string | null;
+  secondary_facilities?: number[];
   organization?: number | null;
   organization_name?: string | null;
   hwr_id?: string | null;
@@ -211,6 +212,11 @@ export interface StaffProfileUpdateData extends Partial<Omit<StaffProfileCreateD
   title?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
+  secondary_departments?: number[];
+  secondary_facilities?: number[];
+  secondary_roles?: number[];
+  primary_department?: number | null;
+  primary_role?: number | null;
 }
 
 // Username check response

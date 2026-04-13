@@ -142,6 +142,7 @@ export const StaffProfileSchema = z.object({
   secondary_departments: z.array(z.number()).optional(),
   primary_facility: z.number().nullable().optional(),
   primary_facility_name: z.string().nullable().optional(),
+  secondary_facilities: z.array(z.number()).optional(),
   organization: z.number().nullable().optional(),
   organization_name: z.string().nullable().optional(),
   hwr_id: z.string().nullable().optional(),
