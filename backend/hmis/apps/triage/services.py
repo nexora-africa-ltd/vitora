@@ -1165,3 +1165,86 @@ class TriageCategoryCalculator:
                 alerts.append(rr_alert)
 
         return alerts
+
+
+# =============================================================================
+# Triage Room Auto-Routing
+# =============================================================================
+
+
+def find_best_triage_room(facility):
+    """
+    Find the best available triage room for auto-routing.
+
+    A room is eligible when:
+      1. It is an active PLACE resource in the facility.
+      2. It belongs to the triage department configured in TriageSettings.
+      3. It has at least one ACTIVE or ON_BREAK shift (i.e. clocked-in staff).
+      4. Its current patient load (WAITING_TRIAGE + IN_TRIAGE entries) is
+         below its capacity.
+
+    Among eligible rooms the one with the lowest current load is returned.
+    Ties are broken by room name (alphabetical) for determinism.
+
+    Returns ``None`` when no eligible room is found or auto-routing is
+    disabled for the facility.
+    """
+    from django.db.models import Count, Q
+
+    from hmis.apps.scheduling.models import Resource, Shift
+
+    from .models import TriageSettings, WaitingQueue
+
+    # --- 1. Check settings ---------------------------------------------------
+    try:
+        settings = TriageSettings.objects.select_related("triage_department").get(
+            facility=facility
+        )
+    except TriageSettings.DoesNotExist:
+        return None
+
+    if not settings.auto_route_to_room:
+        return None
+
+    if not settings.triage_department_id:
+        return None
+
+    # --- 2. Candidate rooms ---------------------------------------------------
+    rooms = (
+        Resource.objects.filter(
+            facility=facility,
+            resource_type="PLACE",
+            is_active=True,
+            department=settings.triage_department,
+        )
+        .annotate(
+            current_load=Count(
+                "triage_queue_entries",
+                filter=Q(
+                    triage_queue_entries__status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
+                ),
+            )
+        )
+        .order_by("current_load", "name")
+    )
+
+    # --- 3. Rooms with active staff -------------------------------------------
+    from datetime import date as date_cls
+
+    today = date_cls.today()
+    rooms_with_staff = set(
+        Shift.objects.filter(
+            room__in=rooms,
+            shift_date=today,
+            status__in=["ACTIVE", "ON_BREAK"],
+        ).values_list("room_id", flat=True)
+    )
+
+    # --- 4. Pick the best room ------------------------------------------------
+    for room in rooms:
+        if room.pk not in rooms_with_staff:
+            continue
+        if room.current_load < room.capacity:
+            return room
+
+    return None

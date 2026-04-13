@@ -14,7 +14,7 @@ from rest_framework import serializers
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
-from .models import ERBed, Escalation, TriageAssessment, TriageQueue, TriageVitalThreshold, WaitTimeBreach, WaitingQueue
+from .models import ERBed, Escalation, TriageAssessment, TriageQueue, TriageSettings, TriageVitalThreshold, WaitTimeBreach, WaitingQueue
 from .services import TriageCategoryCalculator
 
 # =============================================================================
@@ -30,6 +30,9 @@ class WaitingQueueSerializer(serializers.ModelSerializer):
     patient_age = serializers.SerializerMethodField()
     patient_gender = serializers.CharField(source="patient.gender", read_only=True)
     wait_time_minutes = serializers.SerializerMethodField()
+    triage_room_name = serializers.CharField(
+        source="triage_room.name", read_only=True, allow_null=True, default=None
+    )
 
     class Meta:
         model = WaitingQueue
@@ -45,6 +48,8 @@ class WaitingQueueSerializer(serializers.ModelSerializer):
             "reason_for_visit",
             "status",
             "priority_hint",
+            "triage_room",
+            "triage_room_name",
             "notes",
             "wait_time_minutes",
             "created_at",
@@ -72,10 +77,19 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
     reason_for_visit = serializers.CharField(required=False, allow_blank=True, default="")
     priority_hint = serializers.CharField(required=False, allow_blank=True, default="")
     create_encounter = serializers.BooleanField(required=False, default=True)
+    triage_room_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = WaitingQueue
-        fields = ["patient_id", "encounter_id", "reason_for_visit", "priority_hint", "create_encounter", "notes"]
+        fields = [
+            "patient_id",
+            "encounter_id",
+            "reason_for_visit",
+            "priority_hint",
+            "create_encounter",
+            "triage_room_id",
+            "notes",
+        ]
 
     def validate_patient_id(self, value):
         try:
@@ -104,10 +118,25 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Encounter not found.")
         return value
 
+    def validate_triage_room_id(self, value):
+        """Validate that the triage room exists and is a PLACE resource."""
+        if value is None:
+            return value
+        from hmis.apps.scheduling.models import Resource
+
+        try:
+            room = Resource.objects.get(pk=value, resource_type="PLACE")
+        except Resource.DoesNotExist:
+            raise serializers.ValidationError("Triage room not found or is not a PLACE resource.")
+        if not room.is_active:
+            raise serializers.ValidationError("Triage room is not active.")
+        return value
+
     def create(self, validated_data):
         patient_id = validated_data.pop("patient_id")
         encounter_id = validated_data.pop("encounter_id", None)
         create_encounter = validated_data.pop("create_encounter", True)
+        triage_room_id = validated_data.pop("triage_room_id", None)
 
         patient = Patient.objects.get(pk=patient_id)
         request = self.context.get("request")
@@ -139,12 +168,24 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
                 encounter_kwargs["organization"] = organization
             encounter = Encounter.objects.create(**encounter_kwargs)
 
+        # Resolve triage room: explicit pick > auto-route > None
+        triage_room = None
+        if triage_room_id:
+            from hmis.apps.scheduling.models import Resource
+
+            triage_room = Resource.objects.get(pk=triage_room_id)
+        elif facility:
+            from .services import find_best_triage_room
+
+            triage_room = find_best_triage_room(facility)
+
         # Create waiting queue entry
         waiting_entry = WaitingQueue.objects.create(
             patient=patient,
             encounter=encounter,
             check_in_time=timezone.now(),
             checked_in_by=request.user if request else None,
+            triage_room=triage_room,
             **validated_data,
         )
 
@@ -1378,3 +1419,29 @@ class EscalationResolveSerializer(serializers.Serializer):
         default="",
         help_text="Optional resolution notes",
     )
+
+
+# =============================================================================
+# TRIAGE SETTINGS SERIALIZERS
+# =============================================================================
+
+
+class TriageSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for per-facility triage settings."""
+
+    triage_department_name = serializers.CharField(
+        source="triage_department.name", read_only=True, allow_null=True, default=None
+    )
+
+    class Meta:
+        model = TriageSettings
+        fields = [
+            "id",
+            "facility",
+            "auto_route_to_room",
+            "triage_department",
+            "triage_department_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["facility", "created_at", "updated_at"]

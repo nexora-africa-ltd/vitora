@@ -32,6 +32,8 @@ import {
   BreachSummarySchema,
   EscalationSchema,
   PaginatedEscalationSchema,
+  TriageSettingsSchema,
+  AvailableTriageRoomSchema,
 } from '@/lib/schemas/triage.schema';
 import type {
   TriageAssessment,
@@ -233,6 +235,8 @@ export interface WaitingQueueEntry {
   reason_for_visit: string;
   status: 'WAITING_TRIAGE' | 'IN_TRIAGE' | 'TRIAGED' | 'CANCELLED';
   priority_hint: string;
+  triage_room: number | null;
+  triage_room_name: string | null;
   notes: string;
   wait_time_minutes: number;
   created_at: string;
@@ -244,7 +248,33 @@ export interface WaitingQueueCreateData {
   reason_for_visit?: string;
   priority_hint?: string;
   create_encounter?: boolean;
+  triage_room_id?: number | null;
   notes?: string;
+}
+
+export interface AvailableTriageRoom {
+  id: number;
+  name: string;
+  code: string;
+  capacity: number;
+  current_load: number;
+  has_active_staff: boolean;
+  is_available: boolean;
+}
+
+export interface TriageSettings {
+  id: number;
+  facility: number;
+  auto_route_to_room: boolean;
+  triage_department: number | null;
+  triage_department_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TriageSettingsUpdate {
+  auto_route_to_room?: boolean;
+  triage_department?: number | null;
 }
 
 export interface WaitingQueueListParams {
@@ -767,6 +797,45 @@ export const triageApi = {
       resolution_notes: notes || '',
     });
     return parseResponse(EscalationSchema, response.data, { context: 'triageApi.dismissEscalation' });
+  },
+
+  // ===========================================================================
+  // TRIAGE ROOM ROUTING & SETTINGS
+  // ===========================================================================
+
+  /**
+   * Assign or clear a triage room for a waiting patient.
+   */
+  async assignTriageRoom(waitingQueueId: number, triageRoomId: number | null): Promise<WaitingQueueEntry> {
+    const response = await apiClient.post<WaitingQueueEntry>(
+      `/api/triage/waiting/${waitingQueueId}/assign-room/`,
+      { triage_room_id: triageRoomId }
+    );
+    return parseResponse(WaitingQueueEntrySchema, response.data, { context: 'triageApi.assignTriageRoom' });
+  },
+
+  /**
+   * Get available triage rooms with occupancy info.
+   */
+  async getAvailableTriageRooms(): Promise<AvailableTriageRoom[]> {
+    const response = await apiClient.get('/api/triage/waiting/available-triage-rooms/');
+    return z.array(AvailableTriageRoomSchema).parse(response.data);
+  },
+
+  /**
+   * Get triage settings for the current facility.
+   */
+  async getTriageSettings(): Promise<TriageSettings> {
+    const response = await apiClient.get('/api/triage/settings/current/');
+    return parseResponse(TriageSettingsSchema, response.data, { context: 'triageApi.getTriageSettings' });
+  },
+
+  /**
+   * Update triage settings.
+   */
+  async updateTriageSettings(id: number, data: Partial<TriageSettingsUpdate>): Promise<TriageSettings> {
+    const response = await apiClient.patch(`/api/triage/settings/${id}/`, data);
+    return parseResponse(TriageSettingsSchema, response.data, { context: 'triageApi.updateTriageSettings' });
   },
 };
 

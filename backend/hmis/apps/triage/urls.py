@@ -14,6 +14,7 @@ from .views import (
     ReportExportView,
     TriageAssessmentViewSet,
     TriageQueueViewSet,
+    TriageSettingsViewSet,
     VitalThresholdsViewSet,
     VolumeReportView,
     WaitingQueueViewSet,
@@ -29,6 +30,7 @@ router.register(r"vital-thresholds", VitalThresholdsViewSet, basename="vitalthre
 router.register(r"er-beds", ERBedViewSet, basename="erbed")
 router.register(r"breaches", WaitTimeBreachViewSet, basename="waittimebreach")
 router.register(r"escalations", EscalationViewSet, basename="escalation")
+router.register(r"settings", TriageSettingsViewSet, basename="triagesettings")
 
 app_name = "triage"
 

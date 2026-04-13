@@ -20,6 +20,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  DoorOpen,
 } from 'lucide-react';
 import { PatientStageBadge } from '@/components/shared/patient-stage-badge';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -49,6 +50,8 @@ import {
   useCancelWaitingEntry,
   useTriageHistory,
   useBreachSummary,
+  useAvailableTriageRooms,
+  useAssignTriageRoom,
   type TriageHistoryFilters,
 } from '@/lib/hooks/use-triage';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -100,6 +103,10 @@ export default function TriageQueuePage() {
   // Waiting queue actions
   const { mutateAsync: startTriage } = useStartTriage();
   const { mutateAsync: cancelWaiting } = useCancelWaitingEntry();
+  const { mutateAsync: assignRoom } = useAssignTriageRoom();
+
+  // Available triage rooms
+  const { data: availableRooms } = useAvailableTriageRooms();
 
   // ============================================================================
   // HISTORY STATE & HOOKS
@@ -197,6 +204,28 @@ export default function TriageQueuePage() {
   const handleNewTriage = useCallback(() => {
     router.push('/triage/new');
   }, [router]);
+
+  // Handle assigning a triage room
+  const handleAssignRoom = useCallback(
+    async (waitingId: number, roomId: number | null) => {
+      try {
+        await assignRoom({ waitingId, roomId });
+        toast({
+          title: roomId ? 'Room Assigned' : 'Room Cleared',
+          description: roomId
+            ? 'Patient has been assigned to a triage room.'
+            : 'Room assignment has been cleared.',
+        });
+      } catch {
+        toast({
+          title: 'Error',
+          description: 'Failed to assign room. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    },
+    [assignRoom]
+  );
 
   const handleViewTriage = useCallback(
     (assessment: TriageAssessment) => {
@@ -412,7 +441,7 @@ export default function TriageQueuePage() {
                               </div>
                             </div>
 
-                            {/* Row 2: MRN + Stage */}
+                            {/* Row 2: MRN + Stage + Room */}
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <Badge variant="outline" size="sm">
                                 {entry.patient_mrn}
@@ -421,6 +450,12 @@ export default function TriageQueuePage() {
                                 stage={isInProgress ? 'IN_TRIAGE' : 'AWAITING_TRIAGE'}
                                 size="sm"
                               />
+                              {entry.triage_room_name && (
+                                <Badge variant="secondary" size="sm" className="gap-1">
+                                  <DoorOpen className="h-3 w-3" />
+                                  {entry.triage_room_name}
+                                </Badge>
+                              )}
                             </div>
 
                             {/* Row 3: Demographics + Wait time */}
@@ -448,6 +483,37 @@ export default function TriageQueuePage() {
 
                             {/* Row 5: Actions - full width */}
                             <div className="flex items-center gap-2 pt-1">
+                              {availableRooms && availableRooms.length > 0 && (
+                                <Select
+                                  value={entry.triage_room?.toString() ?? ''}
+                                  onValueChange={(val) =>
+                                    handleAssignRoom(entry.id, val ? Number(val) : null)
+                                  }
+                                >
+                                  <SelectTrigger className="h-9 w-auto min-w-[100px] text-xs">
+                                    <DoorOpen className="h-3 w-3 mr-1 shrink-0" />
+                                    <SelectValue placeholder="Room" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableRooms.map((room) => (
+                                      <SelectItem
+                                        key={room.id}
+                                        value={room.id.toString()}
+                                      >
+                                        <span className={`flex items-center gap-1.5 ${!room.is_available && room.id !== entry.triage_room ? 'opacity-50' : ''}`}>
+                                          {room.name}
+                                          <span className="text-muted-foreground">
+                                            ({room.current_load}/{room.capacity})
+                                          </span>
+                                          {!room.has_active_staff && (
+                                            <span className="text-destructive text-[10px]">No staff</span>
+                                          )}
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -491,6 +557,12 @@ export default function TriageQueuePage() {
                                     {entry.priority_hint}
                                   </Badge>
                                 )}
+                                {entry.triage_room_name && (
+                                  <Badge variant="secondary" size="sm" className="gap-1">
+                                    <DoorOpen className="h-3 w-3" />
+                                    {entry.triage_room_name}
+                                  </Badge>
+                                )}
                               </div>
                               <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                                 <span>
@@ -511,6 +583,37 @@ export default function TriageQueuePage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
+                              {availableRooms && availableRooms.length > 0 && (
+                                <Select
+                                  value={entry.triage_room?.toString() ?? ''}
+                                  onValueChange={(val) =>
+                                    handleAssignRoom(entry.id, val ? Number(val) : null)
+                                  }
+                                >
+                                  <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs">
+                                    <DoorOpen className="h-3 w-3 mr-1 shrink-0" />
+                                    <SelectValue placeholder="Assign Room" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableRooms.map((room) => (
+                                      <SelectItem
+                                        key={room.id}
+                                        value={room.id.toString()}
+                                      >
+                                        <span className={`flex items-center gap-1.5 ${!room.is_available && room.id !== entry.triage_room ? 'opacity-50' : ''}`}>
+                                          {room.name}
+                                          <span className="text-muted-foreground">
+                                            ({room.current_load}/{room.capacity})
+                                          </span>
+                                          {!room.has_active_staff && (
+                                            <span className="text-destructive text-[10px]">No staff</span>
+                                          )}
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"

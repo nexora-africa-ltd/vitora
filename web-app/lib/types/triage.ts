@@ -776,6 +776,8 @@ export type {
   PaginatedTriageAssessment,
   PaginatedTriageQueue,
   PaginatedWaitingQueue,
+  TriageSettings,
+  AvailableTriageRoom,
 } from '@/lib/schemas/triage.schema';
 
 // Legacy alias for backwards compatibility
