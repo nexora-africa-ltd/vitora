@@ -41,7 +41,7 @@ class TestPowerSyncTokenClaims:
     def test_token_includes_user_id(self, test_user, test_staff_profile):
         """Token must include the standard user_id claim."""
         token = PowerSyncTokenObtainPairSerializer.get_token(test_user)
-        assert token["user_id"] == test_user.id
+        assert token["user_id"] == str(test_user.id)
 
     def test_token_without_staff_profile_has_null_facility(self, db):
         """Users without a StaffProfile should get null facility/org claims."""

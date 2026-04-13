@@ -294,6 +294,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         GrowthMeasurementSerializer,
         frozenset({
             "age_in_days",
+            "age_in_months",
             "alerts",
             "bmi_for_age_z",
             "created_at",

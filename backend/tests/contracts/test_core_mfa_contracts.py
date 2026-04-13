@@ -16,6 +16,12 @@ from hmis.apps.core.mfa.serializers import (
     TOTPConfirmResponseSerializer,
     TOTPConfirmSerializer,
     TOTPSetupSerializer,
+    WebAuthnAuthenticateBeginSerializer,
+    WebAuthnAuthenticateCompleteSerializer,
+    WebAuthnCredentialSerializer,
+    WebAuthnDeleteSerializer,
+    WebAuthnRegisterBeginSerializer,
+    WebAuthnRegisterCompleteSerializer,
 )
 
 
@@ -41,11 +47,13 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         MFAStatusSerializer,
         frozenset({
+            "available_methods",
             "backup_codes_remaining",
             "devices_count",
             "has_pending_setup",
             "mfa_enabled",
             "mfa_required",
+            "webauthn_credentials_count",
         }),
     ),
     (
@@ -75,6 +83,49 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "provisioning_uri",
             "qr_code",
             "secret",
+        }),
+    ),
+    (
+        WebAuthnAuthenticateBeginSerializer,
+        frozenset({
+            "options",
+        }),
+    ),
+    (
+        WebAuthnAuthenticateCompleteSerializer,
+        frozenset({
+            "credential",
+            "mfa_token",
+        }),
+    ),
+    (
+        WebAuthnCredentialSerializer,
+        frozenset({
+            "backed_up",
+            "created_at",
+            "id",
+            "last_used_at",
+            "name",
+            "transports",
+        }),
+    ),
+    (
+        WebAuthnDeleteSerializer,
+        frozenset({
+            "password",
+        }),
+    ),
+    (
+        WebAuthnRegisterBeginSerializer,
+        frozenset({
+            "options",
+        }),
+    ),
+    (
+        WebAuthnRegisterCompleteSerializer,
+        frozenset({
+            "credential",
+            "name",
         }),
     ),
 ]

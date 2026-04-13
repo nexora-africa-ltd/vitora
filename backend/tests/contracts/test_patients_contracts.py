@@ -18,6 +18,7 @@ from hmis.apps.patients.serializers import (
     DeathRecordVoidSerializer,
     EmergencyContactSerializer,
     PatientSerializer,
+    VitalsDataPointSerializer,
 )
 
 
@@ -267,6 +268,21 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "village",
             "ward",
             "ward_name",
+        }),
+    ),
+    (
+        VitalsDataPointSerializer,
+        frozenset({
+            "diastolic_bp",
+            "heart_rate",
+            "height",
+            "respiratory_rate",
+            "source",
+            "spo2",
+            "systolic_bp",
+            "temperature",
+            "timestamp",
+            "weight",
         }),
     ),
 ]

@@ -140,6 +140,7 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     # scheduling & checkin
     "Appointment": ("scheduling", "appointment"),
     "Schedule": ("scheduling", "schedule"),
+    "Shift": ("scheduling", "shift"),
     "CheckIn": ("checkin", "checkin"),
     # ai
     "AICareplanResult": ("ai", "aicareplanresult"),
@@ -196,6 +197,7 @@ CUSTOM_ACTIONS: set[str] = {
     "escalate_ihr_to_county",
     "escalate_ihr_to_national",
     "notify_ihr_to_who",
+    "manage_schedules",
 }
 
 # Actions following {action}_{model} pattern (e.g. view_sensitive_patient)
