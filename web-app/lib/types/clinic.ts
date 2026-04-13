@@ -730,3 +730,22 @@ export interface ClinicEnrollmentListParams {
   is_overdue?: boolean;
   search?: string;
 }
+
+// =============================================================================
+// PUBLIC QUEUE DISPLAY (No PII)
+// =============================================================================
+
+export interface PublicQueueItem {
+  queue_number: number;
+  status: string;
+  room_name: string | null;
+  called_at: string | null;
+}
+
+export interface PublicQueueResponse {
+  clinic_name: string;
+  session_date: string;
+  session_status: string | null;
+  updated_at: string;
+  queue: PublicQueueItem[];
+}

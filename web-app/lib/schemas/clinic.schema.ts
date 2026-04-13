@@ -523,3 +523,22 @@ export type PaginatedClinicList = z.infer<typeof PaginatedClinicListSchema>;
 export type PaginatedClinicSession = z.infer<typeof PaginatedClinicSessionSchema>;
 export type PaginatedClinicVisit = z.infer<typeof PaginatedClinicVisitSchema>;
 export type PaginatedClinicEnrollment = z.infer<typeof PaginatedClinicEnrollmentSchema>;
+
+// =============================================================================
+// Public Queue Display
+// =============================================================================
+
+export const PublicQueueItemSchema = z.object({
+  queue_number: z.number(),
+  status: z.string(),
+  room_name: z.string().nullable(),
+  called_at: z.string().nullable(),
+});
+
+export const PublicQueueResponseSchema = z.object({
+  clinic_name: z.string(),
+  session_date: z.string(),
+  session_status: z.string().nullable(),
+  updated_at: z.string(),
+  queue: z.array(PublicQueueItemSchema),
+});

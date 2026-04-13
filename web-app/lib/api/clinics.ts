@@ -29,6 +29,7 @@ import {
   ClinicScheduleArrayResponseSchema,
   ClinicRoomSchema,
   ClinicRoomArrayResponseSchema,
+  PublicQueueResponseSchema,
 } from '@/lib/schemas/clinic.schema';
 import type {
   Clinic,
@@ -50,6 +51,7 @@ import type {
   ClinicDashboardStats,
   ClinicRoom,
   ClinicRoomCreateData,
+  PublicQueueResponse,
 } from '@/lib/types/clinic';
 import type { ProcedureOrderListItem } from '@/lib/types/procedure';
 import type { PaginatedResponse } from '@/lib/types';
@@ -448,6 +450,22 @@ export const clinicsApi = {
    */
   removeRoom: async (clinicId: number, roomId: number): Promise<void> => {
     await apiClient.delete(`/api/clinics/${clinicId}/rooms/${roomId}/`);
+  },
+
+  /**
+   * List available (unoccupied) rooms for a clinic
+   */
+  listAvailableRooms: async (clinicId: number): Promise<ClinicRoom[]> => {
+    const response = await apiClient.get<ClinicRoom[]>(`/api/clinics/${clinicId}/rooms/available/`);
+    return response.data;
+  },
+
+  /**
+   * Get public queue (no auth required, no PII)
+   */
+  publicQueue: async (clinicId: number): Promise<PublicQueueResponse> => {
+    const response = await apiClient.get(`/api/clinics/${clinicId}/public-queue/`);
+    return parseResponse(PublicQueueResponseSchema, response.data, { context: 'clinicsApi.publicQueue' });
   },
 };
 

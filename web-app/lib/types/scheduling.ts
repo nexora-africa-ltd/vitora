@@ -49,6 +49,7 @@ export interface ResourceListParams {
   is_active?: boolean;
   ordering?: string;
   search?: string;
+  exclude_clinic_resources?: boolean;
 }
 
 // =============================================================================

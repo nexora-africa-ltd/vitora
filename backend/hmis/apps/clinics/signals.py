@@ -18,7 +18,7 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import ClinicalEvents, publish_event
 
-from .models import Clinic, ClinicSchedule, ClinicVisit
+from .models import Clinic, ClinicSchedule, ClinicSession, ClinicVisit
 from .websockets import (
     broadcast_consultation_started,
     broadcast_patient_added,
@@ -131,6 +131,63 @@ def clinic_visit_status_change(sender, instance, created, **kwargs):
     except Exception as e:
         # Don't let WebSocket errors break the save operation
         logger.error(f"Error broadcasting clinic visit status change: {e}")
+
+
+# =============================================================================
+# ClinicSession domain events
+# =============================================================================
+
+
+@receiver(pre_save, sender=ClinicSession)
+def clinic_session_pre_save(sender, instance, **kwargs):
+    """Track status changes on ClinicSession for domain events."""
+    if not instance.pk:
+        instance._old_session_status = None
+        return
+    try:
+        old = ClinicSession.objects.get(pk=instance.pk)
+        instance._old_session_status = old.status
+    except ClinicSession.DoesNotExist:
+        instance._old_session_status = None
+
+
+@receiver(post_save, sender=ClinicSession)
+def clinic_session_publish_event(sender, instance, created, **kwargs):
+    """Publish domain events when ClinicSession opens or closes."""
+    old_status = getattr(instance, "_old_session_status", None)
+
+    if old_status == instance.status:
+        return
+
+    try:
+        if instance.status == "OPEN":
+            publish_event(
+                event_type=ClinicalEvents.CLINIC_SESSION_OPENED,
+                aggregate_type="ClinicSession",
+                aggregate_id=instance.id,
+                payload={
+                    "clinic_id": instance.clinic_id,
+                    "clinic_name": str(instance.clinic),
+                    "session_date": str(instance.session_date),
+                    "opened_by": getattr(instance.opened_by, "id", None),
+                },
+                facility_id=getattr(instance, "facility_id", None),
+            )
+        elif instance.status == "CLOSED":
+            publish_event(
+                event_type=ClinicalEvents.CLINIC_SESSION_CLOSED,
+                aggregate_type="ClinicSession",
+                aggregate_id=instance.id,
+                payload={
+                    "clinic_id": instance.clinic_id,
+                    "clinic_name": str(instance.clinic),
+                    "session_date": str(instance.session_date),
+                    "closed_by": getattr(instance.closed_by, "id", None),
+                },
+                facility_id=getattr(instance, "facility_id", None),
+            )
+    except Exception as e:
+        logger.error(f"Error publishing clinic session event: {e}")
 
 
 # =============================================================================
