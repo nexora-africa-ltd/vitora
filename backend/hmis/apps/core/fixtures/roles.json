@@ -3519,5 +3519,70 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "auth.group",
+    "pk": 35,
+    "fields": {
+      "name": "Department Supervisor"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 35,
+    "fields": {
+      "code": "SUPERVISOR",
+      "name": "Department Supervisor",
+      "category": "MANAGEMENT",
+      "description": "Department-level supervisor with oversight of staff, schedules, and departmental operations. Automatically assigned when a staff member is appointed as department head.",
+      "permissions_matrix": {
+        "StaffProfile": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "Role": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "Department": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Patient": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false,
+          "view_sensitive": false
+        },
+        "Encounter": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "Schedule": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_schedules": true
+        }
+      },
+      "hierarchy_level": 1,
+      "parent_role": 1,
+      "django_group": 35,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]

@@ -9,15 +9,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, AlertTriangle } from 'lucide-react';
+import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, AlertTriangle, Users } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -25,6 +29,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  MultiSelect,
+  MultiSelectTrigger,
+  MultiSelectContent,
+  MultiSelectInput,
+  MultiSelectList,
+  MultiSelectGroup,
+  MultiSelectItem,
+  MultiSelectEmpty,
+} from '@/components/kibo-ui/multi-select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +53,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useStaffProfile, useUpdateStaffProfile, useDeleteStaffProfile, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
+import { useStaffProfile, useUpdateStaffProfile, useDeleteStaffProfile, useDepartments, useRoles, useStaffList } from '@/lib/hooks/use-rbac';
+import { facilitiesApi } from '@/lib/api/facilities';
 
 export default function EditStaffPage() {
   const router = useRouter();
@@ -53,6 +68,11 @@ export default function EditStaffPage() {
 
   const { data: departments } = useDepartments({ is_active: true, page_size: 100 });
   const { data: roles } = useRoles({ page_size: 100 });
+  const { data: facilities } = useQuery({
+    queryKey: ['facilities-list'],
+    queryFn: () => facilitiesApi.list({ page_size: 100 }),
+  });
+  const { data: staffList } = useStaffList({ page_size: 200, employment_status: 'ACTIVE' });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -69,6 +89,9 @@ export default function EditStaffPage() {
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [secondaryDepartments, setSecondaryDepartments] = useState<string[]>([]);
+  const [secondaryFacilities, setSecondaryFacilities] = useState<string[]>([]);
+  const [supervisor, setSupervisor] = useState<string>('');
 
   // Load staff data into form
   useEffect(() => {
@@ -85,6 +108,13 @@ export default function EditStaffPage() {
         license_expiry: staff.license_expiry || '',
         specialization: staff.specialization || '',
       });
+      setSecondaryDepartments(
+        (staff.secondary_departments ?? []).map(String)
+      );
+      setSecondaryFacilities(
+        (staff.secondary_facilities ?? []).map(String)
+      );
+      setSupervisor(staff.supervisor?.toString() || '');
     }
   }, [staff]);
 
@@ -146,6 +176,9 @@ export default function EditStaffPage() {
           license_number: formData.license_number || undefined,
           license_expiry: formData.license_expiry || undefined,
           specialization: formData.specialization || undefined,
+          secondary_departments: secondaryDepartments.map(Number),
+          secondary_facilities: secondaryFacilities.map(Number),
+          supervisor: supervisor && supervisor !== 'none' ? parseInt(supervisor) : null,
         },
       });
 
@@ -185,17 +218,12 @@ export default function EditStaffPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 max-w-3xl">
-        <div className="flex items-center gap-4 mb-6">
-          <Skeleton className="h-10 w-10" />
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-        </div>
-        <div className="space-y-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-36 w-full rounded-xl" />
+        <Skeleton className="h-10 w-72" />
+        <div className="space-y-4">
           <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-48 w-full" />
         </div>
       </div>
     );
@@ -203,7 +231,7 @@ export default function EditStaffPage() {
 
   if (error || !staff) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-4xl space-y-6">
         <PageHeader
           title="Edit Staff Profile"
           helpContent="Update account, assignment, and professional details for an existing staff record."
@@ -218,16 +246,19 @@ export default function EditStaffPage() {
     );
   }
 
+  const initials = `${(staff.user_first_name || '')[0] || ''}${(staff.user_last_name || '')[0] || ''}`.toUpperCase();
+  const supervisorName = staffList?.results?.find((s) => s.id === staff.supervisor);
+
   return (
-    <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
+    <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
       <PageHeader
-        title={staff.full_name || `${staff.user_first_name} ${staff.user_last_name}`}
+        title="Edit Staff Profile"
         helpContent="Update account, assignment, and professional details for an existing staff record."
         actions={
           staff.employment_status === 'ACTIVE' ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive">Terminate</Button>
+                <Button variant="destructive" size="sm">Terminate</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -248,249 +279,364 @@ export default function EditStaffPage() {
         }
       />
 
-      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 space-y-1">
-          <p className="truncate text-sm font-medium">
-            @{staff.user_username}
-            <span className="text-muted-foreground"> • {staff.employee_id}</span>
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {staff.primary_department_name || 'Department not assigned'}
-            <span className="text-muted-foreground"> • </span>
-            {staff.primary_role_name || 'Role not assigned'}
-          </p>
-        </div>
-        <Badge variant={staff.employment_status === 'ACTIVE' ? 'default' : 'secondary'} className="w-fit shrink-0 self-start sm:self-auto">
-          {formatEmploymentStatus(staff.employment_status)}
-        </Badge>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Staff Information
-            </CardTitle>
-            <CardDescription>
-              Username: {staff.user_username}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">First Name *</Label>
-                <Input
-                  autoComplete="given-name"
-                  id="first_name"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={(e) => handleChange('first_name', e.target.value)}
-                  placeholder="First name…"
-                />
-                {formErrors.first_name && (
-                  <p className="text-sm text-destructive">{formErrors.first_name}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="last_name">Last Name *</Label>
-                <Input
-                  autoComplete="family-name"
-                  id="last_name"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={(e) => handleChange('last_name', e.target.value)}
-                  placeholder="Last name…"
-                />
-                {formErrors.last_name && (
-                  <p className="text-sm text-destructive">{formErrors.last_name}</p>
-                )}
-              </div>
+      {/* Identity Hero Card */}
+      <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-card">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.09),transparent_36%)]"
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-6">
+          <Avatar className="h-16 w-16 shrink-0 ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
+            <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-semibold tracking-tight sm:text-xl">
+                {staff.full_name || `${staff.user_first_name} ${staff.user_last_name}`}
+              </h2>
+              <Badge
+                variant={staff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}
+                className="shrink-0"
+              >
+                {formatEmploymentStatus(staff.employment_status)}
+              </Badge>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="email">
-                  <Mail className="h-4 w-4 inline mr-1" />
-                  Email *
-                </Label>
-                <Input
-                  autoComplete="email"
-                  id="email"
-                  name="email"
-                  spellCheck={false}
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  placeholder="email@example.com…"
-                />
-                {formErrors.email && (
-                  <p className="text-sm text-destructive">{formErrors.email}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone_number">
-                  <Phone className="h-4 w-4 inline mr-1" />
-                  Phone Number
-                </Label>
-                <Input
-                  autoComplete="tel"
-                  id="phone_number"
-                  inputMode="tel"
-                  name="phone_number"
-                  type="tel"
-                  value={formData.phone_number}
-                  onChange={(e) => handleChange('phone_number', e.target.value)}
-                  placeholder="+254712345678…"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="employee_id">
-                <IdCard className="h-4 w-4 inline mr-1" />
-                Employee ID *
-              </Label>
-              <Input
-                autoComplete="off"
-                id="employee_id"
-                name="employee_id"
-                value={formData.employee_id}
-                onChange={(e) => handleChange('employee_id', e.target.value)}
-                placeholder="EMP-001…"
-              />
-              {formErrors.employee_id && (
-                <p className="text-sm text-destructive">{formErrors.employee_id}</p>
+            <p className="text-sm text-muted-foreground">
+              @{staff.user_username}
+              <span className="mx-1.5">•</span>
+              {staff.employee_id}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Building2 className="h-3.5 w-3.5" />
+                {staff.primary_department_name || 'No department'}
+              </span>
+              <span className="flex items-center gap-1">
+                <Shield className="h-3.5 w-3.5" />
+                {staff.primary_role_name || 'No role'}
+              </span>
+              {supervisorName && (
+                <span className="flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5" />
+                  Reports to {supervisorName.full_name || `${supervisorName.user_first_name} ${supervisorName.user_last_name}`}
+                </span>
               )}
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5 text-xs text-muted-foreground/70">
+              <span>{staff.organization_name || 'No organization'}</span>
+              <span className="mx-0.5">•</span>
+              <span>{staff.primary_facility_name || 'No facility'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Role Assignment
-            </CardTitle>
-            <CardDescription>
-              Assign department and role to determine permissions
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Read-only facility & organization context */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Organization</Label>
-                <p className="text-sm font-medium">{staff?.organization_name || 'Not assigned'}</p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Primary Facility</Label>
-                <p className="text-sm font-medium">{staff?.primary_facility_name || 'Not assigned'}</p>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="department">
-                  <Building2 className="h-4 w-4 inline mr-1" />
-                  Department *
-                </Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={(value) => handleChange('department', value)}
-                >
-                  <SelectTrigger id="department" aria-label="Department">
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments?.results.map((dept: { id: number; name: string }) => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.department && (
-                  <p className="text-sm text-destructive">{formErrors.department}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">
-                  <Shield className="h-4 w-4 inline mr-1" />
-                  Role *
-                </Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => handleChange('role', value)}
-                >
-                  <SelectTrigger id="role" aria-label="Role">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles?.results.map((role) => (
-                      <SelectItem key={role.id} value={role.id.toString()}>
-                        {role.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.role && (
-                  <p className="text-sm text-destructive">{formErrors.role}</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Tabbed Form */}
+      <form onSubmit={handleSubmit}>
+        <Tabs defaultValue="personal" className="space-y-4">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="personal" className="gap-1.5">
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">Personal</span>
+              <span className="sm:hidden">Info</span>
+            </TabsTrigger>
+            <TabsTrigger value="assignment" className="gap-1.5">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Assignment</span>
+              <span className="sm:hidden">Role</span>
+            </TabsTrigger>
+            <TabsTrigger value="professional" className="gap-1.5">
+              <Briefcase className="h-4 w-4" />
+              <span className="hidden sm:inline">Professional</span>
+              <span className="sm:hidden">License</span>
+            </TabsTrigger>
+          </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              Professional Information
-            </CardTitle>
-            <CardDescription>
-              License and specialization details (optional)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="license_number">License Number</Label>
-                <Input
-                  autoComplete="off"
-                  id="license_number"
-                  name="license_number"
-                  spellCheck={false}
-                  value={formData.license_number}
-                  onChange={(e) => handleChange('license_number', e.target.value)}
-                  placeholder="MED-12345…"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="license_expiry">License Expiry</Label>
-                <DatePicker
-                  value={formData.license_expiry ? parseISO(formData.license_expiry) : undefined}
-                  onChange={(date) => handleChange('license_expiry', date ? format(date, 'yyyy-MM-dd') : '')}
-                  placeholder="Select expiry date"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="specialization">Specialization</Label>
-              <Input
-                id="specialization"
-                name="specialization"
-                value={formData.specialization}
-                onChange={(e) => handleChange('specialization', e.target.value)}
-                placeholder="e.g., Internal Medicine…"
-              />
-            </div>
-          </CardContent>
-        </Card>
+          {/* ── Personal Information ── */}
+          <TabsContent value="personal">
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">First Name *</Label>
+                    <Input
+                      autoComplete="given-name"
+                      id="first_name"
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={(e) => handleChange('first_name', e.target.value)}
+                      placeholder="First name…"
+                    />
+                    {formErrors.first_name && (
+                      <p className="text-sm text-destructive">{formErrors.first_name}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">Last Name *</Label>
+                    <Input
+                      autoComplete="family-name"
+                      id="last_name"
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={(e) => handleChange('last_name', e.target.value)}
+                      placeholder="Last name…"
+                    />
+                    {formErrors.last_name && (
+                      <p className="text-sm text-destructive">{formErrors.last_name}</p>
+                    )}
+                  </div>
+                </div>
+                <Separator />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">
+                      <Mail className="mr-1 inline h-4 w-4" />
+                      Email *
+                    </Label>
+                    <Input
+                      autoComplete="email"
+                      id="email"
+                      name="email"
+                      spellCheck={false}
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleChange('email', e.target.value)}
+                      placeholder="email@example.com…"
+                    />
+                    {formErrors.email && (
+                      <p className="text-sm text-destructive">{formErrors.email}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone_number">
+                      <Phone className="mr-1 inline h-4 w-4" />
+                      Phone Number
+                    </Label>
+                    <Input
+                      autoComplete="tel"
+                      id="phone_number"
+                      inputMode="tel"
+                      name="phone_number"
+                      type="tel"
+                      value={formData.phone_number}
+                      onChange={(e) => handleChange('phone_number', e.target.value)}
+                      placeholder="+254712345678…"
+                    />
+                  </div>
+                </div>
+                <Separator />
+                <div className="max-w-sm space-y-2">
+                  <Label htmlFor="employee_id">
+                    <IdCard className="mr-1 inline h-4 w-4" />
+                    Employee ID *
+                  </Label>
+                  <Input
+                    autoComplete="off"
+                    id="employee_id"
+                    name="employee_id"
+                    value={formData.employee_id}
+                    onChange={(e) => handleChange('employee_id', e.target.value)}
+                    placeholder="EMP-001…"
+                  />
+                  {formErrors.employee_id && (
+                    <p className="text-sm text-destructive">{formErrors.employee_id}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          {/* ── Role & Assignment ── */}
+          <TabsContent value="assignment">
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="department">
+                      <Building2 className="mr-1 inline h-4 w-4" />
+                      Department *
+                    </Label>
+                    <Select
+                      value={formData.department}
+                      onValueChange={(value) => handleChange('department', value)}
+                    >
+                      <SelectTrigger id="department" aria-label="Department">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments?.results.map((dept: { id: number; name: string }) => (
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formErrors.department && (
+                      <p className="text-sm text-destructive">{formErrors.department}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">
+                      <Shield className="mr-1 inline h-4 w-4" />
+                      Role *
+                    </Label>
+                    <Select
+                      value={formData.role}
+                      onValueChange={(value) => handleChange('role', value)}
+                    >
+                      <SelectTrigger id="role" aria-label="Role">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles?.results.map((role) => (
+                          <SelectItem key={role.id} value={role.id.toString()}>
+                            {role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formErrors.role && (
+                      <p className="text-sm text-destructive">{formErrors.role}</p>
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Supervisor */}
+                <div className="max-w-sm space-y-2">
+                  <Label htmlFor="supervisor">
+                    <Users className="mr-1 inline h-4 w-4" />
+                    Supervisor
+                  </Label>
+                  <Select value={supervisor} onValueChange={setSupervisor}>
+                    <SelectTrigger id="supervisor" aria-label="Supervisor">
+                      <SelectValue placeholder="Select supervisor (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {(staffList?.results ?? [])
+                        .filter((s) => s.id !== staffId)
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id.toString()}>
+                            {s.full_name || `${s.user_first_name} ${s.user_last_name}`}
+                            {s.primary_department_name ? ` (${s.primary_department_name})` : ''}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Additional Assignments</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <MultiSelect
+                    data={(departments?.results ?? [])
+                      .filter((d) => d.id.toString() !== formData.department)
+                      .map((d) => ({ label: d.name, value: d.id.toString() }))}
+                    type="secondary-departments"
+                    values={secondaryDepartments}
+                    onValuesChange={setSecondaryDepartments}
+                  >
+                    <MultiSelectTrigger placeholder="Additional departments…" />
+                    <MultiSelectContent>
+                      <MultiSelectInput placeholder="Search departments…" />
+                      <MultiSelectList>
+                        <MultiSelectGroup>
+                          {(departments?.results ?? [])
+                            .filter((d) => d.id.toString() !== formData.department)
+                            .map((d) => (
+                              <MultiSelectItem key={d.id} value={d.id.toString()}>
+                                {d.name}
+                              </MultiSelectItem>
+                            ))}
+                        </MultiSelectGroup>
+                        <MultiSelectEmpty>No departments found</MultiSelectEmpty>
+                      </MultiSelectList>
+                    </MultiSelectContent>
+                  </MultiSelect>
+
+                  <MultiSelect
+                    data={(facilities?.results ?? [])
+                      .filter((f) => f.id !== staff?.primary_facility)
+                      .map((f) => ({ label: f.name, value: f.id.toString() }))}
+                    type="secondary-facilities"
+                    values={secondaryFacilities}
+                    onValuesChange={setSecondaryFacilities}
+                  >
+                    <MultiSelectTrigger placeholder="Additional facilities…" />
+                    <MultiSelectContent>
+                      <MultiSelectInput placeholder="Search facilities…" />
+                      <MultiSelectList>
+                        <MultiSelectGroup>
+                          {(facilities?.results ?? [])
+                            .filter((f) => f.id !== staff?.primary_facility)
+                            .map((f) => (
+                              <MultiSelectItem key={f.id} value={f.id.toString()}>
+                                {f.name}
+                              </MultiSelectItem>
+                            ))}
+                        </MultiSelectGroup>
+                        <MultiSelectEmpty>No facilities found</MultiSelectEmpty>
+                      </MultiSelectList>
+                    </MultiSelectContent>
+                  </MultiSelect>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── Professional Information ── */}
+          <TabsContent value="professional">
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="license_number">License Number</Label>
+                    <Input
+                      autoComplete="off"
+                      id="license_number"
+                      name="license_number"
+                      spellCheck={false}
+                      value={formData.license_number}
+                      onChange={(e) => handleChange('license_number', e.target.value)}
+                      placeholder="MED-12345…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="license_expiry">License Expiry</Label>
+                    <DatePicker
+                      value={formData.license_expiry ? parseISO(formData.license_expiry) : undefined}
+                      onChange={(date) => handleChange('license_expiry', date ? format(date, 'yyyy-MM-dd') : '')}
+                      placeholder="Select expiry date"
+                    />
+                  </div>
+                </div>
+                <Separator />
+                <div className="max-w-sm space-y-2">
+                  <Label htmlFor="specialization">Specialization</Label>
+                  <Input
+                    id="specialization"
+                    name="specialization"
+                    value={formData.specialization}
+                    onChange={(e) => handleChange('specialization', e.target.value)}
+                    placeholder="e.g., Internal Medicine…"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" asChild>
             <Link href="/admin/staff">Cancel</Link>
           </Button>
           <Button type="submit" disabled={updateStaff.isPending}>
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
             {updateStaff.isPending ? 'Saving…' : 'Save Changes'}
           </Button>
         </div>

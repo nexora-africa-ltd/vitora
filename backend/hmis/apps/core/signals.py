@@ -332,3 +332,76 @@ def stock_alert_activity_signal(sender, instance, created, **kwargs):
                 "severity": getattr(instance, "severity", None),
             },
         )
+
+
+# ---------------------------------------------------------------------------
+# Department head → auto-assign department + supervisor role
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender="core.Department")
+def auto_assign_department_head(sender, instance, **kwargs):
+    """When a department head is assigned, auto-add the department and SUPERVISOR role.
+
+    - Adds the department to the staff's secondary_departments (if not their primary).
+    - Adds the SUPERVISOR role to the staff's secondary_roles (if not their primary).
+    """
+    if not instance.head_id:
+        return
+
+    from .models import Role
+
+    staff = instance.head
+
+    # Add department as secondary (skip if it's already the primary)
+    if staff.primary_department_id != instance.pk:
+        staff.secondary_departments.add(instance)
+
+    # Add SUPERVISOR role to secondary_roles
+    supervisor_role = Role.objects.filter(code="SUPERVISOR", is_active=True).first()
+    if supervisor_role and staff.primary_role_id != supervisor_role.pk:
+        staff.secondary_roles.add(supervisor_role)
+
+    # Auto-set the department head as supervisor for all staff in that department
+    from .models import StaffProfile
+
+    StaffProfile.objects.filter(
+        primary_department=instance,
+    ).exclude(pk=staff.pk).update(supervisor=staff)
+
+
+# ---------------------------------------------------------------------------
+# Supervisor FK changed → auto-assign SUPERVISOR role to the supervisor
+# ---------------------------------------------------------------------------
+
+
+@receiver(pre_save, sender="core.StaffProfile")
+def track_supervisor_change(sender, instance, **kwargs):
+    """Stash the old supervisor_id so post_save can detect changes."""
+    if instance.pk:
+        try:
+            old = sender.objects.only("supervisor_id").get(pk=instance.pk)
+            instance._old_supervisor_id = old.supervisor_id
+        except sender.DoesNotExist:
+            instance._old_supervisor_id = None
+    else:
+        instance._old_supervisor_id = None
+
+
+@receiver(post_save, sender="core.StaffProfile")
+def auto_supervisor_role(sender, instance, created, **kwargs):
+    """When a staff member is assigned as someone's supervisor, grant them the SUPERVISOR role."""
+    old_supervisor_id = getattr(instance, "_old_supervisor_id", None)
+
+    if created or instance.supervisor_id == old_supervisor_id:
+        return  # no change
+
+    if not instance.supervisor_id:
+        return  # supervisor was cleared, nothing to grant
+
+    from .models import Role
+
+    supervisor_profile = instance.supervisor
+    supervisor_role = Role.objects.filter(code="SUPERVISOR", is_active=True).first()
+    if supervisor_role and supervisor_profile.primary_role_id != supervisor_role.pk:
+        supervisor_profile.secondary_roles.add(supervisor_role)
