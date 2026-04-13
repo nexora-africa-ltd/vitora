@@ -22,7 +22,7 @@ from rest_framework import status
 
 
 @pytest.fixture
-def sample_shift(db, sample_person_resource, sample_facility):
+def sample_shift(db, sample_person_resource, sample_facility, sample_department):
     """Create a sample shift scoped to a facility.
 
     Uses tomorrow's date so the shift end-time is always in the future,
@@ -36,14 +36,14 @@ def sample_shift(db, sample_person_resource, sample_facility):
         start_time=time(8, 0),
         end_time=time(16, 0),
         shift_type="DAY",
-        department="Outpatient",
+        department=sample_department,
         facility=sample_facility,
         organization=sample_facility.organization,
     )
 
 
 @pytest.fixture
-def shift_data(sample_person_resource):
+def shift_data(sample_person_resource, sample_department):
     """Valid shift creation data for API."""
     return {
         "staff_resource": sample_person_resource.id,
@@ -51,7 +51,7 @@ def shift_data(sample_person_resource):
         "start_time": "08:00",
         "end_time": "16:00",
         "shift_type": "DAY",
-        "department": "Outpatient",
+        "department": sample_department.id,
         "notes": "Regular shift",
     }
 
@@ -158,14 +158,15 @@ class TestShiftAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
-    def test_create_shift(self, authenticated_client, shift_data):
+    def test_create_shift(self, authenticated_client, shift_data, sample_department):
         """Should create a new shift."""
         response = authenticated_client.post("/api/scheduling/shifts/", shift_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["status"] == "SCHEDULED"
         assert response.data["shift_type"] == "DAY"
-        assert response.data["department"] == "Outpatient"
+        assert response.data["department"] == sample_department.id
+        assert response.data["department_name"] == "General Outpatient"
 
     def test_create_shift_unauthenticated(self, api_client, shift_data):
         """Should reject unauthenticated request."""
@@ -185,14 +186,18 @@ class TestShiftAPI:
 
     def test_update_shift(self, authenticated_client, sample_shift):
         """Should update shift details."""
+        from hmis.apps.core.models import Department
+
+        emergency_dept = Department.objects.create(name="Emergency", code="EMERG", is_active=True)
         response = authenticated_client.patch(
             f"/api/scheduling/shifts/{sample_shift.id}/",
-            {"department": "Emergency"},
+            {"department": emergency_dept.id},
             format="json",
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["department"] == "Emergency"
+        assert response.data["department"] == emergency_dept.id
+        assert response.data["department_name"] == "Emergency"
 
     def test_delete_shift(self, authenticated_client, sample_shift):
         """Should delete a shift."""
@@ -481,7 +486,7 @@ class TestBulkCreateShifts:
     """Tests for POST /api/scheduling/shifts/bulk-create/."""
 
     def test_bulk_create_multiple_shifts(
-        self, authenticated_client, sample_person_resource
+        self, authenticated_client, sample_person_resource, sample_department
     ):
         """Should create multiple shifts in one request."""
         today = str(date.today())
@@ -495,7 +500,7 @@ class TestBulkCreateShifts:
                     "start_time": "08:00",
                     "end_time": "16:00",
                     "shift_type": "DAY",
-                    "department": "Outpatient",
+                    "department": sample_department.id,
                 },
                 {
                     "staff_resource": sample_person_resource.id,
@@ -503,7 +508,7 @@ class TestBulkCreateShifts:
                     "start_time": "08:00",
                     "end_time": "16:00",
                     "shift_type": "DAY",
-                    "department": "Outpatient",
+                    "department": sample_department.id,
                 },
             ]
         }

@@ -205,7 +205,7 @@ def publish_shift_event(sender, instance, created, **kwargs):
             "shift_date": str(instance.shift_date),
             "shift_type": instance.shift_type,
             "status": instance.status,
-            "department": instance.department or "",
+            "department": instance.department.name if instance.department else (instance.department_legacy or ""),
             "clock_in_method": getattr(instance, "clock_in_method", ""),
             "auto_clocked_out": getattr(instance, "auto_clocked_out", False),
             "late_minutes": instance.late_minutes,

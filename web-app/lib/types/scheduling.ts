@@ -18,6 +18,7 @@ export interface ResourceListItem {
   resource_type: ResourceType;
   code: string;
   is_active: boolean;
+  department: number | null;
   department_name: string | null;
 }
 
@@ -38,6 +39,7 @@ export interface ResourceCreateData {
   is_active?: boolean;
   capacity?: number;
   staff_profile?: number | null;
+  department?: number | null;
   description?: string;
   metadata?: Record<string, unknown>;
 }
@@ -47,6 +49,7 @@ export interface ResourceListParams {
   page_size?: number;
   resource_type?: ResourceType;
   is_active?: boolean;
+  department?: number;
   ordering?: string;
   search?: string;
   exclude_clinic_resources?: boolean;
@@ -268,7 +271,9 @@ export interface ShiftListItem {
   clinic_name: string | null;
 }
 
-export interface Shift extends ShiftListItem {
+export interface Shift extends Omit<ShiftListItem, 'department'> {
+  department: number | null;
+  department_name: string;
   notes: string;
   created_by: number | null;
   created_by_name: string | null;
@@ -295,7 +300,7 @@ export interface ShiftCreateData {
   start_time: string;
   end_time: string;
   shift_type: ShiftType;
-  department?: string;
+  department?: number;
   notes?: string;
 }
 
@@ -305,7 +310,7 @@ export interface ShiftListParams {
   staff_resource?: number;
   shift_type?: ShiftType;
   status?: ShiftStatus;
-  department?: string;
+  department?: number;
   from_date?: string;
   to_date?: string;
   room?: number;

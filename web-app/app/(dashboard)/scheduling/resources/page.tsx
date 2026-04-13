@@ -62,6 +62,7 @@ import {
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { resourcesApi } from '@/lib/api/scheduling';
+import { departmentsApi } from '@/lib/api/rbac';
 import type { ResourceType, ResourceListItem, ResourceCreateData } from '@/lib/types/scheduling';
 import { cn } from '@/lib/utils/cn';
 
@@ -110,6 +111,7 @@ export default function SchedulingResourcesPage() {
   const [formType, setFormType] = useState<ResourceType>('PLACE');
   const [formCapacity, setFormCapacity] = useState('1');
   const [formDescription, setFormDescription] = useState('');
+  const [formDepartment, setFormDepartment] = useState<string>('');
 
   // Track which groups are open (all open by default)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -127,6 +129,13 @@ export default function SchedulingResourcesPage() {
         ordering: 'resource_type,name',
       }),
   });
+
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments-list'],
+    queryFn: () => departmentsApi.list({ page_size: 200, is_active: true }),
+  });
+
+  const departments = departmentsData?.results || [];
 
   const resources = data?.results || [];
 
@@ -220,6 +229,7 @@ export default function SchedulingResourcesPage() {
     setFormType('PLACE');
     setFormCapacity('1');
     setFormDescription('');
+    setFormDepartment('');
   }
 
   function openEdit(r: ResourceListItem) {
@@ -229,6 +239,7 @@ export default function SchedulingResourcesPage() {
     setFormType(r.resource_type);
     setFormCapacity('1');
     setFormDescription('');
+    setFormDepartment(r.department?.toString() || '');
     // Fetch full resource for capacity/description
     resourcesApi.get(r.id).then((full) => {
       setFormCapacity(full.capacity.toString());
@@ -244,6 +255,7 @@ export default function SchedulingResourcesPage() {
       resource_type: formType,
       capacity: formType === 'PERSON' ? 1 : (parseInt(formCapacity, 10) || 1),
       description: formDescription,
+      department: formDepartment ? parseInt(formDepartment, 10) : null,
     };
     if (editingId) {
       updateMutation.mutate({ id: editingId, data });
@@ -543,6 +555,24 @@ export default function SchedulingResourcesPage() {
                   </div>
                 )}
               </div>
+              {formType !== 'PERSON' && (
+                <div>
+                  <Label>Department</Label>
+                  <Select value={formDepartment} onValueChange={(v) => setFormDepartment(v === '_none' ? '' : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">No department</SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id.toString()}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div>
                 <Label>Description</Label>
                 <Textarea

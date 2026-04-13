@@ -25,6 +25,7 @@ export const ResourceListItemSchema = z.object({
   resource_type: ResourceTypeSchema,
   code: z.string(),
   is_active: z.boolean(),
+  department: z.number().nullable(),
   department_name: z.string().nullable(),
 });
 
@@ -34,6 +35,7 @@ export const ResourceSchema = z.object({
   resource_type: ResourceTypeSchema,
   code: z.string(),
   is_active: z.boolean(),
+  department: z.number().nullable(),
   department_name: z.string().nullable(),
   capacity: z.number(),
   staff_profile: z.number().nullable(),
@@ -205,6 +207,8 @@ export const ShiftListItemSchema = z.object({
 });
 
 export const ShiftSchema = ShiftListItemSchema.extend({
+  department: z.number().nullable(),
+  department_name: z.string(),
   notes: z.string(),
   created_by: z.number().nullable(),
   created_by_name: z.string().nullable(),

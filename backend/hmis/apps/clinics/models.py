@@ -142,6 +142,14 @@ class Clinic(TimeStampedModel):
         default=1,
         help_text="Number of patients that can be seen simultaneously",
     )
+    department = models.ForeignKey(
+        "core.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clinics",
+        help_text="Department this clinic belongs to (e.g., Outpatient, MCH)",
+    )
 
     # =========================================================================
     # Operational Settings
