@@ -482,11 +482,13 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ClinicalDocAdmissionContextSerializer,
         frozenset({
             "admission_date",
+            "clinical_notes",
             "complications",
             "condition_at_discharge",
             "discharge_date",
             "discharge_medications",
             "discharge_type",
+            "follow_up_instructions",
             "icd10_code",
             "key_investigations",
             "length_of_stay_days",
@@ -525,6 +527,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset({
             "additional_instructions",
             "admission_context",
+            "discharge_layout",
             "document_type",
             "encounter_context",
             "facility_context",
@@ -533,6 +536,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "output_format",
             "patient_context",
             "system_instruction",
+            "template_sections",
         }),
     ),
     (
@@ -772,6 +776,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset({
             "aki_probability",
             "critical_alerts",
+            "defaulted_labs",
             "deterioration_probability",
             "error",
             "escalation",

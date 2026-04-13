@@ -277,8 +277,10 @@ class TestRegisterClient:
     """Tests for registering clients in Client Registry."""
 
     @pytest.fixture
-    def service(self, mock_sha_auth):
+    def service(self, mock_sha_auth, settings):
         """Create ClientRegistryService instance with mocked auth."""
+        settings.SHA_AGENT = "TEST-AGENT"
+        settings.SHA_ENCRYPTED_PIN = "test-encrypted-pin"
         return ClientRegistryService()
 
     def test_register_client_success(self, service, mock_requests_post):

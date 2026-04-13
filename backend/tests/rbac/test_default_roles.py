@@ -347,6 +347,7 @@ KNOWN_CUSTOM_ACTIONS = {
     "escalate_ihr_to_county",
     "escalate_ihr_to_national",
     "notify_ihr_to_who",
+    "manage_schedules",
 }
 
 ALL_VALID_ACTIONS = STANDARD_ACTIONS | KNOWN_CUSTOM_ACTIONS
