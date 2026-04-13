@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, type FacilityModules, type UserFacility } from '@/lib/auth/context';
 import { facilitiesApi } from '@/lib/api/facilities';
@@ -94,10 +94,16 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
     gcTime: 30 * 60 * 1000,    // 30 minutes
   });
 
-  // Sync active facility ID to API client for X-Facility-Id header
-  useEffect(() => {
+  // Sync active facility ID to API client for X-Facility-Id header.
+  // Done synchronously during render (not in useEffect) so the header is
+  // available before any child component's React Query hook fires.
+  // setActiveFacilityId sets a module-level variable, not React state,
+  // so it's safe and idempotent during render.
+  const prevFacilityIdRef = useRef<number | null | undefined>(undefined);
+  if (prevFacilityIdRef.current !== facilityId) {
+    prevFacilityIdRef.current = facilityId;
     setActiveFacilityId(facilityId);
-  }, [facilityId]);
+  }
 
   const hasModule = useMemo(() => {
     return (module: keyof FacilityModules): boolean => {

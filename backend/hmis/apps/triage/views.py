@@ -17,7 +17,7 @@ from rest_framework.permissions import BasePermission, IsAdminUser, IsAuthentica
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, get_client_ip
 
@@ -365,16 +365,20 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(visit_serializer.data, status=status.HTTP_201_CREATED)
 
 
-class WaitingQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class WaitingQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for waiting queue (patients awaiting triage).
 
     This is the entry point for patients who have registered/checked in
     and are waiting to be triaged. Once triaged, they move to the
     priority-based TriageQueue.
+
+    Uses NestedTenantScopeMixin because WaitingQueue has no direct
+    facility FK — scoped through encounter__facility.
     """
 
-    tenant_scope = "none"
+    tenant_facility_chain = "encounter__facility"
+    tenant_org_chain = "encounter__organization"
 
     queryset = WaitingQueue.objects.all().select_related(
         "patient", "encounter", "checked_in_by", "triage_room"
@@ -398,14 +402,7 @@ class WaitingQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return waiting patients, scoped to the active facility via encounter."""
-        # Skip TenantScopedViewMixin.get_queryset — WaitingQueue has no direct
-        # facility/organization FK; we scope through encounter__facility instead.
-        queryset = viewsets.ModelViewSet.get_queryset(self)
-
-        # Facility scoping through encounter (WaitingQueue has no direct facility FK)
-        facility = getattr(self.request, "facility", None)
-        if facility:
-            queryset = queryset.filter(encounter__facility=facility)
+        queryset = super().get_queryset()
 
         # By default, show only patients waiting for triage
         show_all = self.request.query_params.get("show_all", "false").lower() == "true"
@@ -566,15 +563,8 @@ class TriageSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = TriageSettings.objects.select_related("triage_department")
     serializer_class = TriageSettingsSerializer
     permission_classes = [IsAuthenticated]
-    tenant_scope = "none"
+    tenant_scope = "facility"
     http_method_names = ["get", "patch", "head", "options"]
-
-    def get_queryset(self):
-        queryset = viewsets.ModelViewSet.get_queryset(self)
-        facility = getattr(self.request, "facility", None)
-        if facility:
-            queryset = queryset.filter(facility=facility)
-        return queryset
 
     @action(detail=False, methods=["get"], url_path="current")
     def current(self, request):
