@@ -263,8 +263,18 @@ class LabSettingsSerializer(serializers.ModelSerializer):
 Add these actions to your queue ViewSet:
 
 ```python
-class LabQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+from hmis.apps.core.mixins import NestedTenantScopeMixin
+
+class LabQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
+    """Queue ViewSets typically have no direct facility FK — use
+    NestedTenantScopeMixin to scope through a parent chain.
+
+    ⚠️ Do NOT use TenantScopedViewMixin with tenant_scope='none' and a manual
+    get_queryset bypass — that skips _resolve_tenant_context().
+    """
     queryset = LabQueue.objects.select_related("patient", "encounter", "assigned_room")
+    tenant_facility_chain = "encounter__facility"
+    tenant_org_chain = "encounter__organization"
 
     @action(detail=True, methods=["post"], url_path="assign-room")
     def assign_room(self, request, pk=None):
@@ -325,21 +335,21 @@ And a simple settings ViewSet:
 
 ```python
 class LabSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Per-facility lab queue settings.
+
+    Uses tenant_scope='facility' so TenantScopedViewMixin automatically:
+    - resolves facility from X-Facility-Id header or staff profile
+    - scopes list() queryset to the active facility
+    """
     queryset = LabSettings.objects.select_related("lab_department")
     serializer_class = LabSettingsSerializer
     permission_classes = [IsAuthenticated]
-    tenant_scope = "none"
+    tenant_scope = "facility"  # ⚠️ MUST be "facility", NOT "none"
     http_method_names = ["get", "patch", "head", "options"]
-
-    def get_queryset(self):
-        qs = viewsets.ModelViewSet.get_queryset(self)
-        facility = getattr(self.request, "facility", None)
-        if facility:
-            qs = qs.filter(facility=facility)
-        return qs
 
     @action(detail=False, methods=["get"], url_path="current")
     def current(self, request):
+        """Get or create settings for the current facility."""
         self._resolve_tenant_context()
         facility = getattr(request, "facility", None)
         if not facility:
@@ -347,6 +357,13 @@ class LabSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         obj, _ = LabSettings.objects.get_or_create(facility=facility)
         return Response(LabSettingsSerializer(obj).data)
 ```
+
+> ⚠️ **Do NOT use `tenant_scope = "none"` with a manual `get_queryset` that
+> bypasses `super()`**. This skips `_resolve_tenant_context()` and the
+> `X-Facility-Id` header is never read — `request.facility` stays `None`.
+> Use `tenant_scope = "facility"` for models with a direct `facility` FK.
+> Use `NestedTenantScopeMixin` for models scoped through a parent chain
+> (e.g., queue entries scoped via `encounter__facility`).
 
 ### 6. URL Registration
 
@@ -529,6 +546,8 @@ See `backend/tests/triage/test_triage_room_routing.py` for the reference impleme
 6. **Manual override always available** — Even with auto-routing on, staff can reassign rooms via the queue UI. Explicit `room_id` in the create payload overrides auto-routing.
 
 7. **Graceful degradation** — If no eligible room is found (all full, no staff, no settings), the patient is simply queued without a room assignment. The system never blocks check-in.
+
+8. **Tenant scoping: use the right mixin** — Queue entries typically lack a direct `facility` FK and connect through a parent chain (e.g., `encounter__facility`). Use `NestedTenantScopeMixin` for queue ViewSets and `TenantScopedViewMixin` with `tenant_scope = "facility"` for settings ViewSets. **Never** use `tenant_scope = "none"` with a manual `get_queryset` that calls `viewsets.ModelViewSet.get_queryset(self)` — this bypasses `_resolve_tenant_context()`, so the `X-Facility-Id` header is never read and `request.facility` stays `None`.
 
 ---
 

@@ -1013,10 +1013,11 @@ export function useAvailableTriageRooms(options?: { enabled?: boolean }) {
 /**
  * Fetch triage settings for the current facility
  */
-export function useTriageSettings() {
+export function useTriageSettings(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: triageKeys.triageSettings(),
     queryFn: () => triageApi.getTriageSettings(),
+    enabled: options?.enabled ?? true,
   });
 }
 

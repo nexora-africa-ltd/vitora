@@ -38,11 +38,13 @@ import {
   useAvailableTriageRooms,
 } from '@/lib/hooks/use-triage';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useFacility } from '@/lib/context/facility-context';
 import { toast } from '@/lib/hooks/use-toast';
 import type { TriageVitalThreshold } from '@/lib/types/triage';
 
 export default function TriageSettingsPage() {
   const { hasPermission } = usePermissions();
+  const { facility } = useFacility();
 
   // Check permission - usePermissions handles superusers/admins automatically
   const canEdit = hasPermission('triage.change_triageVitalthreshold');
@@ -54,8 +56,9 @@ export default function TriageSettingsPage() {
     refetch,
   } = useTriageVitalThresholds();
 
-  // Triage room routing settings
-  const { data: triageSettings, isLoading: isSettingsLoading } = useTriageSettings();
+  // Triage room routing settings — wait for facility context
+  const hasFacility = !!facility;
+  const { data: triageSettings, isLoading: isSettingsLoading, isError: isSettingsError } = useTriageSettings({ enabled: hasFacility });
   const { mutateAsync: updateTriageSettings } = useUpdateTriageSettings();
   const { data: availableRooms } = useAvailableTriageRooms({ enabled: !!triageSettings?.auto_route_to_room });
 
@@ -215,11 +218,19 @@ export default function TriageSettingsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {isSettingsLoading ? (
+              {isSettingsLoading || (!hasFacility && !isSettingsError) ? (
                 <div className="space-y-4">
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                 </div>
+              ) : !hasFacility ? (
+                <p className="text-sm text-muted-foreground">
+                  No facility context available. Ensure your account is assigned to a facility.
+                </p>
+              ) : isSettingsError ? (
+                <p className="text-sm text-destructive">
+                  Failed to load triage settings. Please try refreshing the page.
+                </p>
               ) : triageSettings ? (
                 <>
                   {/* Auto-routing toggle */}
@@ -320,7 +331,7 @@ export default function TriageSettingsPage() {
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Unable to load triage settings. Ensure you have a facility context.
+                  No triage settings found for your facility.
                 </p>
               )}
             </CardContent>
