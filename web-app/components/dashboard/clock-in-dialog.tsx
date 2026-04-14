@@ -95,7 +95,7 @@ export function ClockInDialog({ open, onOpenChange, onConfirm, isPending }: Cloc
       ...(rooms ?? []).map((r) => String(r.room)),
       ...extra.map((r) => String(r.id)),
     ];
-    if (allRooms.length === 1) {
+    if (allRooms.length === 1 && allRooms[0]) {
       setSelectedRoomId(allRooms[0]);
     }
   }, [rooms, deptRooms, selectedRoomId]);

@@ -217,6 +217,7 @@ export interface StaffProfileUpdateData extends Partial<Omit<StaffProfileCreateD
   secondary_roles?: number[];
   primary_department?: number | null;
   primary_role?: number | null;
+  supervisor?: number | null;
 }
 
 // Username check response
