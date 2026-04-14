@@ -323,7 +323,7 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         location = serializer.validated_data.get("location", "")
         if location:
             order.scheduled_location = location
-        log = order.start_procedure(performed_by=request.user)
+        order.start_procedure(performed_by=request.user)
         self._audit("procedure_start", order)
         return Response(
             ProcedureOrderDetailSerializer(order).data,

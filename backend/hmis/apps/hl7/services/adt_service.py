@@ -105,7 +105,7 @@ class ADTService:
         address = ""
         county = getattr(patient, "county", None)
         sub_county = getattr(patient, "sub_county", None)
-        ward = getattr(patient, "ward", None)
+        _ward = getattr(patient, "ward", None)
         if county:
             parts = [
                 "",  # street

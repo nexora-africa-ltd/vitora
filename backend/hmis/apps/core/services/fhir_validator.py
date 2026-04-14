@@ -36,7 +36,6 @@ from fhir.resources.R4B.organization import Organization
 from fhir.resources.R4B.patient import Patient
 from fhir.resources.R4B.practitioner import Practitioner
 from fhir.resources.R4B.servicerequest import ServiceRequest
-from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 

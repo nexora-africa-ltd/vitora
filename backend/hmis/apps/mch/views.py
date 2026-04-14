@@ -548,7 +548,6 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        old_status = registration.status
         registration.status = new_status
 
         # Set completed_at when transitioning to COMPLETED
@@ -787,9 +786,6 @@ class DeliveryViewSet(viewsets.ModelViewSet):
 
         today = dt_date.today()
         month_start = today.replace(day=1)
-        week_from_now = today + timedelta(days=7)
-        two_weeks = today + timedelta(days=14)
-        month_from_now = today + timedelta(days=30)
 
         # --- Delivery stats ---
         total_deliveries = Delivery.objects.count()

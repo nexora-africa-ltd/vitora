@@ -1,7 +1,7 @@
 """
 Seed FHIR test data for Inferno IPS testing.
 
-This management command creates test data required for running 
+This management command creates test data required for running
 the Inferno IPS (International Patient Summary) test suite.
 
 Usage:

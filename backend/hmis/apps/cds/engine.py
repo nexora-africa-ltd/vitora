@@ -391,7 +391,6 @@ def _check_hpt_allergy_match(
 
         for i, coded in enumerate(allergy_substance_codes):
             substance_code = coded.get("substance_code", "")
-            code_system = coded.get("substance_code_system", "")
 
             if not substance_code:
                 continue
