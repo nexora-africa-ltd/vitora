@@ -139,13 +139,17 @@ async function refreshViaCookie(): Promise<boolean> {
   }
 }
 
+// Guard against multiple simultaneous auth error redirects
+let isRedirectingToLogin = false;
+
 /**
  * Handle authentication errors.
  */
 function handleAuthError(): void {
   tokenStorage.clearAll();
-  // Redirect to login (only in browser)
-  if (typeof window !== 'undefined') {
+  // Redirect to login (only once, only in browser)
+  if (typeof window !== 'undefined' && !isRedirectingToLogin) {
+    isRedirectingToLogin = true;
     window.location.href = '/login';
   }
 }
