@@ -5,20 +5,17 @@ This module is deliberately minimal to avoid circular imports. It is loaded
 by DRF during startup via DEFAULT_AUTHENTICATION_CLASSES.
 
 The cookie-based views (login, refresh, logout) are in cookie_auth.py.
+
+CSRF protection is handled by the SameSite cookie attribute (Lax in production)
+and the CORS allowlist — not by a Django CSRF token. This is the standard
+approach for cross-origin cookie-based JWT auth where the frontend and API live
+on different origins (e.g. Vercel + Azure).
 """
 
-from django.middleware.csrf import CsrfViewMiddleware
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
 
 ACCESS_COOKIE = "vitora_access"
-
-
-class _CSRFCheck(CsrfViewMiddleware):
-    """Thin wrapper to reuse Django's CSRF logic in DRF."""
-
-    def _reject(self, _request, reason):  # type: ignore[override]
-        return reason
 
 
 class CookieJWTAuthentication(BaseAuthentication):
@@ -26,7 +23,7 @@ class CookieJWTAuthentication(BaseAuthentication):
     DRF authentication backend that reads JWT from an httpOnly cookie.
 
     Falls through to the next auth class (e.g. JWTAuthentication) when no
-    cookie is present. Enforces CSRF for unsafe HTTP methods.
+    cookie is present.
     """
 
     def authenticate(self, request):
@@ -43,10 +40,6 @@ class CookieJWTAuthentication(BaseAuthentication):
         except TokenError:
             return None  # Token expired — let the refresh flow handle it
 
-        # Enforce CSRF for state-changing methods
-        if request.method not in ("GET", "HEAD", "OPTIONS", "TRACE"):
-            self._enforce_csrf(request)
-
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
@@ -60,14 +53,6 @@ class CookieJWTAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed("User is inactive")
 
         return (user, validated_token)
-
-    def _enforce_csrf(self, request):
-        """Enforce CSRF validation for cookie-based auth."""
-        check = _CSRFCheck(lambda _req: None)
-        check.process_request(request)
-        reason = check.process_view(request, None, (), {})
-        if reason:
-            raise exceptions.PermissionDenied(f"CSRF validation failed: {reason}")
 
     def authenticate_header(self, _request):
         return None  # No WWW-Authenticate header for cookie auth
