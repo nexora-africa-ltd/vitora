@@ -360,6 +360,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "patient_id",
             "priority_hint",
             "reason_for_visit",
+            "triage_room_id",
         }),
     ),
     (
@@ -378,6 +379,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "priority_hint",
             "reason_for_visit",
             "status",
+            "triage_room",
+            "triage_room_name",
             "wait_time_minutes",
         }),
     ),
