@@ -27,7 +27,7 @@ interface PublicTriageQueueResponse {
 
 // --- Status config ---
 
-const DEFAULT_STATUS = {
+const DEFAULT_STATUS: { label: string; border: string; bg: string; text: string; pulse?: boolean } = {
   label: 'Waiting',
   border: 'border-slate-600',
   bg: 'bg-slate-800',

@@ -339,8 +339,34 @@ class PatientCheckinView(views.APIView):
         data = serializer.validated_data
 
         # Resolve tenant context for facility/org scoping
+        # Middleware may not have resolved these for JWT-authenticated requests
+        # (DRF auth runs in the view layer, after middleware).
         facility = getattr(request, "facility", None)
         organization = getattr(request, "organization", None)
+
+        if not facility:
+            from hmis.apps.core.models import Facility
+
+            facility_id = request.META.get("HTTP_X_FACILITY_ID")
+            if facility_id:
+                try:
+                    facility = Facility.objects.select_related("organization").get(
+                        pk=int(facility_id), is_active=True
+                    )
+                    organization = facility.organization
+                except (Facility.DoesNotExist, ValueError, TypeError):
+                    pass
+
+            if not facility:
+                profile = getattr(request.user, "staff_profile", None)
+                if profile and profile.primary_facility_id:
+                    try:
+                        facility = Facility.objects.select_related("organization").get(
+                            pk=profile.primary_facility_id, is_active=True
+                        )
+                        organization = facility.organization
+                    except Facility.DoesNotExist:
+                        pass
 
         # Process check-in
         try:
