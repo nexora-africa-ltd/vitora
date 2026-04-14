@@ -115,9 +115,7 @@ def _create_appointments_for_records(records, *, created_by=None):
     no IMM-CLINIC resource exists at the facility.
     """
     try:
-        from hmis.apps.immunizations.services.appointments import (
-            create_appointments_for_schedule,
-        )
+        from hmis.apps.immunizations.services.appointments import create_appointments_for_schedule
 
         scheduled_records = [r for r in records if r.status == "SCHEDULED"]
         if scheduled_records:

@@ -47,12 +47,12 @@ import {
 } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { 
-  User, 
-  AlertCircle, 
-  Check, 
-  ChevronsUpDown, 
-  Shield 
+import {
+  User,
+  AlertCircle,
+  Check,
+  ChevronsUpDown,
+  Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -248,7 +248,7 @@ export function PhysioOrderForm({
     setSelectedTreatmentType(treatmentType);
     setTreatmentTypeOpen(false);
     form.setValue('treatment_type_id', treatmentType.id);
-    
+
     // Auto-populate recommended sessions if not already set
     if (!form.getValues('total_sessions') || form.getValues('total_sessions') < 1) {
       form.setValue('total_sessions', treatmentType.recommended_sessions);
@@ -569,8 +569,8 @@ export function PhysioOrderForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Referral Reason</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
+                    <Select
+                      onValueChange={field.onChange}
                       value={field.value}
                     >
                       <FormControl>

@@ -367,9 +367,7 @@ def auto_assign_department_head(sender, instance, **kwargs):
 
     StaffProfile.objects.filter(
         primary_department=instance,
-    ).exclude(
-        pk=staff.pk
-    ).update(supervisor=staff)
+    ).exclude(pk=staff.pk).update(supervisor=staff)
 
 
 # ---------------------------------------------------------------------------

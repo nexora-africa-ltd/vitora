@@ -127,7 +127,7 @@ class Command(BaseCommand):
 
             status = "Would create" if dry_run else "Created"
             self.stdout.write(
-                f"  {zone_label}: {status} {created}, skipped {skipped} " f"(total: {count})"
+                f"  {zone_label}: {status} {created}, skipped {skipped} (total: {count})"
             )
 
         if dry_run:

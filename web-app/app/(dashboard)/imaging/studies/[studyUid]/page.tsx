@@ -94,8 +94,8 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
   if (error || !study) {
     return (
       <div className="space-y-4">
-        <PageHeader 
-          title="Study Not Found" 
+        <PageHeader
+          title="Study Not Found"
           helpContent="The requested DICOM study could not be loaded."
         />
         <Card>

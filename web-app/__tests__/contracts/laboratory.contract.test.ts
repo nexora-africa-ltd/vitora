@@ -90,7 +90,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -104,7 +104,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -137,7 +137,7 @@ describe('Laboratory Contract Tests', () => {
 
       // Find fields in API but missing from Zod
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  LabTestCatalogSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -155,7 +155,7 @@ describe('Laboratory Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(LabTestCatalogSchema);
-      
+
       const criticalFields = [
         'id',
         'code',
@@ -183,7 +183,7 @@ describe('Laboratory Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  LabOrderSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -208,7 +208,7 @@ describe('Laboratory Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  LabOrderItemSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -235,7 +235,7 @@ describe('Laboratory Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  LabResultSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -262,7 +262,7 @@ describe('Laboratory Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  LabQueueSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -297,7 +297,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`TestCategorySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -317,7 +317,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`SpecimenTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -337,7 +337,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ResultTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -357,7 +357,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`OrderTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -377,7 +377,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`LabOrderStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -397,7 +397,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`LabPrioritySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -417,7 +417,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`LabOrderItemStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -437,7 +437,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ResultFlagSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -457,7 +457,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`VerificationStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -477,7 +477,7 @@ describe('Laboratory Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`QueueStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }

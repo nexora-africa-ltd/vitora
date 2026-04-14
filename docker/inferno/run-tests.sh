@@ -72,7 +72,7 @@ Options:
   --setup         Start Inferno Core infrastructure (PostgreSQL, Redis, Inferno)
   --ips           Setup and start IPS test kit (clones from GitHub)
   --teardown      Stop and remove all Inferno containers
-  --status        Check status of Inferno services  
+  --status        Check status of Inferno services
   --help          Show this help message
 
 Test Suite URLs:
@@ -85,7 +85,7 @@ NOTE: The ONC Inferno Program v1.9 has been deprecated (retired June 2022).
 Example:
   # Start Inferno Core
   ./docker/inferno/run-tests.sh --setup
-  
+
   # Setup IPS test kit (for International Patient Summary)
   ./docker/inferno/run-tests.sh --ips
 EOF
@@ -94,19 +94,19 @@ EOF
 
 check_prerequisites() {
     log_info "Checking prerequisites..."
-    
+
     # Check Docker
     if ! command -v docker &> /dev/null; then
         log_error "Docker is not installed. Please install Docker first."
         exit 1
     fi
-    
+
     # Check Docker Compose
     if ! docker compose version &> /dev/null; then
         log_error "Docker Compose is not available. Please install Docker Compose."
         exit 1
     fi
-    
+
     # Check if Vitora is running
     if ! curl -s --connect-timeout 5 "http://localhost:9088/api/" > /dev/null 2>&1; then
         log_warning "Vitora backend may not be running on port 9088"
@@ -114,14 +114,14 @@ check_prerequisites() {
     else
         log_success "Vitora backend is reachable"
     fi
-    
+
     # Check FHIR metadata endpoint
     if curl -s --connect-timeout 5 "http://localhost:9088/fhir/metadata" > /dev/null 2>&1; then
         log_success "FHIR CapabilityStatement endpoint is available"
     else
         log_warning "FHIR metadata endpoint not responding (may need to implement /fhir/metadata)"
     fi
-    
+
     # Check SMART configuration
     if curl -s --connect-timeout 5 "http://localhost:9088/.well-known/smart-configuration" > /dev/null 2>&1; then
         log_success "SMART configuration endpoint is available"
@@ -145,11 +145,11 @@ setup_env_file() {
 start_inferno_core() {
     log_info "Starting Inferno core services (PostgreSQL, Redis, Inferno)..."
     docker compose -f "$COMPOSE_FILE" up -d
-    
+
     log_info "Waiting for Inferno to be healthy..."
     local retries=30
     local count=0
-    
+
     while [ $count -lt $retries ]; do
         if curl -s --connect-timeout 2 "http://localhost:4567" > /dev/null 2>&1; then
             log_success "Inferno Core is ready at http://localhost:4567"
@@ -159,7 +159,7 @@ start_inferno_core() {
         echo -n "."
         sleep 2
     done
-    
+
     log_error "Inferno failed to start within timeout"
     docker compose -f "$COMPOSE_FILE" logs inferno
     exit 1
@@ -168,11 +168,11 @@ start_inferno_core() {
 start_onc_program() {
     log_info "Starting ONC Inferno Program (SMART + US Core tests)..."
     docker compose -f "$COMPOSE_FILE" --profile onc up -d onc-program
-    
+
     log_info "Waiting for ONC Program to be ready..."
     local retries=30
     local count=0
-    
+
     while [ $count -lt $retries ]; do
         if curl -s --connect-timeout 2 "http://localhost:4568" > /dev/null 2>&1; then
             log_success "ONC Inferno Program ready at http://localhost:4568"
@@ -183,13 +183,13 @@ start_onc_program() {
         echo -n "."
         sleep 2
     done
-    
+
     log_warning "ONC Program may still be starting. Check: docker compose -f $COMPOSE_FILE logs onc-program"
 }
 
 setup_ips_test_kit() {
     log_info "Setting up IPS Test Kit from source..."
-    
+
     if [ -d "$IPS_DIR" ]; then
         log_info "IPS test kit directory exists, updating..."
         cd "$IPS_DIR"
@@ -199,14 +199,14 @@ setup_ips_test_kit() {
         git clone https://github.com/inferno-framework/ips-test-kit.git "$IPS_DIR"
         cd "$IPS_DIR"
     fi
-    
+
     log_info "Running IPS test kit setup..."
     log_warning "This requires at least 10GB of memory available to Docker!"
-    
+
     if [ -f "setup.sh" ]; then
         chmod +x setup.sh run.sh
         ./setup.sh
-        
+
         echo ""
         log_success "IPS Test Kit setup complete!"
         echo ""
@@ -228,14 +228,14 @@ setup_ips_test_kit() {
 teardown() {
     log_info "Stopping and removing all Inferno containers..."
     docker compose -f "$COMPOSE_FILE" down -v
-    
+
     # Also stop IPS if running
     if [ -d "$IPS_DIR" ] && [ -f "$IPS_DIR/docker-compose.yml" ]; then
         log_info "Stopping IPS test kit..."
         cd "$IPS_DIR"
         docker compose down -v 2>/dev/null || true
     fi
-    
+
     log_success "Inferno services stopped and removed"
 }
 
@@ -244,12 +244,12 @@ show_status() {
     echo ""
     docker compose -f "$COMPOSE_FILE" ps
     echo ""
-    
+
     log_info "Service URLs:"
     echo "  - Inferno Core:     http://localhost:4567"
     echo "  - IPS Test Kit:     http://localhost:80 (if started separately)"
     echo ""
-    
+
     log_info "Vitora Endpoints (under test):"
     echo "  - FHIR Base:        http://localhost:9088/fhir/"
     echo "  - FHIR Metadata:    http://localhost:9088/fhir/metadata"

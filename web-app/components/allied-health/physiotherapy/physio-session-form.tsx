@@ -352,7 +352,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
                   <span>0</span>
                   <span>10</span>
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="pre_pain_score"

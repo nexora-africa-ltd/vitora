@@ -21,7 +21,7 @@ export default function GlobalError({
 }) {
   useEffect(() => {
   console.error('Global error:', error);
-  
+
   Sentry.captureException(error, {
     tags: {
       errorBoundary: 'global',

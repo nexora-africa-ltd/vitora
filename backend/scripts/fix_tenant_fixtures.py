@@ -7,6 +7,7 @@ so TenantScopedViewMixin doesn't filter them out.
 This script finds test fixture functions that call Model.objects.create()
 for tenant-scoped models, and adds facility/organization fields.
 """
+
 import ast
 import os
 import re
@@ -15,22 +16,46 @@ import sys
 # Models that have facility and/or organization fields
 # (from the Django model introspection above)
 MODELS_WITH_FACILITY = {
-    "Clinic", "ClinicSession", "ClinicVisit", "ClinicEnrollment",
-    "Encounter", "LabOrder", "Prescription", "Dispensing", "StockBatch",
-    "Invoice", "Ward", "Admission", "TriageAssessment",
-    "NotifiableCase", "SurveillanceAlert", "IHRNotification",
-    "ProcedureCatalog", "ProcedureOrder", "ProcedureConsent",
-    "ProcedureLog", "ProcedureOutcome",
-    "ChatSession", "AICarePlanResult", "AICDSResult",
-    "AILabInterpretResult", "AIDischargeResult", "AIICURiskResult",
-    "PhysiotherapyOrder", "NutritionConsultation",
-    "OccupationalTherapyOrder", "SocialWorkReferral",
-    "CounsellingReferral", "MCHRegistration", "CDSAlert",
+    "Clinic",
+    "ClinicSession",
+    "ClinicVisit",
+    "ClinicEnrollment",
+    "Encounter",
+    "LabOrder",
+    "Prescription",
+    "Dispensing",
+    "StockBatch",
+    "Invoice",
+    "Ward",
+    "Admission",
+    "TriageAssessment",
+    "NotifiableCase",
+    "SurveillanceAlert",
+    "IHRNotification",
+    "ProcedureCatalog",
+    "ProcedureOrder",
+    "ProcedureConsent",
+    "ProcedureLog",
+    "ProcedureOutcome",
+    "ChatSession",
+    "AICarePlanResult",
+    "AICDSResult",
+    "AILabInterpretResult",
+    "AIDischargeResult",
+    "AIICURiskResult",
+    "PhysiotherapyOrder",
+    "NutritionConsultation",
+    "OccupationalTherapyOrder",
+    "SocialWorkReferral",
+    "CounsellingReferral",
+    "MCHRegistration",
+    "CDSAlert",
     "StockAlert",
 }
 
 MODELS_ORG_ONLY = {
-    "Patient", "Allergy",
+    "Patient",
+    "Allergy",
 }
 
 
@@ -76,11 +101,11 @@ def get_fixture_info(filepath):
         needs_org = False
 
         for model_name in MODELS_WITH_FACILITY:
-            pattern = rf'{model_name}\.objects\.create\('
+            pattern = rf"{model_name}\.objects\.create\("
             if re.search(pattern, func_source):
                 # Check if facility= is already in the create call
                 # Find the specific create call block
-                create_pattern = rf'{model_name}\.objects\.create\([^)]*\)'
+                create_pattern = rf"{model_name}\.objects\.create\([^)]*\)"
                 # Actually need to handle multi-line... use simpler check
                 if "facility=" not in func_source and "facility" not in func_source:
                     needs_facility = True
@@ -89,22 +114,24 @@ def get_fixture_info(filepath):
 
         if not needs_facility:
             for model_name in MODELS_ORG_ONLY:
-                pattern = rf'{model_name}\.objects\.create\('
+                pattern = rf"{model_name}\.objects\.create\("
                 if re.search(pattern, func_source):
                     if "organization=" not in func_source:
                         needs_org = True
                         break
 
         if needs_facility or needs_org:
-            issues.append({
-                "name": node.name,
-                "lineno": node.lineno,
-                "end_lineno": node.end_lineno or node.lineno,
-                "params": param_names,
-                "needs_facility": needs_facility,
-                "needs_org": needs_org,
-                "source": func_source,
-            })
+            issues.append(
+                {
+                    "name": node.name,
+                    "lineno": node.lineno,
+                    "end_lineno": node.end_lineno or node.lineno,
+                    "params": param_names,
+                    "needs_facility": needs_facility,
+                    "needs_org": needs_org,
+                    "source": func_source,
+                }
+            )
 
     return issues
 
@@ -123,9 +150,9 @@ def add_kwargs_to_create_call(lines, start_line, end_line, model_names, add_faci
                 found_close = False
                 while j <= end_line:
                     for ch in lines[j]:
-                        if ch == '(':
+                        if ch == "(":
                             paren_depth += 1
-                        elif ch == ')':
+                        elif ch == ")":
                             paren_depth -= 1
                             if paren_depth == 0:
                                 found_close = True
@@ -137,14 +164,18 @@ def add_kwargs_to_create_call(lines, start_line, end_line, model_names, add_faci
                 if found_close:
                     # j is the line with the closing paren
                     close_line = lines[j]
-                    close_idx = close_line.rindex(')')
+                    close_idx = close_line.rindex(")")
 
                     # Get indentation of the create content
                     # Find a line with an argument to get the right indent
                     arg_indent = None
                     for k in range(i, j + 1):
                         stripped = lines[k].strip()
-                        if '=' in stripped and not stripped.startswith('#') and model_name not in stripped:
+                        if (
+                            "=" in stripped
+                            and not stripped.startswith("#")
+                            and model_name not in stripped
+                        ):
                             arg_indent = len(lines[k]) - len(lines[k].lstrip())
                             break
 
@@ -164,9 +195,13 @@ def add_kwargs_to_create_call(lines, start_line, end_line, model_names, add_faci
                             prev_line_idx = j - 1
                             while prev_line_idx > i and not lines[prev_line_idx].strip():
                                 prev_line_idx -= 1
-                            pl = lines[prev_line_idx].rstrip('\n')
-                            if pl.strip() and not pl.rstrip().endswith(',') and not pl.rstrip().endswith('('):
-                                lines[prev_line_idx] = pl.rstrip() + ',\n'
+                            pl = lines[prev_line_idx].rstrip("\n")
+                            if (
+                                pl.strip()
+                                and not pl.rstrip().endswith(",")
+                                and not pl.rstrip().endswith("(")
+                            ):
+                                lines[prev_line_idx] = pl.rstrip() + ",\n"
 
                         # Insert before the closing paren line
                         for nl in reversed(new_lines):
@@ -215,9 +250,12 @@ def process_file(filepath, dry_run=False):
 
         # Add facility/org kwargs to the create calls
         end, modified = add_kwargs_to_create_call(
-            lines, start, end, models_to_fix,
+            lines,
+            start,
+            end,
+            models_to_fix,
             add_facility=issue["needs_facility"],
-            add_org=issue["needs_org"]
+            add_org=issue["needs_org"],
         )
 
         if not modified:
@@ -236,7 +274,7 @@ def process_file(filepath, dry_run=False):
 
             # Find end of signature
             sig_end = start
-            while "):" not in "".join(lines[start:sig_end+1]) and sig_end < end:
+            while "):" not in "".join(lines[start : sig_end + 1]) and sig_end < end:
                 sig_end += 1
 
             close_line = lines[sig_end]
@@ -256,9 +294,9 @@ def process_file(filepath, dry_run=False):
                 prev_idx = sig_end - 1
                 while prev_idx > start and not lines[prev_idx].strip():
                     prev_idx -= 1
-                pl = lines[prev_idx].rstrip('\n')
-                if pl.strip() and not pl.rstrip().endswith(',') and not pl.rstrip().endswith('('):
-                    lines[prev_idx] = pl.rstrip() + ',\n'
+                pl = lines[prev_idx].rstrip("\n")
+                if pl.strip() and not pl.rstrip().endswith(",") and not pl.rstrip().endswith("("):
+                    lines[prev_idx] = pl.rstrip() + ",\n"
 
                 for nl in reversed(param_lines):
                     lines.insert(sig_end, nl)
@@ -266,8 +304,8 @@ def process_file(filepath, dry_run=False):
         fixes += 1
 
     if fixes > 0 and not dry_run:
-        with open(filepath, 'w') as f:
-            f.write(''.join(lines))
+        with open(filepath, "w") as f:
+            f.write("".join(lines))
 
     return fixes
 
@@ -290,6 +328,7 @@ def main():
 
     if not dry_run:
         import py_compile
+
         errors = 0
         for root, dirs, files in os.walk("tests"):
             for fn in files:

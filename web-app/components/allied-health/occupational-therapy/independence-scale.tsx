@@ -1,6 +1,6 @@
 /**
  * OT Independence Scale (FIM Display)
- * 
+ *
  * A visual component for displaying and editing Functional Independence Measure (FIM) scores.
  * FIM levels range from 1 (Total Assistance) to 7 (Complete Independence).
  */
@@ -79,7 +79,7 @@ const FIM_AREA_CONFIG: Record<FIMArea, FIMAreaConfig> = {
  */
 function getFIMColorClass(level: FIMLevel | null | undefined): string {
   if (!level) return 'bg-gray-200 text-gray-600';
-  
+
   if (level <= 2) return 'bg-red-100 text-red-800 border-red-300';
   if (level <= 3) return 'bg-orange-100 text-orange-800 border-orange-300';
   if (level <= 4) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
@@ -93,7 +93,7 @@ function getFIMColorClass(level: FIMLevel | null | undefined): string {
  */
 function getProgressColorClass(level: FIMLevel | null | undefined): string {
   if (!level) return 'bg-gray-300';
-  
+
   if (level <= 2) return 'bg-red-500';
   if (level <= 3) return 'bg-orange-500';
   if (level <= 4) return 'bg-yellow-500';
@@ -173,7 +173,7 @@ export function IndependenceScaleDisplay({
           Level {level}: {levelConfig?.label}
         </Badge>
       </div>
-      
+
       {/* Visual progress bar */}
       <div className="flex gap-1">
         {([1, 2, 3, 4, 5, 6, 7] as FIMLevel[]).map((l) => (
@@ -186,7 +186,7 @@ export function IndependenceScaleDisplay({
           />
         ))}
       </div>
-      
+
       {showDescription && levelConfig && (
         <p className="text-xs text-muted-foreground">{levelConfig.description}</p>
       )}

@@ -335,9 +335,9 @@ Case Details:
 - Disease: {alert.case.disease.name}
 - Category: {alert.case.disease.get_category_display()}
 - Patient MRN: {alert.case.patient.mrn}
-- County: {county.name if county else 'N/A'}
-- Detected: {alert.case.detected_at.strftime('%Y-%m-%d %H:%M')}
-- Notification Deadline: {alert.case.notification_deadline.strftime('%Y-%m-%d %H:%M') if alert.case.notification_deadline else 'N/A'}
+- County: {county.name if county else "N/A"}
+- Detected: {alert.case.detected_at.strftime("%Y-%m-%d %H:%M")}
+- Notification Deadline: {alert.case.notification_deadline.strftime("%Y-%m-%d %H:%M") if alert.case.notification_deadline else "N/A"}
 
 Please log in to Vitora HMIS to review and process this case.
 """

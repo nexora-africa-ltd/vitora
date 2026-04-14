@@ -360,10 +360,7 @@ class TestIDSRReportingService:
         self, db, sample_county, sample_patient, sample_encounter
     ):
         """Should aggregate notifiable cases into report."""
-        from hmis.apps.surveillance.models import (
-            NotifiableCase,
-            NotifiableDisease,
-        )
+        from hmis.apps.surveillance.models import NotifiableCase, NotifiableDisease
         from hmis.apps.surveillance.services import IDSRReportingService
 
         # Create disease and case

@@ -1,7 +1,7 @@
 /**
  * Patient Allied Health Hooks
  * Hooks for fetching allied health data filtered by patient ID
- * 
+ *
  * Note: Sessions are filtered by order_id, not patient_id.
  * To get patient sessions, fetch orders first, then sessions per order.
  */

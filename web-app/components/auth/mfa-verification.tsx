@@ -97,10 +97,10 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
 
       await verifyMFA(mfaToken, options);
       mfaToast.success();
-      
+
       // Small delay to ensure localStorage writes are committed before navigation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Use replace to prevent going back to login page
       router.replace('/');
     } catch (err) {
@@ -206,11 +206,11 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
       </div>
-      
+
       <Card className="relative w-full max-w-sm sm:max-w-md border-border/50 shadow-xl shadow-primary/5 backdrop-blur-sm">
         {/* Security indicator strip */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60 rounded-t-lg" />
-        
+
         <CardHeader className="text-center pb-4 pt-6">
           <div className="mx-auto mb-4 relative">
             {/* Circular countdown timer */}
@@ -252,8 +252,8 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
                   <span className="hidden sm:inline">Passkey</span>
                 </TabsTrigger>
               )}
-              <TabsTrigger 
-                value="token" 
+              <TabsTrigger
+                value="token"
                 className={cn(
                   "gap-1.5 text-xs sm:text-sm transition-all data-[state=active]:shadow-sm",
                   "data-[state=active]:bg-background data-[state=active]:text-foreground"
@@ -263,8 +263,8 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
                 <span className="sm:hidden">App</span>
                 <span className="hidden sm:inline">Authenticator</span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="backup" 
+              <TabsTrigger
+                value="backup"
                 className={cn(
                   "gap-1.5 text-xs sm:text-sm transition-all data-[state=active]:shadow-sm",
                   "data-[state=active]:bg-background data-[state=active]:text-foreground"
@@ -428,7 +428,7 @@ export function MFAVerification({ mfaToken, availableMethods = ['totp', 'backup_
               <div className="w-full border-t border-border/50" />
             </div>
           </div>
-          
+
           <div className="text-center">
             <Button
               variant="ghost"

@@ -724,12 +724,12 @@ class TestSHAClaimsServicePackaging:
             ),
             None,
         )
-        assert (
-            scheme_code_ext is not None
-        ), "Coverage must have schemeCategoryCode extension per SHA spec"
-        assert (
-            scheme_code_ext.get("valueString") == "CAT-SHA-001"
-        ), "schemeCategoryCode must be CAT-SHA-001"
+        assert scheme_code_ext is not None, (
+            "Coverage must have schemeCategoryCode extension per SHA spec"
+        )
+        assert scheme_code_ext.get("valueString") == "CAT-SHA-001", (
+            "schemeCategoryCode must be CAT-SHA-001"
+        )
 
         # Find schemeCategoryName extension
         scheme_name_ext = next(
@@ -740,12 +740,12 @@ class TestSHAClaimsServicePackaging:
             ),
             None,
         )
-        assert (
-            scheme_name_ext is not None
-        ), "Coverage must have schemeCategoryName extension per SHA spec"
-        assert (
-            scheme_name_ext.get("valueString") == "SOCIAL HEALTH AUTHORITY"
-        ), "schemeCategoryName must be 'SOCIAL HEALTH AUTHORITY'"
+        assert scheme_name_ext is not None, (
+            "Coverage must have schemeCategoryName extension per SHA spec"
+        )
+        assert scheme_name_ext.get("valueString") == "SOCIAL HEALTH AUTHORITY", (
+            "schemeCategoryName must be 'SOCIAL HEALTH AUTHORITY'"
+        )
 
     def test_fhir_organization_resource_included(self, valid_claim):
         """

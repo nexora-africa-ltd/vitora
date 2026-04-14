@@ -59,9 +59,9 @@ class ExternalLabRequisition:
         # Stub implementation - would need full HL7 library for production
         patient = order.patient
 
-        hl7_message = f"""MSH|^~\\&|VITORA|FACILITY|LAB|EXTERNAL|{datetime.now().strftime('%Y%m%d%H%M%S')}||ORM^O01|{order.order_number}|P|2.5
-PID|1||{patient.mrn}||{patient.last_name}^{patient.first_name}||{patient.date_of_birth.strftime('%Y%m%d')}|{patient.gender}
-ORC|NW|{order.order_number}||||||{order.ordered_at.strftime('%Y%m%d%H%M%S')}
+        hl7_message = f"""MSH|^~\\&|VITORA|FACILITY|LAB|EXTERNAL|{datetime.now().strftime("%Y%m%d%H%M%S")}||ORM^O01|{order.order_number}|P|2.5
+PID|1||{patient.mrn}||{patient.last_name}^{patient.first_name}||{patient.date_of_birth.strftime("%Y%m%d")}|{patient.gender}
+ORC|NW|{order.order_number}||||||{order.ordered_at.strftime("%Y%m%d%H%M%S")}
 """
 
         for item in order.items.all():

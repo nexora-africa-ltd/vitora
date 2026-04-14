@@ -12,8 +12,8 @@ Covers:
 
 import pytest  # type: ignore  # noqa: I001
 from rest_framework import status
-from tests.conftest import ensure_staff_profile
 
+from tests.conftest import ensure_staff_profile
 
 # ============================================================================
 # Fixtures

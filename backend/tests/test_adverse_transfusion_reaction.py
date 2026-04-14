@@ -19,10 +19,7 @@ from rest_framework import status
 @pytest.fixture
 def sample_transfusion_with_reaction(db, sample_admission, test_user):
     """Create a blood transfusion that has a recorded reaction."""
-    from hmis.apps.inpatient.models import (
-        BloodTransfusionObservation,
-        TransfusionObservationEntry,
-    )
+    from hmis.apps.inpatient.models import BloodTransfusionObservation, TransfusionObservationEntry
 
     transfusion = BloodTransfusionObservation.objects.create(
         admission=sample_admission,

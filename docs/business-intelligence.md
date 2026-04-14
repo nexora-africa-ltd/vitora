@@ -18,7 +18,7 @@ Transactional Data                Analytics Data              Presentation
 ───────────────────────           ─────────────────           ─────────────────
 Encounter, Diagnosis,     ETL     FacilityDailySummary        Built-in Charts
 Patient, Invoice,     ─────────►  DepartmentMonthlySummary ──► (Recharts)
-LabOrder, Admission,   Celery     DiagnosisTrend              
+LabOrder, Admission,   Celery     DiagnosisTrend
 Prescription, Triage    nightly   PatientDemographicSnapshot   Metabase Embeds
                                                             ──► (iframe)
                         ETL

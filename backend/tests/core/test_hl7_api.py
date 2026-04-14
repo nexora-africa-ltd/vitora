@@ -6,11 +6,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from hmis.apps.hl7.models import (
-    HL7Message,
-    HL7MessageDirection,
-    HL7MessageStatus,
-)
+from hmis.apps.hl7.models import HL7Message, HL7MessageDirection, HL7MessageStatus
 from tests.conftest import ensure_staff_profile
 
 User = get_user_model()

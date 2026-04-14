@@ -44,10 +44,10 @@ import {
 } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { 
-  User, 
-  AlertCircle, 
-  Check, 
+import {
+  User,
+  AlertCircle,
+  Check,
   ChevronsUpDown,
   Shield,
   AlertTriangle,
@@ -274,7 +274,7 @@ export function SWCaseForm({
         <Alert>
           <Shield className="h-4 w-4" />
           <AlertDescription>
-            This case involves a sensitive issue ({REFERRAL_REASON_LABELS[watchReason as SWReferralReason]}). 
+            This case involves a sensitive issue ({REFERRAL_REASON_LABELS[watchReason as SWReferralReason]}).
             Access will be restricted to authorized staff only.
           </AlertDescription>
         </Alert>

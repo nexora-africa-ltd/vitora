@@ -65,7 +65,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```bash
    # Check PostgreSQL logs
    tail -100 /var/log/postgresql/postgresql-15-main.log
-   
+
    # Check for corruption
    sudo -u postgres pg_catalog.pg_database_check('vitora_hmis')
    ```
@@ -74,7 +74,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```bash
    # On Render: Use dashboard or CLI
    render services suspend vitora-api
-   
+
    # Self-hosted
    systemctl stop vitora-api
    ```
@@ -89,10 +89,10 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```bash
    # List available backups
    ./restore.sh --list
-   
+
    # Restore latest verified backup
    ./restore.sh --latest
-   
+
    # Or restore specific backup
    ./restore.sh /var/backups/vitora/vitora_production_20260222_020000_db.sql.gz.gpg
    ```
@@ -152,7 +152,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    # 2. Click "New Blueprint Instance"
    # 3. Select vitora repo, branch: main
    # 4. Deploy
-   
+
    # Option B: Render CLI
    render blueprint launch --name vitora-recovery --repo nexora-africa-ltd/vitora
    ```
@@ -161,7 +161,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```bash
    # Get new DATABASE_URL from Render dashboard
    export DATABASE_URL="postgres://..."
-   
+
    # Download and restore from S3
    cd /path/to/backend/scripts
    ./restore.sh --from-s3 s3://vitora-backups/backups/production/vitora_production_LATEST_db.sql.gz.gpg
@@ -202,7 +202,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    # Suspend all services
    render services suspend vitora-api
    render services suspend vitora
-   
+
    # Revoke all API tokens
    # (From admin panel or directly in database)
    ```
@@ -211,7 +211,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```bash
    # Create forensic snapshot
    ./backup.sh --env production --full-state
-   
+
    # Export audit logs
    python manage.py export_audit_logs --since "2026-02-20" > /secure/audit_export.json
    ```
@@ -226,7 +226,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```bash
    # Review backup manifests for pre-breach backup
    ls -la /var/backups/vitora/*_manifest.json
-   
+
    # Check audit logs for first sign of breach
    grep -l "suspicious_action" /var/log/vitora/*.log
    ```
@@ -235,7 +235,7 @@ All backups are encrypted using GPG with AES-256 symmetric encryption. The encry
    ```bash
    # Create new infrastructure with rotated credentials
    render blueprint launch --name vitora-clean --repo nexora-africa-ltd/vitora
-   
+
    # Generate new secrets
    export NEW_DJANGO_SECRET=$(openssl rand -base64 32)
    export NEW_ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")

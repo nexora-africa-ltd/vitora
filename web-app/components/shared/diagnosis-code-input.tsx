@@ -145,7 +145,7 @@ export function DiagnosisCodeInput({
 
   // Determine the display text and code to show
   const displayCode = value.icd10Display?.split(' - ')[0] || value.icd11Code || value.snomedCode;
-  const displayText = value.icd10Display?.split(' - ').slice(1).join(' - ') || 
+  const displayText = value.icd10Display?.split(' - ').slice(1).join(' - ') ||
     value.icd11Display?.split(' - ').slice(1).join(' - ') ||
     value.snomedDisplay;
   const codeVersion = value.icd11Code ? 'ICD-11' : value.icd10Code ? 'ICD-10' : value.snomedCode ? 'SNOMED' : null;
@@ -153,7 +153,7 @@ export function DiagnosisCodeInput({
   return (
     <div className={cn('space-y-2', className)}>
       {label && <Label>{label}</Label>}
-      
+
       {hasSelectedCode ? (
         <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
           <Badge variant="outline" className="font-mono shrink-0">

@@ -1,13 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { 
-  Activity, 
-  Apple, 
-  Hand, 
-  Heart, 
-  Users, 
-  ArrowRight 
+import {
+  Activity,
+  Apple,
+  Hand,
+  Heart,
+  Users,
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -88,7 +88,7 @@ export function AlliedHealthReferralActions({
             <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
             <span className="truncate">Allied Health Referrals</span>
           </CardTitle>
-          <HelpPopover 
+          <HelpPopover
             content="Create referrals to allied health services. Orders will be linked to this encounter and auto-route to the appropriate clinic queue when approved."
           />
         </div>

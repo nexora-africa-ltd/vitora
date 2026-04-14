@@ -32,11 +32,7 @@ def check_wait_time_breaches(self):
       GREEN:  240 min
       BLUE:   480 min
     """
-    from hmis.apps.triage.models import (
-        TriageAssessment,
-        TriageQueue,
-        WaitTimeBreach,
-    )
+    from hmis.apps.triage.models import TriageAssessment, TriageQueue, WaitTimeBreach
 
     now = timezone.now()
     new_breaches = []
@@ -84,8 +80,7 @@ def check_wait_time_breaches(self):
         new_breaches.append(breach)
 
         logger.info(
-            "Wait time breach detected: Patient %s (%s), category=%s, "
-            "wait=%d min (target=%d min)",
+            "Wait time breach detected: Patient %s (%s), category=%s, wait=%d min (target=%d min)",
             assessment.encounter.patient.mrn,
             f"{assessment.encounter.patient.first_name} {assessment.encounter.patient.last_name}",
             category,

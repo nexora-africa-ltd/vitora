@@ -160,9 +160,9 @@ class TestAdminListDisplay:
         """Each admin class should include expected columns in list_display."""
         admin_instance = admin_class(Ward if admin_class == WardAdmin else Admission, site)
         for col in expected_columns:
-            assert (
-                col in admin_instance.list_display
-            ), f"{admin_class.__name__}.list_display missing '{col}'"
+            assert col in admin_instance.list_display, (
+                f"{admin_class.__name__}.list_display missing '{col}'"
+            )
 
     @pytest.mark.parametrize(
         "admin_class,expected_filters",
@@ -180,9 +180,9 @@ class TestAdminListDisplay:
         """Each admin class should include expected filters in list_filter."""
         admin_instance = admin_class(Ward if admin_class == WardAdmin else Admission, site)
         for f in expected_filters:
-            assert (
-                f in admin_instance.list_filter
-            ), f"{admin_class.__name__}.list_filter missing '{f}'"
+            assert f in admin_instance.list_filter, (
+                f"{admin_class.__name__}.list_filter missing '{f}'"
+            )
 
 
 # ============================================================================
@@ -220,9 +220,9 @@ class TestAdminSearchFields:
             or "admission__patient__first_name" in f
             for f in search_fields
         )
-        assert (
-            has_patient_search
-        ), f"{admin_class.__name__}.search_fields should include patient identifiers"
+        assert has_patient_search, (
+            f"{admin_class.__name__}.search_fields should include patient identifiers"
+        )
 
 
 # ============================================================================

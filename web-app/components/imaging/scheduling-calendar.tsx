@@ -84,11 +84,11 @@ export function SchedulingCalendar({
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const dateString = format(selectedDate, 'yyyy-MM-dd');
-  
-  const { 
-    data: calendarData, 
-    isLoading, 
-    error, 
+
+  const {
+    data: calendarData,
+    isLoading,
+    error,
     refetch,
     isFetching,
   } = useImagingCalendar({

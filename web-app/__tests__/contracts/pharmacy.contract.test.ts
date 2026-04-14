@@ -92,7 +92,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -106,7 +106,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -136,7 +136,7 @@ describe('Pharmacy Contract Tests', () => {
 
       // Find fields in API but missing from Zod
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  DrugSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -154,7 +154,7 @@ describe('Pharmacy Contract Tests', () => {
 
     it('should have critical required fields from the API', () => {
       const zodFields = getZodSchemaFields(DrugSchema);
-      
+
       const criticalFields = [
         'id',
         'code',
@@ -185,7 +185,7 @@ describe('Pharmacy Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  DrugCategorySchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -208,7 +208,7 @@ describe('Pharmacy Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  StockBatchSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -235,7 +235,7 @@ describe('Pharmacy Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  StockAlertSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -260,7 +260,7 @@ describe('Pharmacy Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  PrescriptionSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -287,7 +287,7 @@ describe('Pharmacy Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  PrescriptionItemSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -312,7 +312,7 @@ describe('Pharmacy Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  DispensingSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -339,7 +339,7 @@ describe('Pharmacy Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  StockAdjustmentSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -367,7 +367,7 @@ describe('Pharmacy Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`DrugFormSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -391,7 +391,7 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`DrugCategoryEnumSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -409,7 +409,7 @@ describe('Pharmacy Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`DrugScheduleSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -429,7 +429,7 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`StockStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -449,7 +449,7 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`AlertTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -469,7 +469,7 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`AlertSeveritySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -489,7 +489,7 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`PrescriptionStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -513,7 +513,7 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`DispensingStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -533,7 +533,7 @@ describe('Pharmacy Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`AdjustmentTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }

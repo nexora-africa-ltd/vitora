@@ -104,4 +104,4 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
             facility_id=getattr(imaging_order, "facility_id", None),
         )
     except Exception as e:
-        logger.error(f"Failed to create invoice item for imaging order item " f"{instance.id}: {e}")
+        logger.error(f"Failed to create invoice item for imaging order item {instance.id}: {e}")

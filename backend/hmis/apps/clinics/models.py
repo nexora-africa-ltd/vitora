@@ -512,7 +512,7 @@ class ClinicStaff(TimeStampedModel):
 
     def __str__(self):
         """Return string representation."""
-        return f"{self.user.get_full_name()} - {self.clinic.name} " f"({self.get_role_display()})"
+        return f"{self.user.get_full_name()} - {self.clinic.name} ({self.get_role_display()})"
 
 
 # =============================================================================
@@ -1529,7 +1529,7 @@ class ClinicEnrollment(TimeStampedModel):
 
     def __str__(self):
         """Return string representation."""
-        return f"{self.patient} - {self.clinic.name} " f"({self.enrollment_number or 'No ID'})"
+        return f"{self.patient} - {self.clinic.name} ({self.enrollment_number or 'No ID'})"
 
     def save(self, *args, **kwargs):
         """Override save to auto-generate enrollment number if not set."""
@@ -1956,10 +1956,7 @@ class ClinicProgramAttendance(TimeStampedModel):
         ]
 
     def __str__(self):
-        return (
-            f"{self.enrollment.patient} - {self.enrollment.clinic.name} "
-            f"({self.attendance_date})"
-        )
+        return f"{self.enrollment.patient} - {self.enrollment.clinic.name} ({self.attendance_date})"
 
 
 # =============================================================================

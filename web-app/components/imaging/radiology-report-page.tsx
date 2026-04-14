@@ -96,7 +96,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
   const router = useRouter();
-  
+
   // Form state
   const [technique, setTechnique] = useState('');
   const [comparison, setComparison] = useState('');
@@ -105,18 +105,18 @@ export function RadiologyReportPage({ orderNumber }: RadiologyReportPageProps) {
   const [recommendations, setRecommendations] = useState('');
   const [isCritical, setIsCritical] = useState(false);
   const [criticalDescription, setCriticalDescription] = useState('');
-  
+
   // Dialog state
   const [amendDialogOpen, setAmendDialogOpen] = useState(false);
   const [amendReason, setAmendReason] = useState('');
   const [criticalDialogOpen, setCriticalDialogOpen] = useState(false);
   const [communicatedTo, setCommunicatedTo] = useState('');
   const [commMethod, setCommMethod] = useState<CriticalCommMethod>('phone');
-  
+
   // Queries
   const { data: order, isLoading: orderLoading } = useImagingOrder(orderNumber);
   const { data: report, isLoading: reportLoading, refetch: refetchReport } = useRadiologyReportByOrder(orderNumber);
-  
+
   // Mutations
   const createReport = useCreateRadiologyReport();
   const updateReport = useUpdateRadiologyReport();

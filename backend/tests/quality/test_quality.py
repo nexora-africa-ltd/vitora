@@ -42,10 +42,7 @@ from hmis.apps.quality.services.reporting import (
     generate_annual_report,
     generate_quarterly_report,
 )
-from hmis.apps.quality.tasks import (
-    generate_annual_reports_task,
-    generate_quarterly_reports_task,
-)
+from hmis.apps.quality.tasks import generate_annual_reports_task, generate_quarterly_reports_task
 
 # =============================================================================
 # Fixtures

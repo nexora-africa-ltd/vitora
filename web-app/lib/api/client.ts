@@ -171,9 +171,9 @@ export function transformAxiosError(error: AxiosError): ApiError {
     // - {"message": "..."} - Custom message format
     // - {"error": "..."} - Alternative error format
     // - {"non_field_errors": ["..."]} - DRF validation errors
-    const message = 
-      data?.detail || 
-      data?.message || 
+    const message =
+      data?.detail ||
+      data?.message ||
       data?.error ||
       (Array.isArray(data?.non_field_errors) ? data.non_field_errors.join('. ') : null) ||
       'An error occurred';
@@ -207,7 +207,7 @@ export function transformAxiosError(error: AxiosError): ApiError {
 export function getApiErrorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
     const data = error.response?.data;
-    
+
     // Handle DRF validation errors: {"code": ["drug with this code already exists."]}
     if (data && typeof data === 'object' && !Array.isArray(data)) {
       // First, check for top-level error message fields (most common)
@@ -221,16 +221,16 @@ export function getApiErrorMessage(error: unknown): string {
       if (typeof data.message === 'string') {
         return data.message;
       }
-      
+
       // Then handle field-level validation errors
       const messages: string[] = [];
-      
+
       for (const [field, errors] of Object.entries(data)) {
         // Skip already-checked top-level string fields
         if (['detail', 'error', 'message', 'code'].includes(field) && typeof errors === 'string') {
           continue;
         }
-        
+
         if (Array.isArray(errors)) {
           errors.forEach(err => {
             if (typeof err === 'string') {
@@ -252,23 +252,23 @@ export function getApiErrorMessage(error: unknown): string {
           messages.push(`${fieldName}: ${errors}`);
         }
       }
-      
+
       if (messages.length > 0) {
         return messages.join('. ');
       }
     }
-    
+
     // Fallback to status text
     if (error.response?.statusText) {
       return `${error.response.status}: ${error.response.statusText}`;
     }
-    
+
     return error.message || 'An error occurred';
   }
-  
+
   if (error instanceof Error) {
     return error.message;
   }
-  
+
   return 'An unexpected error occurred';
 }

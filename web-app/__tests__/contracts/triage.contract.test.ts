@@ -88,7 +88,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -102,7 +102,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -134,7 +134,7 @@ describe('Triage Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  TriageAssessmentSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -151,7 +151,7 @@ describe('Triage Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(TriageAssessmentSchema);
-      
+
       const criticalFields = [
         'id',
         'encounter',
@@ -180,7 +180,7 @@ describe('Triage Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  TriageQueueEntrySchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -196,7 +196,7 @@ describe('Triage Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(TriageQueueEntrySchema);
-      
+
       const criticalFields = [
         'id',
         'triage_assessment',
@@ -223,7 +223,7 @@ describe('Triage Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  TriageVitalThresholdSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -239,7 +239,7 @@ describe('Triage Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(TriageVitalThresholdSchema);
-      
+
       const criticalFields = [
         'id',
         'vital_type',
@@ -266,7 +266,7 @@ describe('Triage Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`TriageCategorySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -276,7 +276,7 @@ describe('Triage Contract Tests', () => {
 
     it('should include all critical triage categories', () => {
       const zodValues = getZodEnumValues(TriageCategorySchema);
-      
+
       const criticalCategories = [
         'RED',
         'ORANGE',
@@ -299,7 +299,7 @@ describe('Triage Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`AVPUStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -309,7 +309,7 @@ describe('Triage Contract Tests', () => {
 
     it('should include all AVPU statuses', () => {
       const zodValues = getZodEnumValues(AVPUStatusSchema);
-      
+
       const avpuStatuses = ['A', 'V', 'P', 'U'];
 
       const missing = avpuStatuses.filter((s) => !zodValues.includes(s));
@@ -326,7 +326,7 @@ describe('Triage Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`MobilityStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -336,7 +336,7 @@ describe('Triage Contract Tests', () => {
 
     it('should include critical mobility statuses', () => {
       const zodValues = getZodEnumValues(MobilityStatusSchema);
-      
+
       const criticalStatuses = [
         'AMBULATORY',
         'WHEELCHAIR',
@@ -357,7 +357,7 @@ describe('Triage Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ArrivalModeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -367,7 +367,7 @@ describe('Triage Contract Tests', () => {
 
     it('should include critical arrival modes', () => {
       const zodValues = getZodEnumValues(ArrivalModeSchema);
-      
+
       const criticalModes = [
         'WALK_IN',
         'AMBULANCE',
@@ -388,7 +388,7 @@ describe('Triage Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ChiefComplaintCategorySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -398,7 +398,7 @@ describe('Triage Contract Tests', () => {
 
     it('should include critical complaint categories', () => {
       const zodValues = getZodEnumValues(ChiefComplaintCategorySchema);
-      
+
       const criticalCategories = [
         'CHEST_PAIN',
         'DIFFICULTY_BREATHING',
@@ -421,7 +421,7 @@ describe('Triage Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`AssignedAreaSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -431,7 +431,7 @@ describe('Triage Contract Tests', () => {
 
     it('should include critical assigned areas', () => {
       const zodValues = getZodEnumValues(AssignedAreaSchema);
-      
+
       const criticalAreas = [
         'ER_RESUS',
         'ER_ACUTE',
@@ -452,7 +452,7 @@ describe('Triage Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`QueueStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -462,7 +462,7 @@ describe('Triage Contract Tests', () => {
 
     it('should include critical queue statuses', () => {
       const zodValues = getZodEnumValues(QueueStatusSchema);
-      
+
       const criticalStatuses = [
         'WAITING',
         'CALLED',
@@ -483,7 +483,7 @@ describe('Triage Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`VitalTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -493,7 +493,7 @@ describe('Triage Contract Tests', () => {
 
     it('should include critical vital types', () => {
       const zodValues = getZodEnumValues(VitalTypeSchema);
-      
+
       const criticalVitals = [
         'SPO2',
         'HEART_RATE',

@@ -45,10 +45,10 @@ import {
 } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { 
-  User, 
-  AlertCircle, 
-  Check, 
+import {
+  User,
+  AlertCircle,
+  Check,
   ChevronsUpDown,
   Wrench,
   Target,
@@ -210,7 +210,7 @@ export function OTOrderForm({
     setSelectedTypeId(id);
     form.setValue('treatment_type_id', id);
     setTypeOpen(false);
-    
+
     // Auto-populate from type
     const type = treatmentTypes.find(t => t.id === id);
     if (type && !isEditMode) {
@@ -585,8 +585,8 @@ export function OTOrderForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>ADL Score (1-7)</FormLabel>
-                      <Select 
-                        onValueChange={(v) => field.onChange(parseInt(v))} 
+                      <Select
+                        onValueChange={(v) => field.onChange(parseInt(v))}
                         value={field.value?.toString() || ''}
                       >
                         <FormControl>
@@ -613,8 +613,8 @@ export function OTOrderForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>IADL Score (1-7)</FormLabel>
-                      <Select 
-                        onValueChange={(v) => field.onChange(parseInt(v))} 
+                      <Select
+                        onValueChange={(v) => field.onChange(parseInt(v))}
                         value={field.value?.toString() || ''}
                       >
                         <FormControl>
@@ -641,8 +641,8 @@ export function OTOrderForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cognitive Score (1-7)</FormLabel>
-                      <Select 
-                        onValueChange={(v) => field.onChange(parseInt(v))} 
+                      <Select
+                        onValueChange={(v) => field.onChange(parseInt(v))}
                         value={field.value?.toString() || ''}
                       >
                         <FormControl>

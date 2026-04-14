@@ -468,9 +468,7 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             admission_type: Type of admission (ELECTIVE, EMERGENCY, TRANSFER)
         """
         from hmis.apps.core.permissions import get_client_ip
-        from hmis.apps.inpatient.serializers import (
-            RuleBasedBedAssignmentRequestSerializer,
-        )
+        from hmis.apps.inpatient.serializers import RuleBasedBedAssignmentRequestSerializer
         from hmis.apps.inpatient.services.bed_rules import bed_assignment_rule_evaluator
 
         ward = self.get_object()

@@ -45,7 +45,7 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
                 reported_by=instance.diagnosed_by,
             )
             logger.info(
-                f"Auto-created notifiable case for {disease.name} " f"from diagnosis {instance.id}"
+                f"Auto-created notifiable case for {disease.name} from diagnosis {instance.id}"
             )
 
             # Publish domain event

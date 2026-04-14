@@ -213,6 +213,6 @@ class CookieLogoutView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
 
-    def post(self, request):
+    def post(self, _request):
         response = Response({"logged_out": True}, status=status.HTTP_200_OK)
         return _clear_auth_cookies(response)

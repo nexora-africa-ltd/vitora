@@ -1,7 +1,7 @@
 /**
  * Drug Table Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Responsive table using ResponsiveTable component with mobile card layout.
  */
 

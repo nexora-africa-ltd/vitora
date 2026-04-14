@@ -10,10 +10,7 @@ import pytest  # type: ignore
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from hmis.apps.analytics.models import (
-    DepartmentMonthlySummary,
-    FacilityDailySummary,
-)
+from hmis.apps.analytics.models import DepartmentMonthlySummary, FacilityDailySummary
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -517,7 +517,7 @@ export interface DICOMStudyListParams {
 /**
  * DICOM viewer tool types.
  */
-export type DICOMViewerTool = 
+export type DICOMViewerTool =
   | 'pan'
   | 'zoom'
   | 'window_level'

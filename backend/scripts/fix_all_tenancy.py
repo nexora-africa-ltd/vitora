@@ -10,13 +10,14 @@ This script:
 6. Adds missing fixture parameters to function signatures
 7. Handles auth_client fixtures that lack StaffProfile
 """
+
 import os
 import re
 
 
 def add_field_to_model_create(content: str, model_class: str, field: str, value: str) -> str:
     """Add field=value to Model.objects.create() if missing."""
-    lines = content.split('\n')
+    lines = content.split("\n")
     result = []
     i = 0
 
@@ -28,23 +29,23 @@ def add_field_to_model_create(content: str, model_class: str, field: str, value:
             result.append(line)
 
             after_marker = line.split(marker)[1]
-            if ')' in after_marker and '(' not in after_marker:
+            if ")" in after_marker and "(" not in after_marker:
                 i += 1
                 continue
 
-            depth = line.count('(') - line.count(')')
+            depth = line.count("(") - line.count(")")
             while depth > 0 and i + 1 < len(lines):
                 i += 1
                 next_line = lines[i]
-                depth += next_line.count('(') - next_line.count(')')
+                depth += next_line.count("(") - next_line.count(")")
 
                 if depth == 0:
                     prev = result[-1].rstrip()
-                    if not prev.endswith(',') and not prev.endswith('('):
-                        result[-1] = prev + ','
+                    if not prev.endswith(",") and not prev.endswith("("):
+                        result[-1] = prev + ","
                     close_indent = len(next_line) - len(next_line.lstrip())
                     field_indent = close_indent + 4
-                    result.append(' ' * field_indent + f'{field}={value},')
+                    result.append(" " * field_indent + f"{field}={value},")
 
                 result.append(next_line)
         else:
@@ -52,12 +53,12 @@ def add_field_to_model_create(content: str, model_class: str, field: str, value:
 
         i += 1
 
-    return '\n'.join(result)
+    return "\n".join(result)
 
 
 def add_params_to_signatures(content: str) -> str:
     """Add missing parameters to function signatures."""
-    lines = content.split('\n')
+    lines = content.split("\n")
     result = []
     i = 0
 
@@ -65,7 +66,7 @@ def add_params_to_signatures(content: str) -> str:
         line = lines[i]
 
         # Match single-line function definitions
-        m = re.match(r'^(\s*def \w+\()(.*)(\):\s*)$', line)
+        m = re.match(r"^(\s*def \w+\()(.*)(\):\s*)$", line)
         if m:
             prefix, params, suffix = m.group(1), m.group(2), m.group(3)
 
@@ -80,26 +81,30 @@ def add_params_to_signatures(content: str) -> str:
                     break
                 body_indent = len(body) - len(body.lstrip()) if body.strip() else 999
                 if body.strip() and body_indent <= indent and j > i + 1:
-                    if re.match(r'\s*(?:def |class |@)', body):
+                    if re.match(r"\s*(?:def |class |@)", body):
                         break
 
-                if 'sample_facility' in body and '=' not in body.split('sample_facility')[0].split('\n')[-1].split(',')[-1].strip():
-                    if 'facility=sample_facility' in body or 'sample_facility' in body:
-                        needs.add('sample_facility')
-                if 'sample_organization' in body and 'organization=sample_organization' in body:
-                    needs.add('sample_organization')
+                if (
+                    "sample_facility" in body
+                    and "="
+                    not in body.split("sample_facility")[0].split("\n")[-1].split(",")[-1].strip()
+                ):
+                    if "facility=sample_facility" in body or "sample_facility" in body:
+                        needs.add("sample_facility")
+                if "sample_organization" in body and "organization=sample_organization" in body:
+                    needs.add("sample_organization")
                 j += 1
 
             additions = []
-            for param in ['sample_organization', 'sample_facility']:
+            for param in ["sample_organization", "sample_facility"]:
                 if param in needs and param not in params:
                     additions.append(param)
 
             if additions:
                 if params.strip():
-                    new_params = params.rstrip() + ', ' + ', '.join(additions)
+                    new_params = params.rstrip() + ", " + ", ".join(additions)
                 else:
-                    new_params = ', '.join(additions)
+                    new_params = ", ".join(additions)
                 line = f"{prefix}{new_params}{suffix}"
 
         # Also handle multi-line signatures ending with ):
@@ -108,18 +113,23 @@ def add_params_to_signatures(content: str) -> str:
         result.append(line)
         i += 1
 
-    return '\n'.join(result)
+    return "\n".join(result)
 
 
 def remove_duplicate_keyword_args(content: str) -> str:
     """Remove consecutive duplicate keyword argument lines."""
-    lines = content.split('\n')
+    lines = content.split("\n")
     result = []
     for i, line in enumerate(lines):
-        if i > 0 and line.strip() == lines[i-1].strip() and '=' in line.strip() and line.strip().endswith(','):
+        if (
+            i > 0
+            and line.strip() == lines[i - 1].strip()
+            and "=" in line.strip()
+            and line.strip().endswith(",")
+        ):
             continue
         result.append(line)
-    return '\n'.join(result)
+    return "\n".join(result)
 
 
 def process_file(filepath: str) -> tuple[str, int]:
@@ -153,7 +163,7 @@ def process_file(filepath: str) -> tuple[str, int]:
     content = remove_duplicate_keyword_args(content)
 
     if content != original:
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.write(content)
         return filepath, 1
     return filepath, 0
@@ -170,7 +180,11 @@ def find_test_files_with_failures():
                     content = f.read()
                 # Check if file has Patient/Encounter/LabOrder creates without org/facility
                 needs_fix = False
-                if "Patient.objects.create(" in content and "organization=" not in content.split("Patient.objects.create(")[1].split(")")[0]:
+                if (
+                    "Patient.objects.create(" in content
+                    and "organization="
+                    not in content.split("Patient.objects.create(")[1].split(")")[0]
+                ):
                     needs_fix = True
                 if "Encounter.objects.create(" in content and "facility=" not in content:
                     needs_fix = True
@@ -209,9 +223,9 @@ if __name__ == "__main__":
                             depth = 1
                             end = 0
                             for c in part:
-                                if c == '(':
+                                if c == "(":
                                     depth += 1
-                                elif c == ')':
+                                elif c == ")":
                                     depth -= 1
                                     if depth == 0:
                                         break

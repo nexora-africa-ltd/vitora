@@ -332,8 +332,7 @@ class QualityMeasure(TimeStampedModel):
         default=list,
         blank=True,
         help_text=(
-            "List of clinic type codes this measure applies to. "
-            "Empty list means all clinic types."
+            "List of clinic type codes this measure applies to. Empty list means all clinic types."
         ),
     )
 

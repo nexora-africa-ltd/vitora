@@ -280,7 +280,7 @@ def sample_patient(sample_organization):
         """Add facility=sample_facility to Encounter.objects.create calls missing it."""
         # Find multi-line Encounter.objects.create(...) blocks
         result = []
-        lines = text.split('\n')
+        lines = text.split("\n")
         i = 0
         in_encounter_create = False
         encounter_indent = 0
@@ -288,22 +288,22 @@ def sample_patient(sample_organization):
         while i < len(lines):
             line = lines[i]
 
-            if 'Encounter.objects.create(' in line and 'facility=' not in line:
+            if "Encounter.objects.create(" in line and "facility=" not in line:
                 # Start of an encounter create block
                 in_encounter_create = True
                 encounter_indent = len(line) - len(line.lstrip()) + 4  # indent of args
                 result.append(line)
                 # Check if single-line
-                if ')' in line.split('Encounter.objects.create(')[1]:
+                if ")" in line.split("Encounter.objects.create(")[1]:
                     in_encounter_create = False
             elif in_encounter_create:
                 stripped = line.strip()
-                if stripped == ')' or stripped == '),':
+                if stripped == ")" or stripped == "),":
                     # Closing paren - add facility before it
                     prev = result[-1].rstrip()
-                    if not prev.endswith(','):
-                        result[-1] = prev + ','
-                    result.append(' ' * encounter_indent + 'facility=sample_facility,')
+                    if not prev.endswith(","):
+                        result[-1] = prev + ","
+                    result.append(" " * encounter_indent + "facility=sample_facility,")
                     result.append(line)
                     in_encounter_create = False
                 else:
@@ -313,44 +313,52 @@ def sample_patient(sample_organization):
 
             i += 1
 
-        return '\n'.join(result)
+        return "\n".join(result)
 
     content = add_facility_to_encounter_create(content)
 
     # Now add sample_facility to test method signatures that create Encounters
     # Find test methods that contain Encounter.objects.create but don't have sample_facility
-    lines = content.split('\n')
+    lines = content.split("\n")
     new_lines = []
     i = 0
     while i < len(lines):
         line = lines[i]
-        if re.match(r'\s+def test_\w+\(self,\s*auth_client', line) and 'sample_facility' not in line:
+        if (
+            re.match(r"\s+def test_\w+\(self,\s*auth_client", line)
+            and "sample_facility" not in line
+        ):
             # Look ahead - does this test create Encounter objects?
             j = i + 1
             needs_facility = False
             while j < len(lines):
-                if re.match(r'\s+def test_\w+\(', lines[j]):
+                if re.match(r"\s+def test_\w+\(", lines[j]):
                     break
-                if 'facility=sample_facility' in lines[j]:
+                if "facility=sample_facility" in lines[j]:
                     needs_facility = True
                     break
                 j += 1
 
             if needs_facility:
                 # Add sample_facility to signature
-                if line.rstrip().endswith('):'):
-                    line = line.replace('):', ', sample_facility):')
-                elif ', sample_encounter_data):' in line:
-                    line = line.replace(', sample_encounter_data):', ', sample_encounter_data, sample_facility):')
-                elif ', sample_encounter_with_vitals):' in line:
-                    line = line.replace(', sample_encounter_with_vitals):', ', sample_encounter_with_vitals, sample_facility):')
-                elif ', sample_patient):' in line:
-                    line = line.replace(', sample_patient):', ', sample_patient, sample_facility):')
+                if line.rstrip().endswith("):"):
+                    line = line.replace("):", ", sample_facility):")
+                elif ", sample_encounter_data):" in line:
+                    line = line.replace(
+                        ", sample_encounter_data):", ", sample_encounter_data, sample_facility):"
+                    )
+                elif ", sample_encounter_with_vitals):" in line:
+                    line = line.replace(
+                        ", sample_encounter_with_vitals):",
+                        ", sample_encounter_with_vitals, sample_facility):",
+                    )
+                elif ", sample_patient):" in line:
+                    line = line.replace(", sample_patient):", ", sample_patient, sample_facility):")
 
         new_lines.append(line)
         i += 1
 
-    content = '\n'.join(new_lines)
+    content = "\n".join(new_lines)
 
     with open(fp, "w") as f:
         f.write(content)
@@ -500,26 +508,26 @@ def auth_client(
     # Search for patterns and add facility
 
     def add_facility_to_encounter_creates(text):
-        lines = text.split('\n')
+        lines = text.split("\n")
         result = []
         i = 0
         in_encounter_create = False
 
         while i < len(lines):
             line = lines[i]
-            if 'Encounter.objects.create(' in line and 'facility=' not in line:
+            if "Encounter.objects.create(" in line and "facility=" not in line:
                 in_encounter_create = True
                 result.append(line)
-                if ')' in line.split('Encounter.objects.create(')[1]:
+                if ")" in line.split("Encounter.objects.create(")[1]:
                     in_encounter_create = False
             elif in_encounter_create:
                 stripped = line.strip()
-                if stripped == ')' or stripped == '),':
+                if stripped == ")" or stripped == "),":
                     prev = result[-1].rstrip()
-                    if not prev.endswith(','):
-                        result[-1] = prev + ','
+                    if not prev.endswith(","):
+                        result[-1] = prev + ","
                     indent = len(line) - len(line.strip()) + 4
-                    result.append(' ' * indent + 'facility=sample_facility,')
+                    result.append(" " * indent + "facility=sample_facility,")
                     result.append(line)
                     in_encounter_create = False
                 else:
@@ -528,33 +536,33 @@ def auth_client(
                 result.append(line)
             i += 1
 
-        return '\n'.join(result)
+        return "\n".join(result)
 
     content = add_facility_to_encounter_creates(content)
 
     # Add sample_facility to test methods that now reference it
-    lines = content.split('\n')
+    lines = content.split("\n")
     new_lines = []
     i = 0
     while i < len(lines):
         line = lines[i]
-        if re.match(r'\s+def test_\w+\(self', line) and 'sample_facility' not in line:
+        if re.match(r"\s+def test_\w+\(self", line) and "sample_facility" not in line:
             j = i + 1
             needs_facility = False
             while j < len(lines):
-                if re.match(r'\s+def test_\w+\(', lines[j]):
+                if re.match(r"\s+def test_\w+\(", lines[j]):
                     break
-                if 'facility=sample_facility' in lines[j]:
+                if "facility=sample_facility" in lines[j]:
                     needs_facility = True
                     break
                 j += 1
             if needs_facility:
-                if line.rstrip().endswith('):'):
-                    line = line.replace('):', ', sample_facility):')
+                if line.rstrip().endswith("):"):
+                    line = line.replace("):", ", sample_facility):")
         new_lines.append(line)
         i += 1
 
-    content = '\n'.join(new_lines)
+    content = "\n".join(new_lines)
 
     with open(fp, "w") as f:
         f.write(content)
@@ -616,26 +624,26 @@ def auth_client(
     # These are in fixture definitions
 
     def add_org_to_patient_creates(text):
-        lines = text.split('\n')
+        lines = text.split("\n")
         result = []
         i = 0
         in_patient_create = False
 
         while i < len(lines):
             line = lines[i]
-            if 'Patient.objects.create(' in line and 'organization=' not in line:
+            if "Patient.objects.create(" in line and "organization=" not in line:
                 in_patient_create = True
                 result.append(line)
-                if ')' in line.split('Patient.objects.create(')[1]:
+                if ")" in line.split("Patient.objects.create(")[1]:
                     in_patient_create = False
             elif in_patient_create:
                 stripped = line.strip()
-                if stripped == ')' or stripped == '),':
+                if stripped == ")" or stripped == "),":
                     prev = result[-1].rstrip()
-                    if not prev.endswith(','):
-                        result[-1] = prev + ','
+                    if not prev.endswith(","):
+                        result[-1] = prev + ","
                     indent = len(line) - len(line.strip()) + 4
-                    result.append(' ' * indent + 'organization=sample_organization,')
+                    result.append(" " * indent + "organization=sample_organization,")
                     result.append(line)
                     in_patient_create = False
                 else:
@@ -644,32 +652,32 @@ def auth_client(
                 result.append(line)
             i += 1
 
-        return '\n'.join(result)
+        return "\n".join(result)
 
     content = add_org_to_patient_creates(content)
 
     # Add facility to Encounter.objects.create
     def add_facility_to_encounter_creates(text):
-        lines = text.split('\n')
+        lines = text.split("\n")
         result = []
         i = 0
         in_encounter_create = False
 
         while i < len(lines):
             line = lines[i]
-            if 'Encounter.objects.create(' in line and 'facility=' not in line:
+            if "Encounter.objects.create(" in line and "facility=" not in line:
                 in_encounter_create = True
                 result.append(line)
-                if ')' in line.split('Encounter.objects.create(')[1]:
+                if ")" in line.split("Encounter.objects.create(")[1]:
                     in_encounter_create = False
             elif in_encounter_create:
                 stripped = line.strip()
-                if stripped == ')' or stripped == '),':
+                if stripped == ")" or stripped == "),":
                     prev = result[-1].rstrip()
-                    if not prev.endswith(','):
-                        result[-1] = prev + ','
+                    if not prev.endswith(","):
+                        result[-1] = prev + ","
                     indent = len(line) - len(line.strip()) + 4
-                    result.append(' ' * indent + 'facility=sample_facility,')
+                    result.append(" " * indent + "facility=sample_facility,")
                     result.append(line)
                     in_encounter_create = False
                 else:
@@ -678,49 +686,49 @@ def auth_client(
                 result.append(line)
             i += 1
 
-        return '\n'.join(result)
+        return "\n".join(result)
 
     content = add_facility_to_encounter_creates(content)
 
     # Add sample_facility to test methods/fixtures that now reference it
-    lines = content.split('\n')
+    lines = content.split("\n")
     new_lines = []
     i = 0
     while i < len(lines):
         line = lines[i]
-        m = re.match(r'(\s+def (?:test_\w+)\(self.*?)(\):)', line)
-        if m and 'sample_facility' not in line:
+        m = re.match(r"(\s+def (?:test_\w+)\(self.*?)(\):)", line)
+        if m and "sample_facility" not in line:
             j = i + 1
             needs_facility = False
             while j < len(lines):
-                if re.match(r'\s+def (?:test_|$)', lines[j]):
+                if re.match(r"\s+def (?:test_|$)", lines[j]):
                     break
-                if 'facility=sample_facility' in lines[j]:
+                if "facility=sample_facility" in lines[j]:
                     needs_facility = True
                     break
                 j += 1
             if needs_facility:
-                line = m.group(1) + ', sample_facility' + m.group(2)
+                line = m.group(1) + ", sample_facility" + m.group(2)
 
         # Same for fixtures
-        m2 = re.match(r'(def \w+\(.*?)(\):)', line)
-        if m2 and 'facility=sample_facility' not in line and 'sample_facility' not in line:
+        m2 = re.match(r"(def \w+\(.*?)(\):)", line)
+        if m2 and "facility=sample_facility" not in line and "sample_facility" not in line:
             j = i + 1
             needs_facility = False
             while j < len(lines) and j < i + 30:
-                if re.match(r'(?:@pytest|def )', lines[j].lstrip()):
+                if re.match(r"(?:@pytest|def )", lines[j].lstrip()):
                     break
-                if 'facility=sample_facility' in lines[j]:
+                if "facility=sample_facility" in lines[j]:
                     needs_facility = True
                     break
                 j += 1
             if needs_facility:
-                line = m2.group(1) + ', sample_facility' + m2.group(2)
+                line = m2.group(1) + ", sample_facility" + m2.group(2)
 
         new_lines.append(line)
         i += 1
 
-    content = '\n'.join(new_lines)
+    content = "\n".join(new_lines)
 
     with open(fp, "w") as f:
         f.write(content)

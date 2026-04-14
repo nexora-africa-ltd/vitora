@@ -16,13 +16,13 @@ from django.db import migrations
 def fix_legacy_status_forward(apps, schema_editor):
     """Update legacy status values to valid ones."""
     Encounter = apps.get_model("encounters", "Encounter")
-    
+
     # Map old status values to new ones
     status_mapping = {
         "DRAFT": "CREATED",
         "COMPLETED": "CLOSED",
     }
-    
+
     for old_status, new_status in status_mapping.items():
         updated = Encounter.objects.filter(status=old_status).update(status=new_status)
         if updated:
@@ -34,7 +34,7 @@ def fix_legacy_status_reverse(apps, schema_editor):
     # Note: This is a lossy operation - we can't perfectly reverse it
     # We'll map back for consistency but the original data is lost
     Encounter = apps.get_model("encounters", "Encounter")
-    
+
     # Only reverse CREATED → DRAFT for encounters without check-in data
     # This is a best-effort reversal
     print("  Warning: Reverse migration is lossy - original DRAFT/COMPLETED values cannot be perfectly restored")

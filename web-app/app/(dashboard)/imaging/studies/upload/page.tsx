@@ -104,7 +104,7 @@ export default function DICOMUploadPage() {
   // Handle file selection
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    
+
     const newFiles: UploadFile[] = selectedFiles
       .filter((file) => {
         // Check extension
@@ -126,7 +126,7 @@ export default function DICOMUploadPage() {
       }));
 
     setFiles((prev) => [...prev, ...newFiles]);
-    
+
     // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -142,9 +142,9 @@ export default function DICOMUploadPage() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const droppedFiles = Array.from(e.dataTransfer.files);
-    
+
     const newFiles: UploadFile[] = droppedFiles
       .filter((file) => {
         const ext = '.' + file.name.split('.').pop();
@@ -173,7 +173,7 @@ export default function DICOMUploadPage() {
   // Start upload
   const handleUpload = useCallback(() => {
     if (files.length === 0) return;
-    
+
     // Mark files as uploading
     setFiles((prev) =>
       prev.map((f) => ({
@@ -199,7 +199,7 @@ export default function DICOMUploadPage() {
   }, []);
 
   // Calculate upload progress
-  const uploadProgress = uploadMutation.isPending ? 50 : 
+  const uploadProgress = uploadMutation.isPending ? 50 :
     files.every((f) => f.status === 'success') ? 100 : 0;
 
   return (
@@ -252,10 +252,10 @@ export default function DICOMUploadPage() {
             {/* Step 2: Link Patient */}
             <div className={cn(
               'flex items-center gap-2 p-2 rounded-lg transition-colors',
-              patientId 
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
-                : files.length > 0 
-                  ? 'bg-primary/10 text-primary animate-pulse' 
+              patientId
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                : files.length > 0
+                  ? 'bg-primary/10 text-primary animate-pulse'
                   : 'bg-muted text-muted-foreground'
             )}>
               {patientId ? (
@@ -276,7 +276,7 @@ export default function DICOMUploadPage() {
             {/* Step 3: Upload */}
             <div className={cn(
               'flex items-center gap-2 p-2 rounded-lg transition-colors',
-              uploadMutation.isSuccess 
+              uploadMutation.isSuccess
                 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                 : files.length > 0 && patientId
                   ? 'bg-primary/10 text-primary'
@@ -468,7 +468,7 @@ export default function DICOMUploadPage() {
                     onFocus={() => setShowPatientSearch(true)}
                     className="pl-9"
                   />
-                  
+
                   {/* Patient Search Results */}
                   {showPatientSearch && patientSearch.length >= 2 && (
                     <Card className="absolute z-10 w-full mt-1 shadow-lg">

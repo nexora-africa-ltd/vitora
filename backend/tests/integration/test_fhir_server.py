@@ -1469,9 +1469,9 @@ class TestBundleOperations:
 
         for entry in entries:
             response = entry.get("response", {})
-            assert response.get("status").startswith(
-                "201"
-            ), f"Expected 201, got {response.get('status')}"
+            assert response.get("status").startswith("201"), (
+                f"Expected 201, got {response.get('status')}"
+            )
 
     def test_transaction_bundle_rolls_back_on_failure(
         self,
@@ -1743,9 +1743,9 @@ class TestResponseTimes:
         """Single resource create should complete under 500ms."""
         result = fhir_client.create_resource("Patient", valid_patient_resource)
 
-        assert (
-            result.response_time_ms < MAX_RESPONSE_TIME_MS
-        ), f"Create took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
+        assert result.response_time_ms < MAX_RESPONSE_TIME_MS, (
+            f"Create took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
+        )
 
     def test_single_read_under_500ms(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Single resource read should complete under 500ms."""
@@ -1753,9 +1753,9 @@ class TestResponseTimes:
 
         result = fhir_client.read_resource("Patient", create_result.resource_id)
 
-        assert (
-            result.response_time_ms < MAX_RESPONSE_TIME_MS
-        ), f"Read took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
+        assert result.response_time_ms < MAX_RESPONSE_TIME_MS, (
+            f"Read took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
+        )
 
     def test_simple_search_under_500ms(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Simple search should complete under 500ms."""
@@ -1766,9 +1766,9 @@ class TestResponseTimes:
 
         result = fhir_client.search("Patient", {"family": unique_family})
 
-        assert (
-            result.response_time_ms < MAX_RESPONSE_TIME_MS
-        ), f"Search took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
+        assert result.response_time_ms < MAX_RESPONSE_TIME_MS, (
+            f"Search took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
+        )
 
 
 class TestVitoraSpecificScenarios:
@@ -1935,9 +1935,9 @@ class TestVitoraSpecificScenarios:
 
         # Verify final state
         final = fhir_client.read_resource("Encounter", encounter_id)
-        assert (
-            final.resource.get("resourceType") == "Encounter"
-        ), f"Expected Encounter, got {final.resource.get('resourceType')}"
+        assert final.resource.get("resourceType") == "Encounter", (
+            f"Expected Encounter, got {final.resource.get('resourceType')}"
+        )
         assert final.resource.get("status") == "finished"
 
 

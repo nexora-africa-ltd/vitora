@@ -1,9 +1,9 @@
 # HL7v2 Full Implementation
 
-> **Gap #28**: HL7v2 Full Implementation  
-> **Sprint**: 3.B — Advanced Interoperability  
-> **Priority**: P3 (Enhancement)  
-> **Status**: ✅ Complete  
+> **Gap #28**: HL7v2 Full Implementation
+> **Sprint**: 3.B — Advanced Interoperability
+> **Priority**: P3 (Enhancement)
+> **Status**: ✅ Complete
 > **Completed**: March 13, 2026
 
 ---
@@ -241,7 +241,7 @@ The new `hl7` app **complements** the existing laboratory HL7 implementation:
 
 ## Tests
 
-**File**: `tests/core/test_hl7_full.py`  
+**File**: `tests/core/test_hl7_full.py`
 **Count**: 33 tests
 
 | Test Class | Tests | Covers |

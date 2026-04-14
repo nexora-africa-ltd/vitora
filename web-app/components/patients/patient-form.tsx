@@ -439,7 +439,7 @@ export function PatientForm({
       if (result?.has_duplicate && result.matches.length > 0) {
         setDuplicateCheckResult(result);
         // Store registering name for modal context
-        const name = options.fullName || 
+        const name = options.fullName ||
           (options.firstName && options.lastName ? `${options.firstName} ${options.lastName}` : '');
         setRegisteringName(name);
         // Show modal for exact match or if matches found
@@ -2127,7 +2127,7 @@ export function PatientForm({
                           {option.label}
                         </Label>
                       </div>
-                    ))}  
+                    ))}
                   </RadioGroup>
                 </FormControl>
               </FormItem>

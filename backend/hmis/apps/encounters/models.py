@@ -1147,8 +1147,7 @@ class Encounter(HistoryMixin, models.Model):
 
         if self.status == "CLOSED":
             raise ValidationError(
-                "Cannot cancel a closed encounter. "
-                "Closed encounters require a correction workflow."
+                "Cannot cancel a closed encounter. Closed encounters require a correction workflow."
             )
 
         if self.status == "CANCELLED":

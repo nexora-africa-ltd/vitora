@@ -731,8 +731,7 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     def __str__(self):
         types_display = ", ".join(self.event_types) if self.event_types else "Unknown"
         return (
-            f"AEFI [{types_display}] - "
-            f"{self.immunization_record.vaccine.code} ({self.event_date})"
+            f"AEFI [{types_display}] - {self.immunization_record.vaccine.code} ({self.event_date})"
         )
 
     def save(self, *args, **kwargs):

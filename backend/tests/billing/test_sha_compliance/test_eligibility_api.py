@@ -111,9 +111,9 @@ class TestEligibilityRequestParameters:
         request_params = service._build_request(sha_member)
 
         # Should use sha_number as identifier
-        assert (
-            "doc_type" in request_params or "identification_type" in request_params
-        ), "Request must have identification type parameter"
+        assert "doc_type" in request_params or "identification_type" in request_params, (
+            "Request must have identification type parameter"
+        )
 
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     @pytest.mark.skipif(not HAS_SHA_MODELS, reason="SHA models not available")
@@ -127,9 +127,9 @@ class TestEligibilityRequestParameters:
 
         # Should fall back to national_id
         doc_type = request_params.get("doc_type", request_params.get("identification_type", ""))
-        assert (
-            "national_id" in doc_type.lower() or doc_type == "national_id"
-        ), "Should fall back to national_id when SHA number not available"
+        assert "national_id" in doc_type.lower() or doc_type == "national_id", (
+            "Should fall back to national_id when SHA number not available"
+        )
 
 
 class TestEligibilityResponseHandling:

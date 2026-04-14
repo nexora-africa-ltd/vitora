@@ -5,6 +5,7 @@ Handles two patterns:
    facility=sample_facility is used inside the body
 2. Adding sample_organization parameter where organization=sample_organization is used
 """
+
 import re
 
 
@@ -13,7 +14,7 @@ def add_missing_params_to_signatures(content: str) -> str:
     Find functions/methods that reference sample_facility or sample_organization
     in their body but don't have them in their signature, and add them.
     """
-    lines = content.split('\n')
+    lines = content.split("\n")
     result = []
     i = 0
 
@@ -21,7 +22,7 @@ def add_missing_params_to_signatures(content: str) -> str:
         line = lines[i]
 
         # Match function/method definitions (both fixture and test methods)
-        m = re.match(r'^(\s*def \w+\()(.*?)(\):)\s*$', line)
+        m = re.match(r"^(\s*def \w+\()(.*?)(\):)\s*$", line)
         if m:
             prefix = m.group(1)
             params = m.group(2)
@@ -36,33 +37,33 @@ def add_missing_params_to_signatures(content: str) -> str:
             while j < len(lines):
                 body_line = lines[j]
                 # Stop at next function at same or lower indent
-                body_m = re.match(r'^(\s*)(?:def |class |@pytest)', body_line)
+                body_m = re.match(r"^(\s*)(?:def |class |@pytest)", body_line)
                 if body_m and len(body_m.group(1)) <= indent and j > i + 1:
                     break
 
-                if 'sample_facility' in body_line and 'def ' not in body_line:
+                if "sample_facility" in body_line and "def " not in body_line:
                     needs_facility = True
-                if 'sample_organization' in body_line and 'def ' not in body_line:
+                if "sample_organization" in body_line and "def " not in body_line:
                     needs_org = True
                 j += 1
 
             additions = []
-            if needs_facility and 'sample_facility' not in params:
-                additions.append('sample_facility')
-            if needs_org and 'sample_organization' not in params:
-                additions.append('sample_organization')
+            if needs_facility and "sample_facility" not in params:
+                additions.append("sample_facility")
+            if needs_org and "sample_organization" not in params:
+                additions.append("sample_organization")
 
             if additions:
                 if params.strip():
-                    new_params = params + ', ' + ', '.join(additions)
+                    new_params = params + ", " + ", ".join(additions)
                 else:
-                    new_params = ', '.join(additions)
+                    new_params = ", ".join(additions)
                 line = f"{prefix}{new_params}{suffix}"
 
         result.append(line)
         i += 1
 
-    return '\n'.join(result)
+    return "\n".join(result)
 
 
 def add_field_to_model_create(content: str, model_name: str, field: str, value: str) -> str:
@@ -70,7 +71,7 @@ def add_field_to_model_create(content: str, model_name: str, field: str, value: 
     Add a field=value to Model.objects.create() calls that don't already have it.
     Handles multi-line create calls.
     """
-    lines = content.split('\n')
+    lines = content.split("\n")
     result = []
     i = 0
 
@@ -83,28 +84,28 @@ def add_field_to_model_create(content: str, model_name: str, field: str, value: 
 
             # Check if single-line (has closing paren on same line)
             after_marker = line.split(marker)[1]
-            if ')' in after_marker:
+            if ")" in after_marker:
                 # Single line - skip (too complex to modify safely)
                 i += 1
                 continue
 
             # Multi-line - find closing paren
-            depth = line.count('(') - line.count(')')
+            depth = line.count("(") - line.count(")")
             while depth > 0 and i + 1 < len(lines):
                 i += 1
                 next_line = lines[i]
-                depth += next_line.count('(') - next_line.count(')')
+                depth += next_line.count("(") - next_line.count(")")
 
                 if depth == 0:
                     # This is the closing line - insert field before it
                     # Ensure previous line has trailing comma
                     prev = result[-1].rstrip()
-                    if not prev.endswith(',') and not prev.endswith('('):
-                        result[-1] = prev + ','
+                    if not prev.endswith(",") and not prev.endswith("("):
+                        result[-1] = prev + ","
                     # Calculate indent from closing paren line + 4 spaces
                     close_indent = len(next_line) - len(next_line.lstrip())
                     field_indent = close_indent + 4
-                    result.append(' ' * field_indent + f'{field}={value},')
+                    result.append(" " * field_indent + f"{field}={value},")
 
                 result.append(next_line)
         else:
@@ -112,7 +113,7 @@ def add_field_to_model_create(content: str, model_name: str, field: str, value: 
 
         i += 1
 
-    return '\n'.join(result)
+    return "\n".join(result)
 
 
 def fix_auth_client_fixture(content: str, username: str, employee_id: str) -> str:
@@ -120,10 +121,7 @@ def fix_auth_client_fixture(content: str, username: str, employee_id: str) -> st
     Find 'def auth_client(api_client, auth_user):' and add StaffProfile setup.
     Returns modified content.
     """
-    old_pattern = (
-        "@pytest.fixture\n"
-        "def auth_client(api_client, auth_user):\n"
-    )
+    old_pattern = "@pytest.fixture\ndef auth_client(api_client, auth_user):\n"
 
     if old_pattern not in content:
         return content
@@ -132,14 +130,14 @@ def fix_auth_client_fixture(content: str, username: str, employee_id: str) -> st
     idx = content.index(old_pattern)
     # Find the return statement or next fixture
     rest = content[idx:]
-    lines = rest.split('\n')
+    lines = rest.split("\n")
     end_idx = 0
     for j in range(2, len(lines)):
-        if lines[j] and not lines[j].startswith(' ') and not lines[j].startswith('\t'):
+        if lines[j] and not lines[j].startswith(" ") and not lines[j].startswith("\t"):
             end_idx = j
             break
 
-    old_fixture = '\n'.join(lines[:end_idx])
+    old_fixture = "\n".join(lines[:end_idx])
 
     new_fixture = f'''@pytest.fixture
 def auth_client(
@@ -167,8 +165,13 @@ def auth_client(
     return content.replace(old_fixture, new_fixture)
 
 
-def process_file(filepath: str, models_to_fix: dict[str, list[tuple[str, str]]],
-                 fix_auth: bool = False, auth_username: str = "", employee_id: str = ""):
+def process_file(
+    filepath: str,
+    models_to_fix: dict[str, list[tuple[str, str]]],
+    fix_auth: bool = False,
+    auth_username: str = "",
+    employee_id: str = "",
+):
     """
     Process a single test file.
 
@@ -194,7 +197,7 @@ def process_file(filepath: str, models_to_fix: dict[str, list[tuple[str, str]]],
     content = add_missing_params_to_signatures(content)
 
     if content != original:
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.write(content)
         print(f"  Fixed: {filepath}")
     else:
@@ -205,15 +208,19 @@ if __name__ == "__main__":
     # encounter_pre_triage
     process_file(
         "tests/encounters/test_encounter_pre_triage_queue_api.py",
-        {"Patient": [("organization", "sample_organization")],
-         "Encounter": [("facility", "sample_facility")]},
+        {
+            "Patient": [("organization", "sample_organization")],
+            "Encounter": [("facility", "sample_facility")],
+        },
     )
 
     # encounter_api
     process_file(
         "tests/encounters/test_encounter_api.py",
-        {"Patient": [("organization", "sample_organization")],
-         "Encounter": [("facility", "sample_facility")]},
+        {
+            "Patient": [("organization", "sample_organization")],
+            "Encounter": [("facility", "sample_facility")],
+        },
     )
 
     # lab_api

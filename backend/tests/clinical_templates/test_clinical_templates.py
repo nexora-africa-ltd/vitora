@@ -500,7 +500,7 @@ class TestTemplateSectionModel:
         for i in range(5):
             TemplateSection.objects.create(
                 template=sample_clinical_template,
-                name=f"Section {i+1}",
+                name=f"Section {i + 1}",
                 order=i + 1,
                 fields=[],
             )

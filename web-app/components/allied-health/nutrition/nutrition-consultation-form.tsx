@@ -46,10 +46,10 @@ import {
 } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { 
-  User, 
-  AlertCircle, 
-  Check, 
+import {
+  User,
+  AlertCircle,
+  Check,
   ChevronsUpDown,
   Apple,
   Scale,

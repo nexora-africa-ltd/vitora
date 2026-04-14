@@ -85,7 +85,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -99,7 +99,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -131,7 +131,7 @@ describe('Imaging Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ImagingProcedureSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -149,7 +149,7 @@ describe('Imaging Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ImagingProcedureSchema);
-      
+
       const criticalFields = [
         'id',
         'code',
@@ -177,7 +177,7 @@ describe('Imaging Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ImagingProcedureDetailSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -195,7 +195,7 @@ describe('Imaging Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ImagingProcedureDetailSchema);
-      
+
       const criticalFields = [
         'id',
         'code',
@@ -224,7 +224,7 @@ describe('Imaging Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ImagingOrderSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -240,7 +240,7 @@ describe('Imaging Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ImagingOrderSchema);
-      
+
       const criticalFields = [
         'id',
         'order_number',
@@ -271,7 +271,7 @@ describe('Imaging Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ImagingOrderItemSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -287,7 +287,7 @@ describe('Imaging Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ImagingOrderItemSchema);
-      
+
       const criticalFields = [
         'id',
         'procedure',
@@ -314,7 +314,7 @@ describe('Imaging Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ImagingResourceSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -330,7 +330,7 @@ describe('Imaging Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ImagingResourceSchema);
-      
+
       const criticalFields = [
         'id',
         'name',
@@ -361,7 +361,7 @@ describe('Imaging Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ImagingModalitySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -371,10 +371,10 @@ describe('Imaging Contract Tests', () => {
 
     it('should include all standard imaging modalities', () => {
       const zodValues = getZodEnumValues(ImagingModalitySchema);
-      
+
       const expectedModalities = ['XR', 'US', 'CT', 'MRI', 'NM', 'MG', 'FL', 'OTHER'];
       const missing = expectedModalities.filter((m) => !zodValues.includes(m));
-      
+
       expect(missing).toEqual([]);
     });
   });
@@ -391,7 +391,7 @@ describe('Imaging Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ImagingBodyRegionSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -401,13 +401,13 @@ describe('Imaging Contract Tests', () => {
 
     it('should include all standard body regions', () => {
       const zodValues = getZodEnumValues(ImagingBodyRegionSchema);
-      
+
       const expectedRegions = [
         'HEAD', 'NECK', 'CHEST', 'ABDOMEN', 'PELVIS',
         'SPINE', 'UPPER_EXTREMITY', 'LOWER_EXTREMITY', 'WHOLE_BODY', 'OTHER',
       ];
       const missing = expectedRegions.filter((r) => !zodValues.includes(r));
-      
+
       expect(missing).toEqual([]);
     });
   });
@@ -424,7 +424,7 @@ describe('Imaging Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ImagingOrderStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -434,13 +434,13 @@ describe('Imaging Contract Tests', () => {
 
     it('should include all standard order statuses', () => {
       const zodValues = getZodEnumValues(ImagingOrderStatusSchema);
-      
+
       const expectedStatuses = [
         'DRAFT', 'ORDERED', 'SCHEDULED', 'IN_PROGRESS',
         'COMPLETED', 'REPORTED', 'CANCELLED',
       ];
       const missing = expectedStatuses.filter((s) => !zodValues.includes(s));
-      
+
       expect(missing).toEqual([]);
     });
   });
@@ -457,7 +457,7 @@ describe('Imaging Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ImagingPrioritySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -467,10 +467,10 @@ describe('Imaging Contract Tests', () => {
 
     it('should include ROUTINE, URGENT, and STAT priorities', () => {
       const zodValues = getZodEnumValues(ImagingPrioritySchema);
-      
+
       const expectedPriorities = ['ROUTINE', 'URGENT', 'STAT'];
       const missing = expectedPriorities.filter((p) => !zodValues.includes(p));
-      
+
       expect(missing).toEqual([]);
     });
   });
@@ -487,7 +487,7 @@ describe('Imaging Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`LateralitySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -497,10 +497,10 @@ describe('Imaging Contract Tests', () => {
 
     it('should include all laterality options', () => {
       const zodValues = getZodEnumValues(LateralitySchema);
-      
+
       const expectedLateralities = ['NA', 'LEFT', 'RIGHT', 'BILATERAL'];
       const missing = expectedLateralities.filter((l) => !zodValues.includes(l));
-      
+
       expect(missing).toEqual([]);
     });
   });

@@ -134,7 +134,7 @@ describe('PhysioOrderTable - Rendering', () => {
 
   it('should render table with orders', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText('PHYSIO-20260226-0001')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Post-Surgery Rehabilitation')).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe('PhysioOrderTable - Rendering', () => {
 
   it('should display all orders from data', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Mary Smith')).toBeInTheDocument();
     expect(screen.getByText('James Wilson')).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe('PhysioOrderTable - Rendering', () => {
     });
 
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     // LoadingSpinner renders a spinner element
     expect(screen.getByRole('status') || screen.queryByTestId('loading-spinner')).toBeTruthy();
   });
@@ -169,7 +169,7 @@ describe('PhysioOrderTable - Rendering', () => {
     });
 
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText('No orders found')).toBeInTheDocument();
   });
 
@@ -181,13 +181,13 @@ describe('PhysioOrderTable - Rendering', () => {
     });
 
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText(/failed to load orders/i)).toBeInTheDocument();
   });
 
   it('should display order count', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText(/showing 3 of 3 orders/i)).toBeInTheDocument();
   });
 });
@@ -207,19 +207,19 @@ describe('PhysioOrderTable - Status Badges', () => {
 
   it('should render IN_PROGRESS status badge', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText('In Progress')).toBeInTheDocument();
   });
 
   it('should render PENDING status badge', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText('Pending')).toBeInTheDocument();
   });
 
   it('should render COMPLETED status badge', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText('Completed')).toBeInTheDocument();
   });
 });
@@ -239,7 +239,7 @@ describe('PhysioOrderTable - Priority Badges', () => {
 
   it('should render ROUTINE priority badge', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     // Two orders have ROUTINE priority
     const routineBadges = screen.getAllByText('Routine');
     expect(routineBadges.length).toBeGreaterThanOrEqual(1);
@@ -247,7 +247,7 @@ describe('PhysioOrderTable - Priority Badges', () => {
 
   it('should render URGENT priority badge', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText('Urgent')).toBeInTheDocument();
   });
 });
@@ -267,7 +267,7 @@ describe('PhysioOrderTable - Session Count', () => {
 
   it('should show session progress for in-progress order', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     // Order 1: 3/12 sessions - text is split across spans, may appear in desktop + mobile views
     const matches = screen.getAllByText((_, element) => element?.textContent === '3 / 12sessions');
     expect(matches.length).toBeGreaterThanOrEqual(1);
@@ -275,7 +275,7 @@ describe('PhysioOrderTable - Session Count', () => {
 
   it('should show zero progress for pending order', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     // Order 2: 0/8 sessions
     const matches = screen.getAllByText((_, element) => element?.textContent === '0 / 8sessions');
     expect(matches.length).toBeGreaterThanOrEqual(1);
@@ -283,7 +283,7 @@ describe('PhysioOrderTable - Session Count', () => {
 
   it('should show completed sessions for completed order', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     // Order 3: 20/20 sessions
     const matches = screen.getAllByText((_, element) => element?.textContent === '20 / 20sessions');
     expect(matches.length).toBeGreaterThanOrEqual(1);
@@ -305,18 +305,18 @@ describe('PhysioOrderTable - Search', () => {
 
   it('should render search input', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByPlaceholderText(/search orders/i)).toBeInTheDocument();
   });
 
   it('should update search params on form submit', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     const searchInput = screen.getByPlaceholderText(/search orders/i);
     await user.type(searchInput, 'John');
     await user.click(screen.getByRole('button', { name: /search/i }));
-    
+
     expect(mockUsePhysioOrders).toHaveBeenCalledWith(
       expect.objectContaining({ search: 'John' })
     );
@@ -338,13 +338,13 @@ describe('PhysioOrderTable - Filters', () => {
 
   it('should render status filter', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByRole('combobox', { name: /status/i }) || screen.getByText(/all status/i)).toBeTruthy();
   });
 
   it('should render priority filter', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByRole('combobox', { name: /priority/i }) || screen.getByText(/all priority/i)).toBeTruthy();
   });
 });
@@ -366,27 +366,27 @@ describe('PhysioOrderTable - Navigation', () => {
   it('should navigate to order detail on row click', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     const orderRow = screen.getByText('John Doe').closest('tr');
     if (orderRow) {
       await user.click(orderRow);
     }
-    
+
     expect(mockPush).toHaveBeenCalledWith('/allied-health/physiotherapy/orders/1');
   });
 
   it('should have new order button', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByRole('button', { name: /new order/i })).toBeInTheDocument();
   });
 
   it('should navigate to new order form on button click', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     await user.click(screen.getByRole('button', { name: /new order/i }));
-    
+
     expect(mockPush).toHaveBeenCalledWith('/allied-health/physiotherapy/orders/new');
   });
 });
@@ -406,13 +406,13 @@ describe('PhysioOrderTable - Therapist Display', () => {
 
   it('should display assigned therapist name', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText('Jane Therapist')).toBeInTheDocument();
   });
 
   it('should show "Unassigned" for orders without therapist', () => {
     renderWithWrapper(<PhysioOrderTable />);
-    
+
     expect(screen.getByText('Unassigned')).toBeInTheDocument();
   });
 });

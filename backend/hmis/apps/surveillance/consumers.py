@@ -109,11 +109,7 @@ class SurveillanceAlertConsumer(AsyncJsonWebsocketConsumer):
     def _get_stats(self) -> dict[str, Any]:
         """Get current surveillance statistics from database."""
 
-        from .models import (
-            NotifiableCase,
-            NotificationStatus,
-            SurveillanceAlert,
-        )
+        from .models import NotifiableCase, NotificationStatus, SurveillanceAlert
 
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)

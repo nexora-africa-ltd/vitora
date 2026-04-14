@@ -20,12 +20,12 @@ class TestMedicationRequestRequiredFields:
         """
         SHR Requirement: MedicationRequest must have resourceType.
         """
-        assert (
-            "resourceType" in valid_medication_request_fhir
-        ), "MedicationRequest must have 'resourceType' field"
-        assert (
-            valid_medication_request_fhir["resourceType"] == "MedicationRequest"
-        ), "resourceType must be 'MedicationRequest'"
+        assert "resourceType" in valid_medication_request_fhir, (
+            "MedicationRequest must have 'resourceType' field"
+        )
+        assert valid_medication_request_fhir["resourceType"] == "MedicationRequest", (
+            "resourceType must be 'MedicationRequest'"
+        )
 
     def test_medication_request_has_id(self, valid_medication_request_fhir):
         """
@@ -40,9 +40,9 @@ class TestMedicationRequestRequiredFields:
 
         Quote from spec: '"status": "active"'
         """
-        assert (
-            "status" in valid_medication_request_fhir
-        ), "MedicationRequest must have 'status' field"
+        assert "status" in valid_medication_request_fhir, (
+            "MedicationRequest must have 'status' field"
+        )
         valid_statuses = [
             "active",
             "on-hold",
@@ -53,9 +53,9 @@ class TestMedicationRequestRequiredFields:
             "draft",
             "unknown",
         ]
-        assert (
-            valid_medication_request_fhir["status"] in valid_statuses
-        ), f"status must be one of {valid_statuses}"
+        assert valid_medication_request_fhir["status"] in valid_statuses, (
+            f"status must be one of {valid_statuses}"
+        )
 
     def test_medication_request_has_intent(self, valid_medication_request_fhir):
         """
@@ -63,9 +63,9 @@ class TestMedicationRequestRequiredFields:
 
         Quote from spec: '"intent": "order"'
         """
-        assert (
-            "intent" in valid_medication_request_fhir
-        ), "MedicationRequest must have 'intent' field"
+        assert "intent" in valid_medication_request_fhir, (
+            "MedicationRequest must have 'intent' field"
+        )
         valid_intents = [
             "proposal",
             "plan",
@@ -76,9 +76,9 @@ class TestMedicationRequestRequiredFields:
             "instance-order",
             "option",
         ]
-        assert (
-            valid_medication_request_fhir["intent"] in valid_intents
-        ), f"intent must be one of {valid_intents}"
+        assert valid_medication_request_fhir["intent"] in valid_intents, (
+            f"intent must be one of {valid_intents}"
+        )
 
     def test_medication_request_has_medication(self, valid_medication_request_fhir):
         """
@@ -90,9 +90,9 @@ class TestMedicationRequestRequiredFields:
             "medicationCodeableConcept" in valid_medication_request_fhir
             or "medicationReference" in valid_medication_request_fhir
         )
-        assert (
-            has_medication
-        ), "MedicationRequest must have 'medicationCodeableConcept' or 'medicationReference'"
+        assert has_medication, (
+            "MedicationRequest must have 'medicationCodeableConcept' or 'medicationReference'"
+        )
 
     def test_medication_request_has_subject(self, valid_medication_request_fhir):
         """
@@ -100,15 +100,15 @@ class TestMedicationRequestRequiredFields:
 
         Quote from spec: '"subject": {"reference": "Patient/CR06XX3268000-3-1"}'
         """
-        assert (
-            "subject" in valid_medication_request_fhir
-        ), "MedicationRequest must have 'subject' field"
-        assert (
-            "reference" in valid_medication_request_fhir["subject"]
-        ), "subject must have 'reference' field"
-        assert valid_medication_request_fhir["subject"]["reference"].startswith(
-            "Patient/"
-        ), "subject reference must start with 'Patient/'"
+        assert "subject" in valid_medication_request_fhir, (
+            "MedicationRequest must have 'subject' field"
+        )
+        assert "reference" in valid_medication_request_fhir["subject"], (
+            "subject must have 'reference' field"
+        )
+        assert valid_medication_request_fhir["subject"]["reference"].startswith("Patient/"), (
+            "subject reference must start with 'Patient/'"
+        )
 
     def test_medication_request_has_authored_on(self, valid_medication_request_fhir):
         """
@@ -116,9 +116,9 @@ class TestMedicationRequestRequiredFields:
 
         Quote from spec: '"authoredOn": "2025-03-28"'
         """
-        assert (
-            "authoredOn" in valid_medication_request_fhir
-        ), "MedicationRequest must have 'authoredOn' field"
+        assert "authoredOn" in valid_medication_request_fhir, (
+            "MedicationRequest must have 'authoredOn' field"
+        )
 
     def test_medication_request_has_requester(self, valid_medication_request_fhir):
         """
@@ -126,12 +126,12 @@ class TestMedicationRequestRequiredFields:
 
         Quote from spec: '"requester": {"reference": "Practitioner/123456"}'
         """
-        assert (
-            "requester" in valid_medication_request_fhir
-        ), "MedicationRequest must have 'requester' field"
-        assert (
-            "reference" in valid_medication_request_fhir["requester"]
-        ), "requester must have 'reference' field"
+        assert "requester" in valid_medication_request_fhir, (
+            "MedicationRequest must have 'requester' field"
+        )
+        assert "reference" in valid_medication_request_fhir["requester"], (
+            "requester must have 'reference' field"
+        )
 
 
 class TestMedicationRequestMedicationCoding:
@@ -177,9 +177,9 @@ class TestMedicationRequestMedicationCoding:
         medication = valid_medication_request_fhir.get("medicationCodeableConcept", {})
         coding = medication.get("coding", [{}])[0]
 
-        assert (
-            "display" in coding
-        ), "medication coding should have 'display' field for human readability"
+        assert "display" in coding, (
+            "medication coding should have 'display' field for human readability"
+        )
 
     def test_medication_has_text(self, valid_medication_request_fhir):
         """
@@ -203,12 +203,12 @@ class TestMedicationRequestDosageInstruction:
         """
         SHR Requirement: MedicationRequest should have dosage instructions.
         """
-        assert (
-            "dosageInstruction" in valid_medication_request_fhir
-        ), "MedicationRequest should have 'dosageInstruction' field"
-        assert (
-            len(valid_medication_request_fhir["dosageInstruction"]) > 0
-        ), "dosageInstruction must have at least one entry"
+        assert "dosageInstruction" in valid_medication_request_fhir, (
+            "MedicationRequest should have 'dosageInstruction' field"
+        )
+        assert len(valid_medication_request_fhir["dosageInstruction"]) > 0, (
+            "dosageInstruction must have at least one entry"
+        )
 
     def test_dosage_instruction_has_text(self, valid_medication_request_fhir):
         """
@@ -277,9 +277,9 @@ class TestMedicationRequestDispenseRequest:
         """
         SHR Requirement: MedicationRequest must have dispenseRequest.
         """
-        assert (
-            "dispenseRequest" in valid_medication_request_fhir
-        ), "MedicationRequest must have 'dispenseRequest' field for refill tracking"
+        assert "dispenseRequest" in valid_medication_request_fhir, (
+            "MedicationRequest must have 'dispenseRequest' field for refill tracking"
+        )
 
     def test_dispense_request_has_validity_period(self, valid_medication_request_fhir):
         """
@@ -288,9 +288,9 @@ class TestMedicationRequestDispenseRequest:
         Quote: '"validityPeriod": {"start": "2025-03-28", "end": "2025-09-28"}'
         """
         dispense_request = valid_medication_request_fhir.get("dispenseRequest", {})
-        assert (
-            "validityPeriod" in dispense_request
-        ), "dispenseRequest must have 'validityPeriod' field"
+        assert "validityPeriod" in dispense_request, (
+            "dispenseRequest must have 'validityPeriod' field"
+        )
 
         validity = dispense_request["validityPeriod"]
         assert "start" in validity, "validityPeriod must have 'start' date"
@@ -303,12 +303,12 @@ class TestMedicationRequestDispenseRequest:
         Quote: '"numberOfRepeatsAllowed": 5'
         """
         dispense_request = valid_medication_request_fhir.get("dispenseRequest", {})
-        assert (
-            "numberOfRepeatsAllowed" in dispense_request
-        ), "dispenseRequest must have 'numberOfRepeatsAllowed' field for refill tracking"
-        assert isinstance(
-            dispense_request["numberOfRepeatsAllowed"], int
-        ), "numberOfRepeatsAllowed must be an integer"
+        assert "numberOfRepeatsAllowed" in dispense_request, (
+            "dispenseRequest must have 'numberOfRepeatsAllowed' field for refill tracking"
+        )
+        assert isinstance(dispense_request["numberOfRepeatsAllowed"], int), (
+            "numberOfRepeatsAllowed must be an integer"
+        )
 
     def test_dispense_request_has_quantity(self, valid_medication_request_fhir):
         """
@@ -330,9 +330,9 @@ class TestMedicationRequestDispenseRequest:
         Quote: '"expectedSupplyDuration": {"value": 30, "unit": "days"}'
         """
         dispense_request = valid_medication_request_fhir.get("dispenseRequest", {})
-        assert (
-            "expectedSupplyDuration" in dispense_request
-        ), "dispenseRequest should have 'expectedSupplyDuration' field"
+        assert "expectedSupplyDuration" in dispense_request, (
+            "dispenseRequest should have 'expectedSupplyDuration' field"
+        )
 
 
 class TestMedicationRequestReasonCode:
@@ -346,9 +346,9 @@ class TestMedicationRequestReasonCode:
 
         Quote: '"reasonCode": [{"coding": [{"system": "http://hl7.org/fhir/sid/icd-10", ...}]}]'
         """
-        assert (
-            "reasonCode" in valid_medication_request_fhir
-        ), "MedicationRequest should have 'reasonCode' field linking to diagnosis"
+        assert "reasonCode" in valid_medication_request_fhir, (
+            "MedicationRequest should have 'reasonCode' field linking to diagnosis"
+        )
 
     def test_reason_code_uses_icd10(self, valid_medication_request_fhir):
         """
@@ -359,9 +359,9 @@ class TestMedicationRequestReasonCode:
             coding = reason_codes[0].get("coding", [{}])[0]
             assert "system" in coding, "reasonCode coding must have 'system' field"
             # ICD-10 system
-            assert (
-                "icd-10" in coding["system"].lower() or "icd10" in coding["system"].lower()
-            ), "reasonCode should use ICD-10 coding system"
+            assert "icd-10" in coding["system"].lower() or "icd10" in coding["system"].lower(), (
+                "reasonCode should use ICD-10 coding system"
+            )
 
 
 class TestMedicationRequestSubstitution:
@@ -375,9 +375,9 @@ class TestMedicationRequestSubstitution:
 
         Quote: '"substitution": {"allowedBoolean": true, ...}'
         """
-        assert (
-            "substitution" in valid_medication_request_fhir
-        ), "MedicationRequest should have 'substitution' field"
+        assert "substitution" in valid_medication_request_fhir, (
+            "MedicationRequest should have 'substitution' field"
+        )
 
     def test_substitution_has_allowed_flag(self, valid_medication_request_fhir):
         """
@@ -399,9 +399,9 @@ class TestMedicationRequestRecorder:
 
         Quote: '"recorder": {"reference": "Practitioner/123456"}'
         """
-        assert (
-            "recorder" in valid_medication_request_fhir
-        ), "MedicationRequest should have 'recorder' field"
+        assert "recorder" in valid_medication_request_fhir, (
+            "MedicationRequest should have 'recorder' field"
+        )
 
     def test_recorder_has_reference(self, valid_medication_request_fhir):
         """

@@ -24,9 +24,7 @@ from django.db.models import QuerySet
 
 from hmis.apps.core.models import AuditLog
 from hmis.apps.inpatient.models import Bed, Ward
-from hmis.apps.inpatient.services.compatibility import (
-    ward_compatibility_service,
-)
+from hmis.apps.inpatient.services.compatibility import ward_compatibility_service
 from hmis.apps.scheduling.models import AssignmentDecision, AssignmentRule
 
 if TYPE_CHECKING:

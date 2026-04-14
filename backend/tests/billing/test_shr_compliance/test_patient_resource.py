@@ -20,12 +20,12 @@ class TestPatientResourceRequiredFields:
         """
         SHR Requirement: Patient must have resourceType.
         """
-        assert (
-            "resourceType" in valid_patient_resource_fhir
-        ), "Patient must have 'resourceType' field"
-        assert (
-            valid_patient_resource_fhir["resourceType"] == "Patient"
-        ), "resourceType must be 'Patient'"
+        assert "resourceType" in valid_patient_resource_fhir, (
+            "Patient must have 'resourceType' field"
+        )
+        assert valid_patient_resource_fhir["resourceType"] == "Patient", (
+            "resourceType must be 'Patient'"
+        )
 
     def test_patient_has_id(self, valid_patient_resource_fhir):
         """
@@ -63,9 +63,9 @@ class TestPatientResourceIdentifier:
         SHR Requirement: Patient must have identifier array.
         """
         assert "identifier" in valid_patient_resource_fhir, "Patient must have 'identifier' field"
-        assert (
-            len(valid_patient_resource_fhir["identifier"]) > 0
-        ), "identifier array must have at least one entry"
+        assert len(valid_patient_resource_fhir["identifier"]) > 0, (
+            "identifier array must have at least one entry"
+        )
 
     def test_identifier_has_use(self, valid_patient_resource_fhir):
         """
@@ -118,9 +118,9 @@ class TestPatientResourceName:
         SHR Requirement: Patient must have name.
         """
         assert "name" in valid_patient_resource_fhir, "Patient must have 'name' field"
-        assert (
-            len(valid_patient_resource_fhir["name"]) > 0
-        ), "name array must have at least one entry"
+        assert len(valid_patient_resource_fhir["name"]) > 0, (
+            "name array must have at least one entry"
+        )
 
     def test_name_has_family(self, valid_patient_resource_fhir):
         """
@@ -202,17 +202,17 @@ class TestPatientResourceOptionalFields:
 
         Format: YYYY-MM-DD (FHIR date format)
         """
-        assert (
-            "birthDate" in valid_patient_resource_fhir
-        ), "birthDate is recommended for patient identification"
+        assert "birthDate" in valid_patient_resource_fhir, (
+            "birthDate is recommended for patient identification"
+        )
         assert valid_patient_resource_fhir["birthDate"], "birthDate should not be empty if provided"
         # Validate date format (YYYY-MM-DD)
         import re
 
         date_pattern = r"^\d{4}-\d{2}-\d{2}$"
-        assert re.match(
-            date_pattern, valid_patient_resource_fhir["birthDate"]
-        ), "birthDate must be in FHIR date format: YYYY-MM-DD"
+        assert re.match(date_pattern, valid_patient_resource_fhir["birthDate"]), (
+            "birthDate must be in FHIR date format: YYYY-MM-DD"
+        )
 
     def test_patient_can_have_telecom(self, valid_patient_resource_fhir):
         """
@@ -220,9 +220,9 @@ class TestPatientResourceOptionalFields:
 
         Reference: https://hl7.org/fhir/R4/datatypes.html#ContactPoint
         """
-        assert (
-            "telecom" in valid_patient_resource_fhir
-        ), "telecom is recommended for patient contact"
+        assert "telecom" in valid_patient_resource_fhir, (
+            "telecom is recommended for patient contact"
+        )
         telecom = valid_patient_resource_fhir["telecom"]
         assert len(telecom) > 0, "telecom array should have at least one contact method"
 
@@ -246,9 +246,9 @@ class TestPatientResourceOptionalFields:
 
         Reference: https://hl7.org/fhir/R4/datatypes.html#Address
         """
-        assert (
-            "address" in valid_patient_resource_fhir
-        ), "address is recommended for patient location"
+        assert "address" in valid_patient_resource_fhir, (
+            "address is recommended for patient location"
+        )
         address = valid_patient_resource_fhir["address"]
         assert len(address) > 0, "address array should have at least one address"
 
@@ -258,9 +258,9 @@ class TestPatientResourceOptionalFields:
             has_location_info = any(
                 key in addr for key in ["text", "line", "city", "district", "state", "country"]
             )
-            assert (
-                has_location_info
-            ), "address must have at least one location field (text, line, city, etc.)"
+            assert has_location_info, (
+                "address must have at least one location field (text, line, city, etc.)"
+            )
 
     def test_telecom_phone_format(self, valid_patient_resource_fhir):
         """
@@ -306,12 +306,12 @@ class TestPatientResourceAPIEndpoint:
         """
         SHR Requirement: Patient resource endpoint must be configured.
         """
-        assert (
-            "patient_resource" in shr_api_endpoints
-        ), "SHR API must include patient_resource endpoint"
-        assert (
-            shr_api_endpoints["patient_resource"] == "/v1/patient-resource"
-        ), "Patient resource endpoint should be '/v1/patient-resource'"
+        assert "patient_resource" in shr_api_endpoints, (
+            "SHR API must include patient_resource endpoint"
+        )
+        assert shr_api_endpoints["patient_resource"] == "/v1/patient-resource", (
+            "Patient resource endpoint should be '/v1/patient-resource'"
+        )
 
     def test_patient_resource_uses_put_method(self):
         """
@@ -321,9 +321,9 @@ class TestPatientResourceAPIEndpoint:
         """
         # This is a documentation/spec test - actual HTTP method tested in integration tests
         expected_method = "PUT"
-        assert (
-            expected_method == "PUT"
-        ), "Patient registration/update should use PUT method for idempotent upsert"
+        assert expected_method == "PUT", (
+            "Patient registration/update should use PUT method for idempotent upsert"
+        )
 
     def test_patient_resource_requires_cr_id_query_param(self):
         """
@@ -369,5 +369,5 @@ class TestPatientResourceCRIDFormat:
 
         pattern = r"^CR[A-Za-z0-9-]+$"
         assert re.match(pattern, cr_id), (
-            f"CR ID '{cr_id}' should match format CR[alphanumeric-] " "Example: CR06XX3268000-3-1"
+            f"CR ID '{cr_id}' should match format CR[alphanumeric-] Example: CR06XX3268000-3-1"
         )

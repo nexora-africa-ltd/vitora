@@ -88,7 +88,7 @@ export function PullToRefresh({
         // Apply resistance curve for natural feel
         const resistedDistance = Math.min(distance * 0.5, threshold * 1.5);
         setPullDistance(resistedDistance);
-        
+
         // Prevent default scroll when pulling
         e.preventDefault();
       }
@@ -159,7 +159,7 @@ export function PullToRefresh({
             />
           </div>
         )}
-        
+
         {/* Prompt text */}
         {isAtThreshold && !isRefreshing && (
           <span className="absolute top-full mt-1 text-xs text-primary font-medium animate-pulse">

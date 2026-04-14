@@ -1,6 +1,6 @@
 /**
  * Page Refresh Context
- * 
+ *
  * Provides global page refresh functionality and tracks last fetch time.
  * Works with React Query to invalidate queries and track data freshness.
  */
@@ -37,7 +37,7 @@ export function PageRefreshProvider({ children }: { children: React.ReactNode })
         .filter(q => q.state.status === 'success' && q.state.dataUpdatedAt)
         .map(q => q.state.dataUpdatedAt)
         .sort((a, b) => b - a)[0];
-      
+
       if (latestUpdate) {
         setLastFetchTime(new Date(latestUpdate));
       }
@@ -62,9 +62,9 @@ export function PageRefreshProvider({ children }: { children: React.ReactNode })
 
   const refresh = useCallback(async () => {
     if (isRefreshing) return;
-    
+
     setIsRefreshing(true);
-    
+
     try {
       // Invalidate all active queries - this triggers refetch for queries with active observers
       await queryClient.invalidateQueries();

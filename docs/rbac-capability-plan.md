@@ -1,8 +1,8 @@
 # RBAC & Capability-Based Experience Design Plan
 
-> **Document Owner**: Engineering Lead  
-> **Created**: February 25, 2026  
-> **Status**: Draft  
+> **Document Owner**: Engineering Lead
+> **Created**: February 25, 2026
+> **Status**: Draft
 > **Related**: [ROADMAP.md](../ROADMAP.md), [copilot-instructions.md](../.github/copilot-instructions.md)
 
 ---
@@ -221,28 +221,28 @@ export const ACTION_PERMISSIONS = {
   'inpatient.order_imaging': ['DOCTOR', 'CLINICAL_OFFICER'],
   'inpatient.discharge': ['DOCTOR', 'CLINICAL_OFFICER'],
   'inpatient.transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
-  
+
   // === Pharmacy Module ===
   'pharmacy.view_prescriptions': ['PHARMACIST', 'PHARMACY_TECH', 'NURSE', 'DOCTOR'],
   'pharmacy.dispense': ['PHARMACIST', 'PHARMACY_TECH'],
   'pharmacy.verify_prescription': ['PHARMACIST'],
   'pharmacy.manage_stock': ['PHARMACIST', 'PHARMACY_TECH', 'STORE_KEEPER'],
   'pharmacy.adjust_inventory': ['PHARMACIST', 'STORE_KEEPER'],
-  
+
   // === Laboratory Module ===
   'laboratory.view_orders': ['LAB_TECHNICIAN', 'LAB_SCIENTIST', 'DOCTOR', 'NURSE'],
   'laboratory.collect_sample': ['LAB_TECHNICIAN', 'PHLEBOTOMIST', 'NURSE'],
   'laboratory.enter_results': ['LAB_TECHNICIAN', 'LAB_SCIENTIST'],
   'laboratory.verify_results': ['LAB_SCIENTIST', 'PATHOLOGIST'],
   'laboratory.release_results': ['LAB_SCIENTIST', 'PATHOLOGIST'],
-  
+
   // === Imaging Module ===
   'imaging.view_orders': ['RADIOGRAPHER', 'RADIOLOGIST', 'DOCTOR', 'NURSE'],
   'imaging.perform_scan': ['RADIOGRAPHER'],
   'imaging.upload_images': ['RADIOGRAPHER'],
   'imaging.write_report': ['RADIOLOGIST'],
   'imaging.verify_report': ['RADIOLOGIST'],
-  
+
   // === Billing Module ===
   'billing.view_invoices': ['BILLING_CLERK', 'CASHIER', 'BILLING_SUPERVISOR'],
   'billing.create_invoice': ['BILLING_CLERK', 'CASHIER'],
@@ -250,7 +250,7 @@ export const ACTION_PERMISSIONS = {
   'billing.apply_discount': ['BILLING_SUPERVISOR', 'ADMIN'],
   'billing.void_invoice': ['BILLING_SUPERVISOR', 'ADMIN'],
   'billing.submit_sha_claim': ['BILLING_CLERK', 'BILLING_SUPERVISOR'],
-  
+
   // === Encounters Module ===
   'encounters.create': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
   'encounters.prescribe': ['DOCTOR', 'CLINICAL_OFFICER'],
@@ -258,7 +258,7 @@ export const ACTION_PERMISSIONS = {
   'encounters.order_imaging': ['DOCTOR', 'CLINICAL_OFFICER'],
   'encounters.diagnose': ['DOCTOR', 'CLINICAL_OFFICER'],
   'encounters.refer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
-  
+
   // === Admin Module ===
   'admin.manage_staff': ['ADMIN', 'HR_OFFICER'],
   'admin.manage_roles': ['ADMIN'],
@@ -282,13 +282,13 @@ import { ACTION_PERMISSIONS, ActionKey } from '@/lib/permissions/actions';
 export interface PermissionsResult {
   // Module access (for navigation filtering)
   canAccessModule: (module: ModuleKey) => boolean;
-  
+
   // Action permissions (for button/feature visibility)
   canPerformAction: (action: ActionKey) => boolean;
-  
+
   // Generic permission check (Django format)
   hasPermission: (permission: string) => boolean;
-  
+
   // User context
   role: string | null;
   roleCategory: string | null;
@@ -306,30 +306,30 @@ export function usePermissions(): PermissionsResult {
   const hasPermission = useCallback((permission: string): boolean => {
     if (!isAuthenticated || !user) return false;
     if (isSuperuser) return true;
-    
+
     const userPerms = user.permissions || [];
     // Check exact match or codename-only match
-    return userPerms.includes(permission) || 
+    return userPerms.includes(permission) ||
            userPerms.some(p => p.endsWith(`.${permission}`));
   }, [user, isAuthenticated, isSuperuser]);
 
   const canAccessModule = useCallback((module: ModuleKey): boolean => {
     if (!isAuthenticated) return false;
     if (isSuperuser) return true;
-    
+
     const requiredPerm = MODULE_PERMISSIONS[module];
     if (!requiredPerm) return true; // null = no permission required
-    
+
     return hasPermission(requiredPerm);
   }, [isAuthenticated, isSuperuser, hasPermission]);
 
   const canPerformAction = useCallback((action: ActionKey): boolean => {
     if (!isAuthenticated || !user) return false;
     if (isSuperuser) return true;
-    
+
     const allowedRoles = ACTION_PERMISSIONS[action];
     if (!allowedRoles) return false;
-    
+
     const userRole = user.role || '';
     return allowedRoles.includes(userRole as any);
   }, [user, isAuthenticated, isSuperuser]);
@@ -386,27 +386,27 @@ export interface NavItemWithChildren {
 }
 
 export const mainNavItems: NavItemType[] = [
-  { 
-    label: 'Dashboard', 
-    href: '/', 
+  {
+    label: 'Dashboard',
+    href: '/',
     icon: LayoutDashboard,
     moduleKey: 'dashboard',
   },
-  { 
-    label: 'Check-in', 
-    href: '/patients/checkin', 
+  {
+    label: 'Check-in',
+    href: '/patients/checkin',
     icon: UserCheck,
     moduleKey: 'checkin',
   },
-  { 
-    label: 'Patients', 
-    href: '/patients', 
+  {
+    label: 'Patients',
+    href: '/patients',
     icon: Users,
     moduleKey: 'patients',
   },
-  { 
-    label: 'Triage', 
-    href: '/triage', 
+  {
+    label: 'Triage',
+    href: '/triage',
     icon: AlertTriangle,
     moduleKey: 'triage',
   },
@@ -420,9 +420,9 @@ export const mainNavItems: NavItemType[] = [
       { label: 'Admissions', href: '/admissions', icon: ClipboardList },
     ],
   },
-  { 
-    label: 'Pharmacy', 
-    href: '/pharmacy', 
+  {
+    label: 'Pharmacy',
+    href: '/pharmacy',
     icon: Pill,
     moduleKey: 'pharmacy',
     facilityModule: 'pharmacy',
@@ -431,16 +431,16 @@ export const mainNavItems: NavItemType[] = [
     label: 'Diagnostics',
     icon: FlaskConical,
     children: [
-      { 
-        label: 'Laboratory', 
-        href: '/laboratory', 
+      {
+        label: 'Laboratory',
+        href: '/laboratory',
         icon: Microscope,
         moduleKey: 'laboratory',
         facilityModule: 'laboratory',
       },
-      { 
-        label: 'Imaging', 
-        href: '/imaging', 
+      {
+        label: 'Imaging',
+        href: '/imaging',
         icon: ScanLine,
         moduleKey: 'imaging',
         facilityModule: 'imaging',
@@ -495,34 +495,34 @@ export const mainNavItems: NavItemType[] = [
 function useFilteredNavItems() {
   const { canAccessModule } = usePermissions();
   const { facility } = useFacility(); // From capability context
-  
+
   return useMemo(() => {
     const filterItem = (item: NavItemType): NavItemType | null => {
       // Check RBAC (user role)
       if (item.moduleKey && !canAccessModule(item.moduleKey)) {
         return null;
       }
-      
+
       // Check Capability (facility services)
       if (item.facilityModule && !facility?.modules?.[item.facilityModule]) {
         return null;
       }
-      
+
       // For parent items with children, filter children
       if (hasChildren(item)) {
         const filteredChildren = item.children
           .map(child => filterItem(child))
           .filter(Boolean) as NavItem[];
-        
+
         // Hide parent if no children remain
         if (filteredChildren.length === 0) return null;
-        
+
         return { ...item, children: filteredChildren };
       }
-      
+
       return item;
     };
-    
+
     return mainNavItems
       .map(filterItem)
       .filter(Boolean) as NavItemType[];
@@ -551,11 +551,11 @@ function useFilteredNavItems() {
 class Facility(TimeStampedModel):
     """
     Healthcare facility with enabled service modules.
-    
+
     Integrates with Kenya Master Facility List (MFL) for official registration
     and SHA for claims eligibility.
     """
-    
+
     FACILITY_LEVELS = [
         ('1', 'Level 1 - Community Unit'),
         ('2', 'Level 2 - Dispensary'),
@@ -564,14 +564,14 @@ class Facility(TimeStampedModel):
         ('5', 'Level 5 - County Referral Hospital'),
         ('6', 'Level 6 - National Referral Hospital'),
     ]
-    
+
     OWNERSHIP_TYPES = [
         ('GOK', 'Government of Kenya'),
         ('FBO', 'Faith-Based Organization'),
         ('NGO', 'Non-Governmental Organization'),
         ('PRIVATE', 'Private Practice'),
     ]
-    
+
     # === Identity ===
     mfl_code = models.CharField(
         max_length=20,
@@ -581,12 +581,12 @@ class Facility(TimeStampedModel):
     name = models.CharField(max_length=200)
     level = models.CharField(max_length=1, choices=FACILITY_LEVELS)
     ownership = models.CharField(max_length=20, choices=OWNERSHIP_TYPES)
-    
+
     # === Location ===
     county = models.ForeignKey('County', on_delete=models.PROTECT)
     sub_county = models.ForeignKey('SubCounty', on_delete=models.PROTECT)
     ward = models.ForeignKey('Ward', on_delete=models.PROTECT, null=True, blank=True)
-    
+
     # === SHA Registration ===
     sha_contracted = models.BooleanField(
         default=False,
@@ -594,7 +594,7 @@ class Facility(TimeStampedModel):
     )
     sha_contract_expiry = models.DateField(null=True, blank=True)
     sha_facility_code = models.CharField(max_length=50, blank=True)
-    
+
     # === Enabled Modules (Capability-Based) ===
     # Using explicit booleans for type safety and query performance
     has_outpatient = models.BooleanField(default=True)
@@ -609,21 +609,21 @@ class Facility(TimeStampedModel):
     has_maternity = models.BooleanField(default=False)
     has_mortuary = models.BooleanField(default=False)
     has_blood_bank = models.BooleanField(default=False)
-    
+
     # OR use JSONField for flexibility (alternative approach)
     # modules_config = models.JSONField(default=dict)
-    
+
     # === Status ===
     is_active = models.BooleanField(default=True)
-    
+
     class Meta:
         verbose_name = "Facility"
         verbose_name_plural = "Facilities"
         ordering = ['name']
-    
+
     def __str__(self):
         return f"{self.name} ({self.mfl_code})"
-    
+
     @property
     def modules(self) -> dict:
         """Return enabled modules as a dict for API response."""
@@ -641,7 +641,7 @@ class Facility(TimeStampedModel):
             'mortuary': self.has_mortuary,
             'blood_bank': self.has_blood_bank,
         }
-    
+
     @classmethod
     def default_modules_for_level(cls, level: str) -> dict:
         """Return default enabled modules based on facility level."""
@@ -649,10 +649,10 @@ class Facility(TimeStampedModel):
             '1': {'outpatient': True, 'pharmacy': True},
             '2': {'outpatient': True, 'pharmacy': True},
             '3': {'outpatient': True, 'pharmacy': True, 'laboratory': True, 'maternity': True},
-            '4': {'outpatient': True, 'inpatient': True, 'emergency': True, 'pharmacy': True, 
+            '4': {'outpatient': True, 'inpatient': True, 'emergency': True, 'pharmacy': True,
                   'laboratory': True, 'imaging': True, 'theatre': True, 'maternity': True},
             '5': {'outpatient': True, 'inpatient': True, 'emergency': True, 'pharmacy': True,
-                  'laboratory': True, 'imaging': True, 'theatre': True, 'icu': True, 
+                  'laboratory': True, 'imaging': True, 'theatre': True, 'icu': True,
                   'maternity': True, 'dialysis': True},
             '6': {'outpatient': True, 'inpatient': True, 'emergency': True, 'pharmacy': True,
                   'laboratory': True, 'imaging': True, 'theatre': True, 'icu': True,
@@ -680,7 +680,7 @@ class Facility(TimeStampedModel):
 ```python
 class StaffProfile(models.Model):
     # ... existing fields ...
-    
+
     # Add facility assignment
     primary_facility = models.ForeignKey(
         'Facility',
@@ -714,7 +714,7 @@ class StaffProfile(models.Model):
 class FacilitySerializer(serializers.ModelSerializer):
     modules = serializers.ReadOnlyField()
     county_name = serializers.CharField(source='county.name', read_only=True)
-    
+
     class Meta:
         model = Facility
         fields = [
@@ -808,12 +808,12 @@ const isNavItemVisible = (item: NavItem): boolean => {
   if (item.moduleKey && !canAccessModule(item.moduleKey)) {
     return false;
   }
-  
+
   // 2. Check Capability (facility has service)
   if (item.facilityModule && !hasModule(item.facilityModule)) {
     return false;
   }
-  
+
   return true;
 };
 ```
@@ -850,8 +850,8 @@ const isActionAllowed = (action: ActionKey): boolean => {
 - [x] Add route guards for protected pages (`RouteGuard` + `getModuleForRoute`)
 - [x] Write unit tests for permission logic
 
-**Effort**: 8-12 hours  
-**Dependencies**: None  
+**Effort**: 8-12 hours
+**Dependencies**: None
 **Deliverables**: Role-filtered navigation working
 
 ### Phase 2: Action Permissions (Week 2)
@@ -861,8 +861,8 @@ const isActionAllowed = (action: ActionKey): boolean => {
 - [x] Create `PermissionGate` component for declarative permission checks
 - [x] Write E2E tests for permission-restricted actions
 
-**Effort**: 12-16 hours  
-**Dependencies**: Phase 1  
+**Effort**: 12-16 hours
+**Dependencies**: Phase 1
 **Deliverables**: Action buttons show/hide based on role
 
 ### Phase 3: Facility Model (Week 3)
@@ -872,8 +872,8 @@ const isActionAllowed = (action: ActionKey): boolean => {
 - [x] Seed data with Kenya MFL facility levels (`seed_facilities` management command)
 - [x] Create admin interface for facility management
 
-**Effort**: 8-12 hours  
-**Dependencies**: None (can parallel with Phase 1-2)  
+**Effort**: 8-12 hours
+**Dependencies**: None (can parallel with Phase 1-2)
 **Deliverables**: Facility model in database
 
 ### Phase 4: Capability Context (Week 4)
@@ -883,8 +883,8 @@ const isActionAllowed = (action: ActionKey): boolean => {
 - [x] Combine RBAC + Capability filtering in sidebar
 - [x] Write integration tests
 
-**Effort**: 8-12 hours  
-**Dependencies**: Phase 3  
+**Effort**: 8-12 hours
+**Dependencies**: Phase 3
 **Deliverables**: Capability-filtered navigation working
 
 ### Phase 5: Polish & Documentation (Week 5)
@@ -894,8 +894,8 @@ const isActionAllowed = (action: ActionKey): boolean => {
 - [x] Add permission debugging tools (`PermissionDebugPanel`, dev mode)
 - [x] Performance optimization (caching)
 
-**Effort**: 8-12 hours  
-**Dependencies**: Phases 1-4  
+**Effort**: 8-12 hours
+**Dependencies**: Phases 1-4
 **Deliverables**: Production-ready system
 
 ---
@@ -1024,21 +1024,21 @@ interface PermissionGateProps {
   children: React.ReactNode;
 }
 
-export function PermissionGate({ 
-  module, 
-  action, 
+export function PermissionGate({
+  module,
+  action,
   facilityModule,
   fallback = null,
-  children 
+  children
 }: PermissionGateProps) {
   const { canAccessModule, canPerformAction } = usePermissions();
   const { hasModule } = useFacility();
-  
+
   // Check all conditions
   if (module && !canAccessModule(module)) return fallback;
   if (action && !canPerformAction(action)) return fallback;
   if (facilityModule && !hasModule(facilityModule)) return fallback;
-  
+
   return <>{children}</>;
 }
 
@@ -1068,12 +1068,12 @@ interface ActionButtonProps extends ButtonProps {
 
 export function ActionButton({ action, fallback, ...props }: ActionButtonProps) {
   const { canPerformAction } = usePermissions();
-  
+
   if (!canPerformAction(action)) {
     if (fallback) return <>{fallback}</>;
     return null;
   }
-  
+
   return <Button {...props} />;
 }
 
@@ -1099,33 +1099,33 @@ describe('usePermissions', () => {
       const { result } = renderHook(() => usePermissions());
       expect(result.current.canAccessModule('admin')).toBe(true);
     });
-    
+
     it('returns false for nurse accessing admin module', () => {
       mockAuth({ role: 'NURSE', permissions: ['patients.view_patient'] });
       const { result } = renderHook(() => usePermissions());
       expect(result.current.canAccessModule('admin')).toBe(false);
     });
-    
+
     it('returns true for null permission modules (dashboard)', () => {
       mockAuth({ role: 'NURSE', permissions: [] });
       const { result } = renderHook(() => usePermissions());
       expect(result.current.canAccessModule('dashboard')).toBe(true);
     });
   });
-  
+
   describe('canPerformAction', () => {
     it('returns true for doctor prescribing', () => {
       mockAuth({ role: 'DOCTOR' });
       const { result } = renderHook(() => usePermissions());
       expect(result.current.canPerformAction('encounters.prescribe')).toBe(true);
     });
-    
+
     it('returns false for nurse prescribing', () => {
       mockAuth({ role: 'NURSE' });
       const { result } = renderHook(() => usePermissions());
       expect(result.current.canPerformAction('encounters.prescribe')).toBe(false);
     });
-    
+
     it('returns true for nurse recording vitals', () => {
       mockAuth({ role: 'NURSE' });
       const { result } = renderHook(() => usePermissions());
@@ -1143,32 +1143,32 @@ describe('usePermissions', () => {
 test.describe('Role-Based Navigation', () => {
   test('nurse sees clinical modules but not admin', async ({ page }) => {
     await loginAsNurse(page);
-    
+
     // Should see
     await expect(page.getByRole('link', { name: 'Patients' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Triage' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Inpatient' })).toBeVisible();
-    
+
     // Should NOT see
     await expect(page.getByRole('link', { name: 'Admin' })).not.toBeVisible();
     await expect(page.getByRole('link', { name: 'Billing' })).not.toBeVisible();
   });
-  
+
   test('nurse cannot prescribe on ward', async ({ page }) => {
     await loginAsNurse(page);
     await page.goto('/wards/1/patients/1');
-    
+
     // Should see Record Vitals
     await expect(page.getByRole('button', { name: 'Record Vitals' })).toBeVisible();
-    
+
     // Should NOT see Prescribe
     await expect(page.getByRole('button', { name: 'Prescribe' })).not.toBeVisible();
   });
-  
+
   test('doctor can prescribe on ward', async ({ page }) => {
     await loginAsDoctor(page);
     await page.goto('/wards/1/patients/1');
-    
+
     // Should see Prescribe
     await expect(page.getByRole('button', { name: 'Prescribe' })).toBeVisible();
   });
@@ -1177,10 +1177,10 @@ test.describe('Role-Based Navigation', () => {
 test.describe('Facility-Based Navigation', () => {
   test('level 2 dispensary hides lab module', async ({ page }) => {
     await loginAsNurseAtLevel2(page);
-    
+
     // Should NOT see Lab (facility doesn't have it)
     await expect(page.getByRole('link', { name: 'Laboratory' })).not.toBeVisible();
-    
+
     // Should see Pharmacy (all facilities have it)
     await expect(page.getByRole('link', { name: 'Pharmacy' })).toBeVisible();
   });
@@ -1257,6 +1257,6 @@ const FEATURE_FLAGS = {
 
 ---
 
-**Document Status**: Complete — All phases implemented  
-**Last Updated**: March 9, 2026  
+**Document Status**: Complete — All phases implemented
+**Last Updated**: March 9, 2026
 **Next Review**: Post-pilot review

@@ -242,7 +242,7 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             try:
                 result = serializer.calculate_category()
                 return Response(result, status=status.HTTP_200_OK)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error calculating triage category")
                 return Response(
                     {"detail": "Error calculating triage category. Please try again."},

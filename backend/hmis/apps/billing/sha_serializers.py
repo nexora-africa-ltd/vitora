@@ -254,7 +254,7 @@ class SHAClaimAttachmentSerializer(serializers.ModelSerializer):
         ]
         if value.content_type not in allowed_types:
             raise serializers.ValidationError(
-                f'File type not allowed. Allowed: {", ".join(allowed_types)}'
+                f"File type not allowed. Allowed: {', '.join(allowed_types)}"
             )
         return value
 

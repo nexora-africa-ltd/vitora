@@ -61,7 +61,7 @@ def auto_release_er_bed_on_close(sender, instance, **kwargs):
             bed.release(user=None, mark_cleaning=True)
             released_count += 1
             logger.info(
-                "Auto-released ER bed %s (zone=%s) for patient %s — " "encounter %s moved to %s",
+                "Auto-released ER bed %s (zone=%s) for patient %s — encounter %s moved to %s",
                 bed.bed_number,
                 bed.zone,
                 instance.patient_id,

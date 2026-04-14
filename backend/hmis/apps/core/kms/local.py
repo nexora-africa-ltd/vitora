@@ -172,7 +172,7 @@ class LocalKMSProvider(KMSProvider):
             now = datetime.now(UTC)
 
             logger.warning(
-                "Local key rotation triggered. " "Manual re-encryption of existing data required!"
+                "Local key rotation triggered. Manual re-encryption of existing data required!"
             )
 
             return KeyMetadata(

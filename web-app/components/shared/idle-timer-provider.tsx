@@ -22,15 +22,15 @@ interface IdleTimerProviderProps {
 
 /**
  * Provider component that wraps the app with idle timer functionality.
- * 
+ *
  * Features:
  * - Tracks user activity across the app
  * - Shows warning modal at 15 minutes of inactivity
  * - Auto-logouts at 30 minutes of inactivity
  * - Syncs state across browser tabs via localStorage
- * 
+ *
  * DHA Compliance: Frontend Auto-Logoff (P1)
- * 
+ *
  * @example
  * ```tsx
  * // In dashboard layout

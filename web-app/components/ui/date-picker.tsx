@@ -73,10 +73,10 @@ function parseFlexibleDate(input: string): Date | null {
 function formatDateInput(value: string, format: string): string {
   // Remove all non-digit characters
   const digits = value.replace(/\D/g, "");
-  
+
   // Determine separator from format (/ or -)
   const separator = format.includes("/") ? "/" : "-";
-  
+
   // Format based on the expected format pattern
   if (format.startsWith("dd") || format.startsWith("MM")) {
     // dd/MM/yyyy or MM/dd/yyyy format
@@ -99,7 +99,7 @@ function formatDateInput(value: string, format: string): string {
     }
     return formatted;
   }
-  
+
   // Fallback: just return digits with dd/MM/yyyy format
   let formatted = "";
   for (let i = 0; i < digits.length && i < 8; i++) {
@@ -168,7 +168,7 @@ export function DatePicker({
 
   const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    
+
     // Auto-format the input as user types
     const formatted = formatDateInput(newValue, inputFormat);
     setInputValue(formatted);

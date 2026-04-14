@@ -209,4 +209,3 @@ export interface DuplicateCheckParams {
   date_of_birth?: string;
   gender?: 'M' | 'F' | 'O';
 }
-

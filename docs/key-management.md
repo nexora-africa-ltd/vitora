@@ -1,7 +1,7 @@
 # Key Management System (KMS) Documentation
 
-> **Version**: 1.0  
-> **Created**: February 25, 2026  
+> **Version**: 1.0
+> **Created**: February 25, 2026
 > **Feature**: DHA Compliance - Key Management System Integration
 
 ---

@@ -157,7 +157,7 @@ class Command(BaseCommand):
                 ep = result.get("embedding_params", {})
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f"  ✓ Updated {dash_name} (ID={dash_id}) — " f"embedding_params={ep}"
+                        f"  ✓ Updated {dash_name} (ID={dash_id}) — embedding_params={ep}"
                     )
                 )
                 updated += 1

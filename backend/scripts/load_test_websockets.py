@@ -97,10 +97,13 @@ async def get_jwt_token(api_url: str, username: str, password: str) -> str | Non
     try:
         import aiohttp
 
-        async with aiohttp.ClientSession() as session, session.post(
-            f"{api_url}/api/token/",
-            json={"username": username, "password": password},
-        ) as resp:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
+                f"{api_url}/api/token/",
+                json={"username": username, "password": password},
+            ) as resp,
+        ):
             if resp.status == 200:
                 data = await resp.json()
                 return data.get("access")
@@ -188,7 +191,10 @@ async def run_load_test(args):
     total = len(tasks)
     logger.info(
         "Starting load test: %d connections (%d facilities × %d users), duration=%ds",
-        total, args.facilities, args.users_per_facility, args.duration,
+        total,
+        args.facilities,
+        args.users_per_facility,
+        args.duration,
     )
 
     # Run all clients concurrently

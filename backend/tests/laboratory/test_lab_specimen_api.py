@@ -15,12 +15,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.laboratory.models import (
-    LabOrder,
-    LabOrderItem,
-    Specimen,
-    TestCatalog,
-)
+from hmis.apps.laboratory.models import LabOrder, LabOrderItem, Specimen, TestCatalog
 from hmis.apps.patients.models import Patient
 
 User = get_user_model()

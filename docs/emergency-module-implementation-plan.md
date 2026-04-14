@@ -154,7 +154,7 @@ GET /api/triage/queue/critical/
 Response: {
   count: 2,
   patients: [
-    { id: 1, patient_name: "John Doe", mrn: "MRN-001", 
+    { id: 1, patient_name: "John Doe", mrn: "MRN-001",
       chief_complaint: "Chest Pain", assigned_area: "ER_RESUS",
       assigned_area_display: "ER - Resuscitation",
       wait_minutes: 3, arrival_time: "2026-02-21T10:00:00Z",
@@ -469,7 +469,7 @@ class ERZoneConfig(models.Model):
     target_wait_red = models.PositiveIntegerField(default=0)  # minutes
     target_wait_orange = models.PositiveIntegerField(default=10)
     is_active = models.BooleanField(default=True)
-    
+
     class Meta:
         verbose_name = "ER Zone Configuration"
 ```

@@ -526,7 +526,7 @@ test.describe('Prescriptions - Dispense Actions', () => {
   test('should have direct dispense button visible', async ({ page }) => {
     // Expand prescription
     await page.locator('tr').filter({ hasText: 'RX-20260109-0001' }).click();
-    
+
     // Check for direct dispense button (testid version)
     await expect(
       page.getByTestId('direct-dispense-button').or(

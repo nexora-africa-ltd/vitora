@@ -464,10 +464,10 @@ export default function WardDetailPage() {
             <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
               <span className="text-muted-foreground">Gender</span>
               <Badge variant="outline" className="shrink-0 w-fit self-start sm:self-auto">
-                {ward.gender_restriction === 'MALE_ONLY' 
-                  ? 'Male Only' 
-                  : ward.gender_restriction === 'FEMALE_ONLY' 
-                    ? 'Female Only' 
+                {ward.gender_restriction === 'MALE_ONLY'
+                  ? 'Male Only'
+                  : ward.gender_restriction === 'FEMALE_ONLY'
+                    ? 'Female Only'
                     : 'Any Gender'}
               </Badge>
             </div>

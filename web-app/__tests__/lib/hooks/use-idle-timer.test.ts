@@ -1,6 +1,6 @@
 /**
  * TDD Tests for useIdleTimer Hook
- * 
+ *
  * DHA Compliance: Frontend Auto-Logoff (P1)
  * Tests the idle timer functionality for automatic session timeout
  */

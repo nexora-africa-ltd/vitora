@@ -153,7 +153,7 @@ function showCustomToast(
   options?: ProgressToastOptions
 ) {
   const duration = options?.duration ?? (type === 'error' ? 6000 : 4000);
-  
+
   return toast.custom(
     (id) => (
       <CustomToast
@@ -180,13 +180,13 @@ function showCustomToast(
 export const showProgressToast = {
   success: (message: string, description?: string, options?: ProgressToastOptions) =>
     showCustomToast('success', message, description, options),
-  
+
   error: (message: string, description?: string, options?: ProgressToastOptions) =>
     showCustomToast('error', message, description, { duration: 6000, ...options }),
-  
+
   warning: (message: string, description?: string, options?: ProgressToastOptions) =>
     showCustomToast('warning', message, description, options),
-  
+
   info: (message: string, description?: string, options?: ProgressToastOptions) =>
     showCustomToast('info', message, description, options),
 };

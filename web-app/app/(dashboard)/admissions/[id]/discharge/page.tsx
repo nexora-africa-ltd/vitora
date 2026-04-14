@@ -1693,11 +1693,11 @@ export default function DischargePage() {
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 <p>
-                  Suggest mode uses AI to generate rich narrative drafts with synthesised clinical content. 
+                  Suggest mode uses AI to generate rich narrative drafts with synthesised clinical content.
                   This content <strong>may contain inaccuracies, hallucinated details, or missing information</strong>.
                 </p>
                 <p>
-                  You are responsible for verifying every section before filing. 
+                  You are responsible for verifying every section before filing.
                   For audit-safe, facts-only output, use <strong>Strict Mode</strong> (default).
                 </p>
                 <p className="text-xs text-muted-foreground">

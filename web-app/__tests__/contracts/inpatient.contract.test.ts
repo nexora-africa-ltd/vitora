@@ -97,7 +97,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -111,7 +111,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -143,7 +143,7 @@ describe('Inpatient Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  WardSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -159,7 +159,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(WardSchema);
-      
+
       const criticalFields = [
         'id',
         'name',
@@ -185,7 +185,7 @@ describe('Inpatient Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  BedSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -201,7 +201,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(BedSchema);
-      
+
       const criticalFields = [
         'id',
         'ward',
@@ -224,7 +224,7 @@ describe('Inpatient Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  AdmissionRecommendationSchema: API fields missing:\n  ${missingInZod.join(', ')}`
@@ -240,7 +240,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(AdmissionRecommendationSchema);
-      
+
       const criticalFields = [
         'id',
         'encounter',
@@ -265,7 +265,7 @@ describe('Inpatient Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  AdmissionSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -281,7 +281,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(AdmissionSchema);
-      
+
       const criticalFields = [
         'id',
         'admission_number',
@@ -309,7 +309,7 @@ describe('Inpatient Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  DischargeSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -325,7 +325,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(DischargeSchema);
-      
+
       const criticalFields = [
         'id',
         'admission',
@@ -352,7 +352,7 @@ describe('Inpatient Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  TransferSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -368,7 +368,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(TransferSchema);
-      
+
       const criticalFields = [
         'id',
         'admission',
@@ -397,7 +397,7 @@ describe('Inpatient Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  WardRoundSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -413,7 +413,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(WardRoundSchema);
-      
+
       const criticalFields = [
         'id',
         'admission',
@@ -442,7 +442,7 @@ describe('Inpatient Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  NursingKardexSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -458,7 +458,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(NursingKardexSchema);
-      
+
       const criticalFields = [
         'id',
         'admission',
@@ -482,7 +482,7 @@ describe('Inpatient Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ShiftHandoverSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -498,7 +498,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ShiftHandoverSchema);
-      
+
       const criticalFields = [
         'id',
         'ward',
@@ -527,7 +527,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`InpatientWardTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -537,7 +537,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include critical ward types', () => {
       const zodValues = getZodEnumValues(InpatientWardTypeSchema);
-      
+
       const criticalTypes = [
         'MEDICAL',
         'SURGICAL',
@@ -559,7 +559,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`BedStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -569,7 +569,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include critical bed statuses', () => {
       const zodValues = getZodEnumValues(BedStatusSchema);
-      
+
       const criticalStatuses = [
         'AVAILABLE',
         'OCCUPIED',
@@ -592,7 +592,7 @@ describe('Inpatient Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`AdmissionRecommendationStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -602,7 +602,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include critical statuses', () => {
       const zodValues = getZodEnumValues(AdmissionRecommendationStatusSchema);
-      
+
       const criticalStatuses = [
         'PENDING',
         'ACCEPTED',
@@ -623,7 +623,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`AdmissionRecommendationUrgencySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -633,7 +633,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include all urgency levels', () => {
       const zodValues = getZodEnumValues(AdmissionRecommendationUrgencySchema);
-      
+
       const urgencyLevels = [
         'ROUTINE',
         'URGENT',
@@ -654,7 +654,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`AdmissionStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -664,7 +664,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include critical admission statuses', () => {
       const zodValues = getZodEnumValues(AdmissionStatusSchema);
-      
+
       const criticalStatuses = [
         'ACTIVE',
         'DISCHARGED',
@@ -685,7 +685,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`AdmissionPayerTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -695,7 +695,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include critical payer types', () => {
       const zodValues = getZodEnumValues(AdmissionPayerTypeSchema);
-      
+
       const criticalPayers = [
         'CASH',
         'SHA',
@@ -715,7 +715,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`DischargeTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -725,7 +725,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include critical discharge types', () => {
       const zodValues = getZodEnumValues(DischargeTypeSchema);
-      
+
       const criticalTypes = [
         'NORMAL',
         'DECEASED',
@@ -746,7 +746,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`TransferReasonSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -756,7 +756,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include key transfer reasons', () => {
       const zodValues = getZodEnumValues(TransferReasonSchema);
-      
+
       const keyReasons = [
         'STEP_UP',
         'STEP_DOWN',
@@ -778,7 +778,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ConditionStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -788,7 +788,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include all condition statuses', () => {
       const zodValues = getZodEnumValues(ConditionStatusSchema);
-      
+
       const allStatuses = [
         'STABLE',
         'IMPROVING',
@@ -810,7 +810,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`RiskLevelSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -820,7 +820,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include all risk levels', () => {
       const zodValues = getZodEnumValues(RiskLevelSchema);
-      
+
       const allLevels = [
         'LOW',
         'MODERATE',
@@ -841,7 +841,7 @@ describe('Inpatient Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ShiftTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -851,7 +851,7 @@ describe('Inpatient Contract Tests', () => {
 
     it('should include basic shifts', () => {
       const zodValues = getZodEnumValues(ShiftTypeSchema);
-      
+
       const basicShifts = [
         'DAY',
         'NIGHT',

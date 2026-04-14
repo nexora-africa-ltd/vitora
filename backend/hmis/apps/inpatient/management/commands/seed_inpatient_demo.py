@@ -60,12 +60,7 @@ from hmis.apps.inpatient.models import (
     Ward,
     WardRound,
 )
-from hmis.apps.laboratory.models import (
-    LabOrder,
-    LabOrderItem,
-    LabResult,
-    TestCatalog,
-)
+from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, TestCatalog
 from hmis.apps.mch.models import LabourPartograph, LabourPartographObservation, MCHRegistration
 from hmis.apps.patients.models import Allergy, Patient
 from hmis.apps.pharmacy.models import Drug, Prescription, PrescriptionItem

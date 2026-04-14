@@ -514,7 +514,8 @@ class ReadOnCreateMixin:
             self.action = saved_action  # type: ignore[attr-defined]
 
         read_serializer = read_serializer_class(
-            instance, context=self.get_serializer_context()  # type: ignore[attr-defined]
+            instance,
+            context=self.get_serializer_context(),  # type: ignore[attr-defined]
         )
         headers = self.get_success_headers(read_serializer.data)  # type: ignore[attr-defined]
         return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)

@@ -647,7 +647,7 @@ test.describe('Lab Queue Management', () => {
     // First find the status filter dropdown (it shows "Filter status" or current selection)
     const statusFilter = page.locator('button:has-text("Filter status"), button:has-text("All Status"), button:has-text("Collected")').first();
     await statusFilter.click();
-    
+
     // Wait for dropdown to appear and click Pending option
     await page.getByRole('option', { name: 'Pending' }).click();
 

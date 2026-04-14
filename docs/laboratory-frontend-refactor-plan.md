@@ -1,9 +1,9 @@
 # Laboratory Frontend Refactor Plan
 
-> **Created**: 2026-02-15  
-> **Updated**: 2026-03-06  
-> **Owner**: Engineering  
-> **Status**: In Progress  
+> **Created**: 2026-02-15
+> **Updated**: 2026-03-06
+> **Owner**: Engineering
+> **Status**: In Progress
 > **Scope**: Web-app alignment with backend LIS evolution phases
 
 ---
@@ -594,12 +594,12 @@ export interface LabWebSocketEvents {
   result_verified: { result_id: number; order_number: string };
   critical_alert: { result_id: number; test_name: string; value: string; flag: ResultFlag };
   order_completed: { order_number: string };
-  
+
   // NEW: Two-stage validation
   validation_submitted: { result_id: number; validation_type: ValidationType };
   validation_approved: { result_id: number; validation_type: ValidationType };
   validation_rejected: { result_id: number; validation_type: ValidationType };
-  
+
   // NEW: Diagnostic reports
   report_finalized: { report_number: string; lab_order_number: string };
   report_amended: { report_number: string };
@@ -625,7 +625,7 @@ Update `lab-clinician-socket-provider.tsx` to handle new events with appropriate
 | F7: Instruments | LOW | 4-6 hrs | F1, F2 | ⚠️ API done, UI remaining |
 | F8: WebSocket Updates | LOW | 2-3 hrs | F4, F5 | ⚠️ Partial (base events done) |
 
-**Completed Effort**: ~38-44 hours  
+**Completed Effort**: ~38-44 hours
 **Remaining Effort**: ~6-9 hours (F7 UI, F8 new events)
 
 ---

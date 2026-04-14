@@ -78,7 +78,7 @@ class LabQueue(models.Model):
     check_in_time = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="WAITING")
     priority = models.CharField(max_length=20, blank=True, default="")
-    
+
     # Room assignment (the key FK)
     assigned_room = models.ForeignKey(
         "scheduling.Resource",
@@ -89,7 +89,7 @@ class LabQueue(models.Model):
         limit_choices_to={"resource_type": "PLACE"},
         help_text="Lab station/room assigned to this patient.",
     )
-    
+
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

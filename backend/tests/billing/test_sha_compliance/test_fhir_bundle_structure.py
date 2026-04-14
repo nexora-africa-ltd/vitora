@@ -43,8 +43,7 @@ class TestFHIRBundleRootStructure:
         bundle = service.package_claim(sha_claim_with_items)
 
         assert bundle.get("type") == "message", (
-            "SHA requires bundle type to be 'message', not 'batch'. "
-            "See docs/sha-guides/claims.md"
+            "SHA requires bundle type to be 'message', not 'batch'. See docs/sha-guides/claims.md"
         )
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
@@ -98,9 +97,9 @@ class TestFHIRBundleRootStructure:
 
         # Check profile matches SHA pattern
         profile = profiles[0]
-        assert (
-            "StructureDefinition/bundle" in profile
-        ), "Profile must reference bundle StructureDefinition"
+        assert "StructureDefinition/bundle" in profile, (
+            "Profile must reference bundle StructureDefinition"
+        )
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_bundle_has_valid_timestamp(self, sha_claim_with_items):
@@ -136,9 +135,9 @@ class TestFHIRBundleRootStructure:
 
         assert "entry" in bundle, "Bundle must have 'entry' array"
         assert isinstance(bundle["entry"], list), "entry must be a list"
-        assert (
-            len(bundle["entry"]) >= 4
-        ), "Bundle must have at least 4 resources: Organization, Coverage, Patient, Claim"
+        assert len(bundle["entry"]) >= 4, (
+            "Bundle must have at least 4 resources: Organization, Coverage, Patient, Claim"
+        )
 
 
 class TestFHIRBundleRequiredResources:
@@ -400,7 +399,7 @@ class TestFHIROrganizationResource:
                     break
 
         assert found_prov, (
-            "Organization type must include code 'prov'. " "See docs/sha-guides/claims.md"
+            "Organization type must include code 'prov'. See docs/sha-guides/claims.md"
         )
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
@@ -443,14 +442,14 @@ class TestFHIRCoverageResource:
             "Coverage must have schemeCategoryCode extension. "
             "See docs/sha-guides/claims.md - Coverage Resource section"
         )
-        assert (
-            scheme_code_ext.get("valueString") == "CAT-SHA-001"
-        ), "schemeCategoryCode must be 'CAT-SHA-001'"
+        assert scheme_code_ext.get("valueString") == "CAT-SHA-001", (
+            "schemeCategoryCode must be 'CAT-SHA-001'"
+        )
 
         assert scheme_name_ext is not None, "Coverage must have schemeCategoryName extension"
-        assert (
-            scheme_name_ext.get("valueString") == "SOCIAL HEALTH AUTHORITY"
-        ), "schemeCategoryName must be 'SOCIAL HEALTH AUTHORITY'"
+        assert scheme_name_ext.get("valueString") == "SOCIAL HEALTH AUTHORITY", (
+            "schemeCategoryName must be 'SOCIAL HEALTH AUTHORITY'"
+        )
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_coverage_has_beneficiary_reference(self, sha_claim_with_items):
@@ -469,9 +468,9 @@ class TestFHIRCoverageResource:
         assert "beneficiary" in coverage, "Coverage must have 'beneficiary' field"
 
         beneficiary = coverage["beneficiary"]
-        assert (
-            "reference" in beneficiary or "type" in beneficiary
-        ), "Coverage.beneficiary must have reference or type"
+        assert "reference" in beneficiary or "type" in beneficiary, (
+            "Coverage.beneficiary must have reference or type"
+        )
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_coverage_status_is_active(self, sha_claim_with_items):
@@ -507,9 +506,9 @@ class TestFHIRCoverageResource:
 
         # Check identifier contains sha-coverage suffix
         identifiers = coverage.get("identifier", [])
-        assert any(
-            "sha-coverage" in str(ident.get("value", "")) for ident in identifiers
-        ), "Coverage identifier should include '-sha-coverage' suffix"
+        assert any("sha-coverage" in str(ident.get("value", "")) for ident in identifiers), (
+            "Coverage identifier should include '-sha-coverage' suffix"
+        )
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""
@@ -535,9 +534,9 @@ class TestFHIREncounterResource:
         expected_system = "http://terminology.hl7.org/CodeSystem/v3-ActCode"
 
         # Just verify the constant is known
-        assert expected_system.startswith(
-            "http://terminology.hl7.org"
-        ), "Encounter class system must use HL7 terminology"
+        assert expected_system.startswith("http://terminology.hl7.org"), (
+            "Encounter class system must use HL7 terminology"
+        )
 
     def test_outpatient_encounter_code(self):
         """

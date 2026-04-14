@@ -17,11 +17,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.counselling.models import (
-    CounsellingReferral,
-    CounsellingSession,
-    CounsellingType,
-)
+from hmis.apps.counselling.models import CounsellingReferral, CounsellingSession, CounsellingType
 from hmis.apps.counselling.serializers import (
     CounsellingReferralAssignCounsellorSerializer,
     CounsellingReferralCreateSerializer,

@@ -230,7 +230,7 @@ class MetabaseEmbedView(APIView):
 
         token = jwt.encode(payload, secret, algorithm="HS256")
         embed_url = (
-            f"{site_url.rstrip('/')}/embed/{resource_type}/{token}" f"#bordered=false&titled=true"
+            f"{site_url.rstrip('/')}/embed/{resource_type}/{token}#bordered=false&titled=true"
         )
 
         logger.info(

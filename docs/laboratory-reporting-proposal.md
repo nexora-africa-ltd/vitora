@@ -1,9 +1,9 @@
 # Laboratory Reporting: Current State vs Target State (Proposal & Concrete Plan)
 
-> **Created**: 2026-02-14  
-> **Updated**: 2026-02-15  
-> **Owner**: Engineering  
-> **Status**: Phase C Complete  
+> **Created**: 2026-02-14
+> **Updated**: 2026-02-15
+> **Owner**: Engineering
+> **Status**: Phase C Complete
 > **Scope**: Laboratory module (backend + web-app), reporting/analytics, external exchange foundations
 
 ---
@@ -301,7 +301,7 @@ This plan is intentionally incremental to reduce risk.
       display_name = models.CharField(max_length=255, blank=True)  # Cache external display
       is_active = models.BooleanField(default=True)
       created_at = models.DateTimeField(auto_now_add=True)
-      
+
       class Meta:
           unique_together = ['code_system', 'external_code']
           indexes = [models.Index(fields=['code_system', 'external_code'])]

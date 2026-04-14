@@ -51,8 +51,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("DRY RUN — no changes will be made\n"))
 
         self.stdout.write(
-            f"Backfilling to: {demo_org.name} / {hq_facility.name} "
-            f"(mfl={hq_facility.mfl_code})\n"
+            f"Backfilling to: {demo_org.name} / {hq_facility.name} (mfl={hq_facility.mfl_code})\n"
         )
 
         total_updated = 0
@@ -136,7 +135,7 @@ class Command(BaseCommand):
 
             if count_org or count_fac:
                 self.stdout.write(
-                    f"  {app_label}.{model_name}: " f"org={count_org}, facility={count_fac}"
+                    f"  {app_label}.{model_name}: org={count_org}, facility={count_fac}"
                 )
                 total_updated += max(count_org, count_fac)
 
@@ -156,7 +155,7 @@ class Command(BaseCommand):
 
             if count_org or count_fac:
                 self.stdout.write(
-                    f"  patients.Patient: " f"org={count_org}, registered_at_facility={count_fac}"
+                    f"  patients.Patient: org={count_org}, registered_at_facility={count_fac}"
                 )
                 total_updated += max(count_org, count_fac)
         except LookupError:
@@ -178,8 +177,7 @@ class Command(BaseCommand):
 
             if count_org or count_fac:
                 self.stdout.write(
-                    f"  surveillance.IDSRWeeklyReport: "
-                    f"org={count_org}, facility_ref={count_fac}"
+                    f"  surveillance.IDSRWeeklyReport: org={count_org}, facility_ref={count_fac}"
                 )
                 total_updated += max(count_org, count_fac)
         except LookupError:
@@ -201,7 +199,7 @@ class Command(BaseCommand):
 
             if count_org or count_fac:
                 self.stdout.write(
-                    f"  core.StaffProfile: " f"org={count_org}, primary_facility={count_fac}"
+                    f"  core.StaffProfile: org={count_org}, primary_facility={count_fac}"
                 )
                 total_updated += max(count_org, count_fac)
         except LookupError:

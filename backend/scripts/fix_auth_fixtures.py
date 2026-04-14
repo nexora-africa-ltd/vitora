@@ -9,6 +9,7 @@ Strategy:
 2. Check if they already create a StaffProfile
 3. If not, modify the fixture to add StaffProfile via ensure_staff_profile()
 """
+
 import ast
 import os
 import re
@@ -62,8 +63,12 @@ def find_auth_fixtures_needing_profile(filepath: str) -> list[dict]:
 
         # Also check: is this a method named authenticated_client / auth_client etc?
         fixture_names = [
-            "authenticated_client", "auth_client", "admin_client",
-            "clearance_client", "rx_client", "timeline_authenticated_client",
+            "authenticated_client",
+            "auth_client",
+            "admin_client",
+            "clearance_client",
+            "rx_client",
+            "timeline_authenticated_client",
             "admin_client_sf",
         ]
         is_auth_fixture = node.name in fixture_names
@@ -76,13 +81,15 @@ def find_auth_fixtures_needing_profile(filepath: str) -> list[dict]:
         for arg in node.args.args:
             param_names.add(arg.arg)
 
-        issues.append({
-            "name": node.name,
-            "lineno": node.lineno,
-            "end_lineno": node.end_lineno or node.lineno,
-            "params": param_names,
-            "is_method": "self" in param_names,
-        })
+        issues.append(
+            {
+                "name": node.name,
+                "lineno": node.lineno,
+                "end_lineno": node.end_lineno or node.lineno,
+                "params": param_names,
+                "is_method": "self" in param_names,
+            }
+        )
 
     return issues
 
@@ -117,7 +124,7 @@ def process_file(filepath: str, dry_run: bool = False) -> int:
                 break
 
         # Get the function source
-        func_lines = lines[start_line:end_line + 1]
+        func_lines = lines[start_line : end_line + 1]
         func_source = "".join(func_lines)
 
         # Find the force_authenticate call to get the user variable name
@@ -175,7 +182,11 @@ def process_file(filepath: str, dry_run: bool = False) -> int:
                 # Ensure previous line has trailing comma
                 prev_idx = close_line_idx - 1
                 prev_line = lines[prev_idx].rstrip("\n")
-                if prev_line.rstrip() and not prev_line.rstrip().endswith(",") and not prev_line.rstrip().endswith("("):
+                if (
+                    prev_line.rstrip()
+                    and not prev_line.rstrip().endswith(",")
+                    and not prev_line.rstrip().endswith("(")
+                ):
                     lines[prev_idx] = prev_line.rstrip() + ",\n"
 
                 for nl in reversed(new_param_lines):
@@ -216,7 +227,12 @@ def process_file(filepath: str, dry_run: bool = False) -> int:
                 stripped = line.strip()
                 if stripped.startswith("import ") or stripped.startswith("from "):
                     insert_idx = i + 1
-                elif stripped and not stripped.startswith("#") and not stripped.startswith("\"\"\"") and insert_idx > 0:
+                elif (
+                    stripped
+                    and not stripped.startswith("#")
+                    and not stripped.startswith('"""')
+                    and insert_idx > 0
+                ):
                     # We've passed the imports section
                     break
 

@@ -180,9 +180,9 @@ class TestEncounterClinicVisitFK:
         """Encounter model should have a clinic_visit FK field."""
         # Check that the reverse accessor exists on the model
         field_names = [f.name for f in Encounter._meta.get_fields()]
-        assert (
-            "clinic_visit" in field_names
-        ), "Encounter model must have a 'clinic_visit' FK to clinics.ClinicVisit"
+        assert "clinic_visit" in field_names, (
+            "Encounter model must have a 'clinic_visit' FK to clinics.ClinicVisit"
+        )
 
     def test_encounter_clinic_visit_field_is_optional(self, integration_patient, sample_facility):
         """clinic_visit accessor should return None/raise for encounters not linked to a visit."""

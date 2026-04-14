@@ -1,9 +1,9 @@
 # Laboratory Information System Evolution for Vitora HMIS
 
-> **Created**: 2026-02-14  
-> **Updated**: 2026-02-15  
-> **Owner**: Engineering  
-> **Status**: In Progress (Phase L0, L1, L2, L3 & L4 Complete)  
+> **Created**: 2026-02-14
+> **Updated**: 2026-02-15
+> **Owner**: Engineering
+> **Status**: In Progress (Phase L0, L1, L2, L3 & L4 Complete)
 > **Scope**: Laboratory module architecture evolution
 
 ---
@@ -127,7 +127,7 @@ DiagnosticReport (final output)
 
 ### Phase L0 — Extract Specimen Model ✅ COMPLETE
 
-**Implemented**: 2026-02-15  
+**Implemented**: 2026-02-15
 **Goal**: Create explicit `Specimen` entity; migrate specimen fields from `LabQueue`.
 
 **Why this matters**:
@@ -141,25 +141,25 @@ DiagnosticReport (final output)
 ```python
 class Specimen(models.Model):
     """Physical laboratory sample."""
-    
+
     # Identity
     barcode = models.CharField(max_length=50, unique=True, db_index=True)
     specimen_type = models.CharField(max_length=30, choices=SPECIMEN_TYPES)
     container_type = models.CharField(max_length=50, blank=True)
-    
+
     # Linkage
     lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name='specimens')
     order_items = models.ManyToManyField(LabOrderItem, related_name='specimens')
-    
+
     # Collection
     collected_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='+')
     collected_at = models.DateTimeField(null=True, blank=True)
     collection_site = models.CharField(max_length=100, blank=True)  # e.g., "Left arm"
-    
+
     # Lab receipt
     received_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='+')
     received_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Status
     status = models.CharField(
         max_length=20,
@@ -175,15 +175,15 @@ class Specimen(models.Model):
         default='PENDING'
     )
     rejection_reason = models.TextField(blank=True)
-    
+
     # Storage (future: blood bank, pathology)
     storage_location = models.CharField(max_length=100, blank=True)
     storage_temperature = models.CharField(max_length=20, blank=True)
-    
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['barcode']),
@@ -207,11 +207,11 @@ class LabQueue(models.Model):
     # Keep: processing_started_at, processing_completed_at, released_at
     # Keep: technician_notes
     # Deprecate: sample_id, sample_type, collected_at, collected_by (move to Specimen)
-    
+
     specimen = models.OneToOneField(Specimen, null=True, on_delete=models.SET_NULL)
 ```
 
-**Effort**: 8-16 hours → **Actual**: ~6 hours  
+**Effort**: 8-16 hours → **Actual**: ~6 hours
 **Risk**: Medium (data migration required) → **Outcome**: Successful
 
 **Implementation Notes**:
@@ -234,7 +234,7 @@ class LabQueue(models.Model):
 
 ### Phase L1 — Link Results to Specimens ✅ COMPLETE
 
-**Implemented**: 2026-02-15  
+**Implemented**: 2026-02-15
 **Goal**: Results attach to specimens, not just order items.
 
 **Deliverables**:
@@ -243,8 +243,8 @@ class LabQueue(models.Model):
    class LabResult(models.Model):
        order_item = models.OneToOneField(LabOrderItem, ...)  # Keep for now
        specimen = models.ForeignKey(
-           Specimen, 
-           on_delete=models.PROTECT, 
+           Specimen,
+           on_delete=models.PROTECT,
            null=True,  # Nullable during migration
            related_name='results'
        )
@@ -253,7 +253,7 @@ class LabQueue(models.Model):
 2. Update result creation workflow to require specimen
 3. Validation: `result.specimen` must be linked to `result.order_item.lab_order`
 
-**Effort**: 4-8 hours → **Actual**: Included in Phase L0  
+**Effort**: 4-8 hours → **Actual**: Included in Phase L0
 **Risk**: Low (additive) → **Outcome**: Successful
 
 **Implementation Notes**:
@@ -266,14 +266,14 @@ class LabQueue(models.Model):
 
 ### Phase L2 — Two-Stage Validation ✅ COMPLETE
 
-**Implemented**: 2026-02-15  
+**Implemented**: 2026-02-15
 **Goal**: Support technical validation (lab tech) + clinical sign-off (pathologist).
 
 **Deliverables**:
 ```python
 class ResultValidation(models.Model):
     """Validation/approval record for a lab result."""
-    
+
     result = models.ForeignKey(LabResult, on_delete=models.CASCADE, related_name='validations')
     validation_type = models.CharField(
         max_length=20,
@@ -300,7 +300,7 @@ class ResultValidation(models.Model):
 - Clinical sign-off by pathologist (optional based on test complexity)
 - Result `verification_status` derived from validations
 
-**Effort**: 4-8 hours → **Actual**: ~4 hours  
+**Effort**: 4-8 hours → **Actual**: ~4 hours
 **Risk**: Low → **Outcome**: Successful
 
 **Implementation Notes**:
@@ -319,14 +319,14 @@ class ResultValidation(models.Model):
 
 ### Phase L3 — Analyzer Integration Support ✅ COMPLETE
 
-**Implemented**: 2026-02-15  
+**Implemented**: 2026-02-15
 **Goal**: Track raw instrument data and machine runs.
 
 **Deliverables**:
 ```python
 class Instrument(models.Model):
     """Laboratory analyzer/instrument registry."""
-    
+
     code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=200)
     manufacturer = models.CharField(max_length=100, blank=True)
@@ -334,7 +334,7 @@ class Instrument(models.Model):
     serial_number = models.CharField(max_length=100, blank=True)
     department = models.CharField(max_length=50, blank=True)
     is_active = models.BooleanField(default=True)
-    
+
     # Integration config
     interface_type = models.CharField(
         max_length=20,
@@ -351,16 +351,16 @@ class Instrument(models.Model):
 
 class AnalyzerRun(models.Model):
     """Raw data from analyzer for a specimen."""
-    
+
     specimen = models.ForeignKey(Specimen, on_delete=models.CASCADE, related_name='analyzer_runs')
     instrument = models.ForeignKey(Instrument, on_delete=models.PROTECT)
     operator = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     run_datetime = models.DateTimeField()
-    
+
     # Raw data
     raw_message = models.TextField(help_text="Raw HL7/ASTM message")
     raw_payload = models.JSONField(default=dict, help_text="Parsed message data")
-    
+
     # Status
     status = models.CharField(
         max_length=20,
@@ -372,7 +372,7 @@ class AnalyzerRun(models.Model):
         ]
     )
     error_message = models.TextField(blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
 ```
 
@@ -381,7 +381,7 @@ class AnalyzerRun(models.Model):
 - Error recovery: Re-parse raw messages if needed
 - Analytics: Machine performance, QC
 
-**Effort**: 8-12 hours → **Actual**: ~4 hours  
+**Effort**: 8-12 hours → **Actual**: ~4 hours
 **Risk**: Low (additive, only needed when analyzers are connected) → **Outcome**: Successful
 
 **Implementation Notes**:
@@ -400,19 +400,19 @@ class AnalyzerRun(models.Model):
 
 ### Phase L4 — Diagnostic Report Output ✅ COMPLETE
 
-**Implemented**: 2026-02-15  
+**Implemented**: 2026-02-15
 **Goal**: Generate formal patient-facing lab reports.
 
 **Deliverables**:
 ```python
 class DiagnosticReport(models.Model):
     """Final patient-facing lab report."""
-    
+
     lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name='reports')
-    
+
     # Report identity
     report_number = models.CharField(max_length=30, unique=True)
-    
+
     # Status
     status = models.CharField(
         max_length=20,
@@ -424,26 +424,26 @@ class DiagnosticReport(models.Model):
             ('CANCELLED', 'Cancelled'),
         ]
     )
-    
+
     # Sign-off
     issued_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='+')
     issued_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Content (optional: can generate from results)
     conclusion = models.TextField(blank=True)
     clinical_info = models.TextField(blank=True)
-    
+
     # Output
     pdf_file = models.FileField(upload_to='lab_reports/', null=True, blank=True)
-    
+
     # FHIR
     fhir_resource_id = models.CharField(max_length=100, blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 ```
 
-**Effort**: 8-12 hours → **Actual**: ~4 hours  
+**Effort**: 8-12 hours → **Actual**: ~4 hours
 **Risk**: Low → **Outcome**: Successful
 
 **Implementation Notes**:

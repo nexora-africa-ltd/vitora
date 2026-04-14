@@ -10,13 +10,13 @@ import { OTOrderForm } from '@/components/allied-health/occupational-therapy';
 
 export default function NewOTOrderPage() {
   const searchParams = useSearchParams();
-  
+
   // Support pre-selecting patient or encounter from query params
-  const patientId = searchParams.get('patient_id') 
-    ? Number(searchParams.get('patient_id')) 
+  const patientId = searchParams.get('patient_id')
+    ? Number(searchParams.get('patient_id'))
     : undefined;
-  const encounterId = searchParams.get('encounter_id') 
-    ? Number(searchParams.get('encounter_id')) 
+  const encounterId = searchParams.get('encounter_id')
+    ? Number(searchParams.get('encounter_id'))
     : undefined;
 
   return (
@@ -25,10 +25,10 @@ export default function NewOTOrderPage() {
         title="New OT Order"
         helpContent="Create an occupational therapy referral order. Assess ADL/IADL baselines, set short/long term goals, and specify equipment needs."
       />
-      
-      <OTOrderForm 
-        patientId={patientId} 
-        encounterId={encounterId} 
+
+      <OTOrderForm
+        patientId={patientId}
+        encounterId={encounterId}
       />
     </div>
   );

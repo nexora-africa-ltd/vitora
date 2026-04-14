@@ -2,7 +2,7 @@
 
 This directory contains the **DHIS2 infrastructure setup** used for **local development, testing, and integration validation** with the Vitora backend.
 
-> ⚠️ **Important:** DHIS2 is treated as **external infrastructure**, not as part of the application backend.  
+> ⚠️ **Important:** DHIS2 is treated as **external infrastructure**, not as part of the application backend.
 > In production environments, DHIS2 may be hosted on a **separate server** (e.g. County / Ministry of Health–managed), and this directory may not be used at all.
 
 ---

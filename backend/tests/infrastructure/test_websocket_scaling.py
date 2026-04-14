@@ -15,10 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest  # type: ignore
 
 from hmis.apps.core.websockets.middleware import FacilityWebSocketMiddleware
-from hmis.apps.core.websockets.throttle import (
-    ThrottledBroadcaster,
-    reset_throttled_broadcaster,
-)
+from hmis.apps.core.websockets.throttle import ThrottledBroadcaster, reset_throttled_broadcaster
 
 # =============================================================================
 # ThrottledBroadcaster Tests

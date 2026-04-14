@@ -229,9 +229,9 @@ class TestPFMSDualCoverageBundle:
             if entry.get("resource", {}).get("resourceType") == "Coverage"
         ]
 
-        assert (
-            len(coverage_resources) == 2
-        ), "PFMS-eligible claims must have both SHA and PFMS Coverage resources"
+        assert len(coverage_resources) == 2, (
+            "PFMS-eligible claims must have both SHA and PFMS Coverage resources"
+        )
 
     def test_pfms_coverage_has_correct_scheme_code(self, pfms_claim_with_items):
         """
@@ -273,9 +273,9 @@ class TestPFMSDualCoverageBundle:
         assert claim_resource is not None, "Bundle must contain Claim resource"
 
         insurance = claim_resource.get("insurance", [])
-        assert (
-            len(insurance) == 2
-        ), "PFMS-eligible claims must have 2 insurance entries (SHA + PFMS)"
+        assert len(insurance) == 2, (
+            "PFMS-eligible claims must have 2 insurance entries (SHA + PFMS)"
+        )
 
     def test_claim_items_have_coverage_extension(self, pfms_claim_with_items):
         """
@@ -303,9 +303,9 @@ class TestPFMSDualCoverageBundle:
         for item in items:
             extensions = item.get("extension", [])
             coverage_ext = [e for e in extensions if "Coverage" in e.get("url", "")]
-            assert (
-                len(coverage_ext) > 0
-            ), f"Item {item.get('sequence')} must have coverage extension"
+            assert len(coverage_ext) > 0, (
+                f"Item {item.get('sequence')} must have coverage extension"
+            )
 
     def test_non_pfms_member_has_single_coverage(self, sha_claim_with_items):
         """Non-PFMS members should have only SHA coverage."""
@@ -319,9 +319,9 @@ class TestPFMSDualCoverageBundle:
             if entry.get("resource", {}).get("resourceType") == "Coverage"
         ]
 
-        assert (
-            len(coverage_resources) == 1
-        ), "Non-PFMS members should have only one Coverage resource"
+        assert len(coverage_resources) == 1, (
+            "Non-PFMS members should have only one Coverage resource"
+        )
 
 
 @pytest.mark.django_db

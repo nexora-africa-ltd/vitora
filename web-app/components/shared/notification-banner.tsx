@@ -176,9 +176,9 @@ export function NotificationBanner({
             </label>
           )}
           {action && (
-            <Button 
-              size="sm" 
-              variant="outline" 
+            <Button
+              size="sm"
+              variant="outline"
               onClick={action.onClick}
               className="h-8 text-xs sm:text-sm"
             >

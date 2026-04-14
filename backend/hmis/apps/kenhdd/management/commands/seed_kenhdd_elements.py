@@ -103,7 +103,6 @@ class Command(BaseCommand):
         prefix = "DRY RUN: " if dry_run else ""
         self.stdout.write(
             self.style.SUCCESS(
-                f"{prefix}KENHDD elements seeded: "
-                f"{created_count} created, {skipped_count} skipped"
+                f"{prefix}KENHDD elements seeded: {created_count} created, {skipped_count} skipped"
             )
         )

@@ -199,8 +199,7 @@ def get_data_element_uid(
         return json_uid
 
     logger.warning(
-        f"No DHIS2 mapping found for {disease_name}/{indicator_type} "
-        f"in environment '{environment}'"
+        f"No DHIS2 mapping found for {disease_name}/{indicator_type} in environment '{environment}'"
     )
     return None
 
@@ -332,10 +331,7 @@ def sync_json_to_database(environment: str = "local", overwrite: bool = False) -
     Returns:
         Dict with created/updated/skipped counts
     """
-    from hmis.apps.surveillance.models import (
-        DHIS2DataElementMapping,
-        NotifiableDisease,
-    )
+    from hmis.apps.surveillance.models import DHIS2DataElementMapping, NotifiableDisease
 
     json_data = _load_json_mappings()
     stats = {"created": 0, "updated": 0, "skipped": 0, "errors": []}

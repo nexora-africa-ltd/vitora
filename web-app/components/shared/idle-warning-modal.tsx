@@ -30,7 +30,7 @@ interface IdleWarningModalProps {
 /**
  * Modal displayed when user has been idle for the warning threshold.
  * Shows countdown timer and allows user to continue session or logout.
- * 
+ *
  * DHA Compliance: Frontend Auto-Logoff (P1)
  * - 15 minute warning before 30 minute auto-logout
  * - Clear countdown display
@@ -68,7 +68,7 @@ export function IdleWarningModal({
             Session About to Expire
           </AlertDialogTitle>
           <AlertDialogDescription className="text-center">
-            You&apos;ve been inactive for a while. For your security, you&apos;ll be 
+            You&apos;ve been inactive for a while. For your security, you&apos;ll be
             automatically logged out soon.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -97,7 +97,7 @@ export function IdleWarningModal({
         </div>
 
         <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
-          <Button 
+          <Button
             onClick={onContinue}
             className="w-full"
             size="lg"
@@ -106,8 +106,8 @@ export function IdleWarningModal({
             Continue Session
           </Button>
           {onLogout && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={onLogout}
               className="w-full"
             >

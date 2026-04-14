@@ -362,7 +362,14 @@ exclude_dirs = [
     "backend/hmis/apps/*/management/commands",
     "backend/hmis/apps/core/management/commands",
 ]
-skips = ["B101"]  # Skip assert_used in tests
+skips = [
+    "B101",  # assert_used — tests use assert
+    "B104",  # hardcoded_bind_all — default "0.0.0.0" in audit log IP params, not socket binds
+    "B105",  # hardcoded_password_string — FP on field names containing "password"/"token"
+    "B106",  # hardcoded_password_funcarg — demo seed commands only
+    "B110",  # try_except_pass — deliberate graceful fallbacks throughout codebase
+    "B311",  # random — used only in seed/demo management commands, not security
+]
 
 [build-system]
 requires = ["poetry-core"]

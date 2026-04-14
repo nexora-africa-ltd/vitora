@@ -345,7 +345,7 @@ def create_clinic_visit_on_approval(sender, instance, **kwargs):
     if instance.status == 'APPROVED' and not instance.clinic_visit:
         # Find or create PHYSIO clinic
         clinic = Clinic.objects.get(clinic_type='PHYSIO')
-        
+
         # Create clinic visit for queue routing
         visit = ClinicVisit.objects.create(
             patient=instance.patient,
@@ -382,7 +382,7 @@ def create_invoice_item_on_completion(sender, instance, **kwargs):
             patient=instance.order.patient,
             status='DRAFT'
         )[0]
-        
+
         # Create invoice item
         item = InvoiceItem.objects.create(
             invoice=invoice,
@@ -535,7 +535,7 @@ SENSITIVE_REASONS = ["HIV", "SUICIDAL_IDEATION", "GBV", "TRAUMA"]
 ```
 lib/types/allied-health.ts                    # Shared Allied Health types
 lib/types/physiotherapy.ts                    # Physiotherapy-specific types
-lib/types/nutrition.ts                        # Nutrition-specific types  
+lib/types/nutrition.ts                        # Nutrition-specific types
 lib/types/occupational-therapy.ts             # OT-specific types
 lib/types/social-work.ts                      # Social Work-specific types
 lib/types/counselling.ts                      # Counselling-specific types
@@ -958,30 +958,30 @@ describe('useAlliedHealthDashboard', () => {
 describe('PhysioOrderForm', () => {
   it('should require patient and treatment type', async () => {
     render(<PhysioOrderForm onSubmit={mockSubmit} />);
-    
+
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
-    
+
     expect(screen.getByText(/patient is required/i)).toBeInTheDocument();
     expect(screen.getByText(/treatment type is required/i)).toBeInTheDocument();
   });
 
   it('should validate sessions count within range', async () => {
     render(<PhysioOrderForm onSubmit={mockSubmit} />);
-    
+
     await userEvent.type(screen.getByLabelText(/total sessions/i), '100');
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
-    
+
     expect(screen.getByText(/sessions must be between 1 and 52/i)).toBeInTheDocument();
   });
 
   it('should submit with valid data', async () => {
     render(<PhysioOrderForm onSubmit={mockSubmit} />);
-    
+
     await selectPatient('John Doe');
     await selectTreatmentType('Post-Surgery Rehabilitation');
     await userEvent.type(screen.getByLabelText(/clinical indication/i), 'Knee replacement rehab');
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
-    
+
     expect(mockSubmit).toHaveBeenCalledWith(expect.objectContaining({
       patient_id: 1,
       treatment_type_id: 1,
@@ -1000,17 +1000,17 @@ describe('Physiotherapy Order Flow', () => {
     // Setup: Mock encounter context
     const encounterId = 100;
     mockEncounter({ id: encounterId, patient_id: 1 });
-    
+
     render(<PhysioOrderForm encounterId={encounterId} />);
-    
+
     await selectTreatmentType('Post-Surgery Rehabilitation');
     await userEvent.type(screen.getByLabelText(/clinical indication/i), 'ACL repair');
     await userEvent.click(screen.getByRole('button', { name: /create order/i }));
-    
+
     await waitFor(() => {
       expect(screen.getByText(/order created successfully/i)).toBeInTheDocument();
     });
-    
+
     expect(mockPhysiotherapyApi.createOrder).toHaveBeenCalledWith({
       encounter_id: encounterId,
       patient_id: 1,
@@ -1022,36 +1022,36 @@ describe('Physiotherapy Order Flow', () => {
   it('should approve order and create clinic visit', async () => {
     const order = mockPhysioOrder({ status: 'PENDING' });
     mockPhysiotherapyApi.approveOrder.mockResolvedValueOnce({ ...order, status: 'APPROVED' });
-    
+
     render(<PhysioOrderDetail orderId={order.id} />);
-    
+
     await userEvent.click(screen.getByRole('button', { name: /approve/i }));
-    
+
     await waitFor(() => {
       expect(screen.getByText(/approved/i)).toBeInTheDocument();
     });
-    
+
     // Verify clinic visit was created via signal
     expect(mockPhysiotherapyApi.approveOrder).toHaveBeenCalledWith(order.id);
   });
 
   it('should complete session and create invoice item', async () => {
     const session = mockPhysioSession({ status: 'IN_PROGRESS' });
-    mockPhysiotherapyApi.completeSession.mockResolvedValueOnce({ 
-      ...session, 
+    mockPhysiotherapyApi.completeSession.mockResolvedValueOnce({
+      ...session,
       status: 'COMPLETED',
       invoice_item_id: 123,
     });
-    
+
     render(<PhysioSessionDetail sessionId={session.id} />);
-    
+
     await userEvent.type(screen.getByLabelText(/progress notes/i), 'Good progress');
     await userEvent.click(screen.getByRole('button', { name: /complete session/i }));
-    
+
     await waitFor(() => {
       expect(screen.getByText(/session completed/i)).toBeInTheDocument();
     });
-    
+
     // Verify invoice item was linked
     expect(screen.getByText(/invoice item created/i)).toBeInTheDocument();
   });
@@ -1078,42 +1078,42 @@ test.describe('Allied Health Module', () => {
     await page.goto('/encounters/100');
     await page.click('button:has-text("Allied Health Referral")');
     await page.click('text=Physiotherapy');
-    
+
     // 2. Fill order form
     await page.selectOption('[name="treatment_type_id"]', { label: 'Post-Surgery Rehabilitation' });
     await page.fill('[name="clinical_indication"]', 'Knee replacement rehabilitation');
     await page.fill('[name="total_sessions"]', '12');
     await page.click('button:has-text("Create Order")');
-    
+
     await expect(page.locator('.toast-success')).toContainText('Order created');
-    
+
     // 3. Approve order (as supervisor)
     await page.goto('/allied-health/physiotherapy');
     await page.click('tr:has-text("PHYSIO-")');
     await page.click('button:has-text("Approve")');
-    
+
     await expect(page.locator('[data-status]')).toContainText('Approved');
-    
+
     // 4. Assign therapist
     await page.click('button:has-text("Assign Therapist")');
     await page.selectOption('[name="therapist_id"]', { label: 'Jane Therapist' });
     await page.click('button:has-text("Assign")');
-    
+
     await expect(page.locator('.assigned-therapist')).toContainText('Jane Therapist');
-    
+
     // 5. Generate sessions
     await page.click('button:has-text("Generate Sessions")');
     await expect(page.locator('.sessions-list tr')).toHaveCount(12);
-    
+
     // 6. Complete first session
     await page.click('.sessions-list tr:first-child');
     await page.click('button:has-text("Start Session")');
     await page.fill('[name="progress_notes"]', 'Initial assessment completed. Good ROM.');
     await page.selectOption('[name="outcome"]', 'IMPROVED');
     await page.click('button:has-text("Complete Session")');
-    
+
     await expect(page.locator('[data-session-status]')).toContainText('Completed');
-    
+
     // 7. Verify invoice item created
     await page.goto('/billing/invoices');
     await expect(page.locator('tr:has-text("Physiotherapy")')).toBeVisible();
@@ -1124,18 +1124,18 @@ test.describe('Allied Health Module', () => {
     await page.goto('/encounters/200');
     await page.click('button:has-text("Allied Health Referral")');
     await page.click('text=Social Work');
-    
+
     await page.selectOption('[name="urgency"]', 'CRITICAL');
     await page.fill('[name="referral_reason"]', 'GBV support needed');
     await page.check('[name="is_sensitive"]');
     await page.click('button:has-text("Create Referral")');
-    
+
     // 2. Verify sensitive case banner
     await page.goto('/allied-health/social-work');
     await page.click('tr:has-text("SW-")');
-    
+
     await expect(page.locator('.sensitive-case-banner')).toContainText('Restricted Access');
-    
+
     // 3. Verify audit log entry
     await page.goto('/admin/auditlogs');
     await expect(page.locator('tr:has-text("view_sensitive_sw_case")')).toBeVisible();

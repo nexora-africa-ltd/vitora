@@ -440,8 +440,7 @@ class FHIRClient:
 
         if result.status_code == 201:
             logger.info(
-                f"Created {resource_type}/{result.resource_id} "
-                f"in {result.response_time_ms:.1f}ms"
+                f"Created {resource_type}/{result.resource_id} in {result.response_time_ms:.1f}ms"
             )
         elif result.status_code == 200:
             # Conditional create - resource already exists
@@ -535,9 +534,7 @@ class FHIRClient:
             raise FHIRConflictError(f"Version conflict: {result.get_error_message()}", result)
 
         if result.success:
-            logger.info(
-                f"Updated {resource_type}/{resource_id} " f"in {result.response_time_ms:.1f}ms"
-            )
+            logger.info(f"Updated {resource_type}/{resource_id} in {result.response_time_ms:.1f}ms")
 
         return result
 
@@ -600,9 +597,7 @@ class FHIRClient:
         result = self._make_request("DELETE", url)
 
         if result.success:
-            logger.info(
-                f"Deleted {resource_type}/{resource_id} " f"in {result.response_time_ms:.1f}ms"
-            )
+            logger.info(f"Deleted {resource_type}/{resource_id} in {result.response_time_ms:.1f}ms")
 
         return result
 
@@ -694,7 +689,7 @@ class FHIRClient:
         """
         if bundle.get("type") != bundle_type:
             logger.warning(
-                f"Bundle type mismatch: expected {bundle_type}, " f"got {bundle.get('type')}"
+                f"Bundle type mismatch: expected {bundle_type}, got {bundle.get('type')}"
             )
 
         url = self.base_url

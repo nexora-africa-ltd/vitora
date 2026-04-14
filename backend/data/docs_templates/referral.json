@@ -22,7 +22,7 @@
     },
     "dates": {
       "issued_on": "YYYY-MM-DD",
-      "appointment_date": "YYYY-MM-DD" 
+      "appointment_date": "YYYY-MM-DD"
     },
     "reason_for_referral": "string",
     "clinical_summary": {

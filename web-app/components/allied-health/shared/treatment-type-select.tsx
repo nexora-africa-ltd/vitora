@@ -1,6 +1,6 @@
 /**
  * Treatment Type Select
- * 
+ *
  * A reusable searchable dropdown for selecting treatment types
  * across Allied Health modules (Physiotherapy, OT).
  */
@@ -114,7 +114,7 @@ export interface TreatmentTypeSelectProps {
 
 /**
  * TreatmentTypeSelect - A searchable dropdown for treatment types
- * 
+ *
  * Features:
  * - Search by name, code, or category
  * - Category badges with color coding
@@ -136,14 +136,14 @@ export function TreatmentTypeSelect({
   const [searchQuery, setSearchQuery] = React.useState('');
 
   // Get category labels based on module
-  const categoryLabels = module === 'physiotherapy' 
-    ? PHYSIO_CATEGORY_LABELS 
+  const categoryLabels = module === 'physiotherapy'
+    ? PHYSIO_CATEGORY_LABELS
     : OT_CATEGORY_LABELS;
 
   // Filter treatment types based on search
   const filteredTypes = React.useMemo(() => {
     if (!searchQuery) return treatmentTypes;
-    
+
     const query = searchQuery.toLowerCase();
     return treatmentTypes.filter((type) => {
       const nameMatch = type.name.toLowerCase().includes(query);
@@ -183,8 +183,8 @@ export function TreatmentTypeSelect({
           ) : selectedType ? (
             <div className="flex items-center gap-2 truncate">
               <span className="truncate">{selectedType.name}</span>
-              <Badge 
-                variant="secondary" 
+              <Badge
+                variant="secondary"
                 className={cn('ml-1 shrink-0 text-xs', getCategoryConfig(selectedType.category).className)}
               >
                 {getCategoryConfig(selectedType.category).label}
@@ -235,8 +235,8 @@ export function TreatmentTypeSelect({
                         <span className="font-medium">{type.name}</span>
                         <span className="text-xs text-muted-foreground">({type.code})</span>
                       </div>
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className={cn('text-xs shrink-0', getCategoryConfig(type.category).className)}
                       >
                         {getCategoryConfig(type.category).label}

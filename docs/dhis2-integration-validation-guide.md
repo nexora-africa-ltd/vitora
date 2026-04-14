@@ -656,5 +656,5 @@ GET /api/system/tasks/DATAVALUE_IMPORT/{task_id}
 
 ---
 
-**Maintainer**: Vitora Engineering Team  
+**Maintainer**: Vitora Engineering Team
 **Last Updated**: February 23, 2026

@@ -1,6 +1,6 @@
 # Inpatient Module — Comprehensive Documentation
 
-> **Vitora HMIS** · Inpatient Ward Management, Bed Allocation, Nursing, and Discharge  
+> **Vitora HMIS** · Inpatient Ward Management, Bed Allocation, Nursing, and Discharge
 > **Last Updated**: March 22, 2026
 
 ---
@@ -194,7 +194,7 @@ Individual bed positions within a ward.
 AVAILABLE ──mark_occupied()──▶ OCCUPIED ──mark_cleaning()──▶ CLEANING_IN_PROGRESS
     ▲                                                                │
     └──────────────────── mark_available() ◀─────────────────────────┘
-                                                   
+
 AVAILABLE ──mark_maintenance()──▶ MAINTENANCE ──mark_available()──▶ AVAILABLE
 AVAILABLE ──mark_reserved()──▶ RESERVED ──mark_occupied()──▶ OCCUPIED
 ```
@@ -598,7 +598,7 @@ Each ward round captures the standard **SOAP** format:
 Each `NursingCarePlanEntry` follows the Kenyan nursing care plan format:
 
 ```
-Assessment → Nursing Diagnosis → Goal & Outcome Criteria → 
+Assessment → Nursing Diagnosis → Goal & Outcome Criteria →
 Plan of Action → Scientific Rationale → Implementation → Evaluation
 ```
 
@@ -647,7 +647,7 @@ Frontend visualization: `<TPRChart>` component renders a time-series graph.
 
 Daily intake/output monitoring with 8 entry types:
 
-**Intake:** Intravenous, Alimentary, Other  
+**Intake:** Intravenous, Alimentary, Other
 **Output:** Urine, Vomit, Stool, Nasogastric, Other
 
 Computed properties provide running totals and net balance:

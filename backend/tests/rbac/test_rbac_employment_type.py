@@ -43,9 +43,9 @@ class TestStaffProfileEmploymentType:
         """StaffProfile should have employment_type field."""
         from hmis.apps.core.models import StaffProfile
 
-        assert hasattr(
-            StaffProfile, "employment_type"
-        ), "StaffProfile should have employment_type field"
+        assert hasattr(StaffProfile, "employment_type"), (
+            "StaffProfile should have employment_type field"
+        )
 
     def test_employment_type_choices(self):
         """Should have PERMANENT, CONTRACT, and LOCUM employment types."""

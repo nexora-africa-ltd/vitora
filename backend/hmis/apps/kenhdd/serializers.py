@@ -8,11 +8,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import (
-    KENHDDDataElement,
-    KENHDDFailedRecord,
-    KENHDDValidationRun,
-)
+from .models import KENHDDDataElement, KENHDDFailedRecord, KENHDDValidationRun
 
 
 class KENHDDDataElementSerializer(serializers.ModelSerializer):

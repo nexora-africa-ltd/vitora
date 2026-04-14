@@ -22,8 +22,6 @@ import io
 import logging
 from datetime import UTC
 
-logger = logging.getLogger(__name__)
-
 import qrcode
 from django.conf import settings as django_settings
 from django.db import transaction
@@ -52,6 +50,8 @@ from hmis.apps.core.mfa.serializers import (
 )
 from hmis.apps.core.mfa.utils import get_client_ip, get_mfa_status, is_mfa_required
 from hmis.apps.core.models import AuditLog
+
+logger = logging.getLogger(__name__)
 
 
 class MFAStatusView(APIView):
@@ -589,7 +589,7 @@ class WebAuthnRegisterCompleteView(APIView):
                 expected_rp_id=_get_webauthn_rp_id(),
                 expected_origin=_get_webauthn_origin(),
             )
-        except Exception as e:
+        except Exception:
             logger.exception("WebAuthn registration verification failed")
             return Response(
                 {"error": "Registration verification failed. Please try again."},

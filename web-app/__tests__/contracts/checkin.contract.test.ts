@@ -84,7 +84,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -98,7 +98,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -130,7 +130,7 @@ describe('Check-in Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  CheckInResponseSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -147,7 +147,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(CheckInResponseSchema);
-      
+
       const criticalFields = [
         'checkin_id',
         'patient_name',
@@ -167,7 +167,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should include queue and routing fields', () => {
       const zodFields = getZodSchemaFields(CheckInResponseSchema);
-      
+
       const routingFields = [
         'destination_clinic_id',
         'destination_clinic_name',
@@ -192,7 +192,7 @@ describe('Check-in Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  TodayCheckinSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -209,7 +209,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(TodayCheckinSchema);
-      
+
       const criticalFields = [
         'id',
         'patient_name',
@@ -228,7 +228,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should include staff and clinic fields', () => {
       const zodFields = getZodSchemaFields(TodayCheckinSchema);
-      
+
       const staffFields = [
         'destination_clinic_id',
         'checked_in_by_name',
@@ -249,7 +249,7 @@ describe('Check-in Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  PatientLookupResponseSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -266,7 +266,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should have critical patient fields', () => {
       const zodFields = getZodSchemaFields(PatientLookupResponseSchema);
-      
+
       const criticalFields = [
         'id',
         'mrn',
@@ -284,7 +284,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should include clinical context fields', () => {
       const zodFields = getZodSchemaFields(PatientLookupResponseSchema);
-      
+
       const clinicalFields = [
         'clinical_snapshot',
         'suggested_visit_type',
@@ -298,7 +298,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should include identification and location fields', () => {
       const zodFields = getZodSchemaFields(PatientLookupResponseSchema);
-      
+
       const identityFields = [
         'phone_number',
         'identification_type',
@@ -323,7 +323,7 @@ describe('Check-in Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ClinicalSnapshotSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -336,7 +336,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should have all clinical summary fields', () => {
       const zodFields = getZodSchemaFields(ClinicalSnapshotSchema);
-      
+
       const summaryFields = [
         'allergies',
         'active_conditions',
@@ -355,7 +355,7 @@ describe('Check-in Contract Tests', () => {
   describe('PendingResultSchema', () => {
     it('should have required lab result fields', () => {
       const zodFields = getZodSchemaFields(PendingResultSchema);
-      
+
       const requiredFields = [
         'test_name',
         'ordered_date',
@@ -380,7 +380,7 @@ describe('Check-in Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`VisitTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -390,7 +390,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should include all visit types', () => {
       const zodValues = getZodEnumValues(VisitTypeSchema);
-      
+
       const allTypes = [
         'NEW',
         'RETURN',
@@ -413,7 +413,7 @@ describe('Check-in Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`VisitReasonSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -423,7 +423,7 @@ describe('Check-in Contract Tests', () => {
 
     it('should include all visit reasons', () => {
       const zodValues = getZodEnumValues(VisitReasonSchema);
-      
+
       const allReasons = [
         'NEW_COMPLAINT',
         'FOLLOW_UP',
@@ -474,7 +474,7 @@ describe('Check-in Contract Tests', () => {
     it('visit_type should use same enum in both CheckInResponse and TodayCheckin', () => {
       const responseFields = getZodSchemaFields(CheckInResponseSchema);
       const todayFields = getZodSchemaFields(TodayCheckinSchema);
-      
+
       expect(responseFields).toContain('visit_type');
       expect(todayFields).toContain('visit_type');
     });
@@ -482,7 +482,7 @@ describe('Check-in Contract Tests', () => {
     it('visit_reason should use same enum in both CheckInResponse and TodayCheckin', () => {
       const responseFields = getZodSchemaFields(CheckInResponseSchema);
       const todayFields = getZodSchemaFields(TodayCheckinSchema);
-      
+
       expect(responseFields).toContain('visit_reason');
       expect(todayFields).toContain('visit_reason');
     });
@@ -490,7 +490,7 @@ describe('Check-in Contract Tests', () => {
     it('patient_mrn field should be consistent across schemas', () => {
       const responseFields = getZodSchemaFields(CheckInResponseSchema);
       const todayFields = getZodSchemaFields(TodayCheckinSchema);
-      
+
       expect(responseFields).toContain('patient_mrn');
       expect(todayFields).toContain('patient_mrn');
     });

@@ -53,9 +53,7 @@ def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
         return {"action": "skipped", "detail": "HIE_AUTO_CR_LOOKUP disabled"}
 
     try:
-        from hmis.apps.billing.services.client_registry import (
-            ClientRegistryService,
-        )
+        from hmis.apps.billing.services.client_registry import ClientRegistryService
 
         cr_service = ClientRegistryService()
 

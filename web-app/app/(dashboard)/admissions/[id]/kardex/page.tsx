@@ -1264,8 +1264,8 @@ export default function KardexPage() {
                   <Button variant="outline" onClick={() => setShiftNoteOpen(false)} className="w-full sm:w-auto">
                     Cancel
                   </Button>
-                  <Button 
-                    onClick={handleAddShiftNote} 
+                  <Button
+                    onClick={handleAddShiftNote}
                     disabled={!shiftNoteContent.trim() || addShiftNote.isPending}
                     className="w-full sm:w-auto"
                   >
@@ -1372,8 +1372,8 @@ export default function KardexPage() {
                   <Button variant="outline" onClick={() => setHandoverNoteOpen(false)} className="w-full sm:w-auto">
                     Cancel
                   </Button>
-                  <Button 
-                    onClick={handleAddHandoverNote} 
+                  <Button
+                    onClick={handleAddHandoverNote}
                     disabled={!handoverPendingTasks.trim() || !handoverIncomingNurse || addHandoverNote.isPending}
                     className="w-full sm:w-auto"
                   >

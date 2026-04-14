@@ -1,10 +1,10 @@
 # Vitora HMIS — Mobile App Development Plan
 
-**Version**: 1.4  
-**Date**: March 13, 2026  
-**Platform**: React Native (Expo 54) + Expo Router  
-**Backend**: Django REST API (900+ tests, 82%+ coverage)  
-**Primary User**: Clinicians, nurses, CHWs at bedside and in the field  
+**Version**: 1.4
+**Date**: March 13, 2026
+**Platform**: React Native (Expo 54) + Expo Router
+**Backend**: Django REST API (900+ tests, 82%+ coverage)
+**Primary User**: Clinicians, nurses, CHWs at bedside and in the field
 
 ---
 

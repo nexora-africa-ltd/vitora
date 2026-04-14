@@ -62,31 +62,31 @@ class Allergy(models.Model):
     substance_code = CharField(blank=True)     # RxNorm, SNOMED CT, or local code
     substance_code_system = CharField(blank=True)  # Code system URI
     substance_type = CharField(choices=[...])  # medication, food, environmental, biological, other
-    
+
     # Link to Drug (enables interaction checking)
     drug = ForeignKey(Drug, null=True)         # Optional - for medication allergies
-    
+
     # Reaction details
     reaction_type = CharField(choices=[...])   # anaphylaxis, rash, hives, etc.
     reaction_description = TextField(blank=True)
     severity = CharField(choices=[...])        # mild, moderate, severe, life_threatening
     criticality = CharField(choices=[...])     # low, high, unable_to_assess (FHIR)
-    
+
     # Dates
     onset_date = DateField(null=True)          # When allergy first identified
     last_occurrence = DateField(null=True)     # Most recent reaction
-    
+
     # Status
     status = CharField(choices=[...])          # active, inactive, resolved
     verification_status = CharField(choices=[...])  # unconfirmed, presumed, confirmed, refuted
-    
+
     # Clinical notes
     notes = TextField(blank=True)
-    
+
     # Source tracking
     source_encounter = ForeignKey(Encounter, null=True)  # Where recorded
     recorded_by = ForeignKey(User)             # Who recorded
-    
+
     # Timestamps
     created_at = DateTimeField(auto_now_add=True)
     updated_at = DateTimeField(auto_now=True)
@@ -293,7 +293,7 @@ When creating a prescription via `POST /api/pharmacy/prescriptions/`, the system
      "items": [{ "drug": 456, ... }]
    }
    ```
-   
+
 4. **Audit Phase**: Override is logged in `clinical_notes` field:
    ```
    [ALLERGY WARNING ACKNOWLEDGED BY PRESCRIBER]
@@ -447,11 +447,11 @@ poetry run pytest tests/test_allergy.py -v
 ```typescript
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
-import { 
-  AllergySchema, 
-  AllergyListSchema, 
+import {
+  AllergySchema,
+  AllergyListSchema,
   AllergyLookupResultSchema,
-  DrugInteractionCheckSchema 
+  DrugInteractionCheckSchema
 } from '@/lib/schemas/allergy.schema';
 
 export const allergiesApi = {
@@ -886,7 +886,7 @@ export function useCreateAllergy(patientId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: AllergyCreatePayload) => 
+    mutationFn: (data: AllergyCreatePayload) =>
       allergiesApi.create(patientId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patient-allergies', patientId] });

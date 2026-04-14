@@ -325,7 +325,7 @@ export function useWebSocket<TMessage = WebSocketMessage>(
     if (!url || typeof window === 'undefined') return;
 
     // Don't connect if already connected or connecting
-    if (wsRef.current?.readyState === WebSocket.OPEN || 
+    if (wsRef.current?.readyState === WebSocket.OPEN ||
         wsRef.current?.readyState === WebSocket.CONNECTING) {
       return;
     }
@@ -562,7 +562,7 @@ export function useClinicQueueSocket(
 // Laboratory WebSocket Hooks
 // =============================================================================
 
-/** 
+/**
  * Query keys for lab-related React Query invalidation.
  * Must match the keys used in use-laboratory.ts!
  */
@@ -583,7 +583,7 @@ const labQueryKeys = {
 
 /**
  * WebSocket hook for lab events on a specific encounter.
- * 
+ *
  * Ideal for encounter detail pages where clinicians need updates on lab orders/results.
  * Automatically invalidates React Query cache when lab events occur.
  *
@@ -626,7 +626,7 @@ export function useLabEncounterSocket(
 
 /**
  * WebSocket hook for lab events on a specific order.
- * 
+ *
  * Ideal for lab order detail pages to get real-time updates when results
  * are entered, verified, or when the order status changes.
  *
@@ -678,7 +678,7 @@ export function useLabOrderSocket(
 
 /**
  * WebSocket hook for clinician-wide lab notifications.
- * 
+ *
  * Used in the laboratory layout to receive critical lab result alerts
  * and general lab notifications. Shows toast notifications for critical results.
  *
@@ -730,7 +730,7 @@ export function useLabClinicianSocket(
 
 /**
  * WebSocket hook for lab queue updates (for lab technicians).
- * 
+ *
  * Provides real-time updates for the lab queue view, including
  * sample collection, processing status, and result verification.
  *

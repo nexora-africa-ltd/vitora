@@ -69,9 +69,9 @@ class TestFacilityConfiguration:
 
         # Should not be the default/placeholder
         assert facility_name is not None, "FACILITY_NAME should be configured for FHIR bundles"
-        assert (
-            facility_name != "Healthcare Facility"
-        ), "FACILITY_NAME should be set to actual facility name, not placeholder"
+        assert facility_name != "Healthcare Facility", (
+            "FACILITY_NAME should be set to actual facility name, not placeholder"
+        )
 
 
 class TestFacilityLevelCompliance:
@@ -115,8 +115,7 @@ class TestFacilityLevelCompliance:
 
         # Just document valid levels
         assert True, (
-            f"Current level: {facility_level}. "
-            f"Valid Kenya facility levels: Level 1-6 (or L1-L6)"
+            f"Current level: {facility_level}. Valid Kenya facility levels: Level 1-6 (or L1-L6)"
         )
 
 
@@ -204,9 +203,9 @@ class TestOrganizationResourceCompliance:
 
         if "profile" in org.get("meta", {}):
             profile = org["meta"]["profile"]
-            assert any(
-                "provider-organization" in str(p) for p in profile
-            ), "Organization profile should reference provider-organization StructureDefinition"
+            assert any("provider-organization" in str(p) for p in profile), (
+                "Organization profile should reference provider-organization StructureDefinition"
+            )
 
     @pytest.mark.skipif(not HAS_SHA_CLAIMS_SERVICE, reason="SHAClaimsService not available")
     def test_organization_active_status(self, sha_claim_with_items):

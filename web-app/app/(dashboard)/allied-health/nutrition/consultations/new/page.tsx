@@ -10,13 +10,13 @@ import { NutritionConsultationForm } from '@/components/allied-health/nutrition'
 
 export default function NewNutritionConsultationPage() {
   const searchParams = useSearchParams();
-  
+
   // Support pre-selecting patient or encounter from query params
-  const patientId = searchParams.get('patient_id') 
-    ? Number(searchParams.get('patient_id')) 
+  const patientId = searchParams.get('patient_id')
+    ? Number(searchParams.get('patient_id'))
     : undefined;
-  const encounterId = searchParams.get('encounter_id') 
-    ? Number(searchParams.get('encounter_id')) 
+  const encounterId = searchParams.get('encounter_id')
+    ? Number(searchParams.get('encounter_id'))
     : undefined;
 
   return (
@@ -25,10 +25,10 @@ export default function NewNutritionConsultationPage() {
         title="New Nutrition Consultation"
         helpContent="Create a nutrition consultation to assess a patient's dietary needs. Include BMI, MUAC, dietary restrictions, and create a personalized diet plan."
       />
-      
-      <NutritionConsultationForm 
-        patientId={patientId} 
-        encounterId={encounterId} 
+
+      <NutritionConsultationForm
+        patientId={patientId}
+        encounterId={encounterId}
       />
     </div>
   );

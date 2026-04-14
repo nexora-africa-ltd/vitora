@@ -93,14 +93,14 @@ Patient: {patient.first_name} {patient.last_name}
 MRN: {patient.mrn}
 Ward: {ward.name} ({ward.code})
 Bed: {admission.bed.bed_number}
-Admitted By: {admitted_by.get_full_name() if admitted_by else 'Unknown'}
-Admission Date: {admission.admission_date.strftime('%Y-%m-%d %H:%M')}
+Admitted By: {admitted_by.get_full_name() if admitted_by else "Unknown"}
+Admission Date: {admission.admission_date.strftime("%Y-%m-%d %H:%M")}
 
 CRITICAL VIOLATIONS:
 {violation_details}
 
 Override Reason Given:
-{admission.constraint_override_reason or 'None provided'}
+{admission.constraint_override_reason or "None provided"}
 
 This admission requires your immediate review. Please verify the placement is clinically
 appropriate or coordinate a transfer to an appropriate ward.

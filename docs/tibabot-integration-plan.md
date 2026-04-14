@@ -1,8 +1,8 @@
 # TibaBot AI Integration Plan for Vitora HMIS
 
 > **Status**: 🔧 In Progress (Phase 1 complete, Phase 2 complete, Phase 3 complete)
-> **Target**: Web App (`web-app/`) + Backend (`backend/`)  
-> **Dependency**: Existing CDS Module (DHA Gap #25 — ✅ Complete)  
+> **Target**: Web App (`web-app/`) + Backend (`backend/`)
+> **Dependency**: Existing CDS Module (DHA Gap #25 — ✅ Complete)
 > **External Service**: TibaBot API (`https://tibabot.hmis.nexora.africa`)
 
 ---
@@ -128,9 +128,9 @@ NEXT_PUBLIC_ENABLE_AI=true   # Feature flag for UI visibility
 
 ### 1. ICD-10 Auto-Coding in Diagnosis Form
 
-**Status**: ✅ **Complete** (March 2, 2026)  
-**Priority**: Highest value, lowest risk  
-**Where**: `components/encounters/diagnosis-form.tsx`, Step 5 of encounter edit  
+**Status**: ✅ **Complete** (March 2, 2026)
+**Priority**: Highest value, lowest risk
+**Where**: `components/encounters/diagnosis-form.tsx`, Step 5 of encounter edit
 **TibaBot endpoints**: `POST /icd10/code`, `GET /icd10/suggest`
 
 **What**: When a clinician types a chief complaint or clinical notes, call TibaBot to suggest ICD-10 codes with confidence scores. Wire `GET /icd10/suggest` as a typeahead enhancer alongside the existing `useICD10Search` hook.
@@ -176,8 +176,8 @@ Clinician confirms/rejects each suggestion
 ### 2. TibaBot Floating Widget + Clinical Assistant
 
 **Status**: ✅ **Complete** (March 3, 2026)
-**Priority**: High value, high visibility — the "face" of TibaBot in the app  
-**Where**: Global floating widget (all dashboard pages) + optional `/ai` full-page view  
+**Priority**: High value, high visibility — the "face" of TibaBot in the app
+**Where**: Global floating widget (all dashboard pages) + optional `/ai` full-page view
 **TibaBot endpoints**: `POST /clinical/chat`, `POST /clinical/assist`, session management
 
 **What**: A persistent floating widget that provides multi-turn clinical chat and encounter-aware Clinical Assist — all without leaving the current page. This replaces the original plan of a standalone Clinical Assistant sidebar + a separate Phase 6 chat widget. **One unified AI surface, not two.**
@@ -300,8 +300,8 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 ### 3. Condition Predictor in Triage
 
 **Status**: ✅ **Complete** (March 4, 2026)
-**Priority**: High value, medium risk  
-**Where**: Triage assessment form  
+**Priority**: High value, medium risk
+**Where**: Triage assessment form
 **TibaBot endpoint**: `POST /predict/condition`
 
 **What**: During triage, submit patient features (age, gender, vitals, chief complaint, clinical assessment) to flag high-risk patients early. Display primary condition with confidence score, risk factors, differential conditions, and recommendations.
@@ -325,8 +325,8 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 ### 4. ICU Predictor in Inpatient + CDS `ml_model` Rule Type
 
 **Status**: ✅ **Complete** (March 5, 2026)
-**Priority**: High clinical value, medium-high risk  
-**Where**: Inpatient admission detail view (overview tab). Also accessible via widget slash command: `/icu-risk`  
+**Priority**: High clinical value, medium-high risk
+**Where**: Inpatient admission detail view (overview tab). Also accessible via widget slash command: `/icu-risk`
 **TibaBot endpoints**: `POST /predict/icu/predict`, `POST /predict/icu/risk-stratify`
 
 **What**: For admitted patients, run sepsis/AKI early warning predictions. Display SOFA and qSOFA scores, critical alerts, and escalation recommendations.
@@ -364,8 +364,8 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 
 ### 5. Symptom Checker (Patient Portal — Future)
 
-**Priority**: Future scope  
-**Where**: Patient-facing portal (not yet built)  
+**Priority**: Future scope
+**Where**: Patient-facing portal (not yet built)
 **TibaBot endpoints**: `POST /symptom-checker/conversation/*`
 
 **What**: Guided multi-turn symptom assessment for patients before arrival at the facility. Low priority since the patient portal is not part of current roadmap.

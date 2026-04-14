@@ -22,13 +22,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from hmis.apps.billing.models import (
-    Invoice,
-    InvoiceItem,
-    Service,
-    SHAClaim,
-    SHAMember,
-)
+from hmis.apps.billing.models import Invoice, InvoiceItem, Service, SHAClaim, SHAMember
 
 logger = logging.getLogger(__name__)
 
@@ -547,9 +541,7 @@ class BillingAgentService:
 
         pending_claims = SHAClaim.objects.filter(
             status=SHAClaim.ClaimStatus.DRAFT,
-        ).order_by(
-            "created_at"
-        )[:20]
+        ).order_by("created_at")[:20]
 
         service = SHAClaimsService()
         submitted = 0

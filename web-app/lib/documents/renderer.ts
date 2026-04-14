@@ -215,8 +215,8 @@ export function processRepeater(
  */
 export function generateQRPlaceholder(data: string, width = 90, height = 90): string {
   return `
-    <div style="width: ${width}px; height: ${height}px; border: 1px dashed #999; 
-                display: flex; align-items: center; justify-content: center; 
+    <div style="width: ${width}px; height: ${height}px; border: 1px dashed #999;
+                display: flex; align-items: center; justify-content: center;
                 font-size: 9px; text-align: center; word-break: break-all;">
       ${escapeHtml(data)}
     </div>

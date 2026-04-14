@@ -1,8 +1,8 @@
 # FHIR Compliance Report - Vitora HMIS
 
-> **Generated**: January 31, 2026  
-> **Inferno Version**: Community Edition (latest)  
-> **Vitora Version**: develop branch  
+> **Generated**: January 31, 2026
+> **Inferno Version**: Community Edition (latest)
+> **Vitora Version**: develop branch
 > **Tester**: [NAME]
 
 ---
@@ -166,8 +166,8 @@ Returns a FHIR Bundle (type: document) containing:
 
 ### 3.1 Summary
 
-**Test Suite**: IPS  
-**Executed**: [DATE]  
+**Test Suite**: IPS
+**Executed**: [DATE]
 **Duration**: [TIME]
 
 | Category | Tests | Passed | Failed | Skipped |
@@ -220,8 +220,8 @@ Returns a FHIR Bundle (type: document) containing:
 
 ### 4.1 Summary
 
-**Test Suite**: SMART App Launch STU2  
-**Executed**: [DATE]  
+**Test Suite**: SMART App Launch STU2
+**Executed**: [DATE]
 **Duration**: [TIME]
 
 | Category | Tests | Passed | Failed | Skipped |
@@ -381,6 +381,6 @@ curl -H "Authorization: Bearer \$TOKEN" 'http://localhost:9088/fhir/Patient/351/
 
 ---
 
-**Document Version**: 2.0.0  
-**Last Updated**: January 31, 2026  
+**Document Version**: 2.0.0
+**Last Updated**: January 31, 2026
 **Next Review**: [DATE]

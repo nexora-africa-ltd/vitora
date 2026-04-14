@@ -9,11 +9,7 @@ Provides REST API serialization for:
 
 from rest_framework import serializers
 
-from hmis.apps.counselling.models import (
-    CounsellingReferral,
-    CounsellingSession,
-    CounsellingType,
-)
+from hmis.apps.counselling.models import CounsellingReferral, CounsellingSession, CounsellingType
 
 
 class CounsellingTypeSerializer(serializers.ModelSerializer):

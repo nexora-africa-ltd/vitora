@@ -14,35 +14,21 @@ from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
 # Immunization models now come from the unified immunizations app
-from hmis.apps.immunizations.models import (
-    AEFI as ImmunizationsAEFI,
-)
-from hmis.apps.immunizations.models import (
-    ImmunizationRecord as ImmunizationsImmunizationRecord,
-)
-from hmis.apps.immunizations.models import (
-    VaccineDefinition,
-)
-from hmis.apps.immunizations.serializers import (
-    AdministerVaccineSerializer as ImmAdministerVaccineSerializer,
-)
+from hmis.apps.immunizations.models import AEFI as ImmunizationsAEFI
+from hmis.apps.immunizations.models import ImmunizationRecord as ImmunizationsImmunizationRecord
+from hmis.apps.immunizations.models import VaccineDefinition
 
 # MCH immunization serializers now delegate to the immunizations app
 from hmis.apps.immunizations.serializers import (
-    AEFIListSerializer as ImmAEFIListSerializer,
+    AdministerVaccineSerializer as ImmAdministerVaccineSerializer,
 )
-from hmis.apps.immunizations.serializers import (
-    AEFISerializer as ImmAEFISerializer,
-)
+from hmis.apps.immunizations.serializers import AEFIListSerializer as ImmAEFIListSerializer
+from hmis.apps.immunizations.serializers import AEFISerializer as ImmAEFISerializer
 from hmis.apps.immunizations.serializers import (
     ImmunizationRecordListSerializer as ImmRecordListSerializer,
 )
-from hmis.apps.immunizations.serializers import (
-    ImmunizationRecordSerializer as ImmRecordSerializer,
-)
-from hmis.apps.immunizations.serializers import (
-    VaccineDefinitionSerializer as ImmVaccineSerializer,
-)
+from hmis.apps.immunizations.serializers import ImmunizationRecordSerializer as ImmRecordSerializer
+from hmis.apps.immunizations.serializers import VaccineDefinitionSerializer as ImmVaccineSerializer
 from hmis.apps.immunizations.services.schedule import generate_kepi_schedule
 from hmis.apps.mch.models import (
     ANCVisit,

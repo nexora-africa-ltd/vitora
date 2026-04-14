@@ -1,7 +1,7 @@
 # Proactive AI Insights — Feasibility Assessment
 
-> **Date**: March 7, 2026  
-> **Status**: Advisory / Pre-implementation Analysis  
+> **Date**: March 7, 2026
+> **Status**: Advisory / Pre-implementation Analysis
 > **Component**: TibaBot AI Assistant (web-app)
 
 ---

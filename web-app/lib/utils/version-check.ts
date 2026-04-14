@@ -25,7 +25,7 @@ const PRESERVED_PREFIXES = [
   'vitora_draft_',        // Draft form data
   'vitora_autosave_queue_', // Offline queue
   'vitora_access_token',  // Auth
-  'vitora_refresh_token', // Auth  
+  'vitora_refresh_token', // Auth
   'vitora_user',          // User profile
   'vitora_events_',       // Event logs
 ];
@@ -185,7 +185,7 @@ export function hasPendingUserData(): boolean {
  * - Service Worker caches
  * - Browser caches via Cache API
  * - React Query cache (handled separately)
- * 
+ *
  * IMPORTANT: This preserves user data in localStorage:
  * - Auth tokens (vitora_access_token, vitora_refresh_token, vitora_user)
  * - Draft forms (vitora_draft_*)

@@ -143,7 +143,7 @@ describe('MySchema', () => {
   it('should have all fields from the OpenAPI MyModel schema', () => {
     const zodFields = getZodSchemaFields(MySchema);
     const apiProperties = getSchemaProperties(openapi, 'MyModel');
-    
+
     if (!apiProperties) {
       console.warn('MyModel schema not found in OpenAPI');
       return;
@@ -151,14 +151,14 @@ describe('MySchema', () => {
 
     const apiFields = Object.keys(apiProperties);
     const missingInZod = apiFields.filter(f => !zodFields.includes(f));
-    
+
     // Log missing fields for debugging (helps identify drift)
     if (missingInZod.length > 0) {
       console.warn(`⚠️  MySchema: API fields missing:\n  ${missingInZod.join(', ')}`);
     }
 
     // Only fail on critical fields (core identifiers)
-    const criticalMissing = missingInZod.filter(f => 
+    const criticalMissing = missingInZod.filter(f =>
       ['id', 'name', 'status'].includes(f)
     );
     expect(criticalMissing).toEqual([]);
@@ -181,7 +181,7 @@ describe('MyStatusSchema (enum)', () => {
     }
 
     const missingInZod = apiValues.filter(v => !zodValues.includes(v));
-    
+
     if (missingInZod.length > 0) {
       console.warn(`MyStatusSchema: Missing values: ${missingInZod.join(', ')}`);
     }
@@ -220,7 +220,7 @@ import openApiSpec from "../../backend/schema.json";
 it("Patient schema fields match OpenAPI spec", () => {
   const zodFields = Object.keys(zodToJsonSchema(PatientSchema).properties ?? {});
   const apiFields = Object.keys(openApiSpec.components.schemas.Patient.properties ?? {});
-  
+
   const missing = apiFields.filter(f => !zodFields.includes(f));
   expect(missing).toEqual([]);
 });
@@ -266,7 +266,7 @@ jobs:
           cd backend && poetry install
           poetry run pytest tests/test_contracts.py -v
           poetry run python manage.py spectacular --file schema.json
-      
+
       # Frontend: compare Zod schemas against exported schema
       - run: |
           cd web-app && npm ci

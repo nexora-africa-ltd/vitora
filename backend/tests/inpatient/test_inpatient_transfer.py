@@ -433,15 +433,15 @@ class TestTransferQueries:
         wards_and_beds = []
         for i in range(3):
             ward = Ward.objects.create(
-                name=f"Ward {i+1}",
-                code=f"W{i+1}",
+                name=f"Ward {i + 1}",
+                code=f"W{i + 1}",
                 ward_type="MEDICAL",
                 capacity=10,
                 daily_rate=Decimal("500.00"),
             )
             bed = Bed.objects.create(
                 ward=ward,
-                bed_number=f"B-{i+1}01",
+                bed_number=f"B-{i + 1}01",
                 status="AVAILABLE",
             )
             wards_and_beds.append((ward, bed))

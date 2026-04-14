@@ -9,7 +9,11 @@ Implements Gap #29 of the DHA compliance roadmap.
 
 import logging
 from datetime import UTC, datetime
-from xml.etree.ElementTree import Element, SubElement, tostring
+from xml.etree.ElementTree import (  # nosec B405 — building XML, not parsing untrusted input
+    Element,
+    SubElement,
+    tostring,
+)
 
 logger = logging.getLogger(__name__)
 

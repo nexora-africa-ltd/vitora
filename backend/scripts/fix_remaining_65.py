@@ -1,7 +1,7 @@
 """
 Fix remaining 65 test failures caused by:
 1. Missing StaffProfile for custom test users (pharmacy, staff_facility, staff_username)
-2. Missing facility/org on test data (StockBatch, Prescription, Dispensing, etc.)  
+2. Missing facility/org on test data (StockBatch, Prescription, Dispensing, etc.)
 3. CodeSystem pre-populated data not available in test DB
 4. ProtectedError on delete (StaffProfile references facility/org)
 5. Contract tests field mismatch
@@ -9,6 +9,7 @@ Fix remaining 65 test failures caused by:
 7. RBAC sample_staff missing org
 8. Superuser test scoped by facility
 """
+
 import os
 import sys
 
@@ -19,7 +20,7 @@ def read_file(path):
 
 
 def write_file(path, content):
-    with open(path, 'w') as f:
+    with open(path, "w") as f:
         f.write(content)
 
 
@@ -61,25 +62,22 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
     from tests.conftest import ensure_staff_profile
     ensure_staff_profile(test_user, sample_organization, sample_facility)
     api_client.force_authenticate(user=test_user)
-    return api_client"""
+    return api_client""",
     )
 
     # 2. Fix sample_drug_data: use 'categories' (list) instead of 'category' (str)
-    content = content.replace(
-        '"category": "OTHER",',
-        '"categories": ["OTHER"],'
-    )
+    content = content.replace('"category": "OTHER",', '"categories": ["OTHER"],')
 
     # 3. Add facility/org to inline StockBatch.objects.create calls
     # Find test methods that create StockBatch and add sample_facility, sample_organization params
     # StockBatch needs facility + organization
     content = content.replace(
         """    def test_list_stock_batches(self, authenticated_client, test_user):""",
-        """    def test_list_stock_batches(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_list_stock_batches(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
     content = content.replace(
         """    def test_stock_batch_includes_computed_fields(self, authenticated_client, test_user):""",
-        """    def test_stock_batch_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_stock_batch_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
 
     # Add facility/org to StockBatch.objects.create
@@ -87,29 +85,29 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
     # We add facility=sample_facility, organization=sample_organization before the closing )
     content = content.replace(
         'received_by=test_user,\n        )\n\n        response = authenticated_client.get("/api/pharmacy/stock/")',
-        'received_by=test_user,\n            facility=sample_facility,\n            organization=sample_organization,\n        )\n\n        response = authenticated_client.get("/api/pharmacy/stock/")'
+        'received_by=test_user,\n            facility=sample_facility,\n            organization=sample_organization,\n        )\n\n        response = authenticated_client.get("/api/pharmacy/stock/")',
     )
     content = content.replace(
         'received_by=test_user,\n        )\n\n        response = authenticated_client.get(f"/api/pharmacy/stock/{batch.id}/")',
-        'received_by=test_user,\n            facility=sample_facility,\n            organization=sample_organization,\n        )\n\n        response = authenticated_client.get(f"/api/pharmacy/stock/{batch.id}/")'
+        'received_by=test_user,\n            facility=sample_facility,\n            organization=sample_organization,\n        )\n\n        response = authenticated_client.get(f"/api/pharmacy/stock/{batch.id}/")',
     )
 
     # 4. Fix Prescription tests: add facility/org params and to create calls
     content = content.replace(
         """    def test_list_prescriptions(self, authenticated_client, test_user):""",
-        """    def test_list_prescriptions(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_list_prescriptions(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
     content = content.replace(
         """    def test_get_prescription_detail(self, authenticated_client, test_user):""",
-        """    def test_get_prescription_detail(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_get_prescription_detail(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
     content = content.replace(
         """    def test_cancel_prescription(self, authenticated_client, test_user):""",
-        """    def test_cancel_prescription(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_cancel_prescription(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
     content = content.replace(
         """    def test_prescription_includes_computed_fields(self, authenticated_client, test_user):""",
-        """    def test_prescription_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_prescription_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
 
     # Add facility/org to Prescription inline creates (they're inside Encounter.objects.create + Prescription.objects.create)
@@ -121,63 +119,63 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
     # For Prescription tests, fix Encounter creates to include facility:
     content = content.replace(
         'chief_complaint="For prescription test",\n        )',
-        'chief_complaint="For prescription test",\n            facility=sample_facility,\n        )'
+        'chief_complaint="For prescription test",\n            facility=sample_facility,\n        )',
     )
     content = content.replace(
         'chief_complaint="For stock batch",\n        )',
-        'chief_complaint="For stock batch",\n            facility=sample_facility,\n        )'
+        'chief_complaint="For stock batch",\n            facility=sample_facility,\n        )',
     )
     content = content.replace(
         'chief_complaint="Prescription detail",\n        )',
-        'chief_complaint="Prescription detail",\n            facility=sample_facility,\n        )'
+        'chief_complaint="Prescription detail",\n            facility=sample_facility,\n        )',
     )
     content = content.replace(
         'chief_complaint="Cancel prescription test",\n        )',
-        'chief_complaint="Cancel prescription test",\n            facility=sample_facility,\n        )'
+        'chief_complaint="Cancel prescription test",\n            facility=sample_facility,\n        )',
     )
     content = content.replace(
         'chief_complaint="Computed fields",\n        )',
-        'chief_complaint="Computed fields",\n            facility=sample_facility,\n        )'
+        'chief_complaint="Computed fields",\n            facility=sample_facility,\n        )',
     )
 
     # Add facility/org to Prescription.objects.create calls
     # They have valid_until= as a distinctive field
-    lines = content.split('\n')
+    lines = content.split("\n")
     new_lines = []
     i = 0
     while i < len(lines):
         line = lines[i]
         new_lines.append(line)
         # After Prescription.objects.create's clinical_notes line, add facility/org
-        if 'clinical_notes="' in line and 'Test' in line and i > 0:
+        if 'clinical_notes="' in line and "Test" in line and i > 0:
             indent = len(line) - len(line.lstrip())
             # Check if next line closes the create call
-            if i + 1 < len(lines) and lines[i+1].strip() == ')':
+            if i + 1 < len(lines) and lines[i + 1].strip() == ")":
                 # Check if we're inside Prescription.objects.create (not PrescriptionItem)
-                for j in range(max(0, i-10), i):
-                    if 'Prescription.objects.create(' in lines[j] and 'Item' not in lines[j]:
-                        new_lines.append(' ' * indent + 'facility=sample_facility,')
-                        new_lines.append(' ' * indent + 'organization=sample_organization,')
+                for j in range(max(0, i - 10), i):
+                    if "Prescription.objects.create(" in lines[j] and "Item" not in lines[j]:
+                        new_lines.append(" " * indent + "facility=sample_facility,")
+                        new_lines.append(" " * indent + "organization=sample_organization,")
                         break
         i += 1
-    content = '\n'.join(new_lines)
+    content = "\n".join(new_lines)
 
     # 5. Fix Dispensing tests
     content = content.replace(
         """    def test_list_dispensings(self, authenticated_client, test_user):""",
-        """    def test_list_dispensings(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_list_dispensings(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
     content = content.replace(
         """    def test_process_return(self, authenticated_client, test_user):""",
-        """    def test_process_return(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_process_return(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
     content = content.replace(
         """    def test_verify_controlled_drug(self, authenticated_client, test_user):""",
-        """    def test_verify_controlled_drug(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_verify_controlled_drug(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
     content = content.replace(
         """    def test_dispensing_includes_computed_fields(self, authenticated_client, test_user):""",
-        """    def test_dispensing_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):"""
+        """    def test_dispensing_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):""",
     )
 
     write_file(path, content)
@@ -259,7 +257,7 @@ def fix_rbac_staff():
             organization=sample_organization,
             primary_facility=sample_facility,
             date_joined=date.today(),
-        )"""
+        )""",
     )
 
     write_file(path, content)
@@ -312,7 +310,7 @@ def _seed_code_systems(request, db):
     # Insert before the TestPrePopulatedCodeSystems class
     content = content.replace(
         "@pytest.mark.unit\nclass TestPrePopulatedCodeSystems:",
-        fixture_code + "@pytest.mark.unit\nclass TestPrePopulatedCodeSystems:"
+        fixture_code + "@pytest.mark.unit\nclass TestPrePopulatedCodeSystems:",
     )
 
     write_file(path, content)
@@ -342,7 +340,7 @@ def fix_facility_delete():
         StaffProfile.objects.filter(primary_facility=sample_facility).update(primary_facility=None)
         facility_id = sample_facility.id
         response = admin_client.delete(f"/api/facilities/{facility_id}/")
-        assert response.status_code == status.HTTP_204_NO_CONTENT'''
+        assert response.status_code == status.HTTP_204_NO_CONTENT''',
     )
 
     # Fix test_delete_logs_audit_entry
@@ -359,7 +357,7 @@ def fix_facility_delete():
         # Remove StaffProfiles referencing this facility to avoid ProtectedError
         StaffProfile.objects.filter(primary_facility=sample_facility).update(primary_facility=None)
         initial_count = AuditLog.objects.filter(action="facility_deleted").count()
-        admin_client.delete(f"/api/facilities/{sample_facility.id}/")'''
+        admin_client.delete(f"/api/facilities/{sample_facility.id}/")''',
     )
 
     # Fix test_create_serializer_respects_explicit_flags
@@ -395,7 +393,7 @@ def fix_multitenancy_delete():
         StaffProfile.objects.filter(organization=sample_org).delete()
         response = admin_client.delete(f"/api/organizations/{sample_org.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert not Organization.objects.filter(pk=sample_org.pk).exists()'''
+        assert not Organization.objects.filter(pk=sample_org.pk).exists()''',
     )
 
     # Fix superuser test - admin_client has StaffProfile so queries are scoped.
@@ -450,7 +448,7 @@ def fix_multitenancy_delete():
         results = response.data.get("results", response.data)
         names = [p["first_name"] for p in results]
         assert "Super1" in names
-        assert "Super2" in names'''
+        assert "Super2" in names''',
     )
 
     write_file(path, content)
@@ -475,7 +473,7 @@ def fix_dashboard_stats():
         from hmis.apps.patients.models import Patient''',
         '''    def test_total_patients_count(self, authenticated_client, sample_organization):
         """Patient counts should reflect actual data."""
-        from hmis.apps.patients.models import Patient'''
+        from hmis.apps.patients.models import Patient''',
     )
 
     content = content.replace(
@@ -484,7 +482,7 @@ def fix_dashboard_stats():
         from hmis.apps.patients.models import Patient''',
         '''    def test_today_patients_count(self, authenticated_client, sample_organization):
         """Today count should show patients registered today."""
-        from hmis.apps.patients.models import Patient'''
+        from hmis.apps.patients.models import Patient''',
     )
 
     # Add organization= to Patient.objects.create calls in dashboard tests
@@ -492,16 +490,16 @@ def fix_dashboard_stats():
     # The patients need organization=sample_organization
     content = content.replace(
         'gender="M",\n        )\n        Patient.objects.create(\n            first_name="Jane",',
-        'gender="M",\n            organization=sample_organization,\n        )\n        Patient.objects.create(\n            first_name="Jane",'
+        'gender="M",\n            organization=sample_organization,\n        )\n        Patient.objects.create(\n            first_name="Jane",',
     )
     content = content.replace(
         'gender="F",\n        )\n\n        response = authenticated_client.get(DASHBOARD_STATS_URL)',
-        'gender="F",\n            organization=sample_organization,\n        )\n\n        response = authenticated_client.get(DASHBOARD_STATS_URL)'
+        'gender="F",\n            organization=sample_organization,\n        )\n\n        response = authenticated_client.get(DASHBOARD_STATS_URL)',
     )
     # For today_patients_count
     content = content.replace(
         'gender="F",\n        )\n\n        response = authenticated_client.get(\n',
-        'gender="F",\n            organization=sample_organization,\n        )\n\n        response = authenticated_client.get(\n'
+        'gender="F",\n            organization=sample_organization,\n        )\n\n        response = authenticated_client.get(\n',
     )
 
     write_file(path, content)
@@ -539,11 +537,11 @@ def fix_encounter_filter():
     # Fix: add facility=sample_facility to all Encounter.objects.create calls
     content = content.replace(
         'Encounter.objects.create(patient=patient1, encounter_type="OPD", chief_complaint="Headache")',
-        'Encounter.objects.create(patient=patient1, encounter_type="OPD", chief_complaint="Headache", facility=sample_facility)'
+        'Encounter.objects.create(patient=patient1, encounter_type="OPD", chief_complaint="Headache", facility=sample_facility)',
     )
     content = content.replace(
         'Encounter.objects.create(patient=patient2, encounter_type="OPD", chief_complaint="Cough")',
-        'Encounter.objects.create(patient=patient2, encounter_type="OPD", chief_complaint="Cough", facility=sample_facility)'
+        'Encounter.objects.create(patient=patient2, encounter_type="OPD", chief_complaint="Cough", facility=sample_facility)',
     )
 
     write_file(path, content)
@@ -577,7 +575,7 @@ def fix_staff_facility():
         primary_facility=primary_facility,
         organization=primary_facility.organization,
         date_joined="2026-01-01",
-    )"""
+    )""",
     )
 
     # primary_facility needs an organization
@@ -612,7 +610,7 @@ def primary_facility(db, sf_county, sf_sub_county, sample_organization):
             "sub_county": sf_sub_county,
             "organization": sample_organization,
         },
-    )[0]"""
+    )[0]""",
     )
 
     write_file(path, content)
@@ -635,7 +633,7 @@ def fix_staff_username():
     # Need to add org to the staff profile being created
     content = content.replace(
         'employee_id="VH-DEL-001",',
-        'employee_id="VH-DEL-001",\n            organization=sample_organization,'
+        'employee_id="VH-DEL-001",\n            organization=sample_organization,',
     )
 
     write_file(path, content)
@@ -681,7 +679,7 @@ def sample_patient(db, sample_organization, sample_facility):
         date_of_birth="1990-01-15",
         gender="M",
         organization=sample_organization,
-        registered_at_facility=sample_facility,"""
+        registered_at_facility=sample_facility,""",
     )
 
     write_file(path, content)
@@ -717,7 +715,7 @@ def fix_encounter_snapshot():
         # Add facility to encounter creates
         content = content.replace(
             'chief_complaint="Snapshot test complaint",\n        )',
-            'chief_complaint="Snapshot test complaint",\n            facility=sample_facility,\n        )'
+            'chief_complaint="Snapshot test complaint",\n            facility=sample_facility,\n        )',
         )
         # Also ensure test method has sample_facility param if needed
 

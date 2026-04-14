@@ -230,7 +230,7 @@ export default function NewWardRoundPage() {
   const hasSOAPNotes = subjective.trim() && objective.trim() && assessment.trim() && plan.trim();
   const hasClinicalNotes = clinicalNotes.trim();
   const hasNotes = hasSOAPNotes || hasClinicalNotes;
-  
+
   // Compute validation errors
   const validationErrors = useMemo(() => {
     const errors: string[] = [];
@@ -247,7 +247,7 @@ export default function NewWardRoundPage() {
 
   const handleSubmit = async () => {
     setHasAttemptedSubmit(true);
-    
+
     if (!isFormValid || !user?.id) {
       toast({
         title: 'Validation Error',

@@ -59,8 +59,7 @@ class TestPatientIdentifierCompliance:
         ]
 
         assert len(required_identifier_types) == 7, (
-            "Must support 7 identifier types. "
-            "See docs/sha-guides/patients.md - Patient Identifiers"
+            "Must support 7 identifier types. See docs/sha-guides/patients.md - Patient Identifiers"
         )
 
     @pytest.mark.skipif(not HAS_SHA_MEMBER, reason="SHAMember model not available")
@@ -71,9 +70,9 @@ class TestPatientIdentifierCompliance:
         Reference: docs/sha-guides/patients.md
         Quote: 'CR ID (Client Registry unique identifier)'
         """
-        assert hasattr(
-            SHAMember, "sha_number"
-        ), "SHAMember must have sha_number field for CR identifier"
+        assert hasattr(SHAMember, "sha_number"), (
+            "SHAMember must have sha_number field for CR identifier"
+        )
 
     @pytest.mark.skipif(not HAS_SHA_MEMBER, reason="SHAMember model not available")
     def test_sha_member_has_national_id_field(self):
@@ -195,18 +194,18 @@ class TestClientRegistryPIIAlignment:
         ]
 
         # These fields should be considered for alignment
-        assert (
-            len(pii_fields) >= 9
-        ), "Consider aligning with CR PII fields for better patient matching"
+        assert len(pii_fields) >= 9, (
+            "Consider aligning with CR PII fields for better patient matching"
+        )
 
     @pytest.mark.skipif(not HAS_PATIENT_MODEL, reason="Patient model not available")
     def test_patient_has_phone_field(self):
         """
         SHA Requirement: Phone number field for CR alignment.
         """
-        assert hasattr(
-            Patient, "phone_number"
-        ), "Patient must have phone_number field for CR alignment"
+        assert hasattr(Patient, "phone_number"), (
+            "Patient must have phone_number field for CR alignment"
+        )
 
 
 class TestClientRegistryAPICompliance:

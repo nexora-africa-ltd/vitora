@@ -503,7 +503,7 @@ class TestDischargeQueries:
                 patient=sample_patient,
                 encounter_type="IPD",
                 encounter_date=timezone.now().date(),
-                chief_complaint=f"Case {i+1}",
+                chief_complaint=f"Case {i + 1}",
                 facility=sample_facility,
             )
             admission = Admission.objects.create(

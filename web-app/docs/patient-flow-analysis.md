@@ -132,22 +132,22 @@ class CheckIn(TimeStampedModel):
     patient = ForeignKey("patients.Patient")
     encounter = ForeignKey("encounters.Encounter", null=True)
     linked_encounter = ForeignKey("encounters.Encounter", null=True)  # For follow-ups
-    
+
     # Routing
     destination_type = CharField(choices=["TRIAGE", "CLINIC"])
     destination_clinic = ForeignKey("clinics.Clinic", null=True)
     skip_triage = BooleanField(default=False)
-    
+
     # Classification
     visit_type = CharField(choices=["NEW", "RETURN", "FOLLOW_UP", "EMERGENCY", "SCHEDULED"])
     visit_reason = CharField(choices=VISIT_REASON_CHOICES)
-    
+
     # Identity verification
     identity_method = CharField(choices=["MRN", "NATIONAL_ID", "PHONE", "BIOMETRIC", "MANUAL"])
-    
+
     # Status tracking
     status = CharField(choices=["WAITING", "IN_TRIAGE", "TRIAGED", "IN_CONSULTATION", "COMPLETED", "CANCELLED", "NO_SHOW"])
-    
+
     # Queue links
     waiting_queue_entry = ForeignKey("triage.WaitingQueue", null=True)
     clinic_visit = ForeignKey("clinics.ClinicVisit", null=True)
@@ -344,13 +344,13 @@ ENCOUNTER_TYPE_TRIAGE_MAP = {
     "PAEDIATRIC": "MANDATORY",
     "DIALYSIS": "MANDATORY",
     "ONCOLOGY": "MANDATORY",
-    
+
     # OPTIONAL triage types
     "SCHEDULED_OPD": "OPTIONAL",
     "FOLLOW_UP": "OPTIONAL",
     "CHRONIC_STABLE": "OPTIONAL",
     "SPECIALIST_CLINIC": "OPTIONAL",
-    
+
     # NOT_REQUIRED triage types
     "PROCEDURE": "NOT_REQUIRED",
     "DAY_CASE": "NOT_REQUIRED",
@@ -664,15 +664,15 @@ class Invoice(models.Model):
     patient = ForeignKey("patients.Patient")
     encounter = ForeignKey("encounters.Encounter", null=True)
     clinic_visit = ForeignKey("clinics.ClinicVisit", null=True)
-    
+
     # Status lifecycle
     Status = TextChoices(
         "PROFORMA", "DRAFT", "PENDING", "PARTIAL", "PAID", "OVERDUE", "CANCELLED", "WRITTEN_OFF"
     )
-    
+
     # Payment types
     PaymentType = TextChoices("CASH", "MPESA", "INSURANCE", "CORPORATE", "MIXED")
-    
+
     # Insurance/SHA integration
     insurance_provider = CharField()
     sha_claim_number = CharField()
@@ -717,7 +717,7 @@ Evidence of billing as first-class citizen:
 class Appointment(TimeStampedModel):
     patient = ForeignKey("patients.Patient")
     resource = ForeignKey(Resource)  # Doctor, Room, Equipment
-    
+
     STATUS_CHOICES = [
         ("REQUESTED", "Requested"),
         ("CONFIRMED", "Confirmed"),
@@ -728,7 +728,7 @@ class Appointment(TimeStampedModel):
         ("NO_SHOW", "No Show"),
         ("RESCHEDULED", "Rescheduled"),
     ]
-    
+
     scheduled_start = DateTimeField()
     scheduled_end = DateTimeField()
     appointment_type = CharField()
@@ -1059,7 +1059,7 @@ This section provides detailed, actionable implementation guidance to close all 
    from celery import shared_task
    from datetime import timedelta
    from django.utils import timezone
-   
+
    @shared_task
    def send_appointment_reminders():
        """Send reminders for appointments in next 24 hours."""
@@ -1111,7 +1111,7 @@ This section provides detailed, actionable implementation guidance to close all 
    class Encounter(models.Model):
        ...
        clinical_snapshot_at_start = models.JSONField(
-           null=True, 
+           null=True,
            blank=True,
            help_text="Point-in-time snapshot captured when encounter started"
        )
@@ -1146,15 +1146,15 @@ This section provides detailed, actionable implementation guidance to close all 
        patient = models.ForeignKey(Patient, related_name='care_plans')
        condition = models.ForeignKey('encounters.Condition')
        status = models.CharField(choices=['ACTIVE', 'COMPLETED', 'SUSPENDED'])
-       
+
        # Goals and targets
        goals = models.JSONField(default=list)
        target_metrics = models.JSONField(default=dict)  # e.g., {"hba1c": "<7%"}
-       
+
        # Team
        primary_provider = models.ForeignKey(User)
        care_team = models.ManyToManyField(User, related_name='care_plans_member')
-       
+
        # Timeline
        start_date = models.DateField()
        target_end_date = models.DateField(null=True)
@@ -1188,7 +1188,7 @@ This section provides detailed, actionable implementation guidance to close all 
    // web-app/app/(dashboard)/patients/checkin/page.tsx
    // After patient lookup, if patient has SHA coverage:
    const { data: eligibility } = useSHAEligibility(patient.sha_number);
-   
+
    if (eligibility?.status === 'EXPIRED') {
      // Show warning alert
    }

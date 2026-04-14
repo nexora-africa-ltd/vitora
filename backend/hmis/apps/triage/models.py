@@ -1439,8 +1439,7 @@ class ERBed(models.Model):
         """
         if self.status != "OCCUPIED":
             raise ValueError(
-                f"Cannot release bed {self.bed_number}: "
-                f"status is {self.status}, must be OCCUPIED"
+                f"Cannot release bed {self.bed_number}: status is {self.status}, must be OCCUPIED"
             )
         self.status = "CLEANING" if mark_cleaning else "AVAILABLE"
         self.current_patient = None

@@ -13,12 +13,7 @@ from hmis.apps.analytics.permissions import CanViewAnalytics
 from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 
-from .models import (
-    MOH705Report,
-    MOH711Report,
-    MOH717Report,
-    MOHReportStatus,
-)
+from .models import MOH705Report, MOH711Report, MOH717Report, MOHReportStatus
 from .serializers import (
     MOH705ReportListSerializer,
     MOH705ReportSerializer,
@@ -29,12 +24,7 @@ from .serializers import (
     MOHReportApproveSerializer,
     MOHReportGenerateSerializer,
 )
-from .services import (
-    DHIS2SubmissionService,
-    MOH705Generator,
-    MOH711Generator,
-    MOH717Generator,
-)
+from .services import DHIS2SubmissionService, MOH705Generator, MOH711Generator, MOH717Generator
 
 logger = logging.getLogger(__name__)
 

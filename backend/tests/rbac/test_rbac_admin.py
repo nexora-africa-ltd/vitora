@@ -263,9 +263,9 @@ class TestStaffProfileAdmin:
 
         # Check if export_to_csv action exists
         action_names = [getattr(action, "__name__", str(action)) for action in actions]
-        assert "export_to_csv" in action_names or hasattr(
-            StaffProfileAdmin, "export_to_csv"
-        ), "StaffProfileAdmin should have export_to_csv action"
+        assert "export_to_csv" in action_names or hasattr(StaffProfileAdmin, "export_to_csv"), (
+            "StaffProfileAdmin should have export_to_csv action"
+        )
 
 
 @pytest.mark.django_db
@@ -323,7 +323,7 @@ class TestStaffProfileCSVExport:
                 title="Nurse",
                 primary_role=role,
                 primary_department=department,
-                license_number=f"NCK-{1000+i}",
+                license_number=f"NCK-{1000 + i}",
                 date_joined=date.today(),
             )
             staff_list.append(staff)
@@ -406,9 +406,9 @@ class TestStaffProfileCSVExport:
         # Check data includes employee IDs
         all_content = content
         for staff in sample_staff:
-            assert (
-                staff.employee_id in all_content
-            ), f"Employee ID {staff.employee_id} should be in CSV"
+            assert staff.employee_id in all_content, (
+                f"Employee ID {staff.employee_id} should be in CSV"
+            )
 
     def test_export_csv_selected_only(self, admin_site, admin_user, request_factory, sample_staff):
         """Should export only selected staff."""

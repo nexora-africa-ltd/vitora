@@ -14,10 +14,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import (
-    CDSAlert,
-    CDSRule,
-)
+from .models import CDSAlert, CDSRule
 
 # ──────────────────────────── Rule Serializers ────────────────────────────
 

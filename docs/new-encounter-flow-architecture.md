@@ -1,6 +1,6 @@
 # New Encounter Flow Architecture
 
-> **Version**: 1.0  
+> **Version**: 1.0
 > **Last Updated**: February 27, 2026
 
 ## Overview
@@ -47,18 +47,18 @@ interface NewEncounterSession {
   sessionId: string;
   patientId: number | null;
   patientData: Patient | null;
-  
+
   // Core fields
   encounter_type: EncounterType;
   encounter_date: string;
   chief_complaint: string;
-  
+
   // Section data
   vitals: NewEncounterVitals;
   history: NewEncounterHistory;
   notes: NewEncounterNotes;
   diagnoses: DiagnosisFormData[];
-  
+
   // Tracking
   startedAt: Date;
   lastUpdatedAt: Date;

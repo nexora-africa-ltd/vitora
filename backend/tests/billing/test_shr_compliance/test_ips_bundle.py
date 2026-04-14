@@ -73,9 +73,9 @@ class TestIPSCompositionResource:
         first_entry = valid_ips_bundle.get("entry", [{}])[0]
         resource = first_entry.get("resource", {})
 
-        assert (
-            resource.get("resourceType") == "Composition"
-        ), "First entry in IPS bundle must be a Composition resource"
+        assert resource.get("resourceType") == "Composition", (
+            "First entry in IPS bundle must be a Composition resource"
+        )
 
     def test_composition_has_status(self, valid_ips_bundle):
         """
@@ -85,9 +85,9 @@ class TestIPSCompositionResource:
         """
         composition = self._get_composition(valid_ips_bundle)
         assert "status" in composition, "Composition must have 'status' field"
-        assert (
-            composition["status"] == "final"
-        ), "Composition status should be 'final' for complete IPS"
+        assert composition["status"] == "final", (
+            "Composition status should be 'final' for complete IPS"
+        )
 
     def test_composition_has_type(self, valid_ips_bundle):
         """
@@ -99,12 +99,12 @@ class TestIPSCompositionResource:
         assert "type" in composition, "Composition must have 'type' field"
 
         type_coding = composition["type"].get("coding", [{}])[0]
-        assert (
-            type_coding.get("system") == "http://loinc.org"
-        ), "Composition type must use LOINC system"
-        assert (
-            type_coding.get("code") == "60591-5"
-        ), "Composition type code must be '60591-5' (Patient summary)"
+        assert type_coding.get("system") == "http://loinc.org", (
+            "Composition type must use LOINC system"
+        )
+        assert type_coding.get("code") == "60591-5", (
+            "Composition type code must be '60591-5' (Patient summary)"
+        )
 
     def test_composition_has_subject(self, valid_ips_bundle):
         """
@@ -115,9 +115,9 @@ class TestIPSCompositionResource:
         composition = self._get_composition(valid_ips_bundle)
         assert "subject" in composition, "Composition must have 'subject' field"
         assert "reference" in composition["subject"], "Composition subject must have 'reference'"
-        assert composition["subject"]["reference"].startswith(
-            "Patient/"
-        ), "Composition subject must reference a Patient"
+        assert composition["subject"]["reference"].startswith("Patient/"), (
+            "Composition subject must reference a Patient"
+        )
 
     def test_composition_has_date(self, valid_ips_bundle):
         """
@@ -194,9 +194,9 @@ class TestIPSCompositionSections:
         if allergy_section:
             code = allergy_section.get("code", {})
             coding = code.get("coding", [{}])[0]
-            assert (
-                coding.get("code") == "48765-2"
-            ), "Allergies section LOINC code should be '48765-2'"
+            assert coding.get("code") == "48765-2", (
+                "Allergies section LOINC code should be '48765-2'"
+            )
 
     def test_medication_section_present(self, valid_ips_bundle):
         """
@@ -223,9 +223,9 @@ class TestIPSCompositionSections:
         if med_section:
             code = med_section.get("code", {})
             coding = code.get("coding", [{}])[0]
-            assert (
-                coding.get("code") == "10160-0"
-            ), "Medication section LOINC code should be '10160-0'"
+            assert coding.get("code") == "10160-0", (
+                "Medication section LOINC code should be '10160-0'"
+            )
 
     def test_medication_section_has_entries(self, valid_ips_bundle):
         """
@@ -318,9 +318,9 @@ class TestIPSBundleEntryFormat:
         """
         for entry in valid_ips_bundle.get("entry", []):
             full_url = entry.get("fullUrl", "")
-            assert full_url.startswith(
-                "urn:uuid:"
-            ), "fullUrl should use 'urn:uuid:' format for document bundles"
+            assert full_url.startswith("urn:uuid:"), (
+                "fullUrl should use 'urn:uuid:' format for document bundles"
+            )
 
 
 class TestIPSSummaryAPIEndpoint:
@@ -336,9 +336,9 @@ class TestIPSSummaryAPIEndpoint:
         SHR Requirement: SHR summary endpoint must be configured.
         """
         assert "shr_summary" in shr_api_endpoints, "SHR API must include shr_summary endpoint"
-        assert (
-            shr_api_endpoints["shr_summary"] == "/v1/shr/summary"
-        ), "SHR summary endpoint should be '/v1/shr/summary'"
+        assert shr_api_endpoints["shr_summary"] == "/v1/shr/summary", (
+            "SHR summary endpoint should be '/v1/shr/summary'"
+        )
 
     def test_shr_summary_uses_get_method(self):
         """
@@ -380,6 +380,6 @@ class TestIPSBundleWithDispenseHistory:
             e.get("resource", {}).get("resourceType") == "MedicationDispense"
             for e in ips_bundle_with_dispense_history.get("entry", [])
         )
-        assert (
-            has_med_dispense
-        ), "IPS bundle with dispense history should contain MedicationDispense"
+        assert has_med_dispense, (
+            "IPS bundle with dispense history should contain MedicationDispense"
+        )
