@@ -367,6 +367,19 @@ class PatientCheckinView(views.APIView):
                     except Facility.DoesNotExist:
                         pass
 
+        if not facility:
+            return Response(
+                {
+                    "detail": (
+                        "Could not determine facility context. "
+                        "Ensure X-Facility-Id header is sent or that your "
+                        "staff profile has a primary facility assigned."
+                    ),
+                    "code": "FACILITY_REQUIRED",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Process check-in
         try:
             checkin, warning = process_checkin(

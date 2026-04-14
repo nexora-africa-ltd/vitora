@@ -6,7 +6,7 @@
  * All responses are validated with Zod schemas.
  */
 
-import { apiClient } from './client';
+import { apiClient, getActiveFacilityId } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   PatientLookupResponseSchema,
@@ -75,6 +75,11 @@ export const checkinApi = {
    * @returns Check-in response with queue info
    */
   async checkinPatient(patientId: number, data: CheckInRequest): Promise<CheckInResponse> {
+    if (!getActiveFacilityId()) {
+      throw new Error(
+        'No active facility selected. Please ensure you have a facility assigned to your profile.'
+      );
+    }
     const response = await apiClient.post<CheckInResponse>(
       `/api/checkin/patients/${patientId}/checkin/`,
       data
