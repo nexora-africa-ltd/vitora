@@ -24,6 +24,7 @@ import type {
   DiagnosisTrendParams,
   MetabaseResourceType,
   MetabaseEmbedResponse,
+  MetabaseDashboardInfo,
 } from '@/lib/types/analytics';
 
 export const analyticsApi = {
@@ -91,5 +92,13 @@ export const analyticsApi = {
     return parseResponse(MetabaseEmbedResponseSchema, response.data, {
       context: 'analyticsApi.getMetabaseEmbedUrl',
     });
+  },
+
+  /**
+   * List Metabase dashboards configured for embedding.
+   */
+  getMetabaseDashboards: async (): Promise<MetabaseDashboardInfo[]> => {
+    const response = await apiClient.get('/api/analytics/metabase-dashboards/');
+    return response.data;
   },
 };

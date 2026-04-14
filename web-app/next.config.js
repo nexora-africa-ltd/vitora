@@ -78,7 +78,19 @@ const nextConfig = {
         ],
       },
       {
-        // HTML pages should revalidate
+        // Analytics page embeds cross-origin Metabase iframes that set
+        // cookies, which COEP: credentialless blocks. Exempt this route.
+        source: '/analytics',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        // All other HTML pages should revalidate + enable cross-origin
+        // isolation for PowerSync (wa-sqlite SharedArrayBuffer).
         source: '/:path*',
         headers: [
           {

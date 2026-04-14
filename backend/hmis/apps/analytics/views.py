@@ -14,6 +14,7 @@ import logging
 import time
 
 import jwt
+import requests as http_requests
 from django.conf import settings
 from django_filters import rest_framework as django_filters
 from rest_framework import mixins, serializers, viewsets
@@ -242,6 +243,63 @@ class MetabaseEmbedView(APIView):
         )
 
         return Response({"embed_url": embed_url})
+
+
+class MetabaseDashboardListView(APIView):
+    """
+    List Metabase dashboards available for embedding.
+
+    ``GET /api/analytics/metabase-dashboards/``
+
+    Proxies the Metabase API to fetch dashboards, filtering to only those
+    that have ``embedding_params`` configured (i.e. enabled for embedding).
+    Excludes the default E-commerce sample dashboard.
+    """
+
+    permission_classes = [IsAuthenticated, CanViewAnalytics]
+
+    def get(self, request: Request) -> Response:
+        site_url = getattr(settings, "METABASE_SITE_URL", "")
+        mb_api_key = getattr(settings, "METABASE_API_KEY", "")
+
+        if not site_url:
+            return Response(
+                {"detail": "Metabase is not configured."},
+                status=503,
+            )
+
+        try:
+            headers = {}
+            if mb_api_key:
+                headers["x-api-key"] = mb_api_key
+            resp = http_requests.get(
+                f"{site_url.rstrip('/')}/api/dashboard",
+                headers=headers,
+                timeout=10,
+            )
+            resp.raise_for_status()
+        except http_requests.RequestException:
+            logger.exception("Failed to fetch dashboards from Metabase")
+            return Response(
+                {"detail": "Could not reach Metabase."},
+                status=502,
+            )
+
+        dashboards = []
+        for d in resp.json():
+            # Only include dashboards that have embedding configured
+            ep = d.get("embedding_params")
+            if not ep:
+                continue
+            dashboards.append(
+                {
+                    "id": d["id"],
+                    "name": d["name"],
+                    "description": d.get("description") or "",
+                }
+            )
+
+        return Response(dashboards)
 
 
 # ---------------------------------------------------------------------------

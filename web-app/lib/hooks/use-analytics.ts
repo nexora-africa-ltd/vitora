@@ -24,6 +24,7 @@ export const ANALYTICS_KEYS = {
   demographics: () => ['analytics', 'demographics'] as const,
   metabaseEmbed: (type: MetabaseResourceType, id: number) =>
     ['analytics', 'metabase-embed', type, id] as const,
+  metabaseDashboards: () => ['analytics', 'metabase-dashboards'] as const,
 };
 
 // Analytics data is ETL'd nightly — 15 min stale time is fine
@@ -87,6 +88,18 @@ export function useMetabaseEmbedUrl(
     staleTime: 8 * 60 * 1000, // 8 min (token expires in 10 min)
     refetchInterval: 8 * 60 * 1000,
     enabled: resourceId > 0,
+    retry: 1,
+  });
+}
+
+/**
+ * Fetch the list of Metabase dashboards configured for embedding.
+ */
+export function useMetabaseDashboards() {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.metabaseDashboards(),
+    queryFn: () => analyticsApi.getMetabaseDashboards(),
+    staleTime: STALE_TIME,
     retry: 1,
   });
 }

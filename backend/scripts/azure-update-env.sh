@@ -54,6 +54,7 @@ declare -A SECRETS=(
   ["mpesa-passkey"]="${MPESA_PASSKEY:-}"
   ["tibabot-api-key"]="${TIBABOT_API_KEY:-}"
   ["metabase-embedding-secret"]="${METABASE_EMBEDDING_SECRET:-}"
+  ["metabase-api-key"]="${METABASE_API_KEY:-}"
 )
 
 SECRET_ARGS=()
@@ -149,6 +150,7 @@ az containerapp update \
     "WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://vitora-navy.vercel.app,https://staging.vitora.digital}" \
     "METABASE_SITE_URL=${METABASE_SITE_URL:-https://vitora-metabase.agreeabledune-6cc420cc.eastus.azurecontainerapps.io}" \
     "METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret" \
+    "METABASE_API_KEY=secretref:metabase-api-key" \
     "POWERSYNC_URL=${POWERSYNC_URL:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
     "POWERSYNC_JWT_KID=${POWERSYNC_JWT_KID:-vitora-hmis-1}" \
     "POWERSYNC_JWT_AUDIENCE=${POWERSYNC_JWT_AUDIENCE:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
