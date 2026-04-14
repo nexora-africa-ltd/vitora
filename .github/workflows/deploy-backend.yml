@@ -122,6 +122,7 @@ jobs:
             WEBAUTHN_ORIGIN=${{ vars.WEBAUTHN_ORIGIN || 'https://vitora-navy.vercel.app,https://staging.vitora.digital' }}
             METABASE_SITE_URL=${{ vars.METABASE_SITE_URL || 'https://vitora-metabase.agreeabledune-6cc420cc.eastus.azurecontainerapps.io' }}
             METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret
+            METABASE_API_KEY=secretref:metabase-api-key
             POWERSYNC_URL=${{ vars.POWERSYNC_URL || 'https://69d7e1b30e377e689729cf08.powersync.journeyapps.com' }}
             POWERSYNC_JWT_KID=vitora-hmis-1
             POWERSYNC_JWT_AUDIENCE=${{ vars.POWERSYNC_JWT_AUDIENCE || 'https://69d7e1b30e377e689729cf08.powersync.journeyapps.com' }}

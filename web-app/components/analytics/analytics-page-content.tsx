@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, CalendarDays, Compass } from 'lucide-react';
+import { BarChart3, CalendarDays, Compass, Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -18,21 +18,12 @@ import {
 import { AnalyticsDashboard } from '@/components/analytics/analytics-dashboard';
 import { MetabaseEmbed } from '@/components/analytics/metabase-embed';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMetabaseDashboards } from '@/lib/hooks/use-analytics';
 import type { Period } from '@/components/analytics/analytics-dashboard';
-
-/**
- * Default Metabase dashboard IDs.
- * These correspond to dashboards created in Metabase during initial setup.
- * Admins can update these via env vars or a settings page in the future.
- */
-const METABASE_DASHBOARDS = {
-  facilityOverview: 2,
-  clinicalTrends: 3,
-  financialPerformance: 4,
-} as const;
 
 export function AnalyticsPageContent() {
   const [period, setPeriod] = useState<Period>('30d');
+  const { data: dashboards, isLoading: dashboardsLoading } = useMetabaseDashboards();
 
   return (
     <Tabs defaultValue="dashboard">
@@ -82,47 +73,36 @@ export function AnalyticsPageContent() {
             {' '}to set them up.
           </p>
         </div>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Facility Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MetabaseEmbed
-              resourceType="dashboard"
-              resourceId={METABASE_DASHBOARDS.facilityOverview}
-              title="Facility Overview"
-              minHeight="500px"
-            />
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Clinical Trends</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MetabaseEmbed
-              resourceType="dashboard"
-              resourceId={METABASE_DASHBOARDS.clinicalTrends}
-              title="Clinical Trends"
-              minHeight="500px"
-            />
-          </CardContent>
-        </Card>
+        {dashboardsLoading && (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            Loading dashboards…
+          </div>
+        )}
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Financial Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MetabaseEmbed
-              resourceType="dashboard"
-              resourceId={METABASE_DASHBOARDS.financialPerformance}
-              title="Financial Performance"
-              minHeight="500px"
-            />
-          </CardContent>
-        </Card>
+        {!dashboardsLoading && (!dashboards || dashboards.length === 0) && (
+          <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground">
+            No dashboards configured for embedding yet. Open Metabase to create dashboards
+            and enable them for embedding.
+          </div>
+        )}
+
+        {dashboards?.map((dashboard) => (
+          <Card key={dashboard.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{dashboard.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MetabaseEmbed
+                resourceType="dashboard"
+                resourceId={dashboard.id}
+                title={dashboard.name}
+                minHeight="500px"
+              />
+            </CardContent>
+          </Card>
+        ))}
       </TabsContent>
     </Tabs>
   );

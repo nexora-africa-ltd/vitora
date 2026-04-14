@@ -477,6 +477,7 @@ CELERY_TIMEZONE = TIME_ZONE
 # ---------------------------------------------------------------------------
 METABASE_SITE_URL = os.getenv("METABASE_SITE_URL", "http://localhost:3333")
 METABASE_EMBEDDING_SECRET = os.getenv("METABASE_EMBEDDING_SECRET", "")
+METABASE_API_KEY = os.getenv("METABASE_API_KEY", "")
 
 # Pharmacy Configuration
 PHARMACY_SETTINGS = {
