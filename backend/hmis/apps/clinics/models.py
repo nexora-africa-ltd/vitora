@@ -1012,9 +1012,8 @@ class ClinicVisit(TimeStampedModel):
 
     def ensure_consultation_encounter(self, existing_encounter=None):
         """Ensure this clinic visit is linked to a consultation-ready encounter."""
-        from hmis.apps.encounters.models import Encounter
-
         from hmis.apps.clinics.services.template_routing import resolve_default_clinical_template
+        from hmis.apps.encounters.models import Encounter
 
         resolved_template = resolve_default_clinical_template(self.session.clinic)
         encounter = self.encounter or existing_encounter

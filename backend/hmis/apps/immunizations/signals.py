@@ -6,9 +6,6 @@
 
 import logging
 
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-
 logger = logging.getLogger(__name__)
 
 
@@ -75,7 +72,11 @@ def handle_aefi_surveillance_alert(sender, instance, created, **kwargs):
         return
 
     try:
-        from hmis.apps.surveillance.models import NotifiableCase, NotifiableDisease, SurveillanceAlert
+        from hmis.apps.surveillance.models import (
+            NotifiableCase,
+            NotifiableDisease,
+            SurveillanceAlert,
+        )
 
         # Find or create a "AEFI" notifiable disease entry
         disease, _ = NotifiableDisease.objects.get_or_create(

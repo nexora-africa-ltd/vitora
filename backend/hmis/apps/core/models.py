@@ -3503,15 +3503,14 @@ class EmailVerificationToken(models.Model):
 
 
 # Import MFA models so Django discovers them for syncdb (--no-migrations mode)
+# Import EventStore so Django discovers it for migrations
+from hmis.apps.core.events.store import EventStore  # noqa: E402, F401
 from hmis.apps.core.mfa.models import (  # noqa: E402, F401
     BackupCode,
     MFAToken,
     UserTOTPDevice,
     UserWebAuthnCredential,
 )
-
-# Import EventStore so Django discovers it for migrations
-from hmis.apps.core.events.store import EventStore  # noqa: E402, F401
 
 # Import projection models so Django discovers them for migrations
 from hmis.apps.core.projections.models import (  # noqa: E402, F401

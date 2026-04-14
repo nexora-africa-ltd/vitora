@@ -76,8 +76,7 @@ class DrugViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filter by category if provided (searches within categories array)."""
-        from django.db.models import CharField, Q, Value
-        from django.db.models.functions import Cast
+        from django.db.models import Q
 
         queryset = super().get_queryset()
         category = self.request.query_params.get("category")

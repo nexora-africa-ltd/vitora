@@ -24,7 +24,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
 from hmis.apps.billing.filters import CreditNoteFilter, InvoiceFilter, PaymentFilter
 from hmis.apps.billing.models import (
     CreditNote,
@@ -49,6 +48,7 @@ from hmis.apps.billing.serializers import (
 )
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import RequiresActiveShiftPermission
 
 
 class ServiceCategoryViewSet(viewsets.ModelViewSet):

@@ -174,7 +174,7 @@ def counselling_session(db, counselling_referral, test_user):
     # Ensure referral is not sensitive for this fixture
     counselling_referral.is_sensitive = False
     counselling_referral.save(update_fields=["is_sensitive"])
-    
+
     return CounsellingSession.objects.create(
         referral=counselling_referral,
         counsellor=test_user,

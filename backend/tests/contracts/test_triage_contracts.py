@@ -23,12 +23,11 @@ from hmis.apps.triage.serializers import (
     TriageCategoryCalculationSerializer,
     TriageQueueSerializer,
     TriageVitalThresholdSerializer,
-    WaitTimeBreachAcknowledgeSerializer,
-    WaitTimeBreachSerializer,
     WaitingQueueCreateSerializer,
     WaitingQueueSerializer,
+    WaitTimeBreachAcknowledgeSerializer,
+    WaitTimeBreachSerializer,
 )
-
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (

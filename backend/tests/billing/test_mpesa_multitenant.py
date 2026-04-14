@@ -18,7 +18,6 @@ from hmis.apps.billing.models import FacilityBillingConfig, Invoice, Payment, Pa
 from hmis.apps.billing.services.mpesa import MpesaService
 from hmis.apps.core.models import County, Facility, Organization, SubCounty
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

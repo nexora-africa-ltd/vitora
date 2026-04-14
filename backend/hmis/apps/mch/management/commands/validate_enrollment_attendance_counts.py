@@ -4,7 +4,9 @@ import json
 
 from django.core.management.base import BaseCommand, CommandError
 
-from hmis.apps.mch.services.clinic_unification_validation import validate_enrollment_attendance_counts
+from hmis.apps.mch.services.clinic_unification_validation import (
+    validate_enrollment_attendance_counts,
+)
 
 
 class Command(BaseCommand):

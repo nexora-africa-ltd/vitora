@@ -16,7 +16,6 @@ from hmis.apps.checkin.serializers import (
     TodayCheckinSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         CheckInRequestSerializer,

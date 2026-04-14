@@ -4,13 +4,12 @@ Tests for Adverse Transfusion Reaction (ATR) reporting.
 Aligned with Kenya MOH/PPB form FOM20/MIP/PMS/SOP/001.
 """
 
-import pytest  # type: ignore
 from datetime import date, time
 from decimal import Decimal
 
+import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
-
 
 # ============================================================================
 # Test Fixtures
@@ -169,6 +168,7 @@ class TestAdverseTransfusionReactionModel:
     ):
         """Only one ATR report allowed per transfusion (OneToOneField)."""
         from django.db import IntegrityError
+
         from hmis.apps.inpatient.models import AdverseTransfusionReaction
 
         with pytest.raises(IntegrityError):

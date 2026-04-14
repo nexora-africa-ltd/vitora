@@ -18,7 +18,6 @@ from hmis.apps.laboratory.serializers import (
     DiagnosticReportUpdateSerializer,
     InstrumentCreateSerializer,
     InstrumentSerializer,
-    LOINCCodeSerializer,
     LabOrderCreateSerializer,
     LabOrderItemCreateSerializer,
     LabOrderItemSerializer,
@@ -35,6 +34,7 @@ from hmis.apps.laboratory.serializers import (
     LabResultNestedSerializer,
     LabResultSerializer,
     LabResultVerifySerializer,
+    LOINCCodeSerializer,
     ResultValidationCreateSerializer,
     ResultValidationSerializer,
     SpecimenSerializer,
@@ -43,7 +43,6 @@ from hmis.apps.laboratory.serializers import (
     TestCatalogDetailSerializer,
     TestCatalogSerializer,
 )
-
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (

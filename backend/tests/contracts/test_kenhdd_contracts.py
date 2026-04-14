@@ -21,7 +21,6 @@ from hmis.apps.kenhdd.serializers import (
     KENHDDValidationRunSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         KENHDDComplianceReportInputSerializer,

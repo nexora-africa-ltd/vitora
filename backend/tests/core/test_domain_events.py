@@ -15,7 +15,6 @@ from hmis.apps.core.events.base import DomainEvent
 from hmis.apps.core.events.bus import EventBus, get_event_bus, reset_event_bus
 from hmis.apps.core.events.store import EventStore
 
-
 # =============================================================================
 # FIXTURES
 # =============================================================================

@@ -5,8 +5,9 @@ Covers: scheduling, encounters (post_save), triage, inpatient,
         MCH, surveillance, and imaging signal handlers.
 """
 
-import pytest  # type: ignore
 from unittest.mock import MagicMock, patch
+
+import pytest  # type: ignore
 
 from hmis.apps.core.events import (
     ClinicalEvents,
@@ -884,9 +885,9 @@ class TestMCHSignalEvents:
         bus = get_event_bus()
         bus.subscribe(MCHEvents.ANC_VISIT_CREATED, lambda e: received.append(e))
 
-        from hmis.apps.mch.signals import auto_create_anc_appointment
-
         from datetime import date, timedelta
+
+        from hmis.apps.mch.signals import auto_create_anc_appointment
 
         registration = MagicMock()
         registration.mch_number = "MCH-001"
@@ -925,9 +926,9 @@ class TestMCHSignalEvents:
         bus = get_event_bus()
         bus.subscribe(ImmunizationEvents.SCHEDULE_GENERATED, lambda e: received.append(e))
 
-        from hmis.apps.mch.signals import auto_generate_immunization_schedule
-
         from datetime import date, timedelta
+
+        from hmis.apps.mch.signals import auto_generate_immunization_schedule
 
         instance = MagicMock()
         instance.id = 55

@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Any
 
 from django.db.models import Q
 
@@ -77,10 +76,11 @@ def get_latest_labs_for_icu(
         Only includes fields with available verified results.
     """
     # Import here to avoid circular imports at module level
-    from hmis.apps.laboratory.models import LabResult
+    from datetime import timedelta
 
     from django.utils import timezone
-    from datetime import timedelta
+
+    from hmis.apps.laboratory.models import LabResult
 
     seven_days_ago = timezone.now() - timedelta(days=7)
 

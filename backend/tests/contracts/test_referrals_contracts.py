@@ -17,7 +17,6 @@ from hmis.apps.referrals.serializers import (
     ReferralDeclineSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         ClinicalReferralCreateSerializer,

@@ -18,7 +18,6 @@ from hmis.apps.cds.serializers import (
     CDSRuleSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         CDSAlertListSerializer,

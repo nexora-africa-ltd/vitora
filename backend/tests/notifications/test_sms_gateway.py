@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest  # type: ignore
 from django.conf import settings
 
-from hmis.apps.core.sms_gateway import SMSGateway, send_sms, send_bulk_sms
+from hmis.apps.core.sms_gateway import SMSGateway, send_bulk_sms, send_sms
 
 
 class TestSMSGatewayInitialization:

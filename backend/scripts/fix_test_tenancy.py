@@ -4,7 +4,6 @@ This adds organization/facility to ORM-created objects and StaffProfile to local
 """
 
 import re
-import sys
 
 
 def fix_file(filepath: str, fixes: list[dict]) -> int:
@@ -168,7 +167,7 @@ def auth_client(db, sample_organization, sample_facility, sample_department, sam
 
     with open(fp, "w") as f:
         f.write(content)
-    print(f"  Done")
+    print("  Done")
 
 
 # =============================================================================
@@ -276,7 +275,6 @@ def sample_patient(sample_organization):
     # All inline Encounter.objects.create need facility=sample_facility
 
     # Pattern: Add facility=sample_facility before closing paren of Encounter.objects.create
-    import re
 
     def add_facility_to_encounter_create(text):
         """Add facility=sample_facility to Encounter.objects.create calls missing it."""
@@ -356,7 +354,7 @@ def sample_patient(sample_organization):
 
     with open(fp, "w") as f:
         f.write(content)
-    print(f"  Done")
+    print("  Done")
 
 
 # =============================================================================
@@ -500,7 +498,6 @@ def auth_client(
 
     # Fix inline Encounter.objects.create calls in test methods
     # Search for patterns and add facility
-    import re
 
     def add_facility_to_encounter_creates(text):
         lines = text.split('\n')
@@ -561,7 +558,7 @@ def auth_client(
 
     with open(fp, "w") as f:
         f.write(content)
-    print(f"  Done")
+    print("  Done")
 
 
 # =============================================================================
@@ -617,7 +614,6 @@ def auth_client(
 
     # Add organization=sample_organization to Patient.objects.create calls
     # These are in fixture definitions
-    import re
 
     def add_org_to_patient_creates(text):
         lines = text.split('\n')
@@ -728,7 +724,7 @@ def auth_client(
 
     with open(fp, "w") as f:
         f.write(content)
-    print(f"  Done")
+    print("  Done")
 
 
 # =============================================================================
@@ -838,7 +834,7 @@ def sample_encounter(sample_patient, authenticated_user, sample_facility):
 
     with open(fp, "w") as f:
         f.write(content)
-    print(f"  Done")
+    print("  Done")
 
 
 # =============================================================================
@@ -924,7 +920,7 @@ def auth_client(
 
     with open(fp, "w") as f:
         f.write(content)
-    print(f"  Done")
+    print("  Done")
 
 
 if __name__ == "__main__":

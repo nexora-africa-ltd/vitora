@@ -6,7 +6,6 @@ from django.core.management.base import BaseCommand
 
 from hmis.apps.quality.models import QualityMeasure
 
-
 KENYA_QUALITY_MEASURES = [
     {
         "code": "KE-CQM-001",

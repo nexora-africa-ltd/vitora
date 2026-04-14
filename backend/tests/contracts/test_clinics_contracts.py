@@ -26,7 +26,6 @@ from hmis.apps.clinics.serializers import (
     QueueStatsSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         ClinicEnrollmentListSerializer,

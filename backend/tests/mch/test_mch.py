@@ -320,8 +320,7 @@ class TestHEIFollowUp:
 
     def test_create_hei_followup(self, sample_county, sample_sub_county, sample_patient, anc_enrollment, sample_organization):
         """Should allow creating HEI follow-up for an infant."""
-        from hmis.apps.mch.models import HEIFollowUp
-        from hmis.apps.mch.models import MCHRegistration
+        from hmis.apps.mch.models import HEIFollowUp, MCHRegistration
         from hmis.apps.patients.models import Patient
 
         infant = Patient.objects.create(

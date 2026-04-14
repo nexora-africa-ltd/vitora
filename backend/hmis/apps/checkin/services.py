@@ -10,8 +10,7 @@ Sprint: Returning Patient Workflow - Sprint 1
 """
 
 from dataclasses import dataclass
-from datetime import date, timedelta
-from typing import Optional
+from datetime import date
 
 from django.db import IntegrityError
 from django.db.models import Max
@@ -25,8 +24,8 @@ class ClinicalSnapshot:
     allergies: list[str]
     active_conditions: list[str]
     current_medications: list[str]
-    last_visit_date: Optional[date]
-    last_visit_clinic: Optional[str]
+    last_visit_date: date | None
+    last_visit_clinic: str | None
     pending_results: list[dict]
     alerts: list[str]
 
@@ -244,14 +243,14 @@ def process_checkin(
     patient,
     destination,
     user,
-    visit_type: Optional[str] = None,
+    visit_type: str | None = None,
     visit_reason: str = "NEW_COMPLAINT",
     skip_triage: bool = False,
     chief_complaint: str = "",
     notes: str = "",
-    linked_encounter_id: Optional[int] = None,
+    linked_encounter_id: int | None = None,
     identity_method: str = "MRN",
-    procedure_order_id: Optional[int] = None,
+    procedure_order_id: int | None = None,
     facility=None,
     organization=None,
 ):

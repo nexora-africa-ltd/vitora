@@ -6,7 +6,6 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 
 
 from decimal import Decimal
-from typing import Optional
 
 from django.utils import timezone
 from rest_framework import serializers
@@ -14,7 +13,16 @@ from rest_framework import serializers
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
-from .models import ERBed, Escalation, TriageAssessment, TriageQueue, TriageSettings, TriageVitalThreshold, WaitTimeBreach, WaitingQueue
+from .models import (
+    ERBed,
+    Escalation,
+    TriageAssessment,
+    TriageQueue,
+    TriageSettings,
+    TriageVitalThreshold,
+    WaitingQueue,
+    WaitTimeBreach,
+)
 from .services import TriageCategoryCalculator
 
 # =============================================================================
@@ -59,7 +67,7 @@ class WaitingQueueSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
-    def get_patient_age(self, obj) -> Optional[int]:
+    def get_patient_age(self, obj) -> int | None:
         if hasattr(obj.patient, "age"):
             return obj.patient.age
         return None

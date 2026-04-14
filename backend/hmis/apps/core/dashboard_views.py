@@ -861,7 +861,6 @@ def _compute_patient_volume(start_date, end_date, granularity: str) -> list:
     """
     from collections import defaultdict
 
-    from django.db.models import Count
     from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
 
     from hmis.apps.encounters.models import Encounter
@@ -1130,7 +1129,7 @@ def revenue_breakdown(request):
 
 def _compute_revenue_breakdown(start_date, end_date, group_by: str) -> dict:
     """Compute revenue breakdown from the database."""
-    from django.db.models import Count, Sum
+    from django.db.models import Sum
 
     try:
         from hmis.apps.billing.models import InvoiceItem, Payment

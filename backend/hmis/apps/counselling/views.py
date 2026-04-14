@@ -763,7 +763,7 @@ class CounsellingSessionViewSet(viewsets.ModelViewSet):
         Body: {"scheduled_date": "2026-03-15", "scheduled_time": "10:00"}
         """
         from datetime import datetime as dt
-        
+
         session = self.get_object()
 
         if session.status in ["COMPLETED"]:

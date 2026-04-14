@@ -2,10 +2,10 @@
 Tests for analytics API endpoints.
 """
 
-import pytest  # type: ignore
 from datetime import date
 from decimal import Decimal
 
+import pytest  # type: ignore
 from rest_framework import status
 
 

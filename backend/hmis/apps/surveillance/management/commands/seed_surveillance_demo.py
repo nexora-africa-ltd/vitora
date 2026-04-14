@@ -24,7 +24,6 @@ from hmis.apps.surveillance.models import (
     CaseOutcome,
     CaseSeverity,
     NotifiableCase,
-    NotifiableCategory,
     NotifiableDisease,
 )
 from hmis.apps.surveillance.services import IDSRReportingService

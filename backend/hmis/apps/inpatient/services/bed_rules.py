@@ -17,17 +17,14 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from django.db import transaction
-from django.db.models import Count, Q, QuerySet
+from django.db.models import QuerySet
 
 from hmis.apps.core.models import AuditLog
 from hmis.apps.inpatient.models import Bed, Ward
 from hmis.apps.inpatient.services.compatibility import (
-    CompatibilityResult,
     ward_compatibility_service,
 )
 from hmis.apps.scheduling.models import AssignmentDecision, AssignmentRule

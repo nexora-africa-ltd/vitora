@@ -2,7 +2,6 @@
 Serializers for Allied Health dashboard.
 """
 
-from datetime import date
 
 from rest_framework import serializers
 

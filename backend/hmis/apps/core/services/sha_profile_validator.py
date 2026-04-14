@@ -22,7 +22,6 @@ from hmis.apps.core.fhir.profiles import (
     SHA_COVERAGE_PROFILE,
     SHA_ORGANIZATION_PROFILE,
     SHA_PATIENT_PROFILE,
-    ProfileConstraint,
     ProfileSeverity,
     SHACodingSystems,
     SHAProfile,

@@ -7,7 +7,6 @@ Includes user/facility context serializers for context-enriched requests.
 
 from rest_framework import serializers
 
-
 # =============================================================================
 # Phase 1 — ICD-10 Auto-coding
 # =============================================================================

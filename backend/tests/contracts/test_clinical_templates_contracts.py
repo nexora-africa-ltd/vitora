@@ -13,7 +13,6 @@ from hmis.apps.clinical_templates.serializers import (
     TemplateSectionSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         ClinicalTemplateListSerializer,

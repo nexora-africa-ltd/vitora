@@ -212,10 +212,10 @@ class TestMaternityEpisodeLinkage:
         sample_organization,
     ):
         from hmis.apps.clinics.models import Clinic, ClinicEnrollment
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.inpatient.models import Admission
         from hmis.apps.mch.models import MCHRegistration
         from hmis.apps.patients.models import Patient
-        from hmis.apps.inpatient.models import Admission
-        from hmis.apps.encounters.models import Encounter
 
         other_patient = Patient.objects.create(
             first_name="Akinyi",

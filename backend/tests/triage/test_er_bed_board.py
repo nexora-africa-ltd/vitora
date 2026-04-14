@@ -12,7 +12,6 @@ from rest_framework import status
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.triage.models import ERBed, TriageAssessment
 
-
 # =============================================================================
 # FIXTURES
 # =============================================================================
@@ -124,8 +123,8 @@ class TestERBedModel:
         """Should raise ValueError when bed is not available."""
         er_bed.assign_patient(patient=sample_patient, user=test_user)
 
-        from hmis.apps.patients.models import Patient
         from hmis.apps.core.models import County, SubCounty
+        from hmis.apps.patients.models import Patient
 
         county = County.objects.first()
         sub_county = SubCounty.objects.first()

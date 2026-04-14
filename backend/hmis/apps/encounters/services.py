@@ -5,7 +5,6 @@ Phase 2.3: Notification System - Patient Called notifications
 Sprint 2 - Phase 2A: Encounter State Machine
 """
 
-from typing import Optional
 
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -29,7 +28,7 @@ class EncounterStateMachine:
         to_status: str,
         user,
         reason: str = "",
-        ip_address: Optional[str] = None,
+        ip_address: str | None = None,
     ) -> dict:
         """
         Transition an encounter to a new status.

@@ -9,7 +9,9 @@ import logging
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
 from hmis.apps.core.events import SurveillanceEvents, publish_event
+
 logger = logging.getLogger(__name__)
 
 

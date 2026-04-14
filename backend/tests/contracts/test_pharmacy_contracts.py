@@ -21,7 +21,6 @@ from hmis.apps.pharmacy.serializers import (
     StockBatchSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         AlertSettingsSerializer,

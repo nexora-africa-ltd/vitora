@@ -19,7 +19,6 @@ from hmis.apps.nutrition.serializers import (
     NutritionConsultationUpdateStatusSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         DietPlanCreateSerializer,

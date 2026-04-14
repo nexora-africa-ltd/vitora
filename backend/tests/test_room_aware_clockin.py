@@ -9,9 +9,9 @@ Covers:
 - ClinicRoom CRUD
 """
 
-import pytest  # type: ignore
 from datetime import date, time, timedelta
 
+import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
@@ -29,7 +29,6 @@ def _safe_shift_times():
 
 from hmis.apps.clinics.models import Clinic, ClinicRoom, ClinicSession, ClinicStaff, ClinicVisit
 from hmis.apps.scheduling.models import Resource, Shift
-
 
 # =============================================================================
 # Fixtures

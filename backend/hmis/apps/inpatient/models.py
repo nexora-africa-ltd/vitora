@@ -1699,7 +1699,7 @@ class ReviewRequest(TimeStampedModel):
     def __str__(self):
         return f"{self.get_review_type_display()} - {self.admission.patient} ({self.status})"
 
-    def acknowledge(self, user: "AbstractUser") -> None:
+    def acknowledge(self, user: AbstractUser) -> None:
         """Mark the review request as acknowledged/in progress."""
         self.status = "IN_PROGRESS"
         self.acknowledged_at = timezone.now()

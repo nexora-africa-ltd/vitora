@@ -12,7 +12,6 @@ This script:
 """
 import os
 import re
-import sys
 
 
 def add_field_to_model_create(content: str, model_class: str, field: str, value: str) -> str:

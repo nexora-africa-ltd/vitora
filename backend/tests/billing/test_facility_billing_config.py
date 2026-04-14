@@ -20,7 +20,6 @@ from rest_framework import status
 from hmis.apps.billing.models import FacilityBillingConfig, Invoice
 from hmis.apps.core.models import County, Facility, Organization, SubCounty
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

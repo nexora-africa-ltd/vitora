@@ -21,7 +21,16 @@ from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, Ten
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, get_client_ip
 
-from .models import ERBed, Escalation, TriageAssessment, TriageQueue, TriageSettings, TriageVitalThreshold, WaitTimeBreach, WaitingQueue
+from .models import (
+    ERBed,
+    Escalation,
+    TriageAssessment,
+    TriageQueue,
+    TriageSettings,
+    TriageVitalThreshold,
+    WaitingQueue,
+    WaitTimeBreach,
+)
 from .serializers import (
     ERBedAssignPatientSerializer,
     ERBedBoardSummarySerializer,
@@ -39,10 +48,10 @@ from .serializers import (
     TriageQueueSerializer,
     TriageSettingsSerializer,
     TriageVitalThresholdSerializer,
-    WaitTimeBreachAcknowledgeSerializer,
-    WaitTimeBreachSerializer,
     WaitingQueueCreateSerializer,
     WaitingQueueSerializer,
+    WaitTimeBreachAcknowledgeSerializer,
+    WaitTimeBreachSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -659,7 +668,6 @@ class VitalThresholdsViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="export")
     def export_thresholds(self, request):
         """Export thresholds configuration as JSON."""
-        import json
 
         thresholds = TriageVitalThreshold.objects.all()
         data = TriageVitalThresholdSerializer(thresholds, many=True).data
@@ -1803,8 +1811,6 @@ class PublicTriageQueueView(viewsets.ViewSet):
     def list(self, request):
         """Get today's triage waiting queue for the specified facility."""
         from datetime import date as date_type
-
-        from rest_framework import serializers as drf_serializers
 
         from hmis.apps.core.models import Facility
 

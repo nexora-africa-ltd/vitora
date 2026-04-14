@@ -4,7 +4,7 @@ Management command to seed default bed assignment rules.
 Phase B: Creates default BED_ASSIGNMENT rules for common ward types.
 """
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 
 from hmis.apps.scheduling.models import AssignmentRule
 

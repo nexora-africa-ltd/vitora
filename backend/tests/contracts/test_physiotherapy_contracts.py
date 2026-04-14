@@ -20,7 +20,6 @@ from hmis.apps.physiotherapy.serializers import (
     PhysiotherapyTreatmentTypeSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         PhysiotherapyOrderAssignTherapistSerializer,

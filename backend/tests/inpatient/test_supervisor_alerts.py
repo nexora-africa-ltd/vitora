@@ -14,6 +14,7 @@ import pytest  # type: ignore
 from django.contrib.auth.models import Permission
 from django.utils import timezone
 from rest_framework import status
+
 from tests.conftest import ensure_staff_profile
 
 

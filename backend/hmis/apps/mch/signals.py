@@ -676,7 +676,7 @@ def auto_create_immunization_appointment(sender, instance, created, **kwargs):
             scheduled_start=start_dt,
             scheduled_end=end_dt,
             reason=f"{vaccine_name} (Dose {instance.dose_number or ''})",
-            notes=f"Auto-created from KEPI immunization schedule",
+            notes="Auto-created from KEPI immunization schedule",
             priority="ROUTINE",
             status="CREATED",
         )

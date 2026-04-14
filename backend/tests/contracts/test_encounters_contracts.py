@@ -20,7 +20,6 @@ from hmis.apps.encounters.serializers import (
     TreatmentPlanTemplateSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         DiagnosisNestedSerializer,

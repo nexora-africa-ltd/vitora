@@ -8,10 +8,8 @@ Provides ViewSets for CDS rules and alerts with custom actions:
 
 from __future__ import annotations
 
-from datetime import timedelta
-
 import django_filters
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -22,7 +20,7 @@ from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.encounters.models import Encounter
 
-from .engine import EvaluationResult, build_encounter_context, evaluate_rules
+from .engine import build_encounter_context, evaluate_rules
 from .models import (
     CDSAlert,
     CDSAlertStatus,
@@ -41,7 +39,6 @@ from .serializers import (
     CDSRuleListSerializer,
     CDSRuleSerializer,
 )
-
 
 # ──────────────────────────── Filters ────────────────────────────
 

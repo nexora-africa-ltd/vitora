@@ -22,7 +22,6 @@ from hmis.apps.counselling.serializers import (
     CounsellingTypeSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         CounsellingReferralAssignCounsellorSerializer,

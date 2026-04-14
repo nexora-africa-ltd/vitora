@@ -35,7 +35,6 @@ from hmis.apps.surveillance.serializers import (
     SurveillanceDashboardSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         CountyReportSerializer,

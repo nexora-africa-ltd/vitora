@@ -35,8 +35,9 @@ class TestLoginRateLimiting:
 
     def test_login_has_throttle_configured(self, api_client, test_user):
         """Should have rate limiting configured on login endpoint."""
-        from hmis.apps.core.views import AuditedTokenObtainPairView
         from rest_framework.throttling import ScopedRateThrottle
+
+        from hmis.apps.core.views import AuditedTokenObtainPairView
 
         assert ScopedRateThrottle in AuditedTokenObtainPairView.throttle_classes
         assert AuditedTokenObtainPairView.throttle_scope == "login"
@@ -106,8 +107,9 @@ class TestMFAVerificationRateLimiting:
 
     def test_mfa_verify_has_throttle_configured(self, api_client, db):
         """Should have rate limiting configured on MFA verify endpoint."""
-        from hmis.apps.core.mfa.views import MFAVerifyView
         from rest_framework.throttling import ScopedRateThrottle
+
+        from hmis.apps.core.mfa.views import MFAVerifyView
 
         assert ScopedRateThrottle in MFAVerifyView.throttle_classes
         assert MFAVerifyView.throttle_scope == "mfa_verify"

@@ -12,8 +12,9 @@ Sprint 1.C: Clinical Data Model Enhancements
 DHA Compliance: Structured Allergy Model (P1 REQUIRED)
 """
 
-import pytest  # type: ignore
 from datetime import date, timedelta
+
+import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from rest_framework import status
 
@@ -159,8 +160,9 @@ class TestAllergyModel:
 
     def test_allergy_unique_active_constraint(self, db, sample_patient, sample_organization):
         """Should prevent duplicate active allergies for same substance."""
-        from hmis.apps.patients.models import Allergy
         from django.db import IntegrityError
+
+        from hmis.apps.patients.models import Allergy
 
         Allergy.objects.create(
             patient=sample_patient,

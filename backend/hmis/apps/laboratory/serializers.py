@@ -3,7 +3,6 @@ Serializers for laboratory models.
 """
 
 
-from typing import Optional
 
 from rest_framework import serializers
 
@@ -46,7 +45,7 @@ class LabResultAttachmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_uploaded_by_name(self, obj) -> Optional[str]:
+    def get_uploaded_by_name(self, obj) -> str | None:
         if obj.uploaded_by:
             return obj.uploaded_by.get_full_name() or obj.uploaded_by.username
         return None
@@ -220,26 +219,26 @@ class LabResultNestedSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_numeric_value(self, obj) -> Optional[float]:
+    def get_numeric_value(self, obj) -> float | None:
         if obj.numeric_value is not None:
             return float(obj.numeric_value)
         return None
 
-    def get_result_flag(self, obj) -> Optional[str]:
+    def get_result_flag(self, obj) -> str | None:
         # Return null instead of empty string for frontend enum compatibility
         return obj.result_flag if obj.result_flag else None
 
-    def get_entered_by_name(self, obj) -> Optional[str]:
+    def get_entered_by_name(self, obj) -> str | None:
         if obj.entered_by:
             return obj.entered_by.get_full_name() or obj.entered_by.username
         return None
 
-    def get_verified_by_name(self, obj) -> Optional[str]:
+    def get_verified_by_name(self, obj) -> str | None:
         if obj.verified_by:
             return obj.verified_by.get_full_name() or obj.verified_by.username
         return None
 
-    def get_validation_summary(self, obj) -> Optional[dict]:
+    def get_validation_summary(self, obj) -> dict | None:
         """Return two-stage validation summary for frontend display."""
         return obj.get_validation_summary()
 
@@ -278,7 +277,7 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
     def get_unit_cost(self, obj) -> float:
         return float(obj.unit_cost) if obj.unit_cost else 0.0
 
-    def get_result(self, obj) -> Optional[dict]:
+    def get_result(self, obj) -> dict | None:
         if not hasattr(obj, "result"):
             return None
         return LabResultNestedSerializer(obj.result).data
@@ -452,16 +451,16 @@ class LabResultSerializer(serializers.ModelSerializer):
             return float(obj.numeric_value)
         return None
 
-    def get_result_flag(self, obj) -> Optional[str]:
+    def get_result_flag(self, obj) -> str | None:
         """Return null instead of empty string for frontend enum compatibility."""
         return obj.result_flag if obj.result_flag else None
 
-    def get_entered_by_name(self, obj) -> Optional[str]:
+    def get_entered_by_name(self, obj) -> str | None:
         if obj.entered_by:
             return obj.entered_by.get_full_name() or obj.entered_by.username
         return None
 
-    def get_verified_by_name(self, obj) -> Optional[str]:
+    def get_verified_by_name(self, obj) -> str | None:
         if obj.verified_by:
             return obj.verified_by.get_full_name() or obj.verified_by.username
         return None
@@ -570,7 +569,7 @@ class LabQueueSpecimenSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_collected_by_name(self, obj) -> Optional[str]:
+    def get_collected_by_name(self, obj) -> str | None:
         if obj.collected_by:
             return obj.collected_by.get_full_name() or obj.collected_by.username
         return None
@@ -663,37 +662,37 @@ class LabQueueSerializer(serializers.ModelSerializer):
             return obj.assigned_technician.get_full_name() or obj.assigned_technician.username
         return None
 
-    def get_collected_by_name(self, obj) -> Optional[str]:
+    def get_collected_by_name(self, obj) -> str | None:
         collected_by = obj.specimen.collected_by if obj.specimen else obj.collected_by
         if collected_by:
             return collected_by.get_full_name() or collected_by.username
         return None
 
-    def get_sample_type(self, obj) -> Optional[str]:
+    def get_sample_type(self, obj) -> str | None:
         if obj.specimen:
             return obj.specimen.specimen_type
         return obj.sample_type or "BLOOD"
 
-    def get_sample_id(self, obj) -> Optional[str]:
+    def get_sample_id(self, obj) -> str | None:
         if obj.specimen:
             return obj.specimen.barcode
         return obj.sample_id or None
 
-    def get_collected_by(self, obj) -> Optional[int]:
+    def get_collected_by(self, obj) -> int | None:
         if obj.specimen and obj.specimen.collected_by:
             return obj.specimen.collected_by_id
         return obj.collected_by_id
 
-    def get_collected_at(self, obj) -> Optional[str]:
+    def get_collected_at(self, obj) -> str | None:
         collected_at = obj.specimen.collected_at if obj.specimen else obj.collected_at
         return collected_at
 
-    def get_reviewed_by_name(self, obj) -> Optional[str]:
+    def get_reviewed_by_name(self, obj) -> str | None:
         if obj.reviewed_by:
             return obj.reviewed_by.get_full_name() or obj.reviewed_by.username
         return None
 
-    def get_expected_tat_hours(self, obj) -> Optional[int]:
+    def get_expected_tat_hours(self, obj) -> int | None:
         """Get expected TAT from first test in order."""
         first_item = obj.lab_order.items.first()
         if first_item and first_item.test:
@@ -795,7 +794,7 @@ class ResultValidationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_validated_by_name(self, obj) -> Optional[str]:
+    def get_validated_by_name(self, obj) -> str | None:
         if obj.validated_by:
             return obj.validated_by.get_full_name() or obj.validated_by.username
         return None
@@ -907,7 +906,7 @@ class AnalyzerRunSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
-    def get_operator_name(self, obj) -> Optional[str]:
+    def get_operator_name(self, obj) -> str | None:
         if obj.operator:
             return obj.operator.get_full_name() or obj.operator.username
         return None
@@ -1010,13 +1009,13 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
             return obj.issued_by.get_full_name() or obj.issued_by.username
         return ""
 
-    def get_amended_by_name(self, obj) -> Optional[str]:
+    def get_amended_by_name(self, obj) -> str | None:
         """Get name of user who amended the report."""
         if obj.amended_by:
             return obj.amended_by.get_full_name() or obj.amended_by.username
         return None
 
-    def get_pdf_url(self, obj) -> Optional[str]:
+    def get_pdf_url(self, obj) -> str | None:
         """Get URL for the PDF file if it exists."""
         if obj.pdf_file:
             request = self.context.get("request")
@@ -1144,13 +1143,13 @@ class SpecimenSerializer(serializers.ModelSerializer):
         patient = obj.lab_order.patient
         return f"{patient.first_name} {patient.last_name}"
 
-    def get_collected_by_name(self, obj) -> Optional[str]:
+    def get_collected_by_name(self, obj) -> str | None:
         """Get name of user who collected the specimen."""
         if obj.collected_by:
             return obj.collected_by.get_full_name() or obj.collected_by.username
         return None
 
-    def get_received_by_name(self, obj) -> Optional[str]:
+    def get_received_by_name(self, obj) -> str | None:
         """Get name of user who received the specimen."""
         if obj.received_by:
             return obj.received_by.get_full_name() or obj.received_by.username

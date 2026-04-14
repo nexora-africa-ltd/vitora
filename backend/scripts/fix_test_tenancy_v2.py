@@ -6,7 +6,6 @@ Handles two patterns:
 2. Adding sample_organization parameter where organization=sample_organization is used
 """
 import re
-import sys
 
 
 def add_missing_params_to_signatures(content: str) -> str:

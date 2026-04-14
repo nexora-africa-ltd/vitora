@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -100,7 +100,7 @@ class PKIService:
         ])
 
         serial = int(uuid.uuid4().hex[:16], 16)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         valid_to = now + timedelta(days=validity_years * 365)
 
         # Build self-signed certificate
@@ -219,8 +219,8 @@ class PKIService:
             return existing
 
         # Cap validity to not exceed parent
-        now = datetime.now(timezone.utc)
-        max_valid_to = parent_ca.valid_to.replace(tzinfo=timezone.utc) if parent_ca.valid_to.tzinfo is None else parent_ca.valid_to
+        now = datetime.now(UTC)
+        max_valid_to = parent_ca.valid_to.replace(tzinfo=UTC) if parent_ca.valid_to.tzinfo is None else parent_ca.valid_to
         requested_valid_to = now + timedelta(days=validity_years * 365)
         valid_to = min(requested_valid_to, max_valid_to)
 
@@ -407,7 +407,7 @@ class PKIService:
         ])
 
         serial = int(uuid.uuid4().hex[:16], 16)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         valid_to = now + timedelta(days=validity_years * 365)
 
         cert = (
@@ -609,7 +609,7 @@ class PKIService:
             x509.NameAttribute(NameOID.COMMON_NAME, ca.name),
         ])
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         builder = (
             x509.CertificateRevocationListBuilder()
             .issuer_name(issuer)

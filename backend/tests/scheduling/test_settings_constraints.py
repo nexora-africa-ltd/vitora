@@ -14,7 +14,6 @@ from datetime import date, time
 import pytest  # type: ignore
 from rest_framework import status
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================

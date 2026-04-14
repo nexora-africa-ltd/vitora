@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import csv
+import json
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, time
 from pathlib import Path
-import csv
-import json
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 from django.db import transaction
-from django.db.models import Count, Max, Q
+from django.db.models import Q
 
 from hmis.apps.clinics.models import Clinic, ClinicEnrollment, ClinicProgramAttendance, ClinicVisit
 from hmis.apps.mch.models import ANCVisit, PNCVisit

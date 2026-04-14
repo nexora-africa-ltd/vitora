@@ -19,7 +19,6 @@ from django.contrib.auth.models import Permission
 from django.utils import timezone
 from rest_framework import status
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================

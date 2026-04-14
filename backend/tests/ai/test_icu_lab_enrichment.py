@@ -16,7 +16,6 @@ from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

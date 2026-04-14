@@ -12,8 +12,8 @@ from django.db import models
 from django.http import FileResponse, HttpResponse
 from django_filters import rest_framework as filters
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import serializers, status, viewsets
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -21,8 +21,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.models import AuditLog
 from hmis.apps.core.mixins import NestedTenantScopeMixin
+from hmis.apps.core.models import AuditLog
 from hmis.apps.scheduling.models import Resource
 
 from .models import (
@@ -1344,7 +1344,7 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         GET    /api/imaging/reports/{report_number}/pdf/     → download PDF
     """
 
-    from .models import RadiologyReport, ReportAmendment
+    from .models import RadiologyReport
     from .serializers import (
         AmendReportSerializer,
         CommunicateCriticalSerializer,
@@ -1547,7 +1547,6 @@ class RadiologyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def amend(self, request, report_number=None):
         """Amend a finalized radiology report."""
-        from .models import ReportAmendment
         from .serializers import AmendReportSerializer, RadiologyReportSerializer
 
         report = self.get_object()

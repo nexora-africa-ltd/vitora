@@ -17,7 +17,6 @@ This service handles:
 import logging
 import os
 import shutil
-from pathlib import Path
 
 from django.conf import settings
 

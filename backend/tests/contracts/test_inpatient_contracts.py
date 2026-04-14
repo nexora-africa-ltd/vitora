@@ -8,23 +8,23 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.inpatient.serializers import (
+    AcknowledgeAlertRequestSerializer,
+    AdmissionRecommendationSerializer,
+    AdmissionSerializer,
     ATRAcknowledgeSerializer,
     ATRCreateSerializer,
     ATRDetailSerializer,
     ATRLabInvestigationSerializer,
     ATRListSerializer,
     ATRSubmitToPPBSerializer,
-    AcknowledgeAlertRequestSerializer,
-    AdmissionRecommendationSerializer,
-    AdmissionSerializer,
-    BPMonitoringReadingCreateSerializer,
-    BPMonitoringReadingSerializer,
     BedCandidateSerializer,
     BedSerializer,
     BedTurnoverActionSerializer,
     BedUtilizationSerializer,
     BloodTransfusionCreateSerializer,
     BloodTransfusionSerializer,
+    BPMonitoringReadingCreateSerializer,
+    BPMonitoringReadingSerializer,
     ConstraintOverrideMetricsSerializer,
     ConstraintViolationSerializer,
     DischargeDiagnosisSerializer,
@@ -74,7 +74,6 @@ from hmis.apps.inpatient.serializers import (
     WardUpdateEventSerializer,
     WardUpdatesResponseSerializer,
 )
-
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (

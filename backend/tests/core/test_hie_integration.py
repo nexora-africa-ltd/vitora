@@ -19,7 +19,6 @@ from django.utils import timezone
 from hmis.apps.patients.tasks import lookup_and_register_patient_in_cr
 from hmis.apps.surveillance.adx_service import ADXExportService
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

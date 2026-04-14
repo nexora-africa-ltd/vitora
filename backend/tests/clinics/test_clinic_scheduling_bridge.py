@@ -13,7 +13,6 @@ from datetime import time
 import pytest  # type: ignore
 from rest_framework import status
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -267,7 +266,6 @@ class TestSyncClinicSchedulesCommand:
         from hmis.apps.scheduling.models import Resource, Schedule
 
         # Create clinic without triggering signal (simulate pre-existing data)
-        from hmis.apps.scheduling.models import Resource
 
         clinic = Clinic(
             name="Legacy Clinic",

@@ -677,9 +677,7 @@ class DischargeSerializer(serializers.ModelSerializer):
             "SCHEDULE_EARLY_PNC",
             "ROUTE_TO_PNC_QUEUE",
         }:
-            if discharge.maternity_continuity_action == "SCHEDULE_EARLY_PNC" and discharge.pnc_appointment_id is None:
-                self._apply_maternity_continuity(discharge)
-            elif discharge.maternity_continuity_action == "ROUTE_TO_PNC_QUEUE" and discharge.pnc_clinic_visit_id is None:
+            if discharge.maternity_continuity_action == "SCHEDULE_EARLY_PNC" and discharge.pnc_appointment_id is None or discharge.maternity_continuity_action == "ROUTE_TO_PNC_QUEUE" and discharge.pnc_clinic_visit_id is None:
                 self._apply_maternity_continuity(discharge)
         return discharge
 

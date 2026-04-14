@@ -9,9 +9,7 @@ Fix remaining 65 test failures caused by:
 7. RBAC sample_staff missing org
 8. Superuser test scoped by facility
 """
-import ast
 import os
-import re
 import sys
 
 
@@ -33,7 +31,7 @@ def fix_pharmacy_api():
     """
     path = "tests/pharmacy/test_pharmacy_api.py"
     content = read_file(path)
-    
+
     # 1. Fix authenticated_client to include StaffProfile
     content = content.replace(
         """@pytest.fixture
@@ -65,13 +63,13 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
     api_client.force_authenticate(user=test_user)
     return api_client"""
     )
-    
+
     # 2. Fix sample_drug_data: use 'categories' (list) instead of 'category' (str)
     content = content.replace(
         '"category": "OTHER",',
         '"categories": ["OTHER"],'
     )
-    
+
     # 3. Add facility/org to inline StockBatch.objects.create calls
     # Find test methods that create StockBatch and add sample_facility, sample_organization params
     # StockBatch needs facility + organization
@@ -83,7 +81,7 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
         """    def test_stock_batch_includes_computed_fields(self, authenticated_client, test_user):""",
         """    def test_stock_batch_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):"""
     )
-    
+
     # Add facility/org to StockBatch.objects.create
     # Pattern: StockBatch.objects.create( ... received_by=test_user, )
     # We add facility=sample_facility, organization=sample_organization before the closing )
@@ -113,13 +111,13 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
         """    def test_prescription_includes_computed_fields(self, authenticated_client, test_user):""",
         """    def test_prescription_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):"""
     )
-    
+
     # Add facility/org to Prescription inline creates (they're inside Encounter.objects.create + Prescription.objects.create)
     # Encounter.objects.create calls need facility=sample_facility
     # Find all "encounter_type="OPD"" patterns without facility and add facility
     # Actually, let me use a simpler approach: find "chief_complaint=" patterns in Prescription test context
     # and add facility after them
-    
+
     # For Prescription tests, fix Encounter creates to include facility:
     content = content.replace(
         'chief_complaint="For prescription test",\n        )',
@@ -141,7 +139,7 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
         'chief_complaint="Computed fields",\n        )',
         'chief_complaint="Computed fields",\n            facility=sample_facility,\n        )'
     )
-    
+
     # Add facility/org to Prescription.objects.create calls
     # They have valid_until= as a distinctive field
     lines = content.split('\n')
@@ -163,7 +161,7 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
                         break
         i += 1
     content = '\n'.join(new_lines)
-    
+
     # 5. Fix Dispensing tests
     content = content.replace(
         """    def test_list_dispensings(self, authenticated_client, test_user):""",
@@ -181,7 +179,7 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
         """    def test_dispensing_includes_computed_fields(self, authenticated_client, test_user):""",
         """    def test_dispensing_includes_computed_fields(self, authenticated_client, test_user, sample_facility, sample_organization):"""
     )
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -192,7 +190,7 @@ def fix_rbac_staff():
     """
     path = "tests/rbac/test_rbac_api.py"
     content = read_file(path)
-    
+
     # The sample_staff fixture creates a StaffProfile without organization
     # It needs organization=sample_organization to be visible
     content = content.replace(
@@ -263,7 +261,7 @@ def fix_rbac_staff():
             date_joined=date.today(),
         )"""
     )
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -274,7 +272,7 @@ def fix_code_system():
     """
     path = "tests/core/test_code_system.py"
     content = read_file(path)
-    
+
     # Add a fixture/setup that creates the expected CodeSystem entries
     # before the TestPrePopulatedCodeSystems class
     fixture_code = '''
@@ -310,13 +308,13 @@ def _seed_code_systems(request, db):
             )
 
 '''
-    
+
     # Insert before the TestPrePopulatedCodeSystems class
     content = content.replace(
         "@pytest.mark.unit\nclass TestPrePopulatedCodeSystems:",
         fixture_code + "@pytest.mark.unit\nclass TestPrePopulatedCodeSystems:"
     )
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -329,7 +327,7 @@ def fix_facility_delete():
     """
     path = "tests/core/test_facility.py"
     content = read_file(path)
-    
+
     # Fix test_delete_facility
     content = content.replace(
         '''    def test_delete_facility(self, admin_client, sample_facility):
@@ -346,8 +344,8 @@ def fix_facility_delete():
         response = admin_client.delete(f"/api/facilities/{facility_id}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT'''
     )
-    
-    # Fix test_delete_logs_audit_entry  
+
+    # Fix test_delete_logs_audit_entry
     content = content.replace(
         '''    def test_delete_logs_audit_entry(self, admin_client, sample_facility):
         """Deleting a facility should produce an audit log entry."""
@@ -363,14 +361,14 @@ def fix_facility_delete():
         initial_count = AuditLog.objects.filter(action="facility_deleted").count()
         admin_client.delete(f"/api/facilities/{sample_facility.id}/")'''
     )
-    
+
     # Fix test_create_serializer_respects_explicit_flags
     # This test expects has_inpatient=False to survive level-6 defaults
     # The test may be failing due to a serializer logic issue, let me check
     # Actually based on the error "assert True is False", it seems the serializer
     # IS overwriting explicit False with level defaults. This is an implementation
     # issue, not a test bug. Skip for now.
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -382,7 +380,7 @@ def fix_multitenancy_delete():
     """
     path = "tests/core/test_multitenancy.py"
     content = read_file(path)
-    
+
     # Fix delete org test
     content = content.replace(
         '''    def test_delete_organization_admin(self, admin_client, sample_org):
@@ -399,7 +397,7 @@ def fix_multitenancy_delete():
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Organization.objects.filter(pk=sample_org.pk).exists()'''
     )
-    
+
     # Fix superuser test - admin_client has StaffProfile so queries are scoped.
     # We need to use a direct superuser client without StaffProfile
     content = content.replace(
@@ -454,7 +452,7 @@ def fix_multitenancy_delete():
         assert "Super1" in names
         assert "Super2" in names'''
     )
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -464,12 +462,12 @@ def fix_dashboard_stats():
     # test_dashboard_stats.py - TestDashboardStatsPatientCounts
     path = "tests/dashboard/test_dashboard_stats.py"
     content = read_file(path)
-    
+
     # Find the TestDashboardStatsPatientCounts class and fix it
     # The tests create patients but the dashboard counts only org-scoped patients
     # The test uses authenticated_client from conftest which has a StaffProfile
     # We need to ensure test patients are in the same org
-    
+
     # Add sample_organization, sample_facility to test methods
     content = content.replace(
         '''    def test_total_patients_count(self, authenticated_client):
@@ -479,7 +477,7 @@ def fix_dashboard_stats():
         """Patient counts should reflect actual data."""
         from hmis.apps.patients.models import Patient'''
     )
-    
+
     content = content.replace(
         '''    def test_today_patients_count(self, authenticated_client):
         """Today count should show patients registered today."""
@@ -488,7 +486,7 @@ def fix_dashboard_stats():
         """Today count should show patients registered today."""
         from hmis.apps.patients.models import Patient'''
     )
-    
+
     # Add organization= to Patient.objects.create calls in dashboard tests
     # These tests create patients inline. I need to find and fix them.
     # The patients need organization=sample_organization
@@ -505,7 +503,7 @@ def fix_dashboard_stats():
         'gender="F",\n        )\n\n        response = authenticated_client.get(\n',
         'gender="F",\n            organization=sample_organization,\n        )\n\n        response = authenticated_client.get(\n'
     )
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -514,20 +512,20 @@ def fix_dashboard_extended():
     """Fix dashboard extended tests (checkin/emergency counts)."""
     path = "tests/dashboard/test_dashboard_stats_extended.py"
     content = read_file(path)
-    
+
     # The tests create CheckIns but the dashboard API scopes by facility
     # CheckIn model: facility=False org=False -- but the dashboard view might
     # query from Encounters/Patients which ARE scoped
     # The simplest fix: ensure test data uses sample_patient from conftest
     # (which already has org/facility)
-    
+
     # The test already uses sample_patient fixture! Let me check the actual
     # dashboard view to understand why counts are 0...
     # The issue is probably that the dashboard counts patients/encounters
     # in the user's facility, but CheckIn isn't scoped.
     # Let me check the actual dashboard stats view logic later.
     # For now, skip these — they may need implementation fixes.
-    
+
     print(f"  Skipped {path} (may need implementation fix)")
 
 
@@ -535,7 +533,7 @@ def fix_encounter_filter():
     """Fix tests/encounters/test_encounter_api.py::TestEncounterAPIFiltering::test_filter_by_patient"""
     path = "tests/encounters/test_encounter_api.py"
     content = read_file(path)
-    
+
     # The test creates 3 encounters but only 1 has facility=sample_facility
     # Tenant filter only returns encounters with matching facility
     # Fix: add facility=sample_facility to all Encounter.objects.create calls
@@ -547,7 +545,7 @@ def fix_encounter_filter():
         'Encounter.objects.create(patient=patient2, encounter_type="OPD", chief_complaint="Cough")',
         'Encounter.objects.create(patient=patient2, encounter_type="OPD", chief_complaint="Cough", facility=sample_facility)'
     )
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -556,11 +554,11 @@ def fix_staff_facility():
     """Fix tests/core/test_staff_facility.py - staff CRUD 404s"""
     path = "tests/core/test_staff_facility.py"
     content = read_file(path)
-    
+
     # The staff_with_facility and staff_without_facility don't have organization
     # The authenticated_client from conftest scopes by org
     # Staff profiles need org to be visible
-    
+
     # staff_with_facility needs organization on the StaffProfile
     content = content.replace(
         """    profile = StaffProfile.objects.create(
@@ -581,7 +579,7 @@ def fix_staff_facility():
         date_joined="2026-01-01",
     )"""
     )
-    
+
     # primary_facility needs an organization
     content = content.replace(
         """@pytest.fixture
@@ -616,7 +614,7 @@ def primary_facility(db, sf_county, sf_sub_county, sample_organization):
         },
     )[0]"""
     )
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -625,21 +623,21 @@ def fix_staff_username():
     """Fix tests/core/test_staff_username_api.py::TestStaffDeactivation"""
     path = "tests/core/test_staff_username_api.py"
     content = read_file(path)
-    
+
     # Check if TestStaffDeactivation has its own fixtures
     if "class TestStaffDeactivation" in content:
         # The test creates a staff and tries to delete them via API
         # The staff needs to be in the same org to be visible
         # Let me check how the fixture looks
         pass
-    
+
     # Find the deactivation test fixture pattern
     # Need to add org to the staff profile being created
     content = content.replace(
         'employee_id="VH-DEL-001",',
         'employee_id="VH-DEL-001",\n            organization=sample_organization,'
     )
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -650,7 +648,7 @@ def fix_audit_log():
     """
     path = "tests/core/test_audit_log.py"
     content = read_file(path)
-    
+
     # The test creates an audit log for a patient view, but the patient
     # might not be in the same org. Let me check the actual test.
     # Actually the test verifies that a non-admin can see their own audit logs.
@@ -658,7 +656,7 @@ def fix_audit_log():
     # Let me check: AuditLog probably doesn't have facility/org tenant scoping
     # because it's in core. The issue is likely that no audit log is created
     # because the patient view returns 404 (patient not in org).
-    
+
     # The sample_patient fixture in this file doesn't set facility
     content = content.replace(
         """@pytest.fixture
@@ -685,7 +683,7 @@ def sample_patient(db, sample_organization, sample_facility):
         organization=sample_organization,
         registered_at_facility=sample_facility,"""
     )
-    
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -694,12 +692,12 @@ def fix_contract_tests():
     """Fix tests/contracts/test_core_contracts.py - StaffProfile field changes."""
     path = "tests/contracts/test_core_contracts.py"
     content = read_file(path)
-    
+
     # Need to find the expected_fields for StaffProfileSerializer and StaffProfileUpdateSerializer
     # and update them to match current serializer
     # Let me just check what fields the serializer currently has
     # For now, skip — this needs knowing the exact serializer fields
-    
+
     print(f"  Skipped {path} (need to check serializer fields)")
 
 
@@ -709,11 +707,11 @@ def fix_encounter_snapshot():
     if not os.path.exists(path):
         return
     content = read_file(path)
-    
+
     # The test creates encounters without facility and gets 404
     # Need to check if the fixture/inline creates need facility
     # Likely the encounter used in the test needs facility=sample_facility
-    
+
     # Check if there's a local encounter fixture
     if "sample_encounter" in content or "encounter" in content:
         # Add facility to encounter creates
@@ -722,7 +720,7 @@ def fix_encounter_snapshot():
             'chief_complaint="Snapshot test complaint",\n            facility=sample_facility,\n        )'
         )
         # Also ensure test method has sample_facility param if needed
-        
+
     write_file(path, content)
     print(f"  Fixed {path}")
 
@@ -733,11 +731,11 @@ def fix_inpatient_ward():
     if not os.path.exists(path):
         return
     content = read_file(path)
-    
+
     # Check if the Ward fixtures have facility/org
     # Ward model has facility=True org=True
     # Need to add these to ward creation
-    
+
     write_file(path, content)
     print(f"  Checked {path}")
 
@@ -748,10 +746,10 @@ def fix_triage_api():
     if not os.path.exists(path):
         return
     content = read_file(path)
-    
+
     # TriageAssessment has facility+org, need to check fixtures
     # The test likely creates assessments without facility
-    
+
     write_file(path, content)
     print(f"  Checked {path}")
 
@@ -761,9 +759,9 @@ if __name__ == "__main__":
     if not os.path.isdir("tests"):
         print("ERROR: Must run from backend/")
         sys.exit(1)
-    
+
     print("Fixing remaining test failures...\n")
-    
+
     fix_pharmacy_api()
     fix_rbac_staff()
     fix_code_system()
@@ -775,5 +773,5 @@ if __name__ == "__main__":
     fix_staff_username()
     fix_audit_log()
     fix_encounter_snapshot()
-    
+
     print("\nDone! Run: poetry run pytest --no-cov -q --tb=line")

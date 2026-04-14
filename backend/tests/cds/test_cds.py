@@ -36,7 +36,6 @@ from hmis.apps.cds.models import (
     CDSRuleStatus,
 )
 
-
 # ──────────────────────────── Fixtures ────────────────────────────
 
 

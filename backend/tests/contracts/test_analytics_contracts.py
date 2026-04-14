@@ -14,7 +14,6 @@ from hmis.apps.analytics.serializers import (
     PatientDemographicSnapshotSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         DepartmentMonthlySummarySerializer,

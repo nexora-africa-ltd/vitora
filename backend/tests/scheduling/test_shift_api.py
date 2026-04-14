@@ -15,7 +15,6 @@ import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================

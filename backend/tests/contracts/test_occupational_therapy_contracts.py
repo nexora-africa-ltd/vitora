@@ -8,18 +8,17 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.occupational_therapy.serializers import (
-    OTSessionCompleteSerializer,
-    OTSessionCreateSerializer,
-    OTSessionSerializer,
-    OTTreatmentTypeListSerializer,
-    OTTreatmentTypeSerializer,
     OccupationalTherapyOrderAssignTherapistSerializer,
     OccupationalTherapyOrderCreateSerializer,
     OccupationalTherapyOrderListSerializer,
     OccupationalTherapyOrderSerializer,
     OccupationalTherapyOrderUpdateStatusSerializer,
+    OTSessionCompleteSerializer,
+    OTSessionCreateSerializer,
+    OTSessionSerializer,
+    OTTreatmentTypeListSerializer,
+    OTTreatmentTypeSerializer,
 )
-
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (

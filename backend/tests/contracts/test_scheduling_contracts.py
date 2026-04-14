@@ -47,7 +47,6 @@ from hmis.apps.scheduling.serializers import (
     WeeklyAvailabilityQuerySerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         AppointmentCancelSerializer,

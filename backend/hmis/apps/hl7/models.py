@@ -5,7 +5,6 @@ Provides HL7Message model for tracking outbound/inbound HL7 messages
 with status tracking, retry support, and audit.
 """
 
-from django.conf import settings
 from django.db import models
 
 
