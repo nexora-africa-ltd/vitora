@@ -85,7 +85,7 @@ jobs:
             SHA_API_TIMEOUT=30
             FACILITY_MFL_CODE=TEST-001
             FACILITY_LEVEL=L3
-            FACILITY_NAME=Demo Health Facility
+            FACILITY_NAME=Demo-Health-Facility
             FACILITY_COUNTY=Nairobi
             FACILITY_KRA_PIN=P000000000X
             MPESA_ENVIRONMENT=sandbox
