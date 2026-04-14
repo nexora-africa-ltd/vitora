@@ -927,6 +927,34 @@ class TriageAssessment(models.Model):
     def __str__(self) -> str:
         return f"Triage {self.triage_category} - {self.encounter.patient} - {self.arrival_time}"
 
+    def save(self, *args, **kwargs):
+        """Auto-resolve tenant (facility/organization) from encounter."""
+        if not self.facility_id and self.encounter_id:
+            try:
+                enc = self.encounter
+                if enc.facility_id:
+                    self.facility_id = enc.facility_id
+            except Exception:
+                pass
+        if self.facility_id and not self.organization_id:
+            try:
+                fac = self.facility
+                if fac and fac.organization_id:
+                    self.organization_id = fac.organization_id
+            except Exception:
+                pass
+        # Last resort: inherit from patient
+        if not self.facility_id and self.encounter_id:
+            try:
+                patient = self.encounter.patient
+                if patient.registered_at_facility_id:
+                    self.facility_id = patient.registered_at_facility_id
+                if patient.organization_id:
+                    self.organization_id = patient.organization_id
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
+
     @property
     def routing_destination(self) -> str:
         """Get human-readable routing destination."""

@@ -374,10 +374,20 @@ def process_checkin(
         "visit_reason": visit_reason,
         "linked_encounter": linked_encounter,
     }
+    # Always set facility/organization. The Encounter.save() method has a
+    # fallback to patient.registered_at_facility, but being explicit avoids
+    # any gap when the patient itself has no facility yet.
     if facility:
         encounter_kwargs["facility"] = facility
     if organization:
         encounter_kwargs["organization"] = organization
+    # Last-resort: inherit tenant from the patient record if the caller
+    # did not provide facility/organization (should not happen now that the
+    # view enforces it, but this is a safety net).
+    if not facility and patient.registered_at_facility_id:
+        encounter_kwargs.setdefault("facility_id", patient.registered_at_facility_id)
+    if not organization and patient.organization_id:
+        encounter_kwargs.setdefault("organization_id", patient.organization_id)
     encounter = Encounter.objects.create(**encounter_kwargs)
 
     # Create check-in record
