@@ -103,10 +103,6 @@ class TestEmailOrUsernameBackend:
         user = backend.authenticate(None, username="notanemail", password="any")
         assert user is None
 
-    @pytest.mark.xfail(
-        reason="Pre-existing: core_usertotpdevice table missing in isolated test runs",
-        raises=Exception,
-    )
     def test_jwt_login_by_username(self, api_client, test_user):
         """Should obtain JWT tokens via /api/token/ using username."""
         response = api_client.post(
@@ -117,10 +113,6 @@ class TestEmailOrUsernameBackend:
         # 200 means tokens issued, or MFA required
         assert response.status_code in (200, 202)
 
-    @pytest.mark.xfail(
-        reason="Pre-existing: core_usertotpdevice table missing in isolated test runs",
-        raises=Exception,
-    )
     def test_jwt_login_by_email(self, api_client, test_user):
         """Should obtain JWT tokens via /api/token/ using email."""
         response = api_client.post(
@@ -130,10 +122,6 @@ class TestEmailOrUsernameBackend:
         )
         assert response.status_code in (200, 202)
 
-    @pytest.mark.xfail(
-        reason="Pre-existing: core_usertotpdevice table missing in isolated test runs",
-        raises=Exception,
-    )
     def test_jwt_login_wrong_credentials(self, api_client, test_user):
         """Should reject invalid credentials via /api/token/."""
         response = api_client.post(

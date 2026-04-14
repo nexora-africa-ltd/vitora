@@ -93,7 +93,14 @@ class TestPrescriptionDispensingTypeAPI:
 
         drug = Drug.objects.first()
         if not drug:
-            pytest.skip("No drugs loaded in test DB")
+            drug = Drug.objects.create(
+                code="TEST-EXT-001",
+                generic_name="Test External Drug",
+                strength="500mg",
+                form="TABLET",
+                categories=["OTHER"],
+                unit="tablet",
+            )
 
         data = {
             "patient": sample_patient.id,

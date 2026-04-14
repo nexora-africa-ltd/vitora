@@ -36,6 +36,9 @@ services:
       # ---------- Embedding ----------
       # MUST match METABASE_EMBEDDING_SECRET in Django settings.
       MB_EMBEDDING_SECRET_KEY: "${METABASE_EMBEDDING_SECRET:-changeme-in-production}"
+      # Allowed origins for iframe embedding (comma-separated).
+      # Staging/Prod: set to your Vercel/web-app domain(s).
+      MB_EMBEDDING_APP_ORIGIN: "${MB_EMBEDDING_APP_ORIGIN:-http://localhost:3000}"
 
       # ---------- Metabase config ----------
       MB_SITE_URL: "${METABASE_SITE_URL:-http://localhost:3333}"
