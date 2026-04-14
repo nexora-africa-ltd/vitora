@@ -32,9 +32,7 @@ def _previous_quarter(reference: date) -> tuple[int, int]:
 
 
 @shared_task(name="hmis.apps.quality.tasks.generate_quarterly_reports")
-def generate_quarterly_reports_task(
-    *, year: int | None = None, quarter: int | None = None
-) -> int:
+def generate_quarterly_reports_task(*, year: int | None = None, quarter: int | None = None) -> int:
     """Generate quarterly reports for all clinics.
 
     If year/quarter not provided, generates for the previous quarter.

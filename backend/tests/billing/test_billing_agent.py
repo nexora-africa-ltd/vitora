@@ -123,13 +123,21 @@ def _no_billing_signals():
     from hmis.apps.inpatient.models import Admission, Discharge
 
     post_save.disconnect(create_invoice_for_encounter, sender=Encounter)
-    post_save.disconnect(handle_discharge_billing, sender=Discharge, dispatch_uid="billing_handle_discharge")
-    post_save.disconnect(handle_admission_billing, sender=Admission, dispatch_uid="billing_handle_admission")
+    post_save.disconnect(
+        handle_discharge_billing, sender=Discharge, dispatch_uid="billing_handle_discharge"
+    )
+    post_save.disconnect(
+        handle_admission_billing, sender=Admission, dispatch_uid="billing_handle_admission"
+    )
     yield
     # Reconnect
     post_save.connect(create_invoice_for_encounter, sender=Encounter)
-    post_save.connect(handle_discharge_billing, sender=Discharge, dispatch_uid="billing_handle_discharge")
-    post_save.connect(handle_admission_billing, sender=Admission, dispatch_uid="billing_handle_admission")
+    post_save.connect(
+        handle_discharge_billing, sender=Discharge, dispatch_uid="billing_handle_discharge"
+    )
+    post_save.connect(
+        handle_admission_billing, sender=Admission, dispatch_uid="billing_handle_admission"
+    )
 
 
 # ============================================================================
@@ -160,9 +168,7 @@ class TestGetOrCreateDraftInvoice:
 
         assert invoice1.pk == invoice2.pk
 
-    def test_links_encounter_to_existing_draft(
-        self, db, sample_patient, sample_encounter
-    ):
+    def test_links_encounter_to_existing_draft(self, db, sample_patient, sample_encounter):
         """Should link encounter to existing unlinked draft invoice."""
         from hmis.apps.billing.agent import BillingAgentService
 
@@ -179,9 +185,7 @@ class TestGetOrCreateDraftInvoice:
         invoice2.refresh_from_db()
         assert invoice2.encounter == sample_encounter
 
-    def test_creates_invoice_with_encounter(
-        self, db, sample_patient, sample_encounter
-    ):
+    def test_creates_invoice_with_encounter(self, db, sample_patient, sample_encounter):
         """Should create a new draft with encounter if no existing draft."""
         from hmis.apps.billing.agent import BillingAgentService
 
@@ -201,9 +205,7 @@ class TestGetOrCreateDraftInvoice:
 class TestAddLineItem:
     """Tests for BillingAgentService.add_line_item."""
 
-    def test_adds_service_line_item(
-        self, db, sample_patient, lab_billing_service
-    ):
+    def test_adds_service_line_item(self, db, sample_patient, lab_billing_service):
         """Should add a service as a line item on the invoice."""
         from hmis.apps.billing.agent import BillingAgentService
 
@@ -221,9 +223,7 @@ class TestAddLineItem:
         assert item.unit_price == Decimal("500.00")
         assert item.quantity == 1
 
-    def test_updates_invoice_totals(
-        self, db, sample_patient, lab_billing_service
-    ):
+    def test_updates_invoice_totals(self, db, sample_patient, lab_billing_service):
         """Should recalculate invoice totals after adding item."""
         from hmis.apps.billing.agent import BillingAgentService
 
@@ -271,9 +271,7 @@ class TestHandleLabOrderConfirmed:
         assert lab_items.count() == 1
         assert lab_items.first().unit_price == Decimal("500.00")
 
-    def test_skips_items_without_matching_service(
-        self, db, sample_lab_order
-    ):
+    def test_skips_items_without_matching_service(self, db, sample_lab_order):
         """Should skip lab items that have no matching billing service."""
         from hmis.apps.billing.agent import BillingAgentService
 
@@ -288,9 +286,7 @@ class TestHandleLabOrderConfirmed:
         assert invoice is not None
         assert invoice.items.count() == 0
 
-    def test_links_lab_order_to_invoice_item(
-        self, db, sample_lab_order, lab_billing_service
-    ):
+    def test_links_lab_order_to_invoice_item(self, db, sample_lab_order, lab_billing_service):
         """Should link the LabOrder FK on the InvoiceItem."""
         from hmis.apps.billing.agent import BillingAgentService
 
@@ -376,7 +372,9 @@ class TestHandleDischarge:
         from hmis.apps.billing.signals import handle_discharge_billing
         from hmis.apps.inpatient.models import Discharge
 
-        post_save.disconnect(handle_discharge_billing, sender=Discharge, dispatch_uid="billing_handle_discharge")
+        post_save.disconnect(
+            handle_discharge_billing, sender=Discharge, dispatch_uid="billing_handle_discharge"
+        )
         try:
             discharge = Discharge.objects.create(
                 admission=admission,
@@ -389,7 +387,9 @@ class TestHandleDischarge:
                 treatment_summary="Treated with antibiotics",
             )
         finally:
-            post_save.connect(handle_discharge_billing, sender=Discharge, dispatch_uid="billing_handle_discharge")
+            post_save.connect(
+                handle_discharge_billing, sender=Discharge, dispatch_uid="billing_handle_discharge"
+            )
         return discharge
 
     def test_finalizes_invoice_to_pending(
@@ -463,9 +463,7 @@ class TestHandleDischarge:
             BillingAgentService.handle_discharge(discharge)
             mock_sha.assert_called_once()
 
-    def test_handles_missing_invoice_gracefully(
-        self, db, sample_admission, test_user
-    ):
+    def test_handles_missing_invoice_gracefully(self, db, sample_admission, test_user):
         """Should log warning if no draft invoice exists for discharge."""
         from hmis.apps.billing.agent import BillingAgentService
 
@@ -643,9 +641,7 @@ class TestSubmitPendingSHAClaims:
             created_by=test_user,
         )
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.validate_claim.return_value = (True, [])
             mock_instance.submit_claim.return_value = {"status": "submitted"}
@@ -686,9 +682,7 @@ class TestSubmitPendingSHAClaims:
             created_by=test_user,
         )
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.validate_claim.return_value = (
                 False,
@@ -712,9 +706,7 @@ class TestBillingCeleryTasks:
         """Task should call BillingAgentService.apply_daily_bed_charges."""
         from hmis.apps.billing.tasks import apply_daily_bed_charges
 
-        with patch(
-            "hmis.apps.billing.agent.BillingAgentService.apply_daily_bed_charges"
-        ) as mock:
+        with patch("hmis.apps.billing.agent.BillingAgentService.apply_daily_bed_charges") as mock:
             mock.return_value = 0
             result = apply_daily_bed_charges()
             mock.assert_called_once()
@@ -723,9 +715,7 @@ class TestBillingCeleryTasks:
         """Task should call BillingAgentService.flag_overdue_invoices."""
         from hmis.apps.billing.tasks import flag_overdue_invoices
 
-        with patch(
-            "hmis.apps.billing.agent.BillingAgentService.flag_overdue_invoices"
-        ) as mock:
+        with patch("hmis.apps.billing.agent.BillingAgentService.flag_overdue_invoices") as mock:
             mock.return_value = 0
             result = flag_overdue_invoices()
             mock.assert_called_once()
@@ -734,9 +724,7 @@ class TestBillingCeleryTasks:
         """Task should call BillingAgentService.submit_pending_sha_claims."""
         from hmis.apps.billing.tasks import submit_pending_sha_claims
 
-        with patch(
-            "hmis.apps.billing.agent.BillingAgentService.submit_pending_sha_claims"
-        ) as mock:
+        with patch("hmis.apps.billing.agent.BillingAgentService.submit_pending_sha_claims") as mock:
             mock.return_value = 0
             result = submit_pending_sha_claims()
             mock.assert_called_once()
@@ -831,13 +819,9 @@ class TestPollSHAClaimStatuses:
         """Should poll SHA API for submitted claims and update status."""
         from hmis.apps.billing.agent import BillingAgentService
 
-        claim = self._make_submitted_claim(
-            sample_patient, sample_encounter, sha_member, test_user
-        )
+        claim = self._make_submitted_claim(sample_patient, sample_encounter, sha_member, test_user)
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.get_claim_status.return_value = {
                 "outcome": "complete",
@@ -869,9 +853,7 @@ class TestPollSHAClaimStatuses:
             sha_claim_reference="",
         )
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             result = BillingAgentService.poll_sha_claim_statuses()
 
         assert result["checked"] == 0
@@ -883,13 +865,9 @@ class TestPollSHAClaimStatuses:
         """Should update rejected claims with rejection details."""
         from hmis.apps.billing.agent import BillingAgentService
 
-        claim = self._make_submitted_claim(
-            sample_patient, sample_encounter, sha_member, test_user
-        )
+        claim = self._make_submitted_claim(sample_patient, sample_encounter, sha_member, test_user)
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.get_claim_status.return_value = {
                 "outcome": "error",
@@ -913,13 +891,9 @@ class TestPollSHAClaimStatuses:
         """Should not update if SHA returns the same status."""
         from hmis.apps.billing.agent import BillingAgentService
 
-        claim = self._make_submitted_claim(
-            sample_patient, sample_encounter, sha_member, test_user
-        )
+        claim = self._make_submitted_claim(sample_patient, sample_encounter, sha_member, test_user)
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.get_claim_status.return_value = {
                 "status": "submitted",
@@ -937,13 +911,9 @@ class TestPollSHAClaimStatuses:
         from hmis.apps.billing.agent import BillingAgentService
         from hmis.apps.core.models import ActivityFeed
 
-        claim = self._make_submitted_claim(
-            sample_patient, sample_encounter, sha_member, test_user
-        )
+        claim = self._make_submitted_claim(sample_patient, sample_encounter, sha_member, test_user)
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.get_claim_status.return_value = {
                 "outcome": "complete",
@@ -968,13 +938,9 @@ class TestPollSHAClaimStatuses:
         """Should handle API errors without crashing the batch."""
         from hmis.apps.billing.agent import BillingAgentService
 
-        self._make_submitted_claim(
-            sample_patient, sample_encounter, sha_member, test_user
-        )
+        self._make_submitted_claim(sample_patient, sample_encounter, sha_member, test_user)
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.get_claim_status.side_effect = Exception("Connection timed out")
 
@@ -988,9 +954,7 @@ class TestPollSHAClaimStatuses:
         """Celery task should delegate to BillingAgentService."""
         from hmis.apps.billing.tasks import poll_sha_claim_statuses
 
-        with patch(
-            "hmis.apps.billing.agent.BillingAgentService.poll_sha_claim_statuses"
-        ) as mock:
+        with patch("hmis.apps.billing.agent.BillingAgentService.poll_sha_claim_statuses") as mock:
             mock.return_value = {"checked": 0, "updated": 0, "errors": 0}
             result = poll_sha_claim_statuses()
             mock.assert_called_once()
@@ -1001,13 +965,9 @@ class TestPollSHAClaimStatuses:
         """Should handle partial approval and record approved amount."""
         from hmis.apps.billing.agent import BillingAgentService
 
-        claim = self._make_submitted_claim(
-            sample_patient, sample_encounter, sha_member, test_user
-        )
+        claim = self._make_submitted_claim(sample_patient, sample_encounter, sha_member, test_user)
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.get_claim_status.return_value = {
                 "outcome": "partial",
@@ -1028,13 +988,9 @@ class TestPollSHAClaimStatuses:
         """Should handle paid status with payment reference."""
         from hmis.apps.billing.agent import BillingAgentService
 
-        claim = self._make_submitted_claim(
-            sample_patient, sample_encounter, sha_member, test_user
-        )
+        claim = self._make_submitted_claim(sample_patient, sample_encounter, sha_member, test_user)
 
-        with patch(
-            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.sha_claims.SHAClaimsService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.get_claim_status.return_value = {
                 "status": "paid",

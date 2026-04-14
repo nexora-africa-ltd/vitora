@@ -22,7 +22,9 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Base path for WHO growth standard data files
-DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "who_growth_standards"
+DATA_DIR = (
+    Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "who_growth_standards"
+)
 
 
 class WHOGrowthCalculator:
@@ -240,9 +242,7 @@ class WHOGrowthCalculator:
 
         return self._calculate_z_score(height_cm, *lms)
 
-    def weight_for_height_z(
-        self, weight_kg: float, height_cm: float, sex: str
-    ) -> Decimal | None:
+    def weight_for_height_z(self, weight_kg: float, height_cm: float, sex: str) -> Decimal | None:
         """
         Calculate weight-for-height/length Z-score.
 
@@ -300,9 +300,7 @@ class WHOGrowthCalculator:
 
         return self._calculate_z_score(bmi, *lms)
 
-    def head_circumference_for_age_z(
-        self, hc_cm: float, age_days: int, sex: str
-    ) -> Decimal | None:
+    def head_circumference_for_age_z(self, hc_cm: float, age_days: int, sex: str) -> Decimal | None:
         """
         Calculate head-circumference-for-age Z-score.
 

@@ -71,9 +71,7 @@ class TestProcedureOrderCRUD:
             "procedure": procedure_catalog_entry.id,
             "patient": sample_patient.id,
         }
-        response = authenticated_client.post(
-            "/api/procedures/orders/", data, format="json"
-        )
+        response = authenticated_client.post("/api/procedures/orders/", data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "indication" in response.data
 
@@ -82,9 +80,7 @@ class TestProcedureOrderCRUD:
         assert response.status_code == status.HTTP_200_OK
 
     def test_retrieve_order(self, authenticated_client, procedure_order):
-        response = authenticated_client.get(
-            f"/api/procedures/orders/{procedure_order.id}/"
-        )
+        response = authenticated_client.get(f"/api/procedures/orders/{procedure_order.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["order_number"] == procedure_order.order_number
 
@@ -207,15 +203,11 @@ class TestProcedureConsentAPI:
             consent_text="I consent.",
             obtained_by=test_user,
         )
-        response = authenticated_client.get(
-            f"/api/procedures/orders/{procedure_order.id}/consent/"
-        )
+        response = authenticated_client.get(f"/api/procedures/orders/{procedure_order.id}/consent/")
         assert response.status_code == status.HTTP_200_OK
 
     def test_get_consent_not_found(self, authenticated_client, procedure_order):
-        response = authenticated_client.get(
-            f"/api/procedures/orders/{procedure_order.id}/consent/"
-        )
+        response = authenticated_client.get(f"/api/procedures/orders/{procedure_order.id}/consent/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_sign_consent(self, authenticated_client, procedure_order, test_user):
@@ -314,7 +306,12 @@ class TestProcedureDashboard:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_dashboard_counts(
-        self, authenticated_client, procedure_catalog_entry, sample_patient, sample_encounter, test_user
+        self,
+        authenticated_client,
+        procedure_catalog_entry,
+        sample_patient,
+        sample_encounter,
+        test_user,
     ):
         # Create orders in various states
         order1 = ProcedureOrder.objects.create(

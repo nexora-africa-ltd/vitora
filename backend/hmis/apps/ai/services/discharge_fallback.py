@@ -20,7 +20,13 @@ def _check_vitals_stability(vitals_history: list[dict[str, Any]]) -> str | None:
 
     # Check for instability markers
     unstable_count = 0
-    for vital in ("heart_rate", "systolic_bp", "temperature", "respiratory_rate", "oxygen_saturation"):
+    for vital in (
+        "heart_rate",
+        "systolic_bp",
+        "temperature",
+        "respiratory_rate",
+        "oxygen_saturation",
+    ):
         curr_val = last.get(vital)
         prev_val = prev.get(vital)
         if curr_val is not None and prev_val is not None:
@@ -50,12 +56,14 @@ def assess_discharge_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     vitals_stability = _check_vitals_stability(vitals_history)
     if vitals_history:
         vitals_stable = vitals_stability in ("stable", "improving")
-        criteria.append({
-            "name": "Vital signs stable",
-            "category": "vitals",
-            "met": vitals_stable,
-            "details": f"Vitals {vitals_stability or 'not assessed'}",
-        })
+        criteria.append(
+            {
+                "name": "Vital signs stable",
+                "category": "vitals",
+                "met": vitals_stable,
+                "details": f"Vitals {vitals_stability or 'not assessed'}",
+            }
+        )
         total_count += 1
         if vitals_stable:
             met_count += 1
@@ -72,42 +80,48 @@ def assess_discharge_fallback(payload: dict[str, Any]) -> dict[str, Any]:
             # WBC
             if "wbc" in test_name or "white blood" in test_name:
                 normal = 4.0 <= value <= 11.0
-                criteria.append({
-                    "name": "WBC within normal range",
-                    "category": "labs",
-                    "met": normal,
-                    "current_value": f"{value} {unit}",
-                    "target_value": "4.0–11.0 x10^9/L",
-                    "details": "Normal" if normal else f"Elevated at {value} {unit}",
-                })
+                criteria.append(
+                    {
+                        "name": "WBC within normal range",
+                        "category": "labs",
+                        "met": normal,
+                        "current_value": f"{value} {unit}",
+                        "target_value": "4.0–11.0 x10^9/L",
+                        "details": "Normal" if normal else f"Elevated at {value} {unit}",
+                    }
+                )
                 total_count += 1
                 if normal:
                     met_count += 1
             # CRP
             elif "crp" in test_name or "c-reactive" in test_name:
                 normal = value <= 10
-                criteria.append({
-                    "name": "CRP within normal range",
-                    "category": "labs",
-                    "met": normal,
-                    "current_value": f"{value} {unit}",
-                    "target_value": "≤10 mg/L",
-                    "details": "Normal" if normal else f"Elevated at {value} {unit}",
-                })
+                criteria.append(
+                    {
+                        "name": "CRP within normal range",
+                        "category": "labs",
+                        "met": normal,
+                        "current_value": f"{value} {unit}",
+                        "target_value": "≤10 mg/L",
+                        "details": "Normal" if normal else f"Elevated at {value} {unit}",
+                    }
+                )
                 total_count += 1
                 if normal:
                     met_count += 1
             # Creatinine
             elif "creatinine" in test_name:
                 normal = 44 <= value <= 115
-                criteria.append({
-                    "name": "Renal function adequate",
-                    "category": "labs",
-                    "met": normal,
-                    "current_value": f"{value} {unit}",
-                    "target_value": "44–115 µmol/L",
-                    "details": "Normal" if normal else f"Abnormal at {value} {unit}",
-                })
+                criteria.append(
+                    {
+                        "name": "Renal function adequate",
+                        "category": "labs",
+                        "met": normal,
+                        "current_value": f"{value} {unit}",
+                        "target_value": "44–115 µmol/L",
+                        "details": "Normal" if normal else f"Abnormal at {value} {unit}",
+                    }
+                )
                 total_count += 1
                 if normal:
                     met_count += 1
@@ -117,14 +131,16 @@ def assess_discharge_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     if current_medications:
         iv_meds = [m for m in current_medications if " IV " in m.upper() or " IV" in m.upper()]
         no_iv = len(iv_meds) == 0
-        criteria.append({
-            "name": "Transitioned from IV to oral medications",
-            "category": "medication",
-            "met": no_iv,
-            "current_value": f"{len(iv_meds)} IV medication(s)" if iv_meds else "All oral",
-            "target_value": "No IV medications",
-            "details": "All oral" if no_iv else f"Still on IV: {', '.join(iv_meds[:3])}",
-        })
+        criteria.append(
+            {
+                "name": "Transitioned from IV to oral medications",
+                "category": "medication",
+                "met": no_iv,
+                "current_value": f"{len(iv_meds)} IV medication(s)" if iv_meds else "All oral",
+                "target_value": "No IV medications",
+                "details": "All oral" if no_iv else f"Still on IV: {', '.join(iv_meds[:3])}",
+            }
+        )
         total_count += 1
         if no_iv:
             met_count += 1
@@ -132,36 +148,46 @@ def assess_discharge_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     # Functional status
     can_ambulate = payload.get("can_ambulate")
     if can_ambulate is not None:
-        criteria.append({
-            "name": "Patient can ambulate",
-            "category": "functional",
-            "met": can_ambulate,
-            "details": "Ambulatory" if can_ambulate else "Not ambulatory",
-        })
+        criteria.append(
+            {
+                "name": "Patient can ambulate",
+                "category": "functional",
+                "met": can_ambulate,
+                "details": "Ambulatory" if can_ambulate else "Not ambulatory",
+            }
+        )
         total_count += 1
         if can_ambulate:
             met_count += 1
 
     can_tolerate_oral = payload.get("can_tolerate_oral")
     if can_tolerate_oral is not None:
-        criteria.append({
-            "name": "Tolerates oral intake",
-            "category": "functional",
-            "met": can_tolerate_oral,
-            "details": "Oral intake tolerated" if can_tolerate_oral else "Unable to tolerate oral intake",
-        })
+        criteria.append(
+            {
+                "name": "Tolerates oral intake",
+                "category": "functional",
+                "met": can_tolerate_oral,
+                "details": (
+                    "Oral intake tolerated"
+                    if can_tolerate_oral
+                    else "Unable to tolerate oral intake"
+                ),
+            }
+        )
         total_count += 1
         if can_tolerate_oral:
             met_count += 1
 
     # Follow-up
     has_follow_up = payload.get("has_follow_up_arranged", False)
-    criteria.append({
-        "name": "Follow-up appointment arranged",
-        "category": "follow_up",
-        "met": has_follow_up,
-        "details": "Arranged" if has_follow_up else "Not arranged",
-    })
+    criteria.append(
+        {
+            "name": "Follow-up appointment arranged",
+            "category": "follow_up",
+            "met": has_follow_up,
+            "details": "Arranged" if has_follow_up else "Not arranged",
+        }
+    )
     total_count += 1
     if has_follow_up:
         met_count += 1
@@ -169,36 +195,42 @@ def assess_discharge_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     # Social — Kenya-specific
     has_caregiver = payload.get("has_caregiver_at_home")
     if has_caregiver is not None:
-        criteria.append({
-            "name": "Caregiver available at home",
-            "category": "social",
-            "met": has_caregiver,
-            "details": "Available" if has_caregiver else "Not available",
-        })
+        criteria.append(
+            {
+                "name": "Caregiver available at home",
+                "category": "social",
+                "met": has_caregiver,
+                "details": "Available" if has_caregiver else "Not available",
+            }
+        )
         total_count += 1
         if has_caregiver:
             met_count += 1
 
     has_nhif_sha = payload.get("has_nhif_or_sha")
     if has_nhif_sha is not None:
-        criteria.append({
-            "name": "NHIF/SHA coverage confirmed",
-            "category": "social",
-            "met": has_nhif_sha,
-            "details": "Covered" if has_nhif_sha else "Not covered",
-        })
+        criteria.append(
+            {
+                "name": "NHIF/SHA coverage confirmed",
+                "category": "social",
+                "met": has_nhif_sha,
+                "details": "Covered" if has_nhif_sha else "Not covered",
+            }
+        )
         total_count += 1
         if has_nhif_sha:
             met_count += 1
 
     chw_referral = payload.get("chw_referral_made")
     if chw_referral is not None:
-        criteria.append({
-            "name": "CHW referral made",
-            "category": "social",
-            "met": chw_referral,
-            "details": "Referred" if chw_referral else "Not referred",
-        })
+        criteria.append(
+            {
+                "name": "CHW referral made",
+                "category": "social",
+                "met": chw_referral,
+                "details": "Referred" if chw_referral else "Not referred",
+            }
+        )
         total_count += 1
         if chw_referral:
             met_count += 1
@@ -215,9 +247,7 @@ def assess_discharge_fallback(payload: dict[str, Any]) -> dict[str, Any]:
         readiness_level = "not_ready"
 
     # Recommendations for unmet criteria
-    recommendations = [
-        f"Address: {c['name']}" for c in criteria if not c["met"]
-    ]
+    recommendations = [f"Address: {c['name']}" for c in criteria if not c["met"]]
 
     return {
         "readiness_score": readiness_score,

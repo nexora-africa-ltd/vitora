@@ -198,7 +198,9 @@ class TestAlertSuggestedActionsSerializer:
     """Tests for suggested_actions in CDS alert serializer, gated by feature flag."""
 
     @pytest.fixture
-    def sample_alert_with_actions(self, vital_rule_with_actions, sample_patient, sample_organization, sample_facility):
+    def sample_alert_with_actions(
+        self, vital_rule_with_actions, sample_patient, sample_organization, sample_facility
+    ):
         """Create a CDS alert whose details contain suggested_actions."""
         from hmis.apps.cds.models import CDSAlert
 
@@ -277,7 +279,9 @@ class TestAlertSuggestedActionsSerializer:
         serializer = CDSAlertListSerializer(sample_alert_with_actions)
         assert serializer.data["suggested_actions"] == []
 
-    def test_alert_without_actions_returns_empty(self, vital_rule_with_actions, sample_patient, sample_organization, sample_facility):
+    def test_alert_without_actions_returns_empty(
+        self, vital_rule_with_actions, sample_patient, sample_organization, sample_facility
+    ):
         """Alert with no suggested_actions in details returns empty list."""
         from hmis.apps.cds.models import CDSAlert
         from hmis.apps.cds.serializers import CDSAlertSerializer

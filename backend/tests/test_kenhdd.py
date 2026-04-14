@@ -127,9 +127,7 @@ class TestSeedCommand:
 class TestKENHDDValidationService:
     """Tests for the KENHDD validation service."""
 
-    def test_validate_compliant_patient(
-        self, kenhdd_elements, validation_service, sample_patient
-    ):
+    def test_validate_compliant_patient(self, kenhdd_elements, validation_service, sample_patient):
         """A patient with all mandatory fields should be compliant."""
         result = validation_service.validate_record("PATIENT", sample_patient)
         assert result.resource_type == "PATIENT"
@@ -138,8 +136,12 @@ class TestKENHDDValidationService:
         assert result.pass_count > 0
 
     def test_validate_missing_mandatory_field(
-        self, kenhdd_elements, validation_service, db,
-        sample_county, sample_sub_county,
+        self,
+        kenhdd_elements,
+        validation_service,
+        db,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """A patient missing consent_given=False should still validate (boolean False is not empty)."""
@@ -157,9 +159,7 @@ class TestKENHDDValidationService:
         )
         result = validation_service.validate_record("PATIENT", patient)
         # consent_given is False (boolean) — not empty, should PASS
-        consent_elem = next(
-            (e for e in result.elements if e.element_id == "KENHDD-PAT-015"), None
-        )
+        consent_elem = next((e for e in result.elements if e.element_id == "KENHDD-PAT-015"), None)
         assert consent_elem is not None
         assert consent_elem.status == "PASS"
 
@@ -169,9 +169,7 @@ class TestKENHDDValidationService:
         """A conditional field that is empty should produce a WARNING."""
         result = validation_service.validate_record("PATIENT", sample_patient)
         # identification_number is CONDITIONAL and likely empty on sample_patient
-        id_num_elem = next(
-            (e for e in result.elements if e.element_id == "KENHDD-PAT-007"), None
-        )
+        id_num_elem = next((e for e in result.elements if e.element_id == "KENHDD-PAT-007"), None)
         assert id_num_elem is not None
         assert id_num_elem.status == "WARNING"
 
@@ -180,35 +178,25 @@ class TestKENHDDValidationService:
     ):
         """An empty optional field should PASS."""
         result = validation_service.validate_record("PATIENT", sample_patient)
-        sha_elem = next(
-            (e for e in result.elements if e.element_id == "KENHDD-PAT-013"), None
-        )
+        sha_elem = next((e for e in result.elements if e.element_id == "KENHDD-PAT-013"), None)
         assert sha_elem is not None
         assert sha_elem.status == "PASS"
 
-    def test_validate_format_pattern(
-        self, kenhdd_elements, validation_service, sample_patient
-    ):
+    def test_validate_format_pattern(self, kenhdd_elements, validation_service, sample_patient):
         """MRN format should be validated against pattern."""
         result = validation_service.validate_record("PATIENT", sample_patient)
-        mrn_elem = next(
-            (e for e in result.elements if e.element_id == "KENHDD-PAT-012"), None
-        )
+        mrn_elem = next((e for e in result.elements if e.element_id == "KENHDD-PAT-012"), None)
         assert mrn_elem is not None
         # MRN is auto-generated in MRN-YYYYMMDD-XXXX format — should PASS
         assert mrn_elem.status == "PASS"
 
-    def test_validate_encounter(
-        self, kenhdd_elements, validation_service, sample_encounter
-    ):
+    def test_validate_encounter(self, kenhdd_elements, validation_service, sample_encounter):
         """Should validate encounter records."""
         result = validation_service.validate_record("ENCOUNTER", sample_encounter)
         assert result.resource_type == "ENCOUNTER"
         assert len(result.elements) > 0
         # encounter_type, encounter_date, chief_complaint are set
-        enc_type_elem = next(
-            (e for e in result.elements if e.element_id == "KENHDD-ENC-001"), None
-        )
+        enc_type_elem = next((e for e in result.elements if e.element_id == "KENHDD-ENC-001"), None)
         assert enc_type_elem is not None
         assert enc_type_elem.status == "PASS"
 
@@ -227,15 +215,11 @@ class TestKENHDDValidationService:
         assert 0 <= scores[0].compliance_pct <= 100
         assert 0 <= scores[0].mandatory_pass_rate <= 100
 
-    def test_get_compliance_summary_empty(
-        self, kenhdd_elements, validation_service
-    ):
+    def test_get_compliance_summary_empty(self, kenhdd_elements, validation_service):
         """Summary should show None scores when no runs exist."""
         summary = validation_service.get_compliance_summary()
         assert len(summary) > 0
-        patient_entry = next(
-            (s for s in summary if s["resource_type"] == "PATIENT"), None
-        )
+        patient_entry = next((s for s in summary if s["resource_type"] == "PATIENT"), None)
         assert patient_entry is not None
         assert patient_entry["compliance_score"] is None
 
@@ -317,20 +301,14 @@ class TestKENHDDAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) > 0
 
-    def test_filter_elements_by_resource_type(
-        self, kenhdd_elements, authenticated_client
-    ):
+    def test_filter_elements_by_resource_type(self, kenhdd_elements, authenticated_client):
         """Should filter elements by resource type."""
-        response = authenticated_client.get(
-            "/api/kenhdd/elements/?resource_type=PATIENT"
-        )
+        response = authenticated_client.get("/api/kenhdd/elements/?resource_type=PATIENT")
         assert response.status_code == status.HTTP_200_OK
         for elem in response.data["results"]:
             assert elem["resource_type"] == "PATIENT"
 
-    def test_validate_record_endpoint(
-        self, kenhdd_elements, authenticated_client, sample_patient
-    ):
+    def test_validate_record_endpoint(self, kenhdd_elements, authenticated_client, sample_patient):
         """Should validate a specific patient record."""
         response = authenticated_client.post(
             "/api/kenhdd/compliance/validate-record/",
@@ -341,9 +319,7 @@ class TestKENHDDAPIEndpoints:
         assert "elements" in response.data
         assert "is_compliant" in response.data
 
-    def test_validate_record_not_found(
-        self, kenhdd_elements, authenticated_client
-    ):
+    def test_validate_record_not_found(self, kenhdd_elements, authenticated_client):
         """Should return 404 for non-existent record."""
         response = authenticated_client.post(
             "/api/kenhdd/compliance/validate-record/",
@@ -369,9 +345,7 @@ class TestKENHDDAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.data, list)
 
-    def test_runs_endpoint(
-        self, kenhdd_elements, authenticated_client, sample_patient
-    ):
+    def test_runs_endpoint(self, kenhdd_elements, authenticated_client, sample_patient):
         """Should list past validation runs."""
         # Generate a run first
         authenticated_client.post(
@@ -387,9 +361,7 @@ class TestKENHDDAPIEndpoints:
         response = api_client.get("/api/kenhdd/elements/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_export_json_endpoint(
-        self, kenhdd_elements, authenticated_client, sample_patient
-    ):
+    def test_export_json_endpoint(self, kenhdd_elements, authenticated_client, sample_patient):
         """Should export validation run as JSON."""
         # Generate a run first
         authenticated_client.post(
@@ -489,9 +461,7 @@ class TestKENHDDFailedRecordPersistence:
         from hmis.apps.kenhdd.services.validation import KENHDDValidationService
 
         service = KENHDDValidationService()
-        service.generate_compliance_report(
-            resource_type="PATIENT", sample_size=10, user=test_user
-        )
+        service.generate_compliance_report(resource_type="PATIENT", sample_size=10, user=test_user)
         run = KENHDDValidationRun.objects.filter(resource_type="PATIENT").first()
         assert run is not None
         # There should be at least some records checked
@@ -506,9 +476,7 @@ class TestKENHDDFailedRecordPersistence:
 class TestKENHDDRunDetailAPI:
     """Tests for the run-detail and failures endpoints."""
 
-    def test_run_detail_endpoint(
-        self, kenhdd_elements, authenticated_client, sample_patient
-    ):
+    def test_run_detail_endpoint(self, kenhdd_elements, authenticated_client, sample_patient):
         """Should return run detail with failed records."""
         # Generate a run
         authenticated_client.post(
@@ -520,9 +488,7 @@ class TestKENHDDRunDetailAPI:
         assert len(runs_response.data) >= 1
         run_id = runs_response.data[0]["id"]
 
-        response = authenticated_client.get(
-            f"/api/kenhdd/compliance/runs/{run_id}/"
-        )
+        response = authenticated_client.get(f"/api/kenhdd/compliance/runs/{run_id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == run_id
         assert "failed_records" in response.data
@@ -531,14 +497,10 @@ class TestKENHDDRunDetailAPI:
 
     def test_run_detail_not_found(self, kenhdd_elements, authenticated_client):
         """Should return 404 for non-existent run."""
-        response = authenticated_client.get(
-            "/api/kenhdd/compliance/runs/99999/"
-        )
+        response = authenticated_client.get("/api/kenhdd/compliance/runs/99999/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_run_failures_endpoint(
-        self, kenhdd_elements, authenticated_client, sample_patient
-    ):
+    def test_run_failures_endpoint(self, kenhdd_elements, authenticated_client, sample_patient):
         """Should return failures list for a run."""
         authenticated_client.post(
             "/api/kenhdd/compliance/compliance-report/",
@@ -547,22 +509,16 @@ class TestKENHDDRunDetailAPI:
         runs_response = authenticated_client.get("/api/kenhdd/compliance/runs/")
         run_id = runs_response.data[0]["id"]
 
-        response = authenticated_client.get(
-            f"/api/kenhdd/compliance/runs/{run_id}/failures/"
-        )
+        response = authenticated_client.get(f"/api/kenhdd/compliance/runs/{run_id}/failures/")
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.data, list)
 
     def test_run_failures_not_found(self, kenhdd_elements, authenticated_client):
         """Should return 404 when run does not exist."""
-        response = authenticated_client.get(
-            "/api/kenhdd/compliance/runs/99999/failures/"
-        )
+        response = authenticated_client.get("/api/kenhdd/compliance/runs/99999/failures/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_revalidate_endpoint(
-        self, kenhdd_elements, authenticated_client, sample_patient
-    ):
+    def test_revalidate_endpoint(self, kenhdd_elements, authenticated_client, sample_patient):
         """Should revalidate previously failed records and create a new run."""
         from hmis.apps.kenhdd.models import KENHDDFailedRecord, KENHDDValidationRun
 
@@ -597,18 +553,14 @@ class TestKENHDDRunDetailAPI:
 
         initial_run_count = KENHDDValidationRun.objects.count()
 
-        response = authenticated_client.post(
-            f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/"
-        )
+        response = authenticated_client.post(f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["resource_type"] == "PATIENT"
         assert "failed_records" in response.data
         # A new run should have been created
         assert KENHDDValidationRun.objects.count() == initial_run_count + 1
 
-    def test_revalidate_no_failed_records(
-        self, kenhdd_elements, authenticated_client, test_user
-    ):
+    def test_revalidate_no_failed_records(self, kenhdd_elements, authenticated_client, test_user):
         """Should return 400 when run has no failed records to revalidate."""
         from decimal import Decimal
 
@@ -623,16 +575,12 @@ class TestKENHDDRunDetailAPI:
             violations={},
             run_by=test_user,
         )
-        response = authenticated_client.post(
-            f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/"
-        )
+        response = authenticated_client.post(f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_revalidate_not_found(self, kenhdd_elements, authenticated_client):
         """Should return 404 when run does not exist."""
-        response = authenticated_client.post(
-            "/api/kenhdd/compliance/runs/99999/revalidate/"
-        )
+        response = authenticated_client.post("/api/kenhdd/compliance/runs/99999/revalidate/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_auth_required_on_run_detail(self, kenhdd_elements, api_client):
@@ -698,16 +646,12 @@ class TestKENHDDRunDetailAPI:
             ],
         )
 
-        response = authenticated_client.post(
-            f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/"
-        )
+        response = authenticated_client.post(f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/")
         # Should succeed — only the existing record is revalidated
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["records_checked"] == 1
 
-    def test_revalidate_all_records_deleted(
-        self, kenhdd_elements, authenticated_client, test_user
-    ):
+    def test_revalidate_all_records_deleted(self, kenhdd_elements, authenticated_client, test_user):
         """Should return 404 when all failed records were deleted."""
         from decimal import Decimal
 
@@ -740,9 +684,7 @@ class TestKENHDDRunDetailAPI:
             ],
         )
 
-        response = authenticated_client.post(
-            f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/"
-        )
+        response = authenticated_client.post(f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data["deleted_count"] == 1
 
@@ -778,9 +720,7 @@ class TestKENHDDRunDetailAPI:
             violation_details=[],
         )
 
-        response = authenticated_client.get(
-            f"/api/kenhdd/compliance/runs/{run.pk}/"
-        )
+        response = authenticated_client.get(f"/api/kenhdd/compliance/runs/{run.pk}/")
         assert response.status_code == status.HTTP_200_OK
         records = response.data["failed_records"]
         assert len(records) == 2

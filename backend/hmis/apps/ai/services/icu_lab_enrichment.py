@@ -25,11 +25,11 @@ logger = logging.getLogger(__name__)
 # Each entry: LOINC code → (icu_field_name, unit_hint)
 # unit_hint documents the expected unit for the ICU predictor.
 LOINC_TO_ICU_FIELD: dict[str, tuple[str, str]] = {
-    "6690-2": ("wbc", "x10^9/L"),         # Leukocytes [#/volume]
-    "777-3": ("platelets", "x10^9/L"),     # Platelets [#/volume]
-    "2160-0": ("creatinine", "mg/dL"),     # Creatinine [Mass/volume]
-    "1975-2": ("bilirubin", "mg/dL"),      # Total Bilirubin [Mass/volume]
-    "2524-7": ("lactate", "mmol/L"),       # Lactate [Moles/volume]
+    "6690-2": ("wbc", "x10^9/L"),  # Leukocytes [#/volume]
+    "777-3": ("platelets", "x10^9/L"),  # Platelets [#/volume]
+    "2160-0": ("creatinine", "mg/dL"),  # Creatinine [Mass/volume]
+    "1975-2": ("bilirubin", "mg/dL"),  # Total Bilirubin [Mass/volume]
+    "2524-7": ("lactate", "mmol/L"),  # Lactate [Moles/volume]
     # PaO2/FiO2 ratio is typically computed, not a single LOINC test,
     # but if a facility reports it directly:
     "50984-4": ("pao2_fio2_ratio", "mmHg"),  # PaO2/FiO2 in arterial blood
@@ -86,15 +86,19 @@ def get_latest_labs_for_icu(
 
     # Build base queryset: verified results with a numeric value,
     # for tests we care about (by LOINC or catalog code)
-    base_qs = LabResult.objects.filter(
-        verification_status="VERIFIED",
-        numeric_value__isnull=False,
-    ).filter(
-        Q(order_item__test__loinc_code__in=_RELEVANT_LOINC_CODES)
-        | Q(order_item__test__code__in=_RELEVANT_CATALOG_CODES)
-    ).select_related(
-        "order_item__test",
-        "order_item__lab_order",
+    base_qs = (
+        LabResult.objects.filter(
+            verification_status="VERIFIED",
+            numeric_value__isnull=False,
+        )
+        .filter(
+            Q(order_item__test__loinc_code__in=_RELEVANT_LOINC_CODES)
+            | Q(order_item__test__code__in=_RELEVANT_CATALOG_CODES)
+        )
+        .select_related(
+            "order_item__test",
+            "order_item__lab_order",
+        )
     )
 
     results: dict[str, float] = {}

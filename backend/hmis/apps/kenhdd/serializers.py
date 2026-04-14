@@ -151,9 +151,7 @@ class KENHDDComplianceReportInputSerializer(serializers.Serializer):
         ],
         required=False,
     )
-    sample_size = serializers.IntegerField(
-        default=100, min_value=1, max_value=1000
-    )
+    sample_size = serializers.IntegerField(default=100, min_value=1, max_value=1000)
 
 
 class KENHDDFailedRecordSerializer(serializers.ModelSerializer):
@@ -237,9 +235,9 @@ class KENHDDValidationRunDetailSerializer(serializers.ModelSerializer):
             service = KENHDDValidationService()
             model_cls = service.get_model_class(obj.resource_type)
             if model_cls is not None:
-                existing_pks = model_cls.objects.filter(
-                    pk__in=record_ids
-                ).values_list("pk", flat=True)
+                existing_pks = model_cls.objects.filter(pk__in=record_ids).values_list(
+                    "pk", flat=True
+                )
                 existing_ids = {str(pk) for pk in existing_pks}
 
         serializer = KENHDDFailedRecordSerializer(
@@ -253,6 +251,4 @@ class KENHDDValidationRunDetailSerializer(serializers.ModelSerializer):
 class KENHDDRevalidateInputSerializer(serializers.Serializer):
     """Input serializer for revalidating failed records from a run."""
 
-    sample_size = serializers.IntegerField(
-        default=100, min_value=1, max_value=1000, required=False
-    )
+    sample_size = serializers.IntegerField(default=100, min_value=1, max_value=1000, required=False)

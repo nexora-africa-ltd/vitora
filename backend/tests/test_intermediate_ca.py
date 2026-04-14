@@ -84,22 +84,16 @@ class TestIntermediateCACreation:
         """Intermediate CA certificate is signed by the root CA."""
         from cryptography import x509 as cx509
 
-        cert = cx509.load_pem_x509_certificate(
-            intermediate_ca.certificate_pem.encode()
-        )
+        cert = cx509.load_pem_x509_certificate(intermediate_ca.certificate_pem.encode())
         # Issuer should be the root CA
-        issuer_cn = cert.issuer.get_attributes_for_oid(
-            cx509.oid.NameOID.COMMON_NAME
-        )[0].value
+        issuer_cn = cert.issuer.get_attributes_for_oid(cx509.oid.NameOID.COMMON_NAME)[0].value
         assert issuer_cn == root_ca.name
 
     def test_intermediate_ca_has_ca_constraint(self, intermediate_ca):
         """Intermediate CA has BasicConstraints CA:TRUE with path_length=0."""
         from cryptography import x509 as cx509
 
-        cert = cx509.load_pem_x509_certificate(
-            intermediate_ca.certificate_pem.encode()
-        )
+        cert = cx509.load_pem_x509_certificate(intermediate_ca.certificate_pem.encode())
         bc = cert.extensions.get_extension_for_class(cx509.BasicConstraints)
         assert bc.value.ca is True
         assert bc.value.path_length == 0  # Can sign end-entity certs only
@@ -108,9 +102,7 @@ class TestIntermediateCACreation:
         """Intermediate CA has correct KeyUsage extensions."""
         from cryptography import x509 as cx509
 
-        cert = cx509.load_pem_x509_certificate(
-            intermediate_ca.certificate_pem.encode()
-        )
+        cert = cx509.load_pem_x509_certificate(intermediate_ca.certificate_pem.encode())
         ku = cert.extensions.get_extension_for_class(cx509.KeyUsage)
         assert ku.value.digital_signature is True
         assert ku.value.key_cert_sign is True
@@ -177,7 +169,9 @@ class TestUserCertFromIntermediateCA:
         )
         assert cert.certificate_authority_id == intermediate_ca.pk
 
-    def test_default_ca_prefers_intermediate(self, pki_service, root_ca, intermediate_ca, test_user):
+    def test_default_ca_prefers_intermediate(
+        self, pki_service, root_ca, intermediate_ca, test_user
+    ):
         """When no CA specified, prefer an active intermediate CA over root."""
         cert = pki_service.issue_user_certificate(
             user=test_user,
@@ -204,9 +198,7 @@ class TestUserCertFromIntermediateCA:
             validity_years=1,
         )
         x509_cert = cx509.load_pem_x509_certificate(cert.certificate_pem.encode())
-        issuer_cn = x509_cert.issuer.get_attributes_for_oid(
-            cx509.oid.NameOID.COMMON_NAME
-        )[0].value
+        issuer_cn = x509_cert.issuer.get_attributes_for_oid(cx509.oid.NameOID.COMMON_NAME)[0].value
         assert issuer_cn == intermediate_ca.name
 
 
@@ -248,7 +240,9 @@ class TestChainVerification:
         assert result.valid is False
         assert any("intermediate" in e.lower() or "expired" in e.lower() for e in result.errors)
 
-    def test_verify_fails_when_root_inactive(self, pki_service, root_ca, intermediate_ca, test_user):
+    def test_verify_fails_when_root_inactive(
+        self, pki_service, root_ca, intermediate_ca, test_user
+    ):
         """Verification fails if the root CA is inactive."""
         cert = pki_service.issue_user_certificate(
             user=test_user,
@@ -297,9 +291,7 @@ class TestIntermediateCACommand:
         """Running the command twice with same name doesn't duplicate."""
         call_command("init_pki_intermediate_ca", name="Idempotent CA")
         call_command("init_pki_intermediate_ca", name="Idempotent CA")
-        count = CertificateAuthority.objects.filter(
-            name="Idempotent CA", is_active=True
-        ).count()
+        count = CertificateAuthority.objects.filter(name="Idempotent CA", is_active=True).count()
         assert count == 1
 
     def test_command_fails_without_root(self, db):
@@ -329,9 +321,7 @@ class TestIntermediateCAAPI:
     def test_ca_serializer_includes_parent(self, admin_client, intermediate_ca):
         """CA serializer includes parent_ca and ca_type fields."""
         response = admin_client.get("/api/core/certificates/ca/")
-        inter_data = next(
-            ca for ca in response.data if ca["id"] == intermediate_ca.pk
-        )
+        inter_data = next(ca for ca in response.data if ca["id"] == intermediate_ca.pk)
         assert inter_data["parent_ca"] == intermediate_ca.parent_ca_id
         assert inter_data["ca_type"] == "intermediate"
 
@@ -357,7 +347,9 @@ class TestIntermediateCAAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_issue_cert_via_api_uses_intermediate(self, admin_client, root_ca, intermediate_ca, test_user):
+    def test_issue_cert_via_api_uses_intermediate(
+        self, admin_client, root_ca, intermediate_ca, test_user
+    ):
         """Issuing cert via API uses the intermediate CA by default."""
         response = admin_client.post(
             "/api/core/certificates/issue/",

@@ -2,8 +2,6 @@
 Serializers for laboratory models.
 """
 
-
-
 from rest_framework import serializers
 
 from .models import (
@@ -1092,7 +1090,9 @@ class SpecimenSerializer(serializers.ModelSerializer):
     collected_by_name = serializers.SerializerMethodField()
     received_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
-    specimen_type_display = serializers.CharField(source="get_specimen_type_display", read_only=True)
+    specimen_type_display = serializers.CharField(
+        source="get_specimen_type_display", read_only=True
+    )
     order_item_ids = serializers.SerializerMethodField()
 
     class Meta:
@@ -1158,4 +1158,3 @@ class SpecimenSerializer(serializers.ModelSerializer):
     def get_order_item_ids(self, obj) -> list[int]:
         """Get list of linked order item IDs."""
         return list(obj.order_items.values_list("id", flat=True))
-

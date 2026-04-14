@@ -53,7 +53,9 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, s
 
 
 @pytest.fixture
-def mch_registration(db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization):
+def mch_registration(
+    db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization
+):
     from hmis.apps.mch.models import MCHRegistration
 
     return MCHRegistration.objects.create(
@@ -84,7 +86,9 @@ def completed_delivery(db, mch_registration, test_user):
 
 
 @pytest.fixture
-def older_registration(db, sample_patient, anc_clinic, test_user, sample_facility, sample_organization):
+def older_registration(
+    db, sample_patient, anc_clinic, test_user, sample_facility, sample_organization
+):
     """A previous pregnancy registration (already completed)."""
     from hmis.apps.clinics.models import ClinicEnrollment
     from hmis.apps.mch.models import Delivery, MCHRegistration
@@ -258,9 +262,7 @@ class TestInterPregnancyInterval:
         """Should return None for a first pregnancy."""
         assert mch_registration.inter_pregnancy_interval_days is None
 
-    def test_interval_calculated_from_previous_delivery(
-        self, older_registration, mch_registration
-    ):
+    def test_interval_calculated_from_previous_delivery(self, older_registration, mch_registration):
         """Should calculate days since the last delivery of the previous pregnancy."""
         # older_registration delivered 530 days ago
         # mch_registration registered 200 days ago
@@ -269,7 +271,9 @@ class TestInterPregnancyInterval:
         assert interval is not None
         assert interval == 330
 
-    def test_short_interval_flagged(self, older_registration, sample_patient, anc_clinic, test_user):
+    def test_short_interval_flagged(
+        self, older_registration, sample_patient, anc_clinic, test_user
+    ):
         """Inter-pregnancy interval < 730 days (24 months) should be detectable."""
         from hmis.apps.clinics.models import ClinicEnrollment
         from hmis.apps.mch.models import MCHRegistration
@@ -363,9 +367,7 @@ class TestPregnancyHistoryAPI:
         assert data[0]["delivery_date"] is not None
         assert data[0]["delivery_outcome"] == "LIVE_BIRTH"
 
-    def test_pregnancy_history_excludes_current(
-        self, authenticated_client, mch_registration
-    ):
+    def test_pregnancy_history_excludes_current(self, authenticated_client, mch_registration):
         """Should not include the current registration in history."""
         url = reverse(
             "mch:mch-registration-pregnancy-history",
@@ -404,9 +406,7 @@ class TestSuggestedObstetricHistoryAPI:
         assert response.data["suggested_parity"] == 1
         assert response.data["previous_pregnancies"] == 1
 
-    def test_suggested_obstetric_history_requires_mother_param(
-        self, authenticated_client
-    ):
+    def test_suggested_obstetric_history_requires_mother_param(self, authenticated_client):
         """Should return 400 without mother param."""
         url = reverse("mch:mch-registration-suggested-obstetric-history")
         response = authenticated_client.get(url)

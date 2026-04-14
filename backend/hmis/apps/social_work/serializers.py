@@ -82,13 +82,19 @@ class SocialWorkReferralSerializer(serializers.ModelSerializer):
     def get_referred_by_name(self, obj):
         """Return referring user's name."""
         if obj.referred_by:
-            return f"{obj.referred_by.first_name} {obj.referred_by.last_name}".strip() or obj.referred_by.username
+            return (
+                f"{obj.referred_by.first_name} {obj.referred_by.last_name}".strip()
+                or obj.referred_by.username
+            )
         return None
 
     def get_assigned_worker_name(self, obj):
         """Return assigned social worker's name."""
         if obj.assigned_worker:
-            return f"{obj.assigned_worker.first_name} {obj.assigned_worker.last_name}".strip() or obj.assigned_worker.username
+            return (
+                f"{obj.assigned_worker.first_name} {obj.assigned_worker.last_name}".strip()
+                or obj.assigned_worker.username
+            )
         return None
 
 
@@ -131,7 +137,10 @@ class SocialWorkReferralListSerializer(serializers.ModelSerializer):
     def get_assigned_worker_name(self, obj):
         """Return assigned social worker's name."""
         if obj.assigned_worker:
-            return f"{obj.assigned_worker.first_name} {obj.assigned_worker.last_name}".strip() or obj.assigned_worker.username
+            return (
+                f"{obj.assigned_worker.first_name} {obj.assigned_worker.last_name}".strip()
+                or obj.assigned_worker.username
+            )
         return None
 
 
@@ -183,6 +192,7 @@ class SocialWorkReferralAssignWorkerSerializer(serializers.Serializer):
     def validate_assigned_worker(self, value):
         """Validate and return the user instance."""
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         try:
             user = User.objects.get(id=value, is_active=True)
@@ -274,13 +284,19 @@ class SocialWorkCaseSerializer(serializers.ModelSerializer):
     def get_assigned_worker_name(self, obj):
         """Return assigned social worker's name."""
         if obj.assigned_worker:
-            return f"{obj.assigned_worker.first_name} {obj.assigned_worker.last_name}".strip() or obj.assigned_worker.username
+            return (
+                f"{obj.assigned_worker.first_name} {obj.assigned_worker.last_name}".strip()
+                or obj.assigned_worker.username
+            )
         return None
 
     def get_supervisor_name(self, obj):
         """Return supervisor's name."""
         if obj.supervisor:
-            return f"{obj.supervisor.first_name} {obj.supervisor.last_name}".strip() or obj.supervisor.username
+            return (
+                f"{obj.supervisor.first_name} {obj.supervisor.last_name}".strip()
+                or obj.supervisor.username
+            )
         return None
 
     def get_notes_count(self, obj):
@@ -333,7 +349,10 @@ class SocialWorkCaseListSerializer(serializers.ModelSerializer):
     def get_assigned_worker_name(self, obj):
         """Return assigned social worker's name."""
         if obj.assigned_worker:
-            return f"{obj.assigned_worker.first_name} {obj.assigned_worker.last_name}".strip() or obj.assigned_worker.username
+            return (
+                f"{obj.assigned_worker.first_name} {obj.assigned_worker.last_name}".strip()
+                or obj.assigned_worker.username
+            )
         return None
 
 
@@ -397,7 +416,9 @@ class CaseNoteSerializer(serializers.ModelSerializer):
 
     author_name = serializers.SerializerMethodField()
     note_type_display = serializers.CharField(source="get_note_type_display", read_only=True)
-    contact_method_display = serializers.CharField(source="get_contact_method_display", read_only=True)
+    contact_method_display = serializers.CharField(
+        source="get_contact_method_display", read_only=True
+    )
 
     class Meta:
         model = CaseNote
@@ -500,7 +521,10 @@ class SocialWorkInterventionSerializer(serializers.ModelSerializer):
     def get_provided_by_name(self, obj):
         """Return provider's name."""
         if obj.provided_by:
-            return f"{obj.provided_by.first_name} {obj.provided_by.last_name}".strip() or obj.provided_by.username
+            return (
+                f"{obj.provided_by.first_name} {obj.provided_by.last_name}".strip()
+                or obj.provided_by.username
+            )
         return None
 
 

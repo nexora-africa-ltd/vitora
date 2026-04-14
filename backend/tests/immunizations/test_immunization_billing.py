@@ -34,8 +34,12 @@ def bcg_vaccine(db):
 
 @pytest.fixture
 def child_patient(
-    db, test_user, sample_county, sample_sub_county,
-    sample_organization, sample_facility,
+    db,
+    test_user,
+    sample_county,
+    sample_sub_county,
+    sample_organization,
+    sample_facility,
 ):
     from hmis.apps.patients.models import Patient
 
@@ -89,7 +93,9 @@ class TestImmunizationBilling:
     """Tests for auto-billing vaccine administration."""
 
     def test_handler_creates_invoice_item(
-        self, scheduled_record, bcg_billing_service,
+        self,
+        scheduled_record,
+        bcg_billing_service,
     ):
         """Agent handler should create a VACCINATION line item."""
         # Simulate administration
@@ -114,7 +120,9 @@ class TestImmunizationBilling:
         assert "dose 1" in item.description
 
     def test_idempotency_no_double_billing(
-        self, scheduled_record, bcg_billing_service,
+        self,
+        scheduled_record,
+        bcg_billing_service,
     ):
         """Should not create duplicate line items for the same record."""
         scheduled_record.status = "ADMINISTERED"
@@ -128,7 +136,9 @@ class TestImmunizationBilling:
         assert items.count() == 1
 
     def test_no_billing_service_or_base_fee_logs_warning(
-        self, scheduled_record, caplog,
+        self,
+        scheduled_record,
+        caplog,
     ):
         """Should log warning when no billing Service or base_fee is found for a vaccine."""
         scheduled_record.status = "ADMINISTERED"
@@ -142,7 +152,9 @@ class TestImmunizationBilling:
         assert "no billing Service or base_fee found" in caplog.text
 
     def test_signal_triggers_on_administration(
-        self, scheduled_record, bcg_billing_service,
+        self,
+        scheduled_record,
+        bcg_billing_service,
     ):
         """post_save signal should trigger billing when status becomes ADMINISTERED."""
         # The signal in billing/apps.py connects to ImmunizationRecord post_save.
@@ -161,7 +173,9 @@ class TestImmunizationBilling:
         assert item.item_type == InvoiceItem.ItemType.VACCINATION
 
     def test_signal_does_not_trigger_for_scheduled(
-        self, scheduled_record, bcg_billing_service,
+        self,
+        scheduled_record,
+        bcg_billing_service,
     ):
         """Should not create billing for non-ADMINISTERED status."""
         # Record stays SCHEDULED — signal should skip
@@ -177,7 +191,11 @@ class TestImmunizationBilling:
         assert InvoiceItem.ItemType.VACCINATION == "vaccination"
 
     def test_billing_service_fk_preferred_over_code_lookup(
-        self, scheduled_record, bcg_billing_service, imm_service_category, test_user,
+        self,
+        scheduled_record,
+        bcg_billing_service,
+        imm_service_category,
+        test_user,
     ):
         """billing_service FK on VaccineDefinition should take priority over code lookup."""
         # Create a different Service and link it explicitly via FK
@@ -206,7 +224,8 @@ class TestImmunizationBilling:
         assert item.unit_price == Decimal("200.00")
 
     def test_base_fee_fallback_when_no_service(
-        self, scheduled_record,
+        self,
+        scheduled_record,
     ):
         """Should use VaccineDefinition.base_fee when no billing Service is found."""
         vaccine = scheduled_record.vaccine

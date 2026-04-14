@@ -215,7 +215,9 @@ class TestRoleBasedAccess:
 
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_doctor_can_update_diagnosis(self, api_client, doctor_user, sample_patient, sample_facility):
+    def test_doctor_can_update_diagnosis(
+        self, api_client, doctor_user, sample_patient, sample_facility
+    ):
         """
         Test that doctor can update encounter diagnosis.
 

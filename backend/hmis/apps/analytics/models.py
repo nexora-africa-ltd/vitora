@@ -46,7 +46,9 @@ class FacilityDailySummary(FacilityScopedModel, TimeStampedModel):
 
     # Revenue (KES)
     revenue_total = models.DecimalField(
-        max_digits=14, decimal_places=2, default=0,
+        max_digits=14,
+        decimal_places=2,
+        default=0,
         help_text="Sum of completed payments on this date.",
     )
     revenue_cash = models.DecimalField(max_digits=14, decimal_places=2, default=0)
@@ -56,7 +58,9 @@ class FacilityDailySummary(FacilityScopedModel, TimeStampedModel):
     # Billing
     invoices_created = models.PositiveIntegerField(default=0)
     outstanding_balance = models.DecimalField(
-        max_digits=14, decimal_places=2, default=0,
+        max_digits=14,
+        decimal_places=2,
+        default=0,
         help_text="Total unpaid balance across all open invoices as of this date.",
     )
 
@@ -73,7 +77,9 @@ class FacilityDailySummary(FacilityScopedModel, TimeStampedModel):
     triage_assessments = models.PositiveIntegerField(default=0)
     triage_emergency_count = models.PositiveIntegerField(default=0)
     avg_wait_time_minutes = models.DecimalField(
-        max_digits=7, decimal_places=1, default=0,
+        max_digits=7,
+        decimal_places=1,
+        default=0,
         help_text="Average triage-to-consultation wait time in minutes.",
     )
 
@@ -82,25 +88,32 @@ class FacilityDailySummary(FacilityScopedModel, TimeStampedModel):
     new_admissions = models.PositiveIntegerField(default=0)
     discharges = models.PositiveIntegerField(default=0)
     bed_occupancy_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0,
+        max_digits=5,
+        decimal_places=2,
+        default=0,
         help_text="Percentage of beds occupied (0–100).",
     )
 
     # Patient flow KPIs
     return_patients = models.PositiveIntegerField(
-        default=0, help_text="Patients with a prior encounter before this date.",
+        default=0,
+        help_text="Patients with a prior encounter before this date.",
     )
     walk_ins = models.PositiveIntegerField(
-        default=0, help_text="Patients registered with referral_source='self'.",
+        default=0,
+        help_text="Patients registered with referral_source='self'.",
     )
     referral_ins = models.PositiveIntegerField(
-        default=0, help_text="Patients registered referred from another facility.",
+        default=0,
+        help_text="Patients registered referred from another facility.",
     )
     clinic_referrals = models.PositiveIntegerField(
-        default=0, help_text="Patients referred from a clinic.",
+        default=0,
+        help_text="Patients referred from a clinic.",
     )
     follow_up_encounters = models.PositiveIntegerField(
-        default=0, help_text="Encounters of type FOLLOW_UP.",
+        default=0,
+        help_text="Encounters of type FOLLOW_UP.",
     )
 
     class Meta:
@@ -148,13 +161,17 @@ class DepartmentMonthlySummary(FacilityScopedModel, TimeStampedModel):
 
     # Top diagnoses (JSON list of {code, name, count})
     top_diagnoses = models.JSONField(
-        default=list, blank=True,
+        default=list,
+        blank=True,
         help_text='Top 10 ICD-10 diagnoses, e.g. [{"code":"J06.9","name":"...","count":42}]',
     )
 
     # Performance
     avg_length_of_stay_days = models.DecimalField(
-        max_digits=6, decimal_places=1, null=True, blank=True,
+        max_digits=6,
+        decimal_places=1,
+        null=True,
+        blank=True,
         help_text="Average LOS in days (IPD / inpatient only).",
     )
 

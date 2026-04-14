@@ -580,13 +580,15 @@ def generate_defaulter_list(clinic_id: int | None = None):
                     "enrollment_number": enrollment.enrollment_number,
                     "next_appointment": str(enrollment.next_appointment),
                     "days_overdue": enrollment.days_overdue(),
-                    "last_visit_date": str(enrollment.last_visit_date)
-                    if enrollment.last_visit_date
-                    else None,
+                    "last_visit_date": (
+                        str(enrollment.last_visit_date) if enrollment.last_visit_date else None
+                    ),
                     "total_visits": enrollment.total_visits,
-                    "phone": enrollment.patient.phone_number
-                    if hasattr(enrollment.patient, "phone_number")
-                    else None,
+                    "phone": (
+                        enrollment.patient.phone_number
+                        if hasattr(enrollment.patient, "phone_number")
+                        else None
+                    ),
                 }
             )
 
@@ -666,9 +668,7 @@ def verify_audit_chain_integrity(count: int = 1000):
                 action_url="/admin/audit-integrity",
             )
     else:
-        logger.info(
-            f"Audit chain integrity verified: {result.entries_checked} entries OK"
-        )
+        logger.info(f"Audit chain integrity verified: {result.entries_checked} entries OK")
 
     return {
         "valid": result.valid,

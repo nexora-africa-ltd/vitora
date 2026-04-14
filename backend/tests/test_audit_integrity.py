@@ -53,9 +53,15 @@ class TestAuditHashChaining:
 
     def test_sequential_entries_chain(self, test_user):
         """Entry N+1 references the hash of entry N."""
-        e1 = AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=1)
-        e2 = AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=2)
-        e3 = AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=3)
+        e1 = AuditLog.log(
+            action="patient_view", user=test_user, resource_type="Patient", resource_id=1
+        )
+        e2 = AuditLog.log(
+            action="patient_view", user=test_user, resource_type="Patient", resource_id=2
+        )
+        e3 = AuditLog.log(
+            action="patient_view", user=test_user, resource_type="Patient", resource_id=3
+        )
 
         assert e2.previous_hash == e1.entry_hash
         assert e3.previous_hash == e2.entry_hash
@@ -135,7 +141,9 @@ class TestAuditIntegrityVerification:
     def test_verify_valid_chain(self, test_user, audit_service):
         """verify_chain returns valid for an untampered chain."""
         for i in range(5):
-            AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1)
+            AuditLog.log(
+                action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1
+            )
 
         result = audit_service.verify_chain()
         assert result.valid is True
@@ -163,7 +171,9 @@ class TestAuditIntegrityVerification:
     def test_tamper_detection_modified_hash(self, test_user, audit_service):
         """Detects tampering when an entry's hash is modified."""
         for i in range(3):
-            AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1)
+            AuditLog.log(
+                action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1
+            )
 
         # Tamper with the first entry's hash
         AuditLog.objects.filter(sequence_number=1).update(entry_hash="a" * 64)
@@ -174,7 +184,9 @@ class TestAuditIntegrityVerification:
     def test_tamper_detection_deleted_entry(self, test_user, audit_service):
         """Detects tampering when an entry in the middle is deleted."""
         for i in range(5):
-            AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1)
+            AuditLog.log(
+                action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1
+            )
 
         # Delete entry in the middle
         AuditLog.objects.filter(sequence_number=3).delete()
@@ -185,7 +197,9 @@ class TestAuditIntegrityVerification:
     def test_verify_latest(self, test_user, audit_service):
         """verify_latest checks the most recent N entries."""
         for i in range(10):
-            AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1)
+            AuditLog.log(
+                action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1
+            )
 
         result = audit_service.verify_latest(count=5)
         assert result.valid is True
@@ -200,7 +214,9 @@ class TestAuditIntegrityVerification:
     def test_chain_status(self, test_user, audit_service):
         """get_chain_status returns correct summary."""
         for i in range(3):
-            AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1)
+            AuditLog.log(
+                action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1
+            )
 
         status_data = audit_service.get_chain_status()
         assert status_data["chained_entries"] >= 3
@@ -243,7 +259,9 @@ class TestAuditIntegrityCeleryTask:
     def test_task_succeeds_on_valid_chain(self, test_user):
         """Task completes successfully when chain is valid."""
         for i in range(3):
-            AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1)
+            AuditLog.log(
+                action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1
+            )
 
         from hmis.apps.core.tasks import verify_audit_chain_integrity
 
@@ -253,7 +271,9 @@ class TestAuditIntegrityCeleryTask:
     def test_task_creates_notification_on_tamper(self, test_user, admin_user):
         """Task creates CRITICAL notification for superusers on tamper detection."""
         for i in range(3):
-            AuditLog.log(action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1)
+            AuditLog.log(
+                action="patient_view", user=test_user, resource_type="Patient", resource_id=i + 1
+            )
 
         # Tamper
         AuditLog.objects.filter(sequence_number=2).update(details={"tampered": True})
@@ -343,7 +363,8 @@ class TestConcurrentHashChaining:
     """Test hash chain integrity under concurrent writes."""
 
     @pytest.mark.skipif(
-        "sqlite" in str(__import__("django").conf.settings.DATABASES.get("default", {}).get("ENGINE", "")),
+        "sqlite"
+        in str(__import__("django").conf.settings.DATABASES.get("default", {}).get("ENGINE", "")),
         reason="SQLite does not support concurrent writes",
     )
     def test_concurrent_log_preserves_chain(self, test_user):

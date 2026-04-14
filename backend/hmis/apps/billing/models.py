@@ -1346,9 +1346,7 @@ class Receipt(models.Model):
         header_style = ParagraphStyle(
             "ReceiptHeader", parent=styles["Title"], fontSize=14, alignment=1
         )
-        sub_header = ParagraphStyle(
-            "SubHeader", parent=styles["Normal"], fontSize=9, alignment=1
-        )
+        sub_header = ParagraphStyle("SubHeader", parent=styles["Normal"], fontSize=9, alignment=1)
         elements.append(Paragraph(self.facility_name, header_style))
         if self.facility_address:
             elements.append(Paragraph(self.facility_address, sub_header))
@@ -1417,12 +1415,8 @@ class Receipt(models.Model):
             elements.append(Spacer(1, 3 * mm))
 
         # --- Amount ---
-        amount_style = ParagraphStyle(
-            "Amount", parent=styles["Normal"], fontSize=11, alignment=2
-        )
-        bold_amount = ParagraphStyle(
-            "BoldAmount", parent=amount_style, fontName="Helvetica-Bold"
-        )
+        amount_style = ParagraphStyle("Amount", parent=styles["Normal"], fontSize=11, alignment=2)
+        bold_amount = ParagraphStyle("BoldAmount", parent=amount_style, fontName="Helvetica-Bold")
         elements.append(Paragraph(f"Amount Paid: KES {self.amount:,.2f}", bold_amount))
         elements.append(Spacer(1, 2 * mm))
 
@@ -1741,9 +1735,9 @@ class SHAMember(models.Model):
             and not self.principal_sha_number
             and not self.principal
         ):
-            errors[
-                "principal_sha_number"
-            ] = "Dependents must have a principal SHA number or principal member reference"
+            errors["principal_sha_number"] = (
+                "Dependents must have a principal SHA number or principal member reference"
+            )
         # Validate principal FK points to a principal member
         if (
             self.membership_type != self.MembershipType.PRINCIPAL

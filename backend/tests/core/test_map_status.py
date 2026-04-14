@@ -332,7 +332,9 @@ class TestMAPCriticalAlerts:
 class TestPediatricMAPStatus:
     """Test MAP status for pediatric patients (different ranges)."""
 
-    def test_pediatric_map_uses_age_appropriate_ranges(self, db, sample_organization, sample_facility):
+    def test_pediatric_map_uses_age_appropriate_ranges(
+        self, db, sample_organization, sample_facility
+    ):
         """Test that pediatric patients use age-appropriate MAP ranges."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient

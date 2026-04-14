@@ -77,11 +77,15 @@ def generate_prescription_expiry_alerts():
     critical_date = today + timedelta(days=critical_days)
     warning_date = today + timedelta(days=warning_days)
 
-    expiring_qs = Prescription.objects.filter(
-        valid_until__gte=today,
-        valid_until__lte=warning_date,
-        status__in=["PENDING", "PARTIAL"],
-    ).select_related("patient", "prescribed_by").prefetch_related("items")
+    expiring_qs = (
+        Prescription.objects.filter(
+            valid_until__gte=today,
+            valid_until__lte=warning_date,
+            status__in=["PENDING", "PARTIAL"],
+        )
+        .select_related("patient", "prescribed_by")
+        .prefetch_related("items")
+    )
 
     alerts_created = 0
     for rx in expiring_qs:
@@ -94,9 +98,7 @@ def generate_prescription_expiry_alerts():
         is_critical = rx.valid_until <= critical_date
 
         severity = "CRITICAL" if is_critical else "HIGH"
-        item_names = ", ".join(
-            item.drug.generic_name for item in remaining[:3]
-        )
+        item_names = ", ".join(item.drug.generic_name for item in remaining[:3])
         suffix = f" (+{len(remaining) - 3} more)" if len(remaining) > 3 else ""
 
         message = (

@@ -203,7 +203,9 @@ class TestEmailVerification:
     """Tests for email verification endpoint."""
 
     def test_verify_marks_org_as_verified(self, anon_client):
-        user = User.objects.create_user(username="verifyuser", email="v@test.com", password="pass123")
+        user = User.objects.create_user(
+            username="verifyuser", email="v@test.com", password="pass123"
+        )
         org = Organization.objects.create(
             name="Verify Org", slug="verify-org", is_active=False, is_verified=False
         )
@@ -288,9 +290,7 @@ class TestSetupCheck:
         assert response.data["has_facilities"] is False
 
     @override_settings(SETUP_WIZARD_ENABLED=True)
-    def test_check_returns_not_required_when_setup_complete(
-        self, anon_client, setup_data
-    ):
+    def test_check_returns_not_required_when_setup_complete(self, anon_client, setup_data):
         """Setup complete = org + facility + staff linked to facility."""
         # Run the full setup wizard to create everything properly
         anon_client.post("/api/core/setup/initialize/", setup_data, format="json")
@@ -360,7 +360,9 @@ class TestSetupInitialize:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     @override_settings(SETUP_WIZARD_ENABLED=True)
-    def test_initialize_duplicate_mfl_rejected(self, anon_client, setup_data, sample_county, sample_sub_county):
+    def test_initialize_duplicate_mfl_rejected(
+        self, anon_client, setup_data, sample_county, sample_sub_county
+    ):
         """MFL code uniqueness is enforced even during setup.
 
         Since setup_initialize rejects when orgs exist (HTTP 409), we test the

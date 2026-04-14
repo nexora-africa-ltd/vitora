@@ -202,14 +202,18 @@ class ImagingSchedulingService:
                     "start_time": slot["start_time"].isoformat(),
                     "end_time": slot["end_time"].isoformat(),
                     "is_available": is_available,
-                    "appointment": {
-                        "id": appointment.id,
-                        "patient_name": str(appointment.patient) if appointment.patient else None,
-                        "appointment_number": appointment.appointment_number,
-                        "status": appointment.status,
-                    }
-                    if appointment
-                    else None,
+                    "appointment": (
+                        {
+                            "id": appointment.id,
+                            "patient_name": (
+                                str(appointment.patient) if appointment.patient else None
+                            ),
+                            "appointment_number": appointment.appointment_number,
+                            "status": appointment.status,
+                        }
+                        if appointment
+                        else None
+                    ),
                 }
             )
 

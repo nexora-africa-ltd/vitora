@@ -189,9 +189,7 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
     def run_detail(self, request: Request, run_id: str = "") -> Response:
         """Get detailed info for a specific validation run including failed records."""
         try:
-            run = KENHDDValidationRun.objects.prefetch_related(
-                "failed_records"
-            ).get(pk=run_id)
+            run = KENHDDValidationRun.objects.prefetch_related("failed_records").get(pk=run_id)
         except KENHDDValidationRun.DoesNotExist:
             return Response(
                 {"error": f"Validation run {run_id} not found"},
@@ -319,9 +317,7 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
 
         compliance_pct = round((compliant_count / total) * 100, 2) if total else 0.0
         mandatory_rate = (
-            round((mandatory_pass / mandatory_total) * 100, 2)
-            if mandatory_total
-            else 100.0
+            round((mandatory_pass / mandatory_total) * 100, 2) if mandatory_total else 100.0
         )
 
         new_run = KENHDDValidationRun.objects.create(

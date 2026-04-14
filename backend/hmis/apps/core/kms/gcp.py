@@ -66,8 +66,7 @@ class GCPKMSProvider(KMSProvider):
         self._key_name = key_name
 
         logger.warning(
-            "GCPKMSProvider is a stub - not implemented. "
-            "Use Azure Key Vault for production."
+            "GCPKMSProvider is a stub - not implemented. " "Use Azure Key Vault for production."
         )
 
     def _not_implemented(self) -> None:
@@ -77,22 +76,30 @@ class GCPKMSProvider(KMSProvider):
             "Please use 'azure' or 'local' provider until GCP support is added."
         )
 
-    def encrypt(self, plaintext: bytes, context: dict[str, str] | None = None) -> bytes:  # noqa: ARG002
+    def encrypt(
+        self, plaintext: bytes, context: dict[str, str] | None = None
+    ) -> bytes:  # noqa: ARG002
         """Not yet implemented."""
         self._not_implemented()
         return b""  # unreachable
 
-    def decrypt(self, ciphertext: bytes, context: dict[str, str] | None = None) -> bytes:  # noqa: ARG002
+    def decrypt(
+        self, ciphertext: bytes, context: dict[str, str] | None = None
+    ) -> bytes:  # noqa: ARG002
         """Not yet implemented."""
         self._not_implemented()
         return b""  # unreachable
 
-    def encrypt_string(self, plaintext: str, context: dict[str, str] | None = None) -> str:  # noqa: ARG002
+    def encrypt_string(
+        self, plaintext: str, context: dict[str, str] | None = None
+    ) -> str:  # noqa: ARG002
         """Not yet implemented."""
         self._not_implemented()
         return ""  # unreachable
 
-    def decrypt_string(self, ciphertext: str, context: dict[str, str] | None = None) -> str:  # noqa: ARG002
+    def decrypt_string(
+        self, ciphertext: str, context: dict[str, str] | None = None
+    ) -> str:  # noqa: ARG002
         """Not yet implemented."""
         self._not_implemented()
         return ""  # unreachable

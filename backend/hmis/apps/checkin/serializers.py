@@ -4,8 +4,6 @@ Serializers for the check-in app.
 Sprint: Returning Patient Workflow - Sprint 1
 """
 
-
-
 from rest_framework import serializers
 
 from hmis.apps.clinics.models import Clinic

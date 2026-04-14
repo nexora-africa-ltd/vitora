@@ -1376,9 +1376,7 @@ class TestWebAuthnCredentialManagementAPI:
         """Should not allow deleting another user's credential."""
         from hmis.apps.core.mfa.models import UserWebAuthnCredential
 
-        other_user = User.objects.create_user(
-            username="otheruser", password="testpassword123"
-        )
+        other_user = User.objects.create_user(username="otheruser", password="testpassword123")
         cred = UserWebAuthnCredential.objects.create(
             user=other_user,
             name="YubiKey",
@@ -1576,9 +1574,7 @@ class TestBackupCodesDownloadAPI:
 class TestMFADisableDeletesWebAuthn:
     """Tests that disabling MFA also removes WebAuthn credentials."""
 
-    def test_disable_mfa_deletes_webauthn_credentials(
-        self, authenticated_client, test_user, db
-    ):
+    def test_disable_mfa_deletes_webauthn_credentials(self, authenticated_client, test_user, db):
         """Should delete WebAuthn credentials when MFA is disabled."""
         from hmis.apps.core.mfa.models import UserTOTPDevice, UserWebAuthnCredential
 
@@ -1636,9 +1632,7 @@ class TestLoginFlowAvailableMethods:
         assert "totp" in response.data["available_methods"]
         assert "webauthn" in response.data["available_methods"]
 
-    def test_login_mfa_totp_only_available_methods(
-        self, api_client, test_user, db, settings
-    ):
+    def test_login_mfa_totp_only_available_methods(self, api_client, test_user, db, settings):
         """MFA login with only TOTP should show correct methods."""
         settings.MFA_ENFORCEMENT = True
         from hmis.apps.core.mfa.models import BackupCode, UserTOTPDevice

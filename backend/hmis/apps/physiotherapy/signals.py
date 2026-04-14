@@ -69,7 +69,9 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
             ).first()
 
         # Use treatment type cost
-        unit_price = order.treatment_type.cost_per_session if order.treatment_type else Decimal("0.00")
+        unit_price = (
+            order.treatment_type.cost_per_session if order.treatment_type else Decimal("0.00")
+        )
 
         # Create invoice item
         invoice_item = InvoiceItem.objects.create(

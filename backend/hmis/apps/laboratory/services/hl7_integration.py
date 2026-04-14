@@ -310,15 +310,11 @@ class HL7IntegrationService:
                         )
 
                 except Exception as e:
-                    logger.exception(
-                        "Error importing result for test %s", hl7_result.test_code
-                    )
+                    logger.exception("Error importing result for test %s", hl7_result.test_code)
                     errors.append(f"Error importing {hl7_result.test_code}: {e!s}")
                     results_skipped += 1
 
-            success = len(results_created) > 0 or (
-                len(parsed_results) == 0 and len(errors) == 0
-            )
+            success = len(results_created) > 0 or (len(parsed_results) == 0 and len(errors) == 0)
 
             return ProcessResultsResult(
                 success=success,
@@ -481,9 +477,9 @@ class HL7IntegrationService:
             reference_range_text=hl7_result.reference_range or "",
             result_flag=result_flag,
             is_external_result=True,
-            external_result_date=hl7_result.result_datetime.date()
-            if hl7_result.result_datetime
-            else None,
+            external_result_date=(
+                hl7_result.result_datetime.date() if hl7_result.result_datetime else None
+            ),
             entered_by=entered_by,
             verification_status="UNVERIFIED",
         )

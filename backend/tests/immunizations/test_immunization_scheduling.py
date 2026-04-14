@@ -35,8 +35,12 @@ def bcg_vaccine(db):
 
 @pytest.fixture
 def child_patient(
-    db, test_user, sample_county, sample_sub_county,
-    sample_organization, sample_facility,
+    db,
+    test_user,
+    sample_county,
+    sample_sub_county,
+    sample_organization,
+    sample_facility,
 ):
     from hmis.apps.patients.models import Patient
 
@@ -84,7 +88,8 @@ class TestVaccinationAppointments:
     def test_create_appointment(self, scheduled_record, imm_clinic_resource, test_user):
         """Should create a VACCINATION appointment for a scheduled immunization."""
         apt = create_vaccination_appointment(
-            scheduled_record, created_by=test_user,
+            scheduled_record,
+            created_by=test_user,
         )
         assert apt is not None
         assert apt.appointment_type == "VACCINATION"
@@ -97,22 +102,28 @@ class TestVaccinationAppointments:
     def test_no_duplicate_appointments(self, scheduled_record, imm_clinic_resource, test_user):
         """Should not create a second appointment for the same vaccine on the same date."""
         apt1 = create_vaccination_appointment(
-            scheduled_record, created_by=test_user,
+            scheduled_record,
+            created_by=test_user,
         )
         apt2 = create_vaccination_appointment(
-            scheduled_record, created_by=test_user,
+            scheduled_record,
+            created_by=test_user,
         )
         assert apt1 is not None
         assert apt2 is None
-        assert Appointment.objects.filter(
-            patient=scheduled_record.patient,
-            appointment_type="VACCINATION",
-        ).count() == 1
+        assert (
+            Appointment.objects.filter(
+                patient=scheduled_record.patient,
+                appointment_type="VACCINATION",
+            ).count()
+            == 1
+        )
 
     def test_no_appointment_without_resource(self, scheduled_record, test_user):
         """Should return None if no IMM-CLINIC resource exists."""
         apt = create_vaccination_appointment(
-            scheduled_record, created_by=test_user,
+            scheduled_record,
+            created_by=test_user,
         )
         assert apt is None
 
@@ -127,13 +138,20 @@ class TestVaccinationAppointments:
             organization=sample_facility.organization,
         )
         apt = create_vaccination_appointment(
-            scheduled_record, resource=resource, created_by=test_user,
+            scheduled_record,
+            resource=resource,
+            created_by=test_user,
         )
         assert apt is not None
         assert apt.resource == resource
 
     def test_batch_create_for_schedule(
-        self, child_patient, bcg_vaccine, imm_clinic_resource, test_user, sample_facility,
+        self,
+        child_patient,
+        bcg_vaccine,
+        imm_clinic_resource,
+        test_user,
+        sample_facility,
     ):
         """Should create appointments for a batch of immunization records."""
         records = []
@@ -158,14 +176,20 @@ class TestVaccinationAppointments:
             records.append(r)
 
         appointments = create_appointments_for_schedule(
-            records, created_by=test_user,
+            records,
+            created_by=test_user,
         )
         assert len(appointments) == 3
         assert all(a.appointment_type == "VACCINATION" for a in appointments)
 
     def test_resource_lookup_scoped_to_facility(
-        self, scheduled_record, test_user, sample_facility, sample_organization,
-        sample_county, sample_sub_county,
+        self,
+        scheduled_record,
+        test_user,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
     ):
         """Resource lookup should only find IMM-CLINIC in the record's facility.
 
@@ -193,7 +217,8 @@ class TestVaccinationAppointments:
 
         # No IMM-CLINIC resource at sample_facility → should return None
         apt = create_vaccination_appointment(
-            scheduled_record, created_by=test_user,
+            scheduled_record,
+            created_by=test_user,
         )
         assert apt is None
 
@@ -208,7 +233,8 @@ class TestVaccinationAppointments:
         )
 
         apt = create_vaccination_appointment(
-            scheduled_record, created_by=test_user,
+            scheduled_record,
+            created_by=test_user,
         )
         assert apt is not None
         assert apt.resource == correct_resource

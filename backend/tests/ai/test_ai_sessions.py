@@ -92,9 +92,7 @@ class TestClinicalChatResponseSchema:
     """
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_response_has_session_id_and_structured_message(
-        self, authenticated_client
-    ):
+    def test_response_has_session_id_and_structured_message(self, authenticated_client):
         """Response must include session_id and message with id+timestamp."""
         mock_response = {
             "session_id": "ignored-tibabot-session",
@@ -103,9 +101,7 @@ class TestClinicalChatResponseSchema:
                 "content": "Based on the presentation...",
             },
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -135,19 +131,13 @@ class TestClinicalChatResponseSchema:
         assert "isStreaming" not in msg
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_error_response_also_has_proper_message_shape(
-        self, authenticated_client
-    ):
+    def test_error_response_also_has_proper_message_shape(self, authenticated_client):
         """Even error fallback responses must have id+timestamp."""
         from hmis.apps.ai.client import TibaBotUnavailableError
 
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client.clinical_chat.side_effect = TibaBotUnavailableError(
-                "unavailable"
-            )
+            mock_client.clinical_chat.side_effect = TibaBotUnavailableError("unavailable")
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.post(
@@ -170,9 +160,7 @@ class TestClinicalChatResponseSchema:
         mock_response = {
             "message": {"role": "assistant", "content": "Response"},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -192,22 +180,16 @@ class TestClinicalChatResponseSchema:
         assert session.messages.count() == 2
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_session_reused_when_session_id_provided(
-        self, authenticated_client, test_user
-    ):
+    def test_session_reused_when_session_id_provided(self, authenticated_client, test_user):
         """Should continue an existing session when session_id is given."""
         session = ChatSession.objects.create(user=test_user, title="Existing")
         # Pre-populate with a user message so auto-title doesn't trigger
-        ChatMessage.objects.create(
-            session=session, role="user", content="Initial question"
-        )
+        ChatMessage.objects.create(session=session, role="user", content="Initial question")
 
         mock_response = {
             "message": {"role": "assistant", "content": "Follow-up response"},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -224,17 +206,13 @@ class TestClinicalChatResponseSchema:
         assert session.title == "Existing"
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_creates_new_session_when_invalid_session_id(
-        self, authenticated_client
-    ):
+    def test_creates_new_session_when_invalid_session_id(self, authenticated_client):
         """Should create a new session when session_id doesn't exist."""
         fake_id = str(uuid.uuid4())
         mock_response = {
             "message": {"role": "assistant", "content": "New session"},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -254,9 +232,7 @@ class TestClinicalChatResponseSchema:
         mock_response = {
             "message": {"role": "assistant", "content": "AI answer"},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -268,9 +244,7 @@ class TestClinicalChatResponseSchema:
             )
 
         session_id = response.data["session_id"]
-        messages = list(
-            ChatMessage.objects.filter(session_id=session_id).order_by("timestamp")
-        )
+        messages = list(ChatMessage.objects.filter(session_id=session_id).order_by("timestamp"))
         assert len(messages) == 2
         assert messages[0].role == "user"
         assert messages[0].content == "User question"
@@ -335,9 +309,7 @@ class TestClinicalChatSessionListEndpoint:
             assert isinstance(s["message_count"], int)
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_sessions_ordered_by_updated_at_desc(
-        self, authenticated_client, test_user
-    ):
+    def test_sessions_ordered_by_updated_at_desc(self, authenticated_client, test_user):
         """Most recently updated session should appear first."""
         s1 = _create_session(test_user, title="Older")
         s2 = _create_session(test_user, title="Newer")
@@ -376,9 +348,7 @@ class TestClinicalChatSessionDetailEndpoint:
     @override_settings(TIBABOT_ENABLED=False)
     def test_returns_404_when_disabled(self, authenticated_client):
         fake_id = str(uuid.uuid4())
-        response = authenticated_client.get(
-            f"/api/ai/clinical/chat/session/{fake_id}/"
-        )
+        response = authenticated_client.get(f"/api/ai/clinical/chat/session/{fake_id}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @override_settings(TIBABOT_ENABLED=True)
@@ -402,9 +372,7 @@ class TestClinicalChatSessionDetailEndpoint:
         """Should return session + messages matching AIChatSessionDetailResponseSchema."""
         session = _create_session(test_user, title="Detailed Chat", num_messages=4)
 
-        response = authenticated_client.get(
-            f"/api/ai/clinical/chat/session/{session.id}/"
-        )
+        response = authenticated_client.get(f"/api/ai/clinical/chat/session/{session.id}/")
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -433,9 +401,7 @@ class TestClinicalChatSessionDetailEndpoint:
         """Messages should be in chronological order."""
         session = _create_session(test_user, num_messages=4)
 
-        response = authenticated_client.get(
-            f"/api/ai/clinical/chat/session/{session.id}/"
-        )
+        response = authenticated_client.get(f"/api/ai/clinical/chat/session/{session.id}/")
         msgs = response.data["messages"]
         timestamps = [m["timestamp"] for m in msgs]
         assert timestamps == sorted(timestamps)
@@ -443,9 +409,7 @@ class TestClinicalChatSessionDetailEndpoint:
     @override_settings(TIBABOT_ENABLED=True)
     def test_get_nonexistent_session_returns_404(self, authenticated_client):
         fake_id = str(uuid.uuid4())
-        response = authenticated_client.get(
-            f"/api/ai/clinical/chat/session/{fake_id}/"
-        )
+        response = authenticated_client.get(f"/api/ai/clinical/chat/session/{fake_id}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @override_settings(TIBABOT_ENABLED=True)
@@ -458,9 +422,7 @@ class TestClinicalChatSessionDetailEndpoint:
         )
         session = _create_session(other_user, title="Private")
 
-        response = authenticated_client.get(
-            f"/api/ai/clinical/chat/session/{session.id}/"
-        )
+        response = authenticated_client.get(f"/api/ai/clinical/chat/session/{session.id}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @override_settings(TIBABOT_ENABLED=True)
@@ -469,9 +431,7 @@ class TestClinicalChatSessionDetailEndpoint:
         session = _create_session(test_user, num_messages=6)
         session_id = str(session.id)
 
-        response = authenticated_client.delete(
-            f"/api/ai/clinical/chat/session/{session_id}/"
-        )
+        response = authenticated_client.delete(f"/api/ai/clinical/chat/session/{session_id}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
         # Session and messages should be gone
@@ -481,9 +441,7 @@ class TestClinicalChatSessionDetailEndpoint:
     @override_settings(TIBABOT_ENABLED=True)
     def test_delete_nonexistent_session_returns_404(self, authenticated_client):
         fake_id = str(uuid.uuid4())
-        response = authenticated_client.delete(
-            f"/api/ai/clinical/chat/session/{fake_id}/"
-        )
+        response = authenticated_client.delete(f"/api/ai/clinical/chat/session/{fake_id}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @override_settings(TIBABOT_ENABLED=True)
@@ -496,9 +454,7 @@ class TestClinicalChatSessionDetailEndpoint:
         )
         session = _create_session(other_user, title="Not yours")
 
-        response = authenticated_client.delete(
-            f"/api/ai/clinical/chat/session/{session.id}/"
-        )
+        response = authenticated_client.delete(f"/api/ai/clinical/chat/session/{session.id}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
         # Session should still exist
         assert ChatSession.objects.filter(id=session.id).exists()
@@ -510,9 +466,7 @@ class TestClinicalChatSessionDetailEndpoint:
 
         session = _create_session(test_user, title="To Delete")
 
-        authenticated_client.delete(
-            f"/api/ai/clinical/chat/session/{session.id}/"
-        )
+        authenticated_client.delete(f"/api/ai/clinical/chat/session/{session.id}/")
 
         log = AuditLog.objects.filter(action="ai_chat_session_delete").first()
         assert log is not None
@@ -534,9 +488,7 @@ class TestChatSessionModel:
         assert session.message_count == 0
 
         ChatMessage.objects.create(session=session, role="user", content="Hi")
-        ChatMessage.objects.create(
-            session=session, role="assistant", content="Hello"
-        )
+        ChatMessage.objects.create(session=session, role="assistant", content="Hello")
         assert session.message_count == 2
 
     def test_string_representation(self, test_user):
@@ -564,28 +516,20 @@ class TestChatMessageModel:
 
     def test_uuid_primary_key(self, test_user):
         session = ChatSession.objects.create(user=test_user)
-        msg = ChatMessage.objects.create(
-            session=session, role="user", content="Test"
-        )
+        msg = ChatMessage.objects.create(session=session, role="user", content="Test")
         assert isinstance(msg.id, uuid.UUID)
 
     def test_ordering_by_timestamp(self, test_user):
         session = ChatSession.objects.create(user=test_user)
-        m1 = ChatMessage.objects.create(
-            session=session, role="user", content="First"
-        )
-        m2 = ChatMessage.objects.create(
-            session=session, role="assistant", content="Second"
-        )
+        m1 = ChatMessage.objects.create(session=session, role="user", content="First")
+        m2 = ChatMessage.objects.create(session=session, role="assistant", content="Second")
         msgs = list(session.messages.all())
         assert msgs[0].id == m1.id
         assert msgs[1].id == m2.id
 
     def test_string_representation(self, test_user):
         session = ChatSession.objects.create(user=test_user)
-        msg = ChatMessage.objects.create(
-            session=session, role="user", content="Test message"
-        )
+        msg = ChatMessage.objects.create(session=session, role="user", content="Test message")
         assert "user:" in str(msg).lower()
 
 
@@ -740,16 +684,12 @@ class TestClinicalChatContextForwarding:
     """Tests that encounter context is forwarded and system_instruction is set."""
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_system_instruction_injected_when_no_encounter_context(
-        self, authenticated_client
-    ):
+    def test_system_instruction_injected_when_no_encounter_context(self, authenticated_client):
         """Should add system_instruction telling TibaBot it has no page visibility."""
         mock_response = {
             "message": {"role": "assistant", "content": "I can help."},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -767,16 +707,12 @@ class TestClinicalChatContextForwarding:
             assert "Ask about this patient" in call_args["system_instruction"]
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_no_system_instruction_when_encounter_context_present(
-        self, authenticated_client
-    ):
+    def test_no_system_instruction_when_encounter_context_present(self, authenticated_client):
         """Should NOT add system_instruction when encounter context is provided."""
         mock_response = {
             "message": {"role": "assistant", "content": "Based on the vitals..."},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -801,16 +737,12 @@ class TestClinicalChatContextForwarding:
             assert "system_instruction" not in call_args
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_patient_context_forwarded_to_tibabot(
-        self, authenticated_client
-    ):
+    def test_patient_context_forwarded_to_tibabot(self, authenticated_client):
         """Should forward patient_context and encounter_context to TibaBot."""
         mock_response = {
             "message": {"role": "assistant", "content": "Consider..."},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -837,16 +769,12 @@ class TestClinicalChatContextForwarding:
             assert call_args["encounter_context"]["chief_complaint"] == "Headache"
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_system_instruction_when_only_patient_context(
-        self, authenticated_client
-    ):
+    def test_system_instruction_when_only_patient_context(self, authenticated_client):
         """Should NOT add system_instruction when patient_context alone is present."""
         mock_response = {
             "message": {"role": "assistant", "content": "OK."},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client

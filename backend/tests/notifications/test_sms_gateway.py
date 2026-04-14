@@ -39,7 +39,11 @@ class TestSMSSending:
     def test_send_reminder_with_valid_data(self, mock_get_client):
         """Should send SMS with correct parameters."""
         mock_sms = Mock()
-        mock_sms.send = Mock(return_value={"SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}})
+        mock_sms.send = Mock(
+            return_value={
+                "SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}
+            }
+        )
         mock_get_client.return_value = mock_sms
 
         gateway = SMSGateway()
@@ -54,7 +58,11 @@ class TestSMSSending:
     def test_send_reminder_uses_sender_id_from_settings(self, mock_get_client):
         """Should use SMS_SENDER_ID from Django settings."""
         mock_sms = Mock()
-        mock_sms.send = Mock(return_value={"SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}})
+        mock_sms.send = Mock(
+            return_value={
+                "SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}
+            }
+        )
         mock_get_client.return_value = mock_sms
 
         gateway = SMSGateway()
@@ -67,7 +75,11 @@ class TestSMSSending:
     def test_send_reminder_with_international_format(self, mock_get_client):
         """Should handle phone numbers in international format."""
         mock_sms = Mock()
-        mock_sms.send = Mock(return_value={"SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}})
+        mock_sms.send = Mock(
+            return_value={
+                "SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}
+            }
+        )
         mock_get_client.return_value = mock_sms
 
         gateway = SMSGateway()
@@ -84,7 +96,11 @@ class TestSMSSending:
     def test_send_reminder_wraps_phone_in_list(self, mock_get_client):
         """Should wrap single phone number in list for API call."""
         mock_sms = Mock()
-        mock_sms.send = Mock(return_value={"SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}})
+        mock_sms.send = Mock(
+            return_value={
+                "SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}
+            }
+        )
         mock_get_client.return_value = mock_sms
 
         gateway = SMSGateway()
@@ -141,7 +157,11 @@ class TestSMSErrorHandling:
         """Should raise RuntimeError when send returns failure status."""
         mock_sms = Mock()
         # Return a response indicating failure (status is not "Success")
-        mock_sms.send = Mock(return_value={"SMSMessageData": {"Recipients": [{"status": "Failed", "number": "+254712345678"}]}})
+        mock_sms.send = Mock(
+            return_value={
+                "SMSMessageData": {"Recipients": [{"status": "Failed", "number": "+254712345678"}]}
+            }
+        )
         mock_get_client.return_value = mock_sms
 
         gateway = SMSGateway()
@@ -157,7 +177,11 @@ class TestSMSIntegration:
     def test_multiple_reminders_reuse_same_client(self, mock_get_client):
         """Should reuse same SMS client for multiple sends."""
         mock_sms = Mock()
-        mock_sms.send = Mock(return_value={"SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}})
+        mock_sms.send = Mock(
+            return_value={
+                "SMSMessageData": {"Recipients": [{"status": "Success", "number": "+254712345678"}]}
+            }
+        )
         mock_get_client.return_value = mock_sms
 
         gateway = SMSGateway()

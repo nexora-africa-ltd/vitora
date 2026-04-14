@@ -36,7 +36,14 @@ class ANCVisitAdmin(admin.ModelAdmin):
 
 @admin.register(CommunityScreening)
 class CommunityScreeningAdmin(admin.ModelAdmin):
-    list_display = ("screening_type", "patient", "screening_date", "chu_name", "territory", "captured_by")
+    list_display = (
+        "screening_type",
+        "patient",
+        "screening_date",
+        "chu_name",
+        "territory",
+        "captured_by",
+    )
     list_filter = ("screening_type", "screening_date")
     search_fields = (
         "patient__first_name",
@@ -90,7 +97,14 @@ class PNCVisitAdmin(admin.ModelAdmin):
 
 @admin.register(GrowthMeasurement)
 class GrowthMeasurementAdmin(admin.ModelAdmin):
-    list_display = ("patient", "measurement_date", "weight", "height", "muac", "muac_classification")
+    list_display = (
+        "patient",
+        "measurement_date",
+        "weight",
+        "height",
+        "muac",
+        "muac_classification",
+    )
     list_filter = ("muac_classification",)
     search_fields = ("patient__first_name", "patient__last_name", "patient__mrn")
 

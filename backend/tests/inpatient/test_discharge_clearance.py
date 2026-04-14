@@ -92,7 +92,15 @@ def discharge_bed(db, discharge_ward, discharge_user):
 
 
 @pytest.fixture
-def clearance_admission(db, discharge_patient, discharge_ward, discharge_bed, discharge_user, sample_facility, sample_organization):
+def clearance_admission(
+    db,
+    discharge_patient,
+    discharge_ward,
+    discharge_bed,
+    discharge_user,
+    sample_facility,
+    sample_organization,
+):
     """Create an active admission with IPD encounter for clearance tests."""
     ipd_encounter = Encounter.objects.create(
         patient=discharge_patient,
@@ -251,7 +259,10 @@ class TestClearanceStatusEndpoint:
         assert response.data["pharmacy"]["cleared"] is True
 
     def test_lab_not_cleared_with_pending_orders(
-        self, clearance_client, clearance_admission, discharge_user,
+        self,
+        clearance_client,
+        clearance_admission,
+        discharge_user,
         sample_facility,
         sample_organization,
     ):
@@ -277,7 +288,10 @@ class TestClearanceStatusEndpoint:
         assert response.data["all_cleared"] is False
 
     def test_lab_cleared_when_all_completed(
-        self, clearance_client, clearance_admission, discharge_user,
+        self,
+        clearance_client,
+        clearance_admission,
+        discharge_user,
         sample_facility,
         sample_organization,
     ):
@@ -349,7 +363,10 @@ class TestClearanceStatusEndpoint:
         assert response.data["nursing"]["cleared"] is True
 
     def test_mixed_clearance_status(
-        self, clearance_client, clearance_admission, discharge_user,
+        self,
+        clearance_client,
+        clearance_admission,
+        discharge_user,
         sample_facility,
         sample_organization,
     ):
@@ -414,17 +431,20 @@ class TestDischargeAutomatedClearance:
             created_by=discharge_user,
         )
 
-        response = clearance_client.post("/api/inpatient/discharges/", {
-            "admission": clearance_admission.id,
-            "discharge_type": "NORMAL",
-            "discharge_date": timezone.now().isoformat(),
-            "discharged_by": discharge_user.id,
-            "admission_diagnosis": "J18.9",
-            "final_diagnosis": "J18.9",
-            "final_diagnosis_text": "Pneumonia resolved",
-            "treatment_summary": "IV antibiotics completed",
-            "patient_instructions": "Rest at home",
-        })
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "NORMAL",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Pneumonia resolved",
+                "treatment_summary": "IV antibiotics completed",
+                "patient_instructions": "Rest at home",
+            },
+        )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "billing_cleared" in response.data
@@ -444,23 +464,29 @@ class TestDischargeAutomatedClearance:
             valid_until=date.today() + timedelta(days=30),
         )
 
-        response = clearance_client.post("/api/inpatient/discharges/", {
-            "admission": clearance_admission.id,
-            "discharge_type": "NORMAL",
-            "discharge_date": timezone.now().isoformat(),
-            "discharged_by": discharge_user.id,
-            "admission_diagnosis": "J18.9",
-            "final_diagnosis": "J18.9",
-            "final_diagnosis_text": "Pneumonia resolved",
-            "treatment_summary": "IV antibiotics completed",
-            "patient_instructions": "Rest at home",
-        })
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "NORMAL",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Pneumonia resolved",
+                "treatment_summary": "IV antibiotics completed",
+                "patient_instructions": "Rest at home",
+            },
+        )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "pharmacy_cleared" in response.data
 
     def test_discharge_blocked_by_pending_lab_order(
-        self, clearance_client, clearance_admission, discharge_user,
+        self,
+        clearance_client,
+        clearance_admission,
+        discharge_user,
         sample_facility,
         sample_organization,
     ):
@@ -477,17 +503,20 @@ class TestDischargeAutomatedClearance:
             organization=sample_organization,
         )
 
-        response = clearance_client.post("/api/inpatient/discharges/", {
-            "admission": clearance_admission.id,
-            "discharge_type": "NORMAL",
-            "discharge_date": timezone.now().isoformat(),
-            "discharged_by": discharge_user.id,
-            "admission_diagnosis": "J18.9",
-            "final_diagnosis": "J18.9",
-            "final_diagnosis_text": "Pneumonia resolved",
-            "treatment_summary": "IV antibiotics completed",
-            "patient_instructions": "Rest at home",
-        })
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "NORMAL",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Pneumonia resolved",
+                "treatment_summary": "IV antibiotics completed",
+                "patient_instructions": "Rest at home",
+            },
+        )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "lab_results_acknowledged" in response.data
@@ -496,17 +525,20 @@ class TestDischargeAutomatedClearance:
         self, clearance_client, clearance_admission, discharge_user
     ):
         """Should allow normal discharge when all clearances pass."""
-        response = clearance_client.post("/api/inpatient/discharges/", {
-            "admission": clearance_admission.id,
-            "discharge_type": "NORMAL",
-            "discharge_date": timezone.now().isoformat(),
-            "discharged_by": discharge_user.id,
-            "admission_diagnosis": "J18.9",
-            "final_diagnosis": "J18.9",
-            "final_diagnosis_text": "Pneumonia resolved",
-            "treatment_summary": "IV antibiotics completed successfully",
-            "patient_instructions": "Rest, increase fluids, follow up in 2 weeks",
-        })
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "NORMAL",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Pneumonia resolved",
+                "treatment_summary": "IV antibiotics completed successfully",
+                "patient_instructions": "Rest, increase fluids, follow up in 2 weeks",
+            },
+        )
 
         assert response.status_code == status.HTTP_201_CREATED
         # Clearance booleans should be auto-populated
@@ -530,17 +562,20 @@ class TestDischargeAutomatedClearance:
             valid_until=date.today() + timedelta(days=30),
         )
 
-        response = clearance_client.post("/api/inpatient/discharges/", {
-            "admission": clearance_admission.id,
-            "discharge_type": "AGAINST_ADVICE",
-            "discharge_date": timezone.now().isoformat(),
-            "discharged_by": discharge_user.id,
-            "admission_diagnosis": "J18.9",
-            "final_diagnosis": "J18.9",
-            "final_diagnosis_text": "Pneumonia - leaving against advice",
-            "treatment_summary": "Patient insists on leaving despite incomplete treatment",
-            "patient_instructions": "Return immediately if symptoms worsen",
-        })
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "AGAINST_ADVICE",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Pneumonia - leaving against advice",
+                "treatment_summary": "Patient insists on leaving despite incomplete treatment",
+                "patient_instructions": "Return immediately if symptoms worsen",
+            },
+        )
 
         assert response.status_code == status.HTTP_201_CREATED
 
@@ -560,17 +595,20 @@ class TestDischargeAutomatedClearance:
             created_by=discharge_user,
         )
 
-        response = clearance_client.post("/api/inpatient/discharges/", {
-            "admission": clearance_admission.id,
-            "discharge_type": "ABSCONDED",
-            "discharge_date": timezone.now().isoformat(),
-            "discharged_by": discharge_user.id,
-            "admission_diagnosis": "J18.9",
-            "final_diagnosis": "J18.9",
-            "final_diagnosis_text": "Patient absconded",
-            "treatment_summary": "Patient left without notice",
-            "patient_instructions": "N/A - patient absconded",
-        })
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "ABSCONDED",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Patient absconded",
+                "treatment_summary": "Patient left without notice",
+                "patient_instructions": "N/A - patient absconded",
+            },
+        )
 
         assert response.status_code == status.HTTP_201_CREATED
 
@@ -589,16 +627,19 @@ class TestDischargeAutomatedClearance:
             valid_until=date.today() + timedelta(days=30),
         )
 
-        response = clearance_client.post("/api/inpatient/discharges/", {
-            "admission": clearance_admission.id,
-            "discharge_type": "DECEASED",
-            "discharge_date": timezone.now().isoformat(),
-            "discharged_by": discharge_user.id,
-            "admission_diagnosis": "J18.9",
-            "final_diagnosis": "J18.9",
-            "final_diagnosis_text": "Deceased",
-            "treatment_summary": "Patient passed away during treatment",
-            "patient_instructions": "N/A",
-        })
+        response = clearance_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": clearance_admission.id,
+                "discharge_type": "DECEASED",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": discharge_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Deceased",
+                "treatment_summary": "Patient passed away during treatment",
+                "patient_instructions": "N/A",
+            },
+        )
 
         assert response.status_code == status.HTTP_201_CREATED

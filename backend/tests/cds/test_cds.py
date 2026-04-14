@@ -267,7 +267,9 @@ class TestCDSAlertModel:
         assert cds_alert.status == CDSAlertStatus.AUTO_RESOLVED
         assert cds_alert.is_resolved is True
 
-    def test_is_critical(self, cds_rule, sample_patient, sample_encounter, sample_organization, sample_facility):
+    def test_is_critical(
+        self, cds_rule, sample_patient, sample_encounter, sample_organization, sample_facility
+    ):
         """Should correctly identify critical alerts."""
         alert = CDSAlert.objects.create(
             rule=cds_rule,
@@ -326,7 +328,12 @@ class TestVitalRangeEvaluation:
             category=CDSRuleCategory.VITAL_SIGN,
             priority=CDSRulePriority.CRITICAL,
             status=CDSRuleStatus.ACTIVE,
-            condition={"type": "vital_range", "vital": "spo2", "min": 95.0, "min_label": "Hypoxemia"},
+            condition={
+                "type": "vital_range",
+                "vital": "spo2",
+                "min": 95.0,
+                "min_label": "Hypoxemia",
+            },
             action_type="ALERT",
             action_message="SpO2 {value}% below {threshold}%.",
         )
@@ -645,7 +652,9 @@ class TestCDSRuleAPI:
         response = authenticated_client.post(f"/api/cds/rules/{cds_rule.id}/retire/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_evaluate_rule_against_encounter(self, authenticated_client, cds_rule, sample_encounter):
+    def test_evaluate_rule_against_encounter(
+        self, authenticated_client, cds_rule, sample_encounter
+    ):
         """Should evaluate a rule against an encounter."""
         sample_encounter.temperature = Decimal("39.5")
         sample_encounter.save()
@@ -734,9 +743,7 @@ class TestCDSAlertAPI:
 
     def test_pending_alerts(self, authenticated_client, cds_alert, sample_patient):
         """Should list pending alerts."""
-        response = authenticated_client.get(
-            f"/api/cds/alerts/pending/?patient={sample_patient.id}"
-        )
+        response = authenticated_client.get(f"/api/cds/alerts/pending/?patient={sample_patient.id}")
         assert response.status_code == status.HTTP_200_OK
 
     def test_evaluate_encounter(self, authenticated_client, cds_rule, sample_encounter):

@@ -47,22 +47,20 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        site_url = (
-            options["metabase_url"]
-            or getattr(settings, "METABASE_SITE_URL", "")
-        ).rstrip("/")
-        api_key = (
-            options["api_key"]
-            or getattr(settings, "METABASE_API_KEY", "")
+        site_url = (options["metabase_url"] or getattr(settings, "METABASE_SITE_URL", "")).rstrip(
+            "/"
         )
+        api_key = options["api_key"] or getattr(settings, "METABASE_API_KEY", "")
         dry_run = options["dry_run"]
         secret = options["secret"]
 
         if not site_url:
-            self.stderr.write(self.style.ERROR(
-                "METABASE_SITE_URL is not configured. "
-                "Set it in settings or pass --metabase-url."
-            ))
+            self.stderr.write(
+                self.style.ERROR(
+                    "METABASE_SITE_URL is not configured. "
+                    "Set it in settings or pass --metabase-url."
+                )
+            )
             return
 
         headers = {}
@@ -83,9 +81,11 @@ class Command(BaseCommand):
                 if resp.ok:
                     self.stdout.write(self.style.SUCCESS("Embedding secret key set."))
                 else:
-                    self.stderr.write(self.style.ERROR(
-                        f"Failed to set secret: {resp.status_code} {resp.text[:200]}"
-                    ))
+                    self.stderr.write(
+                        self.style.ERROR(
+                            f"Failed to set secret: {resp.status_code} {resp.text[:200]}"
+                        )
+                    )
 
         # ── Step 2: Fetch all dashboards ─────────────────────────────────
         try:
@@ -119,9 +119,7 @@ class Command(BaseCommand):
             params = d.get("parameters") or []
             embedding_params = d.get("embedding_params") or {}
 
-            has_facility_param = any(
-                p.get("slug") == "facility_id" for p in params
-            )
+            has_facility_param = any(p.get("slug") == "facility_id" for p in params)
             has_locked = embedding_params.get("facility_id") == "locked"
 
             if has_facility_param and has_locked:
@@ -157,14 +155,15 @@ class Command(BaseCommand):
                 resp.raise_for_status()
                 result = resp.json()
                 ep = result.get("embedding_params", {})
-                self.stdout.write(self.style.SUCCESS(
-                    f"  ✓ Updated {dash_name} (ID={dash_id}) — "
-                    f"embedding_params={ep}"
-                ))
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"  ✓ Updated {dash_name} (ID={dash_id}) — " f"embedding_params={ep}"
+                    )
+                )
                 updated += 1
             except requests.RequestException as exc:
-                self.stderr.write(self.style.ERROR(
-                    f"  ✗ Failed to update {dash_name} (ID={dash_id}): {exc}"
-                ))
+                self.stderr.write(
+                    self.style.ERROR(f"  ✗ Failed to update {dash_name} (ID={dash_id}): {exc}")
+                )
 
         self.stdout.write(f"\nDone: {updated} updated, {skipped} already configured.")

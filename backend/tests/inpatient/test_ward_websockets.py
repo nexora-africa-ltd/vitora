@@ -656,7 +656,12 @@ class TestNonCriticalViolationNoSupervisorEscalation:
     @patch("hmis.apps.inpatient.signals.broadcast_ward_event_sync")
     @patch("hmis.apps.inpatient.signals.notify_supervisors_critical_violation.delay")
     def test_warning_violation_does_not_trigger_supervisor_task(
-        self, mock_celery_task, mock_broadcast, male_only_ward_ws, sample_patient, test_user,
+        self,
+        mock_celery_task,
+        mock_broadcast,
+        male_only_ward_ws,
+        sample_patient,
+        test_user,
         sample_facility,
     ):
         """WARNING (non-critical) violation should NOT trigger supervisor escalation."""

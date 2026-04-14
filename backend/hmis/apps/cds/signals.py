@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender="encounters.Encounter")
-def evaluate_cds_on_encounter_save(sender: type, instance: object, created: bool, **kwargs: object) -> None:
+def evaluate_cds_on_encounter_save(
+    sender: type, instance: object, created: bool, **kwargs: object
+) -> None:
     """
     Evaluate CDS rules when an encounter is created or updated.
 

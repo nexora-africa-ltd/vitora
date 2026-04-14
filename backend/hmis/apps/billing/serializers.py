@@ -4,8 +4,6 @@ Serializers for the billing app.
 Following TDD - implemented to pass API tests.
 """
 
-
-
 from rest_framework import serializers
 
 from hmis.apps.billing.models import (

@@ -45,9 +45,7 @@ class TestAIFeatureGating:
                 }
             ]
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.suggest_icd10.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -115,9 +113,7 @@ class TestICD10SuggestEndpoint:
                 },
             ]
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.suggest_icd10.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -135,15 +131,11 @@ class TestICD10SuggestEndpoint:
             assert response.data["suggestions"][1]["code"] == "R50.9"
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_graceful_degradation_when_tibabot_unavailable(
-        self, authenticated_client
-    ):
+    def test_graceful_degradation_when_tibabot_unavailable(self, authenticated_client):
         """Should return empty suggestions with error message when TibaBot is down."""
         from hmis.apps.ai.client import TibaBotUnavailableError
 
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.suggest_icd10.side_effect = TibaBotUnavailableError(
                 "TibaBot AI service is currently unavailable."
@@ -166,9 +158,7 @@ class TestICD10SuggestEndpoint:
         """Should return empty suggestions with error message on TibaBot API errors."""
         from hmis.apps.ai.client import TibaBotError
 
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.suggest_icd10.side_effect = TibaBotError(
                 "TibaBot API error", status_code=422
@@ -188,9 +178,7 @@ class TestICD10SuggestEndpoint:
     @override_settings(TIBABOT_ENABLED=True)
     def test_handles_unexpected_tibabot_response(self, authenticated_client):
         """Should handle gracefully when TibaBot returns unexpected data shape."""
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             # TibaBot returns something unexpected
             mock_client.suggest_icd10.return_value = {"unexpected": "data"}
@@ -219,9 +207,7 @@ class TestICD10SuggestEndpoint:
                 }
             ]
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.suggest_icd10.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -238,9 +224,7 @@ class TestICD10SuggestEndpoint:
             assert log.details["text_length"] == len("severe watery diarrhea")
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_includes_clinical_text_preview_in_response(
-        self, authenticated_client
-    ):
+    def test_includes_clinical_text_preview_in_response(self, authenticated_client):
         """Should include sanitized text preview in successful responses."""
         mock_response = {
             "suggestions": [
@@ -251,9 +235,7 @@ class TestICD10SuggestEndpoint:
                 }
             ]
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.suggest_icd10.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -276,18 +258,14 @@ class TestPIISanitization:
     def test_mrn_stripped_from_clinical_text(self, authenticated_client):
         """Should strip MRN patterns before sending to TibaBot."""
         mock_response = {"suggestions": []}
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.suggest_icd10.return_value = mock_response
             mock_get_client.return_value = mock_client
 
             authenticated_client.post(
                 "/api/ai/icd10-suggest/",
-                {
-                    "clinical_text": "Patient MRN-20260302-0001 presents with fever and cough"
-                },
+                {"clinical_text": "Patient MRN-20260302-0001 presents with fever and cough"},
                 format="json",
             )
 
@@ -297,23 +275,17 @@ class TestPIISanitization:
             assert "[REDACTED-MRN]" in call_args
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_phone_number_stripped_from_clinical_text(
-        self, authenticated_client
-    ):
+    def test_phone_number_stripped_from_clinical_text(self, authenticated_client):
         """Should strip phone numbers before sending to TibaBot."""
         mock_response = {"suggestions": []}
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.suggest_icd10.return_value = mock_response
             mock_get_client.return_value = mock_client
 
             authenticated_client.post(
                 "/api/ai/icd10-suggest/",
-                {
-                    "clinical_text": "Patient called +254712345678 complaining of headache"
-                },
+                {"clinical_text": "Patient called +254712345678 complaining of headache"},
                 format="json",
             )
 
@@ -346,13 +318,9 @@ class TestAIStatusEndpoint:
         """Should report enabled and check service availability."""
         from hmis.apps.ai.client import TibaBotUnavailableError
 
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client._request.side_effect = TibaBotUnavailableError(
-                "unavailable"
-            )
+            mock_client._request.side_effect = TibaBotUnavailableError("unavailable")
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.get("/api/ai/status/")
@@ -362,13 +330,9 @@ class TestAIStatusEndpoint:
             assert response.data["service_available"] is False
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_returns_service_available_when_reachable(
-        self, authenticated_client
-    ):
+    def test_returns_service_available_when_reachable(self, authenticated_client):
         """Should report service_available=True when TibaBot responds."""
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client._request.return_value = {
                 "status": "ok",
@@ -386,13 +350,9 @@ class TestAIStatusEndpoint:
             assert response.data["demo_mode"] is False
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_returns_demo_mode_when_tibabot_in_demo(
-        self, authenticated_client
-    ):
+    def test_returns_demo_mode_when_tibabot_in_demo(self, authenticated_client):
         """Should report demo_mode=True when TibaBot is running without LLM."""
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client._request.return_value = {
                 "status": "ok",
@@ -416,9 +376,7 @@ class TestSanitizer:
     def test_sanitize_mrn(self):
         from hmis.apps.ai.sanitizer import sanitize_clinical_text
 
-        result = sanitize_clinical_text(
-            "Patient MRN-20260302-0001 has fever"
-        )
+        result = sanitize_clinical_text("Patient MRN-20260302-0001 has fever")
         assert "MRN-20260302-0001" not in result
         assert "[REDACTED-MRN]" in result
         assert "fever" in result
@@ -426,9 +384,7 @@ class TestSanitizer:
     def test_sanitize_phone_number(self):
         from hmis.apps.ai.sanitizer import sanitize_clinical_text
 
-        result = sanitize_clinical_text(
-            "Call +254712345678 for follow-up"
-        )
+        result = sanitize_clinical_text("Call +254712345678 for follow-up")
         assert "+254712345678" not in result
         assert "[REDACTED-PHONE]" in result
 
@@ -472,9 +428,7 @@ class TestTibaBotClient:
         assert client.base_url == "https://test.tibabot.example.com"
         assert client.api_key == "test-key-123"
         assert client.timeout == 10
-        assert (
-            client.session.headers["X-API-Key"] == "test-key-123"
-        )
+        assert client.session.headers["X-API-Key"] == "test-key-123"
 
     @override_settings(TIBABOT_API_URL="https://test.example.com")
     def test_suggest_icd10_sanitizes_input(self):
@@ -483,9 +437,7 @@ class TestTibaBotClient:
         client = TibaBotClient()
         with patch.object(client, "_request") as mock_request:
             mock_request.return_value = {"suggestions": []}
-            client.suggest_icd10(
-                "Patient MRN-20260302-0001 has malaria"
-            )
+            client.suggest_icd10("Patient MRN-20260302-0001 has malaria")
 
             call_args = mock_request.call_args
             # suggest_icd10 calls _request(method, endpoint, data=...)

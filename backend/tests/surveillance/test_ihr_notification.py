@@ -50,7 +50,9 @@ def non_ihr_disease(db):
 
 
 @pytest.fixture
-def sample_notifiable_case(db, ihr_disease, sample_patient, sample_encounter, sample_facility, sample_organization):
+def sample_notifiable_case(
+    db, ihr_disease, sample_patient, sample_encounter, sample_facility, sample_organization
+):
     """Create a sample notifiable case for IHR testing."""
     from hmis.apps.surveillance.models import NotifiableCase
 
@@ -66,7 +68,15 @@ def sample_notifiable_case(db, ihr_disease, sample_patient, sample_encounter, sa
 
 
 @pytest.fixture
-def ihr_notification(db, ihr_disease, sample_notifiable_case, sample_patient, test_user, sample_facility, sample_organization):
+def ihr_notification(
+    db,
+    ihr_disease,
+    sample_notifiable_case,
+    sample_patient,
+    test_user,
+    sample_facility,
+    sample_organization,
+):
     """Create a sample IHR notification."""
     from hmis.apps.surveillance.models import IHRNotification
 
@@ -463,7 +473,9 @@ class TestIHRNotificationAPI:
         assert response.data["status"] == "SUBMITTED_COUNTY"
         assert response.data["county_notified_at"] is not None
 
-    def test_submit_to_county_invalid_status(self, authenticated_client, ihr_notification, test_user):
+    def test_submit_to_county_invalid_status(
+        self, authenticated_client, ihr_notification, test_user
+    ):
         """Should reject county submission from wrong status."""
         ihr_notification.submit_to_county(user=test_user)  # Already submitted
 
@@ -565,7 +577,9 @@ class TestIHRNotificationAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_list_overdue_notifications(self, authenticated_client, ihr_disease, test_user, sample_facility, sample_organization):
+    def test_list_overdue_notifications(
+        self, authenticated_client, ihr_disease, test_user, sample_facility, sample_organization
+    ):
         """Should list overdue IHR notifications."""
         from hmis.apps.surveillance.models import IHRNotification
 

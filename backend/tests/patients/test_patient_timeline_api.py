@@ -114,7 +114,9 @@ class TestPatientTimelineAPI:
         assert isinstance(response.data["timeline"], list)
 
     def test_timeline_encounters_ordered_by_date(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline encounters are ordered newest first."""
@@ -145,7 +147,9 @@ class TestPatientTimelineAPI:
         assert timeline[1]["encounter_id"] == old.id
 
     def test_timeline_includes_vitals_summary(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline includes vitals summary for each encounter."""
@@ -171,7 +175,9 @@ class TestPatientTimelineAPI:
         assert "temperature" in encounter_data["vitals_summary"]
 
     def test_timeline_includes_diagnoses(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline includes diagnoses for each encounter."""
@@ -205,7 +211,9 @@ class TestPatientTimelineAPI:
         assert len(encounter_data["diagnoses"]) == 1
 
     def test_timeline_includes_statistics(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline response includes statistics."""
@@ -232,7 +240,9 @@ class TestPatientTimelineAPI:
         assert "by_type" in stats
 
     def test_timeline_date_range_filter(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline can be filtered by date range."""
@@ -278,7 +288,9 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_includes_treatment_plan(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline includes treatment_plan for each encounter."""
@@ -316,7 +328,9 @@ class TestPatientTimelineAPI:
         assert encounter_data["treatment_plan"]["follow_up_date"] is not None
 
     def test_timeline_treatment_plan_is_none_when_missing(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline shows null treatment_plan when encounter has none."""
@@ -343,7 +357,9 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_includes_alerts_array(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline includes alerts array for each encounter."""
@@ -370,7 +386,9 @@ class TestPatientTimelineAPI:
         assert len(encounter_data["alerts"]) > 0  # Should have alerts for critical vitals
 
     def test_timeline_alerts_empty_for_normal_vitals(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline alerts array is empty when all vitals are normal."""
@@ -400,7 +418,9 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_filters_by_encounter_type(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline can filter by encounter_type query param."""
@@ -435,7 +455,9 @@ class TestPatientTimelineAPI:
         assert response.data["timeline"][0]["encounter_type"] == "OPD"
 
     def test_timeline_filters_by_multiple_encounter_types(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline can filter by multiple comma-separated encounter types."""
@@ -475,7 +497,9 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_vitals_summary_includes_status(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test vitals_summary includes status for each vital (normal/warning/critical)."""
@@ -515,7 +539,9 @@ class TestPatientTimelineAPI:
     # ========================================================================
 
     def test_timeline_statistics_includes_most_common_diagnosis(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test statistics includes most_common_diagnosis code."""
@@ -574,7 +600,9 @@ class TestPatientTimelineAPI:
         assert stats["most_common_diagnosis"]["count"] == 3
 
     def test_timeline_statistics_most_common_diagnosis_none_if_no_diagnoses(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test most_common_diagnosis is null when patient has no diagnoses."""
@@ -691,7 +719,9 @@ class TestTimelinePerformance:
     """Test timeline endpoint performance characteristics."""
 
     def test_timeline_pagination_default_limit(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline has default pagination limit."""
@@ -718,7 +748,9 @@ class TestTimelinePerformance:
         assert response.data["statistics"]["total_encounters"] == 50
 
     def test_timeline_returns_all_encounters_without_pagination(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline returns all encounters (no pagination by default)."""
@@ -745,7 +777,9 @@ class TestTimelinePerformance:
         assert response.data["statistics"]["total_encounters"] == 30
 
     def test_timeline_select_related_optimization(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline uses select_related/prefetch_related for efficiency."""
@@ -816,7 +850,9 @@ class TestTimelineEdgeCases:
         assert response.data["statistics"]["total_encounters"] == 0
 
     def test_timeline_handles_incomplete_encounters(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline handles encounters with minimal/missing data gracefully."""
@@ -877,7 +913,9 @@ class TestTimelineEdgeCases:
         assert response.data["timeline"] == []
 
     def test_timeline_combined_filters(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test timeline with multiple filters combined."""
@@ -929,7 +967,9 @@ class TestTimelinePagination:
     """Test timeline endpoint pagination features."""
 
     def test_timeline_pagination_returns_limited_results(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test ?page=1&page_size=5 returns limited results."""
@@ -955,7 +995,9 @@ class TestTimelinePagination:
         assert response.data["statistics"]["total_encounters"] == 15
 
     def test_timeline_pagination_second_page(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test ?page=2 returns second page of results."""
@@ -981,7 +1023,9 @@ class TestTimelinePagination:
         assert response.data["timeline"][0]["chief_complaint"] == "Visit 6"
 
     def test_timeline_pagination_last_page_partial(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test last page returns remaining items when not full."""
@@ -1005,7 +1049,9 @@ class TestTimelinePagination:
         assert len(response.data["timeline"]) == 2  # 12 total, page 3 has 2
 
     def test_timeline_pagination_info_in_response(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test pagination info is included in response."""
@@ -1035,7 +1081,9 @@ class TestTimelinePagination:
         assert response.data["pagination"]["has_previous"] is True
 
     def test_timeline_pagination_max_page_size_capped(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test page_size is capped at 100."""
@@ -1061,7 +1109,9 @@ class TestTimelinePagination:
         assert response.data["pagination"]["page_size"] == 100
 
     def test_timeline_pagination_default_page_size(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test default page size is 20 when page param provided."""
@@ -1086,7 +1136,9 @@ class TestTimelinePagination:
         assert response.data["pagination"]["page_size"] == 20
 
     def test_timeline_no_pagination_without_page_param(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test all encounters returned when page param not provided."""
@@ -1111,7 +1163,9 @@ class TestTimelinePagination:
         assert "pagination" not in response.data
 
     def test_timeline_pagination_invalid_page_returns_empty(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test requesting page beyond range returns empty timeline."""
@@ -1135,7 +1189,9 @@ class TestTimelinePagination:
         assert len(response.data["timeline"]) == 0
 
     def test_timeline_pagination_with_filters(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test pagination works with other filters."""
@@ -1181,7 +1237,9 @@ class TestTimelinePagination:
 class TestTimelineIncludeToggles:
     """Test timeline endpoint include/exclude toggle parameters."""
 
-    def test_timeline_exclude_vitals(self, timeline_authenticated_client, timeline_sample_patient, sample_facility):
+    def test_timeline_exclude_vitals(
+        self, timeline_authenticated_client, timeline_sample_patient, sample_facility
+    ):
         """Test ?include_vitals=false omits vitals_summary."""
         from hmis.apps.encounters.models import Encounter
 
@@ -1204,7 +1262,9 @@ class TestTimelineIncludeToggles:
         assert "has_critical_vitals" in response.data["timeline"][0]
 
     def test_timeline_exclude_diagnoses(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test ?include_diagnoses=false omits diagnoses."""
@@ -1236,7 +1296,9 @@ class TestTimelineIncludeToggles:
         assert "diagnoses" not in response.data["timeline"][0]
 
     def test_timeline_exclude_treatment_plan(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test ?include_treatment=false omits treatment_plan."""
@@ -1261,7 +1323,9 @@ class TestTimelineIncludeToggles:
         assert response.status_code == 200
         assert "treatment_plan" not in response.data["timeline"][0]
 
-    def test_timeline_exclude_alerts(self, timeline_authenticated_client, timeline_sample_patient, sample_facility):
+    def test_timeline_exclude_alerts(
+        self, timeline_authenticated_client, timeline_sample_patient, sample_facility
+    ):
         """Test ?include_alerts=false omits alerts."""
         from hmis.apps.encounters.models import Encounter
 
@@ -1281,7 +1345,9 @@ class TestTimelineIncludeToggles:
         assert "alerts" not in response.data["timeline"][0]
 
     def test_timeline_include_all_by_default(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test all fields included when no toggle params provided."""
@@ -1307,7 +1373,9 @@ class TestTimelineIncludeToggles:
         assert "alerts" in item
 
     def test_timeline_explicit_include_true(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test ?include_vitals=true explicitly includes vitals."""
@@ -1329,7 +1397,9 @@ class TestTimelineIncludeToggles:
         assert "vitals_summary" in response.data["timeline"][0]
 
     def test_timeline_multiple_excludes(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test multiple exclude params together."""
@@ -1357,7 +1427,9 @@ class TestTimelineIncludeToggles:
         assert "alerts" in item
 
     def test_timeline_exclude_all_optional_fields(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test excluding all optional fields leaves core fields."""
@@ -1401,7 +1473,9 @@ class TestTimelineFollowupCompliance:
     """Test follow-up compliance statistic in timeline."""
 
     def test_followup_compliance_in_statistics(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test follow_up_compliance field exists in statistics."""
@@ -1422,7 +1496,9 @@ class TestTimelineFollowupCompliance:
         assert "follow_up_compliance" in response.data["statistics"]
 
     def test_followup_compliance_null_when_no_followups_scheduled(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test follow_up_compliance is null when no follow-ups scheduled."""
@@ -1449,7 +1525,9 @@ class TestTimelineFollowupCompliance:
         assert response.data["statistics"]["follow_up_compliance"] is None
 
     def test_followup_compliance_100_percent(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test 100% compliance when all follow-ups attended."""
@@ -1491,7 +1569,9 @@ class TestTimelineFollowupCompliance:
         assert compliance["scheduled"] == 1
 
     def test_followup_compliance_zero_percent(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test 0% compliance when no follow-ups attended."""
@@ -1525,7 +1605,9 @@ class TestTimelineFollowupCompliance:
         assert compliance["scheduled"] == 1
 
     def test_followup_compliance_partial(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test partial compliance calculation (e.g., 50%)."""
@@ -1582,7 +1664,9 @@ class TestTimelineFollowupCompliance:
         assert compliance["scheduled"] == 2
 
     def test_followup_compliance_within_window(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test follow-up within ±7 day window counts as completed."""
@@ -1622,7 +1706,9 @@ class TestTimelineFollowupCompliance:
         assert compliance["completed"] == 1
 
     def test_followup_compliance_outside_window(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test follow-up outside ±7 day window does not count."""
@@ -1662,7 +1748,9 @@ class TestTimelineFollowupCompliance:
         assert compliance["completed"] == 0  # Outside window
 
     def test_followup_must_be_after_original_encounter(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
     ):
         """Test follow-up encounter must be after original encounter date."""
@@ -1701,7 +1789,9 @@ class TestTimelineFollowupCompliance:
         assert compliance["completed"] == 0  # Old visit doesn't count
 
     def test_followup_compliance_multiple_patients_isolated(
-        self, timeline_authenticated_client, timeline_sample_patient,
+        self,
+        timeline_authenticated_client,
+        timeline_sample_patient,
         sample_facility,
         sample_organization,
     ):

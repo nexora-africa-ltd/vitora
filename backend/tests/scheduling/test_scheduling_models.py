@@ -95,7 +95,12 @@ class TestResourceModel:
             )
 
     def test_resource_code_can_repeat_across_facilities(
-        self, db, sample_facility, sample_organization, sample_county, sample_sub_county,
+        self,
+        db,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
     ):
         """Same code is allowed in different facilities."""
         from hmis.apps.core.models import Facility

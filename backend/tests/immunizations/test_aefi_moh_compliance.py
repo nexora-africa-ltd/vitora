@@ -34,8 +34,12 @@ from hmis.apps.immunizations.models import (
 
 @pytest.fixture
 def child_patient(
-    db, test_user, sample_county, sample_sub_county,
-    sample_organization, sample_facility,
+    db,
+    test_user,
+    sample_county,
+    sample_sub_county,
+    sample_organization,
+    sample_facility,
 ):
     from hmis.apps.patients.models import Patient
 
@@ -110,7 +114,9 @@ def sample_aefi(administered_record, sample_facility):
 class TestAEFIModelMOH:
     """Tests for AEFI model fields aligned with MOH AEFI Reporting Form."""
 
-    def test_create_aefi_with_all_moh_fields(self, administered_record, test_user, sample_facility, sample_county):
+    def test_create_aefi_with_all_moh_fields(
+        self, administered_record, test_user, sample_facility, sample_county
+    ):
         """Should create AEFI with all fields from MOH form."""
         aefi = AEFI.objects.create(
             immunization_record=administered_record,
@@ -335,9 +341,7 @@ class TestAEFISerializerValidation:
             "severity": "MILD",
             "description": "Test",
         }
-        response = authenticated_client.post(
-            "/api/immunizations/aefi/", data, format="json"
-        )
+        response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "event_types" in response.data
 
@@ -349,9 +353,7 @@ class TestAEFISerializerValidation:
             "severity": "MILD",
             "description": "Test",
         }
-        response = authenticated_client.post(
-            "/api/immunizations/aefi/", data, format="json"
-        )
+        response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "event_types" in response.data
 
@@ -363,9 +365,7 @@ class TestAEFISerializerValidation:
             "severity": "MILD",
             "description": "Test",
         }
-        response = authenticated_client.post(
-            "/api/immunizations/aefi/", data, format="json"
-        )
+        response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "other_event_type_detail" in response.data
 
@@ -378,9 +378,7 @@ class TestAEFISerializerValidation:
             "severity": "MILD",
             "description": "Uncommon rash",
         }
-        response = authenticated_client.post(
-            "/api/immunizations/aefi/", data, format="json"
-        )
+        response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["other_event_type_detail"] == "Unusual rash pattern"
 
@@ -393,13 +391,13 @@ class TestAEFISerializerValidation:
             "severity": "MILD",
             "description": "Follow-up",
         }
-        response = authenticated_client.post(
-            "/api/immunizations/aefi/", data, format="json"
-        )
+        response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "parent_report" in response.data
 
-    def test_initial_report_rejects_parent(self, authenticated_client, administered_record, sample_aefi):
+    def test_initial_report_rejects_parent(
+        self, authenticated_client, administered_record, sample_aefi
+    ):
         """Initial report must not have a parent."""
         data = {
             "immunization_record": administered_record.id,
@@ -409,13 +407,13 @@ class TestAEFISerializerValidation:
             "severity": "MILD",
             "description": "Test",
         }
-        response = authenticated_client.post(
-            "/api/immunizations/aefi/", data, format="json"
-        )
+        response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "parent_report" in response.data
 
-    def test_follow_up_with_parent_accepted(self, authenticated_client, administered_record, sample_aefi):
+    def test_follow_up_with_parent_accepted(
+        self, authenticated_client, administered_record, sample_aefi
+    ):
         """Valid follow-up with parent should work."""
         data = {
             "immunization_record": administered_record.id,
@@ -426,9 +424,7 @@ class TestAEFISerializerValidation:
             "description": "Lump reduced, patient recovering",
             "outcome": "RECOVERING",
         }
-        response = authenticated_client.post(
-            "/api/immunizations/aefi/", data, format="json"
-        )
+        response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["report_type"] == "FOLLOW_UP"
         assert response.data["parent_report"] == sample_aefi.id
@@ -446,12 +442,10 @@ class TestAEFISerializerValidation:
                 "description": f"Test {event_type.label}",
                 **extra,
             }
-            response = authenticated_client.post(
-                "/api/immunizations/aefi/", data, format="json"
-            )
-            assert response.status_code == status.HTTP_201_CREATED, (
-                f"Failed for event type {event_type.value}: {response.data}"
-            )
+            response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
+            assert (
+                response.status_code == status.HTTP_201_CREATED
+            ), f"Failed for event type {event_type.value}: {response.data}"
 
 
 # =============================================================================
@@ -477,9 +471,7 @@ class TestAEFIAPIWorkflow:
             "treatment_given": True,
             "treatment_details": "Cold compress applied",
         }
-        response = authenticated_client.post(
-            "/api/immunizations/aefi/", data, format="json"
-        )
+        response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["report_type"] == "INITIAL"
         assert response.data["reported_by"] is not None  # Auto-set
@@ -521,9 +513,7 @@ class TestAEFIAPIWorkflow:
         assert follow_up_response.data["parent_report"] == initial_id
 
         # Verify follow-up count on initial
-        detail_response = authenticated_client.get(
-            f"/api/immunizations/aefi/{initial_id}/"
-        )
+        detail_response = authenticated_client.get(f"/api/immunizations/aefi/{initial_id}/")
         assert detail_response.data["follow_up_count"] == 1
 
     def test_submit_to_authorities(self, authenticated_client, sample_aefi):
@@ -553,9 +543,7 @@ class TestAEFIAPIWorkflow:
 
     def test_detail_includes_vaccination_details(self, authenticated_client, sample_aefi):
         """Detail response should include vaccination_details from record."""
-        response = authenticated_client.get(
-            f"/api/immunizations/aefi/{sample_aefi.id}/"
-        )
+        response = authenticated_client.get(f"/api/immunizations/aefi/{sample_aefi.id}/")
         assert response.status_code == status.HTTP_200_OK
         vax = response.data["vaccination_details"]
         assert vax["batch_number"] == "BCG-2026-001"
@@ -567,9 +555,7 @@ class TestAEFIAPIWorkflow:
 
     def test_detail_includes_patient_context(self, authenticated_client, sample_aefi):
         """Detail response should include patient details for the MOH form."""
-        response = authenticated_client.get(
-            f"/api/immunizations/aefi/{sample_aefi.id}/"
-        )
+        response = authenticated_client.get(f"/api/immunizations/aefi/{sample_aefi.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["patient_name"] == "Baby Wanjiku"
         assert response.data["patient_gender"] == "F"
@@ -578,7 +564,9 @@ class TestAEFIAPIWorkflow:
         assert response.data["vaccine_code"] == "BCG"
         assert response.data["vaccine_name"] == "Bacille Calmette-Guérin"
 
-    def test_list_filters_by_report_type(self, authenticated_client, administered_record, sample_aefi, sample_facility):
+    def test_list_filters_by_report_type(
+        self, authenticated_client, administered_record, sample_aefi, sample_facility
+    ):
         """Should filter AEFI list by report_type."""
         # Create a follow-up
         AEFI.objects.create(
@@ -593,9 +581,7 @@ class TestAEFIAPIWorkflow:
         )
 
         # Filter for initial only
-        response = authenticated_client.get(
-            "/api/immunizations/aefi/?report_type=INITIAL"
-        )
+        response = authenticated_client.get("/api/immunizations/aefi/?report_type=INITIAL")
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         for r in results:
@@ -674,7 +660,11 @@ class TestScheduleGenerationAppointments:
     """Tests for schedule generation → appointment auto-creation."""
 
     def test_kepi_schedule_creates_appointments(
-        self, child_patient, bcg_vaccine, test_user, sample_facility,
+        self,
+        child_patient,
+        bcg_vaccine,
+        test_user,
+        sample_facility,
     ):
         """generate_kepi_schedule should auto-create vaccination appointments."""
         from hmis.apps.immunizations.services.schedule import generate_kepi_schedule
@@ -691,7 +681,8 @@ class TestScheduleGenerationAppointments:
         )
 
         records = generate_kepi_schedule(
-            child_patient, created_by=test_user,
+            child_patient,
+            created_by=test_user,
         )
         assert len(records) > 0
 
@@ -704,33 +695,45 @@ class TestScheduleGenerationAppointments:
         assert appointments.count() <= len(records)
 
     def test_kepi_schedule_without_resource_still_works(
-        self, child_patient, bcg_vaccine, test_user,
+        self,
+        child_patient,
+        bcg_vaccine,
+        test_user,
     ):
         """Schedule generation should succeed even without IMM-CLINIC resource."""
         from hmis.apps.immunizations.services.schedule import generate_kepi_schedule
 
         records = generate_kepi_schedule(
-            child_patient, created_by=test_user,
+            child_patient,
+            created_by=test_user,
         )
         assert len(records) > 0  # Records created, just no appointments
 
     def test_kepi_schedule_opt_out_appointments(
-        self, child_patient, bcg_vaccine, test_user,
+        self,
+        child_patient,
+        bcg_vaccine,
+        test_user,
     ):
         """Should be able to disable appointment creation."""
         from hmis.apps.immunizations.services.schedule import generate_kepi_schedule
 
         records = generate_kepi_schedule(
-            child_patient, create_appointments=False, created_by=test_user,
+            child_patient,
+            create_appointments=False,
+            created_by=test_user,
         )
         assert len(records) > 0
 
         from hmis.apps.scheduling.models import Appointment
 
-        assert Appointment.objects.filter(
-            patient=child_patient,
-            appointment_type="VACCINATION",
-        ).count() == 0
+        assert (
+            Appointment.objects.filter(
+                patient=child_patient,
+                appointment_type="VACCINATION",
+            ).count()
+            == 0
+        )
 
 
 # =============================================================================
@@ -743,7 +746,11 @@ class TestAppointmentImmunizationSync:
     """Tests for appointment status → immunization record sync signal."""
 
     def test_no_show_marks_overdue_record_as_missed(
-        self, child_patient, bcg_vaccine, test_user, sample_facility,
+        self,
+        child_patient,
+        bcg_vaccine,
+        test_user,
+        sample_facility,
     ):
         """Appointment NO_SHOW should mark overdue immunization records as MISSED."""
         from hmis.apps.scheduling.models import Appointment, Resource
@@ -775,8 +782,12 @@ class TestAppointmentImmunizationSync:
             patient=child_patient,
             resource=resource,
             appointment_type="VACCINATION",
-            scheduled_start=datetime.combine(past_date, time(9, 0), tzinfo=ZoneInfo("Africa/Nairobi")),
-            scheduled_end=datetime.combine(past_date, time(9, 15), tzinfo=ZoneInfo("Africa/Nairobi")),
+            scheduled_start=datetime.combine(
+                past_date, time(9, 0), tzinfo=ZoneInfo("Africa/Nairobi")
+            ),
+            scheduled_end=datetime.combine(
+                past_date, time(9, 15), tzinfo=ZoneInfo("Africa/Nairobi")
+            ),
             priority="ROUTINE",
             reason=f"{bcg_vaccine.code} dose 1",
             facility=sample_facility,
@@ -805,7 +816,10 @@ class TestAEFISurveillanceAlert:
     """Tests for severe AEFI → SurveillanceAlert auto-creation."""
 
     def test_severe_aefi_with_encounter_creates_alert(
-        self, administered_record, sample_facility, sample_encounter,
+        self,
+        administered_record,
+        sample_facility,
+        sample_encounter,
     ):
         """Severe AEFI with a linked encounter should create a surveillance alert."""
         from hmis.apps.surveillance.models import NotifiableCase, SurveillanceAlert
@@ -830,7 +844,9 @@ class TestAEFISurveillanceAlert:
         assert "SEVERE AEFI" in alert.message
 
     def test_mild_aefi_does_not_create_alert(
-        self, administered_record, sample_facility,
+        self,
+        administered_record,
+        sample_facility,
     ):
         """Mild AEFI should not trigger a surveillance alert."""
         from hmis.apps.surveillance.models import SurveillanceAlert
@@ -847,7 +863,9 @@ class TestAEFISurveillanceAlert:
         assert SurveillanceAlert.objects.count() == initial_count
 
     def test_severe_aefi_without_encounter_skips_alert(
-        self, administered_record, sample_facility,
+        self,
+        administered_record,
+        sample_facility,
     ):
         """Severe AEFI without encounter should log but not crash."""
         from hmis.apps.surveillance.models import SurveillanceAlert

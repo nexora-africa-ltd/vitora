@@ -400,9 +400,7 @@ class TestExternalCodeMappingIntegrationScenarios:
         )
 
         # Simulate: building SHA claim bundle, need SHA code
-        sha_code = ExternalCodeMapping.get_external_code(
-            sample_icd10_code, "SHA_TARIFF_2025"
-        )
+        sha_code = ExternalCodeMapping.get_external_code(sample_icd10_code, "SHA_TARIFF_2025")
 
         # Result: SHA tariff code is returned
         assert sha_code == "SHA_A00_2025"

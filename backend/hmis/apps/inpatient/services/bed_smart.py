@@ -134,9 +134,7 @@ class SmartAllocationResult:
         return {
             "success": self.success,
             "assigned_bed_id": self.assigned_bed.id if self.assigned_bed else None,
-            "assigned_bed_number": (
-                self.assigned_bed.bed_number if self.assigned_bed else None
-            ),
+            "assigned_bed_number": (self.assigned_bed.bed_number if self.assigned_bed else None),
             "smart_scores": self.smart_scores,
             "emergency_buffer_enforced": self.emergency_buffer_enforced,
             "cohort_match_score": self.cohort_match_score,
@@ -180,13 +178,10 @@ class SmartBedAllocationService:
         cutoff = now + timedelta(hours=hours_ahead)
         predictions: list[PredictedDischarge] = []
 
-        active_admissions = (
-            Admission.objects.filter(
-                ward=ward,
-                admission_status="ACTIVE",
-            )
-            .select_related("patient", "ward", "bed")
-        )
+        active_admissions = Admission.objects.filter(
+            ward=ward,
+            admission_status="ACTIVE",
+        ).select_related("patient", "ward", "bed")
 
         # Average LOS for this ward (from historical discharges)
         avg_los = self._get_avg_los_for_ward(ward)
@@ -228,9 +223,7 @@ class SmartBedAllocationService:
                     bed_id=admission.bed_id,
                     bed_number=admission.bed.bed_number,
                     admission_date=admission.admission_date.isoformat(),
-                    expected_discharge_date=(
-                        expected.isoformat() if expected else None
-                    ),
+                    expected_discharge_date=(expected.isoformat() if expected else None),
                     estimated_discharge_date=estimated,
                     source=source,
                     hours_until_available=hours_until,
@@ -382,7 +375,12 @@ class SmartBedAllocationService:
                 spec_score = 10  # moderate penalty
         else:
             # Patient has special needs — specialized ward is appropriate
-            if ward_type == "ICU" and (requires_ventilator or requires_oxygen) or ward_type == "ISOLATION" and requires_isolation:
+            if (
+                ward_type == "ICU"
+                and (requires_ventilator or requires_oxygen)
+                or ward_type == "ISOLATION"
+                and requires_isolation
+            ):
                 spec_score = 25
 
         score += spec_score
@@ -411,9 +409,7 @@ class SmartBedAllocationService:
             return 0.0  # Empty ward — neutral score
 
         # Get diagnosis chapters for current ward patients
-        ward_diagnoses = list(
-            active_admissions.values_list("admitting_diagnosis", flat=True)
-        )
+        ward_diagnoses = list(active_admissions.values_list("admitting_diagnosis", flat=True))
 
         # Get patient's diagnosis from most recent encounter or pending recommendation
         patient_diagnosis = self._get_patient_diagnosis(patient)
@@ -426,11 +422,7 @@ class SmartBedAllocationService:
             return 0.0
 
         # Count matching chapters
-        matching = sum(
-            1
-            for d in ward_diagnoses
-            if d and d[0].upper() == patient_chapter
-        )
+        matching = sum(1 for d in ward_diagnoses if d and d[0].upper() == patient_chapter)
         total = len(ward_diagnoses)
 
         # Score: proportion of ward patients with same ICD-10 chapter
@@ -499,9 +491,7 @@ class SmartBedAllocationService:
 
         # Get latest shift handover
         latest_handover = (
-            ShiftHandover.objects.filter(ward=ward)
-            .order_by("-shift_date", "-created_at")
-            .first()
+            ShiftHandover.objects.filter(ward=ward).order_by("-shift_date", "-created_at").first()
         )
 
         if latest_handover and latest_handover.total_patients > 0:
@@ -592,9 +582,7 @@ class SmartBedAllocationService:
             requires_isolation = True
 
         # 2. Emergency buffer check
-        buffer_allowed, effective_available = self.check_emergency_buffer(
-            ward, is_emergency
-        )
+        buffer_allowed, effective_available = self.check_emergency_buffer(ward, is_emergency)
 
         if not buffer_allowed:
             evaluation_time_ms = int((time.time() - start_time) * 1000)
@@ -717,11 +705,7 @@ class SmartBedAllocationService:
         try:
             from hmis.apps.encounters.models import Encounter
 
-            latest = (
-                Encounter.objects.filter(patient=patient)
-                .order_by("-encounter_date")
-                .first()
-            )
+            latest = Encounter.objects.filter(patient=patient).order_by("-encounter_date").first()
             if latest and latest.chief_complaint:
                 # Check ICD10 diagnoses via encounter
                 diagnoses = getattr(latest, "diagnoses", None)
@@ -808,7 +792,9 @@ class SmartBedAllocationService:
             if not compat.compatible:
                 candidate.compatible = False
                 candidate.violations = [v.message for v in compat.violations]
-                candidate.rejection_reason = compat.violations[0].message if compat.violations else "Incompatible"
+                candidate.rejection_reason = (
+                    compat.violations[0].message if compat.violations else "Incompatible"
+                )
                 incompatible.append(candidate)
                 continue
 
@@ -840,7 +826,8 @@ class SmartBedAllocationService:
 
             # 3a. Affinity scoring — reward wards that match patient demographics
             affinity = self._calculate_affinity_score(
-                patient, ward,
+                patient,
+                ward,
                 requires_isolation=requires_isolation,
                 requires_oxygen=requires_oxygen,
                 requires_ventilator=requires_ventilator,
@@ -859,7 +846,11 @@ class SmartBedAllocationService:
             workload_penalty = max(0, 1.0 - workload) * 15
 
             composite = round(
-                availability_score + occupancy_score + affinity_score + cohort_score + workload_penalty,
+                availability_score
+                + occupancy_score
+                + affinity_score
+                + cohort_score
+                + workload_penalty,
                 2,
             )
 

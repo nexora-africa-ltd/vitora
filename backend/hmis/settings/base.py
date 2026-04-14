@@ -212,7 +212,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/hour",
-        "login": "5/minute",       # Password login - 5 attempts per minute
+        "login": "5/minute",  # Password login - 5 attempts per minute
         "mfa_verify": "5/minute",  # MFA verification - 5 attempts per minute
     },
 }
@@ -399,9 +399,7 @@ SPECTACULAR_SETTINGS = {
             "hmis.apps.imaging.models.RadiologyReport", "REPORT_STATUS"
         ),
         # Payment and method enums
-        "PaymentMethodEnum": lambda: _model_attr(
-            "hmis.apps.billing.models.Payment", "Method"
-        ),
+        "PaymentMethodEnum": lambda: _model_attr("hmis.apps.billing.models.Payment", "Method"),
         "CheckInIdentityMethodEnum": lambda: _model_attr(
             "hmis.apps.checkin.models.CheckIn", "IDENTITY_METHOD_CHOICES"
         ),
@@ -796,9 +794,7 @@ FACILITY_LEVEL = os.getenv("FACILITY_LEVEL", "L3")  # Default to Level 3
 # Set via env vars; null means "not yet configured"
 FACILITY_COUNTY = os.getenv("FACILITY_COUNTY", "")  # e.g., "Nairobi", "Mombasa"
 FACILITY_HAS_ICU = (
-    os.getenv("FACILITY_HAS_ICU", "").lower() == "true"
-    if os.getenv("FACILITY_HAS_ICU")
-    else None
+    os.getenv("FACILITY_HAS_ICU", "").lower() == "true" if os.getenv("FACILITY_HAS_ICU") else None
 )
 FACILITY_HAS_LABORATORY = (
     os.getenv("FACILITY_HAS_LABORATORY", "").lower() == "true"
@@ -829,9 +825,13 @@ TIBABOT_TIMEOUT = int(os.getenv("TIBABOT_TIMEOUT", "30"))
 # Per-feature flags (all default to True — opt-out, not opt-in).
 # Each requires TIBABOT_ENABLED=true as a prerequisite.
 TIBABOT_ENABLE_LAB_ASSIST = os.getenv("TIBABOT_ENABLE_LAB_ASSIST", "true").lower() == "true"
-TIBABOT_ENABLE_DISCHARGE_READINESS = os.getenv("TIBABOT_ENABLE_DISCHARGE_READINESS", "true").lower() == "true"
+TIBABOT_ENABLE_DISCHARGE_READINESS = (
+    os.getenv("TIBABOT_ENABLE_DISCHARGE_READINESS", "true").lower() == "true"
+)
 TIBABOT_ENABLE_CARE_PLAN = os.getenv("TIBABOT_ENABLE_CARE_PLAN", "true").lower() == "true"
-TIBABOT_ENABLE_CLERKING_ASSIST = os.getenv("TIBABOT_ENABLE_CLERKING_ASSIST", "true").lower() == "true"
+TIBABOT_ENABLE_CLERKING_ASSIST = (
+    os.getenv("TIBABOT_ENABLE_CLERKING_ASSIST", "true").lower() == "true"
+)
 
 # ============================================================================
 # SMART on FHIR OAuth2 Configuration (Phase 5)

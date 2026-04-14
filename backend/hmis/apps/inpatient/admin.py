@@ -685,7 +685,11 @@ class NursingCarePlanEntryAdmin(admin.ModelAdmin):
 
     def nursing_diagnosis_short(self, obj):
         """Truncated nursing diagnosis for list display."""
-        return obj.nursing_diagnosis[:60] + "..." if len(obj.nursing_diagnosis) > 60 else obj.nursing_diagnosis
+        return (
+            obj.nursing_diagnosis[:60] + "..."
+            if len(obj.nursing_diagnosis) > 60
+            else obj.nursing_diagnosis
+        )
 
     nursing_diagnosis_short.short_description = "Nursing Diagnosis"
 
@@ -912,7 +916,13 @@ class SupervisorAlertAcknowledgmentAdmin(admin.ModelAdmin):
         "acknowledged_by__username",
         "notes",
     ]
-    readonly_fields = ["admission", "acknowledged_by", "acknowledged_at", "created_at", "updated_at"]
+    readonly_fields = [
+        "admission",
+        "acknowledged_by",
+        "acknowledged_at",
+        "created_at",
+        "updated_at",
+    ]
     ordering = ["-acknowledged_at"]
 
 

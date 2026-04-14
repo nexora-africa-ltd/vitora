@@ -196,9 +196,7 @@ class TestStaffFacilityModel:
         assert secondary_facility in facilities
         assert len(facilities) == 2
 
-    def test_get_all_facilities_primary_first(
-        self, staff_with_facility, primary_facility
-    ):
+    def test_get_all_facilities_primary_first(self, staff_with_facility, primary_facility):
         """Primary facility should be the first element."""
         facilities = staff_with_facility.get_all_facilities()
         assert facilities[0] == primary_facility
@@ -223,9 +221,7 @@ class TestStaffFacilityModel:
         """Facility.staff reverse manager should list assigned staff."""
         assert staff_with_facility in primary_facility.staff.all()
 
-    def test_reverse_relation_secondary_staff(
-        self, staff_with_facility, secondary_facility
-    ):
+    def test_reverse_relation_secondary_staff(self, staff_with_facility, secondary_facility):
         """Facility.secondary_staff reverse manager should list M2M staff."""
         assert staff_with_facility in secondary_facility.secondary_staff.all()
 
@@ -264,9 +260,7 @@ class TestStaffFacilitySerializers:
         assert "secondary_facilities" in data
         assert len(data["secondary_facilities"]) == 1
 
-    def test_update_serializer_accepts_facility(
-        self, staff_with_facility, secondary_facility
-    ):
+    def test_update_serializer_accepts_facility(self, staff_with_facility, secondary_facility):
         """StaffProfileUpdateSerializer should accept primary_facility changes."""
         from hmis.apps.core.serializers import StaffProfileUpdateSerializer
 
@@ -288,13 +282,9 @@ class TestStaffFacilitySerializers:
 class TestStaffFacilityAPI:
     """Integration tests for staff-facility assignment via the API."""
 
-    def test_retrieve_staff_includes_facility(
-        self, authenticated_client, staff_with_facility
-    ):
+    def test_retrieve_staff_includes_facility(self, authenticated_client, staff_with_facility):
         """GET /api/staff/{id}/ should include facility fields."""
-        response = authenticated_client.get(
-            f"/api/staff/{staff_with_facility.id}/"
-        )
+        response = authenticated_client.get(f"/api/staff/{staff_with_facility.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["primary_facility"] == staff_with_facility.primary_facility_id
         assert response.data["primary_facility_name"] == "Primary Health Centre"
@@ -320,9 +310,7 @@ class TestStaffFacilityAPI:
         assert response.data["primary_facility"] == primary_facility.id
         assert response.data["primary_facility_name"] == "Primary Health Centre"
 
-    def test_create_staff_without_facility(
-        self, admin_client_sf, sf_role, sf_department
-    ):
+    def test_create_staff_without_facility(self, admin_client_sf, sf_role, sf_department):
         """Admin can create a staff profile without a facility (legacy mode)."""
         data = {
             "username": "legacystaff",
@@ -338,9 +326,7 @@ class TestStaffFacilityAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["primary_facility"] is None
 
-    def test_update_staff_facility(
-        self, admin_client_sf, staff_with_facility, secondary_facility
-    ):
+    def test_update_staff_facility(self, admin_client_sf, staff_with_facility, secondary_facility):
         """Admin can reassign a staff member's primary facility."""
         response = admin_client_sf.patch(
             f"/api/staff/{staff_with_facility.id}/",
@@ -365,9 +351,7 @@ class TestStaffFacilityAPI:
         self, authenticated_client, staff_with_facility, primary_facility
     ):
         """GET /api/staff/?primary_facility={id} should filter correctly."""
-        response = authenticated_client.get(
-            f"/api/staff/?primary_facility={primary_facility.id}"
-        )
+        response = authenticated_client.get(f"/api/staff/?primary_facility={primary_facility.id}")
         assert response.status_code == status.HTTP_200_OK
         employee_ids = [s["employee_id"] for s in response.data["results"]]
         assert "VH-SF-001" in employee_ids
@@ -376,9 +360,7 @@ class TestStaffFacilityAPI:
         self, authenticated_client, staff_with_facility, secondary_facility
     ):
         """Filter by a facility where staff is secondary should not return them."""
-        response = authenticated_client.get(
-            f"/api/staff/?primary_facility={secondary_facility.id}"
-        )
+        response = authenticated_client.get(f"/api/staff/?primary_facility={secondary_facility.id}")
         assert response.status_code == status.HTTP_200_OK
         employee_ids = [s["employee_id"] for s in response.data["results"]]
         assert "VH-SF-001" not in employee_ids

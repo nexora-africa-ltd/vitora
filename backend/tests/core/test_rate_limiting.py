@@ -204,9 +204,7 @@ class TestMFATokenFailedAttempts:
 
         assert MFAToken.MAX_FAILED_ATTEMPTS == 5
 
-    def test_mfa_verify_increments_failed_attempts_on_invalid_totp(
-        self, api_client, test_user, db
-    ):
+    def test_mfa_verify_increments_failed_attempts_on_invalid_totp(self, api_client, test_user, db):
         """Should increment failed attempts when TOTP verification fails."""
         from hmis.apps.core.mfa.models import MFAToken, UserTOTPDevice
 
@@ -259,9 +257,7 @@ class TestMFATokenFailedAttempts:
         assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
         assert "Too many failed attempts" in response.data.get("error", "")
 
-    def test_mfa_verify_succeeds_after_failed_attempts_below_max(
-        self, api_client, test_user, db
-    ):
+    def test_mfa_verify_succeeds_after_failed_attempts_below_max(self, api_client, test_user, db):
         """Should still succeed with valid TOTP if below max attempts."""
         from hmis.apps.core.mfa.models import MFAToken, UserTOTPDevice
 

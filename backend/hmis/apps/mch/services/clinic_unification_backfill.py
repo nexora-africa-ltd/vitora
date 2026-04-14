@@ -181,7 +181,9 @@ def _create_synthetic_visit(mch_visit, clinic: Clinic, module: ModuleName) -> Cl
     visit._skip_broadcast = True
     visit.save(force_insert=True)
 
-    registered_at, consultation_started_at, completed_at = _synthetic_timestamps(mch_visit.visit_date)
+    registered_at, consultation_started_at, completed_at = _synthetic_timestamps(
+        mch_visit.visit_date
+    )
     ClinicVisit.objects.filter(pk=visit.pk).update(
         registered_at=registered_at,
         consultation_started_at=consultation_started_at,
@@ -309,7 +311,9 @@ def reconcile_anc_enrollment_attendance(
     clinic_id: int | None = None,
     limit: int | None = None,
 ) -> list[ReconciliationRecord]:
-    enrollments = ClinicEnrollment.objects.select_related("clinic", "patient").filter(clinic__clinic_type="ANC")
+    enrollments = ClinicEnrollment.objects.select_related("clinic", "patient").filter(
+        clinic__clinic_type="ANC"
+    )
     if clinic_id is not None:
         enrollments = enrollments.filter(clinic_id=clinic_id)
 
@@ -318,12 +322,16 @@ def reconcile_anc_enrollment_attendance(
         if limit is not None and index > limit:
             break
 
-        anc_visits = ANCVisit.objects.filter(
-            registration__anc_enrollment=enrollment,
-            clinic_visit__isnull=False,
-            clinic_visit__status="COMPLETED",
-            clinic_visit__session__clinic=enrollment.clinic,
-        ).select_related("clinic_visit").order_by("visit_date", "id")
+        anc_visits = (
+            ANCVisit.objects.filter(
+                registration__anc_enrollment=enrollment,
+                clinic_visit__isnull=False,
+                clinic_visit__status="COMPLETED",
+                clinic_visit__session__clinic=enrollment.clinic,
+            )
+            .select_related("clinic_visit")
+            .order_by("visit_date", "id")
+        )
 
         canonical_count = anc_visits.values("clinic_visit_id").distinct().count()
         latest_visit = anc_visits.order_by("-visit_date", "-id").first()
@@ -331,8 +339,12 @@ def reconcile_anc_enrollment_attendance(
         last_visit_date = latest_visit.visit_date if latest_visit else None
 
         previous_total = enrollment.total_visits
-        previous_last = enrollment.last_visit_date.isoformat() if enrollment.last_visit_date else None
-        previous_next = enrollment.next_appointment.isoformat() if enrollment.next_appointment else None
+        previous_last = (
+            enrollment.last_visit_date.isoformat() if enrollment.last_visit_date else None
+        )
+        previous_next = (
+            enrollment.next_appointment.isoformat() if enrollment.next_appointment else None
+        )
         changed = (
             previous_total != canonical_count
             or enrollment.last_visit_date != last_visit_date

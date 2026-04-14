@@ -81,7 +81,8 @@ class FacilityWebSocketMiddleware:
         if not has_access:
             logger.warning(
                 "WS connection rejected: user %s has no access to facility %d",
-                user, facility_id,
+                user,
+                facility_id,
             )
             await self._reject(send, code=4403)
             return

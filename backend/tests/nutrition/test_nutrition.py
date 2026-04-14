@@ -374,9 +374,7 @@ class TestDietPlan:
 class TestNutritionConsultationAPI:
     """Tests for NutritionConsultation API endpoints."""
 
-    def test_create_consultation_authenticated(
-        self, authenticated_client, sample_patient
-    ):
+    def test_create_consultation_authenticated(self, authenticated_client, sample_patient):
         """Should create consultation when authenticated."""
         response = authenticated_client.post(
             "/api/nutrition/consultations/",
@@ -434,9 +432,7 @@ class TestNutritionConsultationAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 3
 
-    def test_filter_consultations_by_status(
-        self, authenticated_client, sample_patient, test_user
-    ):
+    def test_filter_consultations_by_status(self, authenticated_client, sample_patient, test_user):
         """Should filter consultations by status."""
         from hmis.apps.nutrition.models import NutritionConsultation
 
@@ -453,9 +449,7 @@ class TestNutritionConsultationAPI:
             referred_by=test_user,
         )
 
-        response = authenticated_client.get(
-            "/api/nutrition/consultations/?status=DRAFT"
-        )
+        response = authenticated_client.get("/api/nutrition/consultations/?status=DRAFT")
         assert response.status_code == status.HTTP_200_OK
         for consultation in response.data["results"]:
             assert consultation["status"] == "DRAFT"
@@ -492,9 +486,7 @@ class TestDietPlanAPI:
             created_by=test_user,
         )
 
-        response = authenticated_client.post(
-            f"/api/nutrition/diet-plans/{plan.id}/activate/"
-        )
+        response = authenticated_client.post(f"/api/nutrition/diet-plans/{plan.id}/activate/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "ACTIVE"
 
@@ -518,9 +510,7 @@ class TestDietPlanAPI:
         assert response.data["status"] == "DISCONTINUED"
         assert "Patient requested" in response.data["discontinuation_reason"]
 
-    def test_discontinue_requires_reason(
-        self, authenticated_client, sample_patient, test_user
-    ):
+    def test_discontinue_requires_reason(self, authenticated_client, sample_patient, test_user):
         """Should require reason when discontinuing."""
         from hmis.apps.nutrition.models import DietPlan
 

@@ -107,10 +107,7 @@ def check_overdue_notifications() -> dict:
 
         return {
             "overdue_count": len(overdue_cases),
-            "cases": [
-                {"id": case.id, "disease": case.disease.name}
-                for case in overdue_cases
-            ],
+            "cases": [{"id": case.id, "disease": case.disease.name} for case in overdue_cases],
         }
 
     except Exception as e:
@@ -138,16 +135,16 @@ def check_outbreak_thresholds() -> dict:
         for threshold in thresholds:
             is_exceeded, count = threshold.check_threshold()
             if is_exceeded:
-                exceeded.append({
-                    "disease": threshold.disease.name,
-                    "county": threshold.county.name if threshold.county else "National",
-                    "count": count,
-                    "threshold": threshold.case_threshold,
-                })
-                # Create outbreak alert
-                SurveillanceService.check_outbreak_thresholds(
-                    threshold.disease, threshold.county
+                exceeded.append(
+                    {
+                        "disease": threshold.disease.name,
+                        "county": threshold.county.name if threshold.county else "National",
+                        "count": count,
+                        "threshold": threshold.case_threshold,
+                    }
                 )
+                # Create outbreak alert
+                SurveillanceService.check_outbreak_thresholds(threshold.disease, threshold.county)
 
         if exceeded:
             logger.warning(f"Outbreak thresholds exceeded: {len(exceeded)}")

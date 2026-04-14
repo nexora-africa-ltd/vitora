@@ -55,7 +55,11 @@ def regular_user(db):
 
 @pytest.fixture
 def mfa_required_user(
-    db, sample_organization, sample_facility, sample_department, settings,
+    db,
+    sample_organization,
+    sample_facility,
+    sample_department,
+    settings,
 ):
     """User with ADMIN role (requires MFA) and a StaffProfile."""
     from hmis.apps.core.models import Role, StaffProfile
@@ -84,9 +88,7 @@ def mfa_required_user(
 
 def _make_admin_mw():
     """Create AdminAccessMiddleware with a dummy get_response."""
-    return AdminAccessMiddleware(
-        get_response=lambda r: type("Resp", (), {"status_code": 200})()
-    )
+    return AdminAccessMiddleware(get_response=lambda r: type("Resp", (), {"status_code": 200})())
 
 
 def _make_grace_mw():
@@ -148,7 +150,8 @@ class TestAdminAccessMiddleware:
     def test_superuser_with_mfa_redirected_to_verify(self, rf, superuser, mocker):
         """Superuser with MFA enabled but not verified → redirect to /admin/mfa-verify/."""
         mocker.patch(
-            "hmis.apps.core.mfa.utils.is_mfa_enabled", return_value=True,
+            "hmis.apps.core.mfa.utils.is_mfa_enabled",
+            return_value=True,
         )
         request = self._add_session(rf.get("/admin/core/staffprofile/"))
         request.user = superuser
@@ -159,7 +162,8 @@ class TestAdminAccessMiddleware:
     def test_superuser_with_mfa_verified_allowed(self, rf, superuser, mocker):
         """Superuser with MFA enabled and verified in session → allowed."""
         mocker.patch(
-            "hmis.apps.core.mfa.utils.is_mfa_enabled", return_value=True,
+            "hmis.apps.core.mfa.utils.is_mfa_enabled",
+            return_value=True,
         )
         request = self._add_session(rf.get("/admin/core/staffprofile/"))
         request.user = superuser
@@ -169,7 +173,8 @@ class TestAdminAccessMiddleware:
     def test_superuser_without_mfa_not_redirected(self, rf, superuser, mocker):
         """Superuser without MFA device → no redirect."""
         mocker.patch(
-            "hmis.apps.core.mfa.utils.is_mfa_enabled", return_value=False,
+            "hmis.apps.core.mfa.utils.is_mfa_enabled",
+            return_value=False,
         )
         request = self._add_session(rf.get("/admin/core/staffprofile/"))
         request.user = superuser

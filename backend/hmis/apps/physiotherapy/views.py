@@ -163,7 +163,6 @@ class PhysiotherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "patient_id": order.patient_id,
                 "treatment_type": order.treatment_type.name,
             },
-
         )
         # Store the created order for response serialization
         self._created_order = order
@@ -184,7 +183,6 @@ class PhysiotherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             resource_type="PhysiotherapyOrder",
             resource_id=order.id,
             details={"order_number": order.order_number, "changes": serializer.validated_data},
-
         )
 
     @action(detail=True, methods=["post"])
@@ -216,7 +214,6 @@ class PhysiotherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "new_status": new_status,
                 "notes": notes,
             },
-
         )
 
         return Response(PhysiotherapyOrderSerializer(order).data)
@@ -250,7 +247,6 @@ class PhysiotherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "new_therapist_id": therapist.id,
                 "therapist_name": f"{therapist.first_name} {therapist.last_name}",
             },
-
         )
 
         return Response(PhysiotherapyOrderSerializer(order).data)
@@ -278,7 +274,6 @@ class PhysiotherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             resource_type="PhysiotherapyOrder",
             resource_id=order.id,
             details={"order_number": order.order_number},
-
         )
 
         return Response(PhysiotherapyOrderSerializer(order).data)
@@ -314,7 +309,6 @@ class PhysiotherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 {"error": "start_date is required to generate sessions"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
 
         if isinstance(start_date, str):
             from datetime import datetime
@@ -365,7 +359,6 @@ class PhysiotherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "sessions_created": len(sessions_created),
                 "start_date": str(start_date),
             },
-
         )
 
         return Response(
@@ -470,7 +463,6 @@ class PhysiotherapySessionViewSet(viewsets.ModelViewSet):
                 "session_number": session.session_number,
                 "scheduled_date": str(session.scheduled_date),
             },
-
         )
         # Store for response serialization
         self._created_session = session
@@ -509,7 +501,6 @@ class PhysiotherapySessionViewSet(viewsets.ModelViewSet):
                 "order_number": session.order.order_number,
                 "session_number": session.session_number,
             },
-
         )
 
         return Response(PhysiotherapySessionSerializer(session).data)
@@ -547,7 +538,6 @@ class PhysiotherapySessionViewSet(viewsets.ModelViewSet):
                 "outcome": session.outcome,
                 "pain_improvement": session.pain_improvement,
             },
-
         )
 
         return Response(PhysiotherapySessionSerializer(session).data)
@@ -582,7 +572,6 @@ class PhysiotherapySessionViewSet(viewsets.ModelViewSet):
                 "session_number": session.session_number,
                 "reason": reason,
             },
-
         )
 
         return Response(PhysiotherapySessionSerializer(session).data)
@@ -614,7 +603,6 @@ class PhysiotherapySessionViewSet(viewsets.ModelViewSet):
                 "order_number": session.order.order_number,
                 "session_number": session.session_number,
             },
-
         )
 
         return Response(PhysiotherapySessionSerializer(session).data)

@@ -70,7 +70,9 @@ class TestFacilitySummaryAPI:
         assert "2026-04-01" in dates
         assert "2026-03-15" not in dates
 
-    def test_tenant_isolation(self, authenticated_client, sample_facility, sample_county, sample_sub_county):
+    def test_tenant_isolation(
+        self, authenticated_client, sample_facility, sample_county, sample_sub_county
+    ):
         """Should not return summaries from other facilities."""
         from hmis.apps.analytics.models import FacilityDailySummary
         from hmis.apps.core.models import Facility

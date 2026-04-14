@@ -134,12 +134,8 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
         source="resolved_by.username", read_only=True, allow_null=True
     )
     patient_id = serializers.IntegerField(source="encounter.patient_id", read_only=True)
-    patient_name = serializers.CharField(
-        source="encounter.patient.full_name", read_only=True
-    )
-    patient_mrn = serializers.CharField(
-        source="encounter.patient.mrn", read_only=True
-    )
+    patient_name = serializers.CharField(source="encounter.patient.full_name", read_only=True)
+    patient_mrn = serializers.CharField(source="encounter.patient.mrn", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     urgency_display = serializers.CharField(source="get_urgency_display", read_only=True)
     is_expired = serializers.SerializerMethodField()
@@ -430,7 +426,9 @@ class DischargeSerializer(serializers.ModelSerializer):
     admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
     patient_name = serializers.SerializerMethodField()
     diagnoses = DischargeDiagnosisSerializer(many=True, required=False)
-    mch_registration = serializers.IntegerField(source="admission.mch_registration_id", read_only=True)
+    mch_registration = serializers.IntegerField(
+        source="admission.mch_registration_id", read_only=True
+    )
     mch_registration_number = serializers.CharField(
         source="admission.mch_registration.mch_number", read_only=True
     )
@@ -498,7 +496,9 @@ class DischargeSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         admission = attrs.get("admission") or getattr(self.instance, "admission", None)
-        discharge_type = attrs.get("discharge_type") or getattr(self.instance, "discharge_type", None)
+        discharge_type = attrs.get("discharge_type") or getattr(
+            self.instance, "discharge_type", None
+        )
         follow_up_date = (
             attrs.get("follow_up_date")
             if "follow_up_date" in attrs
@@ -525,9 +525,7 @@ class DischargeSerializer(serializers.ModelSerializer):
                     Invoice.Status.WRITTEN_OFF,
                 ]
             )
-            outstanding = sum(
-                (inv.balance_due for inv in unpaid_invoices), Decimal("0.00")
-            )
+            outstanding = sum((inv.balance_due for inv in unpaid_invoices), Decimal("0.00"))
             billing_cleared = outstanding <= 0
             if not billing_cleared:
                 clearance_errors["billing_cleared"] = (
@@ -671,13 +669,20 @@ class DischargeSerializer(serializers.ModelSerializer):
             if primary:
                 discharge.final_diagnosis = primary["code"][:10]
                 discharge.final_diagnosis_text = primary["description"][:255]
-                discharge.save(update_fields=["final_diagnosis", "final_diagnosis_text", "updated_at"])
+                discharge.save(
+                    update_fields=["final_diagnosis", "final_diagnosis_text", "updated_at"]
+                )
 
         if discharge.admission.mch_registration_id and discharge.maternity_continuity_action in {
             "SCHEDULE_EARLY_PNC",
             "ROUTE_TO_PNC_QUEUE",
         }:
-            if discharge.maternity_continuity_action == "SCHEDULE_EARLY_PNC" and discharge.pnc_appointment_id is None or discharge.maternity_continuity_action == "ROUTE_TO_PNC_QUEUE" and discharge.pnc_clinic_visit_id is None:
+            if (
+                discharge.maternity_continuity_action == "SCHEDULE_EARLY_PNC"
+                and discharge.pnc_appointment_id is None
+                or discharge.maternity_continuity_action == "ROUTE_TO_PNC_QUEUE"
+                and discharge.pnc_clinic_visit_id is None
+            ):
                 self._apply_maternity_continuity(discharge)
         return discharge
 
@@ -699,7 +704,9 @@ class TransferSerializer(serializers.ModelSerializer):
 
     admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
     patient_name = serializers.SerializerMethodField()
-    mch_registration = serializers.IntegerField(source="admission.mch_registration_id", read_only=True)
+    mch_registration = serializers.IntegerField(
+        source="admission.mch_registration_id", read_only=True
+    )
     mch_registration_number = serializers.CharField(
         source="admission.mch_registration.mch_number", read_only=True
     )
@@ -775,9 +782,7 @@ class WardRoundSerializer(serializers.ModelSerializer):
     condition_status_display = serializers.CharField(
         source="get_condition_status_display", read_only=True
     )
-    review_type_display = serializers.CharField(
-        source="get_review_type_display", read_only=True
-    )
+    review_type_display = serializers.CharField(source="get_review_type_display", read_only=True)
     maternity_continuity_action_display = serializers.CharField(
         source="get_maternity_continuity_action_display", read_only=True
     )
@@ -1257,7 +1262,9 @@ class WardCurrentStateSerializer(serializers.Serializer):
     isolation_capable = serializers.BooleanField(help_text="Ward has isolation capability")
     oxygen_equipped = serializers.BooleanField(help_text="Ward has oxygen equipment")
     ventilator_capable = serializers.BooleanField(help_text="Ward has ventilator capability")
-    maternity_designated = serializers.BooleanField(help_text="Ward is designated for maternity patients")
+    maternity_designated = serializers.BooleanField(
+        help_text="Ward is designated for maternity patients"
+    )
     available_beds = serializers.IntegerField(help_text="Number of available beds")
 
 
@@ -1366,9 +1373,7 @@ class ConstraintOverrideMetricsSerializer(serializers.Serializer):
 class TemperatureReadingSerializer(serializers.ModelSerializer):
     """Serializer for TPR chart readings."""
 
-    recorded_by_username = serializers.CharField(
-        source="recorded_by.username", read_only=True
-    )
+    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
     is_febrile = serializers.BooleanField(read_only=True)
     is_hypothermic = serializers.BooleanField(read_only=True)
 
@@ -1410,9 +1415,7 @@ class TemperatureReadingCreateSerializer(serializers.ModelSerializer):
 class FluidBalanceSheetSerializer(serializers.ModelSerializer):
     """Serializer for Ministry of Health fluid balance sheets."""
 
-    recorded_by_username = serializers.CharField(
-        source="recorded_by.username", read_only=True
-    )
+    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
     total_intravenous_intake_ml = serializers.IntegerField(read_only=True)
     total_alimentary_intake_ml = serializers.IntegerField(read_only=True)
     total_other_intake_ml = serializers.IntegerField(read_only=True)
@@ -1470,12 +1473,8 @@ class FluidBalanceSheetCreateSerializer(serializers.ModelSerializer):
 class FluidBalanceEntrySerializer(serializers.ModelSerializer):
     """Serializer for categorized fluid balance entries."""
 
-    recorded_by_username = serializers.CharField(
-        source="recorded_by.username", read_only=True
-    )
-    entry_type_display = serializers.CharField(
-        source="get_entry_type_display", read_only=True
-    )
+    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
+    entry_type_display = serializers.CharField(source="get_entry_type_display", read_only=True)
 
     class Meta:
         model = FluidBalanceEntry
@@ -1521,9 +1520,7 @@ class TransfusionObservationEntrySerializer(serializers.ModelSerializer):
     observation_interval_display = serializers.CharField(
         source="get_observation_interval_display", read_only=True
     )
-    recorded_by_username = serializers.CharField(
-        source="recorded_by.username", read_only=True
-    )
+    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
 
     class Meta:
         model = TransfusionObservationEntry
@@ -1572,18 +1569,12 @@ class BloodTransfusionSerializer(serializers.ModelSerializer):
     blood_product_display = serializers.CharField(
         source="get_blood_product_display", read_only=True
     )
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True
-    )
-    started_by_username = serializers.CharField(
-        source="started_by.username", read_only=True
-    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    started_by_username = serializers.CharField(source="started_by.username", read_only=True)
     counter_checked_by_username = serializers.CharField(
         source="counter_checked_by.username", read_only=True, default=None
     )
-    patient_name = serializers.CharField(
-        source="admission.patient.full_name", read_only=True
-    )
+    patient_name = serializers.CharField(source="admission.patient.full_name", read_only=True)
     observations = TransfusionObservationEntrySerializer(many=True, read_only=True)
 
     class Meta:
@@ -1641,16 +1632,12 @@ class BloodTransfusionCreateSerializer(serializers.ModelSerializer):
 class BPMonitoringReadingSerializer(serializers.ModelSerializer):
     """Serializer for BP monitoring readings."""
 
-    recorded_by_username = serializers.CharField(
-        source="recorded_by.username", read_only=True
-    )
+    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
     mean_arterial_pressure = serializers.IntegerField(read_only=True)
     bp_display = serializers.CharField(read_only=True)
     is_hypertensive = serializers.BooleanField(read_only=True)
     is_hypotensive = serializers.BooleanField(read_only=True)
-    position_display = serializers.CharField(
-        source="get_position_display", read_only=True
-    )
+    position_display = serializers.CharField(source="get_position_display", read_only=True)
 
     class Meta:
         model = BPMonitoringReading
@@ -1700,9 +1687,7 @@ class MedicationAdministrationSerializer(serializers.ModelSerializer):
     administered_by_username = serializers.CharField(
         source="administered_by.username", read_only=True, default=None
     )
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True
-    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
     drug_name = serializers.CharField(read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
     patient_name = serializers.CharField(
@@ -1759,9 +1744,7 @@ class MedicationAdministrationCreateSerializer(serializers.ModelSerializer):
 class MedicationAdministrationActionSerializer(serializers.Serializer):
     """Serializer for MAR administration actions (give/skip/refuse/hold)."""
 
-    status = serializers.ChoiceField(
-        choices=["GIVEN", "SKIPPED", "REFUSED", "HELD", "VOMITED"]
-    )
+    status = serializers.ChoiceField(choices=["GIVEN", "SKIPPED", "REFUSED", "HELD", "VOMITED"])
     dose_given = serializers.CharField(required=False, allow_blank=True, default="")
     notes = serializers.CharField(required=False, allow_blank=True, default="")
 
@@ -1831,12 +1814,8 @@ class RuleBasedBedAssignmentResponseSerializer(serializers.Serializer):
     assigned_bed_id = serializers.IntegerField(
         allow_null=True, help_text="Assigned bed ID (null if unsuccessful)"
     )
-    assigned_bed_number = serializers.CharField(
-        allow_null=True, help_text="Assigned bed number"
-    )
-    assigned_ward_name = serializers.CharField(
-        allow_null=True, help_text="Assigned ward name"
-    )
+    assigned_bed_number = serializers.CharField(allow_null=True, help_text="Assigned bed number")
+    assigned_ward_name = serializers.CharField(allow_null=True, help_text="Assigned ward name")
     rule_applied = serializers.CharField(
         allow_null=True, help_text="Rule code that was applied (null if none)"
     )
@@ -1871,9 +1850,7 @@ class SetExpectedDischargeSerializer(serializers.Serializer):
         from django.utils import timezone
 
         if value <= timezone.now():
-            raise serializers.ValidationError(
-                "Expected discharge date must be in the future."
-            )
+            raise serializers.ValidationError("Expected discharge date must be in the future.")
         return value
 
 
@@ -1921,20 +1898,24 @@ class SmartRecommendBedRequestSerializer(serializers.Serializer):
 
     patient_id = serializers.IntegerField(help_text="Patient ID")
     requires_isolation = serializers.BooleanField(
-        required=False, default=False,
+        required=False,
+        default=False,
         help_text="Whether patient requires isolation (auto-detected if not set)",
     )
     requires_oxygen = serializers.BooleanField(
-        required=False, default=False,
+        required=False,
+        default=False,
         help_text="Whether patient requires oxygen supply",
     )
     requires_ventilator = serializers.BooleanField(
-        required=False, default=False,
+        required=False,
+        default=False,
         help_text="Whether patient requires ventilator",
     )
     admission_type = serializers.ChoiceField(
         choices=["ELECTIVE", "EMERGENCY", "TRANSFER"],
-        required=False, default="ELECTIVE",
+        required=False,
+        default="ELECTIVE",
         help_text="Type of admission",
     )
 
@@ -1960,20 +1941,24 @@ class RecommendWardRequestSerializer(serializers.Serializer):
 
     patient_id = serializers.IntegerField(help_text="Patient ID")
     requires_isolation = serializers.BooleanField(
-        required=False, default=False,
+        required=False,
+        default=False,
         help_text="Whether patient requires isolation",
     )
     requires_oxygen = serializers.BooleanField(
-        required=False, default=False,
+        required=False,
+        default=False,
         help_text="Whether patient requires oxygen supply",
     )
     requires_ventilator = serializers.BooleanField(
-        required=False, default=False,
+        required=False,
+        default=False,
         help_text="Whether patient requires ventilator",
     )
     admission_type = serializers.ChoiceField(
         choices=["ELECTIVE", "EMERGENCY", "TRANSFER"],
-        required=False, default="ELECTIVE",
+        required=False,
+        default="ELECTIVE",
         help_text="Type of admission",
     )
 
@@ -2068,9 +2053,7 @@ class ATRCreateSerializer(serializers.ModelSerializer):
                 "ATR can only be created for transfusions where a reaction occurred."
             )
         if hasattr(value, "adverse_reaction_report"):
-            raise serializers.ValidationError(
-                "An ATR report already exists for this transfusion."
-            )
+            raise serializers.ValidationError("An ATR report already exists for this transfusion.")
         return value
 
     def validate_general_reactions(self, value):
@@ -2080,7 +2063,9 @@ class ATRCreateSerializer(serializers.ModelSerializer):
         return _validate_reaction_choices(value, DermatologicalReaction, "dermatological_reactions")
 
     def validate_cardiac_respiratory_reactions(self, value):
-        return _validate_reaction_choices(value, CardiacRespiratoryReaction, "cardiac_respiratory_reactions")
+        return _validate_reaction_choices(
+            value, CardiacRespiratoryReaction, "cardiac_respiratory_reactions"
+        )
 
     def validate_renal_reactions(self, value):
         return _validate_reaction_choices(value, RenalReaction, "renal_reactions")
@@ -2097,14 +2082,9 @@ class ATRCreateSerializer(serializers.ModelSerializer):
             "renal_reactions",
             "haematological_reactions",
         ]
-        has_any = any(
-            bool(attrs.get(f, []))
-            for f in reaction_fields
-        )
+        has_any = any(bool(attrs.get(f, [])) for f in reaction_fields)
         if not has_any and not attrs.get("other_reactions"):
-            raise serializers.ValidationError(
-                "At least one reaction category must be selected."
-            )
+            raise serializers.ValidationError("At least one reaction category must be selected.")
         return attrs
 
 
@@ -2115,18 +2095,14 @@ class ATRDetailSerializer(serializers.ModelSerializer):
     reaction_categories_display = serializers.ListField(
         child=serializers.CharField(), read_only=True
     )
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True
-    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
     initial_reporter_username = serializers.CharField(
         source="initial_reporter.username", read_only=True, default=None
     )
     patient_name = serializers.CharField(
         source="transfusion.admission.patient.full_name", read_only=True
     )
-    patient_mrn = serializers.CharField(
-        source="transfusion.admission.patient.mrn", read_only=True
-    )
+    patient_mrn = serializers.CharField(source="transfusion.admission.patient.mrn", read_only=True)
     patient_gender = serializers.CharField(
         source="transfusion.admission.patient.get_gender_display", read_only=True
     )
@@ -2138,27 +2114,19 @@ class ATRDetailSerializer(serializers.ModelSerializer):
         source="transfusion.diagnosis", read_only=True, default=""
     )
     started_by_name = serializers.SerializerMethodField(read_only=True)
-    admission_id = serializers.IntegerField(
-        source="transfusion.admission_id", read_only=True
-    )
+    admission_id = serializers.IntegerField(source="transfusion.admission_id", read_only=True)
     blood_product_display = serializers.CharField(
         source="transfusion.get_blood_product_display", read_only=True
     )
     blood_unit_number = serializers.CharField(
         source="transfusion.blood_unit_number", read_only=True
     )
-    blood_product = serializers.CharField(
-        source="transfusion.blood_product", read_only=True
-    )
-    amount_ml = serializers.IntegerField(
-        source="transfusion.amount_ml", read_only=True
-    )
+    blood_product = serializers.CharField(source="transfusion.blood_product", read_only=True)
+    amount_ml = serializers.IntegerField(source="transfusion.amount_ml", read_only=True)
     transfusion_expiry_date = serializers.DateField(
         source="transfusion.expiry_date", read_only=True
     )
-    lab_order_id = serializers.IntegerField(
-        source="lab_order.id", read_only=True, default=None
-    )
+    lab_order_id = serializers.IntegerField(source="lab_order.id", read_only=True, default=None)
     lab_order_number = serializers.CharField(
         source="lab_order.order_number", read_only=True, default=None
     )
@@ -2295,9 +2263,7 @@ class ATRListSerializer(serializers.ModelSerializer):
     blood_product_display = serializers.CharField(
         source="transfusion.get_blood_product_display", read_only=True
     )
-    admission_id = serializers.IntegerField(
-        source="transfusion.admission_id", read_only=True
-    )
+    admission_id = serializers.IntegerField(source="transfusion.admission_id", read_only=True)
     lab_order_number = serializers.CharField(
         source="lab_order.order_number", read_only=True, default=None
     )

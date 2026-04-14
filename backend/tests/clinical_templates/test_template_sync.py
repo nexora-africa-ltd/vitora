@@ -146,7 +146,10 @@ class TestTemplateAutoPopulation:
         assert populated.get("temperature") is not None
 
     def test_populate_handles_null_values(
-        self, sample_patient, sample_template_with_vitals, test_user,
+        self,
+        sample_patient,
+        sample_template_with_vitals,
+        test_user,
         sample_facility,
     ):
         """Should handle encounters with null vitals gracefully."""

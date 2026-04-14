@@ -23,7 +23,9 @@ def emergency_checkin_data():
 class TestEmergencyCheckinSerializer:
     """Tests for EMERGENCY destination validation in serializer."""
 
-    def test_emergency_destination_accepted(self, authenticated_client, sample_patient, emergency_checkin_data):
+    def test_emergency_destination_accepted(
+        self, authenticated_client, sample_patient, emergency_checkin_data
+    ):
         """Should accept EMERGENCY as a valid destination."""
         response = authenticated_client.post(
             f"/api/checkin/patients/{sample_patient.id}/checkin/",
@@ -51,7 +53,9 @@ class TestEmergencyCheckinSerializer:
 class TestEmergencyCheckinRouting:
     """Tests for emergency check-in routing behavior."""
 
-    def test_emergency_creates_emergency_encounter(self, authenticated_client, sample_patient, emergency_checkin_data):
+    def test_emergency_creates_emergency_encounter(
+        self, authenticated_client, sample_patient, emergency_checkin_data
+    ):
         """Should create an EMERGENCY encounter type."""
         from hmis.apps.encounters.models import Encounter
 
@@ -65,7 +69,9 @@ class TestEmergencyCheckinRouting:
         encounter = Encounter.objects.get(id=encounter_id)
         assert encounter.encounter_type == "EMERGENCY"
 
-    def test_emergency_sets_visit_type_emergency(self, authenticated_client, sample_patient, emergency_checkin_data):
+    def test_emergency_sets_visit_type_emergency(
+        self, authenticated_client, sample_patient, emergency_checkin_data
+    ):
         """Should force visit_type to EMERGENCY regardless of input."""
         response = authenticated_client.post(
             f"/api/checkin/patients/{sample_patient.id}/checkin/",
@@ -74,7 +80,9 @@ class TestEmergencyCheckinRouting:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["visit_type"] == "EMERGENCY"
 
-    def test_emergency_creates_waiting_queue_with_priority(self, authenticated_client, sample_patient, emergency_checkin_data):
+    def test_emergency_creates_waiting_queue_with_priority(
+        self, authenticated_client, sample_patient, emergency_checkin_data
+    ):
         """Should create WaitingQueue entry with EMERGENCY priority hint."""
         from hmis.apps.triage.models import WaitingQueue
 
@@ -85,14 +93,20 @@ class TestEmergencyCheckinRouting:
         assert response.status_code == status.HTTP_201_CREATED
 
         # Find the waiting queue entry
-        queue_entry = WaitingQueue.objects.filter(
-            patient=sample_patient,
-        ).order_by("-created_at").first()
+        queue_entry = (
+            WaitingQueue.objects.filter(
+                patient=sample_patient,
+            )
+            .order_by("-created_at")
+            .first()
+        )
         assert queue_entry is not None
         assert queue_entry.priority_hint == "EMERGENCY"
         assert queue_entry.status == "WAITING_TRIAGE"
 
-    def test_emergency_does_not_skip_triage(self, authenticated_client, sample_patient, emergency_checkin_data):
+    def test_emergency_does_not_skip_triage(
+        self, authenticated_client, sample_patient, emergency_checkin_data
+    ):
         """ER patients must go through triage per KETA protocol."""
         response = authenticated_client.post(
             f"/api/checkin/patients/{sample_patient.id}/checkin/",
@@ -101,7 +115,9 @@ class TestEmergencyCheckinRouting:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["skip_triage"] is False
 
-    def test_emergency_destination_in_response(self, authenticated_client, sample_patient, emergency_checkin_data):
+    def test_emergency_destination_in_response(
+        self, authenticated_client, sample_patient, emergency_checkin_data
+    ):
         """Response should show EMERGENCY as destination."""
         response = authenticated_client.post(
             f"/api/checkin/patients/{sample_patient.id}/checkin/",
@@ -110,7 +126,9 @@ class TestEmergencyCheckinRouting:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["destination"] == "EMERGENCY"
 
-    def test_emergency_no_clinic_assigned(self, authenticated_client, sample_patient, emergency_checkin_data):
+    def test_emergency_no_clinic_assigned(
+        self, authenticated_client, sample_patient, emergency_checkin_data
+    ):
         """ER check-in should not assign a clinic."""
         response = authenticated_client.post(
             f"/api/checkin/patients/{sample_patient.id}/checkin/",
@@ -141,7 +159,9 @@ class TestEmergencyCheckinRouting:
 class TestEmergencyCheckinAuth:
     """Tests for authentication on emergency check-in."""
 
-    def test_unauthenticated_emergency_checkin_fails(self, api_client, sample_patient, emergency_checkin_data):
+    def test_unauthenticated_emergency_checkin_fails(
+        self, api_client, sample_patient, emergency_checkin_data
+    ):
         """Should reject unauthenticated emergency check-in."""
         response = api_client.post(
             f"/api/checkin/patients/{sample_patient.id}/checkin/",

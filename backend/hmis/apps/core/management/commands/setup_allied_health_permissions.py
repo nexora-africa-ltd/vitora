@@ -155,9 +155,7 @@ class Command(BaseCommand):
         groups_to_process = self.ALLIED_HEALTH_GROUPS
         if specific_group:
             if specific_group not in self.ALLIED_HEALTH_GROUPS:
-                self.stderr.write(
-                    self.style.ERROR(f"Unknown group: {specific_group}")
-                )
+                self.stderr.write(self.style.ERROR(f"Unknown group: {specific_group}"))
                 self.stderr.write(
                     f"Available groups: {', '.join(self.ALLIED_HEALTH_GROUPS.keys())}"
                 )
@@ -179,18 +177,14 @@ class Command(BaseCommand):
                     group = Group.objects.get(name=group_name)
                     self.stdout.write(f"  Group exists: {group_name}")
                 except Group.DoesNotExist:
-                    self.stdout.write(
-                        self.style.SUCCESS(f"  Would create group: {group_name}")
-                    )
+                    self.stdout.write(self.style.SUCCESS(f"  Would create group: {group_name}"))
                     created_groups += 1
                     continue
             else:
                 group, created = Group.objects.get_or_create(name=group_name)
                 if created:
                     created_groups += 1
-                    self.stdout.write(
-                        self.style.SUCCESS(f"  Created group: {group_name}")
-                    )
+                    self.stdout.write(self.style.SUCCESS(f"  Created group: {group_name}"))
                 else:
                     updated_groups += 1
                     self.stdout.write(f"  Updating group: {group_name}")
@@ -206,9 +200,7 @@ class Command(BaseCommand):
                     codename = codename_prefix
 
                 try:
-                    content_type = ContentType.objects.get(
-                        app_label=app_label, model=model_name
-                    )
+                    content_type = ContentType.objects.get(app_label=app_label, model=model_name)
                     permission = Permission.objects.get(
                         content_type=content_type, codename=codename
                     )
@@ -253,6 +245,4 @@ class Command(BaseCommand):
                 "or models don't exist yet."
             )
 
-        self.stdout.write(
-            self.style.SUCCESS("\nAllied Health permissions setup complete!")
-        )
+        self.stdout.write(self.style.SUCCESS("\nAllied Health permissions setup complete!"))

@@ -81,9 +81,11 @@ class Command(BaseCommand):
                 continue
 
             if dry_run:
-                self.stdout.write(self.style.SUCCESS(
-                    f"  WOULD CREATE: {code} — {rule_data.get('name', '?')} [{rule_data.get('category', '?')}]"
-                ))
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"  WOULD CREATE: {code} — {rule_data.get('name', '?')} [{rule_data.get('category', '?')}]"
+                    )
+                )
                 created_count += 1
                 continue
 
@@ -104,12 +106,16 @@ class Command(BaseCommand):
                 metadata=rule_data.get("metadata", {}),
             )
             created_count += 1
-            self.stdout.write(self.style.SUCCESS(
-                f"  CREATED: {code} — {rule_data.get('name', code)} [{status_val}]"
-            ))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"  CREATED: {code} — {rule_data.get('name', code)} [{status_val}]"
+                )
+            )
 
         self.stdout.write("")
         prefix = "DRY RUN: " if dry_run else ""
-        self.stdout.write(self.style.SUCCESS(
-            f"{prefix}CDS rules seeded: {created_count} created, {skipped_count} skipped"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"{prefix}CDS rules seeded: {created_count} created, {skipped_count} skipped"
+            )
+        )

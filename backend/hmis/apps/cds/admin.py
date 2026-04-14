@@ -42,33 +42,51 @@ class CDSRuleAdmin(admin.ModelAdmin):
     ]
 
     fieldsets = (
-        (None, {
-            "fields": ("code", "name", "description"),
-        }),
-        ("Classification", {
-            "fields": ("category", "priority", "evidence_level", "status"),
-        }),
-        ("Rule Logic", {
-            "fields": ("condition", "action_type", "action_message", "suggestion"),
-        }),
-        ("Evidence & References", {
-            "fields": ("references", "metadata"),
-            "classes": ("collapse",),
-        }),
-        ("Audit", {
-            "fields": (
-                "created_by",
-                "approved_by",
-                "approved_at",
-                "created_at",
-                "updated_at",
-            ),
-            "classes": ("collapse",),
-        }),
-        ("Statistics", {
-            "fields": ("is_active", "trigger_count", "override_rate"),
-            "classes": ("collapse",),
-        }),
+        (
+            None,
+            {
+                "fields": ("code", "name", "description"),
+            },
+        ),
+        (
+            "Classification",
+            {
+                "fields": ("category", "priority", "evidence_level", "status"),
+            },
+        ),
+        (
+            "Rule Logic",
+            {
+                "fields": ("condition", "action_type", "action_message", "suggestion"),
+            },
+        ),
+        (
+            "Evidence & References",
+            {
+                "fields": ("references", "metadata"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Audit",
+            {
+                "fields": (
+                    "created_by",
+                    "approved_by",
+                    "approved_at",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Statistics",
+            {
+                "fields": ("is_active", "trigger_count", "override_rate"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def category_badge(self, obj: CDSRule) -> str:
@@ -88,6 +106,7 @@ class CDSRuleAdmin(admin.ModelAdmin):
             color,
             obj.get_category_display(),
         )
+
     category_badge.short_description = "Category"  # type: ignore[attr-defined]
 
     def priority_badge(self, obj: CDSRule) -> str:
@@ -105,6 +124,7 @@ class CDSRuleAdmin(admin.ModelAdmin):
             color,
             obj.get_priority_display(),
         )
+
     priority_badge.short_description = "Priority"  # type: ignore[attr-defined]
 
     def status_badge(self, obj: CDSRule) -> str:
@@ -121,6 +141,7 @@ class CDSRuleAdmin(admin.ModelAdmin):
             color,
             obj.get_status_display(),
         )
+
     status_badge.short_description = "Status"  # type: ignore[attr-defined]
 
 
@@ -156,37 +177,55 @@ class CDSAlertAdmin(admin.ModelAdmin):
     ]
 
     fieldsets = (
-        (None, {
-            "fields": ("rule", "patient", "encounter"),
-        }),
-        ("Alert Content", {
-            "fields": ("priority", "status", "message", "suggestion", "details"),
-        }),
-        ("Resolution", {
-            "fields": ("override_reason", "resolved_by", "resolved_at"),
-        }),
-        ("Properties", {
-            "fields": ("is_pending", "is_resolved", "is_critical", "age_hours"),
-            "classes": ("collapse",),
-        }),
-        ("Timestamps", {
-            "fields": ("triggered_by", "created_at", "updated_at"),
-            "classes": ("collapse",),
-        }),
+        (
+            None,
+            {
+                "fields": ("rule", "patient", "encounter"),
+            },
+        ),
+        (
+            "Alert Content",
+            {
+                "fields": ("priority", "status", "message", "suggestion", "details"),
+            },
+        ),
+        (
+            "Resolution",
+            {
+                "fields": ("override_reason", "resolved_by", "resolved_at"),
+            },
+        ),
+        (
+            "Properties",
+            {
+                "fields": ("is_pending", "is_resolved", "is_critical", "age_hours"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("triggered_by", "created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def rule_code_display(self, obj: CDSAlert) -> str:
         return obj.rule.code
+
     rule_code_display.short_description = "Rule"  # type: ignore[attr-defined]
 
     def patient_display(self, obj: CDSAlert) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name} ({obj.patient.mrn})"
+
     patient_display.short_description = "Patient"  # type: ignore[attr-defined]
 
     def message_truncated(self, obj: CDSAlert) -> str:
         if len(obj.message) > 80:
             return obj.message[:80] + "…"
         return obj.message
+
     message_truncated.short_description = "Message"  # type: ignore[attr-defined]
 
     def priority_badge(self, obj: CDSAlert) -> str:
@@ -204,6 +243,7 @@ class CDSAlertAdmin(admin.ModelAdmin):
             color,
             obj.get_priority_display(),
         )
+
     priority_badge.short_description = "Priority"  # type: ignore[attr-defined]
 
     def status_badge(self, obj: CDSAlert) -> str:
@@ -222,4 +262,5 @@ class CDSAlertAdmin(admin.ModelAdmin):
             color,
             obj.get_status_display(),
         )
+
     status_badge.short_description = "Status"  # type: ignore[attr-defined]

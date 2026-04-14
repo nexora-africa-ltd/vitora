@@ -38,9 +38,7 @@ def create_test_organization():
 def create_test_facility(organization):
     """Create a test facility (async-safe)."""
     county, _ = County.objects.get_or_create(code=1, defaults={"name": "Nairobi"})
-    sub_county, _ = SubCounty.objects.get_or_create(
-        name="Westlands", defaults={"county": county}
-    )
+    sub_county, _ = SubCounty.objects.get_or_create(name="Westlands", defaults={"county": county})
     facility, _ = Facility.objects.get_or_create(
         name="MCH Facility Test Hospital",
         defaults={
@@ -72,9 +70,7 @@ class TestMCHFacilityConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
 
         assert connected is True
@@ -84,9 +80,7 @@ class TestMCHFacilityConsumerConnection:
         """Should reject connection to non-existent facility."""
         from hmis.asgi import application
 
-        communicator = WebsocketCommunicator(
-            application, "/ws/mch/facility/99999/"
-        )
+        communicator = WebsocketCommunicator(application, "/ws/mch/facility/99999/")
         connected, _ = await communicator.connect()
 
         assert connected is False
@@ -98,9 +92,7 @@ class TestMCHFacilityConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -129,9 +121,7 @@ class TestMCHFacilityConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -156,9 +146,7 @@ class TestMCHFacilityConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -176,9 +164,7 @@ class TestMCHFacilityConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -206,9 +192,7 @@ class TestMCHFacilityEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -240,9 +224,7 @@ class TestMCHFacilityEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -276,9 +258,7 @@ class TestMCHFacilityEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -309,9 +289,7 @@ class TestMCHFacilityEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -343,9 +321,7 @@ class TestMCHFacilityEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/mch/facility/{facility.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/mch/facility/{facility.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 

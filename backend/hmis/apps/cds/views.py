@@ -130,7 +130,9 @@ class CDSRuleViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
         rule = self.get_object()
         if rule.status not in (CDSRuleStatus.DRAFT, CDSRuleStatus.INACTIVE):
             return Response(
-                {"error": f"Cannot activate rule in '{rule.get_status_display()}' status. Must be Draft or Inactive."},
+                {
+                    "error": f"Cannot activate rule in '{rule.get_status_display()}' status. Must be Draft or Inactive."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         rule.activate(user=request.user)
@@ -150,7 +152,9 @@ class CDSRuleViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
         rule = self.get_object()
         if rule.status != CDSRuleStatus.ACTIVE:
             return Response(
-                {"error": f"Cannot deactivate rule in '{rule.get_status_display()}' status. Must be Active."},
+                {
+                    "error": f"Cannot deactivate rule in '{rule.get_status_display()}' status. Must be Active."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         rule.deactivate()
@@ -203,18 +207,20 @@ class CDSRuleViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
         context = build_encounter_context(encounter)
         results = evaluate_rules([rule], context)
 
-        return Response({
-            "rule": CDSRuleSerializer(rule).data,
-            "triggered": len(results) > 0,
-            "results": [
-                {
-                    "rule_code": r.rule_code,
-                    "message": r.message,
-                    "details": r.details,
-                }
-                for r in results
-            ],
-        })
+        return Response(
+            {
+                "rule": CDSRuleSerializer(rule).data,
+                "triggered": len(results) > 0,
+                "results": [
+                    {
+                        "rule_code": r.rule_code,
+                        "message": r.message,
+                        "details": r.details,
+                    }
+                    for r in results
+                ],
+            }
+        )
 
 
 # ──────────────────────────── Alert ViewSet ────────────────────────────
@@ -239,7 +245,13 @@ class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     serializer_class = CDSAlertSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = CDSAlertFilter
-    search_fields = ["message", "rule__code", "rule__name", "patient__first_name", "patient__last_name"]
+    search_fields = [
+        "message",
+        "rule__code",
+        "rule__name",
+        "patient__first_name",
+        "patient__last_name",
+    ]
     ordering_fields = ["priority", "status", "created_at"]
     ordering = ["-created_at"]
     # Disable creation via API — alerts are created by the engine
@@ -412,21 +424,23 @@ class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 )
                 created_alerts.append(alert)
 
-        return Response({
-            "encounter_id": encounter_id,
-            "rules_evaluated": active_rules.count(),
-            "rules_triggered": len(results),
-            "alerts_created": len(created_alerts),
-            "results": [
-                {
-                    "rule_code": r.rule_code,
-                    "message": r.message,
-                    "details": r.details,
-                    "suggested_actions": r.suggested_actions,
-                }
-                for r in results
-            ],
-        })
+        return Response(
+            {
+                "encounter_id": encounter_id,
+                "rules_evaluated": active_rules.count(),
+                "rules_triggered": len(results),
+                "alerts_created": len(created_alerts),
+                "results": [
+                    {
+                        "rule_code": r.rule_code,
+                        "message": r.message,
+                        "details": r.details,
+                        "suggested_actions": r.suggested_actions,
+                    }
+                    for r in results
+                ],
+            }
+        )
 
     @action(detail=False, methods=["get"])
     def dashboard(self, request: Request) -> Response:

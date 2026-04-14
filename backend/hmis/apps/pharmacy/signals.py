@@ -313,7 +313,9 @@ def broadcast_stock_level_change(sender, instance, **kwargs):
                 aggregate_type="StockBatch",
                 aggregate_id=instance.id,
                 payload={
-                    "drug_name": getattr(instance.drug, "generic_name", "") if instance.drug else "",
+                    "drug_name": (
+                        getattr(instance.drug, "generic_name", "") if instance.drug else ""
+                    ),
                     "remaining_quantity": 0,
                 },
                 facility_id=facility_id,

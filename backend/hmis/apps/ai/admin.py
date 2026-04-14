@@ -72,17 +72,39 @@ class AICDSResultAdmin(AIResultBaseAdmin):
 
 @admin.register(AILabInterpretResult)
 class AILabInterpretResultAdmin(AIResultBaseAdmin):
-    list_display = ("id", "abnormal_count", "critical_count", "service_mode", "created_by", "created_at")
+    list_display = (
+        "id",
+        "abnormal_count",
+        "critical_count",
+        "service_mode",
+        "created_by",
+        "created_at",
+    )
     raw_id_fields = ("created_by", "lab_result", "encounter")
 
 
 @admin.register(AIDischargeResult)
 class AIDischargeResultAdmin(AIResultBaseAdmin):
-    list_display = ("id", "readiness_level", "readiness_score", "service_mode", "created_by", "created_at")
+    list_display = (
+        "id",
+        "readiness_level",
+        "readiness_score",
+        "service_mode",
+        "created_by",
+        "created_at",
+    )
     raw_id_fields = ("created_by", "admission")
 
 
 @admin.register(AIICURiskResult)
 class AIICURiskResultAdmin(AIResultBaseAdmin):
-    list_display = ("id", "prediction_type", "risk_level", "risk_score", "service_mode", "created_by", "created_at")
+    list_display = (
+        "id",
+        "prediction_type",
+        "risk_level",
+        "risk_score",
+        "service_mode",
+        "created_by",
+        "created_at",
+    )
     raw_id_fields = ("created_by", "admission")

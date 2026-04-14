@@ -1,4 +1,5 @@
 """Service layer for inpatient domain logic."""
+
 from hmis.apps.inpatient.services.bed_assignment import (
     BedAssignmentService,
     NoBedAvailableError,

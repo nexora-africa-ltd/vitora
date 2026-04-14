@@ -209,7 +209,10 @@ class TestBillingWithEncounter:
         assert invoice.encounter == encounter
 
     def test_billing_uses_existing_encounter_invoice(
-        self, sample_clinic_visit, consultation_service, test_user,
+        self,
+        sample_clinic_visit,
+        consultation_service,
+        test_user,
         sample_facility,
     ):
         """Should use existing encounter invoice if present."""

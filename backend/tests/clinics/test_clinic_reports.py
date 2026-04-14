@@ -137,7 +137,15 @@ def female_patient(sample_patient):
 
 
 @pytest.fixture
-def visits_in_month(db, session_in_month, male_patient, female_patient, clinic_user, sample_facility, sample_organization):
+def visits_in_month(
+    db,
+    session_in_month,
+    male_patient,
+    female_patient,
+    clinic_user,
+    sample_facility,
+    sample_organization,
+):
     from hmis.apps.clinics.models import ClinicVisit
 
     visit_new = ClinicVisit.objects.create(
@@ -169,7 +177,9 @@ def visits_in_month(db, session_in_month, male_patient, female_patient, clinic_u
 
 
 @pytest.fixture
-def visit_outside_month(db, session_outside_month, female_patient, clinic_user, sample_facility, sample_organization):
+def visit_outside_month(
+    db, session_outside_month, female_patient, clinic_user, sample_facility, sample_organization
+):
     from hmis.apps.clinics.models import ClinicVisit
 
     return ClinicVisit.objects.create(
@@ -236,7 +246,9 @@ def paid_invoice_for_visit(db, visits_in_month, clinic_user, sample_facility, sa
 
 
 @pytest.fixture
-def enrollments_for_reporting(db, sample_clinic, female_patient, clinic_user, sample_facility, sample_organization):
+def enrollments_for_reporting(
+    db, sample_clinic, female_patient, clinic_user, sample_facility, sample_organization
+):
     """Create a mix of enrollments for aggregation tests."""
 
     from hmis.apps.clinics.models import ClinicEnrollment

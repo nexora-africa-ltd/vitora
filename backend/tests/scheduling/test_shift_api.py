@@ -215,9 +215,7 @@ class TestShiftLifecycleAPI:
 
     def test_start_shift_api(self, authenticated_client, sample_shift):
         """Should start a scheduled shift via API."""
-        response = authenticated_client.post(
-            f"/api/scheduling/shifts/{sample_shift.id}/start/"
-        )
+        response = authenticated_client.post(f"/api/scheduling/shifts/{sample_shift.id}/start/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "ACTIVE"
@@ -227,9 +225,7 @@ class TestShiftLifecycleAPI:
         """Should complete an active shift via API."""
         sample_shift.start_shift()
 
-        response = authenticated_client.post(
-            f"/api/scheduling/shifts/{sample_shift.id}/complete/"
-        )
+        response = authenticated_client.post(f"/api/scheduling/shifts/{sample_shift.id}/complete/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "COMPLETED"
@@ -252,9 +248,7 @@ class TestShiftLifecycleAPI:
         sample_shift.start_shift()
         sample_shift.complete_shift()
 
-        response = authenticated_client.post(
-            f"/api/scheduling/shifts/{sample_shift.id}/start/"
-        )
+        response = authenticated_client.post(f"/api/scheduling/shifts/{sample_shift.id}/start/")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -296,7 +290,9 @@ class TestStaffWorkloadAPI:
         assert "total_hours" in workload
         assert "appointment_count" in workload
 
-    def test_staff_workload_correct_counts(self, authenticated_client, sample_shift, sample_person_resource, sample_facility):
+    def test_staff_workload_correct_counts(
+        self, authenticated_client, sample_shift, sample_person_resource, sample_facility
+    ):
         """Should return correct shift counts."""
         from hmis.apps.scheduling.models import Shift
 
@@ -352,7 +348,9 @@ class TestStaffWorkloadAPI:
 class TestShiftDomainEvents:
     """Tests for shift domain event publishing."""
 
-    def test_shift_creation_publishes_event(self, db, mocker, sample_person_resource, sample_facility):
+    def test_shift_creation_publishes_event(
+        self, db, mocker, sample_person_resource, sample_facility
+    ):
         """Should publish SHIFT_CREATED event on creation."""
         from hmis.apps.scheduling.models import Shift
 
@@ -370,7 +368,10 @@ class TestShiftDomainEvents:
 
         mock_publish.assert_called_once()
         call_args = mock_publish.call_args
-        assert call_args[1]["event_type"] == "scheduling.shift.created" or call_args[0][0] == "scheduling.shift.created"
+        assert (
+            call_args[1]["event_type"] == "scheduling.shift.created"
+            or call_args[0][0] == "scheduling.shift.created"
+        )
 
     def test_shift_start_publishes_event(self, db, mocker, sample_shift):
         """Should publish SHIFT_STARTED event when started."""

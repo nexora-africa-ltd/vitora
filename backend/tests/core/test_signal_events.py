@@ -36,7 +36,9 @@ class TestEventTypeCatalog:
         for attr in dir(BillingEvents):
             if attr.isupper() and not attr.startswith("_"):
                 value = getattr(BillingEvents, attr)
-                assert value.startswith("billing."), f"{attr} = {value} doesn't start with 'billing.'"
+                assert value.startswith(
+                    "billing."
+                ), f"{attr} = {value} doesn't start with 'billing.'"
 
     def test_pharmacy_events_follow_convention(self):
         """All pharmacy events should start with 'pharmacy.'."""

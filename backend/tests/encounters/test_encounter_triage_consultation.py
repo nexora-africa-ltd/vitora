@@ -341,7 +341,9 @@ class TestTriageStatusField:
         )
         assert encounter.triage_status == "PENDING"
 
-    def test_triage_status_default_not_applicable_for_not_required(self, sample_patient, sample_facility):
+    def test_triage_status_default_not_applicable_for_not_required(
+        self, sample_patient, sample_facility
+    ):
         """NOT_REQUIRED triage encounters should default to NOT_APPLICABLE status."""
         from hmis.apps.encounters.models import Encounter
 
@@ -510,7 +512,9 @@ class TestCanEnterConsultationMethod:
             Encounter.can_enter_consultation
         ), "can_enter_consultation should be callable"
 
-    def test_cannot_enter_consultation_when_mandatory_pending(self, sample_patient, sample_facility):
+    def test_cannot_enter_consultation_when_mandatory_pending(
+        self, sample_patient, sample_facility
+    ):
         """Cannot enter consultation when mandatory triage is PENDING."""
         from hmis.apps.encounters.models import Encounter
 
@@ -538,7 +542,9 @@ class TestCanEnterConsultationMethod:
 
         assert encounter.can_enter_consultation() is True
 
-    def test_can_enter_consultation_when_optional_bypassed(self, sample_patient, test_user, sample_facility):
+    def test_can_enter_consultation_when_optional_bypassed(
+        self, sample_patient, test_user, sample_facility
+    ):
         """Can enter consultation when optional triage is BYPASSED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -569,7 +575,9 @@ class TestCanEnterConsultationMethod:
         # triage_status should be NOT_APPLICABLE automatically
         assert encounter.can_enter_consultation() is True
 
-    def test_cannot_enter_consultation_when_mandatory_in_progress(self, sample_patient, sample_facility):
+    def test_cannot_enter_consultation_when_mandatory_in_progress(
+        self, sample_patient, sample_facility
+    ):
         """Cannot enter consultation when mandatory triage is IN_PROGRESS."""
         from hmis.apps.encounters.models import Encounter
 
@@ -611,7 +619,9 @@ class TestTriageAssessmentSignal:
     """Test signal to auto-set triage_status when TriageAssessment is created."""
 
     def test_triage_status_set_to_completed_when_assessment_created(
-        self, sample_patient, test_user,
+        self,
+        sample_patient,
+        test_user,
         sample_facility,
     ):
         """Creating TriageAssessment should auto-set encounter triage_status to COMPLETED."""
@@ -649,7 +659,9 @@ class TestTriageAssessmentSignal:
         encounter.refresh_from_db()
         assert encounter.triage_status == "COMPLETED"
 
-    def test_triage_status_not_changed_for_not_required_encounters(self, sample_patient, test_user, sample_facility):
+    def test_triage_status_not_changed_for_not_required_encounters(
+        self, sample_patient, test_user, sample_facility
+    ):
         """TriageAssessment on NOT_REQUIRED encounters keeps NOT_APPLICABLE status."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment
@@ -912,7 +924,10 @@ class TestChiefComplaintEditAuditTrail:
         assert hasattr(encounter, "chief_complaint_edited_at")
 
     def test_edit_chief_complaint_stores_original(
-        self, authenticated_client, test_user, sample_patient,
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
         sample_facility,
     ):
         """Test that editing chief complaint stores the original value."""
@@ -948,7 +963,10 @@ class TestChiefComplaintEditAuditTrail:
         assert encounter.chief_complaint_edited_at is not None
 
     def test_edit_chief_complaint_requires_reason(
-        self, authenticated_client, test_user, sample_patient,
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
         sample_facility,
     ):
         """Test that editing chief complaint requires a reason."""
@@ -976,7 +994,10 @@ class TestChiefComplaintEditAuditTrail:
         assert "reason" in response.data.get("detail", "").lower()
 
     def test_edit_chief_complaint_other_requires_details(
-        self, authenticated_client, test_user, sample_patient,
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
         sample_facility,
     ):
         """Test that 'OTHER' reason requires specification."""
@@ -1008,7 +1029,10 @@ class TestChiefComplaintEditAuditTrail:
         )
 
     def test_edit_chief_complaint_other_with_details_succeeds(
-        self, authenticated_client, test_user, sample_patient,
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
         sample_facility,
     ):
         """Test that 'OTHER' reason with details succeeds."""
@@ -1039,7 +1063,10 @@ class TestChiefComplaintEditAuditTrail:
         assert "trust" in encounter.chief_complaint_edit_reason_other
 
     def test_edit_chief_complaint_preserves_first_original(
-        self, authenticated_client, test_user, sample_patient,
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
         sample_facility,
     ):
         """Test that multiple edits preserve the first original value."""
@@ -1080,7 +1107,9 @@ class TestChiefComplaintEditAuditTrail:
         assert encounter.chief_complaint_edit_reason == "CLARIFICATION"
 
     def test_edit_chief_complaint_requires_change_encounter_permission(
-        self, authenticated_client, sample_patient,
+        self,
+        authenticated_client,
+        sample_patient,
         sample_facility,
     ):
         """Users without change_encounter permission should not edit chief complaint."""

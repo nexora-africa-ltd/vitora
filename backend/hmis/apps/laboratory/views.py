@@ -267,9 +267,9 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             pdf_buffer = ExternalLabRequisition(order).generate_pdf()
             pdf_bytes = pdf_buffer.getvalue()
             response = HttpResponse(pdf_bytes, content_type="application/pdf")
-            response[
-                "Content-Disposition"
-            ] = f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
+            response["Content-Disposition"] = (
+                f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
+            )
             return response
         except ValueError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -404,9 +404,7 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         # Copy request data and add lab_order from URL
         data = request.data.copy()
         data["lab_order"] = order.id
-        serializer = DiagnosticReportCreateSerializer(
-            data=data, context={"request": request}
-        )
+        serializer = DiagnosticReportCreateSerializer(data=data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         report = serializer.save()
         output = DiagnosticReportSerializer(report, context={"request": request})
@@ -1102,9 +1100,7 @@ class InstrumentFilter(filters.FilterSet):
 
     def filter_search(self, queryset, name, value):
         """Search by code or name."""
-        return queryset.filter(
-            models.Q(code__icontains=value) | models.Q(name__icontains=value)
-        )
+        return queryset.filter(models.Q(code__icontains=value) | models.Q(name__icontains=value))
 
 
 class InstrumentViewSet(viewsets.ModelViewSet):
@@ -1154,9 +1150,7 @@ class AnalyzerRunViewSet(viewsets.ModelViewSet):
     tracking instrument message processing.
     """
 
-    queryset = AnalyzerRun.objects.select_related(
-        "specimen", "instrument", "operator"
-    ).all()
+    queryset = AnalyzerRun.objects.select_related("specimen", "instrument", "operator").all()
     permission_classes = [IsAuthenticated]
     filterset_class = AnalyzerRunFilter
 
@@ -1487,12 +1481,16 @@ class SpecimenViewSet(viewsets.ReadOnlyModelViewSet):
     Lookup is by barcode (unique identifier).
     """
 
-    queryset = Specimen.objects.select_related(
-        "lab_order",
-        "lab_order__patient",
-        "collected_by",
-        "received_by",
-    ).prefetch_related("order_items").all()
+    queryset = (
+        Specimen.objects.select_related(
+            "lab_order",
+            "lab_order__patient",
+            "collected_by",
+            "received_by",
+        )
+        .prefetch_related("order_items")
+        .all()
+    )
     serializer_class = SpecimenSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.DjangoFilterBackend]
@@ -1508,4 +1506,3 @@ class SpecimenViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(barcode__icontains=barcode)
 
         return queryset
-

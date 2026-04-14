@@ -168,9 +168,7 @@ class TestAutoCreateResourceOnWardCreate:
 class TestSyncFromClinics:
     """Tests for POST /api/scheduling/resources/sync-from-clinics/."""
 
-    def test_sync_creates_resources_from_clinics(
-        self, authenticated_client, sample_facility
-    ):
+    def test_sync_creates_resources_from_clinics(self, authenticated_client, sample_facility):
         """Should create PLACE resources for clinics without one."""
         from hmis.apps.clinics.models import Clinic
         from hmis.apps.scheduling.models import Resource
@@ -216,16 +214,18 @@ class TestSyncFromClinics:
         """Calling sync twice should not create duplicates."""
         from hmis.apps.clinics.models import Clinic
 
-        Clinic.objects.bulk_create([
-            Clinic(
-                name="FP Clinic",
-                clinic_type="FP",
-                code="FP-001",
-                status="ACTIVE",
-                facility=sample_facility,
-                organization=sample_facility.organization,
-            ),
-        ])
+        Clinic.objects.bulk_create(
+            [
+                Clinic(
+                    name="FP Clinic",
+                    clinic_type="FP",
+                    code="FP-001",
+                    status="ACTIVE",
+                    facility=sample_facility,
+                    organization=sample_facility.organization,
+                ),
+            ]
+        )
 
         r1 = authenticated_client.post("/api/scheduling/resources/sync-from-clinics/")
         assert r1.data["created"] >= 1
@@ -242,16 +242,18 @@ class TestSyncFromClinics:
         """Should not sync inactive clinics."""
         from hmis.apps.clinics.models import Clinic
 
-        Clinic.objects.bulk_create([
-            Clinic(
-                name="Closed Clinic",
-                clinic_type="OTHER",
-                code="CLOSED-001",
-                status="INACTIVE",
-                facility=sample_facility,
-                organization=sample_facility.organization,
-            ),
-        ])
+        Clinic.objects.bulk_create(
+            [
+                Clinic(
+                    name="Closed Clinic",
+                    clinic_type="OTHER",
+                    code="CLOSED-001",
+                    status="INACTIVE",
+                    facility=sample_facility,
+                    organization=sample_facility.organization,
+                ),
+            ]
+        )
 
         response = authenticated_client.post("/api/scheduling/resources/sync-from-clinics/")
         assert response.status_code == status.HTTP_200_OK
@@ -261,9 +263,7 @@ class TestSyncFromClinics:
 class TestSyncFromWards:
     """Tests for POST /api/scheduling/resources/sync-from-wards/."""
 
-    def test_sync_creates_resources_from_wards(
-        self, authenticated_client, sample_facility
-    ):
+    def test_sync_creates_resources_from_wards(self, authenticated_client, sample_facility):
         """Should create PLACE resources for wards without one."""
         from hmis.apps.inpatient.models import Ward
         from hmis.apps.scheduling.models import Resource
@@ -289,9 +289,7 @@ class TestSyncFromWards:
         assert ward.scheduling_resource is not None
         assert ward.scheduling_resource.resource_type == "PLACE"
 
-    def test_sync_skips_wards_with_existing_resource(
-        self, authenticated_client, facility_ward
-    ):
+    def test_sync_skips_wards_with_existing_resource(self, authenticated_client, facility_ward):
         """Should not create duplicate resources."""
         # facility_ward auto-got a resource via signal
         facility_ward.refresh_from_db()
@@ -310,18 +308,20 @@ class TestSyncFromWards:
         """Should not sync inactive wards."""
         from hmis.apps.inpatient.models import Ward
 
-        Ward.objects.bulk_create([
-            Ward(
-                name="Decommissioned Ward",
-                code="DECOM-01",
-                ward_type="MEDICAL",
-                capacity=10,
-                daily_rate=Decimal("400.00"),
-                is_active=False,
-                facility=sample_facility,
-                organization=sample_facility.organization,
-            ),
-        ])
+        Ward.objects.bulk_create(
+            [
+                Ward(
+                    name="Decommissioned Ward",
+                    code="DECOM-01",
+                    ward_type="MEDICAL",
+                    capacity=10,
+                    daily_rate=Decimal("400.00"),
+                    is_active=False,
+                    facility=sample_facility,
+                    organization=sample_facility.organization,
+                ),
+            ]
+        )
 
         response = authenticated_client.post("/api/scheduling/resources/sync-from-wards/")
         assert response.status_code == status.HTTP_200_OK

@@ -31,7 +31,9 @@ class TestEncounterModel:
         )
 
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Headache",
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Headache",
             facility=sample_facility,
         )
 
@@ -287,7 +289,9 @@ class TestEncounterModel:
         )
 
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Headache",
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Headache",
             facility=sample_facility,
         )
 
@@ -309,7 +313,9 @@ class TestEncounterModel:
         )
 
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Headache",
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Headache",
             facility=sample_facility,
         )
 
@@ -332,7 +338,9 @@ class TestEncounterModel:
 
         # Should be able to create encounter without vitals
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Consultation",
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Consultation",
             facility=sample_facility,
         )
 
@@ -390,7 +398,9 @@ class TestEncounterModel:
         )
 
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Checkup",
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Checkup",
             facility=sample_facility,
         )
 
@@ -410,12 +420,16 @@ class TestEncounterModel:
         )
 
         encounter1 = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Headache",
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Headache",
             facility=sample_facility,
         )
 
         encounter2 = Encounter.objects.create(
-            patient=patient, encounter_type="IPD", chief_complaint="Fever",
+            patient=patient,
+            encounter_type="IPD",
+            chief_complaint="Fever",
             facility=sample_facility,
         )
 
@@ -618,7 +632,9 @@ class TestEncounterModel:
 class TestBeginConsultation:
     """Test Encounter.begin_consultation() method."""
 
-    def test_begin_consultation_sets_status_to_in_progress(self, sample_organization, sample_facility):
+    def test_begin_consultation_sets_status_to_in_progress(
+        self, sample_organization, sample_facility
+    ):
         """Should set consultation_status to IN_PROGRESS."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -644,7 +660,9 @@ class TestBeginConsultation:
         assert result == encounter  # Returns self for chaining
         assert encounter.consultation_status == "IN_PROGRESS"
 
-    def test_begin_consultation_sets_started_at_timestamp(self, sample_organization, sample_facility):
+    def test_begin_consultation_sets_started_at_timestamp(
+        self, sample_organization, sample_facility
+    ):
         """Should record consultation_started_at timestamp."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -670,7 +688,9 @@ class TestBeginConsultation:
 
         assert encounter.consultation_started_at is not None
 
-    def test_begin_consultation_raises_error_when_triage_pending(self, sample_organization, sample_facility):
+    def test_begin_consultation_raises_error_when_triage_pending(
+        self, sample_organization, sample_facility
+    ):
         """Should raise ValueError if triage is still pending."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -696,7 +716,9 @@ class TestBeginConsultation:
 
         assert "triage" in str(exc_info.value).lower()
 
-    def test_begin_consultation_raises_error_when_already_in_progress(self, sample_organization, sample_facility):
+    def test_begin_consultation_raises_error_when_already_in_progress(
+        self, sample_organization, sample_facility
+    ):
         """Should raise ValueError if consultation is already in progress."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -722,7 +744,9 @@ class TestBeginConsultation:
 
         assert "already in progress" in str(exc_info.value).lower()
 
-    def test_begin_consultation_raises_error_when_completed(self, sample_organization, sample_facility):
+    def test_begin_consultation_raises_error_when_completed(
+        self, sample_organization, sample_facility
+    ):
         """Should raise ValueError if consultation is already completed."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
@@ -748,7 +772,9 @@ class TestBeginConsultation:
 
         assert "already completed" in str(exc_info.value).lower()
 
-    def test_begin_consultation_works_with_bypassed_triage(self, sample_organization, sample_facility):
+    def test_begin_consultation_works_with_bypassed_triage(
+        self, sample_organization, sample_facility
+    ):
         """Should work when triage is BYPASSED."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient

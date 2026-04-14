@@ -91,7 +91,11 @@ class Command(BaseCommand):
             diseases = self._get_diseases()
 
             if not diseases:
-                self.stdout.write(self.style.ERROR("No notifiable diseases found. Run seed_notifiable_diseases first."))
+                self.stdout.write(
+                    self.style.ERROR(
+                        "No notifiable diseases found. Run seed_notifiable_diseases first."
+                    )
+                )
                 return
 
             # Create demo cases
@@ -164,9 +168,7 @@ class Command(BaseCommand):
 
         sub_county = SubCounty.objects.filter(county=county).first()
         if not sub_county:
-            sub_county = SubCounty.objects.create(
-                county=county, name="Demo Sub-County"
-            )
+            sub_county = SubCounty.objects.create(county=county, name="Demo Sub-County")
             self.stdout.write("Created demo sub-county")
 
         return county, sub_county
@@ -192,9 +194,9 @@ class Command(BaseCommand):
 
         # Add more diseases if needed
         if len(diseases) < 3:
-            additional = NotifiableDisease.objects.filter(
-                is_active=True
-            ).exclude(id__in=[d.id for d in diseases])[:5]
+            additional = NotifiableDisease.objects.filter(is_active=True).exclude(
+                id__in=[d.id for d in diseases]
+            )[:5]
             diseases.extend(list(additional))
 
         return diseases
@@ -392,7 +394,9 @@ class Command(BaseCommand):
 
         self.stdout.write("\nCase Summary by Disease:")
         self.stdout.write("-" * 70)
-        self.stdout.write(f"{'Disease':<25} {'Total':>6} {'<5':>6} {'≥5':>6} {'Lab':>6} {'Deaths':>6}")
+        self.stdout.write(
+            f"{'Disease':<25} {'Total':>6} {'<5':>6} {'≥5':>6} {'Lab':>6} {'Deaths':>6}"
+        )
         self.stdout.write("-" * 70)
 
         for disease_name, data in sorted(summary.items()):
@@ -416,11 +420,13 @@ class Command(BaseCommand):
             generated_by=user,
         )
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Report generated: {report.total_cases} cases, "
-            f"{report.disease_summaries.count()} diseases, "
-            f"Status: {report.status}"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Report generated: {report.total_cases} cases, "
+                f"{report.disease_summaries.count()} diseases, "
+                f"Status: {report.status}"
+            )
+        )
 
         # Show disease summaries
         self.stdout.write("\nDisease Summaries in Report:")

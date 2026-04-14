@@ -33,7 +33,15 @@ def mark_absent_shifts(self):
     today = now.date()
     cutoff = now - timedelta(hours=1)
 
-    non_working_types = {"OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF", "LEAVE", "SICK_LEAVE", "REST"}
+    non_working_types = {
+        "OFF",
+        "DAY_OFF",
+        "NIGHT_OFF",
+        "AFTERNOON_OFF",
+        "LEAVE",
+        "SICK_LEAVE",
+        "REST",
+    }
 
     candidates = Shift.objects.filter(
         shift_date=today,
@@ -44,11 +52,11 @@ def mark_absent_shifts(self):
 
     marked = 0
     for shift in candidates:
-        shift_start_dt = timezone.make_aware(
-            datetime.combine(shift.shift_date, shift.start_time)
-        ) if timezone.is_naive(
-            datetime.combine(shift.shift_date, shift.start_time)
-        ) else datetime.combine(shift.shift_date, shift.start_time)
+        shift_start_dt = (
+            timezone.make_aware(datetime.combine(shift.shift_date, shift.start_time))
+            if timezone.is_naive(datetime.combine(shift.shift_date, shift.start_time))
+            else datetime.combine(shift.shift_date, shift.start_time)
+        )
 
         if shift_start_dt <= cutoff:
             try:

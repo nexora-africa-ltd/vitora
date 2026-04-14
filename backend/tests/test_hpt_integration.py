@@ -251,10 +251,12 @@ class TestActiveComponentDataclass:
         """Should return None when no component links."""
         from hmis.apps.billing.services.terminology import ActiveComponent
 
-        component = ActiveComponent.from_api_response({
-            "active_component_id": 2,
-            "component_description": "Unknown",
-        })
+        component = ActiveComponent.from_api_response(
+            {
+                "active_component_id": 2,
+                "component_description": "Unknown",
+            }
+        )
 
         assert component.atc_codes == []
         assert component.atc_code is None
@@ -356,18 +358,14 @@ class TestDHAResponseUnwrapping:
     def test_unwrap_success_response(self):
         from hmis.apps.billing.services.terminology import TerminologyService
 
-        results = TerminologyService._unwrap_dha_response(
-            SAMPLE_DHA_PRODUCT_RESPONSE, "products"
-        )
+        results = TerminologyService._unwrap_dha_response(SAMPLE_DHA_PRODUCT_RESPONSE, "products")
         assert len(results) == 1
         assert results[0]["product_id"] == 4855
 
     def test_unwrap_error_response(self):
         from hmis.apps.billing.services.terminology import TerminologyService
 
-        results = TerminologyService._unwrap_dha_response(
-            SAMPLE_DHA_ERROR_RESPONSE, "products"
-        )
+        results = TerminologyService._unwrap_dha_response(SAMPLE_DHA_ERROR_RESPONSE, "products")
         assert results == []
 
     def test_unwrap_intervention_response(self):
@@ -487,9 +485,7 @@ class TestDrugViewSetHPTActions:
         mock_service = MagicMock()
         mock_service_cls.return_value = mock_service
         mock_service.search_drug_products.return_value = [
-            DrugProduct.from_api_response(
-                SAMPLE_DHA_PRODUCT_RESPONSE["Data"]["products"][0]
-            )
+            DrugProduct.from_api_response(SAMPLE_DHA_PRODUCT_RESPONSE["Data"]["products"][0])
         ]
 
         response = authenticated_client.get("/api/pharmacy/drugs/hpt-search/?q=Metformin")
@@ -568,23 +564,17 @@ class TestAllergyHPTSubstanceSearch:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     @patch("hmis.apps.billing.services.terminology.TerminologyService")
-    def test_hpt_substance_search_returns_components(
-        self, mock_service_cls, authenticated_client
-    ):
+    def test_hpt_substance_search_returns_components(self, mock_service_cls, authenticated_client):
         """Should return active components with ATC codes."""
         from hmis.apps.billing.services.terminology import ActiveComponent
 
         mock_service = MagicMock()
         mock_service_cls.return_value = mock_service
         mock_service.search_active_components.return_value = [
-            ActiveComponent.from_api_response(
-                SAMPLE_DHA_ACTIVE_COMPONENT_RESPONSE["Data"]["ac"][0]
-            )
+            ActiveComponent.from_api_response(SAMPLE_DHA_ACTIVE_COMPONENT_RESPONSE["Data"]["ac"][0])
         ]
 
-        response = authenticated_client.get(
-            "/api/allergies/hpt-substance-search/?q=Metformin"
-        )
+        response = authenticated_client.get("/api/allergies/hpt-substance-search/?q=Metformin")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
@@ -749,9 +739,7 @@ class TestMapDrugsToHPTCommand:
         mock_service = MagicMock()
         mock_service_cls.return_value = mock_service
         mock_service.search_drug_products.return_value = [
-            DrugProduct.from_api_response(
-                SAMPLE_DHA_PRODUCT_RESPONSE["Data"]["products"][0]
-            )
+            DrugProduct.from_api_response(SAMPLE_DHA_PRODUCT_RESPONSE["Data"]["products"][0])
         ]
 
         out = StringIO()
@@ -780,9 +768,7 @@ class TestMapDrugsToHPTCommand:
         mock_service = MagicMock()
         mock_service_cls.return_value = mock_service
         mock_service.search_drug_products.return_value = [
-            DrugProduct.from_api_response(
-                SAMPLE_DHA_PRODUCT_RESPONSE["Data"]["products"][0]
-            )
+            DrugProduct.from_api_response(SAMPLE_DHA_PRODUCT_RESPONSE["Data"]["products"][0])
         ]
 
         out = StringIO()
@@ -872,6 +858,7 @@ class TestEdgeCases:
 
         # Verify method signature accepts all params (doesn't test API call)
         import inspect
+
         sig = inspect.signature(service.search_drug_products)
         params = list(sig.parameters.keys())
         assert "query" in params
@@ -887,6 +874,7 @@ class TestEdgeCases:
         service = TerminologyService()
 
         import inspect
+
         sig = inspect.signature(service.search_active_components)
         params = list(sig.parameters.keys())
         assert "exact_match" in params
@@ -913,13 +901,15 @@ class TestEdgeCases:
         """ComponentLink should be parseable."""
         from hmis.apps.billing.services.terminology import ComponentLink
 
-        link = ComponentLink.from_api_response({
-            "active_component_link_id": 1,
-            "active_component_line": 1,
-            "active_component_id": 1,
-            "component_name": "Metformin",
-            "component_atc_code": "A10BA02",
-        })
+        link = ComponentLink.from_api_response(
+            {
+                "active_component_link_id": 1,
+                "active_component_line": 1,
+                "active_component_id": 1,
+                "component_name": "Metformin",
+                "component_atc_code": "A10BA02",
+            }
+        )
 
         assert link.active_component_link_id == 1
         assert link.component_name == "Metformin"

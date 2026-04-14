@@ -165,9 +165,7 @@ def _create_admission(patient, ward, test_user, **kwargs):
         "ipd_encounter": ipd_encounter,
         "admission_date": kwargs.pop("admission_date", timezone.now()),
         "admitting_diagnosis": kwargs.pop("admitting_diagnosis", "J18.9"),
-        "admitting_diagnosis_text": kwargs.pop(
-            "admitting_diagnosis_text", "Pneumonia"
-        ),
+        "admitting_diagnosis_text": kwargs.pop("admitting_diagnosis_text", "Pneumonia"),
         "admitting_officer": test_user,
         "payer_type": "CASH",
         "facility": facility,
@@ -212,12 +210,12 @@ class TestModelFields:
         admission = _create_admission(female_patient, general_ward, test_user)
         assert admission.expected_discharge_date is None
 
-    def test_admission_expected_discharge_date_set(
-        self, general_ward, female_patient, test_user
-    ):
+    def test_admission_expected_discharge_date_set(self, general_ward, female_patient, test_user):
         expected = timezone.now() + timedelta(days=3)
         admission = _create_admission(
-            female_patient, general_ward, test_user,
+            female_patient,
+            general_ward,
+            test_user,
             expected_discharge_date=expected,
         )
         assert admission.expected_discharge_date == expected
@@ -241,7 +239,9 @@ class TestPredictiveDischarge:
     ):
         expected = timezone.now() + timedelta(hours=6)
         _create_admission(
-            female_patient, general_ward, test_user,
+            female_patient,
+            general_ward,
+            test_user,
             expected_discharge_date=expected,
         )
 
@@ -256,7 +256,9 @@ class TestPredictiveDischarge:
     ):
         expected = timezone.now() + timedelta(hours=48)
         _create_admission(
-            female_patient, general_ward, test_user,
+            female_patient,
+            general_ward,
+            test_user,
             expected_discharge_date=expected,
         )
 
@@ -269,7 +271,9 @@ class TestPredictiveDischarge:
         """Create a past discharge to establish avg LOS, then check prediction."""
         # Create a completed admission with 2-day LOS
         past_admission = _create_admission(
-            male_patient, general_ward, test_user,
+            male_patient,
+            general_ward,
+            test_user,
             admission_date=timezone.now() - timedelta(days=5),
         )
         Discharge.objects.create(
@@ -289,7 +293,9 @@ class TestPredictiveDischarge:
 
         # Create current admission (just started — within avg LOS window? depends)
         _create_admission(
-            female_patient, general_ward, test_user,
+            female_patient,
+            general_ward,
+            test_user,
             admission_date=timezone.now() - timedelta(days=1),
         )
 
@@ -307,11 +313,15 @@ class TestPredictiveDischarge:
         later = timezone.now() + timedelta(hours=8)
 
         _create_admission(
-            male_patient, general_ward, test_user,
+            male_patient,
+            general_ward,
+            test_user,
             expected_discharge_date=later,
         )
         _create_admission(
-            female_patient, general_ward, test_user,
+            female_patient,
+            general_ward,
+            test_user,
             expected_discharge_date=soon,
         )
 
@@ -371,9 +381,7 @@ class TestEmergencyBuffer:
         assert avail == 2
 
     def test_non_emergency_allowed_when_above_buffer(self, smart_service, buffered_ward):
-        allowed, effective = smart_service.check_emergency_buffer(
-            buffered_ward, is_emergency=False
-        )
+        allowed, effective = smart_service.check_emergency_buffer(buffered_ward, is_emergency=False)
         assert allowed is True
         assert effective == 8
 
@@ -396,7 +404,9 @@ class TestCohortGrouping:
     ):
         # Admit patient with J-chapter diagnosis
         _create_admission(
-            male_patient, general_ward, test_user,
+            male_patient,
+            general_ward,
+            test_user,
             admitting_diagnosis="J18.9",
         )
 
@@ -411,7 +421,9 @@ class TestCohortGrouping:
     ):
         # Admit with K-chapter (digestive)
         _create_admission(
-            male_patient, general_ward, test_user,
+            male_patient,
+            general_ward,
+            test_user,
             admitting_diagnosis="K35.0",
         )
 
@@ -444,9 +456,7 @@ class TestInfectionControl:
         kardex.isolation_type = "Contact"
         kardex.save()
 
-        needs, reason = smart_service.evaluate_infection_risk(
-            female_patient, admission=admission
-        )
+        needs, reason = smart_service.evaluate_infection_risk(female_patient, admission=admission)
         assert needs is True
         assert "Contact" in reason
 
@@ -456,9 +466,7 @@ class TestInfectionControl:
         admission = _create_admission(female_patient, general_ward, test_user)
         # Kardex is auto-created — isolation_required defaults to False
 
-        needs, reason = smart_service.evaluate_infection_risk(
-            female_patient, admission=admission
-        )
+        needs, reason = smart_service.evaluate_infection_risk(female_patient, admission=admission)
         assert needs is False
 
 
@@ -476,9 +484,7 @@ class TestStaffWorkload:
         # Empty ward: 0% occupancy → low score
         assert score == 0.0
 
-    def test_workload_includes_occupancy(
-        self, smart_service, general_ward, test_user
-    ):
+    def test_workload_includes_occupancy(self, smart_service, general_ward, test_user):
         # Occupy 5 of 10 beds = 50% occupancy
         beds = list(general_ward.beds.order_by("bed_number"))
         for bed in beds[:5]:
@@ -490,9 +496,7 @@ class TestStaffWorkload:
         # 50% * 0.6 = 30 (ignoring handover since none exists)
         assert score == 30.0
 
-    def test_workload_includes_critical_ratio(
-        self, smart_service, general_ward, test_user
-    ):
+    def test_workload_includes_critical_ratio(self, smart_service, general_ward, test_user):
         ShiftHandover.objects.create(
             ward=general_ward,
             shift_date=date.today(),
@@ -602,7 +606,11 @@ class TestSmartAssignBed:
         assert result.assigned_bed is not None
 
     def test_smart_assign_infection_auto_isolation(
-        self, smart_service, isolation_ward, female_patient, test_user,
+        self,
+        smart_service,
+        isolation_ward,
+        female_patient,
+        test_user,
         sample_organization,
     ):
         # Create an admission and update auto-created kardex
@@ -640,7 +648,9 @@ class TestSmartAssignBed:
         # Create an active admission first (before filling all beds)
         first_bed = general_ward.beds.filter(status="AVAILABLE").order_by("bed_number").first()
         admission = _create_admission(
-            male_patient, general_ward, test_user,
+            male_patient,
+            general_ward,
+            test_user,
             bed=first_bed,
             expected_discharge_date=timezone.now() + timedelta(hours=2),
         )
@@ -672,9 +682,7 @@ class TestSmartAssignBed:
         assert "workload" in result.smart_scores
         assert "infection_risk" in result.smart_scores
 
-    def test_smart_assign_to_dict(
-        self, smart_service, general_ward, female_patient, test_user
-    ):
+    def test_smart_assign_to_dict(self, smart_service, general_ward, female_patient, test_user):
         result = smart_service.smart_assign_bed(
             patient=female_patient,
             ward=general_ward,
@@ -695,9 +703,7 @@ class TestSmartAssignBed:
 class TestPredictedDischargesAPI:
     """Tests for GET /api/inpatient/wards/{id}/predicted_discharges/."""
 
-    def test_predicted_discharges_empty_ward(
-        self, authenticated_client, general_ward
-    ):
+    def test_predicted_discharges_empty_ward(self, authenticated_client, general_ward):
         response = authenticated_client.get(
             f"/api/inpatient/wards/{general_ward.id}/predicted_discharges/"
         )
@@ -710,7 +716,9 @@ class TestPredictedDischargesAPI:
     ):
         expected = timezone.now() + timedelta(hours=6)
         _create_admission(
-            female_patient, general_ward, test_user,
+            female_patient,
+            general_ward,
+            test_user,
             expected_discharge_date=expected,
         )
 
@@ -723,9 +731,7 @@ class TestPredictedDischargesAPI:
 
     def test_predicted_discharges_requires_auth(self, general_ward):
         client = APIClient()
-        response = client.get(
-            f"/api/inpatient/wards/{general_ward.id}/predicted_discharges/"
-        )
+        response = client.get(f"/api/inpatient/wards/{general_ward.id}/predicted_discharges/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -754,9 +760,7 @@ class TestBedUtilizationAPI:
 
     def test_bed_utilization_requires_auth(self, general_ward):
         client = APIClient()
-        response = client.get(
-            f"/api/inpatient/wards/{general_ward.id}/bed_utilization/"
-        )
+        response = client.get(f"/api/inpatient/wards/{general_ward.id}/bed_utilization/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -764,9 +768,7 @@ class TestBedUtilizationAPI:
 class TestSmartRecommendBedAPI:
     """Tests for POST /api/inpatient/wards/{id}/smart_recommend_bed/."""
 
-    def test_smart_recommend_success(
-        self, authenticated_client, general_ward, female_patient
-    ):
+    def test_smart_recommend_success(self, authenticated_client, general_ward, female_patient):
         response = authenticated_client.post(
             f"/api/inpatient/wards/{general_ward.id}/smart_recommend_bed/",
             {"patient_id": female_patient.id},
@@ -777,9 +779,7 @@ class TestSmartRecommendBedAPI:
         assert response.data["assigned_bed_id"] is not None
         assert "smart_scores" in response.data
 
-    def test_smart_recommend_patient_not_found(
-        self, authenticated_client, general_ward
-    ):
+    def test_smart_recommend_patient_not_found(self, authenticated_client, general_ward):
         response = authenticated_client.post(
             f"/api/inpatient/wards/{general_ward.id}/smart_recommend_bed/",
             {"patient_id": 99999},
@@ -844,9 +844,7 @@ class TestSetExpectedDischargeAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_set_expected_discharge_requires_auth(
-        self, general_ward, female_patient, test_user
-    ):
+    def test_set_expected_discharge_requires_auth(self, general_ward, female_patient, test_user):
         admission = _create_admission(female_patient, general_ward, test_user)
         client = APIClient()
         expected = (timezone.now() + timedelta(days=2)).isoformat()

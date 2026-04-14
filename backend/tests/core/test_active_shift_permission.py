@@ -94,20 +94,14 @@ def encounter_payload(sample_patient):
 class TestActiveShiftGate:
     """Tests for RequiresActiveShiftPermission on clinical endpoints."""
 
-    def test_read_allowed_without_active_shift(
-        self, authenticated_client, sample_encounter
-    ):
+    def test_read_allowed_without_active_shift(self, authenticated_client, sample_encounter):
         """GET requests should work even without an active shift."""
         response = authenticated_client.get("/api/encounters/")
         assert response.status_code == status.HTTP_200_OK
 
-    def test_write_blocked_without_active_shift(
-        self, authenticated_client, encounter_payload
-    ):
+    def test_write_blocked_without_active_shift(self, authenticated_client, encounter_payload):
         """POST should be blocked if user has no active shift today."""
-        response = authenticated_client.post(
-            "/api/encounters/", encounter_payload, format="json"
-        )
+        response = authenticated_client.post("/api/encounters/", encounter_payload, format="json")
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert response.data.get("detail") is not None
 
@@ -115,23 +109,15 @@ class TestActiveShiftGate:
         self, authenticated_client, active_shift, encounter_payload
     ):
         """POST should succeed when user has an ACTIVE shift."""
-        response = authenticated_client.post(
-            "/api/encounters/", encounter_payload, format="json"
-        )
+        response = authenticated_client.post("/api/encounters/", encounter_payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_write_allowed_on_break(
-        self, authenticated_client, on_break_shift, encounter_payload
-    ):
+    def test_write_allowed_on_break(self, authenticated_client, on_break_shift, encounter_payload):
         """POST should succeed when user has an ON_BREAK shift."""
-        response = authenticated_client.post(
-            "/api/encounters/", encounter_payload, format="json"
-        )
+        response = authenticated_client.post("/api/encounters/", encounter_payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_emergency_override_bypasses_gate(
-        self, authenticated_client, encounter_payload
-    ):
+    def test_emergency_override_bypasses_gate(self, authenticated_client, encounter_payload):
         """Emergency override query param should bypass the shift check."""
         response = authenticated_client.post(
             "/api/encounters/?emergency_override=true",
@@ -140,9 +126,7 @@ class TestActiveShiftGate:
         )
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_emergency_override_creates_audit_log(
-        self, authenticated_client, encounter_payload
-    ):
+    def test_emergency_override_creates_audit_log(self, authenticated_client, encounter_payload):
         """Emergency override should be logged in AuditLog."""
         from hmis.apps.core.models import AuditLog
 
@@ -153,15 +137,11 @@ class TestActiveShiftGate:
         )
         assert AuditLog.objects.filter(action="emergency_override").exists()
 
-    def test_superuser_exempt(
-        self, authenticated_client, test_user, encounter_payload
-    ):
+    def test_superuser_exempt(self, authenticated_client, test_user, encounter_payload):
         """Superusers should bypass the active shift requirement."""
         test_user.is_superuser = True
         test_user.save()
-        response = authenticated_client.post(
-            "/api/encounters/", encounter_payload, format="json"
-        )
+        response = authenticated_client.post("/api/encounters/", encounter_payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_scheduled_shift_not_sufficient(
@@ -180,7 +160,5 @@ class TestActiveShiftGate:
             facility=sample_facility,
             organization=sample_facility.organization,
         )
-        response = authenticated_client.post(
-            "/api/encounters/", encounter_payload, format="json"
-        )
+        response = authenticated_client.post("/api/encounters/", encounter_payload, format="json")
         assert response.status_code == status.HTTP_403_FORBIDDEN

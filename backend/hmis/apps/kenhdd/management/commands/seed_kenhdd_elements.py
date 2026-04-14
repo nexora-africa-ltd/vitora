@@ -15,9 +15,7 @@ from django.core.management.base import BaseCommand, CommandParser
 
 from hmis.apps.kenhdd.models import KENHDDDataElement
 
-DEFAULT_ELEMENTS_PATH = (
-    Path(__file__).resolve().parents[5] / "data" / "kenhdd_elements.json"
-)
+DEFAULT_ELEMENTS_PATH = Path(__file__).resolve().parents[5] / "data" / "kenhdd_elements.json"
 
 
 class Command(BaseCommand):
@@ -42,18 +40,14 @@ class Command(BaseCommand):
 
         elements_path = Path(elements_file)
         if not elements_path.is_file():
-            self.stderr.write(
-                self.style.ERROR(f"Elements file not found: {elements_path}")
-            )
+            self.stderr.write(self.style.ERROR(f"Elements file not found: {elements_path}"))
             return
 
         with open(elements_path, encoding="utf-8") as fh:
             try:
                 elements_data: list[dict] = json.load(fh)
             except json.JSONDecodeError as exc:
-                self.stderr.write(
-                    self.style.ERROR(f"Invalid JSON in {elements_path}: {exc}")
-                )
+                self.stderr.write(self.style.ERROR(f"Invalid JSON in {elements_path}: {exc}"))
                 return
 
         self.stdout.write(
@@ -66,16 +60,12 @@ class Command(BaseCommand):
         for elem in elements_data:
             element_id = elem.get("element_id", "")
             if not element_id:
-                self.stderr.write(
-                    self.style.ERROR("  SKIP: entry missing 'element_id' field")
-                )
+                self.stderr.write(self.style.ERROR("  SKIP: entry missing 'element_id' field"))
                 continue
 
             if KENHDDDataElement.objects.filter(element_id=element_id).exists():
                 skipped_count += 1
-                self.stdout.write(
-                    self.style.WARNING(f"  SKIP: {element_id} — already exists")
-                )
+                self.stdout.write(self.style.WARNING(f"  SKIP: {element_id} — already exists"))
                 continue
 
             if dry_run:

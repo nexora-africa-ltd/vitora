@@ -257,11 +257,11 @@ def invitation_accept(request):
     token = data["token"]
 
     try:
-        invitation = StaffInvitation.objects.select_related(
-            "organization", "facility", "role", "department"
-        ).prefetch_related(
-            "secondary_roles", "secondary_departments"
-        ).get(token=token)
+        invitation = (
+            StaffInvitation.objects.select_related("organization", "facility", "role", "department")
+            .prefetch_related("secondary_roles", "secondary_departments")
+            .get(token=token)
+        )
     except StaffInvitation.DoesNotExist:
         return Response(
             {"error": "Invitation not found or has been revoked."},
@@ -269,7 +269,9 @@ def invitation_accept(request):
         )
 
     if not invitation.is_usable:
-        error_msg = "Invitation has expired." if invitation.is_expired else "Invitation is no longer valid."
+        error_msg = (
+            "Invitation has expired." if invitation.is_expired else "Invitation is no longer valid."
+        )
         return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
     with transaction.atomic():
@@ -410,9 +412,7 @@ def password_reset_confirm(request):
 
     data = serializer.validated_data
     try:
-        reset_token = PasswordResetToken.objects.select_related("user").get(
-            token=data["token"]
-        )
+        reset_token = PasswordResetToken.objects.select_related("user").get(token=data["token"])
     except PasswordResetToken.DoesNotExist:
         return Response(
             {"error": "Invalid or expired reset link."},
@@ -473,9 +473,7 @@ def change_password(request):
     data = serializer.validated_data
 
     # Check if must_change_password is set
-    is_forced = (
-        hasattr(user, "staff_profile") and user.staff_profile.must_change_password
-    )
+    is_forced = hasattr(user, "staff_profile") and user.staff_profile.must_change_password
 
     if not is_forced:
         # Normal password change — require current password

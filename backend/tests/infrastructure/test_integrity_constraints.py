@@ -27,7 +27,9 @@ from rest_framework import status
 class TestPatientDuplicatePrevention:
     """Tests for preventing duplicate patient registration."""
 
-    def test_unique_identification_number_constraint(self, db, sample_county, sample_sub_county, sample_organization):
+    def test_unique_identification_number_constraint(
+        self, db, sample_county, sample_sub_county, sample_organization
+    ):
         """Should prevent two patients with same identification type and number."""
         from hmis.apps.patients.models import Patient
 
@@ -59,7 +61,9 @@ class TestPatientDuplicatePrevention:
                     organization=sample_organization,
                 )
 
-    def test_different_identification_types_allowed(self, db, sample_county, sample_sub_county, sample_organization):
+    def test_different_identification_types_allowed(
+        self, db, sample_county, sample_sub_county, sample_organization
+    ):
         """Should allow same number with different identification types."""
         from hmis.apps.patients.models import Patient
 
@@ -91,7 +95,9 @@ class TestPatientDuplicatePrevention:
 
         assert p1.pk != p2.pk
 
-    def test_null_identification_numbers_allowed(self, db, sample_county, sample_sub_county, sample_organization):
+    def test_null_identification_numbers_allowed(
+        self, db, sample_county, sample_sub_county, sample_organization
+    ):
         """Should allow multiple patients without identification numbers."""
         from hmis.apps.patients.models import Patient
 
@@ -121,7 +127,9 @@ class TestPatientDuplicatePrevention:
 
         assert p1.pk != p2.pk
 
-    def test_empty_identification_numbers_allowed(self, db, sample_county, sample_sub_county, sample_organization):
+    def test_empty_identification_numbers_allowed(
+        self, db, sample_county, sample_sub_county, sample_organization
+    ):
         """Should allow multiple patients with empty identification numbers."""
         from hmis.apps.patients.models import Patient
 
@@ -152,7 +160,10 @@ class TestPatientDuplicatePrevention:
         assert p1.pk != p2.pk
 
     def test_potential_duplicate_detection_via_serializer(
-        self, authenticated_client, sample_county, sample_sub_county,
+        self,
+        authenticated_client,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Should warn about potential duplicates with same demographics."""
@@ -191,7 +202,10 @@ class TestPatientDuplicatePrevention:
         )
 
     def test_case_insensitive_duplicate_detection(
-        self, authenticated_client, sample_county, sample_sub_county,
+        self,
+        authenticated_client,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Should detect duplicates regardless of name case."""
@@ -235,7 +249,12 @@ class TestAdmissionConstraints:
     """Tests for admission integrity constraints."""
 
     def test_only_one_active_admission_per_patient(
-        self, db, sample_patient, sample_inpatient_ward, sample_bed, test_user,
+        self,
+        db,
+        sample_patient,
+        sample_inpatient_ward,
+        sample_bed,
+        test_user,
         sample_facility,
     ):
         """Should prevent multiple active admissions for same patient."""
@@ -300,7 +319,12 @@ class TestAdmissionConstraints:
                 )
 
     def test_discharged_patient_can_be_readmitted(
-        self, db, sample_patient, sample_inpatient_ward, sample_bed, test_user,
+        self,
+        db,
+        sample_patient,
+        sample_inpatient_ward,
+        sample_bed,
+        test_user,
         sample_facility,
     ):
         """Should allow readmission after discharge."""
@@ -398,7 +422,9 @@ class TestEncounterConstraints:
                     facility=sample_facility,
                 )
 
-    def test_completed_encounter_allows_new_active(self, db, sample_patient, test_user, sample_facility):
+    def test_completed_encounter_allows_new_active(
+        self, db, sample_patient, test_user, sample_facility
+    ):
         """Should allow new encounter after previous one is completed."""
         from django.utils import timezone
 
@@ -492,7 +518,11 @@ class TestEncounterClinicianAssignment:
         assert encounter.status == "IN_PROGRESS"
 
     def test_encounter_cannot_be_claimed_by_two_clinicians(
-        self, db, sample_patient, test_user, another_user,
+        self,
+        db,
+        sample_patient,
+        test_user,
+        another_user,
         sample_facility,
     ):
         """Should prevent two clinicians from claiming the same encounter."""
@@ -797,7 +827,12 @@ class TestBedOccupancyConstraints:
     """Tests for bed occupancy constraints."""
 
     def test_bed_cannot_be_double_booked(
-        self, db, sample_patient, sample_inpatient_ward, sample_bed, test_user,
+        self,
+        db,
+        sample_patient,
+        sample_inpatient_ward,
+        sample_bed,
+        test_user,
         sample_facility,
         sample_organization,
     ):

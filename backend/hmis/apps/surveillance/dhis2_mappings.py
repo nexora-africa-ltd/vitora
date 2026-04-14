@@ -44,12 +44,14 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+
 # Type definitions
 class IndicatorMapping(TypedDict, total=False):
     cases_under_5: str
     cases_5_and_above: str
     deaths_under_5: str
     deaths_5_and_above: str
+
 
 INDICATOR_TYPES = [
     "cases_under_5",
@@ -361,7 +363,9 @@ def sync_json_to_database(environment: str = "local", overwrite: bool = False) -
             if not uid:
                 continue
 
-            short_name = indicators.get("_short_name", f"IDSR_{disease_key.upper()}_{indicator_type.upper()}")
+            short_name = indicators.get(
+                "_short_name", f"IDSR_{disease_key.upper()}_{indicator_type.upper()}"
+            )
 
             mapping, created = DHIS2DataElementMapping.objects.get_or_create(
                 disease=disease,

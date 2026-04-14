@@ -65,5 +65,9 @@ router.register(
 
 urlpatterns = [
     path("metabase-embed/", views.MetabaseEmbedView.as_view(), name="metabase-embed"),
-    path("metabase-dashboards/", views.MetabaseDashboardListView.as_view(), name="metabase-dashboards"),
+    path(
+        "metabase-dashboards/",
+        views.MetabaseDashboardListView.as_view(),
+        name="metabase-dashboards",
+    ),
 ] + router.urls

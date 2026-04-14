@@ -61,7 +61,5 @@ class Command(BaseCommand):
                 updated += 1
 
         self.stdout.write(
-            self.style.SUCCESS(
-                f"KEPI schedule seeded. Created: {created}, Updated: {updated}"
-            )
+            self.style.SUCCESS(f"KEPI schedule seeded. Created: {created}, Updated: {updated}")
         )

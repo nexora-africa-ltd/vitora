@@ -87,15 +87,11 @@ def _broadcast_bed_update(bed: ERBed, action_name: str) -> None:
             pass
 
         if loop and loop.is_running():
-            asyncio.ensure_future(
-                channel_layer.group_send("emergency_queue", message)
-            )
+            asyncio.ensure_future(channel_layer.group_send("emergency_queue", message))
         else:
             new_loop = asyncio.new_event_loop()
             try:
-                new_loop.run_until_complete(
-                    channel_layer.group_send("emergency_queue", message)
-                )
+                new_loop.run_until_complete(channel_layer.group_send("emergency_queue", message))
             finally:
                 new_loop.close()
     except Exception:
@@ -870,15 +866,27 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
         from django.utils import timezone
 
         # Get RED patients in ER areas
-        er_areas = ["ER_RESUS", "ER_ACUTE", "TRAUMA", "ER_FAST_TRACK", "OBSERVATION", "PEDIATRIC_ER", "MATERNITY"]
+        er_areas = [
+            "ER_RESUS",
+            "ER_ACUTE",
+            "TRAUMA",
+            "ER_FAST_TRACK",
+            "OBSERVATION",
+            "PEDIATRIC_ER",
+            "MATERNITY",
+        ]
 
-        queryset = TriageQueue.objects.filter(
-            triage_assessment__triage_category="RED",
-            triage_assessment__assigned_area__in=er_areas,
-            status__in=["WAITING", "CALLED"],
-        ).select_related(
-            "triage_assessment__encounter__patient",
-        ).order_by("triage_assessment__arrival_time")
+        queryset = (
+            TriageQueue.objects.filter(
+                triage_assessment__triage_category="RED",
+                triage_assessment__assigned_area__in=er_areas,
+                status__in=["WAITING", "CALLED"],
+            )
+            .select_related(
+                "triage_assessment__encounter__patient",
+            )
+            .order_by("triage_assessment__arrival_time")
+        )
 
         patients = []
         now = timezone.now()
@@ -890,25 +898,29 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
             wait_delta = now - assessment.arrival_time
             wait_minutes = int(wait_delta.total_seconds() / 60)
 
-            patients.append({
-                "id": assessment.id,  # Triage assessment ID for routing
-                "queue_id": entry.id,  # Queue entry ID
-                "encounter_id": encounter.id,
-                "encounter_status": encounter.status,
-                "patient_name": f"{patient.first_name} {patient.last_name}",
-                "mrn": patient.mrn,
-                "chief_complaint": assessment.chief_complaint or "",
-                "assigned_area": assessment.assigned_area,
-                "assigned_area_display": assessment.get_assigned_area_display(),
-                "wait_minutes": wait_minutes,
-                "arrival_time": assessment.arrival_time.isoformat(),
-                "status": entry.status,
-            })
+            patients.append(
+                {
+                    "id": assessment.id,  # Triage assessment ID for routing
+                    "queue_id": entry.id,  # Queue entry ID
+                    "encounter_id": encounter.id,
+                    "encounter_status": encounter.status,
+                    "patient_name": f"{patient.first_name} {patient.last_name}",
+                    "mrn": patient.mrn,
+                    "chief_complaint": assessment.chief_complaint or "",
+                    "assigned_area": assessment.assigned_area,
+                    "assigned_area_display": assessment.get_assigned_area_display(),
+                    "wait_minutes": wait_minutes,
+                    "arrival_time": assessment.arrival_time.isoformat(),
+                    "status": entry.status,
+                }
+            )
 
-        return Response({
-            "count": len(patients),
-            "patients": patients,
-        })
+        return Response(
+            {
+                "count": len(patients),
+                "patients": patients,
+            }
+        )
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT},
@@ -925,11 +937,31 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
         # ER zones with their configuration
         er_zones = [
             {"code": "ER_RESUS", "name": "Resuscitation", "capacity": 4, "default_category": "RED"},
-            {"code": "ER_ACUTE", "name": "Acute Care", "capacity": 10, "default_category": "ORANGE"},
+            {
+                "code": "ER_ACUTE",
+                "name": "Acute Care",
+                "capacity": 10,
+                "default_category": "ORANGE",
+            },
             {"code": "TRAUMA", "name": "Trauma Bay", "capacity": 2, "default_category": "RED"},
-            {"code": "ER_FAST_TRACK", "name": "Fast Track", "capacity": 12, "default_category": "GREEN"},
-            {"code": "OBSERVATION", "name": "Observation", "capacity": 8, "default_category": "YELLOW"},
-            {"code": "PEDIATRIC_ER", "name": "Pediatric ER", "capacity": 6, "default_category": "ORANGE"},
+            {
+                "code": "ER_FAST_TRACK",
+                "name": "Fast Track",
+                "capacity": 12,
+                "default_category": "GREEN",
+            },
+            {
+                "code": "OBSERVATION",
+                "name": "Observation",
+                "capacity": 8,
+                "default_category": "YELLOW",
+            },
+            {
+                "code": "PEDIATRIC_ER",
+                "name": "Pediatric ER",
+                "capacity": 6,
+                "default_category": "ORANGE",
+            },
             {"code": "MATERNITY", "name": "Maternity", "capacity": 4, "default_category": "ORANGE"},
         ]
 
@@ -960,19 +992,23 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
                     primary_category = cat
                     break
 
-            zone_stats.append({
-                "code": zone["code"],
-                "name": zone["name"],
-                "capacity": zone["capacity"],
-                "total": total,
-                "primary_category": primary_category,
-                "by_category": category_counts,
-            })
+            zone_stats.append(
+                {
+                    "code": zone["code"],
+                    "name": zone["name"],
+                    "capacity": zone["capacity"],
+                    "total": total,
+                    "primary_category": primary_category,
+                    "by_category": category_counts,
+                }
+            )
 
-        return Response({
-            "zones": zone_stats,
-            "total_patients": sum(z["total"] for z in zone_stats),
-        })
+        return Response(
+            {
+                "zones": zone_stats,
+                "total_patients": sum(z["total"] for z in zone_stats),
+            }
+        )
 
 
 class WaitTimesReportView(APIView):
@@ -1060,20 +1096,20 @@ class WaitTimesReportView(APIView):
         # Completion stats (arrival to triage end)
         completion_stats = {
             "count": len(completion_times),
-            "avg_minutes": round(sum(completion_times) / len(completion_times), 1)
-            if completion_times
-            else 0,
-            "median_minutes": round(statistics.median(completion_times), 1)
-            if completion_times
-            else 0,
+            "avg_minutes": (
+                round(sum(completion_times) / len(completion_times), 1) if completion_times else 0
+            ),
+            "median_minutes": (
+                round(statistics.median(completion_times), 1) if completion_times else 0
+            ),
         }
 
         # Triage duration stats (how long actual assessment takes)
         triage_duration_stats = {
             "count": len(triage_durations),
-            "avg_minutes": round(sum(triage_durations) / len(triage_durations), 1)
-            if triage_durations
-            else 0,
+            "avg_minutes": (
+                round(sum(triage_durations) / len(triage_durations), 1) if triage_durations else 0
+            ),
         }
 
         # Calculate target met percentage
@@ -1100,20 +1136,22 @@ class WaitTimesReportView(APIView):
                 {
                     "category": category,
                     "target_minutes": target_time,
-                    "avg_wait_minutes": round(
-                        sum(category_wait_times) / len(category_wait_times), 1
-                    )
-                    if category_wait_times
-                    else 0,
-                    "median_wait_minutes": round(statistics.median(category_wait_times), 1)
-                    if category_wait_times
-                    else 0,
+                    "avg_wait_minutes": (
+                        round(sum(category_wait_times) / len(category_wait_times), 1)
+                        if category_wait_times
+                        else 0
+                    ),
+                    "median_wait_minutes": (
+                        round(statistics.median(category_wait_times), 1)
+                        if category_wait_times
+                        else 0
+                    ),
                     "exceeded_count": len(exceeded),
-                    "exceeded_percentage": round(
-                        (len(exceeded) / len(category_wait_times)) * 100, 1
-                    )
-                    if category_wait_times
-                    else 0,
+                    "exceeded_percentage": (
+                        round((len(exceeded) / len(category_wait_times)) * 100, 1)
+                        if category_wait_times
+                        else 0
+                    ),
                     "total_count": len(category_assessments),
                 }
             )
@@ -1127,9 +1165,11 @@ class WaitTimesReportView(APIView):
 
         current_queue_stats = {
             "count": len(current_wait_times),
-            "avg_wait_minutes": round(sum(current_wait_times) / len(current_wait_times), 1)
-            if current_wait_times
-            else 0,
+            "avg_wait_minutes": (
+                round(sum(current_wait_times) / len(current_wait_times), 1)
+                if current_wait_times
+                else 0
+            ),
             "max_wait_minutes": max(current_wait_times) if current_wait_times else 0,
             "longest_waiting_patient": max(current_wait_times) if current_wait_times else 0,
         }
@@ -1165,8 +1205,18 @@ class ReportExportView(APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter(name="format", type=str, location=OpenApiParameter.QUERY, description="Export format: csv"),
-            OpenApiParameter(name="date_range", type=str, location=OpenApiParameter.QUERY, description="Date range: today, week, month"),
+            OpenApiParameter(
+                name="format",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Export format: csv",
+            ),
+            OpenApiParameter(
+                name="date_range",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Date range: today, week, month",
+            ),
         ],
         responses={200: OpenApiTypes.BINARY},
     )
@@ -1189,33 +1239,50 @@ class ReportExportView(APIView):
         else:
             start_date = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-        assessments = TriageAssessment.objects.filter(
-            arrival_time__gte=start_date
-        ).select_related("encounter__patient", "triaged_by").order_by("-arrival_time")
+        assessments = (
+            TriageAssessment.objects.filter(arrival_time__gte=start_date)
+            .select_related("encounter__patient", "triaged_by")
+            .order_by("-arrival_time")
+        )
 
         # Build CSV
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow([
-            "MRN", "Patient Name", "Category", "Chief Complaint",
-            "Assigned Area", "Arrival Time", "Triage Start",
-            "Triage End", "Wait (min)", "Triaged By",
-        ])
+        writer.writerow(
+            [
+                "MRN",
+                "Patient Name",
+                "Category",
+                "Chief Complaint",
+                "Assigned Area",
+                "Arrival Time",
+                "Triage Start",
+                "Triage End",
+                "Wait (min)",
+                "Triaged By",
+            ]
+        )
 
         for a in assessments:
             patient = a.encounter.patient
-            writer.writerow([
-                patient.mrn,
-                f"{patient.first_name} {patient.last_name}",
-                a.triage_category,
-                a.chief_complaint[:50],
-                a.get_assigned_area_display() if a.assigned_area else (a.assigned_clinic.name if a.assigned_clinic else ""),
-                a.arrival_time.strftime("%Y-%m-%d %H:%M"),
-                a.triage_start_time.strftime("%Y-%m-%d %H:%M") if a.triage_start_time else "",
-                a.triage_end_time.strftime("%Y-%m-%d %H:%M") if a.triage_end_time else "",
-                a.get_wait_time_minutes(),
-                a.triaged_by.get_full_name() if a.triaged_by else "",
-            ])
+            writer.writerow(
+                [
+                    patient.mrn,
+                    f"{patient.first_name} {patient.last_name}",
+                    a.triage_category,
+                    a.chief_complaint[:50],
+                    (
+                        a.get_assigned_area_display()
+                        if a.assigned_area
+                        else (a.assigned_clinic.name if a.assigned_clinic else "")
+                    ),
+                    a.arrival_time.strftime("%Y-%m-%d %H:%M"),
+                    a.triage_start_time.strftime("%Y-%m-%d %H:%M") if a.triage_start_time else "",
+                    a.triage_end_time.strftime("%Y-%m-%d %H:%M") if a.triage_end_time else "",
+                    a.get_wait_time_minutes(),
+                    a.triaged_by.get_full_name() if a.triaged_by else "",
+                ]
+            )
 
         response = HttpResponse(output.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="triage-report-{date_range}.csv"'
@@ -1244,9 +1311,7 @@ class VolumeReportView(APIView):
 
         # Count by category — reshape keys to match frontend schema
         by_category_qs = (
-            assessments.values("triage_category")
-            .annotate(count=Count("id"))
-            .order_by("-count")
+            assessments.values("triage_category").annotate(count=Count("id")).order_by("-count")
         )
         by_category = [
             {
@@ -1260,14 +1325,14 @@ class VolumeReportView(APIView):
         # Count by area — reshape keys to match frontend schema
         area_labels = dict(TriageAssessment.ASSIGNED_AREA_CHOICES)
         by_area_qs = (
-            assessments.values("assigned_area")
-            .annotate(count=Count("id"))
-            .order_by("-count")
+            assessments.values("assigned_area").annotate(count=Count("id")).order_by("-count")
         )
         by_area = [
             {
                 "area": item["assigned_area"],
-                "area_label": area_labels.get(item["assigned_area"], item["assigned_area"] or "Not assigned"),
+                "area_label": area_labels.get(
+                    item["assigned_area"], item["assigned_area"] or "Not assigned"
+                ),
                 "count": item["count"],
             }
             for item in by_area_qs
@@ -1467,16 +1532,18 @@ class ERBedViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
             cleaning = zone_beds.filter(status="CLEANING").count()
             out_of_service = zone_beds.filter(status="OUT_OF_SERVICE").count()
 
-            zone_summaries.append({
-                "zone": zone_code,
-                "zone_display": zone_display,
-                "total_beds": total,
-                "available": available,
-                "occupied": occupied,
-                "cleaning": cleaning,
-                "out_of_service": out_of_service,
-                "occupancy_rate": round((occupied / total) * 100, 1) if total > 0 else 0,
-            })
+            zone_summaries.append(
+                {
+                    "zone": zone_code,
+                    "zone_display": zone_display,
+                    "total_beds": total,
+                    "available": available,
+                    "occupied": occupied,
+                    "cleaning": cleaning,
+                    "out_of_service": out_of_service,
+                    "occupancy_rate": round((occupied / total) * 100, 1) if total > 0 else 0,
+                }
+            )
 
         return Response(zone_summaries)
 
@@ -1555,11 +1622,7 @@ class ERBedViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        bed = (
-            ERBed.objects.filter(zone=zone, status="AVAILABLE")
-            .order_by("bed_number")
-            .first()
-        )
+        bed = ERBed.objects.filter(zone=zone, status="AVAILABLE").order_by("bed_number").first()
 
         if not bed:
             return Response(
@@ -1606,15 +1669,11 @@ def _broadcast_escalation(escalation: Escalation) -> None:
             pass
 
         if loop and loop.is_running():
-            asyncio.ensure_future(
-                channel_layer.group_send("emergency_queue", message)
-            )
+            asyncio.ensure_future(channel_layer.group_send("emergency_queue", message))
         else:
             new_loop = asyncio.new_event_loop()
             try:
-                new_loop.run_until_complete(
-                    channel_layer.group_send("emergency_queue", message)
-                )
+                new_loop.run_until_complete(channel_layer.group_send("emergency_queue", message))
             finally:
                 new_loop.close()
     except Exception:
@@ -1684,24 +1743,18 @@ class WaitTimeBreachViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=["get"], url_path="summary")
     def summary(self, request):
         """Get breach summary (counts by severity and status)."""
-        active = WaitTimeBreach.objects.filter(
-            status__in=["ACTIVE", "ACKNOWLEDGED", "ESCALATED"]
-        )
-        by_severity = (
-            active.values("severity")
-            .annotate(count=Count("id"))
-            .order_by("severity")
-        )
+        active = WaitTimeBreach.objects.filter(status__in=["ACTIVE", "ACKNOWLEDGED", "ESCALATED"])
+        by_severity = active.values("severity").annotate(count=Count("id")).order_by("severity")
         by_category = (
-            active.values("triage_category")
-            .annotate(count=Count("id"))
-            .order_by("triage_category")
+            active.values("triage_category").annotate(count=Count("id")).order_by("triage_category")
         )
-        return Response({
-            "total_active": active.count(),
-            "by_severity": {item["severity"]: item["count"] for item in by_severity},
-            "by_category": {item["triage_category"]: item["count"] for item in by_category},
-        })
+        return Response(
+            {
+                "total_active": active.count(),
+                "by_severity": {item["severity"]: item["count"] for item in by_severity},
+                "by_category": {item["triage_category"]: item["count"] for item in by_category},
+            }
+        )
 
 
 class EscalationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1712,8 +1765,11 @@ class EscalationViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     queryset = Escalation.objects.all().select_related(
-        "queue_entry", "triage_assessment", "patient",
-        "escalated_by", "resolved_by",
+        "queue_entry",
+        "triage_assessment",
+        "patient",
+        "escalated_by",
+        "resolved_by",
     )
     serializer_class = EscalationSerializer
     permission_classes = [IsAuthenticated]

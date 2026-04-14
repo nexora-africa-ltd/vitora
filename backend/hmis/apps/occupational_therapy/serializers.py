@@ -157,7 +157,10 @@ class OTSessionSerializer(serializers.ModelSerializer):
     def get_therapist_name(self, obj):
         """Return therapist full name."""
         if obj.therapist:
-            return f"{obj.therapist.first_name} {obj.therapist.last_name}".strip() or obj.therapist.username
+            return (
+                f"{obj.therapist.first_name} {obj.therapist.last_name}".strip()
+                or obj.therapist.username
+            )
         return None
 
     def get_patient_name(self, obj):
@@ -237,8 +240,12 @@ class OccupationalTherapyOrderSerializer(serializers.ModelSerializer):
     treatment_type_name = serializers.CharField(source="treatment_type.name", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     priority_display = serializers.CharField(source="get_priority_display", read_only=True)
-    assessment_type_display = serializers.CharField(source="get_assessment_type_display", read_only=True)
-    referral_reason_display = serializers.CharField(source="get_referral_reason_display", read_only=True)
+    assessment_type_display = serializers.CharField(
+        source="get_assessment_type_display", read_only=True
+    )
+    referral_reason_display = serializers.CharField(
+        source="get_referral_reason_display", read_only=True
+    )
     sessions = OTSessionSerializer(many=True, read_only=True)
     sessions_remaining = serializers.IntegerField(read_only=True)
     progress_percentage = serializers.FloatField(read_only=True)
@@ -334,7 +341,9 @@ class OccupationalTherapyOrderListSerializer(serializers.ModelSerializer):
     assigned_therapist_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     priority_display = serializers.CharField(source="get_priority_display", read_only=True)
-    assessment_type_display = serializers.CharField(source="get_assessment_type_display", read_only=True)
+    assessment_type_display = serializers.CharField(
+        source="get_assessment_type_display", read_only=True
+    )
     progress_percentage = serializers.FloatField(read_only=True)
 
     class Meta:

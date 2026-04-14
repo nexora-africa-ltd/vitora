@@ -154,7 +154,9 @@ def ccc_clinic(db, sample_facility, sample_organization):
 
 
 @pytest.fixture
-def sample_clinic_session(db, sample_clinic, clinic_doctor_user, sample_facility, sample_organization):
+def sample_clinic_session(
+    db, sample_clinic, clinic_doctor_user, sample_facility, sample_organization
+):
     """Create a sample clinic session for testing."""
     from hmis.apps.clinics.models import ClinicSession
 
@@ -170,7 +172,14 @@ def sample_clinic_session(db, sample_clinic, clinic_doctor_user, sample_facility
 
 
 @pytest.fixture
-def sample_clinic_visit(db, sample_clinic_session, sample_patient, clinic_doctor_user, sample_facility, sample_organization):
+def sample_clinic_visit(
+    db,
+    sample_clinic_session,
+    sample_patient,
+    clinic_doctor_user,
+    sample_facility,
+    sample_organization,
+):
     """Create a sample clinic visit for testing."""
     from hmis.apps.clinics.models import ClinicVisit
 

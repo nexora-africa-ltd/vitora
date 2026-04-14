@@ -469,10 +469,10 @@ class TestAdultTriageUnchanged:
             chief_complaint_category="HEADACHE",
             patient_age_years=45,
             etat_danger_signs=["convulsions"],  # ignored for adults
-            dehydration_level="SEVERE",         # ignored for adults
-            fontanelle_status="BULGING",        # ignored for adults
-            capillary_refill_seconds=6,         # checked in ORANGE for all ages
-            muac_cm=10.0,                       # ignored for adults (age > 5)
+            dehydration_level="SEVERE",  # ignored for adults
+            fontanelle_status="BULGING",  # ignored for adults
+            capillary_refill_seconds=6,  # checked in ORANGE for all ages
+            muac_cm=10.0,  # ignored for adults (age > 5)
         )
         # Adult with headache + normal vitals → GREEN
         assert category == "GREEN"
@@ -495,13 +495,17 @@ class TestAgeAwareCategoryCalculation:
         vitals = {"spo2": 98, "heart_rate": 140}
         # Adult: HR 140 → warning
         cat_adult, alerts_adult = calculator.calculate(
-            vitals=vitals, mental_status="A",
-            chief_complaint_category="OTHER", patient_age_years=30,
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="OTHER",
+            patient_age_years=30,
         )
         # Infant: HR 140 → normal
         cat_infant, alerts_infant = calculator.calculate(
-            vitals=vitals, mental_status="A",
-            chief_complaint_category="OTHER", patient_age_years=0.5,
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="OTHER",
+            patient_age_years=0.5,
         )
         # Adult gets warning alert for HR, infant doesn't
         adult_hr_alerts = [a for a in alerts_adult if a.get("vital_type") == "HEART_RATE"]
@@ -514,12 +518,16 @@ class TestAgeAwareCategoryCalculation:
         vitals = {"spo2": 98, "respiratory_rate": 35}
 
         cat_infant, _ = calculator.calculate(
-            vitals=vitals, mental_status="A",
-            chief_complaint_category="OTHER", patient_age_years=0.5,
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="OTHER",
+            patient_age_years=0.5,
         )
         cat_school, alerts_school = calculator.calculate(
-            vitals=vitals, mental_status="A",
-            chief_complaint_category="OTHER", patient_age_years=8,
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="OTHER",
+            patient_age_years=8,
         )
         # School-age: RR 35 ≥ critical_high=35 → RED
         assert cat_school == "RED"
@@ -578,9 +586,7 @@ class TestEtATSerializerValidation:
 class TestTriageAssessmentSerializerAgeGroup:
     """Test the computed age_group field on the read serializer."""
 
-    def test_age_group_included_in_response(
-        self, db, sample_encounter, sample_facility, test_user
-    ):
+    def test_age_group_included_in_response(self, db, sample_encounter, sample_facility, test_user):
         """Read serializer includes age_group derived from patient DOB."""
         from django.utils import timezone
 

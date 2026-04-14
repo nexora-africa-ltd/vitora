@@ -50,9 +50,17 @@ router.register(r"temperature-readings", TemperatureReadingViewSet, basename="te
 router.register(r"fluid-balance-sheets", FluidBalanceSheetViewSet, basename="fluid-balance-sheet")
 router.register(r"fluid-balance-entries", FluidBalanceEntryViewSet, basename="fluid-balance-entry")
 router.register(r"blood-transfusions", BloodTransfusionViewSet, basename="blood-transfusion")
-router.register(r"adverse-transfusion-reactions", AdverseTransfusionReactionViewSet, basename="adverse-transfusion-reaction")
+router.register(
+    r"adverse-transfusion-reactions",
+    AdverseTransfusionReactionViewSet,
+    basename="adverse-transfusion-reaction",
+)
 router.register(r"bp-readings", BPMonitoringViewSet, basename="bp-reading")
-router.register(r"medication-administrations", MedicationAdministrationViewSet, basename="medication-administration")
+router.register(
+    r"medication-administrations",
+    MedicationAdministrationViewSet,
+    basename="medication-administration",
+)
 
 urlpatterns = [
     path("", include(router.urls)),

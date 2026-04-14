@@ -117,7 +117,14 @@ def ccc_clinic_session(db, ccc_clinic, sample_facility, sample_organization):
 
 
 @pytest.fixture
-def eye_clinic_visit(db, integration_patient, eye_clinic_session, integration_user, sample_facility, sample_organization):
+def eye_clinic_visit(
+    db,
+    integration_patient,
+    eye_clinic_session,
+    integration_user,
+    sample_facility,
+    sample_organization,
+):
     """Create a clinic visit in WAITING status for Eye clinic."""
     return ClinicVisit.objects.create(
         session=eye_clinic_session,
@@ -131,7 +138,14 @@ def eye_clinic_visit(db, integration_patient, eye_clinic_session, integration_us
 
 
 @pytest.fixture
-def ccc_clinic_visit(db, integration_patient, ccc_clinic_session, integration_user, sample_facility, sample_organization):
+def ccc_clinic_visit(
+    db,
+    integration_patient,
+    ccc_clinic_session,
+    integration_user,
+    sample_facility,
+    sample_organization,
+):
     """Create a clinic visit in WAITING status for CCC clinic."""
     return ClinicVisit.objects.create(
         session=ccc_clinic_session,
@@ -182,7 +196,9 @@ class TestEncounterClinicVisitFK:
         assert encounter.id is not None
         assert encounter.clinic_visit is None
 
-    def test_encounter_can_reference_clinic_visit(self, integration_patient, eye_clinic_visit, sample_facility):
+    def test_encounter_can_reference_clinic_visit(
+        self, integration_patient, eye_clinic_visit, sample_facility
+    ):
         """Encounter should be accessible from ClinicVisit via OneToOne."""
         encounter = Encounter.objects.create(
             patient=integration_patient,
@@ -199,7 +215,9 @@ class TestEncounterClinicVisitFK:
         assert encounter.clinic_visit == eye_clinic_visit
         assert encounter.clinic_visit.session.clinic.name == "Eye Clinic"
 
-    def test_encounter_clinic_visit_on_delete_set_null(self, integration_patient, eye_clinic_visit, sample_facility):
+    def test_encounter_clinic_visit_on_delete_set_null(
+        self, integration_patient, eye_clinic_visit, sample_facility
+    ):
         """Deleting ClinicVisit should set the relationship to NULL (via OneToOne SET_NULL)."""
         encounter = Encounter.objects.create(
             patient=integration_patient,
@@ -218,7 +236,9 @@ class TestEncounterClinicVisitFK:
         assert encounter.clinic_visit is None
         assert not ClinicVisit.objects.filter(id=visit_id).exists()
 
-    def test_encounter_clinic_visit_related_name(self, integration_patient, eye_clinic_visit, sample_facility):
+    def test_encounter_clinic_visit_related_name(
+        self, integration_patient, eye_clinic_visit, sample_facility
+    ):
         """ClinicVisit should be able to access encounter via the OneToOne field."""
         encounter = Encounter.objects.create(
             patient=integration_patient,
@@ -300,7 +320,11 @@ class TestStartConsultationEncounterLink:
         assert encounter.clinical_template == template
 
     def test_start_consultation_does_not_override_existing_encounter_clinical_template(
-        self, integration_patient, eye_clinic_visit, eye_clinic, integration_user,
+        self,
+        integration_patient,
+        eye_clinic_visit,
+        eye_clinic,
+        integration_user,
         sample_facility,
     ):
         """If an encounter already has a template, start_consultation should not replace it."""
@@ -352,7 +376,10 @@ class TestStartConsultationEncounterLink:
         assert encounter.clinic_visit.session.clinic.clinic_type == "EYE"
 
     def test_start_consultation_preserves_existing_encounter_clinic_visit(
-        self, integration_patient, eye_clinic_visit, integration_user,
+        self,
+        integration_patient,
+        eye_clinic_visit,
+        integration_user,
         sample_facility,
     ):
         """If encounter already exists, ensure clinic_visit is still set."""
@@ -393,7 +420,9 @@ class TestStartConsultationEncounterLink:
 class TestEncounterSerializerClinicFields:
     """Tests for EncounterSerializer including clinic context fields."""
 
-    def test_serializer_includes_clinic_visit_id(self, integration_patient, eye_clinic_visit, sample_facility):
+    def test_serializer_includes_clinic_visit_id(
+        self, integration_patient, eye_clinic_visit, sample_facility
+    ):
         """EncounterSerializer should include clinic_visit_id field."""
         from hmis.apps.encounters.serializers import EncounterSerializer
 
@@ -413,7 +442,9 @@ class TestEncounterSerializerClinicFields:
         assert "clinic_visit_id" in data
         assert data["clinic_visit_id"] == eye_clinic_visit.id
 
-    def test_serializer_includes_clinic_name(self, integration_patient, eye_clinic_visit, sample_facility):
+    def test_serializer_includes_clinic_name(
+        self, integration_patient, eye_clinic_visit, sample_facility
+    ):
         """EncounterSerializer should include clinic_name computed field."""
         from hmis.apps.encounters.serializers import EncounterSerializer
 
@@ -433,7 +464,9 @@ class TestEncounterSerializerClinicFields:
         assert "clinic_name" in data
         assert data["clinic_name"] == "Eye Clinic"
 
-    def test_serializer_includes_clinic_type(self, integration_patient, eye_clinic_visit, sample_facility):
+    def test_serializer_includes_clinic_type(
+        self, integration_patient, eye_clinic_visit, sample_facility
+    ):
         """EncounterSerializer should include clinic_type computed field."""
         from hmis.apps.encounters.serializers import EncounterSerializer
 
@@ -453,7 +486,9 @@ class TestEncounterSerializerClinicFields:
         assert "clinic_type" in data
         assert data["clinic_type"] == "EYE"
 
-    def test_serializer_clinic_fields_null_when_no_clinic_visit(self, integration_patient, sample_facility):
+    def test_serializer_clinic_fields_null_when_no_clinic_visit(
+        self, integration_patient, sample_facility
+    ):
         """Clinic fields should be null when encounter has no clinic_visit."""
         from hmis.apps.encounters.serializers import EncounterSerializer
 
@@ -498,7 +533,10 @@ class TestEncounterAPIClinicFields:
     """Tests for Encounter API endpoints including clinic context."""
 
     def test_get_encounter_includes_clinic_fields(
-        self, authenticated_client, integration_patient, eye_clinic_visit,
+        self,
+        authenticated_client,
+        integration_patient,
+        eye_clinic_visit,
         sample_facility,
     ):
         """GET /api/encounters/{id}/ should include clinic context fields."""
@@ -526,7 +564,10 @@ class TestEncounterAPIClinicFields:
         assert data["clinic_type"] == "EYE"
 
     def test_list_encounters_includes_clinic_fields(
-        self, authenticated_client, integration_patient, eye_clinic_visit,
+        self,
+        authenticated_client,
+        integration_patient,
+        eye_clinic_visit,
         sample_facility,
     ):
         """GET /api/encounters/ should include clinic context in list items."""
@@ -554,7 +595,11 @@ class TestEncounterAPIClinicFields:
         assert "clinic_type" in encounter_data
 
     def test_filter_encounters_by_clinic_id(
-        self, authenticated_client, integration_patient, eye_clinic_visit, ccc_clinic_visit,
+        self,
+        authenticated_client,
+        integration_patient,
+        eye_clinic_visit,
+        ccc_clinic_visit,
         sample_facility,
     ):
         """Should be able to filter encounters by clinic ID."""
@@ -602,7 +647,9 @@ class TestEncounterAPIClinicFields:
 class TestBackwardCompatibility:
     """Tests ensuring backward compatibility with existing encounters."""
 
-    def test_existing_encounters_without_clinic_visit_still_work(self, integration_patient, sample_facility):
+    def test_existing_encounters_without_clinic_visit_still_work(
+        self, integration_patient, sample_facility
+    ):
         """Existing encounters without clinic_visit should continue working."""
         # Simulate pre-existing encounter (direct OPD, not from clinic queue)
         encounter = Encounter.objects.create(
@@ -624,7 +671,9 @@ class TestBackwardCompatibility:
         assert data["clinic_type"] is None
 
     def test_existing_clinic_visit_encounter_relationship_preserved(
-        self, integration_patient, eye_clinic_visit,
+        self,
+        integration_patient,
+        eye_clinic_visit,
         sample_facility,
     ):
         """

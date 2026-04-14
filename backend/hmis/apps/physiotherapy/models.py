@@ -365,6 +365,7 @@ class PhysiotherapyOrder(HistoryMixin, models.Model):
     def save(self, *args, **kwargs):
         """Override save to auto-generate order number and calculate costs."""
         from hmis.apps.core.mixins import resolve_tenant_from_related
+
         resolve_tenant_from_related(self)
 
         if not self.pk:

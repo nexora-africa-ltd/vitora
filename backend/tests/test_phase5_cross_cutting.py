@@ -70,7 +70,9 @@ def second_facility(db, second_organization, sample_county, sample_sub_county):
 class TestAuditLogEnrichment:
     """Tests for AuditLog.log() accepting facility and organization params."""
 
-    def test_log_with_explicit_facility_and_org(self, test_user, sample_facility, sample_organization):
+    def test_log_with_explicit_facility_and_org(
+        self, test_user, sample_facility, sample_organization
+    ):
         """AuditLog.log() should store facility and organization when explicitly passed."""
         entry = AuditLog.log(
             action="patient_view",
@@ -83,7 +85,9 @@ class TestAuditLogEnrichment:
         assert entry.facility == sample_facility
         assert entry.organization == sample_organization
 
-    def test_log_with_request_auto_resolves_tenant(self, test_user, sample_facility, sample_organization):
+    def test_log_with_request_auto_resolves_tenant(
+        self, test_user, sample_facility, sample_organization
+    ):
         """AuditLog.log() should auto-resolve facility/org from a request object."""
         factory = RequestFactory()
         request = factory.get("/api/patients/")
@@ -101,7 +105,9 @@ class TestAuditLogEnrichment:
         assert entry.facility == sample_facility
         assert entry.organization == sample_organization
 
-    def test_log_explicit_facility_overrides_request(self, test_user, sample_facility, second_facility, sample_organization):
+    def test_log_explicit_facility_overrides_request(
+        self, test_user, sample_facility, second_facility, sample_organization
+    ):
         """Explicit facility param should override request.facility."""
         factory = RequestFactory()
         request = factory.get("/api/patients/")
@@ -164,7 +170,9 @@ class TestSyncQueueScoping:
         assert entry.facility == sample_facility
         assert entry.organization == sample_organization
 
-    def test_sync_entries_filtered_by_facility(self, sample_facility, second_facility, sample_organization, second_organization):
+    def test_sync_entries_filtered_by_facility(
+        self, sample_facility, second_facility, sample_organization, second_organization
+    ):
         """SyncQueue entries can be filtered by facility."""
         SyncQueue.objects.create(
             operation="CREATE",

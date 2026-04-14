@@ -123,7 +123,10 @@ class PhysiotherapySessionSerializer(serializers.ModelSerializer):
     def get_therapist_name(self, obj):
         """Return therapist full name."""
         if obj.therapist:
-            return f"{obj.therapist.first_name} {obj.therapist.last_name}".strip() or obj.therapist.username
+            return (
+                f"{obj.therapist.first_name} {obj.therapist.last_name}".strip()
+                or obj.therapist.username
+            )
         return None
 
 
@@ -273,13 +276,19 @@ class PhysiotherapyOrderSerializer(serializers.ModelSerializer):
     def get_ordered_by_name(self, obj):
         """Return ordering clinician name."""
         if obj.ordered_by:
-            return f"{obj.ordered_by.first_name} {obj.ordered_by.last_name}".strip() or obj.ordered_by.username
+            return (
+                f"{obj.ordered_by.first_name} {obj.ordered_by.last_name}".strip()
+                or obj.ordered_by.username
+            )
         return None
 
     def get_assigned_therapist_name(self, obj):
         """Return assigned therapist name."""
         if obj.assigned_therapist:
-            return f"{obj.assigned_therapist.first_name} {obj.assigned_therapist.last_name}".strip() or obj.assigned_therapist.username
+            return (
+                f"{obj.assigned_therapist.first_name} {obj.assigned_therapist.last_name}".strip()
+                or obj.assigned_therapist.username
+            )
         return None
 
 
@@ -364,7 +373,10 @@ class PhysiotherapyOrderListSerializer(serializers.ModelSerializer):
     def get_assigned_therapist_name(self, obj):
         """Return assigned therapist name."""
         if obj.assigned_therapist:
-            return f"{obj.assigned_therapist.first_name} {obj.assigned_therapist.last_name}".strip() or obj.assigned_therapist.username
+            return (
+                f"{obj.assigned_therapist.first_name} {obj.assigned_therapist.last_name}".strip()
+                or obj.assigned_therapist.username
+            )
         return None
 
 

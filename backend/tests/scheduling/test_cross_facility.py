@@ -27,7 +27,9 @@ def department_cardiology(db):
 
 
 @pytest.fixture
-def staff_with_department(db, test_user, sample_organization, sample_facility, department_cardiology, sample_role):
+def staff_with_department(
+    db, test_user, sample_organization, sample_facility, department_cardiology, sample_role
+):
     """Create a StaffProfile with a department assigned."""
     # Create a separate user for this staff member
     from django.contrib.auth import get_user_model

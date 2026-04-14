@@ -81,7 +81,9 @@ def sample_test(db):
 
 
 @pytest.fixture
-def sample_lab_order(sample_patient, sample_encounter, sample_user, sample_test, sample_organization, sample_facility):
+def sample_lab_order(
+    sample_patient, sample_encounter, sample_user, sample_test, sample_organization, sample_facility
+):
     """Create a sample lab order with an item."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -131,7 +133,12 @@ class TestLabQueueModel:
         assert len(queue.queue_number) == 17  # LAB-YYYYMMDD-XXXX
 
     def test_queue_number_uniqueness(
-        self, sample_lab_order, sample_patient, sample_encounter, sample_user, sample_test,
+        self,
+        sample_lab_order,
+        sample_patient,
+        sample_encounter,
+        sample_user,
+        sample_test,
         sample_facility,
         sample_organization,
     ):
@@ -162,7 +169,15 @@ class TestLabQueueModel:
 
         assert queue1.queue_number != queue2.queue_number
 
-    def test_priority_ordering(self, sample_patient, sample_encounter, sample_user, sample_test, sample_organization, sample_facility):
+    def test_priority_ordering(
+        self,
+        sample_patient,
+        sample_encounter,
+        sample_user,
+        sample_test,
+        sample_organization,
+        sample_facility,
+    ):
         """STAT > Urgent > Routine priority ordering."""
         from hmis.apps.laboratory.models import LabQueue
 
@@ -317,7 +332,11 @@ class TestLabQueueModel:
         assert tat.total_seconds() > 0
 
     def test_queue_filtering_by_status(
-        self, sample_patient, sample_encounter, sample_user, sample_test,
+        self,
+        sample_patient,
+        sample_encounter,
+        sample_user,
+        sample_test,
         sample_facility,
         sample_organization,
     ):
@@ -355,7 +374,12 @@ class TestLabQueueModel:
         assert processing.count() == 1
 
     def test_queue_filtering_by_technician(
-        self, sample_patient, sample_encounter, sample_user, sample_test, lab_technician,
+        self,
+        sample_patient,
+        sample_encounter,
+        sample_user,
+        sample_test,
+        lab_technician,
         sample_facility,
         sample_organization,
     ):

@@ -261,7 +261,9 @@ class TestInvitationCreate:
         response = client.post("/api/core/invitations/", invitation_data)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_duplicate_pending_email_rejected(self, admin_client, invitation_data, pending_invitation):
+    def test_duplicate_pending_email_rejected(
+        self, admin_client, invitation_data, pending_invitation
+    ):
         """Cannot create a second pending invitation for the same email."""
         invitation_data["email"] = pending_invitation.email
         response = admin_client.post("/api/core/invitations/", invitation_data)

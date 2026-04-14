@@ -131,7 +131,14 @@ class TestDefaultRolesFixture:
 
         call_command("load_default_roles", stdout=StringIO())
 
-        valid_categories = ["CLINICAL", "ADMINISTRATIVE", "TECHNICAL", "MANAGEMENT", "COMMUNITY", "ALLIED_HEALTH"]
+        valid_categories = [
+            "CLINICAL",
+            "ADMINISTRATIVE",
+            "TECHNICAL",
+            "MANAGEMENT",
+            "COMMUNITY",
+            "ALLIED_HEALTH",
+        ]
 
         for role in Role.objects.all():
             assert role.category in valid_categories
@@ -357,7 +364,11 @@ def _load_fixture():
     """Load roles fixture from file, return list of role entries."""
     fixture_path = (
         Path(__file__).resolve().parent.parent.parent
-        / "hmis" / "apps" / "core" / "fixtures" / "roles.json"
+        / "hmis"
+        / "apps"
+        / "core"
+        / "fixtures"
+        / "roles.json"
     )
     data = json.loads(fixture_path.read_text())
     return [item for item in data if item.get("model") == "core.role"]
@@ -401,7 +412,7 @@ class TestExpandedPermissionMatrices:
 
         unmapped = []
         for role in Role.objects.all():
-            for resource in (role.permissions_matrix or {}):
+            for resource in role.permissions_matrix or {}:
                 if resource not in MODEL_MAPPING:
                     unmapped.append(f"{role.code}.{resource}")
 
@@ -469,7 +480,11 @@ class TestExpandedPermissionMatrices:
         if not Role.objects.filter(code="ORG-ADMIN").exists():
             fixture_path = (
                 Path(__file__).resolve().parent.parent.parent
-                / "hmis" / "apps" / "core" / "fixtures" / "roles.json"
+                / "hmis"
+                / "apps"
+                / "core"
+                / "fixtures"
+                / "roles.json"
             )
             call_command("loaddata", str(fixture_path), verbosity=0)
 
@@ -510,8 +525,13 @@ class TestExpandedPermissionMatrices:
 
         # Nurse-specific resources that doctors don't need directly
         nurse_only = {
-            "NursingKardex", "NursingCarePlanEntry", "ShiftHandover",
-            "Escalation", "GrowthMeasurement", "Specimen", "EmergencyContact",
+            "NursingKardex",
+            "NursingCarePlanEntry",
+            "ShiftHandover",
+            "Escalation",
+            "GrowthMeasurement",
+            "Specimen",
+            "EmergencyContact",
         }
         remaining = nurse_resources - doctor_resources - nurse_only
         assert remaining == set(), f"DOCTOR missing nurse resources: {remaining}"
@@ -666,7 +686,13 @@ class TestExpandedPermissionMatrices:
         """Allied health roles should have ClinicalReferral and Appointment read."""
         from hmis.apps.core.models import Role
 
-        for code in ("PHYSIOTHERAPIST", "DIETITIAN", "OCCUPATIONAL_THERAPIST", "COUNSELLOR", "SOCIAL_WORKER"):
+        for code in (
+            "PHYSIOTHERAPIST",
+            "DIETITIAN",
+            "OCCUPATIONAL_THERAPIST",
+            "COUNSELLOR",
+            "SOCIAL_WORKER",
+        ):
             role = Role.objects.get(code=code)
             assert "ClinicalReferral" in role.permissions_matrix, f"{code} missing ClinicalReferral"
             assert role.permissions_matrix["ClinicalReferral"]["read"] is True
@@ -686,8 +712,18 @@ class TestExpandedPermissionMatrices:
         from hmis.apps.core.models import Role
 
         counsellor = Role.objects.get(code="COUNSELLOR")
-        assert counsellor.permissions_matrix["CounsellingReferral"]["view_sensitive_counselling_referral"] is True
-        assert counsellor.permissions_matrix["CounsellingSession"]["view_sensitive_counselling_session"] is True
+        assert (
+            counsellor.permissions_matrix["CounsellingReferral"][
+                "view_sensitive_counselling_referral"
+            ]
+            is True
+        )
+        assert (
+            counsellor.permissions_matrix["CounsellingSession"][
+                "view_sensitive_counselling_session"
+            ]
+            is True
+        )
 
     # ── RECEPTIONIST ─────────────────────────────────────────────────────
 

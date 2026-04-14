@@ -67,9 +67,7 @@ class FacilityDailySummarySerializer(serializers.ModelSerializer):
 
 class DepartmentMonthlySummarySerializer(serializers.ModelSerializer):
     facility_name = serializers.CharField(source="facility.name", read_only=True)
-    department_display = serializers.CharField(
-        source="get_department_display", read_only=True
-    )
+    department_display = serializers.CharField(source="get_department_display", read_only=True)
 
     class Meta:
         model = DepartmentMonthlySummary

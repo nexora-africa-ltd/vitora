@@ -291,11 +291,15 @@ class TemplateDataSynchronizer:
 
         # Fallback: count encounters of same type
         encounter_type = encounter.encounter_type
-        count = Encounter.objects.filter(
-            patient=patient,
-            encounter_type=encounter_type,
-            status__in=["CREATED", "FINALIZED"],
-        ).exclude(pk=encounter.pk).count()
+        count = (
+            Encounter.objects.filter(
+                patient=patient,
+                encounter_type=encounter_type,
+                status__in=["CREATED", "FINALIZED"],
+            )
+            .exclude(pk=encounter.pk)
+            .count()
+        )
 
         return count + 1
 

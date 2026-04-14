@@ -198,9 +198,7 @@ class QualityMeasureResultSerializer(serializers.ModelSerializer):
     measure_code = serializers.CharField(source="measure.code", read_only=True)
     measure_name = serializers.CharField(source="measure.name", read_only=True)
     clinic_name = serializers.CharField(source="clinic.name", read_only=True)
-    period_type_display = serializers.CharField(
-        source="get_period_type_display", read_only=True
-    )
+    period_type_display = serializers.CharField(source="get_period_type_display", read_only=True)
 
     class Meta:
         model = QualityMeasureResult

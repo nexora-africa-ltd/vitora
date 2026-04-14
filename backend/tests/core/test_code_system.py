@@ -95,8 +95,6 @@ class TestCodeSystemModel:
         assert str(code_system) == "String Test (str-test)"
 
 
-
-
 @pytest.fixture(autouse=True)
 def _seed_code_systems(request, db):
     """Seed the CodeSystem entries that data migrations would create."""
@@ -108,7 +106,12 @@ def _seed_code_systems(request, db):
         from hmis.apps.core.models import CodeSystem
 
         entries = [
-            ("vitora-lab", "Vitora Laboratory Codes", "https://vitora.health/fhir/CodeSystem/laboratory", True),
+            (
+                "vitora-lab",
+                "Vitora Laboratory Codes",
+                "https://vitora.health/fhir/CodeSystem/laboratory",
+                True,
+            ),
             ("icd-10", "ICD-10", "http://hl7.org/fhir/sid/icd-10", False),
             ("loinc", "LOINC", "http://loinc.org", False),
             ("sha-tariff-2025", "SHA Tariff 2025", "https://sha.go.ke/tariff/2025", False),
@@ -126,6 +129,7 @@ def _seed_code_systems(request, db):
                     "is_active": True,
                 },
             )
+
 
 @pytest.mark.unit
 class TestPrePopulatedCodeSystems:

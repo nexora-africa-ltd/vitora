@@ -114,7 +114,9 @@ class TestDelivery:
 class TestGrowthMeasurement:
     """Tests for growth measurement model."""
 
-    def test_growth_measurement_calculates_age_in_days(self, sample_county, sample_sub_county, sample_organization):
+    def test_growth_measurement_calculates_age_in_days(
+        self, sample_county, sample_sub_county, sample_organization
+    ):
         """Should auto-calculate age in days from patient DOB."""
         from hmis.apps.mch.models import GrowthMeasurement
         from hmis.apps.patients.models import Patient
@@ -253,7 +255,9 @@ class TestANCVisit:
         assert response.status_code == 201
         assert response.data["registration"] == registration.id
 
-    def test_list_anc_visits_filter_by_registration(self, authenticated_client, anc_enrollment, sample_patient):
+    def test_list_anc_visits_filter_by_registration(
+        self, authenticated_client, anc_enrollment, sample_patient
+    ):
         """Should filter ANC visits by registration."""
         from hmis.apps.mch.models import ANCVisit, MCHRegistration
 
@@ -280,7 +284,9 @@ class TestANCVisit:
 class TestImmunizationSchedule:
     """Tests for immunization schedule generation."""
 
-    def test_generate_schedule_creates_records(self, sample_county, sample_sub_county, sample_organization):
+    def test_generate_schedule_creates_records(
+        self, sample_county, sample_sub_county, sample_organization
+    ):
         """Should create scheduled immunization records based on KEPI data."""
         from hmis.apps.mch.models import ImmunizationRecord, Vaccine
         from hmis.apps.mch.services.immunization import generate_immunization_schedule
@@ -318,7 +324,9 @@ class TestImmunizationSchedule:
 class TestHEIFollowUp:
     """Tests for HIV-exposed infant follow-up."""
 
-    def test_create_hei_followup(self, sample_county, sample_sub_county, sample_patient, anc_enrollment, sample_organization):
+    def test_create_hei_followup(
+        self, sample_county, sample_sub_county, sample_patient, anc_enrollment, sample_organization
+    ):
         """Should allow creating HEI follow-up for an infant."""
         from hmis.apps.mch.models import HEIFollowUp, MCHRegistration
         from hmis.apps.patients.models import Patient

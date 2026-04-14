@@ -40,9 +40,7 @@ class ImmunizationConsumer(AsyncJsonWebsocketConsumer):
         # Validate facility exists
         facility_exists = await self._facility_exists(self.facility_id)
         if not facility_exists:
-            logger.warning(
-                f"WebSocket connection rejected: facility {self.facility_id} not found"
-            )
+            logger.warning(f"WebSocket connection rejected: facility {self.facility_id} not found")
             await self.close()
             return
 

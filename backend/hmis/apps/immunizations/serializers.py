@@ -32,9 +32,7 @@ class VaccineDefinitionSerializer(serializers.ModelSerializer):
     billing_service_name = serializers.CharField(
         source="billing_service.name", read_only=True, default=None
     )
-    billing_price = serializers.DecimalField(
-        max_digits=10, decimal_places=2, read_only=True
-    )
+    billing_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = VaccineDefinition
@@ -251,21 +249,13 @@ class AEFISerializer(serializers.ModelSerializer):
     """Full serializer for AEFI report — aligned with MOH AEFI Reporting Form."""
 
     # Vaccine context
-    vaccine_code = serializers.CharField(
-        source="immunization_record.vaccine.code", read_only=True
-    )
-    vaccine_name = serializers.CharField(
-        source="immunization_record.vaccine.name", read_only=True
-    )
+    vaccine_code = serializers.CharField(source="immunization_record.vaccine.code", read_only=True)
+    vaccine_name = serializers.CharField(source="immunization_record.vaccine.name", read_only=True)
 
     # Patient context
     patient_name = serializers.SerializerMethodField()
-    patient_id = serializers.IntegerField(
-        source="immunization_record.patient_id", read_only=True
-    )
-    patient_mrn = serializers.CharField(
-        source="immunization_record.patient.mrn", read_only=True
-    )
+    patient_id = serializers.IntegerField(source="immunization_record.patient_id", read_only=True)
+    patient_mrn = serializers.CharField(source="immunization_record.patient.mrn", read_only=True)
     patient_gender = serializers.CharField(
         source="immunization_record.patient.gender", read_only=True
     )
@@ -419,9 +409,7 @@ class AEFICreateSerializer(serializers.ModelSerializer):
 
     def validate_event_types(self, value):
         if not isinstance(value, list) or len(value) == 0:
-            raise serializers.ValidationError(
-                "At least one event type must be selected."
-            )
+            raise serializers.ValidationError("At least one event type must be selected.")
         invalid = set(value) - self.VALID_EVENT_TYPES
         if invalid:
             raise serializers.ValidationError(
@@ -444,13 +432,9 @@ class AEFICreateSerializer(serializers.ModelSerializer):
             )
         # If OTHER is selected, detail is required
         event_types = attrs.get("event_types", [])
-        if AEFIEventType.OTHER in event_types and not attrs.get(
-            "other_event_type_detail", ""
-        ):
+        if AEFIEventType.OTHER in event_types and not attrs.get("other_event_type_detail", ""):
             raise serializers.ValidationError(
-                {
-                    "other_event_type_detail": "Specify the event type when 'Other' is selected."
-                }
+                {"other_event_type_detail": "Specify the event type when 'Other' is selected."}
             )
         return attrs
 
@@ -460,30 +444,40 @@ class AEFIFollowUpSerializer(serializers.Serializer):
 
     notes = serializers.CharField(required=False, allow_blank=True, default="")
     event_types = serializers.ListField(
-        child=serializers.CharField(), required=False, default=list,
+        child=serializers.CharField(),
+        required=False,
+        default=list,
     )
     severity = serializers.ChoiceField(
-        choices=AEFISeverity.choices, required=False, allow_blank=True, default="",
+        choices=AEFISeverity.choices,
+        required=False,
+        allow_blank=True,
+        default="",
     )
     outcome = serializers.ChoiceField(
-        choices=AEFIOutcome.choices, required=False, allow_blank=True, default="",
+        choices=AEFIOutcome.choices,
+        required=False,
+        allow_blank=True,
+        default="",
     )
     treatment_given = serializers.BooleanField(required=False, default=False)
     treatment_details = serializers.CharField(
-        required=False, allow_blank=True, default="",
+        required=False,
+        allow_blank=True,
+        default="",
     )
     specimen_collected = serializers.BooleanField(required=False, default=False)
     specimen_type = serializers.CharField(
-        required=False, allow_blank=True, default="",
+        required=False,
+        allow_blank=True,
+        default="",
     )
 
 
 class AEFIListSerializer(serializers.ModelSerializer):
     """Lean serializer for AEFI list."""
 
-    vaccine_code = serializers.CharField(
-        source="immunization_record.vaccine.code", read_only=True
-    )
+    vaccine_code = serializers.CharField(source="immunization_record.vaccine.code", read_only=True)
     patient_name = serializers.SerializerMethodField()
 
     class Meta:

@@ -250,8 +250,7 @@ class TestDepartmentAPI:
             for staff_entry in default_response.data["staff"]
         )
         assert any(
-            staff_entry["id"] == active_staff.id
-            for staff_entry in default_response.data["staff"]
+            staff_entry["id"] == active_staff.id for staff_entry in default_response.data["staff"]
         )
 
         include_inactive_response = authenticated_client.get(
@@ -516,7 +515,9 @@ class TestStaffProfileAPI:
         assert response.data["primary_department"] == new_department.id
         assert response.data["primary_role"] == new_role.id
 
-    def test_update_staff_profile_logs_audit_event(self, authenticated_client, sample_staff, admin_user):
+    def test_update_staff_profile_logs_audit_event(
+        self, authenticated_client, sample_staff, admin_user
+    ):
         """Updating staff should generate an audit log entry."""
         from hmis.apps.core.models import AuditLog
 

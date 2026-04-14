@@ -167,7 +167,5 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         self.stdout.write(
-            self.style.SUCCESS(
-                f"Done. Created {created_count}, skipped {skipped_count}."
-            )
+            self.style.SUCCESS(f"Done. Created {created_count}, skipped {skipped_count}.")
         )

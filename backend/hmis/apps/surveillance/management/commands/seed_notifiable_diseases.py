@@ -179,8 +179,7 @@ class Command(BaseCommand):
                 f"{'Dry run' if dry_run else 'Seeding'} complete: "
                 f"{created_count} {'would be ' if dry_run else ''}created, "
                 f"{updated_count} {'would be ' if dry_run else ''}updated, "
-                f"{skipped_count} skipped"
-                + (f", {error_count} errors" if error_count else "")
+                f"{skipped_count} skipped" + (f", {error_count} errors" if error_count else "")
             )
         )
 

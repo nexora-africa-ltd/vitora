@@ -25,7 +25,9 @@ app_name = "mch"
 router = DefaultRouter()
 router.register(r"registrations", MCHRegistrationViewSet, basename="mch-registration")
 router.register(r"anc-visits", ANCVisitViewSet, basename="mch-anc-visit")
-router.register(r"community-screenings", CommunityScreeningViewSet, basename="mch-community-screening")
+router.register(
+    r"community-screenings", CommunityScreeningViewSet, basename="mch-community-screening"
+)
 router.register(r"deliveries", DeliveryViewSet, basename="mch-delivery")
 router.register(r"labour-partographs", LabourPartographViewSet, basename="mch-labour-partograph")
 router.register(

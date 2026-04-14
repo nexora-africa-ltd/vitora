@@ -44,7 +44,9 @@ class TestDashboardStatsCheckinSection:
         for key in ("checked_in_today", "waiting", "completed_today"):
             assert isinstance(response.data["checkin"][key], int)
 
-    def test_checkin_counts_reflect_data(self, authenticated_client, sample_patient, sample_facility):
+    def test_checkin_counts_reflect_data(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """Creating check-ins should be reflected in stats."""
         from hmis.apps.checkin.models import CheckIn
         from hmis.apps.encounters.models import Encounter
@@ -309,7 +311,7 @@ class TestDashboardStatsExtendedCrossCuts:
             "allied_health",
         ):
             for key, value in response.data[section].items():
-                assert isinstance(value, (int, float)), (
-                    f"{section}.{key} should be numeric, got {type(value)}"
-                )
+                assert isinstance(
+                    value, (int, float)
+                ), f"{section}.{key} should be numeric, got {type(value)}"
                 assert value >= 0, f"{section}.{key} should be >= 0, got {value}"

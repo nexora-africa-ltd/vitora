@@ -2,7 +2,6 @@
 Serializers for Pharmacy app.
 """
 
-
 import re
 
 from django.apps import apps
@@ -546,11 +545,13 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
 
         # If there are warnings and user hasn't acknowledged them, raise validation error
         if allergy_warnings and not acknowledge_warnings:
-            raise serializers.ValidationError({
-                "allergy_warnings": allergy_warnings,
-                "message": "Drug-allergy interactions detected. Set acknowledge_allergy_warnings=true to proceed.",
-                "has_high_risk": any(w["is_high_risk"] for w in allergy_warnings),
-            })
+            raise serializers.ValidationError(
+                {
+                    "allergy_warnings": allergy_warnings,
+                    "message": "Drug-allergy interactions detected. Set acknowledge_allergy_warnings=true to proceed.",
+                    "has_high_risk": any(w["is_high_risk"] for w in allergy_warnings),
+                }
+            )
 
         # Store warnings for later use (e.g., audit logging)
         data["_allergy_warnings"] = allergy_warnings

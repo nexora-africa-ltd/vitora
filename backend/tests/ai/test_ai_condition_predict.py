@@ -483,9 +483,7 @@ class TestConditionPredictSanitization:
 
             call_payload = mock_client.predict_condition.call_args[0][0]
             # MRN should be stripped from the chief complaint
-            assert "MRN-20260101-0001" not in call_payload["patient_features"][
-                "chief_complaint"
-            ]
+            assert "MRN-20260101-0001" not in call_payload["patient_features"]["chief_complaint"]
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_sanitizes_allergies(

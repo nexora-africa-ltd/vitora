@@ -327,7 +327,9 @@ class TestPrescriptionHistory:
     """Test history tracking on Prescription model."""
 
     @pytest.fixture
-    def test_prescription(self, test_patient, test_encounter, history_user, sample_facility, sample_organization):
+    def test_prescription(
+        self, test_patient, test_encounter, history_user, sample_facility, sample_organization
+    ):
         """Create a prescription for testing."""
         return Prescription.objects.create(
             patient=test_patient,

@@ -252,9 +252,11 @@ class FHIRPractitionerView(APIView):
                 {
                     "use": "official",
                     "system": f"{base_url}/identifier/staff",
-                    "value": staff.employee_id
-                    if hasattr(staff, "employee_id") and staff.employee_id
-                    else str(staff.id),
+                    "value": (
+                        staff.employee_id
+                        if hasattr(staff, "employee_id") and staff.employee_id
+                        else str(staff.id)
+                    ),
                 }
             ],
             "active": staff.user.is_active if staff.user else True,
@@ -275,12 +277,16 @@ class FHIRPractitionerView(APIView):
                         "coding": [
                             {
                                 "system": f"{base_url}/CodeSystem/staff-role",
-                                "code": staff.primary_role.code
-                                if hasattr(staff.primary_role, "code")
-                                else str(staff.primary_role.id),
-                                "display": staff.primary_role.name
-                                if hasattr(staff.primary_role, "name")
-                                else str(staff.primary_role),
+                                "code": (
+                                    staff.primary_role.code
+                                    if hasattr(staff.primary_role, "code")
+                                    else str(staff.primary_role.id)
+                                ),
+                                "display": (
+                                    staff.primary_role.name
+                                    if hasattr(staff.primary_role, "name")
+                                    else str(staff.primary_role)
+                                ),
                             }
                         ]
                     }
@@ -452,17 +458,23 @@ class FHIRObservationView(APIView):
                 "coding": [
                     {
                         "system": "http://loinc.org",
-                        "code": lab_result.lab_order.test_type.loinc_code
-                        if hasattr(lab_result.lab_order.test_type, "loinc_code")
-                        else "unknown",
-                        "display": lab_result.lab_order.test_type.name
-                        if lab_result.lab_order.test_type
-                        else "Lab Test",
+                        "code": (
+                            lab_result.lab_order.test_type.loinc_code
+                            if hasattr(lab_result.lab_order.test_type, "loinc_code")
+                            else "unknown"
+                        ),
+                        "display": (
+                            lab_result.lab_order.test_type.name
+                            if lab_result.lab_order.test_type
+                            else "Lab Test"
+                        ),
                     }
                 ],
-                "text": lab_result.lab_order.test_type.name
-                if lab_result.lab_order.test_type
-                else "Lab Test",
+                "text": (
+                    lab_result.lab_order.test_type.name
+                    if lab_result.lab_order.test_type
+                    else "Lab Test"
+                ),
             },
             "subject": {"reference": f"Patient/{lab_result.lab_order.patient.id}"},
             "effectiveDateTime": format_date(
@@ -683,35 +695,43 @@ class FHIRConditionView(APIView):
 
         # ICD-10 coding
         if diagnosis.icd10_code:
-            codings.append({
-                "system": "http://hl7.org/fhir/sid/icd-10",
-                "code": diagnosis.icd10_code.code,
-                "display": diagnosis.icd10_code.description,
-            })
+            codings.append(
+                {
+                    "system": "http://hl7.org/fhir/sid/icd-10",
+                    "code": diagnosis.icd10_code.code,
+                    "display": diagnosis.icd10_code.description,
+                }
+            )
 
         # ICD-11 coding
         if getattr(diagnosis, "icd11_code", ""):
-            codings.append({
-                "system": "http://id.who.int/icd/release/11/mms",
-                "code": diagnosis.icd11_code,
-                "display": diagnosis.icd11_display or diagnosis.icd11_code,
-            })
+            codings.append(
+                {
+                    "system": "http://id.who.int/icd/release/11/mms",
+                    "code": diagnosis.icd11_code,
+                    "display": diagnosis.icd11_display or diagnosis.icd11_code,
+                }
+            )
 
         # SNOMED CT coding
         if getattr(diagnosis, "snomed_code", ""):
-            codings.append({
-                "system": "http://snomed.info/sct",
-                "code": diagnosis.snomed_code,
-                "display": diagnosis.snomed_display or diagnosis.snomed_code,
-            })
+            codings.append(
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": diagnosis.snomed_code,
+                    "display": diagnosis.snomed_display or diagnosis.snomed_code,
+                }
+            )
 
         # Fallback if no coded diagnosis
         if not codings:
-            codings.append({
-                "system": "http://hl7.org/fhir/sid/icd-10",
-                "code": "unknown",
-                "display": diagnosis.free_text_diagnosis or diagnosis.notes or "Unknown",
-            })
+            codings.append(
+                {
+                    "system": "http://hl7.org/fhir/sid/icd-10",
+                    "code": "unknown",
+                    "display": diagnosis.free_text_diagnosis or diagnosis.notes or "Unknown",
+                }
+            )
 
         # Determine display text
         text = (

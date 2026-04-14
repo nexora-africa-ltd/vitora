@@ -1251,9 +1251,7 @@ class Discharge(TimeStampedModel):
                     Invoice.Status.WRITTEN_OFF,
                 ]
             )
-            outstanding = sum(
-                (inv.balance_due for inv in unpaid), Decimal("0.00")
-            )
+            outstanding = sum((inv.balance_due for inv in unpaid), Decimal("0.00"))
             if outstanding > 0:
                 errors["billing_cleared"] = (
                     f"Cannot discharge: KES {outstanding:,.2f} outstanding balance"
@@ -1263,9 +1261,11 @@ class Discharge(TimeStampedModel):
             rx_q = Q(admission=self.admission) | Q(encounter=self.admission.ipd_encounter)
             if self.admission.opd_encounter_id:
                 rx_q |= Q(encounter=self.admission.opd_encounter)
-            pending_rx = Prescription.objects.filter(rx_q).exclude(
-                status__in=["DISPENSED", "CANCELLED"]
-            ).distinct()
+            pending_rx = (
+                Prescription.objects.filter(rx_q)
+                .exclude(status__in=["DISPENSED", "CANCELLED"])
+                .distinct()
+            )
             if pending_rx.exists():
                 errors["pharmacy_cleared"] = (
                     f"Cannot discharge: {pending_rx.count()} prescription(s) not yet dispensed"
@@ -1275,9 +1275,11 @@ class Discharge(TimeStampedModel):
             lab_q = Q(admission=self.admission) | Q(encounter=self.admission.ipd_encounter)
             if self.admission.opd_encounter_id:
                 lab_q |= Q(encounter=self.admission.opd_encounter)
-            pending_labs = LabOrder.objects.filter(lab_q).exclude(
-                status__in=["COMPLETED", "CANCELLED"]
-            ).distinct()
+            pending_labs = (
+                LabOrder.objects.filter(lab_q)
+                .exclude(status__in=["COMPLETED", "CANCELLED"])
+                .distinct()
+            )
             if pending_labs.exists():
                 errors["lab_results_acknowledged"] = (
                     f"Cannot discharge: {pending_labs.count()} lab order(s) with pending results"
@@ -1862,9 +1864,7 @@ class NursingCarePlanEntry(models.Model):
     )
 
     # DATE & TIME
-    recorded_at = models.DateTimeField(
-        help_text="Date and time the entry was recorded"
-    )
+    recorded_at = models.DateTimeField(help_text="Date and time the entry was recorded")
     recorded_by = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
@@ -1873,14 +1873,10 @@ class NursingCarePlanEntry(models.Model):
     )
 
     # ASSESSMENT (cluster of cues)
-    assessment = models.TextField(
-        help_text="Assessment findings / cluster of cues observed"
-    )
+    assessment = models.TextField(help_text="Assessment findings / cluster of cues observed")
 
     # NURSING DIAGNOSIS
-    nursing_diagnosis = models.TextField(
-        help_text="Nursing diagnosis derived from assessment"
-    )
+    nursing_diagnosis = models.TextField(help_text="Nursing diagnosis derived from assessment")
 
     # GOAL AND OUTCOME CRITERIA
     goal_and_outcome_criteria = models.TextField(
@@ -1888,9 +1884,7 @@ class NursingCarePlanEntry(models.Model):
     )
 
     # NURSING PLAN OF ACTION/INTERVENTION
-    plan_of_action = models.TextField(
-        help_text="Nursing plan of action / planned interventions"
-    )
+    plan_of_action = models.TextField(help_text="Nursing plan of action / planned interventions")
 
     # SCIENTIFIC RATIONALE
     scientific_rationale = models.TextField(
@@ -3018,7 +3012,16 @@ class MedicationAdministration(TimeStampedModel):
             self.dose_given = dose_given
         if notes:
             self.notes = notes
-        self.save(update_fields=["status", "actual_time", "administered_by", "dose_given", "notes", "updated_at"])
+        self.save(
+            update_fields=[
+                "status",
+                "actual_time",
+                "administered_by",
+                "dose_given",
+                "notes",
+                "updated_at",
+            ]
+        )
 
 
 # ============================================================================
@@ -3041,9 +3044,9 @@ def create_kardex_for_admission(sender, instance, created, **kwargs):
         # Build allergy summary from patient's active allergy records
         allergies_text = ""
         try:
-            active_allergies = instance.patient.allergies.filter(
-                status="ACTIVE"
-            ).values_list("substance", flat=True)
+            active_allergies = instance.patient.allergies.filter(status="ACTIVE").values_list(
+                "substance", flat=True
+            )
             if active_allergies:
                 allergies_text = ", ".join(active_allergies)
         except Exception:
@@ -3265,16 +3268,12 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
     vitals_at_start_rr = models.IntegerField(null=True, blank=True)
 
     vitals_during_bp = models.CharField(max_length=20, blank=True)
-    vitals_during_temp = models.DecimalField(
-        max_digits=4, decimal_places=1, null=True, blank=True
-    )
+    vitals_during_temp = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     vitals_during_pulse = models.IntegerField(null=True, blank=True)
     vitals_during_rr = models.IntegerField(null=True, blank=True)
 
     vitals_at_stop_bp = models.CharField(max_length=20, blank=True)
-    vitals_at_stop_temp = models.DecimalField(
-        max_digits=4, decimal_places=1, null=True, blank=True
-    )
+    vitals_at_stop_temp = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     vitals_at_stop_pulse = models.IntegerField(null=True, blank=True)
     vitals_at_stop_rr = models.IntegerField(null=True, blank=True)
 
@@ -3528,9 +3527,7 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
         # Items 6-7: Blood culture (donor pack + recipient blood)
         # Item 11: Urinalysis (hemoglobinuria check)
         ATR_TEST_CODES = ["CBC", "BCULTURE", "UA"]
-        tests = TestCatalog.objects.filter(
-            code__in=ATR_TEST_CODES, is_active=True
-        )
+        tests = TestCatalog.objects.filter(code__in=ATR_TEST_CODES, is_active=True)
         if not tests.exists():
             raise ValidationError(
                 "No matching lab tests found in the catalog. "
@@ -3593,7 +3590,9 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
 
         # Map CBC/FBC results → haematological_results
         haem_map = {
-            "WBC": "wbc", "HB": "hb", "PLT": "plt",
+            "WBC": "wbc",
+            "HB": "hb",
+            "PLT": "plt",
         }
         cbc_result = results_by_code.get("CBC") or results_by_code.get("FBC")
         if cbc_result:
@@ -3631,7 +3630,9 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
         bculture_result = results_by_code.get("BCULTURE")
         if bculture_result:
             value = bculture_result.text_value or (
-                str(bculture_result.numeric_value) if bculture_result.numeric_value is not None else ""
+                str(bculture_result.numeric_value)
+                if bculture_result.numeric_value is not None
+                else ""
             )
             if value:
                 if not self.culture_donor_pack_results:
@@ -3643,10 +3644,14 @@ class AdverseTransfusionReaction(FacilityScopedModel, TimeStampedModel):
 
         update_fields = ["updated_at"]
         if updated:
-            update_fields.extend([
-                "haematological_results", "urinalysis",
-                "culture_donor_pack_results", "culture_recipient_blood_results",
-            ])
+            update_fields.extend(
+                [
+                    "haematological_results",
+                    "urinalysis",
+                    "culture_donor_pack_results",
+                    "culture_recipient_blood_results",
+                ]
+            )
             self.save(update_fields=update_fields)
 
         return updated
@@ -3837,8 +3842,11 @@ class DischargeTemplate(FacilityScopedModel, TimeStampedModel):
         # If marking as default, unset other defaults for the same facility.
         if self.is_default and self.facility_id:
             DischargeTemplate.objects.filter(
-                facility=self.facility, is_default=True,
-            ).exclude(pk=self.pk).update(is_default=False)
+                facility=self.facility,
+                is_default=True,
+            ).exclude(
+                pk=self.pk
+            ).update(is_default=False)
         # Populate default sections when none are specified.
         if not self.sections:
             self.sections = self.get_default_sections()

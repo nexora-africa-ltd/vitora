@@ -46,7 +46,7 @@ def route_to_counselling_clinic_on_acceptance(sender, instance, created, **kwarg
 
         if not counselling_clinic:
             # Try mental health clinic for mental health referrals
-            if hasattr(instance, 'is_mental_health_related') and instance.is_mental_health_related:
+            if hasattr(instance, "is_mental_health_related") and instance.is_mental_health_related:
                 counselling_clinic = Clinic.objects.filter(
                     clinic_type="MENTAL_HEALTH",
                     status="ACTIVE",
@@ -108,11 +108,19 @@ def route_to_counselling_clinic_on_acceptance(sender, instance, created, **kwarg
         priority = priority_map.get(instance.urgency, "STANDARD")
 
         # Adjust priority for certain referral reasons
-        if hasattr(instance, 'reason') and instance.reason in ["SUICIDAL", "GBV"]:
+        if hasattr(instance, "reason") and instance.reason in ["SUICIDAL", "GBV"]:
             priority = "EMERGENCY"  # Always highest priority
 
-        reason_display = instance.get_reason_display() if hasattr(instance, 'get_reason_display') else str(instance.reason)
-        urgency_display = instance.get_urgency_display() if hasattr(instance, 'get_urgency_display') else str(instance.urgency)
+        reason_display = (
+            instance.get_reason_display()
+            if hasattr(instance, "get_reason_display")
+            else str(instance.reason)
+        )
+        urgency_display = (
+            instance.get_urgency_display()
+            if hasattr(instance, "get_urgency_display")
+            else str(instance.urgency)
+        )
 
         clinic_visit = ClinicVisit.objects.create(
             session=clinic_session,
@@ -123,8 +131,8 @@ def route_to_counselling_clinic_on_acceptance(sender, instance, created, **kwarg
             queue_number=clinic_session.visits.count() + 1,
             chief_complaint=f"Counselling Referral: {reason_display}",
             notes=f"Counselling Referral: {instance.referral_number}\n"
-                  f"Reason: {reason_display}\n"
-                  f"Urgency: {urgency_display}",
+            f"Reason: {reason_display}\n"
+            f"Urgency: {urgency_display}",
         )
 
         # Link to referral
@@ -153,7 +161,10 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
     if not created:
         return
 
-    if instance.urgency not in ["URGENT", "EMERGENCY"] and not instance.requires_immediate_attention:
+    if (
+        instance.urgency not in ["URGENT", "EMERGENCY"]
+        and not instance.requires_immediate_attention
+    ):
         return
 
     # Log the urgent referral for monitoring
@@ -204,6 +215,7 @@ def create_billing_item_on_session_completion(sender, instance, created, **kwarg
         if not invoice:
             # Create new invoice - find a system/staff user for created_by
             from django.contrib.auth import get_user_model
+
             User = get_user_model()
             system_user = (
                 instance.therapist
@@ -289,16 +301,14 @@ def create_clinic_visit_for_session(sender, instance, created, **kwargs):
             scheduled_time=instance.scheduled_time,
             priority=5,  # Normal priority for regular sessions
             notes=f"Counselling Session {instance.session_sequence} - "
-                  f"Referral: {instance.referral.referral_number}",
+            f"Referral: {instance.referral.referral_number}",
             created_by=instance.counsellor,
         )
 
         instance.clinic_visit = clinic_visit
         instance.save(update_fields=["clinic_visit"])
 
-        logger.info(
-            f"Created clinic visit for counselling session {instance.session_number}"
-        )
+        logger.info(f"Created clinic visit for counselling session {instance.session_number}")
 
     except Exception as e:
         logger.error(

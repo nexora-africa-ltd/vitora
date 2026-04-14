@@ -65,17 +65,11 @@ class Command(BaseCommand):
         parent_ca_id = options["parent_ca_id"]
         if parent_ca_id:
             try:
-                parent_ca = CertificateAuthority.objects.get(
-                    pk=parent_ca_id, is_active=True
-                )
+                parent_ca = CertificateAuthority.objects.get(pk=parent_ca_id, is_active=True)
             except CertificateAuthority.DoesNotExist:
-                raise CommandError(
-                    f"No active CA found with ID {parent_ca_id}."
-                )
+                raise CommandError(f"No active CA found with ID {parent_ca_id}.")
         else:
-            parent_ca = CertificateAuthority.objects.filter(
-                is_root=True, is_active=True
-            ).first()
+            parent_ca = CertificateAuthority.objects.filter(is_root=True, is_active=True).first()
             if parent_ca is None:
                 raise CommandError(
                     "No active root CA found. Run 'python manage.py init_pki_ca' first."
@@ -99,14 +93,16 @@ class Command(BaseCommand):
             name=options["name"], is_root=False, is_active=True
         ).count()
         if existing_count > 1:
-            self.stdout.write(self.style.WARNING(
-                f"Active intermediate CA already existed: {ca.name}"
-            ))
+            self.stdout.write(
+                self.style.WARNING(f"Active intermediate CA already existed: {ca.name}")
+            )
         else:
-            self.stdout.write(self.style.SUCCESS(
-                f"Intermediate CA initialized: {ca.name}\n"
-                f"  Parent: {parent_ca.name}\n"
-                f"  Serial: {ca.serial_number}\n"
-                f"  Valid: {ca.valid_from.date()} to {ca.valid_to.date()}\n"
-                f"  Key size: {ca.key_size} bits"
-            ))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Intermediate CA initialized: {ca.name}\n"
+                    f"  Parent: {parent_ca.name}\n"
+                    f"  Serial: {ca.serial_number}\n"
+                    f"  Valid: {ca.valid_from.date()} to {ca.valid_to.date()}\n"
+                    f"  Key size: {ca.key_size} bits"
+                )
+            )

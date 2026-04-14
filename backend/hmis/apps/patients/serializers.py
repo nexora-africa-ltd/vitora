@@ -166,14 +166,14 @@ class PatientSerializer(serializers.ModelSerializer):
 
     def get_allergy_summary(self, obj) -> list[str]:
         """Return list of active allergy substance names from the structured Allergy model."""
-        return list(
-            obj.allergies.filter(status="active").values_list("substance", flat=True)
-        )
+        return list(obj.allergies.filter(status="active").values_list("substance", flat=True))
 
     def get_chronic_conditions_summary(self, obj) -> str:
         """Return chronic conditions text from the patient's most recent encounter."""
         latest = (
-            obj.encounters.order_by("-created_at").values_list("chronic_conditions", flat=True).first()
+            obj.encounters.order_by("-created_at")
+            .values_list("chronic_conditions", flat=True)
+            .first()
         )
         return latest if latest is not None else ""
 
@@ -237,6 +237,7 @@ class PatientSerializer(serializers.ModelSerializer):
 
         return data
 
+
 class AllergySerializer(serializers.ModelSerializer):
     """Serializer for the Allergy model."""
 
@@ -267,9 +268,7 @@ class AllergySerializer(serializers.ModelSerializer):
     verification_status_display = serializers.CharField(
         source="get_verification_status_display", read_only=True
     )
-    criticality_display = serializers.CharField(
-        source="get_criticality_display", read_only=True
-    )
+    criticality_display = serializers.CharField(source="get_criticality_display", read_only=True)
 
     # Computed fields
     is_high_risk = serializers.ReadOnlyField()
@@ -451,7 +450,9 @@ class DeathRecordListSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     body_status_display = serializers.CharField(source="get_body_status_display", read_only=True)
-    manner_of_death_display = serializers.CharField(source="get_manner_of_death_display", read_only=True)
+    manner_of_death_display = serializers.CharField(
+        source="get_manner_of_death_display", read_only=True
+    )
     recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
     is_voided = serializers.ReadOnlyField()
     is_certified = serializers.ReadOnlyField()
@@ -488,8 +489,12 @@ class DeathRecordDetailSerializer(serializers.ModelSerializer):
     patient_gender = serializers.CharField(source="patient.gender", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     body_status_display = serializers.CharField(source="get_body_status_display", read_only=True)
-    manner_of_death_display = serializers.CharField(source="get_manner_of_death_display", read_only=True)
-    place_of_death_display = serializers.CharField(source="get_place_of_death_display", read_only=True)
+    manner_of_death_display = serializers.CharField(
+        source="get_manner_of_death_display", read_only=True
+    )
+    place_of_death_display = serializers.CharField(
+        source="get_place_of_death_display", read_only=True
+    )
     notification_source_display = serializers.CharField(
         source="get_notification_source_display", read_only=True
     )
@@ -607,7 +612,9 @@ class DeathRecordReleaseBodySerializer(serializers.Serializer):
 
     released_to = serializers.CharField(max_length=200)
     id_number = serializers.CharField(required=False, default="", allow_blank=True, max_length=50)
-    relationship = serializers.CharField(required=False, default="", allow_blank=True, max_length=100)
+    relationship = serializers.CharField(
+        required=False, default="", allow_blank=True, max_length=100
+    )
     burial_permit_number = serializers.CharField(
         required=False, default="", allow_blank=True, max_length=50
     )

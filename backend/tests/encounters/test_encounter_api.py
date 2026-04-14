@@ -150,7 +150,9 @@ class TestEncounterAPIEndpoints:
         assert response.data["created_by"] == auth_user.id
         assert response.data["created_by_name"] in [auth_user.get_full_name(), auth_user.username]
 
-    def test_create_encounter_auto_claims_for_creator(self, auth_client, auth_user, sample_encounter_data):
+    def test_create_encounter_auto_claims_for_creator(
+        self, auth_client, auth_user, sample_encounter_data
+    ):
         """POST /api/encounters/ should auto-claim the encounter for the creating user."""
         response = auth_client.post("/api/encounters/", sample_encounter_data, format="json")
 
@@ -309,7 +311,9 @@ class TestEncounterAPIEndpoints:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Encounter.objects.filter(id=encounter_id).exists()
 
-    def test_delete_encounter_with_invoice_returns_conflict(self, auth_client, sample_patient, sample_facility):
+    def test_delete_encounter_with_invoice_returns_conflict(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Test DELETE /api/encounters/{id}/ with invoice returns 409 Conflict."""
         from hmis.apps.encounters.models import Encounter
 
@@ -355,7 +359,9 @@ class TestEncounterAPIEndpoints:
         # Without vitals, status should still be WAITING_TRIAGE
         assert waiting_entry.status == "WAITING_TRIAGE"
 
-    def test_create_encounter_with_vitals_marks_waiting_queue_triaged(self, auth_client, sample_patient):
+    def test_create_encounter_with_vitals_marks_waiting_queue_triaged(
+        self, auth_client, sample_patient
+    ):
         """Test POST /api/encounters/ with vitals marks waiting queue entry as TRIAGED."""
         from hmis.apps.triage.models import WaitingQueue
 
@@ -385,7 +391,9 @@ class TestEncounterAPIEndpoints:
         assert waiting_entry.encounter.id == response.data["id"]
         assert waiting_entry.status == "TRIAGED"
 
-    def test_update_encounter_with_vitals_marks_waiting_queue_triaged(self, auth_client, sample_patient, sample_facility):
+    def test_update_encounter_with_vitals_marks_waiting_queue_triaged(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Test PATCH /api/encounters/{id}/ with vitals marks waiting queue entry as TRIAGED."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import WaitingQueue
@@ -445,12 +453,24 @@ class TestEncounterAPIFiltering:
             organization=sample_organization,
         )
 
-        Encounter.objects.create(patient=patient1, encounter_type="OPD", chief_complaint="Headache", facility=sample_facility)
         Encounter.objects.create(
-            patient=patient1, encounter_type="EMERGENCY", chief_complaint="Fever",
+            patient=patient1,
+            encounter_type="OPD",
+            chief_complaint="Headache",
             facility=sample_facility,
         )
-        Encounter.objects.create(patient=patient2, encounter_type="OPD", chief_complaint="Cough", facility=sample_facility)
+        Encounter.objects.create(
+            patient=patient1,
+            encounter_type="EMERGENCY",
+            chief_complaint="Fever",
+            facility=sample_facility,
+        )
+        Encounter.objects.create(
+            patient=patient2,
+            encounter_type="OPD",
+            chief_complaint="Cough",
+            facility=sample_facility,
+        )
 
         response = auth_client.get(f"/api/encounters/?patient={patient1.id}")
 
@@ -464,7 +484,9 @@ class TestEncounterAPIFiltering:
         from hmis.apps.encounters.models import Encounter
 
         Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test",
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Test",
             facility=sample_facility,
         )
 
@@ -478,11 +500,15 @@ class TestEncounterAPIFiltering:
         from hmis.apps.encounters.models import Encounter
 
         Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test1",
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Test1",
             facility=sample_facility,
         )
         Encounter.objects.create(
-            patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Test2",
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Test2",
             facility=sample_facility,
         )
 
@@ -497,11 +523,15 @@ class TestEncounterAPIFiltering:
         from hmis.apps.encounters.models import Encounter
 
         Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Severe headache",
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Severe headache",
             facility=sample_facility,
         )
         Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Chest pain",
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Chest pain",
             facility=sample_facility,
         )
 

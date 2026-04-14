@@ -49,8 +49,7 @@ class KENHDDRecordResult:
     def is_compliant(self) -> bool:
         """A record is compliant if no MANDATORY elements FAIL."""
         return not any(
-            e.status == "FAIL" and e.requirement_level == "MANDATORY"
-            for e in self.elements
+            e.status == "FAIL" and e.requirement_level == "MANDATORY" for e in self.elements
         )
 
     @property
@@ -102,9 +101,7 @@ class KENHDDValidationService:
     definitions.
     """
 
-    def _get_active_elements(
-        self, resource_type: str
-    ) -> models.QuerySet:
+    def _get_active_elements(self, resource_type: str) -> models.QuerySet:
         """Return active KENHDD elements for the given resource type."""
         from hmis.apps.kenhdd.models import KENHDDDataElement
 
@@ -277,9 +274,7 @@ class KENHDDValidationService:
             value=str_value,
         )
 
-    def validate_record(
-        self, resource_type: str, instance: Any
-    ) -> KENHDDRecordResult:
+    def validate_record(self, resource_type: str, instance: Any) -> KENHDDRecordResult:
         """
         Validate a single model instance against all active KENHDD elements
         for the given resource type.
@@ -331,9 +326,7 @@ class KENHDDValidationService:
         """
         from hmis.apps.kenhdd.models import KENHDDValidationRun
 
-        resource_types = (
-            [resource_type] if resource_type else list(RESOURCE_MODEL_MAP.keys())
-        )
+        resource_types = [resource_type] if resource_type else list(RESOURCE_MODEL_MAP.keys())
 
         scores: list[KENHDDComplianceScore] = []
 
@@ -388,9 +381,7 @@ class KENHDDValidationService:
 
             compliance_pct = round((compliant_count / total) * 100, 2) if total else 0.0
             mandatory_rate = (
-                round((mandatory_pass / mandatory_total) * 100, 2)
-                if mandatory_total
-                else 100.0
+                round((mandatory_pass / mandatory_total) * 100, 2) if mandatory_total else 100.0
             )
 
             score = KENHDDComplianceScore(
@@ -420,7 +411,11 @@ class KENHDDValidationService:
 
             failed_objects = []
             for _record, record_result in record_results:
-                if not record_result.is_compliant or record_result.fail_count > 0 or record_result.warning_count > 0:
+                if (
+                    not record_result.is_compliant
+                    or record_result.fail_count > 0
+                    or record_result.warning_count > 0
+                ):
                     violation_details = [
                         {
                             "element_id": e.element_id,
@@ -460,9 +455,7 @@ class KENHDDValidationService:
         summary = []
         for rt, _ in RESOURCE_MODEL_MAP.items():
             latest = (
-                KENHDDValidationRun.objects.filter(resource_type=rt)
-                .order_by("-run_at")
-                .first()
+                KENHDDValidationRun.objects.filter(resource_type=rt).order_by("-run_at").first()
             )
             if latest:
                 summary.append(
@@ -474,11 +467,7 @@ class KENHDDValidationService:
                         "records_compliant": latest.records_compliant,
                         "violations": latest.violations,
                         "run_at": latest.run_at.isoformat(),
-                        "run_by": (
-                            latest.run_by.get_full_name()
-                            if latest.run_by
-                            else None
-                        ),
+                        "run_by": (latest.run_by.get_full_name() if latest.run_by else None),
                     }
                 )
             else:

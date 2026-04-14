@@ -1815,11 +1815,11 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         """Minutes late for clock-in. 0 if on-time or not started."""
         if not self.started_at:
             return 0
-        scheduled_start = timezone.make_aware(
-            datetime.combine(self.shift_date, self.start_time)
-        ) if timezone.is_naive(
-            datetime.combine(self.shift_date, self.start_time)
-        ) else datetime.combine(self.shift_date, self.start_time)
+        scheduled_start = (
+            timezone.make_aware(datetime.combine(self.shift_date, self.start_time))
+            if timezone.is_naive(datetime.combine(self.shift_date, self.start_time))
+            else datetime.combine(self.shift_date, self.start_time)
+        )
         diff = (self.started_at - scheduled_start).total_seconds() / 60
         return max(0, int(diff))
 
@@ -2001,7 +2001,7 @@ class StaffConstraint(FacilityScopedModel, TimeStampedModel):
     value = models.JSONField(
         default=dict,
         blank=True,
-        help_text="Configuration value, e.g. {\"max_hours\": 36} or {\"shift_types\": [\"DAY\", \"MORNING\"]}",
+        help_text='Configuration value, e.g. {"max_hours": 36} or {"shift_types": ["DAY", "MORNING"]}',
     )
     reason = models.TextField(
         blank=True,

@@ -381,7 +381,9 @@ class TestClinicalDocumentSuccess:
         assert response.data["mode"] == "tibabot"
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_icd10_suggestions_returned(self, authenticated_client, mock_tibabot, full_request_data):
+    def test_icd10_suggestions_returned(
+        self, authenticated_client, mock_tibabot, full_request_data
+    ):
         mock_tibabot.generate_clinical_document.return_value = MOCK_TIBABOT_RESPONSE.copy()
 
         response = authenticated_client.post(

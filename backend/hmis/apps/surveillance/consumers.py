@@ -131,14 +131,10 @@ class SurveillanceAlertConsumer(AsyncJsonWebsocketConsumer):
         ).count()
 
         # Cases detected today
-        cases_today = NotifiableCase.objects.filter(
-            detected_at__gte=today_start
-        ).count()
+        cases_today = NotifiableCase.objects.filter(detected_at__gte=today_start).count()
 
         # Unacknowledged alerts
-        unacknowledged_alerts = SurveillanceAlert.objects.filter(
-            is_acknowledged=False
-        ).count()
+        unacknowledged_alerts = SurveillanceAlert.objects.filter(is_acknowledged=False).count()
 
         return {
             "pending_immediate": pending_immediate,
@@ -152,10 +148,12 @@ class SurveillanceAlertConsumer(AsyncJsonWebsocketConsumer):
         """Send current surveillance stats to this client."""
         try:
             stats = await self._get_stats()
-            await self.send_json({
-                "type": "surveillance.stats_update",
-                "data": stats,
-            })
+            await self.send_json(
+                {
+                    "type": "surveillance.stats_update",
+                    "data": stats,
+                }
+            )
         except Exception as e:
             logger.error(f"Error sending surveillance stats: {e}")
 
@@ -165,35 +163,45 @@ class SurveillanceAlertConsumer(AsyncJsonWebsocketConsumer):
 
     async def surveillance_new_case(self, event):
         """Handle new case notification."""
-        await self.send_json({
-            "type": "surveillance.new_case",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "surveillance.new_case",
+                "data": event["data"],
+            }
+        )
 
     async def surveillance_immediate_alert(self, event):
         """Handle immediate reportable disease alert."""
-        await self.send_json({
-            "type": "surveillance.immediate_alert",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "surveillance.immediate_alert",
+                "data": event["data"],
+            }
+        )
 
     async def surveillance_outbreak_alert(self, event):
         """Handle outbreak threshold alert."""
-        await self.send_json({
-            "type": "surveillance.outbreak_alert",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "surveillance.outbreak_alert",
+                "data": event["data"],
+            }
+        )
 
     async def surveillance_overdue_alert(self, event):
         """Handle overdue notification alert."""
-        await self.send_json({
-            "type": "surveillance.overdue_alert",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "surveillance.overdue_alert",
+                "data": event["data"],
+            }
+        )
 
     async def surveillance_case_notified(self, event):
         """Handle case notification confirmation."""
-        await self.send_json({
-            "type": "surveillance.case_notified",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "surveillance.case_notified",
+                "data": event["data"],
+            }
+        )

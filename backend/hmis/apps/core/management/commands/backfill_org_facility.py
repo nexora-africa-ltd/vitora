@@ -30,9 +30,7 @@ class Command(BaseCommand):
             demo_org = Organization.objects.get(slug="demo-health-services")
         except Organization.DoesNotExist:
             self.stderr.write(
-                self.style.ERROR(
-                    "Demo organization not found. Run seed_demo_data first."
-                )
+                self.style.ERROR("Demo organization not found. Run seed_demo_data first.")
             )
             return
 
@@ -45,9 +43,7 @@ class Command(BaseCommand):
             ).first()
             if not hq_facility:
                 self.stderr.write(
-                    self.style.ERROR(
-                        "HQ facility not found. Run seed_demo_data first."
-                    )
+                    self.style.ERROR("HQ facility not found. Run seed_demo_data first.")
                 )
                 return
 
@@ -140,8 +136,7 @@ class Command(BaseCommand):
 
             if count_org or count_fac:
                 self.stdout.write(
-                    f"  {app_label}.{model_name}: "
-                    f"org={count_org}, facility={count_fac}"
+                    f"  {app_label}.{model_name}: " f"org={count_org}, facility={count_fac}"
                 )
                 total_updated += max(count_org, count_fac)
 
@@ -161,8 +156,7 @@ class Command(BaseCommand):
 
             if count_org or count_fac:
                 self.stdout.write(
-                    f"  patients.Patient: "
-                    f"org={count_org}, registered_at_facility={count_fac}"
+                    f"  patients.Patient: " f"org={count_org}, registered_at_facility={count_fac}"
                 )
                 total_updated += max(count_org, count_fac)
         except LookupError:
@@ -207,8 +201,7 @@ class Command(BaseCommand):
 
             if count_org or count_fac:
                 self.stdout.write(
-                    f"  core.StaffProfile: "
-                    f"org={count_org}, primary_facility={count_fac}"
+                    f"  core.StaffProfile: " f"org={count_org}, primary_facility={count_fac}"
                 )
                 total_updated += max(count_org, count_fac)
         except LookupError:
@@ -241,9 +234,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("\nAll records already have org/facility."))
         elif dry_run:
             self.stdout.write(
-                self.style.WARNING(f"\nWould update ~{total_updated} records. Run without --dry-run to apply.")
+                self.style.WARNING(
+                    f"\nWould update ~{total_updated} records. Run without --dry-run to apply."
+                )
             )
         else:
-            self.stdout.write(
-                self.style.SUCCESS(f"\n✅ Backfilled ~{total_updated} records.")
-            )
+            self.stdout.write(self.style.SUCCESS(f"\n✅ Backfilled ~{total_updated} records."))

@@ -28,9 +28,7 @@ class ImmunizationRecordFilter(django_filters.FilterSet):
     patient = django_filters.NumberFilter()
     vaccine = django_filters.NumberFilter()
     status = django_filters.CharFilter(lookup_expr="iexact")
-    program = django_filters.CharFilter(
-        field_name="vaccine__program", lookup_expr="iexact"
-    )
+    program = django_filters.CharFilter(field_name="vaccine__program", lookup_expr="iexact")
     campaign = django_filters.NumberFilter()
 
     class Meta:

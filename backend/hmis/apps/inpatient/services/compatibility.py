@@ -70,9 +70,7 @@ class WardCompatibilityService:
                 CompatibilityViolation(
                     code="OXYGEN_REQUIRED",
                     severity="CRITICAL",
-                    message=(
-                        f"Patient requires oxygen but {ward.name} is not oxygen-equipped"
-                    ),
+                    message=(f"Patient requires oxygen but {ward.name} is not oxygen-equipped"),
                     override_allowed=True,
                 )
             )

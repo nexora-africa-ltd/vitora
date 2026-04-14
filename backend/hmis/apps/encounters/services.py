@@ -5,7 +5,6 @@ Phase 2.3: Notification System - Patient Called notifications
 Sprint 2 - Phase 2A: Encounter State Machine
 """
 
-
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 

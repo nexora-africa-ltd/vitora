@@ -690,9 +690,7 @@ class IHRNotificationCreateSerializer(serializers.ModelSerializer):
     def validate_disease(self, value):
         """Ensure disease is IHR-notifiable."""
         if not value.is_ihr_notifiable:
-            raise serializers.ValidationError(
-                f"'{value.name}' is not marked as IHR-notifiable."
-            )
+            raise serializers.ValidationError(f"'{value.name}' is not marked as IHR-notifiable.")
         return value
 
     def create(self, validated_data):
@@ -731,4 +729,3 @@ class IHRCloseSerializer(serializers.Serializer):
     """Serializer for closing an IHR notification."""
 
     notes = serializers.CharField(required=False, allow_blank=True, default="")
-

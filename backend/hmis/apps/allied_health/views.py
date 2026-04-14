@@ -211,7 +211,9 @@ class AlliedHealthDashboardView(APIView):
                 "completed_today_count": sessions.filter(
                     session_date=today, status="COMPLETED"
                 ).count(),
-                "follow_ups_count": sessions.filter(session_type="FOLLOW_UP", status="SCHEDULED").count(),
+                "follow_ups_count": sessions.filter(
+                    session_type="FOLLOW_UP", status="SCHEDULED"
+                ).count(),
             }
         except Exception:
             return {
@@ -247,26 +249,16 @@ class AlliedHealthDashboardView(APIView):
                     "waiting_count": type_visits.filter(
                         status__in=["REGISTERED", "WAITING"]
                     ).count(),
-                    "in_consultation_count": type_visits.filter(
-                        status="IN_CONSULTATION"
-                    ).count(),
-                    "completed_count": type_visits.filter(
-                        status="COMPLETED"
-                    ).count(),
+                    "in_consultation_count": type_visits.filter(status="IN_CONSULTATION").count(),
+                    "completed_count": type_visits.filter(status="COMPLETED").count(),
                     "total_today": type_visits.count(),
                 }
 
             # Also include totals
             stats_by_type["totals"] = {
-                "waiting_count": visits.filter(
-                    status__in=["REGISTERED", "WAITING"]
-                ).count(),
-                "in_consultation_count": visits.filter(
-                    status="IN_CONSULTATION"
-                ).count(),
-                "completed_count": visits.filter(
-                    status="COMPLETED"
-                ).count(),
+                "waiting_count": visits.filter(status__in=["REGISTERED", "WAITING"]).count(),
+                "in_consultation_count": visits.filter(status="IN_CONSULTATION").count(),
+                "completed_count": visits.filter(status="COMPLETED").count(),
                 "total_today": visits.count(),
             }
 
@@ -291,11 +283,13 @@ class AlliedHealthDashboardView(APIView):
                     {
                         "id": session.id,
                         "session_number": session.session_number,
-                        "scheduled_time": timezone.make_aware(
-                            timezone.datetime.combine(session.session_date, session.start_time)
-                        )
-                        if session.start_time
-                        else None,
+                        "scheduled_time": (
+                            timezone.make_aware(
+                                timezone.datetime.combine(session.session_date, session.start_time)
+                            )
+                            if session.start_time
+                            else None
+                        ),
                         "patient_name": session.order.patient.full_name,
                         "patient_mrn": session.order.patient.mrn,
                         "module": "PHYSIO",
@@ -319,11 +313,13 @@ class AlliedHealthDashboardView(APIView):
                     {
                         "id": session.id,
                         "session_number": session.session_number,
-                        "scheduled_time": timezone.make_aware(
-                            timezone.datetime.combine(session.session_date, session.start_time)
-                        )
-                        if session.start_time
-                        else None,
+                        "scheduled_time": (
+                            timezone.make_aware(
+                                timezone.datetime.combine(session.session_date, session.start_time)
+                            )
+                            if session.start_time
+                            else None
+                        ),
                         "patient_name": session.order.patient.full_name,
                         "patient_mrn": session.order.patient.mrn,
                         "module": "OT",
@@ -338,20 +334,22 @@ class AlliedHealthDashboardView(APIView):
         try:
             from hmis.apps.counselling.models import CounsellingSession
 
-            counselling_sessions = CounsellingSession.objects.filter(session_date=today).select_related(
-                "referral__patient"
-            )[:10]
+            counselling_sessions = CounsellingSession.objects.filter(
+                session_date=today
+            ).select_related("referral__patient")[:10]
 
             for session in counselling_sessions:
                 sessions.append(
                     {
                         "id": session.id,
                         "session_number": session.session_number,
-                        "scheduled_time": timezone.make_aware(
-                            timezone.datetime.combine(session.session_date, session.start_time)
-                        )
-                        if session.start_time
-                        else None,
+                        "scheduled_time": (
+                            timezone.make_aware(
+                                timezone.datetime.combine(session.session_date, session.start_time)
+                            )
+                            if session.start_time
+                            else None
+                        ),
                         "patient_name": session.referral.patient.full_name,
                         "patient_mrn": session.referral.patient.mrn,
                         "module": "COUNSELLING",

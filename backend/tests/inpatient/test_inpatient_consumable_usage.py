@@ -58,10 +58,14 @@ class TestInpatientConsumableUsageModel:
 class TestInpatientConsumableUsageAPI:
     """API tests for inpatient consumable stock usage."""
 
-    def test_record_consumable_usage_action(self, authenticated_client, sample_admission, sample_stock_batch):
+    def test_record_consumable_usage_action(
+        self, authenticated_client, sample_admission, sample_stock_batch
+    ):
         """Admission action should create consumable usage and debit stock."""
         response = authenticated_client.post(
-            reverse("inpatient:admission-record-consumable-usage", kwargs={"pk": sample_admission.id}),
+            reverse(
+                "inpatient:admission-record-consumable-usage", kwargs={"pk": sample_admission.id}
+            ),
             {
                 "batch": sample_stock_batch.id,
                 "quantity_used": 4,

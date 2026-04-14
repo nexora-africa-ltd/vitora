@@ -89,7 +89,9 @@ def mch_registration(db, sample_patient, anc_enrollment, sample_facility, sample
 
 
 @pytest.fixture
-def mch_registration_linda_jamii(db, sample_patient, anc_enrollment, sample_facility, sample_organization):
+def mch_registration_linda_jamii(
+    db, sample_patient, anc_enrollment, sample_facility, sample_organization
+):
     """Create a Linda Jamii MCH registration."""
     from hmis.apps.mch.models import MCHRegistration
 
@@ -399,7 +401,10 @@ class TestMCHSignals:
     """Tests for MCH signal handlers."""
 
     def test_auto_generate_immunization_schedule_for_newborn(
-        self, db, sample_county, sample_sub_county,
+        self,
+        db,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Should auto-generate immunization schedule for newborn patients."""
@@ -426,7 +431,10 @@ class TestMCHSignals:
         assert records.count() == 2
 
     def test_auto_generate_immunization_schedule_skips_older_children(
-        self, db, sample_county, sample_sub_county,
+        self,
+        db,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Should not generate schedule for children over 5 years."""
@@ -449,9 +457,7 @@ class TestMCHSignals:
         records = ImmunizationRecord.objects.filter(patient=patient)
         assert records.count() == 0
 
-    def test_auto_enroll_hei_positive_to_ccc(
-        self, ccc_clinic, hei_followup
-    ):
+    def test_auto_enroll_hei_positive_to_ccc(self, ccc_clinic, hei_followup):
         """Should auto-enroll HIV-positive infant to CCC clinic."""
         from hmis.apps.clinics.models import ClinicEnrollment
 
@@ -561,6 +567,7 @@ class TestRouteToANCAction:
 
         if response.status_code != 200:
             import json
+
             try:
                 print("ROUTE_TO_ANC ERROR:", json.dumps(response.data, indent=2, default=str))
             except Exception:
@@ -580,9 +587,7 @@ class TestRouteToANCAction:
         assert response.status_code == 200
         assert response.data["clinic"] == "ANC Clinic"
 
-    def test_route_to_anc_fails_for_invalid_clinic(
-        self, authenticated_client, mch_registration
-    ):
+    def test_route_to_anc_fails_for_invalid_clinic(self, authenticated_client, mch_registration):
         """Should fail for non-existent clinic."""
         url = reverse("mch:mch-registration-route-to-anc", args=[mch_registration.id])
         response = authenticated_client.post(url, {"clinic_id": 99999})
@@ -594,9 +599,7 @@ class TestRouteToANCAction:
 class TestGrowthChartExportPDFAction:
     """Tests for growth chart PDF export."""
 
-    def test_export_pdf_returns_pdf_content(
-        self, authenticated_client, child_patient
-    ):
+    def test_export_pdf_returns_pdf_content(self, authenticated_client, child_patient):
         """Should return PDF bytes with correct content type."""
         from hmis.apps.mch.models import GrowthMeasurement
 
@@ -634,13 +637,9 @@ class TestGrowthChartExportPDFAction:
 class TestReportAEFIAction:
     """Tests for AEFI reporting action."""
 
-    def test_report_aefi_creates_record(
-        self, authenticated_client, administered_immunization
-    ):
+    def test_report_aefi_creates_record(self, authenticated_client, administered_immunization):
         """Should create AEFI record for administered vaccine."""
-        url = reverse(
-            "mch:mch-immunization-report-aefi", args=[administered_immunization.id]
-        )
+        url = reverse("mch:mch-immunization-report-aefi", args=[administered_immunization.id])
         payload = {
             "event_date": date.today().isoformat(),
             "event_type": "INJECTION_SITE_ABSCESS",
@@ -654,9 +653,7 @@ class TestReportAEFIAction:
         assert "INJECTION_SITE_ABSCESS" in response.data["event_types"]
         assert "id" in response.data
 
-    def test_report_aefi_fails_for_unscheduled_vaccine(
-        self, authenticated_client, infant_patient
-    ):
+    def test_report_aefi_fails_for_unscheduled_vaccine(self, authenticated_client, infant_patient):
         """Should fail if vaccine was not administered."""
         from hmis.apps.immunizations.models import ImmunizationRecord, VaccineDefinition
 
@@ -685,9 +682,7 @@ class TestReportAEFIAction:
         self, authenticated_client, administered_immunization
     ):
         """Should require event_date, event_type, and description."""
-        url = reverse(
-            "mch:mch-immunization-report-aefi", args=[administered_immunization.id]
-        )
+        url = reverse("mch:mch-immunization-report-aefi", args=[administered_immunization.id])
 
         response = authenticated_client.post(url, {"event_type": "INJECTION_SITE_ABSCESS"})
 
@@ -697,9 +692,7 @@ class TestReportAEFIAction:
         self, authenticated_client, administered_immunization
     ):
         """Should reject invalid event types."""
-        url = reverse(
-            "mch:mch-immunization-report-aefi", args=[administered_immunization.id]
-        )
+        url = reverse("mch:mch-immunization-report-aefi", args=[administered_immunization.id])
         payload = {
             "event_date": date.today().isoformat(),
             "event_type": "INVALID_TYPE",
@@ -715,9 +708,7 @@ class TestReportAEFIAction:
 class TestHEIFollowUpActions:
     """Tests for HEI follow-up view actions."""
 
-    def test_determine_final_status_positive(
-        self, authenticated_client, hei_followup
-    ):
+    def test_determine_final_status_positive(self, authenticated_client, hei_followup):
         """Should set CONFIRMED_POSITIVE when PCR is positive."""
         from hmis.apps.mch.models import HEIPCRTest
 
@@ -729,9 +720,7 @@ class TestHEIFollowUpActions:
             result="POSITIVE",
         )
 
-        url = reverse(
-            "mch:mch-hei-determine-final-status", args=[hei_followup.id]
-        )
+        url = reverse("mch:mch-hei-determine-final-status", args=[hei_followup.id])
         response = authenticated_client.post(url)
 
         assert response.status_code == 200
@@ -740,9 +729,7 @@ class TestHEIFollowUpActions:
         hei_followup.refresh_from_db()
         assert hei_followup.status == "CONFIRMED_POSITIVE"
 
-    def test_determine_final_status_negative(
-        self, authenticated_client, hei_followup
-    ):
+    def test_determine_final_status_negative(self, authenticated_client, hei_followup):
         """Should set CONFIRMED_NEGATIVE after 2+ negative PCRs."""
         from hmis.apps.mch.models import HEIPCRTest
 
@@ -760,17 +747,13 @@ class TestHEIFollowUpActions:
             result="NEGATIVE",
         )
 
-        url = reverse(
-            "mch:mch-hei-determine-final-status", args=[hei_followup.id]
-        )
+        url = reverse("mch:mch-hei-determine-final-status", args=[hei_followup.id])
         response = authenticated_client.post(url)
 
         assert response.status_code == 200
         assert response.data["status"] == "CONFIRMED_NEGATIVE"
 
-    def test_determine_final_status_insufficient_tests(
-        self, authenticated_client, hei_followup
-    ):
+    def test_determine_final_status_insufficient_tests(self, authenticated_client, hei_followup):
         """Should return ACTIVE if insufficient tests."""
         from hmis.apps.mch.models import HEIPCRTest
 
@@ -781,37 +764,27 @@ class TestHEIFollowUpActions:
             result="NEGATIVE",
         )
 
-        url = reverse(
-            "mch:mch-hei-determine-final-status", args=[hei_followup.id]
-        )
+        url = reverse("mch:mch-hei-determine-final-status", args=[hei_followup.id])
         response = authenticated_client.post(url)
 
         assert response.status_code == 200
         assert response.data["status"] == "ACTIVE"
         assert response.data["required_negative_tests"] == 2
 
-    def test_determine_final_status_fails_if_not_active(
-        self, authenticated_client, hei_followup
-    ):
+    def test_determine_final_status_fails_if_not_active(self, authenticated_client, hei_followup):
         """Should fail if HEI is already finalized."""
         hei_followup.status = "CONFIRMED_NEGATIVE"
         hei_followup.save()
 
-        url = reverse(
-            "mch:mch-hei-determine-final-status", args=[hei_followup.id]
-        )
+        url = reverse("mch:mch-hei-determine-final-status", args=[hei_followup.id])
         response = authenticated_client.post(url)
 
         assert response.status_code == 400
 
-    def test_update_feeding_updates_status(
-        self, authenticated_client, hei_followup
-    ):
+    def test_update_feeding_updates_status(self, authenticated_client, hei_followup):
         """Should update breastfeeding status."""
         url = reverse("mch:mch-hei-update-feeding", args=[hei_followup.id])
-        response = authenticated_client.post(
-            url, {"breastfeeding_status": "EXCLUSIVE"}
-        )
+        response = authenticated_client.post(url, {"breastfeeding_status": "EXCLUSIVE"})
 
         assert response.status_code == 200
         assert response.data["breastfeeding_status"] == "EXCLUSIVE"
@@ -819,14 +792,10 @@ class TestHEIFollowUpActions:
         hei_followup.refresh_from_db()
         assert hei_followup.breastfeeding_status == "EXCLUSIVE"
 
-    def test_update_feeding_validates_status(
-        self, authenticated_client, hei_followup
-    ):
+    def test_update_feeding_validates_status(self, authenticated_client, hei_followup):
         """Should reject invalid breastfeeding status."""
         url = reverse("mch:mch-hei-update-feeding", args=[hei_followup.id])
-        response = authenticated_client.post(
-            url, {"breastfeeding_status": "INVALID"}
-        )
+        response = authenticated_client.post(url, {"breastfeeding_status": "INVALID"})
 
         assert response.status_code == 400
 
@@ -923,9 +892,7 @@ class TestValidateWHOLMSCommand:
 class TestModelChanges:
     """Tests for model-level changes."""
 
-    def test_mch_registration_sensitive_for_gbv(
-        self, sample_patient, anc_enrollment
-    ):
+    def test_mch_registration_sensitive_for_gbv(self, sample_patient, anc_enrollment):
         """Should mark registration as sensitive if GBV-related."""
         from hmis.apps.mch.models import MCHRegistration
 
@@ -938,9 +905,7 @@ class TestModelChanges:
 
         assert registration.is_sensitive is True
 
-    def test_mch_registration_sensitive_for_hiv_positive(
-        self, sample_patient, anc_enrollment
-    ):
+    def test_mch_registration_sensitive_for_hiv_positive(self, sample_patient, anc_enrollment):
         """Should mark registration as sensitive if HIV positive."""
         from hmis.apps.mch.models import MCHRegistration
 
@@ -956,9 +921,7 @@ class TestModelChanges:
 
         assert registration.is_sensitive is True
 
-    def test_mch_registration_not_sensitive_by_default(
-        self, mch_registration
-    ):
+    def test_mch_registration_not_sensitive_by_default(self, mch_registration):
         """Should not be sensitive by default."""
         assert mch_registration.is_sensitive is False
 
@@ -994,18 +957,14 @@ class TestDeliveryDashboardEndpoint:
         assert "overdue" in stats
         assert "high_risk_due_soon" in stats
 
-    def test_dashboard_counts_active_pregnancies(
-        self, authenticated_client, mch_registration
-    ):
+    def test_dashboard_counts_active_pregnancies(self, authenticated_client, mch_registration):
         """Should count active MCH registrations."""
         response = authenticated_client.get("/api/mch/deliveries/dashboard/")
         assert response.status_code == 200
         # At least 1 active pregnancy from the fixture
         assert response.data["stats"]["active_pregnancies"] >= 1
 
-    def test_dashboard_counts_deliveries(
-        self, authenticated_client, delivery
-    ):
+    def test_dashboard_counts_deliveries(self, authenticated_client, delivery):
         """Should count deliveries correctly."""
         response = authenticated_client.get("/api/mch/deliveries/dashboard/")
         assert response.status_code == 200
@@ -1033,9 +992,7 @@ class TestDeliveryListEnhanced:
         assert "mother_mrn" in first
         assert len(first["mother_name"]) > 0
 
-    def test_list_includes_place_and_delivered_by(
-        self, authenticated_client, delivery
-    ):
+    def test_list_includes_place_and_delivered_by(self, authenticated_client, delivery):
         """Should include place_of_delivery and delivered_by_name."""
         response = authenticated_client.get("/api/mch/deliveries/")
         assert response.status_code == 200
@@ -1043,13 +1000,9 @@ class TestDeliveryListEnhanced:
         assert "place_of_delivery" in first
         assert "delivered_by_name" in first
 
-    def test_list_search_by_mother_name(
-        self, authenticated_client, delivery
-    ):
+    def test_list_search_by_mother_name(self, authenticated_client, delivery):
         """Should support search by mother name."""
         mother_name = delivery.registration.mother.first_name
-        response = authenticated_client.get(
-            f"/api/mch/deliveries/?search={mother_name}"
-        )
+        response = authenticated_client.get(f"/api/mch/deliveries/?search={mother_name}")
         assert response.status_code == 200
         assert response.data["count"] >= 1

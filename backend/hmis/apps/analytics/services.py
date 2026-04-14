@@ -59,9 +59,7 @@ def compute_daily_summary(facility, target_date: date) -> dict:
     patient_scope = {"registered_at_facility": facility}
 
     # -- Patients --
-    new_patients = Patient.objects.filter(
-        created_at__date=target_date, **patient_scope
-    ).count()
+    new_patients = Patient.objects.filter(created_at__date=target_date, **patient_scope).count()
     total_patients = Patient.objects.filter(
         created_at__date__lte=target_date, **patient_scope
     ).count()
@@ -71,17 +69,13 @@ def compute_daily_summary(facility, target_date: date) -> dict:
     encounters_opd = enc_qs.filter(encounter_type="OPD").count()
     encounters_ipd = enc_qs.filter(encounter_type="IPD").count()
     encounters_emergency = enc_qs.filter(encounter_type="EMERGENCY").count()
-    encounters_other = enc_qs.exclude(
-        encounter_type__in=["OPD", "IPD", "EMERGENCY"]
-    ).count()
+    encounters_other = enc_qs.exclude(encounter_type__in=["OPD", "IPD", "EMERGENCY"]).count()
     encounters_total = enc_qs.count()
     follow_up_encounters = enc_qs.filter(encounter_type="FOLLOW_UP").count()
 
     # -- Patient flow KPIs --
     # Return patients: seen today who had at least one prior encounter
-    return_patient_ids = (
-        enc_qs.values_list("patient_id", flat=True).distinct()
-    )
+    return_patient_ids = enc_qs.values_list("patient_id", flat=True).distinct()
     return_patients = 0
     if return_patient_ids:
         return_patients = (
@@ -96,9 +90,7 @@ def compute_daily_summary(facility, target_date: date) -> dict:
         )
 
     # Walk-ins / referrals from today's new registrations
-    new_reg_qs = Patient.objects.filter(
-        created_at__date=target_date, **patient_scope
-    )
+    new_reg_qs = Patient.objects.filter(created_at__date=target_date, **patient_scope)
     walk_ins = new_reg_qs.filter(referral_source="self").count()
     referral_ins = new_reg_qs.filter(referral_source="other_facility").count()
     clinic_referrals = new_reg_qs.filter(referral_source="clinic").count()
@@ -110,23 +102,14 @@ def compute_daily_summary(facility, target_date: date) -> dict:
         invoice__facility=facility,
     )
     revenue_total = payments.aggregate(t=Sum("amount"))["t"] or Decimal("0")
-    revenue_cash = (
-        payments.filter(method="cash").aggregate(t=Sum("amount"))["t"]
-        or Decimal("0")
-    )
-    revenue_mpesa = (
-        payments.filter(method="mpesa").aggregate(t=Sum("amount"))["t"]
-        or Decimal("0")
-    )
-    revenue_insurance = (
-        payments.filter(method="insurance").aggregate(t=Sum("amount"))["t"]
-        or Decimal("0")
-    )
+    revenue_cash = payments.filter(method="cash").aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    revenue_mpesa = payments.filter(method="mpesa").aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    revenue_insurance = payments.filter(method="insurance").aggregate(t=Sum("amount"))[
+        "t"
+    ] or Decimal("0")
 
     # -- Billing --
-    invoices_created = Invoice.objects.filter(
-        invoice_date=target_date, **scope
-    ).count()
+    invoices_created = Invoice.objects.filter(invoice_date=target_date, **scope).count()
     outstanding = Invoice.objects.filter(
         status__in=["pending", "partial", "overdue"], **scope
     ).aggregate(t=Sum("balance_due"))["t"] or Decimal("0")
@@ -173,9 +156,7 @@ def _get_lab_stats(facility, target_date: date) -> dict:
     try:
         from hmis.apps.laboratory.models import LabOrder, LabResult
 
-        placed = LabOrder.objects.filter(
-            created_at__date=target_date, facility=facility
-        ).count()
+        placed = LabOrder.objects.filter(created_at__date=target_date, facility=facility).count()
         completed = LabOrder.objects.filter(
             status="COMPLETED", updated_at__date=target_date, facility=facility
         ).count()
@@ -210,9 +191,7 @@ def _get_triage_stats(facility, target_date: date) -> dict:
     try:
         from hmis.apps.triage.models import TriageAssessment
 
-        qs = TriageAssessment.objects.filter(
-            created_at__date=target_date, facility=facility
-        )
+        qs = TriageAssessment.objects.filter(created_at__date=target_date, facility=facility)
         assessments = qs.count()
         emergency = qs.filter(category="EMERGENCY").count()
 
@@ -244,9 +223,7 @@ def _get_inpatient_stats(facility, target_date: date) -> dict:
     try:
         from hmis.apps.inpatient.models import Admission, Bed
 
-        active = Admission.objects.filter(
-            admission_status="ACTIVE", facility=facility
-        ).count()
+        active = Admission.objects.filter(admission_status="ACTIVE", facility=facility).count()
         new_adm = Admission.objects.filter(
             admission_date__date=target_date, facility=facility
         ).count()
@@ -256,12 +233,10 @@ def _get_inpatient_stats(facility, target_date: date) -> dict:
             facility=facility,
         ).count()
 
-        total_beds = Bed.objects.filter(ward__facility=facility).exclude(
-            status="MAINTENANCE"
-        ).count()
-        occupied = Bed.objects.filter(
-            ward__facility=facility, status="OCCUPIED"
-        ).count()
+        total_beds = (
+            Bed.objects.filter(ward__facility=facility).exclude(status="MAINTENANCE").count()
+        )
+        occupied = Bed.objects.filter(ward__facility=facility, status="OCCUPIED").count()
         occupancy = Decimal("0")
         if total_beds > 0:
             occupancy = Decimal(str(round(occupied / total_beds * 100, 2)))
@@ -368,16 +343,13 @@ def _compute_service_department(
     try:
         from hmis.apps.billing.models import InvoiceItem
 
-        dept_revenue = (
-            InvoiceItem.objects.filter(
-                invoice__facility=facility,
-                invoice__status__in=["paid", "partial"],
-                invoice__created_at__date__gte=month_start,
-                invoice__created_at__date__lte=month_end,
-                item_type=_dept_to_item_type.get(dept_code, ""),
-            ).aggregate(t=Sum("total_price"))["t"]
-            or Decimal("0")
-        )
+        dept_revenue = InvoiceItem.objects.filter(
+            invoice__facility=facility,
+            invoice__status__in=["paid", "partial"],
+            invoice__created_at__date__gte=month_start,
+            invoice__created_at__date__lte=month_end,
+            item_type=_dept_to_item_type.get(dept_code, ""),
+        ).aggregate(t=Sum("total_price"))["t"] or Decimal("0")
         revenue = dept_revenue
     except Exception:
         logger.debug("Revenue aggregation failed for service dept %s", dept_code)
@@ -426,9 +398,7 @@ def compute_department_monthly(facility, year: int, month: int) -> list[dict]:
     ]:
         # Service departments (no encounter types) — aggregate from own models
         if dept_code in ("PHARMACY", "LABORATORY", "IMAGING"):
-            svc = _compute_service_department(
-                facility, dept_code, month_start, month_end
-            )
+            svc = _compute_service_department(facility, dept_code, month_start, month_end)
             if svc and svc["visit_count"] > 0:
                 results.append(svc)
             continue
@@ -447,14 +417,11 @@ def compute_department_monthly(facility, year: int, month: int) -> list[dict]:
         try:
             from hmis.apps.billing.models import Invoice
 
-            revenue = (
-                Invoice.objects.filter(
-                    encounter__in=dept_enc,
-                    status__in=["paid", "partial"],
-                    facility=facility,
-                ).aggregate(t=Sum("total_amount"))["t"]
-                or Decimal("0")
-            )
+            revenue = Invoice.objects.filter(
+                encounter__in=dept_enc,
+                status__in=["paid", "partial"],
+                facility=facility,
+            ).aggregate(t=Sum("total_amount"))["t"] or Decimal("0")
         except Exception:
             logger.debug("Revenue aggregation failed for dept %s", dept_code)
         top_dx = list(
@@ -601,13 +568,10 @@ def compute_demographics_snapshot(facility, snapshot_date: date) -> dict:
 
     # Top counties
     county_dist = list(
-        qs.values("county__name")
-        .annotate(count=Count("id"))
-        .order_by("-count")[:10]
+        qs.values("county__name").annotate(count=Count("id")).order_by("-count")[:10]
     )
     county_list = [
-        {"county": c["county__name"] or "Unknown", "count": c["count"]}
-        for c in county_dist
+        {"county": c["county__name"] or "Unknown", "count": c["count"]} for c in county_dist
     ]
 
     # Referral source distribution

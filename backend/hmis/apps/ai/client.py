@@ -114,15 +114,11 @@ class TibaBotClient:
 
         except requests.exceptions.ConnectionError as e:
             logger.warning("TibaBot connection failed: %s", e)
-            raise TibaBotUnavailableError(
-                "TibaBot AI service is currently unavailable."
-            ) from e
+            raise TibaBotUnavailableError("TibaBot AI service is currently unavailable.") from e
 
         except requests.exceptions.Timeout as e:
             logger.warning("TibaBot request timed out after %ds", self.timeout)
-            raise TibaBotUnavailableError(
-                "TibaBot AI service request timed out."
-            ) from e
+            raise TibaBotUnavailableError("TibaBot AI service request timed out.") from e
 
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else None
@@ -140,7 +136,9 @@ class TibaBotClient:
                 ) from e
             logger.error(
                 "TibaBot API error: %s %s — response: %s",
-                status, e, response_body,
+                status,
+                e,
+                response_body,
             )
             raise TibaBotError(
                 f"TibaBot API error: {e}",
@@ -177,9 +175,7 @@ class TibaBotClient:
             data={"clinical_text": sanitized},
         )
 
-    def suggest_icd10_typeahead(
-        self, query: str, limit: int = 10
-    ) -> dict[str, Any]:
+    def suggest_icd10_typeahead(self, query: str, limit: int = 10) -> dict[str, Any]:
         """
         Get ICD-10 code suggestions as typeahead/autocomplete.
 

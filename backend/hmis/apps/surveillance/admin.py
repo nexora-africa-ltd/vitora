@@ -746,4 +746,3 @@ class IHRNotificationAdmin(admin.ModelAdmin):
         return format_html('<span style="color: #27ae60;">✓</span>')
 
     is_overdue_badge.short_description = "Overdue"
-

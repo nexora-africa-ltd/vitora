@@ -64,9 +64,7 @@ def _aggregate_monthly_reports(
         defaults[field] = sum(getattr(r, field, 0) for r in monthly_reports)
 
     for field in _REVENUE_FIELDS:
-        defaults[field] = sum(
-            (getattr(r, field, None) or Decimal("0.00")) for r in monthly_reports
-        )
+        defaults[field] = sum((getattr(r, field, None) or Decimal("0.00")) for r in monthly_reports)
 
     return defaults
 
@@ -117,9 +115,7 @@ def generate_all_quarterly_reports(
     """Generate quarterly reports for all clinics."""
     reports = []
     for clinic in Clinic.objects.all():
-        reports.append(
-            generate_quarterly_report(clinic, year, quarter, user=user)
-        )
+        reports.append(generate_quarterly_report(clinic, year, quarter, user=user))
     return reports
 
 
@@ -152,9 +148,7 @@ def generate_annual_report(
             )
     else:
         # Fallback: aggregate directly from monthly reports
-        monthly_reports = list(
-            MonthlyClinicReport.objects.filter(clinic=clinic, year=year)
-        )
+        monthly_reports = list(MonthlyClinicReport.objects.filter(clinic=clinic, year=year))
         defaults = _aggregate_monthly_reports(monthly_reports)
 
     defaults["generated_by"] = user

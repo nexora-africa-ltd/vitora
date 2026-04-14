@@ -122,9 +122,7 @@ def send_sms(phone: str, message: str, sender_id: str | None = None) -> bool:
         return False
 
 
-def send_bulk_sms(
-    phones: list[str], message: str, sender_id: str | None = None
-) -> dict[str, bool]:
+def send_bulk_sms(phones: list[str], message: str, sender_id: str | None = None) -> dict[str, bool]:
     """
     Send an SMS to multiple recipients.
 
@@ -336,9 +334,7 @@ class SMSGateway:
         )
         return self.send(phone, message)
 
-    def send_lab_result_notification(
-        self, phone: str, patient_name: str, test_name: str
-    ) -> bool:
+    def send_lab_result_notification(self, phone: str, patient_name: str, test_name: str) -> bool:
         """
         Send notification that lab results are ready.
 
@@ -356,9 +352,7 @@ class SMSGateway:
         )
         return self.send(phone, message)
 
-    def send_prescription_ready(
-        self, phone: str, patient_name: str, pharmacy_name: str
-    ) -> bool:
+    def send_prescription_ready(self, phone: str, patient_name: str, pharmacy_name: str) -> bool:
         """
         Send notification that prescription is ready for pickup.
 

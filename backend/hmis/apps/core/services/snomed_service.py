@@ -182,9 +182,7 @@ class SNOMEDService:
         self._cache_results([result])
         return result
 
-    def _search_local(
-        self, query: str, semantic_tag: str, limit: int
-    ) -> list[SNOMEDSearchResult]:
+    def _search_local(self, query: str, semantic_tag: str, limit: int) -> list[SNOMEDSearchResult]:
         """Search local SNOMEDConcept cache."""
         qs = SNOMEDConcept.objects.filter(is_active=True)
 

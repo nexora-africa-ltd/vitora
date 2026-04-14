@@ -15,7 +15,7 @@ ANALYTICS_ROLE_CODES = frozenset(
         "ADMIN",
         "MANAGEMENT",
         "CLINICAL_SENIOR",
-        "DOC",           # Doctors can view analytics for their facility
+        "DOC",  # Doctors can view analytics for their facility
         "DOCTOR",
         "NURSING_MGR",
         "HEAD_NURSE",
@@ -80,8 +80,4 @@ class IsSuperUser(permissions.BasePermission):
     message = "Platform-wide analytics require superuser access."
 
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.is_superuser
-        )
+        return request.user and request.user.is_authenticated and request.user.is_superuser

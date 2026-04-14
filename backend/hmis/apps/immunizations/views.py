@@ -1,6 +1,5 @@
 """Views for the immunizations app."""
 
-
 import django_filters.rest_framework
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -158,7 +157,9 @@ class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         # Auto-fill from stock batch if provided, otherwise use manual entry
         if stock:
             record.batch_number = stock.batch_number
-            record.lot_number = serializer.validated_data.get("lot_number", "") or stock.batch_number
+            record.lot_number = (
+                serializer.validated_data.get("lot_number", "") or stock.batch_number
+            )
             record.expiry_date = stock.expiry_date
             record.vaccine_manufacturer = stock.manufacturer
         else:
@@ -233,18 +234,14 @@ class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         from hmis.apps.patients.models import Patient
 
-        patient = Patient.objects.filter(
-            id=serializer.validated_data["patient"]
-        ).first()
+        patient = Patient.objects.filter(id=serializer.validated_data["patient"]).first()
         if not patient:
             return Response(
                 {"detail": "Patient not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        vaccine = VaccineDefinition.objects.filter(
-            id=serializer.validated_data["vaccine"]
-        ).first()
+        vaccine = VaccineDefinition.objects.filter(id=serializer.validated_data["vaccine"]).first()
         if not vaccine:
             return Response(
                 {"detail": "Vaccine not found"},
@@ -256,9 +253,7 @@ class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             vaccine=vaccine,
             start_date=serializer.validated_data["start_date"],
         )
-        return Response(
-            ImmunizationRecordListSerializer(records, many=True).data
-        )
+        return Response(ImmunizationRecordListSerializer(records, many=True).data)
 
 
 class VaccineCampaignViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):

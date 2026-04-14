@@ -38,8 +38,12 @@ from hmis.apps.immunizations.services.schedule import (
 
 @pytest.fixture
 def child_patient(
-    db, test_user, sample_county, sample_sub_county,
-    sample_organization, sample_facility,
+    db,
+    test_user,
+    sample_county,
+    sample_sub_county,
+    sample_organization,
+    sample_facility,
 ):
     """Child patient born 30 days ago for KEPI schedule tests."""
     from hmis.apps.patients.models import Patient
@@ -58,8 +62,12 @@ def child_patient(
 
 @pytest.fixture
 def adult_patient(
-    db, test_user, sample_county, sample_sub_county,
-    sample_organization, sample_facility,
+    db,
+    test_user,
+    sample_county,
+    sample_sub_county,
+    sample_organization,
+    sample_facility,
 ):
     """Adult patient for non-KEPI vaccine tests."""
     from hmis.apps.patients.models import Patient
@@ -226,6 +234,7 @@ class TestVaccineDefinition:
     def test_unique_code(self, bcg_vaccine):
         """Vaccine code must be unique."""
         from django.db import IntegrityError
+
         with pytest.raises(IntegrityError):
             VaccineDefinition.objects.create(
                 code="BCG",
@@ -314,9 +323,7 @@ class TestImmunizationRecord:
             scheduled_date=date.today() + timedelta(days=21),
         )
         assert r1.pk != r2.pk
-        records = ImmunizationRecord.objects.filter(
-            patient=child_patient, vaccine=covid_vaccine
-        )
+        records = ImmunizationRecord.objects.filter(patient=child_patient, vaccine=covid_vaccine)
         assert records.count() == 2
 
     def test_str_representation(self, sample_immunization):
@@ -547,7 +554,9 @@ class TestVaccineDefinitionAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 4
 
-    def test_list_vaccines_filter_by_program(self, authenticated_client, bcg_vaccine, covid_vaccine):
+    def test_list_vaccines_filter_by_program(
+        self, authenticated_client, bcg_vaccine, covid_vaccine
+    ):
         """Should filter vaccines by program."""
         response = authenticated_client.get("/api/immunizations/vaccines/?program=KEPI")
         assert response.status_code == status.HTTP_200_OK
@@ -644,16 +653,12 @@ class TestImmunizationRecordAPI:
 
     def test_filter_by_status(self, authenticated_client, sample_immunization):
         """Should filter records by status."""
-        response = authenticated_client.get(
-            "/api/immunizations/records/?status=ADMINISTERED"
-        )
+        response = authenticated_client.get("/api/immunizations/records/?status=ADMINISTERED")
         assert response.status_code == status.HTTP_200_OK
 
     def test_filter_by_program(self, authenticated_client, sample_immunization):
         """Should filter records by vaccine program."""
-        response = authenticated_client.get(
-            "/api/immunizations/records/?program=KEPI"
-        )
+        response = authenticated_client.get("/api/immunizations/records/?program=KEPI")
         assert response.status_code == status.HTTP_200_OK
 
 
@@ -715,9 +720,7 @@ class TestCoverageAPI:
 
     def test_coverage_endpoint(self, authenticated_client, sample_immunization, bcg_vaccine):
         """Should return coverage statistics."""
-        response = authenticated_client.get(
-            "/api/immunizations/coverage/?vaccine_code=BCG"
-        )
+        response = authenticated_client.get("/api/immunizations/coverage/?vaccine_code=BCG")
         assert response.status_code == status.HTTP_200_OK
         assert "coverage_pct" in response.data
         assert "total" in response.data

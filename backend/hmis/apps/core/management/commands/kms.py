@@ -104,9 +104,19 @@ class Command(BaseCommand):
                         "state": metadata.state.value,
                         "algorithm": metadata.algorithm,
                         "version": metadata.version,
-                        "created_at": metadata.created_at.isoformat() if metadata.created_at else None,
-                        "last_rotated_at": metadata.last_rotated_at.isoformat() if metadata.last_rotated_at else None,
-                        "next_rotation_at": metadata.next_rotation_at.isoformat() if metadata.next_rotation_at else None,
+                        "created_at": (
+                            metadata.created_at.isoformat() if metadata.created_at else None
+                        ),
+                        "last_rotated_at": (
+                            metadata.last_rotated_at.isoformat()
+                            if metadata.last_rotated_at
+                            else None
+                        ),
+                        "next_rotation_at": (
+                            metadata.next_rotation_at.isoformat()
+                            if metadata.next_rotation_at
+                            else None
+                        ),
                         "rotation_period_days": metadata.rotation_period_days,
                     },
                 }
@@ -116,7 +126,9 @@ class Command(BaseCommand):
                 self.stdout.write("=" * 50)
                 self.stdout.write(f"Provider: {provider.get_provider_name()}")
                 self.stdout.write(f"Healthy: {'✅ Yes' if provider.is_healthy() else '❌ No'}")
-                self.stdout.write(f"Auto-rotation: {'✅ Supported' if provider.supports_automatic_rotation() else '❌ Manual only'}")
+                self.stdout.write(
+                    f"Auto-rotation: {'✅ Supported' if provider.supports_automatic_rotation() else '❌ Manual only'}"
+                )
                 self.stdout.write("")
                 self.stdout.write(self.style.SUCCESS("Key Information"))
                 self.stdout.write("-" * 50)
@@ -149,9 +161,7 @@ class Command(BaseCommand):
 
             # Check if rotation is needed
             if not options.get("force") and not service.needs_rotation():
-                self.stdout.write(
-                    self.style.WARNING("Key rotation is not needed at this time.")
-                )
+                self.stdout.write(self.style.WARNING("Key rotation is not needed at this time."))
                 self.stdout.write("Use --force to rotate anyway.")
                 return
 
@@ -171,11 +181,15 @@ class Command(BaseCommand):
 
                 if result.metadata and result.metadata.tags and "new_key" in result.metadata.tags:
                     self.stdout.write("")
-                    self.stdout.write(self.style.WARNING("⚠️  Local provider: Manual key update required!"))
+                    self.stdout.write(
+                        self.style.WARNING("⚠️  Local provider: Manual key update required!")
+                    )
                     self.stdout.write("New ENCRYPTION_KEY:")
                     self.stdout.write(f"  {result.metadata.tags['new_key']}")
                     self.stdout.write("")
-                    self.stdout.write("Update your environment variables and re-encrypt existing data.")
+                    self.stdout.write(
+                        "Update your environment variables and re-encrypt existing data."
+                    )
             else:
                 self.stdout.write(self.style.ERROR("\n❌ Key rotation failed!"))
                 for error in result.errors:

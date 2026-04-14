@@ -105,13 +105,9 @@ class TestBuildUserContext:
         from hmis.apps.core.models import Department, Role, StaffProfile
 
         User = get_user_model()
-        user = User.objects.create_user(
-            username="dr_test", email="dr@test.com", password="pass123"
-        )
+        user = User.objects.create_user(username="dr_test", email="dr@test.com", password="pass123")
 
-        dept = Department.objects.create(
-            name="Medicine", code="MED", department_type="CLINICAL"
-        )
+        dept = Department.objects.create(name="Medicine", code="MED", department_type="CLINICAL")
         role = Role.objects.create(
             code="DOCTOR",
             name="Doctor",
@@ -148,9 +144,7 @@ class TestBuildUserContext:
             username="nurse_test", email="nurse@test.com", password="pass123"
         )
 
-        dept = Department.objects.create(
-            name="Nursing", code="NUR", department_type="CLINICAL"
-        )
+        dept = Department.objects.create(name="Nursing", code="NUR", department_type="CLINICAL")
         role = Role.objects.create(
             code="NURSE",
             name="Nurse",
@@ -277,9 +271,7 @@ class TestClinicalChatEndpoint:
                 "content": "Based on the presentation...",
             },
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -303,13 +295,9 @@ class TestClinicalChatEndpoint:
         """Should return fallback response when TibaBot is down."""
         from hmis.apps.ai.client import TibaBotUnavailableError
 
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client.clinical_chat.side_effect = TibaBotUnavailableError(
-                "unavailable"
-            )
+            mock_client.clinical_chat.side_effect = TibaBotUnavailableError("unavailable")
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.post(
@@ -331,9 +319,7 @@ class TestClinicalChatEndpoint:
             "session_id": "sess-456",
             "message": {"role": "assistant", "content": "response"},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -411,9 +397,7 @@ class TestClinicalAssistEndpoint:
             "response": "For this presentation, consider...",
             "references": ["Kenya Clinical Guidelines 2022"],
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_assist.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -444,13 +428,9 @@ class TestClinicalAssistEndpoint:
         """Should return fallback when TibaBot is down."""
         from hmis.apps.ai.client import TibaBotUnavailableError
 
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client.clinical_assist.side_effect = TibaBotUnavailableError(
-                "unavailable"
-            )
+            mock_client.clinical_assist.side_effect = TibaBotUnavailableError("unavailable")
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.post(
@@ -471,9 +451,7 @@ class TestClinicalAssistEndpoint:
         mock_response = {
             "response": "Consider the following...",
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_assist.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -536,9 +514,7 @@ class TestClinicalAssistRequestSerializer:
     def test_valid_minimal_request(self):
         from hmis.apps.ai.serializers import ClinicalAssistRequestSerializer
 
-        serializer = ClinicalAssistRequestSerializer(
-            data={"query": "DDx for productive cough"}
-        )
+        serializer = ClinicalAssistRequestSerializer(data={"query": "DDx for productive cough"})
         assert serializer.is_valid(), serializer.errors
 
     def test_valid_with_full_context(self):
@@ -653,9 +629,7 @@ class TestClinicalChatVerbosity:
     def test_chat_verbosity_defaults_to_standard(self):
         from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
 
-        serializer = ClinicalChatRequestSerializer(
-            data={"message": "DDx for chest pain?"}
-        )
+        serializer = ClinicalChatRequestSerializer(data={"message": "DDx for chest pain?"})
         assert serializer.is_valid(), serializer.errors
         assert serializer.validated_data["verbosity"] == "standard"
 
@@ -672,9 +646,7 @@ class TestClinicalChatVerbosity:
         """'brief' is not a valid TibaBot verbosity level."""
         from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
 
-        serializer = ClinicalChatRequestSerializer(
-            data={"message": "test", "verbosity": "brief"}
-        )
+        serializer = ClinicalChatRequestSerializer(data={"message": "test", "verbosity": "brief"})
         assert not serializer.is_valid()
         assert "verbosity" in serializer.errors
 
@@ -691,9 +663,7 @@ class TestClinicalChatVerbosity:
     def test_chat_accepts_concise(self):
         from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
 
-        serializer = ClinicalChatRequestSerializer(
-            data={"message": "test", "verbosity": "concise"}
-        )
+        serializer = ClinicalChatRequestSerializer(data={"message": "test", "verbosity": "concise"})
         assert serializer.is_valid(), serializer.errors
 
     def test_chat_accepts_educational(self):
@@ -721,9 +691,7 @@ class TestVerbosityQueryParam:
             "session_id": "sess-v1",
             "message": {"role": "assistant", "content": "ok"},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -741,9 +709,7 @@ class TestVerbosityQueryParam:
     def test_query_param_overrides_body_on_assist(self, authenticated_client):
         """Query param verbosity should take priority over body value."""
         mock_response = {"response": "Consider...", "references": []}
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_assist.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -761,9 +727,7 @@ class TestVerbosityQueryParam:
     def test_invalid_query_param_falls_back_to_body(self, authenticated_client):
         """Invalid query param should fall back to body value."""
         mock_response = {"response": "Consider...", "references": []}
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_assist.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -781,9 +745,7 @@ class TestVerbosityQueryParam:
     def test_no_verbosity_defaults_to_standard(self, authenticated_client):
         """No verbosity anywhere should default to standard."""
         mock_response = {"response": "Consider...", "references": []}
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_assist.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -806,9 +768,7 @@ class TestVerbosityQueryParam:
             "session_id": "sess-v2",
             "message": {"role": "assistant", "content": "ok"},
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -865,9 +825,7 @@ class TestAIFeedbackRequestSerializer:
     def test_rejects_missing_feedback(self):
         from hmis.apps.ai.serializers import AIFeedbackRequestSerializer
 
-        serializer = AIFeedbackRequestSerializer(
-            data={"message_id": "msg-1"}
-        )
+        serializer = AIFeedbackRequestSerializer(data={"message_id": "msg-1"})
         assert not serializer.is_valid()
         assert "feedback" in serializer.errors
 
@@ -944,9 +902,7 @@ class TestAIFeedbackEndpoint:
             "message": "Thank you for your feedback!",
             "feedback_id": "fb_abc123",
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.submit_feedback.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -979,13 +935,9 @@ class TestAIFeedbackEndpoint:
         """Should return 'queued' status when TibaBot is down."""
         from hmis.apps.ai.client import TibaBotUnavailableError
 
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client.submit_feedback.side_effect = TibaBotUnavailableError(
-                "unavailable"
-            )
+            mock_client.submit_feedback.side_effect = TibaBotUnavailableError("unavailable")
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.post(
@@ -1007,9 +959,7 @@ class TestAIFeedbackEndpoint:
             "message": "Thanks!",
             "feedback_id": "fb_xyz",
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.submit_feedback.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -1055,9 +1005,7 @@ class TestAIFeedbackStatsEndpoint:
             "total_down": 7,
             "recent_negatives": 3,
         }
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.get_feedback_stats.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -1074,13 +1022,9 @@ class TestAIFeedbackStatsEndpoint:
         """Should return zeroes when TibaBot is down."""
         from hmis.apps.ai.client import TibaBotUnavailableError
 
-        with patch(
-            "hmis.apps.ai.views.get_tibabot_client"
-        ) as mock_get_client:
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client.get_feedback_stats.side_effect = TibaBotUnavailableError(
-                "unavailable"
-            )
+            mock_client.get_feedback_stats.side_effect = TibaBotUnavailableError("unavailable")
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.get("/api/ai/feedback/stats/")

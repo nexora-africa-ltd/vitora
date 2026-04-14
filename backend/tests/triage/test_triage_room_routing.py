@@ -175,9 +175,7 @@ class TestFindBestTriageRoom:
         """No TriageSettings → None."""
         assert find_best_triage_room(sample_facility) is None
 
-    def test_returns_none_when_auto_route_disabled(
-        self, sample_facility, triage_department
-    ):
+    def test_returns_none_when_auto_route_disabled(self, sample_facility, triage_department):
         """auto_route_to_room=False → None."""
         TriageSettings.objects.create(
             facility=sample_facility,
@@ -195,9 +193,7 @@ class TestFindBestTriageRoom:
         )
         assert find_best_triage_room(sample_facility) is None
 
-    def test_returns_none_when_no_active_staff(
-        self, triage_settings, triage_room_a
-    ):
+    def test_returns_none_when_no_active_staff(self, triage_settings, triage_room_a):
         """Room exists but no active shift → None."""
         assert find_best_triage_room(triage_settings.facility) is None
 
@@ -291,9 +287,7 @@ class TestFindBestTriageRoom:
         # Room B has load 0 < Room A load 1, so B is preferred
         assert room.pk == triage_room_b.pk
 
-    def test_skips_inactive_room(
-        self, triage_settings, triage_room_a, active_shift_in_room_a
-    ):
+    def test_skips_inactive_room(self, triage_settings, triage_room_a, active_shift_in_room_a):
         """Inactive rooms are not considered."""
         triage_room_a.is_active = False
         triage_room_a.save()
@@ -491,7 +485,9 @@ class TestTriageSettingsAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["auto_route_to_room"] is False
 
-    def test_get_current_returns_existing(self, authenticated_client, sample_facility, triage_settings):
+    def test_get_current_returns_existing(
+        self, authenticated_client, sample_facility, triage_settings
+    ):
         response = authenticated_client.get(
             "/api/triage/settings/current/",
             HTTP_X_FACILITY_ID=str(sample_facility.pk),

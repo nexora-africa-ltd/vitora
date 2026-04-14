@@ -61,9 +61,7 @@ def create_invoice_item_for_completed_consultation(sender, instance, created, **
             ).first()
 
         # Determine price (could be from service or a default consultation fee)
-        unit_price = (
-            service.price if service and hasattr(service, "price") else Decimal("500.00")
-        )
+        unit_price = service.price if service and hasattr(service, "price") else Decimal("500.00")
 
         # Create invoice item
         invoice_item = InvoiceItem.objects.create(
@@ -161,7 +159,11 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
                 defaults={
                     "visit_type": "REFERRAL",
                     "source": "REFERRAL",
-                    "priority": "STANDARD" if not instance.priority or instance.priority == "ROUTINE" else "URGENT",
+                    "priority": (
+                        "STANDARD"
+                        if not instance.priority or instance.priority == "ROUTINE"
+                        else "URGENT"
+                    ),
                     "queue_number": clinic_session.visits.count() + 1,
                     "chief_complaint": f"Nutrition referral: {instance.referral_reason}",
                     "notes": f"Nutrition consultation: {instance.consultation_number}",

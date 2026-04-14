@@ -89,7 +89,15 @@ def triage_setup(db, sample_patient, test_user, triage_permission, sample_facili
 
 
 @pytest.fixture
-def orange_triage_setup(db, sample_county, sample_sub_county, test_user, triage_permission, sample_organization, sample_facility):
+def orange_triage_setup(
+    db,
+    sample_county,
+    sample_sub_county,
+    test_user,
+    triage_permission,
+    sample_organization,
+    sample_facility,
+):
     """Create ORANGE category triage setup with 15-min wait (breached)."""
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.patients.models import Patient
@@ -377,7 +385,9 @@ class TestWaitTimeBreachTask:
         assert WaitTimeBreach.objects.count() == 1
 
     @patch("hmis.apps.triage.tasks._broadcast_breach_alerts")
-    def test_no_breach_for_within_target(self, mock_broadcast, db, sample_patient, test_user, triage_permission, sample_facility):
+    def test_no_breach_for_within_target(
+        self, mock_broadcast, db, sample_patient, test_user, triage_permission, sample_facility
+    ):
         """Should not create breach if wait time is within target."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment, TriageQueue, WaitTimeBreach
@@ -662,7 +672,9 @@ class TestEscalationAPI:
         response = api_client.get("/api/triage/escalations/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_escalate_from_queue(self, authenticated_client, triage_setup, test_user, triage_permission):
+    def test_escalate_from_queue(
+        self, authenticated_client, triage_setup, test_user, triage_permission
+    ):
         """Should create escalation from queue entry."""
         # Grant view_triage_queue permission
         perm = Permission.objects.get(codename="view_triage_queue")
@@ -685,7 +697,9 @@ class TestEscalationAPI:
         assert response.data["assigned_area"] == "ER_RESUS"
         assert response.data["wait_time_at_escalation"] is not None
 
-    def test_escalate_creates_audit_log(self, authenticated_client, triage_setup, test_user, triage_permission):
+    def test_escalate_creates_audit_log(
+        self, authenticated_client, triage_setup, test_user, triage_permission
+    ):
         """Should create audit log entry on escalation."""
         from hmis.apps.core.models import AuditLog
 
@@ -705,7 +719,9 @@ class TestEscalationAPI:
         assert audit is not None
         assert audit.details["escalation_type"] == "ADDITIONAL_STAFF"
 
-    def test_escalate_requires_reason(self, authenticated_client, triage_setup, test_user, triage_permission):
+    def test_escalate_requires_reason(
+        self, authenticated_client, triage_setup, test_user, triage_permission
+    ):
         """Should require reason for escalation."""
         perm = Permission.objects.get(codename="view_triage_queue")
         test_user.user_permissions.add(perm)

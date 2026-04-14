@@ -132,7 +132,9 @@ class ThrottledBroadcaster:
         except Exception:
             logger.debug(
                 "Throttled broadcast failed for group=%s type=%s",
-                group, event_type, exc_info=True,
+                group,
+                event_type,
+                exc_info=True,
             )
 
     def _ensure_timer(self) -> None:

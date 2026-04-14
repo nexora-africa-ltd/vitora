@@ -214,11 +214,11 @@ def broadcast_payment_received(payment) -> None:
             "invoice_number": payment.invoice.invoice_number,
             "amount": str(payment.amount),
             "method": payment.method,
-            "new_balance": str(payment.invoice.balance) if hasattr(payment.invoice, "balance") else "0.00",
-            "invoice_status": payment.invoice.status,
-            "payment_date": (
-                payment.payment_date.isoformat() if payment.payment_date else None
+            "new_balance": (
+                str(payment.invoice.balance) if hasattr(payment.invoice, "balance") else "0.00"
             ),
+            "invoice_status": payment.invoice.status,
+            "payment_date": (payment.payment_date.isoformat() if payment.payment_date else None),
         },
     )
 
@@ -239,7 +239,9 @@ def broadcast_payment_reversed(payment) -> None:
             "invoice_number": payment.invoice.invoice_number,
             "amount": str(payment.amount),
             "reason": getattr(payment, "notes", ""),
-            "new_balance": str(payment.invoice.balance) if hasattr(payment.invoice, "balance") else "0.00",
+            "new_balance": (
+                str(payment.invoice.balance) if hasattr(payment.invoice, "balance") else "0.00"
+            ),
             "invoice_status": payment.invoice.status,
         },
     )

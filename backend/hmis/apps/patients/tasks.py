@@ -71,9 +71,7 @@ def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
                 cr_number=client.client_number,
                 cr_synced_at=timezone.now(),
             )
-            logger.info(
-                "Matched patient %s to CR %s", patient.mrn, client.client_number
-            )
+            logger.info("Matched patient %s to CR %s", patient.mrn, client.client_number)
             return {"action": "matched", "cr_number": client.client_number}
 
         # Step 2: Register new patient in CR if enabled
@@ -84,9 +82,7 @@ def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
             first_name=patient.first_name,
             last_name=patient.last_name,
             date_of_birth=str(patient.date_of_birth),
-            gender={"M": "Male", "F": "Female", "O": "Other"}.get(
-                patient.gender, "Other"
-            ),
+            gender={"M": "Male", "F": "Female", "O": "Other"}.get(patient.gender, "Other"),
             national_id=national_id or "",
             phone_number=getattr(patient, "phone_number", "") or "",
         )
@@ -106,7 +102,5 @@ def lookup_and_register_patient_in_cr(self, patient_id: int) -> dict:
         return {"action": "error", "detail": "Registration returned no CR number"}
 
     except Exception as exc:
-        logger.warning(
-            "CR sync failed for patient %s: %s", patient_id, exc, exc_info=True
-        )
+        logger.warning("CR sync failed for patient %s: %s", patient_id, exc, exc_info=True)
         raise self.retry(exc=exc)

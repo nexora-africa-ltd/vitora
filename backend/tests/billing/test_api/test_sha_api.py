@@ -652,7 +652,9 @@ class TestSHAAPIErrorResponses:
         response = sha_client.post("/api/sha/members/", {})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_400_for_duplicate_sha_number(self, sha_client, sample_sha_member, sample_patient, sample_organization):
+    def test_400_for_duplicate_sha_number(
+        self, sha_client, sample_sha_member, sample_patient, sample_organization
+    ):
         """Should return 400 for duplicate SHA number."""
         # Create another patient for the new member
         from hmis.apps.core.models import County, SubCounty
@@ -706,7 +708,9 @@ class TestSHAMemberRegistration:
         assert response.data["patient"] == sample_patient.id
         assert response.data["status"] == "pending_verification"
 
-    def test_create_dependent_member(self, sha_client, sample_patient, sample_sha_member, sample_organization):
+    def test_create_dependent_member(
+        self, sha_client, sample_patient, sample_sha_member, sample_organization
+    ):
         """Should create dependent member with principal reference."""
         # Create another patient for dependent
         from hmis.apps.core.models import County, SubCounty

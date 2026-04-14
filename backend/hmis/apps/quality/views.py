@@ -105,9 +105,7 @@ class QuarterlyReportViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        report = generate_quarterly_report(
-            clinic, int(year), int(quarter), user=request.user
-        )
+        report = generate_quarterly_report(clinic, int(year), int(quarter), user=request.user)
         serializer = self.get_serializer(report)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -124,9 +122,7 @@ class QuarterlyReportViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        reports = generate_all_quarterly_reports(
-            int(year), int(quarter), user=request.user
-        )
+        reports = generate_all_quarterly_reports(int(year), int(quarter), user=request.user)
         serializer = self.get_serializer(reports, many=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -425,12 +421,8 @@ class QualityDashboardView(APIView):
         # Domain summary
         domain_summary = []
         for domain_code, domain_label in QualityMeasure.DOMAIN_CHOICES:
-            domain_measures = QualityMeasure.objects.filter(
-                domain=domain_code, status="ACTIVE"
-            )
-            domain_results = results_qs.filter(
-                measure__domain=domain_code
-            )
+            domain_measures = QualityMeasure.objects.filter(domain=domain_code, status="ACTIVE")
+            domain_results = results_qs.filter(measure__domain=domain_code)
             domain_meeting = domain_results.filter(meets_target=True).count()
             domain_total = domain_results.count()
 
@@ -452,9 +444,7 @@ class QualityDashboardView(APIView):
         if year:
             y = int(year)
             for q in range(1, 5):
-                q_results = results_qs.filter(
-                    year=y, period=q, period_type="QUARTERLY"
-                )
+                q_results = results_qs.filter(year=y, period=q, period_type="QUARTERLY")
                 q_total = q_results.count()
                 q_meeting = q_results.filter(meets_target=True).count()
                 trend_data.append(

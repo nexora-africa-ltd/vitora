@@ -73,7 +73,11 @@ class TestAutopopulateEndpoint:
         mock_client = MagicMock()
         mock_client.suggest_icd10.return_value = {
             "suggestions": [
-                {"code": "B50.9", "description": "Plasmodium falciparum malaria", "confidence": 0.92},
+                {
+                    "code": "B50.9",
+                    "description": "Plasmodium falciparum malaria",
+                    "confidence": 0.92,
+                },
                 {"code": "A01.0", "description": "Typhoid fever", "confidence": 0.45},
             ]
         }
@@ -92,7 +96,9 @@ class TestAutopopulateEndpoint:
 
         # High-confidence suggestion should appear in suggested_fields
         assert "suggested_fields" in data
-        diagnosis_fields = [f for f in data["suggested_fields"] if f["field_name"] == "primary_diagnosis"]
+        diagnosis_fields = [
+            f for f in data["suggested_fields"] if f["field_name"] == "primary_diagnosis"
+        ]
         assert len(diagnosis_fields) == 1
         assert diagnosis_fields[0]["value"]["icd10_code"] == "B50.9"
         assert diagnosis_fields[0]["confidence"] >= 0.85
@@ -122,7 +128,9 @@ class TestAutopopulateEndpoint:
         # ICD-10 suggestions should still be in the response
         assert len(data["icd10_suggestions"]) == 1
         # But no auto-fill suggestion for primary_diagnosis
-        diagnosis_fields = [f for f in data["suggested_fields"] if f["field_name"] == "primary_diagnosis"]
+        diagnosis_fields = [
+            f for f in data["suggested_fields"] if f["field_name"] == "primary_diagnosis"
+        ]
         assert len(diagnosis_fields) == 0
 
     @patch("hmis.apps.ai.feature_flags.is_ai_enabled", return_value=True)

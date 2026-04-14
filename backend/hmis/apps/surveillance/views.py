@@ -124,9 +124,7 @@ class NotifiableDiseaseViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def immediate(self, request):
         """Return only immediate reportable diseases."""
-        immediate_diseases = self.get_queryset().filter(
-            category="IMMEDIATE", is_active=True
-        )
+        immediate_diseases = self.get_queryset().filter(category="IMMEDIATE", is_active=True)
         serializer = NotifiableDiseaseListSerializer(immediate_diseases, many=True)
         return Response(serializer.data)
 
@@ -237,9 +235,7 @@ class NotifiableCaseViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
     @action(detail=False, methods=["get"])
     def pending(self, request):
         """Return cases pending notification."""
-        pending_cases = self.get_queryset().filter(
-            notification_status=NotificationStatus.PENDING
-        )
+        pending_cases = self.get_queryset().filter(notification_status=NotificationStatus.PENDING)
         serializer = NotifiableCaseListSerializer(pending_cases, many=True)
         return Response(serializer.data)
 
@@ -577,13 +573,15 @@ class IDSRWeeklyReportFilter(filters.FilterSet):
 
     epi_year = filters.NumberFilter()
     epi_week = filters.NumberFilter()
-    status = filters.ChoiceFilter(choices=[
-        ("DRAFT", "Draft"),
-        ("PENDING_REVIEW", "Pending Review"),
-        ("APPROVED", "Approved"),
-        ("SUBMITTED", "Submitted"),
-        ("FAILED", "Failed"),
-    ])
+    status = filters.ChoiceFilter(
+        choices=[
+            ("DRAFT", "Draft"),
+            ("PENDING_REVIEW", "Pending Review"),
+            ("APPROVED", "Approved"),
+            ("SUBMITTED", "Submitted"),
+            ("FAILED", "Failed"),
+        ]
+    )
     county = filters.NumberFilter(field_name="county__id")
     outbreak = filters.BooleanFilter(field_name="outbreak_declared")
     start_date = filters.DateFilter(field_name="week_start_date", lookup_expr="gte")
@@ -695,9 +693,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 generated_by=request.user,
             )
         else:
-            report = IDSRReportingService.generate_previous_week_report(
-                generated_by=request.user
-            )
+            report = IDSRReportingService.generate_previous_week_report(generated_by=request.user)
 
         AuditLog.log(
             action="idsr_report_generate",
@@ -771,7 +767,9 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         if report.status != IDSRReportStatus.APPROVED:
             return Response(
-                {"error": f"Report must be approved before submission (current: {report.get_status_display()})"},
+                {
+                    "error": f"Report must be approved before submission (current: {report.get_status_display()})"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -792,10 +790,12 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         # Refresh from DB to get updated status
         report.refresh_from_db()
 
-        return Response({
-            "report": IDSRWeeklyReportSerializer(report).data,
-            "dhis2_response": result,
-        })
+        return Response(
+            {
+                "report": IDSRWeeklyReportSerializer(report).data,
+                "dhis2_response": result,
+            }
+        )
 
     @action(detail=True, methods=["get"], url_path="export-sdmx")
     def export_sdmx(self, request, pk=None):
@@ -875,19 +875,25 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             prev_report = IDSRWeeklyReport.objects.filter(
                 epi_year=prev_year, epi_week=prev_week
             ).first()
-            previous_weeks.append({
-                "epi_year": prev_year,
-                "epi_week": prev_week,
-                "week_start": prev_start.isoformat(),
-                "has_report": prev_report is not None,
-                "total_cases": prev_report.total_cases if prev_report else 0,
-                "status": prev_report.status if prev_report else None,
-            })
+            previous_weeks.append(
+                {
+                    "epi_year": prev_year,
+                    "epi_week": prev_week,
+                    "week_start": prev_start.isoformat(),
+                    "has_report": prev_report is not None,
+                    "total_cases": prev_report.total_cases if prev_report else 0,
+                    "status": prev_report.status if prev_report else None,
+                }
+            )
 
         # Statistics
         total_this_year = IDSRWeeklyReport.objects.filter(epi_year=epi_year).count()
         pending = IDSRWeeklyReport.objects.filter(
-            status__in=[IDSRReportStatus.DRAFT, IDSRReportStatus.PENDING_REVIEW, IDSRReportStatus.APPROVED]
+            status__in=[
+                IDSRReportStatus.DRAFT,
+                IDSRReportStatus.PENDING_REVIEW,
+                IDSRReportStatus.APPROVED,
+            ]
         ).count()
 
         # Submitted this month
@@ -905,14 +911,16 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             epi_year=epi_year, outbreak_declared=True
         ).count()
 
-        return Response({
-            "current_week": current_week_data,
-            "previous_weeks": previous_weeks,
-            "total_reports_this_year": total_this_year,
-            "pending_submission": pending,
-            "submitted_this_month": submitted_this_month,
-            "outbreak_weeks": outbreak_weeks,
-        })
+        return Response(
+            {
+                "current_week": current_week_data,
+                "previous_weeks": previous_weeks,
+                "total_reports_this_year": total_this_year,
+                "pending_submission": pending,
+                "submitted_this_month": submitted_this_month,
+                "outbreak_weeks": outbreak_weeks,
+            }
+        )
 
     @action(detail=True, methods=["get"])
     def dhis2_preview(self, request, pk=None):
@@ -926,11 +934,13 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         report = self.get_object()
         payload = IDSRReportingService.prepare_dhis2_payload(report)
 
-        return Response({
-            "report_id": report.id,
-            "week_label": report.week_label,
-            "payload": payload,
-        })
+        return Response(
+            {
+                "report_id": report.id,
+                "week_label": report.week_label,
+                "payload": payload,
+            }
+        )
 
 
 # ============================================================================
@@ -1235,7 +1245,9 @@ class IHRNotificationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
             IHRNotificationStatus.ACKNOWLEDGED,
         ]:
             return Response(
-                {"error": f"Cannot reject notification with status: {notification.get_status_display()}"},
+                {
+                    "error": f"Cannot reject notification with status: {notification.get_status_display()}"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1268,15 +1280,19 @@ class IHRNotificationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
         from datetime import timedelta as td
 
         cutoff = timezone.now() - td(hours=24)
-        overdue = self.get_queryset().filter(
-            report_date__lt=cutoff,
-        ).exclude(
-            status__in=[
-                IHRNotificationStatus.NOTIFIED_WHO,
-                IHRNotificationStatus.ACKNOWLEDGED,
-                IHRNotificationStatus.CLOSED,
-                IHRNotificationStatus.REJECTED,
-            ]
+        overdue = (
+            self.get_queryset()
+            .filter(
+                report_date__lt=cutoff,
+            )
+            .exclude(
+                status__in=[
+                    IHRNotificationStatus.NOTIFIED_WHO,
+                    IHRNotificationStatus.ACKNOWLEDGED,
+                    IHRNotificationStatus.CLOSED,
+                    IHRNotificationStatus.REJECTED,
+                ]
+            )
         )
         serializer = IHRNotificationListSerializer(overdue, many=True)
         return Response(serializer.data)
@@ -1297,37 +1313,33 @@ class IHRNotificationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
                 IHRNotificationStatus.PENDING_REVIEW,
             ]
         ).count()
-        at_county = notifications.filter(
-            status=IHRNotificationStatus.SUBMITTED_COUNTY
-        ).count()
-        at_national = notifications.filter(
-            status=IHRNotificationStatus.ESCALATED_NATIONAL
-        ).count()
+        at_county = notifications.filter(status=IHRNotificationStatus.SUBMITTED_COUNTY).count()
+        at_national = notifications.filter(status=IHRNotificationStatus.ESCALATED_NATIONAL).count()
         notified_who = notifications.filter(
             status__in=[
                 IHRNotificationStatus.NOTIFIED_WHO,
                 IHRNotificationStatus.ACKNOWLEDGED,
             ]
         ).count()
-        closed = notifications.filter(
-            status=IHRNotificationStatus.CLOSED
-        ).count()
-        rejected = notifications.filter(
-            status=IHRNotificationStatus.REJECTED
-        ).count()
+        closed = notifications.filter(status=IHRNotificationStatus.CLOSED).count()
+        rejected = notifications.filter(status=IHRNotificationStatus.REJECTED).count()
 
         # Overdue count (>24h without WHO notification)
         cutoff = timezone.now() - timedelta(hours=24)
-        overdue = notifications.filter(
-            report_date__lt=cutoff,
-        ).exclude(
-            status__in=[
-                IHRNotificationStatus.NOTIFIED_WHO,
-                IHRNotificationStatus.ACKNOWLEDGED,
-                IHRNotificationStatus.CLOSED,
-                IHRNotificationStatus.REJECTED,
-            ]
-        ).count()
+        overdue = (
+            notifications.filter(
+                report_date__lt=cutoff,
+            )
+            .exclude(
+                status__in=[
+                    IHRNotificationStatus.NOTIFIED_WHO,
+                    IHRNotificationStatus.ACKNOWLEDGED,
+                    IHRNotificationStatus.CLOSED,
+                    IHRNotificationStatus.REJECTED,
+                ]
+            )
+            .count()
+        )
 
         # By urgency
         by_urgency = list(
@@ -1355,13 +1367,10 @@ class IHRNotificationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
             "closed": closed,
             "rejected": rejected,
             "overdue": overdue,
-            "by_urgency": [
-                {"urgency": u["urgency"], "count": u["count"]} for u in by_urgency
-            ],
+            "by_urgency": [{"urgency": u["urgency"], "count": u["count"]} for u in by_urgency],
             "by_disease": [
                 {"disease": d["disease__name"], "count": d["count"]} for d in by_disease
             ],
         }
 
         return Response(data)
-

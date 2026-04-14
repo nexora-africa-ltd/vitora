@@ -34,25 +34,37 @@ class KENHDDDataElementAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at", "updated_at"]
 
     fieldsets = (
-        (None, {
-            "fields": ("element_id", "name", "description"),
-        }),
-        ("Classification", {
-            "fields": (
-                "resource_type",
-                "model_field",
-                "requirement_level",
-                "data_type",
-                "coding_system",
-            ),
-        }),
-        ("Validation Rules", {
-            "fields": ("max_length", "format_pattern", "condition_expression"),
-            "classes": ("collapse",),
-        }),
-        ("Status", {
-            "fields": ("is_active", "created_at", "updated_at"),
-        }),
+        (
+            None,
+            {
+                "fields": ("element_id", "name", "description"),
+            },
+        ),
+        (
+            "Classification",
+            {
+                "fields": (
+                    "resource_type",
+                    "model_field",
+                    "requirement_level",
+                    "data_type",
+                    "coding_system",
+                ),
+            },
+        ),
+        (
+            "Validation Rules",
+            {
+                "fields": ("max_length", "format_pattern", "condition_expression"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": ("is_active", "created_at", "updated_at"),
+            },
+        ),
     )
 
     def resource_type_badge(self, obj: KENHDDDataElement) -> str:

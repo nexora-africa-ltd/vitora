@@ -201,7 +201,9 @@ class TestBackupMonitor:
         assert result.healthy is False
         assert any("suspiciously small" in e for e in result.errors)
 
-    def test_check_local_backups_encrypted_detection(self, backup_dir: Path, monitor: BackupMonitor):
+    def test_check_local_backups_encrypted_detection(
+        self, backup_dir: Path, monitor: BackupMonitor
+    ):
         """Should detect encrypted backups by .gpg extension."""
         backup_file = backup_dir / "vitora_staging_20260222_020000_db.sql.gz.gpg"
         backup_file.write_bytes(b"x" * (2 * 1024 * 1024))
@@ -211,7 +213,9 @@ class TestBackupMonitor:
         assert result.latest_backup is not None
         assert result.latest_backup.encrypted is True
 
-    def test_check_local_backups_unencrypted_detection(self, backup_dir: Path, monitor: BackupMonitor):
+    def test_check_local_backups_unencrypted_detection(
+        self, backup_dir: Path, monitor: BackupMonitor
+    ):
         """Should detect unencrypted backups."""
         backup_file = backup_dir / "vitora_staging_20260222_020000_db.sql.gz"
         backup_file.write_bytes(b"x" * (2 * 1024 * 1024))
@@ -251,7 +255,9 @@ class TestBackupMonitor:
 
         # Create checksum file with wrong checksum
         checksum_file = backup_dir / "vitora_staging_20260222_020000_db.sql.gz.sha256"
-        checksum_file.write_text("0000000000000000000000000000000000000000000000000000000000000000  vitora_staging_20260222_020000_db.sql.gz\n")
+        checksum_file.write_text(
+            "0000000000000000000000000000000000000000000000000000000000000000  vitora_staging_20260222_020000_db.sql.gz\n"
+        )
 
         result = monitor.check_local_backups()
 
@@ -322,7 +328,10 @@ class TestBackupMonitor:
         production_result = production_monitor.check_local_backups()
 
         assert staging_result.latest_backup.path.name == "vitora_staging_20260222_020000_db.sql.gz"
-        assert production_result.latest_backup.path.name == "vitora_production_20260222_020000_db.sql.gz"
+        assert (
+            production_result.latest_backup.path.name
+            == "vitora_production_20260222_020000_db.sql.gz"
+        )
 
 
 class TestBackupMonitorS3:
@@ -555,6 +564,7 @@ class TestBackupMonitorRunAllChecks:
 
         # Create valid checksum
         import hashlib
+
         checksum = hashlib.sha256(backup_content).hexdigest()
         checksum_file = backup_dir / "vitora_staging_20260222_020000_db.sql.gz.sha256"
         checksum_file.write_text(f"{checksum}  vitora_staging_20260222_020000_db.sql.gz\n")

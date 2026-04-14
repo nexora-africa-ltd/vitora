@@ -75,9 +75,7 @@ def publish_appointment_event(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Schedule)
 def publish_schedule_event(sender, instance, created, **kwargs):
     """Publish domain event when a schedule (timetable entry) is created or updated."""
-    event_type = (
-        SchedulingEvents.SCHEDULE_CREATED if created else SchedulingEvents.SCHEDULE_UPDATED
-    )
+    event_type = SchedulingEvents.SCHEDULE_CREATED if created else SchedulingEvents.SCHEDULE_UPDATED
     publish_event(
         event_type=event_type,
         aggregate_type="Schedule",
@@ -205,7 +203,11 @@ def publish_shift_event(sender, instance, created, **kwargs):
             "shift_date": str(instance.shift_date),
             "shift_type": instance.shift_type,
             "status": instance.status,
-            "department": instance.department.name if instance.department else (instance.department_legacy or ""),
+            "department": (
+                instance.department.name
+                if instance.department
+                else (instance.department_legacy or "")
+            ),
             "clock_in_method": getattr(instance, "clock_in_method", ""),
             "auto_clocked_out": getattr(instance, "auto_clocked_out", False),
             "late_minutes": instance.late_minutes,

@@ -45,9 +45,7 @@ class ProcedureCatalogListSerializer(serializers.ModelSerializer):
 class ProcedureCatalogDetailSerializer(serializers.ModelSerializer):
     """Full detail including coding, consent template, and requirements."""
 
-    billing_price = serializers.DecimalField(
-        max_digits=10, decimal_places=2, read_only=True
-    )
+    billing_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     billing_service_name = serializers.CharField(
         source="billing_service.name", read_only=True, default=None
     )
@@ -235,7 +233,10 @@ class ProcedureOrderDetailSerializer(serializers.ModelSerializer):
 
     def get_assigned_performer_name(self, obj: ProcedureOrder) -> str | None:
         if obj.assigned_performer:
-            return f"{obj.assigned_performer.first_name} {obj.assigned_performer.last_name}".strip() or obj.assigned_performer.username
+            return (
+                f"{obj.assigned_performer.first_name} {obj.assigned_performer.last_name}".strip()
+                or obj.assigned_performer.username
+            )
         return None
 
     def get_consent(self, obj: ProcedureOrder) -> dict | None:

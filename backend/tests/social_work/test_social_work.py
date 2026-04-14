@@ -34,7 +34,9 @@ User = get_user_model()
 
 
 @pytest.fixture
-def sw_referral(db, sample_patient, sample_encounter, test_user, sample_facility, sample_organization):
+def sw_referral(
+    db, sample_patient, sample_encounter, test_user, sample_facility, sample_organization
+):
     """Create a sample social work referral."""
     return SocialWorkReferral.objects.create(
         patient=sample_patient,
@@ -51,7 +53,9 @@ def sw_referral(db, sample_patient, sample_encounter, test_user, sample_facility
 
 
 @pytest.fixture
-def gbv_referral(db, sample_patient, sample_encounter, test_user, sample_facility, sample_organization):
+def gbv_referral(
+    db, sample_patient, sample_encounter, test_user, sample_facility, sample_organization
+):
     """Create a GBV (sensitive) referral."""
     return SocialWorkReferral.objects.create(
         patient=sample_patient,
@@ -187,7 +191,9 @@ class TestSocialWorkReferralModel:
         with pytest.raises(ValidationError):
             sw_referral.update_status("COMPLETED", user=test_user)
 
-    def test_generate_referral_number_sequential(self, db, sample_patient, sample_encounter, test_user):
+    def test_generate_referral_number_sequential(
+        self, db, sample_patient, sample_encounter, test_user
+    ):
         """Referral numbers should be sequential for the same day."""
         ref1 = SocialWorkReferral.objects.create(
             patient=sample_patient,

@@ -97,12 +97,8 @@ class MCHRegistrationFilter(django_filters.FilterSet):
     status = django_filters.CharFilter(lookup_expr="iexact")
     is_high_risk = django_filters.BooleanFilter()
     linda_jamii_beneficiary = django_filters.BooleanFilter()
-    registration_from = django_filters.DateFilter(
-        field_name="registration_date", lookup_expr="gte"
-    )
-    registration_to = django_filters.DateFilter(
-        field_name="registration_date", lookup_expr="lte"
-    )
+    registration_from = django_filters.DateFilter(field_name="registration_date", lookup_expr="gte")
+    registration_to = django_filters.DateFilter(field_name="registration_date", lookup_expr="lte")
 
     class Meta:
         model = MCHRegistration
@@ -190,12 +186,8 @@ class GrowthMeasurementFilter(django_filters.FilterSet):
 
     patient = django_filters.NumberFilter()
     muac_classification = django_filters.CharFilter(lookup_expr="iexact")
-    measurement_from = django_filters.DateFilter(
-        field_name="measurement_date", lookup_expr="gte"
-    )
-    measurement_to = django_filters.DateFilter(
-        field_name="measurement_date", lookup_expr="lte"
-    )
+    measurement_from = django_filters.DateFilter(field_name="measurement_date", lookup_expr="gte")
+    measurement_to = django_filters.DateFilter(field_name="measurement_date", lookup_expr="lte")
 
     class Meta:
         model = GrowthMeasurement
@@ -357,9 +349,12 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 opened_at=timezone.now(),
             )
 
-        max_queue = ClinicVisit.objects.filter(session=session).aggregate(
-            max_q=models.Max("queue_number")
-        )["max_q"] or 0
+        max_queue = (
+            ClinicVisit.objects.filter(session=session).aggregate(max_q=models.Max("queue_number"))[
+                "max_q"
+            ]
+            or 0
+        )
 
         visit = ClinicVisit.objects.create(
             session=session,
@@ -376,13 +371,15 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             notes=notes,
         )
 
-        return Response({
-            "message": f"Mother routed to {clinic_type} queue successfully.",
-            "clinic_visit_id": visit.id,
-            "queue_number": visit.queue_number,
-            "clinic": clinic.name,
-            "session_id": session.id,
-        })
+        return Response(
+            {
+                "message": f"Mother routed to {clinic_type} queue successfully.",
+                "clinic_visit_id": visit.id,
+                "queue_number": visit.queue_number,
+                "clinic": clinic.name,
+                "session_id": session.id,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def route_to_anc(self, request, pk=None):
@@ -438,7 +435,9 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         if visit_date <= dt_date.today():
             return Response(
-                {"detail": "Scheduled date must be in the future. Use 'Send to ANC Queue' for today's visit."},
+                {
+                    "detail": "Scheduled date must be in the future. Use 'Send to ANC Queue' for today's visit."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -478,7 +477,9 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
             if not resource:
                 return Response(
-                    {"detail": "No scheduling resource found. Please configure an ANC resource first."},
+                    {
+                        "detail": "No scheduling resource found. Please configure an ANC resource first."
+                    },
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
@@ -500,13 +501,15 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
             appointment.save()
 
-            return Response({
-                "message": f"ANC visit scheduled for {visit_date_str}.",
-                "appointment_id": appointment.id,
-                "appointment_number": appointment.appointment_number,
-                "scheduled_date": visit_date_str,
-                "resource": resource.name,
-            })
+            return Response(
+                {
+                    "message": f"ANC visit scheduled for {visit_date_str}.",
+                    "appointment_id": appointment.id,
+                    "appointment_number": appointment.appointment_number,
+                    "scheduled_date": visit_date_str,
+                    "resource": resource.name,
+                }
+            )
 
         except Exception as exc:
             return Response(
@@ -553,9 +556,12 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         # Set completed_at when transitioning to COMPLETED
         if new_status == "COMPLETED":
             from django.utils import timezone
+
             registration.completed_at = timezone.now()
 
-        registration.save(update_fields=["status", "completed_at"] if new_status == "COMPLETED" else ["status"])
+        registration.save(
+            update_fields=["status", "completed_at"] if new_status == "COMPLETED" else ["status"]
+        )
 
         # Re-fetch instance (model properties provide anc_visit_count/pnc_visit_count)
         instance = self.get_queryset().get(pk=registration.pk)
@@ -571,9 +577,14 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         ordered by registration_date desc. Useful for multi-gravida visibility.
         """
         registration = self.get_object()
-        previous = MCHRegistration.objects.filter(
-            mother=registration.mother,
-        ).exclude(pk=registration.pk).select_related("mother").order_by("-registration_date")
+        previous = (
+            MCHRegistration.objects.filter(
+                mother=registration.mother,
+            )
+            .exclude(pk=registration.pk)
+            .select_related("mother")
+            .order_by("-registration_date")
+        )
 
         serializer = PregnancyHistorySerializer(previous, many=True)
         return Response(serializer.data)
@@ -629,7 +640,10 @@ class ANCVisitViewSet(viewsets.ModelViewSet):
             user=self.request.user,
             resource_type="ANCVisit",
             resource_id=instance.id,
-            details={"registration_id": instance.registration_id, "visit_number": instance.visit_number},
+            details={
+                "registration_id": instance.registration_id,
+                "visit_number": instance.visit_number,
+            },
             ip_address=get_client_ip(self.request),
         )
 
@@ -642,7 +656,10 @@ class ANCVisitViewSet(viewsets.ModelViewSet):
             user=self.request.user,
             resource_type="ANCVisit",
             resource_id=instance.id,
-            details={"registration_id": instance.registration_id, "visit_number": instance.visit_number},
+            details={
+                "registration_id": instance.registration_id,
+                "visit_number": instance.visit_number,
+            },
             ip_address=get_client_ip(self.request),
         )
 
@@ -854,27 +871,28 @@ class DeliveryViewSet(viewsets.ModelViewSet):
             if days_until <= 30:
                 due_30_days += 1
 
-            upcoming_deliveries.append({
-                "id": reg.id,
-                "mch_number": reg.mch_number,
-                "mother_name": f"{reg.mother.first_name} {reg.mother.last_name}",
-                "mother_mrn": reg.mother.mrn,
-                "edd": str(edd),
-                "days_until_edd": days_until,
-                "gestation_display": reg.gestation_display,
-                "trimester": reg.trimester,
-                "is_high_risk": reg.is_high_risk,
-                "risk_factors": reg.risk_factors,
-                "status": reg.status,
-            })
+            upcoming_deliveries.append(
+                {
+                    "id": reg.id,
+                    "mch_number": reg.mch_number,
+                    "mother_name": f"{reg.mother.first_name} {reg.mother.last_name}",
+                    "mother_mrn": reg.mother.mrn,
+                    "edd": str(edd),
+                    "days_until_edd": days_until,
+                    "gestation_display": reg.gestation_display,
+                    "trimester": reg.trimester,
+                    "is_high_risk": reg.is_high_risk,
+                    "risk_factors": reg.risk_factors,
+                    "status": reg.status,
+                }
+            )
 
         # Sort: overdue first, then soonest EDD
         upcoming_deliveries.sort(key=lambda x: x["days_until_edd"])
 
         # High-risk due within 30 days
         high_risk_due_soon = [
-            d for d in upcoming_deliveries
-            if d["is_high_risk"] and d["days_until_edd"] <= 30
+            d for d in upcoming_deliveries if d["is_high_risk"] and d["days_until_edd"] <= 30
         ]
 
         # --- Monthly trend (last 6 months) ---
@@ -899,44 +917,46 @@ class DeliveryViewSet(viewsets.ModelViewSet):
         for item in monthly_trend:
             item["month"] = item["month"].strftime("%Y-%m") if item["month"] else None
 
-        return Response({
-            "stats": {
-                "total_deliveries": total_deliveries,
-                "this_month": this_month,
-                "today": today_count,
-                "live_birth_rate": live_birth_rate,
-                "cs_rate": cs_rate,
-                "with_complications": with_complications,
-                "overdue": overdue_count,
-                "due_7_days": due_7_days,
-                "due_14_days": due_14_days,
-                "due_30_days": due_30_days,
-                "high_risk_due_soon": len(high_risk_due_soon),
-                "active_pregnancies": active_registrations.count(),
-            },
-            "outcomes_breakdown": {
-                "LIVE_BIRTH": outcomes.get("LIVE_BIRTH", 0),
-                "STILLBIRTH": outcomes.get("STILLBIRTH", 0),
-                "NEONATAL_DEATH": outcomes.get("NEONATAL_DEATH", 0),
-                "MATERNAL_DEATH": outcomes.get("MATERNAL_DEATH", 0),
-            },
-            "types_breakdown": {
-                "SVD": types.get("SVD", 0),
-                "ASSISTED_VAGINAL": types.get("ASSISTED_VAGINAL", 0),
-                "ELECTIVE_CS": types.get("ELECTIVE_CS", 0),
-                "EMERGENCY_CS": types.get("EMERGENCY_CS", 0),
-                "VACUUM": types.get("VACUUM", 0),
-                "FORCEPS": types.get("FORCEPS", 0),
-            },
-            "places_breakdown": {
-                "FACILITY": places.get("FACILITY", 0),
-                "HOME": places.get("HOME", 0),
-                "EN_ROUTE": places.get("EN_ROUTE", 0),
-            },
-            "upcoming_deliveries": upcoming_deliveries[:20],
-            "high_risk_due_soon": high_risk_due_soon[:10],
-            "monthly_trend": monthly_trend,
-        })
+        return Response(
+            {
+                "stats": {
+                    "total_deliveries": total_deliveries,
+                    "this_month": this_month,
+                    "today": today_count,
+                    "live_birth_rate": live_birth_rate,
+                    "cs_rate": cs_rate,
+                    "with_complications": with_complications,
+                    "overdue": overdue_count,
+                    "due_7_days": due_7_days,
+                    "due_14_days": due_14_days,
+                    "due_30_days": due_30_days,
+                    "high_risk_due_soon": len(high_risk_due_soon),
+                    "active_pregnancies": active_registrations.count(),
+                },
+                "outcomes_breakdown": {
+                    "LIVE_BIRTH": outcomes.get("LIVE_BIRTH", 0),
+                    "STILLBIRTH": outcomes.get("STILLBIRTH", 0),
+                    "NEONATAL_DEATH": outcomes.get("NEONATAL_DEATH", 0),
+                    "MATERNAL_DEATH": outcomes.get("MATERNAL_DEATH", 0),
+                },
+                "types_breakdown": {
+                    "SVD": types.get("SVD", 0),
+                    "ASSISTED_VAGINAL": types.get("ASSISTED_VAGINAL", 0),
+                    "ELECTIVE_CS": types.get("ELECTIVE_CS", 0),
+                    "EMERGENCY_CS": types.get("EMERGENCY_CS", 0),
+                    "VACUUM": types.get("VACUUM", 0),
+                    "FORCEPS": types.get("FORCEPS", 0),
+                },
+                "places_breakdown": {
+                    "FACILITY": places.get("FACILITY", 0),
+                    "HOME": places.get("HOME", 0),
+                    "EN_ROUTE": places.get("EN_ROUTE", 0),
+                },
+                "upcoming_deliveries": upcoming_deliveries[:20],
+                "high_risk_due_soon": high_risk_due_soon[:10],
+                "monthly_trend": monthly_trend,
+            }
+        )
 
 
 class LabourPartographViewSet(viewsets.ModelViewSet):
@@ -1010,9 +1030,11 @@ class LabourPartographObservationViewSet(viewsets.ModelViewSet):
             details={
                 "partograph_id": instance.partograph_id,
                 "fetal_heart_rate": instance.fetal_heart_rate,
-                "cervical_dilation_cm": str(instance.cervical_dilation_cm)
-                if instance.cervical_dilation_cm is not None
-                else None,
+                "cervical_dilation_cm": (
+                    str(instance.cervical_dilation_cm)
+                    if instance.cervical_dilation_cm is not None
+                    else None
+                ),
             },
             ip_address=get_client_ip(self.request),
         )
@@ -1048,7 +1070,10 @@ class PNCVisitViewSet(viewsets.ModelViewSet):
             user=self.request.user,
             resource_type="PNCVisit",
             resource_id=instance.id,
-            details={"registration_id": instance.registration_id, "visit_number": instance.visit_number},
+            details={
+                "registration_id": instance.registration_id,
+                "visit_number": instance.visit_number,
+            },
             ip_address=get_client_ip(self.request),
         )
 
@@ -1060,7 +1085,10 @@ class PNCVisitViewSet(viewsets.ModelViewSet):
             user=self.request.user,
             resource_type="PNCVisit",
             resource_id=instance.id,
-            details={"registration_id": instance.registration_id, "visit_number": instance.visit_number},
+            details={
+                "registration_id": instance.registration_id,
+                "visit_number": instance.visit_number,
+            },
             ip_address=get_client_ip(self.request),
         )
 
@@ -1204,7 +1232,9 @@ class GrowthMeasurementViewSet(viewsets.ModelViewSet):
             pdf_bytes = generate_growth_chart_pdf(patient)
 
             response = HttpResponse(pdf_bytes, content_type="application/pdf")
-            response["Content-Disposition"] = f'attachment; filename="growth_chart_{patient.mrn}.pdf"'
+            response["Content-Disposition"] = (
+                f'attachment; filename="growth_chart_{patient.mrn}.pdf"'
+            )
             return response
 
         except Exception as exc:
@@ -1408,7 +1438,10 @@ class AEFIViewSet(viewsets.ModelViewSet):
             user=self.request.user,
             resource_type="AEFI",
             resource_id=instance.id,
-            details={"immunization_record_id": instance.immunization_record_id, "severity": instance.severity},
+            details={
+                "immunization_record_id": instance.immunization_record_id,
+                "severity": instance.severity,
+            },
             ip_address=get_client_ip(self.request),
         )
 
@@ -1473,11 +1506,13 @@ class HEIFollowUpViewSet(viewsets.ModelViewSet):
         if positive_tests.exists():
             hei.status = "CONFIRMED_POSITIVE"
             hei.save(update_fields=["status"])
-            return Response({
-                "status": "CONFIRMED_POSITIVE",
-                "message": "Infant confirmed HIV-positive. CCC enrollment may be auto-created.",
-                "positive_test_number": positive_tests.first().test_number,
-            })
+            return Response(
+                {
+                    "status": "CONFIRMED_POSITIVE",
+                    "message": "Infant confirmed HIV-positive. CCC enrollment may be auto-created.",
+                    "positive_test_number": positive_tests.first().test_number,
+                }
+            )
 
         # Check if sufficient negative results
         negative_tests = pcr_tests.filter(result="NEGATIVE")
@@ -1488,20 +1523,24 @@ class HEIFollowUpViewSet(viewsets.ModelViewSet):
         if negative_tests.count() >= 2 and pending_tests.count() == 0:
             hei.status = "CONFIRMED_NEGATIVE"
             hei.save(update_fields=["status"])
-            return Response({
-                "status": "CONFIRMED_NEGATIVE",
-                "message": "Infant confirmed HIV-negative after 2+ negative PCR tests.",
-                "negative_test_count": negative_tests.count(),
-            })
+            return Response(
+                {
+                    "status": "CONFIRMED_NEGATIVE",
+                    "message": "Infant confirmed HIV-negative after 2+ negative PCR tests.",
+                    "negative_test_count": negative_tests.count(),
+                }
+            )
 
         # Still pending determination
-        return Response({
-            "status": "ACTIVE",
-            "message": "Insufficient results to determine final status.",
-            "negative_tests": negative_tests.count(),
-            "pending_tests": pending_tests.count(),
-            "required_negative_tests": 2,
-        })
+        return Response(
+            {
+                "status": "ACTIVE",
+                "message": "Insufficient results to determine final status.",
+                "negative_tests": negative_tests.count(),
+                "pending_tests": pending_tests.count(),
+                "required_negative_tests": 2,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def update_feeding(self, request, pk=None):
@@ -1519,11 +1558,13 @@ class HEIFollowUpViewSet(viewsets.ModelViewSet):
         hei.breastfeeding_status = new_status
         hei.save(update_fields=["breastfeeding_status"])
 
-        return Response({
-            "hei_number": hei.hei_number,
-            "breastfeeding_status": new_status,
-            "message": f"Breastfeeding status updated to {hei.get_breastfeeding_status_display()}",
-        })
+        return Response(
+            {
+                "hei_number": hei.hei_number,
+                "breastfeeding_status": new_status,
+                "message": f"Breastfeeding status updated to {hei.get_breastfeeding_status_display()}",
+            }
+        )
 
 
 class HEIPCRTestViewSet(viewsets.ModelViewSet):
@@ -1543,6 +1584,9 @@ class HEIPCRTestViewSet(viewsets.ModelViewSet):
             user=self.request.user,
             resource_type="HEIPCRTest",
             resource_id=instance.id,
-            details={"hei_followup_id": instance.hei_followup_id, "test_number": instance.test_number},
+            details={
+                "hei_followup_id": instance.hei_followup_id,
+                "test_number": instance.test_number,
+            },
             ip_address=get_client_ip(self.request),
         )

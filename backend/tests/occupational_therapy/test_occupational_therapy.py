@@ -66,7 +66,15 @@ def ot_treatment_type_cognitive(db):
 
 
 @pytest.fixture
-def ot_order(db, sample_patient, sample_encounter, test_user, ot_treatment_type, sample_facility, sample_organization):
+def ot_order(
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    ot_treatment_type,
+    sample_facility,
+    sample_organization,
+):
     """Create a sample OT order."""
     return OccupationalTherapyOrder.objects.create(
         patient=sample_patient,
@@ -250,7 +258,9 @@ class TestOTSessionModel:
 class TestGenerateOTOrderNumber:
     """Tests for order number generation."""
 
-    def test_generate_unique_order_numbers(self, db, sample_patient, sample_encounter, test_user, ot_treatment_type):
+    def test_generate_unique_order_numbers(
+        self, db, sample_patient, sample_encounter, test_user, ot_treatment_type
+    ):
         """Should generate unique sequential order numbers."""
         order1 = OccupationalTherapyOrder.objects.create(
             patient=sample_patient,
@@ -310,7 +320,9 @@ class TestOTTreatmentTypeAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["code"] == "OT-ADL-001"
 
-    def test_filter_by_category(self, authenticated_client, ot_treatment_type, ot_treatment_type_cognitive):
+    def test_filter_by_category(
+        self, authenticated_client, ot_treatment_type, ot_treatment_type_cognitive
+    ):
         """Should filter treatment types by category."""
         response = authenticated_client.get(
             "/api/occupational-therapy/treatment-types/?category=COGNITIVE_REHAB"
@@ -352,9 +364,7 @@ class TestOccupationalTherapyOrderAPI:
 
     def test_retrieve_order(self, authenticated_client, ot_order):
         """Should retrieve a specific order."""
-        response = authenticated_client.get(
-            f"/api/occupational-therapy/orders/{ot_order.id}/"
-        )
+        response = authenticated_client.get(f"/api/occupational-therapy/orders/{ot_order.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["order_number"] == ot_order.order_number
 

@@ -292,6 +292,7 @@ class NutritionConsultationAssignDietitianSerializer(serializers.Serializer):
     def validate_dietitian(self, value):
         """Validate dietitian exists and is active."""
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         try:
             user = User.objects.get(pk=value, is_active=True)
@@ -522,9 +523,7 @@ class DietPlanCreateSerializer(serializers.ModelSerializer):
         start_date = data.get("start_date")
         end_date = data.get("end_date")
         if start_date and end_date and end_date < start_date:
-            raise serializers.ValidationError(
-                {"end_date": "End date cannot be before start date"}
-            )
+            raise serializers.ValidationError({"end_date": "End date cannot be before start date"})
 
         return data
 

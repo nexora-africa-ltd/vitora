@@ -106,7 +106,9 @@ class TestDischargeTemplateModel:
             assert isinstance(section["label"], str)
             assert isinstance(section["enabled"], bool)
 
-    def test_unique_constraint_per_facility(self, sample_discharge_template, sample_facility, sample_organization):
+    def test_unique_constraint_per_facility(
+        self, sample_discharge_template, sample_facility, sample_organization
+    ):
         """Two templates with the same name in the same facility should fail."""
         from django.db import IntegrityError
 
@@ -128,7 +130,9 @@ class TestDischargeTemplateModel:
         )
         assert template.id is not None
 
-    def test_set_default_unsets_previous(self, sample_discharge_template, sample_facility, sample_organization):
+    def test_set_default_unsets_previous(
+        self, sample_discharge_template, sample_facility, sample_organization
+    ):
         """Setting a new template as default should unset the previous default."""
         assert sample_discharge_template.is_default is True
 
@@ -278,9 +282,7 @@ class TestDischargeTemplateAPI:
             {"key": "diagnosis", "label": "Diagnosis", "enabled": True},
             {"key": "hospital_course", "label": "Hospital Course", "enabled": False},
         ]
-        response = authenticated_client.patch(
-            url, {"sections": new_sections}, format="json"
-        )
+        response = authenticated_client.patch(url, {"sections": new_sections}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["sections"]) == 2
         assert response.data["sections"][1]["enabled"] is False
@@ -292,7 +294,9 @@ class TestDischargeTemplateAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not DischargeTemplate.objects.filter(pk=sample_discharge_template.id).exists()
 
-    def test_filter_by_layout(self, authenticated_client, sample_discharge_template, sample_facility, sample_organization):
+    def test_filter_by_layout(
+        self, authenticated_client, sample_discharge_template, sample_facility, sample_organization
+    ):
         """Should filter templates by layout."""
         DischargeTemplate.objects.create(
             name="Structured Template",
@@ -313,7 +317,9 @@ class TestDischargeTemplateAPI:
         response = authenticated_client.get(self.BASE_URL, {"search": "General"})
         assert response.status_code == status.HTTP_200_OK
 
-    def test_default_endpoint_returns_default(self, authenticated_client, sample_discharge_template):
+    def test_default_endpoint_returns_default(
+        self, authenticated_client, sample_discharge_template
+    ):
         """GET /default/ should return the facility's default template."""
         response = authenticated_client.get(f"{self.BASE_URL}default/")
         # May return 200 or 404 depending on facility scoping in test environment
@@ -342,7 +348,9 @@ class TestDischargeTemplateAuditLog:
         initial_count = AuditLog.objects.filter(action="discharge_template_create").count()
         response = authenticated_client.post(self.BASE_URL, template_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
-        assert AuditLog.objects.filter(action="discharge_template_create").count() == initial_count + 1
+        assert (
+            AuditLog.objects.filter(action="discharge_template_create").count() == initial_count + 1
+        )
 
     def test_update_is_audit_logged(self, authenticated_client, sample_discharge_template):
         """Updating a template should produce an audit log entry."""
@@ -351,7 +359,9 @@ class TestDischargeTemplateAuditLog:
         initial_count = AuditLog.objects.filter(action="discharge_template_update").count()
         url = f"{self.BASE_URL}{sample_discharge_template.id}/"
         authenticated_client.patch(url, {"name": "Renamed"}, format="json")
-        assert AuditLog.objects.filter(action="discharge_template_update").count() == initial_count + 1
+        assert (
+            AuditLog.objects.filter(action="discharge_template_update").count() == initial_count + 1
+        )
 
     def test_delete_is_audit_logged(self, authenticated_client, sample_discharge_template):
         """Deleting a template should produce an audit log entry."""
@@ -360,4 +370,6 @@ class TestDischargeTemplateAuditLog:
         initial_count = AuditLog.objects.filter(action="discharge_template_delete").count()
         url = f"{self.BASE_URL}{sample_discharge_template.id}/"
         authenticated_client.delete(url)
-        assert AuditLog.objects.filter(action="discharge_template_delete").count() == initial_count + 1
+        assert (
+            AuditLog.objects.filter(action="discharge_template_delete").count() == initial_count + 1
+        )

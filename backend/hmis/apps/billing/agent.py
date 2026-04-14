@@ -255,7 +255,7 @@ class BillingAgentService:
             service = Service.objects.filter(
                 code=vaccine.code,
                 is_active=True,
-        ).first()
+            ).first()
 
         # 3) Fallback: match by name within IMM category
         if not service:
@@ -512,9 +512,7 @@ class BillingAgentService:
                     admission.id,
                 )
 
-        logger.info(
-            "Billing agent: applied daily bed charges to %d admissions", charged
-        )
+        logger.info("Billing agent: applied daily bed charges to %d admissions", charged)
         return charged
 
     @classmethod
@@ -549,7 +547,9 @@ class BillingAgentService:
 
         pending_claims = SHAClaim.objects.filter(
             status=SHAClaim.ClaimStatus.DRAFT,
-        ).order_by("created_at")[:20]
+        ).order_by(
+            "created_at"
+        )[:20]
 
         service = SHAClaimsService()
         submitted = 0
@@ -682,9 +682,7 @@ class BillingAgentService:
         claim.submission_response = api_response
 
         # Extract approved amount
-        approved = api_response.get("approved_amount") or api_response.get("total", {}).get(
-            "value"
-        )
+        approved = api_response.get("approved_amount") or api_response.get("total", {}).get("value")
         if approved is not None:
             try:
                 claim.approved_amount = Decimal(str(approved))

@@ -114,7 +114,15 @@ def external_code_mapping(db, test_catalog_no_loinc):
 
 
 @pytest.fixture
-def lab_order_for_integration(db, sample_patient, sample_encounter, test_user, test_catalog, sample_organization, sample_facility):
+def lab_order_for_integration(
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    test_catalog,
+    sample_organization,
+    sample_facility,
+):
     """Create lab order for integration testing."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -137,7 +145,12 @@ def lab_order_for_integration(db, sample_patient, sample_encounter, test_user, t
 
 @pytest.fixture
 def lab_order_with_mapped_test(
-    db, sample_patient, sample_encounter, test_user, test_catalog_no_loinc, external_code_mapping,
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    test_catalog_no_loinc,
+    external_code_mapping,
     sample_facility,
     sample_organization,
 ):
@@ -215,9 +228,7 @@ class TestHL7IntegrationFeatureFlag:
         self, integration_service_disabled, sample_oru_message, test_user
     ):
         """process_oru_message should return empty result when disabled."""
-        result = integration_service_disabled.process_oru_message(
-            sample_oru_message, test_user
-        )
+        result = integration_service_disabled.process_oru_message(sample_oru_message, test_user)
 
         assert result.success is False
         assert result.results_created == 0
@@ -251,11 +262,10 @@ class TestSendOrderToLIS:
         self, integration_service_enabled, lab_order_for_integration
     ):
         """Should build ORM message and send via MLLP."""
-        with patch.object(
-            integration_service_enabled, "_get_hl7_service"
-        ) as mock_get_hl7, patch(
-            "hmis.apps.laboratory.services.mllp_client.MLLPClient"
-        ) as mock_mllp_class:
+        with (
+            patch.object(integration_service_enabled, "_get_hl7_service") as mock_get_hl7,
+            patch("hmis.apps.laboratory.services.mllp_client.MLLPClient") as mock_mllp_class,
+        ):
             # Setup mocks
             mock_hl7_service = MagicMock()
             mock_hl7_service.build_orm_o01.return_value = (
@@ -283,11 +293,10 @@ class TestSendOrderToLIS:
         self, integration_service_enabled, lab_order_for_integration
     ):
         """Should handle ACK rejection from LIS."""
-        with patch.object(
-            integration_service_enabled, "_get_hl7_service"
-        ) as mock_get_hl7, patch(
-            "hmis.apps.laboratory.services.mllp_client.MLLPClient"
-        ) as mock_mllp_class:
+        with (
+            patch.object(integration_service_enabled, "_get_hl7_service") as mock_get_hl7,
+            patch("hmis.apps.laboratory.services.mllp_client.MLLPClient") as mock_mllp_class,
+        ):
             mock_hl7_service = MagicMock()
             mock_hl7_service.build_orm_o01.return_value = "MSH|..."
             mock_hl7_service.parse_ack.return_value = MagicMock(
@@ -312,11 +321,10 @@ class TestSendOrderToLIS:
         """Should handle MLLP connection errors gracefully."""
         from hmis.apps.laboratory.services.mllp_client import MLLPConnectionError
 
-        with patch.object(
-            integration_service_enabled, "_get_hl7_service"
-        ) as mock_get_hl7, patch(
-            "hmis.apps.laboratory.services.mllp_client.MLLPClient"
-        ) as mock_mllp_class:
+        with (
+            patch.object(integration_service_enabled, "_get_hl7_service") as mock_get_hl7,
+            patch("hmis.apps.laboratory.services.mllp_client.MLLPClient") as mock_mllp_class,
+        ):
             mock_hl7_service = MagicMock()
             mock_hl7_service.build_orm_o01.return_value = "MSH|..."
             mock_get_hl7.return_value = mock_hl7_service
@@ -346,9 +354,7 @@ class TestProcessORUMessage:
         self, integration_service_enabled, sample_oru_message, test_user, lab_order_for_integration
     ):
         """Should parse ORU and create LabResult."""
-        result = integration_service_enabled.process_oru_message(
-            sample_oru_message, test_user
-        )
+        result = integration_service_enabled.process_oru_message(sample_oru_message, test_user)
 
         assert result.success is True
         assert result.results_created == 1
@@ -384,22 +390,16 @@ class TestProcessORUMessage:
         assert lab_result.order_item.test.code == "MTEST"
         assert lab_result.numeric_value == Decimal("42.5")
 
-    def test_process_oru_handles_invalid_message(
-        self, integration_service_enabled, test_user
-    ):
+    def test_process_oru_handles_invalid_message(self, integration_service_enabled, test_user):
         """Should handle invalid ORU message gracefully."""
         invalid_message = "This is not a valid HL7 message"
 
-        result = integration_service_enabled.process_oru_message(
-            invalid_message, test_user
-        )
+        result = integration_service_enabled.process_oru_message(invalid_message, test_user)
 
         assert result.success is False
         assert "parse error" in result.errors[0].lower()
 
-    def test_process_oru_handles_unknown_order(
-        self, integration_service_enabled, test_user
-    ):
+    def test_process_oru_handles_unknown_order(self, integration_service_enabled, test_user):
         """Should handle ORU with unknown order number."""
         oru_message = """MSH|^~\\&|LAB_LIS|EXTERNAL_LAB|VITORA_HMIS|VITORA|20260215120000||ORU^R01|MSG003|P|2.5.1
 PID|1||MRN-001||Doe^John||19900101|M
@@ -442,9 +442,7 @@ class TestHL7IntegrationUtilities:
 
     def test_validate_oru_message_valid(self, integration_service_enabled, sample_oru_message):
         """Should validate valid ORU message."""
-        is_valid, message = integration_service_enabled.validate_oru_message(
-            sample_oru_message
-        )
+        is_valid, message = integration_service_enabled.validate_oru_message(sample_oru_message)
 
         assert is_valid is True
         assert "result" in message.lower()
@@ -466,9 +464,7 @@ class TestHL7IntegrationUtilities:
 
     def test_generate_ack_message(self, integration_service_enabled):
         """Should generate valid ACK message."""
-        ack = integration_service_enabled.generate_ack(
-            "MSG001", "AA", "Message accepted"
-        )
+        ack = integration_service_enabled.generate_ack("MSG001", "AA", "Message accepted")
 
         assert "MSH|" in ack
         assert "MSA|AA|MSG001" in ack
@@ -525,9 +521,7 @@ class TestHL7IngestCommand:
         output = out.getvalue()
         assert "Valid ORU message" in output or "✓" in output
 
-    def test_command_requires_user_for_import(
-        self, sample_oru_message, settings, tmp_path
-    ):
+    def test_command_requires_user_for_import(self, sample_oru_message, settings, tmp_path):
         """Should require --user for import mode."""
         settings.HL7_INTEGRATION_ENABLED = True
 

@@ -31,11 +31,7 @@ class KENHDDReportService:
             "report_type": "KENHDD Compliance Report",
             "resource_type": validation_run.resource_type,
             "run_at": validation_run.run_at.isoformat(),
-            "run_by": (
-                validation_run.run_by.get_full_name()
-                if validation_run.run_by
-                else None
-            ),
+            "run_by": (validation_run.run_by.get_full_name() if validation_run.run_by else None),
             "summary": {
                 "records_checked": validation_run.records_checked,
                 "records_compliant": validation_run.records_compliant,
@@ -63,26 +59,30 @@ class KENHDDReportService:
         writer.writerow(["KENHDD Compliance Report"])
         writer.writerow(["Resource Type", validation_run.resource_type])
         writer.writerow(["Run At", validation_run.run_at.isoformat()])
-        writer.writerow([
-            "Run By",
-            validation_run.run_by.get_full_name()
-            if validation_run.run_by
-            else "N/A",
-        ])
+        writer.writerow(
+            [
+                "Run By",
+                validation_run.run_by.get_full_name() if validation_run.run_by else "N/A",
+            ]
+        )
         writer.writerow([])
 
         # Summary
         writer.writerow(["Summary"])
         writer.writerow(["Records Checked", validation_run.records_checked])
         writer.writerow(["Records Compliant", validation_run.records_compliant])
-        writer.writerow([
-            "Compliance Score (%)",
-            float(validation_run.compliance_score),
-        ])
-        writer.writerow([
-            "Mandatory Pass Rate (%)",
-            float(validation_run.mandatory_pass_rate),
-        ])
+        writer.writerow(
+            [
+                "Compliance Score (%)",
+                float(validation_run.compliance_score),
+            ]
+        )
+        writer.writerow(
+            [
+                "Mandatory Pass Rate (%)",
+                float(validation_run.mandatory_pass_rate),
+            ]
+        )
         writer.writerow([])
 
         # Violations

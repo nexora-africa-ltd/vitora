@@ -16,9 +16,7 @@ class MFAStatusSerializer(serializers.Serializer):
     webauthn_credentials_count = serializers.IntegerField(default=0)
     backup_codes_remaining = serializers.IntegerField()
     has_pending_setup = serializers.BooleanField(required=False)
-    available_methods = serializers.ListField(
-        child=serializers.CharField(), default=list
-    )
+    available_methods = serializers.ListField(child=serializers.CharField(), default=list)
 
 
 class TOTPSetupSerializer(serializers.Serializer):

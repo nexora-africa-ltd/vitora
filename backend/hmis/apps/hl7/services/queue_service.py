@@ -130,10 +130,16 @@ class HL7QueueService:
                 msg.status = HL7MessageStatus.SENT
                 msg.sent_at = timezone.now()
 
-            msg.save(update_fields=[
-                "status", "ack_code", "sent_at", "acknowledged_at",
-                "last_error", "updated_at",
-            ])
+            msg.save(
+                update_fields=[
+                    "status",
+                    "ack_code",
+                    "sent_at",
+                    "acknowledged_at",
+                    "last_error",
+                    "updated_at",
+                ]
+            )
             return msg.status in (HL7MessageStatus.SENT, HL7MessageStatus.ACKNOWLEDGED)
 
         except Exception as exc:
@@ -144,6 +150,7 @@ class HL7QueueService:
             # Calculate next retry with exponential backoff
             backoff_idx = min(msg.retry_count - 1, len(cls.RETRY_BACKOFF_MINUTES) - 1)
             from datetime import timedelta
+
             msg.next_retry_at = timezone.now() + timedelta(
                 minutes=cls.RETRY_BACKOFF_MINUTES[backoff_idx]
             )
@@ -151,9 +158,15 @@ class HL7QueueService:
             if msg.retry_count >= msg.max_retries:
                 msg.status = HL7MessageStatus.DEAD_LETTER
 
-            msg.save(update_fields=[
-                "status", "retry_count", "last_error", "next_retry_at", "updated_at",
-            ])
+            msg.save(
+                update_fields=[
+                    "status",
+                    "retry_count",
+                    "last_error",
+                    "next_retry_at",
+                    "updated_at",
+                ]
+            )
 
             logger.warning(
                 "HL7 send failed for %s (attempt %d/%d): %s",

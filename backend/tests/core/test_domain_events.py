@@ -145,9 +145,7 @@ class TestEventBus:
         received = []
 
         bus.subscribe("type.a", lambda e: received.append(e))
-        bus.publish(
-            DomainEvent(event_type="type.b", aggregate_type="B", aggregate_id=1)
-        )
+        bus.publish(DomainEvent(event_type="type.b", aggregate_type="B", aggregate_id=1))
 
         assert len(received) == 0
 
@@ -159,9 +157,7 @@ class TestEventBus:
 
         bus.subscribe("test.multi", lambda e: calls_a.append(e))
         bus.subscribe("test.multi", lambda e: calls_b.append(e))
-        bus.publish(
-            DomainEvent(event_type="test.multi", aggregate_type="Test", aggregate_id=1)
-        )
+        bus.publish(DomainEvent(event_type="test.multi", aggregate_type="Test", aggregate_id=1))
 
         assert len(calls_a) == 1
         assert len(calls_b) == 1
@@ -172,12 +168,8 @@ class TestEventBus:
         all_events = []
 
         bus.subscribe("*", lambda e: all_events.append(e))
-        bus.publish(
-            DomainEvent(event_type="type.a", aggregate_type="A", aggregate_id=1)
-        )
-        bus.publish(
-            DomainEvent(event_type="type.b", aggregate_type="B", aggregate_id=2)
-        )
+        bus.publish(DomainEvent(event_type="type.a", aggregate_type="A", aggregate_id=1))
+        bus.publish(DomainEvent(event_type="type.b", aggregate_type="B", aggregate_id=2))
 
         assert len(all_events) == 2
 
@@ -194,9 +186,7 @@ class TestEventBus:
 
         bus.subscribe("test.fail", failing_handler)
         bus.subscribe("test.fail", success_handler)
-        bus.publish(
-            DomainEvent(event_type="test.fail", aggregate_type="Test", aggregate_id=1)
-        )
+        bus.publish(DomainEvent(event_type="test.fail", aggregate_type="Test", aggregate_id=1))
 
         assert len(received) == 1  # success_handler still called
 
@@ -210,9 +200,7 @@ class TestEventBus:
 
         bus.subscribe("test.unsub", handler)
         bus.unsubscribe("test.unsub", handler)
-        bus.publish(
-            DomainEvent(event_type="test.unsub", aggregate_type="Test", aggregate_id=1)
-        )
+        bus.publish(DomainEvent(event_type="test.unsub", aggregate_type="Test", aggregate_id=1))
 
         assert len(received) == 0
 
@@ -226,9 +214,7 @@ class TestEventBus:
 
         bus.subscribe("*", handler)
         bus.unsubscribe("*", handler)
-        bus.publish(
-            DomainEvent(event_type="test.wild", aggregate_type="Test", aggregate_id=1)
-        )
+        bus.publish(DomainEvent(event_type="test.wild", aggregate_type="Test", aggregate_id=1))
 
         assert len(received) == 0
 
@@ -240,9 +226,7 @@ class TestEventBus:
         bus.subscribe("test.clear", lambda e: received.append(e))
         bus.subscribe("*", lambda e: received.append(e))
         bus.clear()
-        bus.publish(
-            DomainEvent(event_type="test.clear", aggregate_type="Test", aggregate_id=1)
-        )
+        bus.publish(DomainEvent(event_type="test.clear", aggregate_type="Test", aggregate_id=1))
 
         assert len(received) == 0
 
@@ -256,9 +240,7 @@ class TestEventBus:
 
         bus.subscribe("test.dup", handler)
         bus.subscribe("test.dup", handler)  # Duplicate
-        bus.publish(
-            DomainEvent(event_type="test.dup", aggregate_type="Test", aggregate_id=1)
-        )
+        bus.publish(DomainEvent(event_type="test.dup", aggregate_type="Test", aggregate_id=1))
 
         assert len(calls) == 1  # Called once, not twice
 
@@ -324,9 +306,7 @@ class TestEventStore:
         bus.publish(
             DomainEvent(event_type="prescription.expired", aggregate_type="Rx", aggregate_id=2)
         )
-        bus.publish(
-            DomainEvent(event_type="invoice.created", aggregate_type="Inv", aggregate_id=3)
-        )
+        bus.publish(DomainEvent(event_type="invoice.created", aggregate_type="Inv", aggregate_id=3))
 
         rx_events = EventStore.replay(event_type="prescription")
         assert rx_events.count() == 2
@@ -351,14 +331,10 @@ class TestEventStore:
         """Should filter replayed events by facility."""
         bus = get_event_bus()
         bus.publish(
-            DomainEvent(
-                event_type="test.a", aggregate_type="A", aggregate_id=1, facility_id=1
-            )
+            DomainEvent(event_type="test.a", aggregate_type="A", aggregate_id=1, facility_id=1)
         )
         bus.publish(
-            DomainEvent(
-                event_type="test.b", aggregate_type="B", aggregate_id=2, facility_id=2
-            )
+            DomainEvent(event_type="test.b", aggregate_type="B", aggregate_id=2, facility_id=2)
         )
 
         events = EventStore.replay(facility_id=1)
@@ -373,9 +349,7 @@ class TestEventStore:
         past = now - timezone.timedelta(hours=2)
         future = now + timezone.timedelta(hours=2)
 
-        bus.publish(
-            DomainEvent(event_type="test.now", aggregate_type="T", aggregate_id=1)
-        )
+        bus.publish(DomainEvent(event_type="test.now", aggregate_type="T", aggregate_id=1))
 
         events = EventStore.replay(since=past, until=future)
         assert events.count() == 1
@@ -388,9 +362,7 @@ class TestEventStore:
         """Should return replayed events in chronological order."""
         bus = get_event_bus()
         for i in range(3):
-            bus.publish(
-                DomainEvent(event_type="ordered", aggregate_type="O", aggregate_id=i)
-            )
+            bus.publish(DomainEvent(event_type="ordered", aggregate_type="O", aggregate_id=i))
 
         events = list(EventStore.replay(event_type="ordered"))
         timestamps = [e.timestamp for e in events]
@@ -432,11 +404,7 @@ class TestDecorators:
             received.append(event)
 
         bus = get_event_bus()
-        bus.publish(
-            DomainEvent(
-                event_type="test.decorated", aggregate_type="Test", aggregate_id=1
-            )
-        )
+        bus.publish(DomainEvent(event_type="test.decorated", aggregate_type="Test", aggregate_id=1))
 
         assert len(received) == 1
 

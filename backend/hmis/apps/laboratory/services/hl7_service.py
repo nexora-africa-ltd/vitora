@@ -984,9 +984,9 @@ class HL7Service:
             reference_range_text=hl7_result.reference_range or "",
             result_flag=result_flag,
             is_external_result=True,
-            external_result_date=hl7_result.result_datetime.date()
-            if hl7_result.result_datetime
-            else None,
+            external_result_date=(
+                hl7_result.result_datetime.date() if hl7_result.result_datetime else None
+            ),
             entered_by=entered_by,
             verification_status="UNVERIFIED",
         )

@@ -33,7 +33,9 @@ class TestPowerSyncTokenClaims:
         token = PowerSyncTokenObtainPairSerializer.get_token(test_user)
         assert token["facility_id"] == sample_facility.id
 
-    def test_token_includes_organization_id(self, test_user, test_staff_profile, sample_organization):
+    def test_token_includes_organization_id(
+        self, test_user, test_staff_profile, sample_organization
+    ):
         """Token must include organization_id from the user's StaffProfile."""
         token = PowerSyncTokenObtainPairSerializer.get_token(test_user)
         assert token["organization_id"] == sample_organization.id
@@ -65,15 +67,20 @@ class TestPowerSyncTokenClaims:
         # Should have 3 parts (header.payload.signature)
         assert jwt_string.count(".") == 2
 
-    def test_login_endpoint_returns_powersync_claims(self, api_client, test_user, test_staff_profile, sample_facility, sample_organization):
+    def test_login_endpoint_returns_powersync_claims(
+        self, api_client, test_user, test_staff_profile, sample_facility, sample_organization
+    ):
         """POST /api/token/ should return tokens with PowerSync claims embedded."""
         import jwt
         from django.conf import settings
 
-        response = api_client.post("/api/token/", {
-            "username": test_user.username,
-            "password": "testpass123",
-        })
+        response = api_client.post(
+            "/api/token/",
+            {
+                "username": test_user.username,
+                "password": "testpass123",
+            },
+        )
 
         # May get 200 (success) or MFA challenge — both are valid
         if response.status_code == 200 and "access" in response.data:

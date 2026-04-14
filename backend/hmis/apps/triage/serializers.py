@@ -4,7 +4,6 @@ Serializers for triage app.
 Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
-
 from decimal import Decimal
 
 from django.utils import timezone
@@ -222,7 +221,9 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
     patient_gender = serializers.CharField(source="encounter.patient.gender", read_only=True)
     encounter_mrn = serializers.CharField(source="encounter.patient.mrn", read_only=True)
     assigned_clinician_name = serializers.SerializerMethodField()
-    assigned_clinic_name = serializers.CharField(source="assigned_clinic.name", read_only=True, allow_null=True)
+    assigned_clinic_name = serializers.CharField(
+        source="assigned_clinic.name", read_only=True, allow_null=True
+    )
     routing_destination = serializers.CharField(read_only=True)
     alerts = serializers.SerializerMethodField()  # Handle legacy string format conversion
     vitals = serializers.SerializerMethodField()
@@ -303,7 +304,16 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["auto_calculated_category", "alerts", "triaged_by", "assigned_clinic_name", "routing_destination", "gcs_total", "gcs_severity", "age_group"]
+        read_only_fields = [
+            "auto_calculated_category",
+            "alerts",
+            "triaged_by",
+            "assigned_clinic_name",
+            "routing_destination",
+            "gcs_total",
+            "gcs_severity",
+            "age_group",
+        ]
 
     def get_age_group(self, obj) -> str:
         """Get age group for frontend conditional rendering."""
@@ -412,27 +422,47 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             message_lower = message.lower()
             if "spo2" in message_lower or "oxygen" in message_lower or "hypoxemia" in message_lower:
                 vital_type = "SPO2"
-            elif "blood pressure" in message_lower or "hypertension" in message_lower or "hypotension" in message_lower or "map" in message_lower:
+            elif (
+                "blood pressure" in message_lower
+                or "hypertension" in message_lower
+                or "hypotension" in message_lower
+                or "map" in message_lower
+            ):
                 vital_type = "SYSTOLIC_BP"
-            elif "heart rate" in message_lower or "bradycardia" in message_lower or "tachycardia" in message_lower:
+            elif (
+                "heart rate" in message_lower
+                or "bradycardia" in message_lower
+                or "tachycardia" in message_lower
+            ):
                 vital_type = "HEART_RATE"
-            elif "temperature" in message_lower or "fever" in message_lower or "hypothermia" in message_lower:
+            elif (
+                "temperature" in message_lower
+                or "fever" in message_lower
+                or "hypothermia" in message_lower
+            ):
                 vital_type = "TEMPERATURE"
             elif "respiratory" in message_lower or "breathing" in message_lower:
                 vital_type = "RESPIRATORY_RATE"
-            elif "mental" in message_lower or "avpu" in message_lower or "unresponsive" in message_lower or "responds" in message_lower:
+            elif (
+                "mental" in message_lower
+                or "avpu" in message_lower
+                or "unresponsive" in message_lower
+                or "responds" in message_lower
+            ):
                 vital_type = "MENTAL_STATUS"
             elif "pain" in message_lower:
                 vital_type = "PAIN_SCORE"
 
-            converted.append({
-                "id": str(uuid.uuid4()),
-                "severity": severity,
-                "vital_type": vital_type,
-                "message": message,
-                "value": 0,  # Cannot be recovered from string, use 0 as placeholder
-                "threshold": 0,  # Cannot be recovered from string, use 0 as placeholder
-            })
+            converted.append(
+                {
+                    "id": str(uuid.uuid4()),
+                    "severity": severity,
+                    "vital_type": vital_type,
+                    "message": message,
+                    "value": 0,  # Cannot be recovered from string, use 0 as placeholder
+                    "threshold": 0,  # Cannot be recovered from string, use 0 as placeholder
+                }
+            )
 
         return converted
 
@@ -528,15 +558,9 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
     )
 
     # Glasgow Coma Scale (optional - for trauma/neuro cases)
-    gcs_eye = serializers.IntegerField(
-        required=False, allow_null=True, min_value=1, max_value=4
-    )
-    gcs_verbal = serializers.IntegerField(
-        required=False, allow_null=True, min_value=1, max_value=5
-    )
-    gcs_motor = serializers.IntegerField(
-        required=False, allow_null=True, min_value=1, max_value=6
-    )
+    gcs_eye = serializers.IntegerField(required=False, allow_null=True, min_value=1, max_value=4)
+    gcs_verbal = serializers.IntegerField(required=False, allow_null=True, min_value=1, max_value=5)
+    gcs_motor = serializers.IntegerField(required=False, allow_null=True, min_value=1, max_value=6)
 
     # ETAT fields (optional - for pediatric assessments)
     etat_danger_signs = serializers.ListField(
@@ -713,7 +737,11 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         assigned_area = data.get("assigned_area")
         assigned_clinic = data.get("assigned_clinic")
 
-        has_area = bool(assigned_area) and assigned_area.strip() if isinstance(assigned_area, str) else bool(assigned_area)
+        has_area = (
+            bool(assigned_area) and assigned_area.strip()
+            if isinstance(assigned_area, str)
+            else bool(assigned_area)
+        )
         has_clinic = assigned_clinic is not None
 
         if not has_area and not has_clinic:
@@ -767,7 +795,9 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
 
             # Get patient age for age-adjusted calculation
             patient = encounter.patient
-            patient_age_years = float(patient.age) if hasattr(patient, "age") and patient.age is not None else 30.0
+            patient_age_years = (
+                float(patient.age) if hasattr(patient, "age") and patient.age is not None else 30.0
+            )
 
             # Calculate suggested category
             calculator = TriageCategoryCalculator()
@@ -826,7 +856,9 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
 
         # Get patient age for age-adjusted calculations
         patient = encounter.patient
-        patient_age_years = float(patient.age) if hasattr(patient, "age") and patient.age is not None else 30.0
+        patient_age_years = (
+            float(patient.age) if hasattr(patient, "age") and patient.age is not None else 30.0
+        )
 
         # Calculate category and alerts (age-aware, with ETAT for children)
         calculator = TriageCategoryCalculator()
@@ -843,7 +875,11 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             fontanelle_status=validated_data.get("fontanelle_status", ""),
             breastfeeding_ability=validated_data.get("breastfeeding_ability", ""),
             capillary_refill_seconds=validated_data.get("capillary_refill_seconds"),
-            muac_cm=float(validated_data["muac_cm"]) if validated_data.get("muac_cm") is not None else None,
+            muac_cm=(
+                float(validated_data["muac_cm"])
+                if validated_data.get("muac_cm") is not None
+                else None
+            ),
         )
 
         # Set auto-calculated category and alerts
@@ -940,9 +976,15 @@ class TriageQueueSerializer(serializers.ModelSerializer):
     assigned_area = serializers.CharField(source="triage_assessment.assigned_area", read_only=True)
     assigned_area_display = serializers.SerializerMethodField()
     assigned_area_label = serializers.SerializerMethodField()
-    assigned_clinic = serializers.IntegerField(source="triage_assessment.assigned_clinic_id", read_only=True, allow_null=True)
-    assigned_clinic_name = serializers.CharField(source="triage_assessment.assigned_clinic.name", read_only=True, allow_null=True)
-    routing_destination = serializers.CharField(source="triage_assessment.routing_destination", read_only=True)
+    assigned_clinic = serializers.IntegerField(
+        source="triage_assessment.assigned_clinic_id", read_only=True, allow_null=True
+    )
+    assigned_clinic_name = serializers.CharField(
+        source="triage_assessment.assigned_clinic.name", read_only=True, allow_null=True
+    )
+    routing_destination = serializers.CharField(
+        source="triage_assessment.routing_destination", read_only=True
+    )
     arrival_time = serializers.DateTimeField(
         source="triage_assessment.arrival_time", read_only=True
     )
@@ -955,9 +997,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
     alerts = serializers.SerializerMethodField()
 
     # FK to triage assessment (numeric ID for frontend)
-    triage_assessment = serializers.IntegerField(
-        source="triage_assessment.id", read_only=True
-    )
+    triage_assessment = serializers.IntegerField(source="triage_assessment.id", read_only=True)
 
     # Queue-specific fields
     called_by_name = serializers.CharField(
@@ -1096,15 +1136,9 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
     mobility = serializers.CharField(required=False, allow_null=True)
 
     # Glasgow Coma Scale (optional)
-    gcs_eye = serializers.IntegerField(
-        min_value=1, max_value=4, required=False, allow_null=True
-    )
-    gcs_verbal = serializers.IntegerField(
-        min_value=1, max_value=5, required=False, allow_null=True
-    )
-    gcs_motor = serializers.IntegerField(
-        min_value=1, max_value=6, required=False, allow_null=True
-    )
+    gcs_eye = serializers.IntegerField(min_value=1, max_value=4, required=False, allow_null=True)
+    gcs_verbal = serializers.IntegerField(min_value=1, max_value=5, required=False, allow_null=True)
+    gcs_motor = serializers.IntegerField(min_value=1, max_value=6, required=False, allow_null=True)
 
     # ETAT fields (optional)
     patient_age_years = serializers.FloatField(required=False, default=30)
@@ -1364,9 +1398,7 @@ class EscalationSerializer(serializers.ModelSerializer):
     escalation_type_display = serializers.CharField(
         source="get_escalation_type_display", read_only=True
     )
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True
-    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
         model = Escalation
@@ -1403,7 +1435,10 @@ class EscalationSerializer(serializers.ModelSerializer):
 
     def get_escalated_by_name(self, obj) -> str:
         if obj.escalated_by:
-            return f"{obj.escalated_by.first_name} {obj.escalated_by.last_name}".strip() or obj.escalated_by.username
+            return (
+                f"{obj.escalated_by.first_name} {obj.escalated_by.last_name}".strip()
+                or obj.escalated_by.username
+            )
         return ""
 
 

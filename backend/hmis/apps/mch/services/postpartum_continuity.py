@@ -35,7 +35,9 @@ def route_registration_to_pnc_queue(
     clinic_qs = Clinic.objects.filter(status="ACTIVE", clinic_type="PNC")
     clinic = clinic_qs.filter(id=clinic_id).first() if clinic_id else clinic_qs.first()
     if clinic is None:
-        raise ValidationError("No active PNC clinic found. Create one before routing postpartum patients.")
+        raise ValidationError(
+            "No active PNC clinic found. Create one before routing postpartum patients."
+        )
 
     session = ClinicSession.objects.filter(clinic=clinic, session_date=routing_date).first()
     if session is None:
@@ -59,9 +61,12 @@ def route_registration_to_pnc_queue(
     if existing_visit is not None:
         return existing_visit
 
-    max_queue = ClinicVisit.objects.filter(session=session).aggregate(
-        max_q=models.Max("queue_number")
-    )["max_q"] or 0
+    max_queue = (
+        ClinicVisit.objects.filter(session=session).aggregate(max_q=models.Max("queue_number"))[
+            "max_q"
+        ]
+        or 0
+    )
 
     return ClinicVisit.objects.create(
         session=session,

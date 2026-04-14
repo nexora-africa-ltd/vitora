@@ -366,7 +366,9 @@ class TestProductionChannelLayers:
         """Default (dev/test) should use InMemoryChannelLayer."""
         from django.conf import settings
 
-        assert settings.CHANNEL_LAYERS["default"]["BACKEND"] == "channels.layers.InMemoryChannelLayer"
+        assert (
+            settings.CHANNEL_LAYERS["default"]["BACKEND"] == "channels.layers.InMemoryChannelLayer"
+        )
 
 
 # =============================================================================

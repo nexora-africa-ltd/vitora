@@ -25,6 +25,8 @@ def _grant_manage_schedules(test_user):
             del test_user._perm_cache
         if hasattr(test_user, "_user_perm_cache"):
             del test_user._user_perm_cache
+
+
 from django.utils import timezone
 
 

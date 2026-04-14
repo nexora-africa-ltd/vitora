@@ -38,8 +38,12 @@ def authenticated_user(db):
 
 @pytest.fixture
 def auth_client(
-    api_client, authenticated_user, sample_organization, sample_facility,
-    sample_department, sample_role
+    api_client,
+    authenticated_user,
+    sample_organization,
+    sample_facility,
+    sample_department,
+    sample_role,
 ):
     """Provide API client with authentication and multitenancy context."""
     from hmis.apps.core.models import StaffProfile
@@ -276,7 +280,14 @@ class TestLabOrderWorkflowAPI:
     """Tests for lab order workflow actions."""
 
     @pytest.fixture
-    def sample_order(self, sample_encounter, sample_test_catalog, authenticated_user, sample_facility, sample_organization):
+    def sample_order(
+        self,
+        sample_encounter,
+        sample_test_catalog,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Create a sample lab order."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -337,7 +348,14 @@ class TestLabResultAPI:
     """Tests for lab result API endpoints."""
 
     @pytest.fixture
-    def sample_order_item(self, sample_encounter, sample_test_catalog, authenticated_user, sample_facility, sample_organization):
+    def sample_order_item(
+        self,
+        sample_encounter,
+        sample_test_catalog,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Create a sample order item ready for results."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -482,7 +500,14 @@ class TestLabAPIPagination:
         assert "next" in response.data
         assert "previous" in response.data
 
-    def test_orders_list_pagination(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_orders_list_pagination(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should paginate orders list."""
         # Create multiple orders
         for i in range(35):
@@ -505,7 +530,14 @@ class TestLabAPIPagination:
 class TestNestedLabRoutes:
     """Tests for nested lab routes under patients and encounters."""
 
-    def test_patient_lab_orders_list(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_patient_lab_orders_list(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should list lab orders for a specific patient."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -520,7 +552,14 @@ class TestNestedLabRoutes:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
-    def test_patient_lab_results_list(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_patient_lab_results_list(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should list lab results for a specific patient."""
         test = TestCatalog.objects.create(
             code="PAT_TEST",
@@ -554,7 +593,14 @@ class TestNestedLabRoutes:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
-    def test_encounter_lab_orders_list(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_encounter_lab_orders_list(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should list lab orders for a specific encounter."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -574,7 +620,14 @@ class TestNestedLabRoutes:
 class TestLabOrderItemManagement:
     """Tests for order item management (add/remove items)."""
 
-    def test_add_item_to_order(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_add_item_to_order(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should add a test item to an existing order."""
         test = TestCatalog.objects.create(
             code="ADD_TEST",
@@ -601,7 +654,14 @@ class TestLabOrderItemManagement:
         assert response.status_code == status.HTTP_201_CREATED
         assert order.items.count() == 1
 
-    def test_add_duplicate_item_fails(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_add_duplicate_item_fails(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should prevent adding duplicate test to order."""
         test = TestCatalog.objects.create(
             code="DUP_TEST",
@@ -633,7 +693,14 @@ class TestLabOrderItemManagement:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "already in this order" in response.data["error"]
 
-    def test_delete_item_from_draft_order(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_delete_item_from_draft_order(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should delete item from draft order."""
         test = TestCatalog.objects.create(
             code="DEL_TEST",
@@ -664,8 +731,12 @@ class TestLabOrderItemManagement:
         assert order.items.count() == 0
 
     def test_delete_item_from_submitted_order_fails(
-        self, auth_client, sample_encounter, authenticated_user,
-        sample_facility, sample_organization
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should not allow deleting items from submitted order."""
         test = TestCatalog.objects.create(
@@ -700,7 +771,14 @@ class TestLabOrderItemManagement:
 class TestResultVerifyReject:
     """Tests for result verification and rejection workflow."""
 
-    def test_verify_result_approved(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_verify_result_approved(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should verify (approve) a result."""
         test = TestCatalog.objects.create(
             code="VER_TEST",
@@ -738,7 +816,14 @@ class TestResultVerifyReject:
         result.refresh_from_db()
         assert result.verification_status == "VERIFIED"
 
-    def test_verify_result_rejected(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_verify_result_rejected(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should reject a result."""
         test = TestCatalog.objects.create(
             code="REJ_TEST",
@@ -782,7 +867,14 @@ class TestResultVerifyReject:
 class TestResultAttachmentUpload:
     """Tests for result attachment upload."""
 
-    def test_upload_attachment_success(self, auth_client, sample_encounter, authenticated_user, sample_facility, sample_organization):
+    def test_upload_attachment_success(
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should upload attachment to result."""
         test = TestCatalog.objects.create(
             code="ATT_TEST",
@@ -831,8 +923,12 @@ class TestResultAttachmentUpload:
         assert result.external_result_attachment is not None
 
     def test_upload_invalid_file_type_fails(
-        self, auth_client, sample_encounter, authenticated_user,
-        sample_facility, sample_organization
+        self,
+        auth_client,
+        sample_encounter,
+        authenticated_user,
+        sample_facility,
+        sample_organization,
     ):
         """Should reject invalid file types."""
         test = TestCatalog.objects.create(

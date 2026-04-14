@@ -69,7 +69,9 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
             ).first()
 
         # Use treatment type cost
-        unit_price = order.treatment_type.cost_per_session if order.treatment_type else Decimal("0.00")
+        unit_price = (
+            order.treatment_type.cost_per_session if order.treatment_type else Decimal("0.00")
+        )
 
         # Create invoice item
         invoice_item = InvoiceItem.objects.create(
@@ -166,9 +168,7 @@ def route_to_ot_clinic_on_approval(sender, instance, created, **kwargs):
         instance.clinic_visit = clinic_visit
         instance.save(update_fields=["clinic_visit"])
 
-        logger.info(
-            f"Created clinic visit {clinic_visit.id} for OT order {instance.order_number}"
-        )
+        logger.info(f"Created clinic visit {clinic_visit.id} for OT order {instance.order_number}")
 
     except Exception as e:
         logger.error(f"Failed to route OT order {instance.order_number} to clinic: {e}")

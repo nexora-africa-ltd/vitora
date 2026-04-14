@@ -169,9 +169,7 @@ class TestClockInOut:
 
     def test_clock_in(self, authenticated_client, my_shift_today):
         """POST start/ should clock in and set started_at."""
-        response = authenticated_client.post(
-            f"/api/scheduling/shifts/{my_shift_today.id}/start/"
-        )
+        response = authenticated_client.post(f"/api/scheduling/shifts/{my_shift_today.id}/start/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "ACTIVE"
         assert response.data["started_at"] is not None
@@ -196,9 +194,7 @@ class TestClockInOut:
     def test_cannot_clock_in_twice(self, authenticated_client, my_shift_today):
         """Cannot start an already ACTIVE shift."""
         my_shift_today.start_shift()
-        response = authenticated_client.post(
-            f"/api/scheduling/shifts/{my_shift_today.id}/start/"
-        )
+        response = authenticated_client.post(f"/api/scheduling/shifts/{my_shift_today.id}/start/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
@@ -224,9 +220,7 @@ class TestBreakResume:
         """Should transition ON_BREAK → ACTIVE."""
         my_shift_today.start_shift()
         my_shift_today.take_break()
-        response = authenticated_client.post(
-            f"/api/scheduling/shifts/{my_shift_today.id}/resume/"
-        )
+        response = authenticated_client.post(f"/api/scheduling/shifts/{my_shift_today.id}/resume/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "ACTIVE"
         assert response.data["break_started_at"] is None
@@ -241,9 +235,7 @@ class TestBreakResume:
     def test_cannot_resume_active_shift(self, authenticated_client, my_shift_today):
         """Cannot resume a shift that is already ACTIVE."""
         my_shift_today.start_shift()
-        response = authenticated_client.post(
-            f"/api/scheduling/shifts/{my_shift_today.id}/resume/"
-        )
+        response = authenticated_client.post(f"/api/scheduling/shifts/{my_shift_today.id}/resume/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_on_break_shows_in_my_today(self, authenticated_client, my_shift_today):
@@ -419,7 +411,9 @@ class TestBulkDelete:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["deleted"] == 3
 
-    def test_bulk_delete_preserves_active_shifts(self, authenticated_client, my_resource, sample_facility):
+    def test_bulk_delete_preserves_active_shifts(
+        self, authenticated_client, my_resource, sample_facility
+    ):
         """Should NOT delete ACTIVE shifts."""
         from hmis.apps.scheduling.models import Shift
 

@@ -134,10 +134,25 @@ class TestAdminListDisplay:
             (SupervisorAlertAcknowledgmentAdmin, ["admission", "acknowledged_by"]),
             (TemperatureReadingAdmin, ["admission", "temperature", "recorded_by"]),
             (BPMonitoringReadingAdmin, ["admission", "bp_display", "pulse"]),
-            (FluidBalanceSheetAdmin, ["admission", "chart_date", "total_intake_display", "total_output_display", "net_balance_display"]),
+            (
+                FluidBalanceSheetAdmin,
+                [
+                    "admission",
+                    "chart_date",
+                    "total_intake_display",
+                    "total_output_display",
+                    "net_balance_display",
+                ],
+            ),
             (FluidBalanceEntryAdmin, ["fluid_balance_sheet", "entry_type", "amount_ml"]),
-            (BloodTransfusionObservationAdmin, ["admission", "blood_product", "status", "reaction_occurred"]),
-            (MedicationAdministrationAdmin, ["admission", "prescription_item", "status", "dose_given"]),
+            (
+                BloodTransfusionObservationAdmin,
+                ["admission", "blood_product", "status", "reaction_occurred"],
+            ),
+            (
+                MedicationAdministrationAdmin,
+                ["admission", "prescription_item", "status", "dose_given"],
+            ),
             (ShiftHandoverAdmin, ["ward", "shift_date", "outgoing_nurse"]),
         ],
     )
@@ -145,9 +160,9 @@ class TestAdminListDisplay:
         """Each admin class should include expected columns in list_display."""
         admin_instance = admin_class(Ward if admin_class == WardAdmin else Admission, site)
         for col in expected_columns:
-            assert col in admin_instance.list_display, (
-                f"{admin_class.__name__}.list_display missing '{col}'"
-            )
+            assert (
+                col in admin_instance.list_display
+            ), f"{admin_class.__name__}.list_display missing '{col}'"
 
     @pytest.mark.parametrize(
         "admin_class,expected_filters",
@@ -165,9 +180,9 @@ class TestAdminListDisplay:
         """Each admin class should include expected filters in list_filter."""
         admin_instance = admin_class(Ward if admin_class == WardAdmin else Admission, site)
         for f in expected_filters:
-            assert f in admin_instance.list_filter, (
-                f"{admin_class.__name__}.list_filter missing '{f}'"
-            )
+            assert (
+                f in admin_instance.list_filter
+            ), f"{admin_class.__name__}.list_filter missing '{f}'"
 
 
 # ============================================================================
@@ -205,9 +220,9 @@ class TestAdminSearchFields:
             or "admission__patient__first_name" in f
             for f in search_fields
         )
-        assert has_patient_search, (
-            f"{admin_class.__name__}.search_fields should include patient identifiers"
-        )
+        assert (
+            has_patient_search
+        ), f"{admin_class.__name__}.search_fields should include patient identifiers"
 
 
 # ============================================================================
@@ -311,7 +326,10 @@ class TestAdminInlines:
     def test_fluid_balance_sheet_has_entry_inline(self):
         admin_instance = FluidBalanceSheetAdmin(FluidBalanceSheet, site)
         inline_classes = [i.__class__ for i in admin_instance.get_inline_instances(None)]
-        assert any(isinstance(i, FluidBalanceEntryInline) for i in admin_instance.get_inline_instances(None))
+        assert any(
+            isinstance(i, FluidBalanceEntryInline)
+            for i in admin_instance.get_inline_instances(None)
+        )
 
     def test_blood_transfusion_has_observation_inline(self):
         admin_instance = BloodTransfusionObservationAdmin(BloodTransfusionObservation, site)

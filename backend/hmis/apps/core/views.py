@@ -159,7 +159,9 @@ def _query_param_truthy(value: str | None) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-class AuditLogViewSet(TenantScopedViewMixin, ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
+class AuditLogViewSet(
+    TenantScopedViewMixin, ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet
+):
     """
     ViewSet for viewing audit logs (read-only).
 
@@ -238,14 +240,16 @@ class AuditLogViewSet(TenantScopedViewMixin, ListModelMixin, RetrieveModelMixin,
             },
         )
 
-        return Response({
-            "valid": result.valid,
-            "entries_checked": result.entries_checked,
-            "first_mismatch_seq": result.first_mismatch_seq,
-            "first_mismatch_detail": result.first_mismatch_detail,
-            "errors": result.errors,
-            "checked_at": result.checked_at.isoformat() if result.checked_at else None,
-        })
+        return Response(
+            {
+                "valid": result.valid,
+                "entries_checked": result.entries_checked,
+                "first_mismatch_seq": result.first_mismatch_seq,
+                "first_mismatch_detail": result.first_mismatch_detail,
+                "errors": result.errors,
+                "checked_at": result.checked_at.isoformat() if result.checked_at else None,
+            }
+        )
 
 
 class FrontendEventViewSet(viewsets.GenericViewSet):
@@ -481,9 +485,7 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                 # Check if MFA is enabled for this user
                 mfa_enabled = is_mfa_enabled(user)
                 mfa_required = is_mfa_required(user)
-                mfa_enforcement = getattr(
-                    django_settings, "MFA_ENFORCEMENT", True
-                )
+                mfa_enforcement = getattr(django_settings, "MFA_ENFORCEMENT", True)
 
                 if mfa_enabled and mfa_enforcement:
                     # MFA is enabled - don't return tokens yet
@@ -533,9 +535,7 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                     # Include deadline for frontend countdown
                     profile = getattr(user, "staff_profile", None)
                     if profile and profile.mfa_grace_deadline:
-                        response.data["mfa_grace_deadline"] = (
-                            profile.mfa_grace_deadline.isoformat()
-                        )
+                        response.data["mfa_grace_deadline"] = profile.mfa_grace_deadline.isoformat()
                 else:
                     # No MFA - proceed normally
                     user_logged_in.send(sender=self.__class__, request=request, user=user)
@@ -688,9 +688,15 @@ class DepartmentViewSet(viewsets.ModelViewSet):
             "summary": {
                 "department_count": len(departments),
                 "staff_count": len(staff),
-                "root_department_count": sum(1 for department in departments if department.parent_id is None),
-                "department_heads_count": sum(1 for department in departments if department.head_id is not None),
-                "supervisor_link_count": sum(1 for staff_member in staff if staff_member.supervisor_id is not None),
+                "root_department_count": sum(
+                    1 for department in departments if department.parent_id is None
+                ),
+                "department_heads_count": sum(
+                    1 for department in departments if department.head_id is not None
+                ),
+                "supervisor_link_count": sum(
+                    1 for staff_member in staff if staff_member.supervisor_id is not None
+                ),
             },
         }
         serializer = OrgChartPayloadSerializer(payload)
@@ -1613,9 +1619,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     def facilities(self, request, pk=None):
         """List facilities under this organization."""
         organization = self.get_object()
-        facilities = organization.facilities.select_related(
-            "county", "sub_county", "ward"
-        ).all()
+        facilities = organization.facilities.select_related("county", "sub_county", "ward").all()
         serializer = FacilityListSerializer(facilities, many=True)
         return Response(serializer.data)
 
@@ -1794,13 +1798,15 @@ class FacilityViewSet(viewsets.ModelViewSet):
                 description="KEPH facility level (1–6)",
             ),
         ],
-        responses={200: inline_serializer(
-            "DefaultModulesResponse",
-            fields={
-                "level": serializers.CharField(),
-                "modules": serializers.DictField(),
-            },
-        )},
+        responses={
+            200: inline_serializer(
+                "DefaultModulesResponse",
+                fields={
+                    "level": serializers.CharField(),
+                    "modules": serializers.DictField(),
+                },
+            )
+        },
     )
     @action(detail=False, methods=["get"])
     def default_modules(self, request):
@@ -1859,9 +1865,7 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
 
         user_id = request.data.get("user_id")
         if not user_id:
-            return Response(
-                {"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         from django.contrib.auth import get_user_model
 
@@ -1869,9 +1873,7 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
         try:
             target_user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
-            return Response(
-                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         service = PKIService()
         try:
@@ -1918,19 +1920,21 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
         cert = self.get_object()
         service = PKIService()
         result = service.verify_certificate(cert)
-        return Response({
-            "valid": result.valid,
-            "subject": result.subject,
-            "issuer": result.issuer,
-            "serial_number": result.serial_number,
-            "valid_from": result.valid_from.isoformat() if result.valid_from else None,
-            "valid_to": result.valid_to.isoformat() if result.valid_to else None,
-            "is_expired": result.is_expired,
-            "is_revoked": result.is_revoked,
-            "ca_active": result.ca_active,
-            "errors": result.errors,
-            "chain": result.chain,
-        })
+        return Response(
+            {
+                "valid": result.valid,
+                "subject": result.subject,
+                "issuer": result.issuer,
+                "serial_number": result.serial_number,
+                "valid_from": result.valid_from.isoformat() if result.valid_from else None,
+                "valid_to": result.valid_to.isoformat() if result.valid_to else None,
+                "is_expired": result.is_expired,
+                "is_revoked": result.is_revoked,
+                "ca_active": result.ca_active,
+                "errors": result.errors,
+                "chain": result.chain,
+            }
+        )
 
     @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
     def create_intermediate(self, request):
@@ -1946,18 +1950,14 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
 
         if parent_ca_id:
             try:
-                parent_ca = CertificateAuthority.objects.get(
-                    pk=parent_ca_id, is_active=True
-                )
+                parent_ca = CertificateAuthority.objects.get(pk=parent_ca_id, is_active=True)
             except CertificateAuthority.DoesNotExist:
                 return Response(
                     {"error": "Specified parent CA not found or inactive"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
         else:
-            parent_ca = CertificateAuthority.objects.filter(
-                is_root=True, is_active=True
-            ).first()
+            parent_ca = CertificateAuthority.objects.filter(is_root=True, is_active=True).first()
             if parent_ca is None:
                 return Response(
                     {"error": "No active root CA found. Initialize one first."},
@@ -2053,19 +2053,21 @@ class DocumentSignatureViewSet(viewsets.GenericViewSet, ListModelMixin, Retrieve
 
         service = DocumentSigningService()
         result = service.verify_signature(sig)
-        return Response({
-            "valid": result.valid,
-            "document_type": result.document_type,
-            "document_id": result.document_id,
-            "signer_username": result.signer_username,
-            "signer_name": result.signer_name,
-            "signed_at": result.signed_at,
-            "certificate_serial": result.certificate_serial,
-            "certificate_valid": result.certificate_valid,
-            "content_matches": result.content_matches,
-            "signature_valid": result.signature_valid,
-            "errors": result.errors,
-        })
+        return Response(
+            {
+                "valid": result.valid,
+                "document_type": result.document_type,
+                "document_id": result.document_id,
+                "signer_username": result.signer_username,
+                "signer_name": result.signer_name,
+                "signed_at": result.signed_at,
+                "certificate_serial": result.certificate_serial,
+                "certificate_valid": result.certificate_valid,
+                "content_matches": result.content_matches,
+                "signature_valid": result.signature_valid,
+                "errors": result.errors,
+            }
+        )
 
     @action(detail=False, methods=["get"])
     def for_document(self, request):

@@ -52,7 +52,7 @@ class Command(BaseCommand):
                 continue
 
             if dry_run:
-                self.stdout.write(f"  Would sync permissions for group \"{role.django_group.name}\"")
+                self.stdout.write(f'  Would sync permissions for group "{role.django_group.name}"')
             else:
                 count = sync_role_group_permissions(role)
                 self.stdout.write(

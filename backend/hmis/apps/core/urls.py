@@ -67,7 +67,9 @@ urlpatterns = [
     # Emergency access (break-glass)
     path("emergency-access/", include("hmis.apps.core.emergency_access.urls")),
     # History API endpoints (DHA Compliance - Audit Trail)
-    path("history/patients/<int:patient_id>/", PatientHistoryView.as_view(), name="patient-history"),
+    path(
+        "history/patients/<int:patient_id>/", PatientHistoryView.as_view(), name="patient-history"
+    ),
     path(
         "history/encounters/<int:encounter_id>/",
         EncounterHistoryView.as_view(),

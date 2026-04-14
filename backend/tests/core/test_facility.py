@@ -33,9 +33,7 @@ def facility_sub_county(db, facility_county):
     """Create a sub-county under the facility test county."""
     from hmis.apps.core.models import SubCounty
 
-    return SubCounty.objects.get_or_create(
-        county=facility_county, name="Westlands"
-    )[0]
+    return SubCounty.objects.get_or_create(county=facility_county, name="Westlands")[0]
 
 
 @pytest.fixture
@@ -43,9 +41,7 @@ def facility_ward(db, facility_sub_county):
     """Create a ward under the facility test sub-county."""
     from hmis.apps.core.models import Ward
 
-    return Ward.objects.get_or_create(
-        sub_county=facility_sub_county, name="Parklands"
-    )[0]
+    return Ward.objects.get_or_create(sub_county=facility_sub_county, name="Parklands")[0]
 
 
 @pytest.fixture
@@ -61,9 +57,7 @@ def other_sub_county(db, other_county):
     """Create a sub-county that belongs to a different county."""
     from hmis.apps.core.models import SubCounty
 
-    return SubCounty.objects.get_or_create(
-        county=other_county, name="Msambweni"
-    )[0]
+    return SubCounty.objects.get_or_create(county=other_county, name="Msambweni")[0]
 
 
 @pytest.fixture
@@ -292,9 +286,7 @@ class TestFacilitySerializers:
         assert not serializer.is_valid()
         assert "ward" in serializer.errors
 
-    def test_create_serializer_applies_level_defaults(
-        self, facility_county, facility_sub_county
-    ):
+    def test_create_serializer_applies_level_defaults(self, facility_county, facility_sub_county):
         """
         When no module flags are provided, create should apply KEPH-level
         defaults (e.g. level 3 → outpatient, pharmacy, laboratory, maternity).
@@ -318,9 +310,7 @@ class TestFacilitySerializers:
         assert facility.has_maternity is True
         assert facility.has_inpatient is False
 
-    def test_create_serializer_respects_explicit_flags(
-        self, facility_county, facility_sub_county
-    ):
+    def test_create_serializer_respects_explicit_flags(self, facility_county, facility_sub_county):
         """
         When module flags are explicitly provided, level defaults should
         NOT override them.
@@ -387,9 +377,7 @@ class TestFacilityAPI:
 
     def test_delete_forbidden_for_non_admin(self, authenticated_client, sample_facility):
         """Non-admin users should get 403 Forbidden when deleting."""
-        response = authenticated_client.delete(
-            f"/api/facilities/{sample_facility.id}/"
-        )
+        response = authenticated_client.delete(f"/api/facilities/{sample_facility.id}/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     # ------------------------------------------------------------------
@@ -415,6 +403,7 @@ class TestFacilityAPI:
     def test_delete_facility(self, admin_client, sample_facility):
         """Admin can delete a facility."""
         from hmis.apps.core.models import StaffProfile
+
         # Remove StaffProfiles referencing this facility to avoid ProtectedError
         StaffProfile.objects.filter(primary_facility=sample_facility).update(primary_facility=None)
         facility_id = sample_facility.id
@@ -495,35 +484,25 @@ class TestFacilityAPI:
 
         initial_count = AuditLog.objects.filter(action="facility_created").count()
         admin_client.post("/api/facilities/", facility_data)
-        assert (
-            AuditLog.objects.filter(action="facility_created").count()
-            == initial_count + 1
-        )
+        assert AuditLog.objects.filter(action="facility_created").count() == initial_count + 1
 
     def test_update_logs_audit_entry(self, admin_client, sample_facility):
         """Updating a facility should produce an audit log entry."""
         from hmis.apps.core.models import AuditLog
 
         initial_count = AuditLog.objects.filter(action="facility_updated").count()
-        admin_client.patch(
-            f"/api/facilities/{sample_facility.id}/", {"name": "Updated"}
-        )
-        assert (
-            AuditLog.objects.filter(action="facility_updated").count()
-            == initial_count + 1
-        )
+        admin_client.patch(f"/api/facilities/{sample_facility.id}/", {"name": "Updated"})
+        assert AuditLog.objects.filter(action="facility_updated").count() == initial_count + 1
 
     def test_delete_logs_audit_entry(self, admin_client, sample_facility):
         """Deleting a facility should produce an audit log entry."""
         from hmis.apps.core.models import AuditLog, StaffProfile
+
         # Remove StaffProfiles referencing this facility to avoid ProtectedError
         StaffProfile.objects.filter(primary_facility=sample_facility).update(primary_facility=None)
         initial_count = AuditLog.objects.filter(action="facility_deleted").count()
         admin_client.delete(f"/api/facilities/{sample_facility.id}/")
-        assert (
-            AuditLog.objects.filter(action="facility_deleted").count()
-            == initial_count + 1
-        )
+        assert AuditLog.objects.filter(action="facility_deleted").count() == initial_count + 1
 
     # ------------------------------------------------------------------
     # Validation (via API)

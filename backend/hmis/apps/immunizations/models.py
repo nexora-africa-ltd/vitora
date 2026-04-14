@@ -744,9 +744,7 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
                 self.vaccination_centre_county = self.facility.county
         # Default vaccination_service_type from the immunization record
         if not self.vaccination_service_type and self.immunization_record_id:
-            self.vaccination_service_type = (
-                self.immunization_record.vaccination_service_type
-            )
+            self.vaccination_service_type = self.immunization_record.vaccination_service_type
         super().save(*args, **kwargs)
 
     def submit_to_authorities(self, user=None, notes: str = "") -> None:  # noqa: ARG002
@@ -777,9 +775,7 @@ class AEFI(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     @property
     def is_severe_or_death(self) -> bool:
         """Whether this AEFI requires immediate escalation."""
-        return self.severity == AEFISeverity.SEVERE or AEFIOutcome.DEATH in (
-            self.outcome,
-        )
+        return self.severity == AEFISeverity.SEVERE or AEFIOutcome.DEATH in (self.outcome,)
 
 
 # =============================================================================
@@ -1152,9 +1148,7 @@ class TemperatureLog(TimeStampedModel):
         """Auto-flag excursions based on equipment min/max temp."""
         if self.equipment_id:
             eq = self.equipment
-            self.is_excursion = (
-                self.temperature < eq.min_temp or self.temperature > eq.max_temp
-            )
+            self.is_excursion = self.temperature < eq.min_temp or self.temperature > eq.max_temp
         super().save(*args, **kwargs)
 
 

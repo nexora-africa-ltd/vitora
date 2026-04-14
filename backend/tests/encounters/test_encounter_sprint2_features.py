@@ -24,7 +24,9 @@ class TestEncounterLinking:
         """Encounter model should have a linked_encounter FK."""
         assert hasattr(Encounter, "linked_encounter")
 
-    def test_create_encounter_with_linked_encounter(self, sample_patient, test_user, sample_facility):
+    def test_create_encounter_with_linked_encounter(
+        self, sample_patient, test_user, sample_facility
+    ):
         """Should create encounter linked to a previous encounter."""
         # Create first encounter
         original = Encounter.objects.create(
@@ -103,7 +105,9 @@ class TestEncounterLinking:
         assert response.data["linked_encounter"] == sample_encounter.id
 
     def test_api_encounter_detail_includes_linked_encounter(
-        self, authenticated_client, sample_patient,
+        self,
+        authenticated_client,
+        sample_patient,
         sample_facility,
     ):
         """Encounter detail should include linked_encounter info."""
@@ -155,7 +159,9 @@ class TestEncounterLinking:
         assert follow_up1 in related
         assert follow_up2 in related
 
-    def test_api_related_encounters_endpoint(self, authenticated_client, sample_patient, sample_facility):
+    def test_api_related_encounters_endpoint(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """GET /api/encounters/{id}/related/ should return linked encounters."""
         original = Encounter.objects.create(
             patient=sample_patient,
@@ -305,7 +311,9 @@ class TestVisitReasonTaxonomy:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["visit_reason"] == "CHRONIC_CARE"
 
-    def test_api_filter_encounters_by_visit_reason(self, authenticated_client, sample_patient, sample_facility):
+    def test_api_filter_encounters_by_visit_reason(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """Should filter encounters by visit_reason."""
         Encounter.objects.create(
             patient=sample_patient,
@@ -342,7 +350,9 @@ class TestVisitReasonTaxonomy:
         encounter = Encounter.objects.get(id=encounter_id)
         assert encounter.visit_reason == "CHRONIC_CARE"
 
-    def test_encounter_list_includes_visit_reason(self, authenticated_client, sample_patient, sample_facility):
+    def test_encounter_list_includes_visit_reason(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """Encounter list serializer should include visit_reason."""
         Encounter.objects.create(
             patient=sample_patient,

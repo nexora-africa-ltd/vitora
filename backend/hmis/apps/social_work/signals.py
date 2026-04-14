@@ -91,8 +91,16 @@ def route_to_sw_clinic_on_acceptance(sender, instance, created, **kwargs):
         }
         priority = priority_map.get(instance.urgency, "STANDARD")
 
-        reason_display = instance.get_reason_display() if hasattr(instance, 'get_reason_display') else str(instance.reason)
-        urgency_display = instance.get_urgency_display() if hasattr(instance, 'get_urgency_display') else str(instance.urgency)
+        reason_display = (
+            instance.get_reason_display()
+            if hasattr(instance, "get_reason_display")
+            else str(instance.reason)
+        )
+        urgency_display = (
+            instance.get_urgency_display()
+            if hasattr(instance, "get_urgency_display")
+            else str(instance.urgency)
+        )
 
         clinic_visit = ClinicVisit.objects.create(
             session=clinic_session,
@@ -103,8 +111,8 @@ def route_to_sw_clinic_on_acceptance(sender, instance, created, **kwargs):
             queue_number=clinic_session.visits.count() + 1,
             chief_complaint=f"Social Work Referral: {reason_display}",
             notes=f"Social Work Referral: {instance.referral_number}\n"
-                  f"Reason: {reason_display}\n"
-                  f"Urgency: {urgency_display}",
+            f"Reason: {reason_display}\n"
+            f"Urgency: {urgency_display}",
         )
 
         # Link to referral
@@ -163,9 +171,7 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
             related_id=instance.id,
         )
 
-        logger.info(
-            f"Created notification for urgent SW referral {instance.referral_number}"
-        )
+        logger.info(f"Created notification for urgent SW referral {instance.referral_number}")
 
     except Exception as e:
         logger.error(
@@ -192,9 +198,7 @@ def mark_patient_sensitive_for_gbv(sender, instance, created, **kwargs):
                 f"Marked patient {patient.mrn} as sensitive due to SW case {instance.case_number}"
             )
     except Exception as e:
-        logger.error(
-            f"Failed to mark patient as sensitive for case {instance.case_number}: {e}"
-        )
+        logger.error(f"Failed to mark patient as sensitive for case {instance.case_number}: {e}")
 
 
 @receiver(post_save, sender=SocialWorkCase)
@@ -227,6 +231,4 @@ def notify_case_review_due(sender, instance, **kwargs):
                     },
                 )
         except Exception as e:
-            logger.error(
-                f"Failed to create review reminder for case {instance.case_number}: {e}"
-            )
+            logger.error(f"Failed to create review reminder for case {instance.case_number}: {e}")

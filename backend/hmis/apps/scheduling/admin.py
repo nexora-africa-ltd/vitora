@@ -213,16 +213,21 @@ class AssignmentOverrideAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {"fields": ("target_type", "target_id", "original_resource", "new_resource")}),
         ("Reason", {"fields": ("override_reason", "justification")}),
-        ("Approval", {"fields": (
-            "requires_approval",
-            "approval_status",
-            "approved_by",
-            "approved_at",
-            "approval_notes",
-            "rejected_by",
-            "rejected_at",
-            "rejection_reason",
-        )}),
+        (
+            "Approval",
+            {
+                "fields": (
+                    "requires_approval",
+                    "approval_status",
+                    "approved_by",
+                    "approved_at",
+                    "approval_notes",
+                    "rejected_by",
+                    "rejected_at",
+                    "rejection_reason",
+                )
+            },
+        ),
         ("Tracking", {"fields": ("overridden_by", "created_at", "updated_at")}),
     )
 

@@ -104,9 +104,7 @@ class AzureKeyVaultProvider(KMSProvider):
             self._EncryptionAlgorithm,
         ) = _get_azure_imports()
 
-        logger.info(
-            f"AzureKeyVaultProvider initialized for vault: {vault_url}, key: {key_name}"
-        )
+        logger.info(f"AzureKeyVaultProvider initialized for vault: {vault_url}, key: {key_name}")
 
     @cached_property
     def _credential(self):

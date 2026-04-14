@@ -120,9 +120,7 @@ class TestMOH705API:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_dhis2_preview(self, authenticated_client, moh705):
-        response = authenticated_client.get(
-            f"/api/moh-reports/705/{moh705.pk}/dhis2-preview/"
-        )
+        response = authenticated_client.get(f"/api/moh-reports/705/{moh705.pk}/dhis2-preview/")
         assert response.status_code == status.HTTP_200_OK
         assert "dataValues" in response.data
 

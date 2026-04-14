@@ -396,6 +396,7 @@ class SocialWorkCaseFilter(django_filters.FilterSet):
     def filter_overdue(self, queryset, name, value):
         """Filter by overdue review status."""
         from datetime import date
+
         if value:
             return queryset.filter(
                 next_review_date__lt=date.today(),
@@ -466,17 +467,15 @@ class SocialWorkCaseViewSet(viewsets.ModelViewSet):
             qs = qs.filter(is_sensitive=False)
 
         # Additional filter for restricted cases
-        restricted_qs = qs.filter(
-            confidentiality_level__in=["RESTRICTED", "HIGHLY_RESTRICTED"]
-        )
+        restricted_qs = qs.filter(confidentiality_level__in=["RESTRICTED", "HIGHLY_RESTRICTED"])
         # User must be in access_restricted_to or be the assigned worker/supervisor
         if restricted_qs.exists():
             qs = qs.filter(
-                Q(confidentiality_level="STANDARD") |
-                Q(assigned_worker=user) |
-                Q(secondary_worker=user) |
-                Q(supervisor=user) |
-                Q(access_restricted_to=user)
+                Q(confidentiality_level="STANDARD")
+                | Q(assigned_worker=user)
+                | Q(secondary_worker=user)
+                | Q(supervisor=user)
+                | Q(access_restricted_to=user)
             ).distinct()
 
         return qs
@@ -615,6 +614,7 @@ class SocialWorkCaseViewSet(viewsets.ModelViewSet):
         secondary_worker_id = request.data.get("secondary_worker")
 
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
 
         if assigned_worker_id:
@@ -709,10 +709,10 @@ class CaseNoteViewSet(viewsets.ModelViewSet):
         confidential_notes = qs.filter(is_confidential=True)
         if confidential_notes.exists():
             qs = qs.filter(
-                Q(is_confidential=False) |
-                Q(case__assigned_worker=user) |
-                Q(case__secondary_worker=user) |
-                Q(case__supervisor=user)
+                Q(is_confidential=False)
+                | Q(case__assigned_worker=user)
+                | Q(case__secondary_worker=user)
+                | Q(case__supervisor=user)
             )
 
         return qs

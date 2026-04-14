@@ -187,12 +187,19 @@ def _evaluate_vital_range(
         except (InvalidOperation, ValueError):
             pass
 
-    message = _render_message(rule.action_message, {
-        "vital": vital_name,
-        "value": float(value),
-        "label": label,
-        **details,
-    }) if triggered else ""
+    message = (
+        _render_message(
+            rule.action_message,
+            {
+                "vital": vital_name,
+                "value": float(value),
+                "label": label,
+                **details,
+            },
+        )
+        if triggered
+        else ""
+    )
 
     return EvaluationResult(
         triggered=triggered,
@@ -396,9 +403,7 @@ def _check_hpt_allergy_match(
                 continue
 
             # Match via substance name associated with the allergy
-            allergy_name = (
-                allergy_substances[i].lower() if i < len(allergy_substances) else ""
-            )
+            allergy_name = allergy_substances[i].lower() if i < len(allergy_substances) else ""
             if allergy_name and (
                 drug_generic_lower in allergy_name or allergy_name in drug_generic_lower
             ):
@@ -823,9 +828,7 @@ def build_encounter_context(encounter: Any) -> EvaluationContext:
                 dob = None
         if dob is not None:
             ctx.patient_age_years = (
-                today.year
-                - dob.year
-                - ((today.month, today.day) < (dob.month, dob.day))
+                today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
             )
     ctx.patient_gender = getattr(patient, "gender", None)
 

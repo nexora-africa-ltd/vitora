@@ -81,9 +81,7 @@ class KeyRotationService:
             provider = get_kms_provider()
 
         self._provider = provider
-        self._rotation_days = rotation_days or getattr(
-            settings, "KMS_KEY_ROTATION_DAYS", 365
-        )
+        self._rotation_days = rotation_days or getattr(settings, "KMS_KEY_ROTATION_DAYS", 365)
 
     def needs_rotation(self) -> bool:
         """
@@ -102,14 +100,14 @@ class KeyRotationService:
 
             # Check next rotation time
             if metadata.next_rotation_at and datetime.now(UTC) >= metadata.next_rotation_at:
-                logger.info(f"Key rotation needed: past next_rotation_at ({metadata.next_rotation_at})")
+                logger.info(
+                    f"Key rotation needed: past next_rotation_at ({metadata.next_rotation_at})"
+                )
                 return True
 
             # Check last rotation time
             if metadata.last_rotated_at:
-                days_since_rotation = (
-                    datetime.now(UTC) - metadata.last_rotated_at
-                ).days
+                days_since_rotation = (datetime.now(UTC) - metadata.last_rotated_at).days
                 if days_since_rotation >= self._rotation_days:
                     logger.info(
                         f"Key rotation needed: {days_since_rotation} days since last rotation"
@@ -118,13 +116,9 @@ class KeyRotationService:
 
             # Check creation time if never rotated
             if metadata.created_at and not metadata.last_rotated_at:
-                days_since_creation = (
-                    datetime.now(UTC) - metadata.created_at
-                ).days
+                days_since_creation = (datetime.now(UTC) - metadata.created_at).days
                 if days_since_creation >= self._rotation_days:
-                    logger.info(
-                        f"Key rotation needed: {days_since_creation} days since creation"
-                    )
+                    logger.info(f"Key rotation needed: {days_since_creation} days since creation")
                     return True
 
             return False

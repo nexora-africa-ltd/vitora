@@ -68,9 +68,7 @@ class Command(BaseCommand):
             try:
                 results = service.search_drug_products(drug.generic_name)
             except TerminologyError as e:
-                self.stdout.write(
-                    self.style.ERROR(f"  API error for '{drug.generic_name}': {e}")
-                )
+                self.stdout.write(self.style.ERROR(f"  API error for '{drug.generic_name}': {e}"))
                 failed += 1
                 continue
 
@@ -102,9 +100,7 @@ class Command(BaseCommand):
                     )
                 mapped += 1
             else:
-                codes = [
-                    f"{r.knhts_concept_id} ({r.brand_name})" for r in results[:5]
-                ]
+                codes = [f"{r.knhts_concept_id} ({r.brand_name})" for r in results[:5]]
                 self.stdout.write(
                     self.style.WARNING(
                         f"  Ambiguous: {drug.generic_name} → "

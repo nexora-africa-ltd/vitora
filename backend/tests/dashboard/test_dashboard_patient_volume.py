@@ -221,7 +221,10 @@ class TestPatientVolumeDataAccuracy:
     """Test data accuracy for patient volume endpoint."""
 
     def test_counts_patient_registrations(
-        self, authenticated_client, sample_county, sample_sub_county,
+        self,
+        authenticated_client,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Should accurately count patient registrations per day."""
@@ -396,7 +399,9 @@ class TestPatientVolumeCaching:
         response2 = authenticated_client.get(PATIENT_VOLUME_URL, params)
         assert response2.data == response1.data
 
-    def test_cache_bypass_with_refresh_param(self, authenticated_client, sample_patient, sample_facility):
+    def test_cache_bypass_with_refresh_param(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """refresh=true should bypass cache."""
         from hmis.apps.encounters.models import Encounter
 

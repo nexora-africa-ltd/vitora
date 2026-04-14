@@ -509,8 +509,6 @@ class FacilityBillingConfigAdmin(admin.ModelAdmin):
         if obj.is_sha_contract_active:
             days = obj.sha_contract_days_remaining
             if days is not None and days <= 30:
-                return format_html(
-                    '<span style="color: orange;">&#9888; {} days left</span>', days
-                )
+                return format_html('<span style="color: orange;">&#9888; {} days left</span>', days)
             return format_html('<span style="color: green;">&#10004; Active</span>')
         return format_html('<span style="color: gray;">&#10008; Inactive</span>')
