@@ -93,6 +93,15 @@ LOGGING["loggers"]["django"]["level"] = "DEBUG"  # noqa: F405
 # MFA enforcement — disabled in development for convenience
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
 
+# ---------------------------------------------------------------------------
+# Cookie auth — cross-site fix for development
+# The frontend (localhost:3009) and backend (127.0.0.1:9088) are different
+# sites, so SameSite=Lax cookies won't be sent on cross-origin fetch/XHR.
+# SameSite=None requires Secure, which Chrome allows on localhost/127.0.0.1.
+# ---------------------------------------------------------------------------
+AUTH_COOKIE_SAMESITE = "None"
+AUTH_COOKIE_SECURE = True
+
 # Active-shift enforcement — disabled in development for convenience
 ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"
 

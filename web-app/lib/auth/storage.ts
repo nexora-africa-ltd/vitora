@@ -67,5 +67,7 @@ export const tokenStorage = {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(MFA_GRACE_KEY);
+    // Clear the middleware auth cookie to prevent redirect loops
+    document.cookie = 'vitora_authenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   },
 };

@@ -138,7 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       localStorage.setItem(USER_KEY, JSON.stringify(syncedUser));
       return syncedUser;
-    } catch {
+    } catch (error) {
+      // Re-throw 401 errors so the caller can clear auth state
+      // (the httpOnly cookies are expired/missing)
+      const { AxiosError } = await import('axios');
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        throw error;
+      }
       return fallbackUser;
     }
   }, []);
@@ -169,8 +175,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }));
             }
           } catch {
-            // Auth cookie expired — clear state
+            // Auth cookie expired — clear state + middleware cookie
             localStorage.removeItem(USER_KEY);
+            document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
             setState({
               user: null,
               tokens: null,
@@ -183,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         localStorage.removeItem(USER_KEY);
+        document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
         setState((prev) => ({ ...prev, isLoading: false }));
       }
     };
