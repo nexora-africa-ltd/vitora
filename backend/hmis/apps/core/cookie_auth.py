@@ -96,6 +96,7 @@ class CookieLoginView(APIView):
 
     def post(self, request):
         from hmis.apps.core.powersync_tokens import PowerSyncTokenObtainPairSerializer
+        from hmis.apps.core.views import _build_user_info
 
         serializer = PowerSyncTokenObtainPairSerializer(data=request.data)
 
@@ -114,7 +115,10 @@ class CookieLoginView(APIView):
             return Response(data, status=status.HTTP_200_OK)
 
         # Build response — user profile without tokens
+        # The serializer only returns {access, refresh}, so we build user info
+        # from the authenticated user for the frontend to store in localStorage.
         user_data = {k: v for k, v in data.items() if k not in ("access", "refresh")}
+        user_data["user"] = _build_user_info(serializer.user)
         response = Response(user_data, status=status.HTTP_200_OK)
 
         return _set_auth_cookies(response, data["access"], data["refresh"])

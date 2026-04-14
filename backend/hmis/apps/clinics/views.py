@@ -896,7 +896,7 @@ class PublicQueueView(viewsets.ViewSet):
             visits = (
                 ClinicVisit.objects.filter(
                     session=session,
-                    status__in=["WAITING", "CALLED", "IN_CONSULTATION"],
+                    status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION"],
                 )
                 .select_related("room")
                 .order_by("queue_number")

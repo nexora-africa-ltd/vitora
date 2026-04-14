@@ -171,30 +171,30 @@ export function InstallPromptBanner() {
   }
 
   return (
-    <div className="fixed inset-x-4 bottom-24 z-[95] md:bottom-6 xl:left-auto xl:right-6 xl:w-full xl:max-w-md">
-      <div className="relative overflow-hidden rounded-2xl border border-brand-burgundy-200/70 bg-background/95 p-4 shadow-2xl backdrop-blur dark:border-brand-burgundy-900/60">
+    <div className="fixed inset-x-2 bottom-20 z-[95] sm:inset-x-4 sm:bottom-24 md:bottom-6 xl:left-auto xl:right-6 xl:w-full xl:max-w-md">
+      <div className="relative overflow-hidden rounded-xl border border-brand-burgundy-200/70 bg-background/95 p-3 shadow-2xl backdrop-blur sm:rounded-2xl sm:p-4 dark:border-brand-burgundy-900/60">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(21,96,115,0.12),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(78,11,24,0.12),transparent_38%)]"
           aria-hidden="true"
         />
-        <div className="relative flex items-start gap-3">
-          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-teal-50 text-brand-teal-700 dark:bg-brand-teal-950/40 dark:text-brand-teal-300">
-            <Download className="h-5 w-5" />
+        <div className="relative flex items-start gap-2.5 sm:gap-3">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-teal-50 text-brand-teal-700 sm:h-10 sm:w-10 sm:rounded-xl dark:bg-brand-teal-950/40 dark:text-brand-teal-300">
+            <Download className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">Install {APP_NAME}</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            <p className="text-xs font-semibold text-foreground sm:text-sm">Install {APP_NAME}</p>
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground sm:mt-1 sm:text-sm sm:leading-6">
               {bannerMode === 'prompt'
                 ? 'Add Vitora to this device for faster launch and a more app-like workspace.'
                 : fallbackHint}
             </p>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <div className="mt-3 flex flex-col gap-1.5 sm:mt-4 sm:flex-row sm:gap-2">
               {bannerMode === 'prompt' ? (
-                <Button onClick={handleInstall} disabled={isInstalling} className="sm:w-auto">
+                <Button size="sm" onClick={handleInstall} disabled={isInstalling} className="text-xs sm:w-auto sm:text-sm">
                   {isInstalling ? 'Opening install prompt...' : 'Install Vitora'}
                 </Button>
               ) : null}
-              <Button variant="outline" onClick={handleDismiss} className="sm:w-auto">
+              <Button size="sm" variant="outline" onClick={handleDismiss} className="text-xs sm:w-auto sm:text-sm">
                 {bannerMode === 'prompt' ? 'Not now' : 'Got it'}
               </Button>
             </div>
@@ -203,9 +203,9 @@ export function InstallPromptBanner() {
             type="button"
             onClick={handleDismiss}
             aria-label="Dismiss install prompt"
-            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="-mr-0.5 -mt-0.5 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
         </div>
       </div>

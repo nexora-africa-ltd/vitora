@@ -48,8 +48,12 @@ CORS_ALLOW_HEADERS = [
 CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.dev",
     "https://*.ngrok.io",
-    "http://localhost:*",
-    "http://127.0.0.1:*",
+    "http://localhost:3009",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:9088",
+    "http://127.0.0.1:3009",
+    "http://127.0.0.1:3000",
 ]
 
 # Disable CSRF for API endpoints in development
