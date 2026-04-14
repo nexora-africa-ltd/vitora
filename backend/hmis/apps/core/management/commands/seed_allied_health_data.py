@@ -6,7 +6,7 @@ Usage:
 
 This command loads fixtures for:
 1. Physiotherapy treatment types
-2. Occupational therapy treatment types  
+2. Occupational therapy treatment types
 3. Counselling types
 
 It also sets up the permission groups for allied health professionals.

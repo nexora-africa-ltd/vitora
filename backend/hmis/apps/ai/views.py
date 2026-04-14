@@ -443,7 +443,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         data["session_id"] = str(session.id)
 
         # Persist user message
-        user_msg = ChatMessage.objects.create(
+        ChatMessage.objects.create(
             session=session,
             role="user",
             content=data["message"],

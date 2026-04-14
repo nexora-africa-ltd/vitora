@@ -18,7 +18,6 @@ def generate_care_plan_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     """
     diagnosis = payload.get("primary_diagnosis", "Unknown")
     severity = payload.get("severity")
-    patient_age = payload.get("patient_age")
 
     goals: list[dict[str, Any]] = [
         {

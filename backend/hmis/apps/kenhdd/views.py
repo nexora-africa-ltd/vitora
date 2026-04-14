@@ -267,7 +267,7 @@ class KENHDDComplianceViewSet(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        elements = service._get_active_elements(rt)
+        _elements = service._get_active_elements(rt)
         total = len(instances)
         compliant_count = 0
         mandatory_total = 0

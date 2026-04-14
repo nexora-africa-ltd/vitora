@@ -1505,13 +1505,13 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             )
 
         # Get all person resources for this facility
-        qs = self.get_queryset()
+        facility = getattr(request, "facility", None)
+        if not facility and hasattr(request.user, "staff_profile"):
+            facility = request.user.staff_profile.primary_facility
         staff_resources = Resource.objects.filter(
             resource_type="PERSON",
             is_active=True,
-            facility=getattr(request, "facility", None) or request.user.staff_profile.facility
-            if hasattr(request.user, "staff_profile")
-            else None,
+            facility=facility,
         )
 
         # For each staff resource, aggregate shifts and appointments
@@ -1907,7 +1907,6 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         late_threshold = 15  # minutes
 
         for s in shifts:
-            iso = s.shift_date.isocalendar()
             # Monday of that week
             week_monday = s.shift_date - td(days=s.shift_date.weekday())
             key = str(week_monday)

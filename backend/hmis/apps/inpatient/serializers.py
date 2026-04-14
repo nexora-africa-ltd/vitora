@@ -887,7 +887,7 @@ class ReviewRequestSerializer(serializers.ModelSerializer):
 
 class ReviewRequestCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating ReviewRequest.
-    
+
     Note: requested_by is set by the ViewSet, not in the serializer,
     to allow flexibility in both view-based and serializer-based usage.
     """

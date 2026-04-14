@@ -1178,7 +1178,6 @@ class ReportExportView(APIView):
         from django.http import HttpResponse
         from django.utils import timezone
 
-        export_format = request.query_params.get("format", "csv")
         date_range = request.query_params.get("date_range", "today")
 
         if date_range == "today":

@@ -320,13 +320,13 @@ class Command(BaseCommand):
         # Base temperature depends on equipment type
         if equip.equipment_type == "FREEZER":
             base_temp = Decimal("-70.0")
-            amplitude = Decimal("2.0")       # ±2°C swing
+            _amplitude = Decimal("2.0")       # ±2°C swing
         elif equip.equipment_type == "COLD_ROOM":
             base_temp = Decimal("4.5")
-            amplitude = Decimal("1.2")
+            _amplitude = Decimal("1.2")
         else:  # FRIDGE, COLD_BOX, VACCINE_CARRIER
             base_temp = Decimal("5.0")
-            amplitude = Decimal("1.5")
+            _amplitude = Decimal("1.5")
 
         # Excursion schedule: day 11 afternoon (power outage spike),
         # day 4 morning (door left open)

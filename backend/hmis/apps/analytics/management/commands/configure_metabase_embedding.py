@@ -72,7 +72,7 @@ class Command(BaseCommand):
         # ── Step 1: Set embedding secret (once) ─────────────────────────
         if secret:
             if dry_run:
-                self.stdout.write(f"[DRY RUN] Would set embedding-secret-key")
+                self.stdout.write("[DRY RUN] Would set embedding-secret-key")
             else:
                 resp = requests.put(
                     f"{site_url}/api/setting/embedding-secret-key",

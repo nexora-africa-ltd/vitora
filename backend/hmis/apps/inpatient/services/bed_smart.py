@@ -23,7 +23,7 @@ from django.db.models import Avg, F
 from django.utils import timezone
 
 from hmis.apps.core.models import AuditLog
-from hmis.apps.inpatient.models import Admission, Bed, Discharge, Ward
+from hmis.apps.inpatient.models import Admission, AdmissionRecommendation, Bed, Discharge, Ward
 from hmis.apps.inpatient.services.bed_assignment import NoBedAvailableError
 from hmis.apps.inpatient.services.bed_rules import (
     BedAssignmentRuleResult,

@@ -108,7 +108,6 @@ class SurveillanceAlertConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _get_stats(self) -> dict[str, Any]:
         """Get current surveillance statistics from database."""
-        from datetime import timedelta
 
         from .models import (
             NotifiableCase,
@@ -118,7 +117,6 @@ class SurveillanceAlertConsumer(AsyncJsonWebsocketConsumer):
 
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        week_start = today_start - timedelta(days=today_start.weekday())
 
         # Active cases pending notification
         pending_immediate = NotifiableCase.objects.filter(
