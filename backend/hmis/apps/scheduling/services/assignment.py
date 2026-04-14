@@ -543,7 +543,6 @@ class RuleEvaluator:
 
     def _serialize_context(self, context: dict[str, Any]) -> dict[str, Any]:
         """Serialize context for logging (convert objects to dicts)."""
-        from datetime import date, datetime
 
         result = {}
         for key, value in context.items():

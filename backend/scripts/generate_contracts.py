@@ -128,13 +128,13 @@ def generate_test_file(app_label: str, serializers: list) -> str:
     lines.append("CONTRACTS: list[tuple[type, frozenset[str]]] = [")
 
     for cls_name, _module, fields in serializers:
-        lines.append(f"    (")
+        lines.append("    (")
         lines.append(f"        {cls_name},")
-        lines.append(f"        frozenset({{")
+        lines.append("        frozenset({")
         for f in fields:
             lines.append(f'            "{f}",')
-        lines.append(f"        }}),")
-        lines.append(f"    ),")
+        lines.append("        }),")
+        lines.append("    ),")
 
     lines.append("]")
     lines.append("")

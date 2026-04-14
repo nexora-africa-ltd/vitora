@@ -14,7 +14,6 @@ from decimal import Decimal
 import pytest  # type: ignore
 from rest_framework import status
 
-
 # ============================================================================
 # Helpers
 # ============================================================================

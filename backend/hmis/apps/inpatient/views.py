@@ -13,8 +13,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.models import AuditLog
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.patients.models import Patient
 
@@ -39,19 +39,18 @@ from .models import (
     ShiftHandover,
     TemperatureReading,
     Transfer,
-    TransfusionObservationEntry,
     Ward,
     WardRound,
 )
 from .serializers import (
+    AdmissionRecommendationSerializer,
+    AdmissionSerializer,
     ATRAcknowledgeSerializer,
     ATRCreateSerializer,
     ATRDetailSerializer,
     ATRLabInvestigationSerializer,
     ATRListSerializer,
     ATRSubmitToPPBSerializer,
-    AdmissionRecommendationSerializer,
-    AdmissionSerializer,
     BedSerializer,
     BedTurnoverActionSerializer,
     BloodTransfusionCreateSerializer,
@@ -72,6 +71,9 @@ from .serializers import (
     InpatientWardSerializer,
     KardexHandoverNoteSerializer,
     KardexShiftNoteSerializer,
+    MedicationAdministrationActionSerializer,
+    MedicationAdministrationCreateSerializer,
+    MedicationAdministrationSerializer,
     NursingCarePlanEntryCreateSerializer,
     NursingCarePlanEntrySerializer,
     NursingKardexSerializer,
@@ -86,9 +88,6 @@ from .serializers import (
     TransfusionObservationEntrySerializer,
     WardRoundSerializer,
     WardUpdatesResponseSerializer,
-    MedicationAdministrationSerializer,
-    MedicationAdministrationCreateSerializer,
-    MedicationAdministrationActionSerializer,
 )
 from .services.bed_assignment import NoBedAvailableError, bed_assignment_service
 from .services.compatibility import ward_compatibility_service
@@ -3018,8 +3017,9 @@ class BloodTransfusionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
         Mark a transfusion as completed.
         """
         transfusion = self.get_object()
-        from django.utils import timezone as tz
         import datetime
+
+        from django.utils import timezone as tz
 
         transfusion.status = "COMPLETED"
         transfusion.time_ended = request.data.get(

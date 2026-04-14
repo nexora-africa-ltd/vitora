@@ -5,7 +5,6 @@ Sprint: Returning Patient Workflow - Sprint 1
 """
 
 
-from typing import Optional
 
 from rest_framework import serializers
 
@@ -146,7 +145,7 @@ class PatientLookupSerializer(serializers.ModelSerializer):
         born = obj.date_of_birth
         return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
-    def get_last_encounter_date(self, obj) -> Optional[str]:
+    def get_last_encounter_date(self, obj) -> str | None:
         """Get date of most recent encounter."""
         last_encounter = obj.encounters.order_by("-encounter_date").first()
         if last_encounter:

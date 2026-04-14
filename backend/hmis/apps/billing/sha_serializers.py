@@ -5,7 +5,6 @@ Provides serialization for SHA Members, Tariffs, Claims, and related models.
 """
 
 
-from typing import Optional
 
 from rest_framework import serializers
 
@@ -62,7 +61,7 @@ class SHAMemberSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_patient_name(self, obj) -> Optional[str]:
+    def get_patient_name(self, obj) -> str | None:
         """Return patient's full name."""
         if obj.patient:
             return f"{obj.patient.first_name} {obj.patient.last_name}"
@@ -72,7 +71,7 @@ class SHAMemberSerializer(serializers.ModelSerializer):
         """Return human-readable eligibility status."""
         return obj.get_eligibility_display()
 
-    def get_pfms_category_display(self, obj) -> Optional[str]:
+    def get_pfms_category_display(self, obj) -> str | None:
         """Return human-readable PFMS category."""
         if obj.is_pfms_eligible and obj.pfms_category:
             return obj.get_pfms_category_display()
@@ -348,7 +347,7 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             return f"{obj.patient.first_name} {obj.patient.last_name}"
         return None
 
-    def get_items_count(self, obj) -> Optional[int]:
+    def get_items_count(self, obj) -> int | None:
         """Return count of claim items."""
         return obj.items.count()
 

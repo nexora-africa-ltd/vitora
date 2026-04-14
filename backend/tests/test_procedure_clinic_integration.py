@@ -19,7 +19,6 @@ from hmis.apps.checkin.services import process_checkin
 from hmis.apps.clinics.models import Clinic, ClinicSchedule, ClinicStaff
 from hmis.apps.procedures.models import ProcedureCatalog, ProcedureOrder
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================

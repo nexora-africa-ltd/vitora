@@ -31,7 +31,6 @@ from hmis.apps.immunizations.services.schedule import (
     generate_kepi_schedule,
 )
 
-
 # =============================================================================
 # Immunization-Specific Fixtures
 # =============================================================================

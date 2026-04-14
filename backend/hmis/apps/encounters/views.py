@@ -13,11 +13,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
-from hmis.apps.core.permissions import RequiresActiveShiftPermission
 from hmis.apps.core.history_views import ModelHistoryMixin
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
-from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.core.permissions import RequiresActiveShiftPermission, get_client_ip
 
 from .filters import EncounterFilter
 from .models import (

@@ -1,8 +1,8 @@
 """Tests for procedure → billing integration."""
 
-import pytest  # type: ignore
 from decimal import Decimal
 
+import pytest  # type: ignore
 from django.utils import timezone
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, Service, ServiceCategory

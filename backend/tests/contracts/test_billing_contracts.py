@@ -18,11 +18,10 @@ from hmis.apps.billing.serializers import (
     PaymentSerializer,
     ReceiptLineItemSerializer,
     ReceiptSerializer,
-    SHAContractSummarySerializer,
     ServiceCategorySerializer,
     ServiceSerializer,
+    SHAContractSummarySerializer,
 )
-
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (

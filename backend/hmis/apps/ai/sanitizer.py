@@ -8,7 +8,6 @@ are allowed. Never: name, MRN, national_id, phone_number.
 
 import re
 
-
 # Patterns that look like MRN numbers
 _MRN_PATTERN = re.compile(r"\bMRN-\d{8}-\d{4}\b", re.IGNORECASE)
 

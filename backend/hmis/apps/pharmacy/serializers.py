@@ -4,7 +4,6 @@ Serializers for Pharmacy app.
 
 
 import re
-from typing import Optional
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
@@ -408,7 +407,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         """Get prescriber full name."""
         return obj.prescribed_by.get_full_name() or obj.prescribed_by.username
 
-    def get_prescribed_date(self, obj) -> Optional[str]:
+    def get_prescribed_date(self, obj) -> str | None:
         """Get prescription date (date only, not datetime)."""
         if obj.prescribed_at:
             return obj.prescribed_at.date()

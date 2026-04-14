@@ -5,7 +5,6 @@ import pytest  # type: ignore
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
-
 pytestmark = pytest.mark.django_db
 
 

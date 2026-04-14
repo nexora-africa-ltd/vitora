@@ -1,8 +1,8 @@
 """Tests for the seed_facilities management command."""
 
-import pytest
 from io import StringIO
 
+import pytest
 from django.core.management import call_command
 
 from hmis.apps.core.models import County, Facility, SubCounty

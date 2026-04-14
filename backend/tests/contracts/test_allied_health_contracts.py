@@ -20,7 +20,6 @@ from hmis.apps.allied_health.serializers import (
     TodaySessionSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         AlliedHealthDashboardSerializer,

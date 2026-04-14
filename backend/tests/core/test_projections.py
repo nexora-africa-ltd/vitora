@@ -12,10 +12,9 @@ Tests cover:
 """
 
 import uuid
-
-import pytest  # type: ignore
 from unittest.mock import patch
 
+import pytest  # type: ignore
 from django.utils import timezone
 
 from hmis.apps.core.events import DomainEvent, get_event_bus

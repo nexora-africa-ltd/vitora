@@ -9,7 +9,6 @@ The EventStore model is managed by Django migrations and stored in the same
 database as the rest of the application.
 """
 
-from django.conf import settings
 from django.db import models
 from django.utils import timezone
 

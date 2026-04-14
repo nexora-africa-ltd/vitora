@@ -7,7 +7,7 @@ The `urlpatterns` list routes URLs to views.
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.urls import include, path
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
@@ -48,7 +48,12 @@ from hmis.apps.laboratory.views import (
     PatientLabOrderViewSet,
     PatientLabResultViewSet,
 )
-from hmis.apps.patients.views import AllergyViewSet, DeathRecordViewSet, EmergencyContactViewSet, PatientViewSet
+from hmis.apps.patients.views import (
+    AllergyViewSet,
+    DeathRecordViewSet,
+    EmergencyContactViewSet,
+    PatientViewSet,
+)
 
 
 @csrf_exempt

@@ -20,7 +20,6 @@ from hmis.apps.core.websockets.throttle import (
     reset_throttled_broadcaster,
 )
 
-
 # =============================================================================
 # ThrottledBroadcaster Tests
 # =============================================================================

@@ -22,12 +22,11 @@ from django.utils import timezone
 from hmis.apps.billing.models import (
     Invoice,
     InvoiceItem,
-    SHAClaim,
-    SHAMember,
     Service,
     ServiceCategory,
+    SHAClaim,
+    SHAMember,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -112,6 +111,9 @@ def _no_billing_signals():
     Use when you need to manually control invoice creation without
     the encounter/admission/discharge signals firing.
     """
+    # Disconnect
+    from django.db.models.signals import post_save
+
     from hmis.apps.billing.signals import (
         create_invoice_for_encounter,
         handle_admission_billing,
@@ -119,9 +121,6 @@ def _no_billing_signals():
     )
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.inpatient.models import Admission, Discharge
-
-    # Disconnect
-    from django.db.models.signals import post_save
 
     post_save.disconnect(create_invoice_for_encounter, sender=Encounter)
     post_save.disconnect(handle_discharge_billing, sender=Discharge, dispatch_uid="billing_handle_discharge")

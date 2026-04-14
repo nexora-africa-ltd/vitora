@@ -11,7 +11,6 @@ This module contains Django signals for billing integration:
 """
 
 import logging
-
 from datetime import date, timedelta
 
 from django.conf import settings

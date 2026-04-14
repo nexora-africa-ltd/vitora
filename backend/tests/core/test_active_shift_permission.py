@@ -11,7 +11,6 @@ import pytest  # type: ignore
 from django.test import override_settings
 from rest_framework import status
 
-
 # All tests in this module run with enforcement enabled
 pytestmark = pytest.mark.usefixtures()
 

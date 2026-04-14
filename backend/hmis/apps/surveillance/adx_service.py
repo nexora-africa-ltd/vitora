@@ -9,7 +9,6 @@ Reference: https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-mas
 """
 
 import logging
-from datetime import date
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 from django.conf import settings

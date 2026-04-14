@@ -76,7 +76,7 @@ def clerking_structure_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     sections = _NOTE_SECTIONS.get(note_format, _NOTE_SECTIONS["soap"])
 
     return {
-        "structured_note": {section: "" for section in sections},
+        "structured_note": dict.fromkeys(sections, ""),
         "sections": sections,
         "original_text": free_text,
         "mode": "fallback",

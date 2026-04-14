@@ -12,7 +12,6 @@ from hmis.apps.hl7.serializers import (
     HL7MessageSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         HL7MessageListSerializer,

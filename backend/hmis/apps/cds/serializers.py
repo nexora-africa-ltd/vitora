@@ -16,11 +16,8 @@ from rest_framework import serializers
 
 from .models import (
     CDSAlert,
-    CDSAlertStatus,
     CDSRule,
-    CDSRuleStatus,
 )
-
 
 # ──────────────────────────── Rule Serializers ────────────────────────────
 

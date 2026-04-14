@@ -19,7 +19,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from django.db import models, transaction
-from django.db.models import Avg, Count, F, Q
+from django.db.models import Avg, F
 from django.utils import timezone
 
 from hmis.apps.core.models import AuditLog
@@ -287,8 +287,8 @@ class SmartBedAllocationService:
 
     def _calculate_affinity_score(
         self,
-        patient: "Patient",
-        ward: "Ward",
+        patient: Patient,
+        ward: Ward,
         requires_isolation: bool = False,
         requires_oxygen: bool = False,
         requires_ventilator: bool = False,
@@ -382,9 +382,7 @@ class SmartBedAllocationService:
                 spec_score = 10  # moderate penalty
         else:
             # Patient has special needs — specialized ward is appropriate
-            if ward_type == "ICU" and (requires_ventilator or requires_oxygen):
-                spec_score = 25
-            elif ward_type == "ISOLATION" and requires_isolation:
+            if ward_type == "ICU" and (requires_ventilator or requires_oxygen) or ward_type == "ISOLATION" and requires_isolation:
                 spec_score = 25
 
         score += spec_score
@@ -756,12 +754,12 @@ class SmartBedAllocationService:
 
     def recommend_ward(
         self,
-        patient: "Patient",
+        patient: Patient,
         requires_isolation: bool = False,
         requires_oxygen: bool = False,
         requires_ventilator: bool = False,
         admission_type: str = "ELECTIVE",
-    ) -> "WardRecommendationResult":
+    ) -> WardRecommendationResult:
         """
         Evaluate all active wards and rank them for a patient.
 

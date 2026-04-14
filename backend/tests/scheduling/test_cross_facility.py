@@ -13,7 +13,6 @@ from datetime import date, time
 import pytest  # type: ignore
 from rest_framework import status
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -30,10 +29,10 @@ def department_cardiology(db):
 @pytest.fixture
 def staff_with_department(db, test_user, sample_organization, sample_facility, department_cardiology, sample_role):
     """Create a StaffProfile with a department assigned."""
-    from hmis.apps.core.models import StaffProfile
-
     # Create a separate user for this staff member
     from django.contrib.auth import get_user_model
+
+    from hmis.apps.core.models import StaffProfile
 
     User = get_user_model()
     user = User.objects.create_user(username="dr_kamau", password="testpass123")

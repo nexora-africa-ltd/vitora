@@ -5,8 +5,9 @@ Verifies that Django signal handlers correctly publish domain events
 alongside their primary operations (billing, WebSocket broadcasts, etc.).
 """
 
-import pytest  # type: ignore
 from unittest.mock import MagicMock, patch
+
+import pytest  # type: ignore
 
 from hmis.apps.core.events import (
     BillingEvents,

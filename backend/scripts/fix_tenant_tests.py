@@ -6,8 +6,6 @@ This script applies targeted fixes to test files where:
 2. Test data objects missing facility/organization (tenant filtering excludes them)
 3. ProtectedError on deletion (StaffProfile references prevent deleting Facility/Org)
 """
-import re
-import sys
 
 
 def apply_replacements(filepath, replacements):

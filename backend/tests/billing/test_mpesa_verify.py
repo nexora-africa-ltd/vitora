@@ -28,7 +28,6 @@ from hmis.apps.billing.models import Invoice, Payment, PaymentPoint, Receipt
 from hmis.apps.billing.serializers import ReceiptSerializer
 from hmis.apps.billing.services.mpesa import MpesaService
 
-
 # ============================================================================
 # Service Tests — MpesaService.verify_transaction()
 # ============================================================================

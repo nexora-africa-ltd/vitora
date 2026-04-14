@@ -15,9 +15,7 @@ ClinicalChatSessionDetailView) provide local session history.
 
 import json
 import logging
-import uuid
 
-from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
@@ -40,18 +38,12 @@ from .models import (
 )
 from .sanitizer import sanitize_clinical_text
 from .serializers import (
-    AIChatMessageSerializer,
-    AIChatSessionDetailResponseSerializer,
-    AIChatSessionListResponseSerializer,
-    AIChatSessionSerializer,
     AIClinicalAssistResponseSerializer,
-    AIClinicalChatResponseSerializer,
     AIFeedbackRequestSerializer,
     AIFeedbackResponseSerializer,
+    AIStatusResponseSerializer,
     AISuggestionAuditRequestSerializer,
     AISuggestionAuditResponseSerializer,
-    AIFeedbackStatsResponseSerializer,
-    AIStatusResponseSerializer,
     AutopopulateRequestSerializer,
     AutopopulateResponseSerializer,
     CarePlanGenerateRequestSerializer,

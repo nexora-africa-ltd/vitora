@@ -11,6 +11,7 @@ from datetime import date
 
 import pytest  # type: ignore
 from django.core.exceptions import ValidationError
+
 from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db

@@ -4,8 +4,9 @@ Tests for age-aware pediatric triage with ETAT danger signs.
 Phase 1: Pediatric Triage — ETAT layered on KETA
 """
 
-import pytest  # type: ignore
 from decimal import Decimal
+
+import pytest  # type: ignore
 
 from hmis.apps.triage.services import (
     ETAT_DANGER_SIGNS,
@@ -18,7 +19,6 @@ from hmis.apps.triage.services import (
     check_temperature_status,
     get_age_group,
 )
-
 
 # =============================================================================
 # Age Group Classification

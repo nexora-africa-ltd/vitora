@@ -18,7 +18,6 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-
 # Realistic batch data: (vaccine_code, batch_number, qty_received, qty_on_hand,
 #                         days_until_expiry, manufacturer, supplier, storage, vvm, min_stock)
 STOCK_BATCHES = [

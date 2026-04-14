@@ -18,7 +18,6 @@ from rest_framework import status
 
 from hmis.apps.inpatient.models import NursingCarePlanEntry, NursingKardex
 
-
 # =============================================================================
 # Model Tests
 # =============================================================================

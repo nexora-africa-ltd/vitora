@@ -4,8 +4,9 @@ Tests for CDS engine structured actions and autopopulate integration.
 TDD: Tests define expected behavior BEFORE implementation.
 """
 
-import pytest  # type: ignore
 from decimal import Decimal
+
+import pytest  # type: ignore
 
 from hmis.apps.cds.engine import EvaluationContext, EvaluationResult, evaluate_rule
 

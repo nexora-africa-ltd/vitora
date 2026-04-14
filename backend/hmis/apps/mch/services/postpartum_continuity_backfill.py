@@ -1,15 +1,14 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass, field
 from datetime import date
-import json
 from pathlib import Path
 from typing import Any
 
 from django.db import transaction
 
-from hmis.apps.inpatient.models import Discharge, WardRound
-from hmis.apps.mch.models import PNCVisit
+from hmis.apps.inpatient.models import Discharge
 from hmis.apps.mch.services.postpartum_continuity import (
     route_registration_to_pnc_queue,
     schedule_registration_pnc_follow_up,

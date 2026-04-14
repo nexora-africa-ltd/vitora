@@ -14,7 +14,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.history_views import ModelHistoryMixin
-from hmis.apps.core.mixins import IdempotentCreateMixin, NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import (
+    IdempotentCreateMixin,
+    NestedTenantScopeMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+)
 from hmis.apps.core.models import AuditLog, IdempotencyKey
 from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
 from hmis.apps.encounters.models import Encounter

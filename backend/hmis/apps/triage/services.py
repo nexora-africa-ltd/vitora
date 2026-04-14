@@ -1193,7 +1193,7 @@ def find_best_triage_room(facility):
 
     from hmis.apps.scheduling.models import Resource, Shift
 
-    from .models import TriageSettings, WaitingQueue
+    from .models import TriageSettings
 
     # --- 1. Check settings ---------------------------------------------------
     try:

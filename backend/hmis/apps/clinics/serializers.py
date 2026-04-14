@@ -817,8 +817,9 @@ class ClinicRoomSerializer(serializers.ModelSerializer):
 
     def get_active_clinicians(self, obj) -> list[dict]:
         """Get list of clinicians currently active in this room."""
-        from hmis.apps.scheduling.models import Shift
         from django.utils import timezone as tz
+
+        from hmis.apps.scheduling.models import Shift
 
         active_shifts = Shift.objects.filter(
             room=obj.room,

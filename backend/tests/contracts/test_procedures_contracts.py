@@ -26,7 +26,6 @@ from hmis.apps.procedures.serializers import (
     ProcedureStartSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         ProcedureCancelSerializer,

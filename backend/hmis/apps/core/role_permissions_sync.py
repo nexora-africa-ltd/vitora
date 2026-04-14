@@ -206,7 +206,7 @@ MODEL_SUFFIXED_ACTIONS: set[str] = {
 }
 
 
-def sync_role_group_permissions(role: "Role") -> int:
+def sync_role_group_permissions(role: Role) -> int:
     """Sync a Role's permissions_matrix to its linked Django Group.
 
     Returns the number of permissions set on the group.

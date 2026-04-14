@@ -13,7 +13,6 @@ Configuration (settings / env vars):
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from django.conf import settings
 from django.core.mail import send_mail

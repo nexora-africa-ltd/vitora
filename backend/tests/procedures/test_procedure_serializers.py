@@ -5,8 +5,8 @@ from rest_framework.test import APIRequestFactory
 
 from hmis.apps.procedures.models import ProcedureOrder
 from hmis.apps.procedures.serializers import (
-    ProcedureCatalogListSerializer,
     ProcedureCancelSerializer,
+    ProcedureCatalogListSerializer,
     ProcedureCompleteSerializer,
     ProcedureOrderCreateSerializer,
     ProcedureOrderDetailSerializer,

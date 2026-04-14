@@ -9,7 +9,6 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from django.db import transaction
-from django.db.models import Sum
 
 from hmis.apps.clinics.models import Clinic, MonthlyClinicReport
 from hmis.apps.quality.models import AnnualReport, QuarterlyReport

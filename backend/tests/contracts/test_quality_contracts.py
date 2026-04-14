@@ -17,7 +17,6 @@ from hmis.apps.quality.serializers import (
     QuarterlyReportSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         AnnualReportSerializer,

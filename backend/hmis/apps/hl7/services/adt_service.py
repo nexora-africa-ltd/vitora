@@ -12,7 +12,6 @@ HL7Service for consistency.
 """
 
 import logging
-from datetime import date
 
 from django.conf import settings
 from django.utils import timezone

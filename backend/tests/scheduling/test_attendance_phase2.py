@@ -16,7 +16,6 @@ import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -445,6 +444,7 @@ class TestQRClockIn:
         """Should generate a rotating QR token for admins."""
         from django.contrib.auth.models import Permission
         from django.contrib.contenttypes.models import ContentType
+
         from hmis.apps.scheduling.models import Shift
 
         ct = ContentType.objects.get_for_model(Shift)
@@ -474,6 +474,7 @@ class TestQRClockIn:
     def test_qr_clock_in_success(self, authenticated_client, scheduled_shift, sample_facility):
         """Should clock in via valid QR token."""
         import hashlib
+
         from django.conf import settings as django_settings
 
         now = timezone.now()

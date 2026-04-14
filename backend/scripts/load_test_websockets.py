@@ -97,15 +97,14 @@ async def get_jwt_token(api_url: str, username: str, password: str) -> str | Non
     try:
         import aiohttp
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{api_url}/api/token/",
-                json={"username": username, "password": password},
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return data.get("access")
-                logger.error("Auth failed: %d %s", resp.status, await resp.text())
+        async with aiohttp.ClientSession() as session, session.post(
+            f"{api_url}/api/token/",
+            json={"username": username, "password": password},
+        ) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                return data.get("access")
+            logger.error("Auth failed: %d %s", resp.status, await resp.text())
     except ImportError:
         logger.error("aiohttp required for authentication: pip install aiohttp")
     except Exception as e:
@@ -151,7 +150,7 @@ async def ws_client(
                         metrics.latencies_ms.append(latency)
 
                     metrics.messages_received += 1
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                 except Exception as e:
                     metrics.errors.append(f"client-{facility_id}-{client_id}: recv error: {e}")

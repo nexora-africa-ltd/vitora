@@ -24,7 +24,6 @@ from hmis.apps.social_work.serializers import (
     SocialWorkReferralUpdateStatusSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         CaseNoteCreateSerializer,

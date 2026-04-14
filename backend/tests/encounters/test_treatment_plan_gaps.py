@@ -16,6 +16,7 @@ from datetime import date, timedelta
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+
 from tests.conftest import ensure_staff_profile
 
 pytestmark = pytest.mark.django_db

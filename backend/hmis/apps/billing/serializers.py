@@ -5,7 +5,6 @@ Following TDD - implemented to pass API tests.
 """
 
 
-from decimal import Decimal
 
 from rest_framework import serializers
 

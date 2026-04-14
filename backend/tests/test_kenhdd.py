@@ -8,7 +8,6 @@ import pytest  # type: ignore
 from django.core.management import call_command
 from rest_framework import status
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

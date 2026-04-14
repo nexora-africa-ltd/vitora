@@ -28,6 +28,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
+
 from tests.conftest import ensure_staff_profile
 
 User = get_user_model()

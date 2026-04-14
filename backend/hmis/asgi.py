@@ -34,7 +34,9 @@ from hmis.apps.pharmacy.routing import websocket_urlpatterns as pharmacy_ws_patt
 from hmis.apps.scheduling.routing import (  # noqa: E402
     websocket_urlpatterns as scheduling_ws_patterns,
 )
-from hmis.apps.surveillance.routing import websocket_urlpatterns as surveillance_ws_patterns  # noqa: E402
+from hmis.apps.surveillance.routing import (
+    websocket_urlpatterns as surveillance_ws_patterns,  # noqa: E402
+)
 from hmis.apps.triage.routing import websocket_urlpatterns as triage_ws_patterns  # noqa: E402
 
 # Combine all WebSocket URL patterns

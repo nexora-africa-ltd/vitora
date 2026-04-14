@@ -11,7 +11,7 @@ Tests cover:
 - Error handling
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore
@@ -227,7 +227,7 @@ class TestKeyRotationService:
         """Should need rotation when past rotation period."""
         provider = LocalKMSProvider(encryption_key=valid_fernet_key)
         # Mock created_at to be old
-        provider._created_at = datetime.now(timezone.utc) - timedelta(days=400)
+        provider._created_at = datetime.now(UTC) - timedelta(days=400)
 
         service = KeyRotationService(provider=provider, rotation_days=365)
 
@@ -262,7 +262,7 @@ class TestKeyMetadata:
 
     def test_key_metadata_creation(self):
         """Should create KeyMetadata with all fields."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         metadata = KeyMetadata(
             key_id="test-key-id",

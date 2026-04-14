@@ -21,7 +21,6 @@ from hmis.apps.patients.serializers import (
     VitalsDataPointSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         AllergyListSerializer,

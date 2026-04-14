@@ -21,7 +21,7 @@ models (PhysiotherapyOrder, NutritionConsultation, etc.) which are
 auto-created via signals when a referral is accepted.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from django.apps import apps
 from django.conf import settings

@@ -214,7 +214,7 @@ class MLLPClient:
                     )
                     return
 
-                except (socket.timeout, OSError) as e:
+                except (TimeoutError, OSError) as e:
                     last_error = e
                     self._stats.connection_errors += 1
                     self._cleanup_socket()
@@ -379,7 +379,7 @@ class MLLPClient:
 
             return response
 
-        except socket.timeout as e:
+        except TimeoutError as e:
             self._state = ConnectionState.ERROR
             raise MLLPTimeoutError(f"Timeout waiting for response: {e}") from e
 
@@ -416,7 +416,7 @@ class MLLPClient:
                 if MLLP_END_BLOCK in data and data.endswith(MLLP_CARRIAGE_RETURN):
                     break
 
-            except socket.timeout as e:
+            except TimeoutError as e:
                 if data:
                     # Got partial data before timeout
                     break
@@ -559,7 +559,7 @@ class AsyncMLLPClient:
                     )
                     return
 
-                except (asyncio.TimeoutError, OSError) as e:
+                except (TimeoutError, OSError) as e:
                     last_error = e
                     self._stats.connection_errors += 1
                     await self._cleanup()
@@ -658,7 +658,7 @@ class AsyncMLLPClient:
 
             return response
 
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             self._state = ConnectionState.ERROR
             raise MLLPTimeoutError(f"Timeout waiting for response: {e}") from e
 
@@ -689,7 +689,7 @@ class AsyncMLLPClient:
                 if MLLP_END_BLOCK in data and data.endswith(MLLP_CARRIAGE_RETURN):
                     break
 
-            except asyncio.TimeoutError as e:
+            except TimeoutError as e:
                 if data:
                     break
                 raise MLLPTimeoutError("Timeout waiting for response") from e

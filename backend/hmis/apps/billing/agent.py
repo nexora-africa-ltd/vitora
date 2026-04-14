@@ -21,13 +21,11 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.utils import timezone
 
 from hmis.apps.billing.models import (
     Invoice,
     InvoiceItem,
     Service,
-    ServiceCategory,
     SHAClaim,
     SHAMember,
 )
@@ -592,7 +590,6 @@ class BillingAgentService:
             Dict with counts: {checked, updated, errors}.
         """
         from hmis.apps.billing.services.sha_claims import SHAClaimsService
-        from hmis.apps.core.models import ActivityFeed
 
         pollable_statuses = [
             SHAClaim.ClaimStatus.SUBMITTED,
@@ -678,7 +675,7 @@ class BillingAgentService:
     @staticmethod
     def _apply_status_update(claim: SHAClaim, new_status: str, api_response: dict):
         """Apply status update from SHA API response to the claim."""
-        from decimal import Decimal, InvalidOperation
+        from decimal import InvalidOperation
 
         update_fields = ["status", "submission_response", "updated_at"]
         claim.status = new_status

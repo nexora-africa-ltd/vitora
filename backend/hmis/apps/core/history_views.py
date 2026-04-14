@@ -12,7 +12,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.viewsets import ViewSet
 
 from hmis.apps.core.history import get_full_history, get_history_diff
 from hmis.apps.core.models import AuditLog

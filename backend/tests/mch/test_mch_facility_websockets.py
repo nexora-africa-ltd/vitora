@@ -19,7 +19,6 @@ from channels.testing import WebsocketCommunicator
 
 from hmis.apps.core.models import County, Facility, Organization, SubCounty
 
-
 # =============================================================================
 # ASYNC HELPER FUNCTIONS
 # =============================================================================

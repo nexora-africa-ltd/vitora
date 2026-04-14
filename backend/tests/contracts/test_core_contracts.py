@@ -26,11 +26,11 @@ from hmis.apps.core.serializers import (
     InvitationAcceptSerializer,
     InvitationPublicSerializer,
     NotificationSerializer,
+    OrganizationDetailSerializer,
+    OrganizationListSerializer,
     OrgChartPayloadSerializer,
     OrgChartSummarySerializer,
     OrgSignupSerializer,
-    OrganizationDetailSerializer,
-    OrganizationListSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     PermissionSerializer,
@@ -45,14 +45,13 @@ from hmis.apps.core.serializers import (
     StaffProfileUpdateSerializer,
     SubCountySerializer,
     UserCertificateSerializer,
-    UserPermissionsSerializer,
     UsernameCheckResponseSerializer,
     UsernameSuggestionRequestSerializer,
     UsernameSuggestionResponseSerializer,
+    UserPermissionsSerializer,
     VerifySignatureRequestSerializer,
     WardSerializer,
 )
-
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (

@@ -19,7 +19,6 @@ from hmis.apps.scheduling.models import Resource, Shift
 from hmis.apps.triage.models import TriageSettings, WaitingQueue
 from hmis.apps.triage.services import find_best_triage_room
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================

@@ -1,7 +1,7 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, serializers as drf_serializers, status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,10 +15,8 @@ from .filters import ProcedureCatalogFilter, ProcedureOrderFilter
 from .models import (
     ProcedureCatalog,
     ProcedureConsent,
-    ProcedureConsumable,
     ProcedureLog,
     ProcedureOrder,
-    ProcedureOutcome,
 )
 from .serializers import (
     ProcedureCancelSerializer,

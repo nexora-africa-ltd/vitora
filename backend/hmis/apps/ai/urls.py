@@ -7,8 +7,8 @@ from django.urls import path
 from .views import (
     AIFeedbackStatsView,
     AIFeedbackView,
-    AISuggestionAuditView,
     AIStatusView,
+    AISuggestionAuditView,
     AutopopulateView,
     CarePlanConditionsListView,
     CarePlanGenerateFHIRView,

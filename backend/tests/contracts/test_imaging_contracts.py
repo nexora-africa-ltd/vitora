@@ -36,7 +36,6 @@ from hmis.apps.imaging.serializers import (
     SignReportSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         AmendReportSerializer,

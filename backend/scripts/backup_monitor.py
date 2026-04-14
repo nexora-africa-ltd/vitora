@@ -30,9 +30,8 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 # Try to import requests for alerting
 try:
@@ -50,7 +49,7 @@ class BackupInfo:
     size_bytes: int
     environment: str
     encrypted: bool
-    checksum_valid: Optional[bool] = None
+    checksum_valid: bool | None = None
 
 
 @dataclass
@@ -60,7 +59,7 @@ class MonitoringResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     info: list[str] = field(default_factory=list)
-    latest_backup: Optional[BackupInfo] = None
+    latest_backup: BackupInfo | None = None
 
 
 class BackupMonitor:
@@ -75,7 +74,7 @@ class BackupMonitor:
         self,
         backup_dir: str = "/var/backups/vitora",
         environment: str = "staging",
-        s3_bucket: Optional[str] = None,
+        s3_bucket: str | None = None,
     ):
         self.backup_dir = Path(backup_dir)
         self.environment = environment
@@ -96,8 +95,8 @@ class BackupMonitor:
         # Find backup files for this environment (excluding checksum/manifest files)
         pattern = f"vitora_{self.environment}_*_db.*"
         backup_files = sorted(
-            [f for f in self.backup_dir.glob(pattern) 
-             if not f.suffix in (".sha256", ".json") and "_manifest" not in f.name],
+            [f for f in self.backup_dir.glob(pattern)
+             if f.suffix not in (".sha256", ".json") and "_manifest" not in f.name],
             key=lambda f: f.stat().st_mtime,
             reverse=True
         )

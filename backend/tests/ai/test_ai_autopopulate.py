@@ -4,8 +4,9 @@ Tests for AI autopopulate endpoint.
 TDD: Tests define expected behavior for the smart autopopulate feature.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest  # type: ignore
-from unittest.mock import patch, MagicMock
 from rest_framework import status
 
 

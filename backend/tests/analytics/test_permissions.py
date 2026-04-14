@@ -3,10 +3,10 @@ Tests for analytics permissions (CanViewAnalytics, IsSuperUser)
 and org-level / platform-wide aggregation endpoints.
 """
 
-import pytest  # type: ignore
 from datetime import date
 from decimal import Decimal
 
+import pytest  # type: ignore
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -14,7 +14,6 @@ from hmis.apps.analytics.models import (
     DepartmentMonthlySummary,
     FacilityDailySummary,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

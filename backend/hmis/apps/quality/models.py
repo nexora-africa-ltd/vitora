@@ -21,7 +21,6 @@ from django.db import models
 from hmis.apps.clinics.models import Clinic, MonthlyClinicReport
 from hmis.apps.core.models import TimeStampedModel
 
-
 # =============================================================================
 # QuarterlyReport Model
 # =============================================================================

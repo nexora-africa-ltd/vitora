@@ -17,7 +17,6 @@ from rest_framework import status
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.procedures.models import ProcedureCatalog, ProcedureOrder
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================

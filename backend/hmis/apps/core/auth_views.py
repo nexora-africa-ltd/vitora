@@ -50,7 +50,6 @@ from .services.email_service import (
     send_invitation_email,
     send_org_verification_email,
     send_password_reset_email,
-    send_welcome_email,
 )
 
 logger = logging.getLogger(__name__)

@@ -19,7 +19,6 @@ from hmis.apps.moh_reporting.serializers import (
     MOHReportGenerateSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         MOH705DiseaseRowSerializer,

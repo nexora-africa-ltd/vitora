@@ -2,9 +2,10 @@
 Tests for analytics aggregate models.
 """
 
-import pytest  # type: ignore
 from datetime import date
 from decimal import Decimal
+
+import pytest  # type: ignore
 
 from hmis.apps.analytics.models import (
     DepartmentMonthlySummary,

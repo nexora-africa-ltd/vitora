@@ -21,12 +21,10 @@ Usage:
 from __future__ import annotations
 
 import json
-from datetime import datetime
 
 from django.core.management.base import BaseCommand, CommandError
 
 from hmis.apps.core.kms import clear_kms_cache, get_kms_provider
-from hmis.apps.core.kms.base import KeyState
 from hmis.apps.core.kms.local import LocalKMSProvider
 from hmis.apps.core.kms.rotation import KeyRotationService
 

@@ -25,8 +25,8 @@ from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from hmis.apps.core.models import AuditLog
 from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.models import AuditLog
 from hmis.apps.scheduling.models import (
     Appointment,
     AssignmentDecision,
@@ -940,7 +940,6 @@ class AssignmentViewSet(viewsets.ViewSet):
         from hmis.apps.scheduling.models import Resource
         from hmis.apps.scheduling.serializers import (
             AutoAssignRequestSerializer,
-            AutoAssignResponseSerializer,
         )
         from hmis.apps.scheduling.services.assignment import AssignmentService
 
@@ -1310,7 +1309,6 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         # Auto-close clinic session if this was the last active shift
         session_auto_closed = False
         if clinic:
-            from datetime import date as date_type
             remaining = Shift.objects.filter(
                 clinic=clinic,
                 shift_date=shift.shift_date,
@@ -1486,8 +1484,7 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             to_date: End date (required)
         """
         from datetime import date as date_type
-        from django.db.models import Count, Q, Sum, F
-        from django.db.models.functions import Coalesce
+
 
         from_date_str = request.query_params.get("from_date")
         to_date_str = request.query_params.get("to_date")
@@ -1639,7 +1636,8 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             to_date:   End date (optional, YYYY-MM-DD, default: today)
             page / page_size: Pagination
         """
-        from datetime import date as date_type, timedelta as td
+        from datetime import date as date_type
+        from datetime import timedelta as td
 
         resource = self._get_my_resource(request)
         if not resource:
@@ -1872,7 +1870,9 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             weeks: Number of weeks to look back (default: 12, max: 52)
         """
         from collections import defaultdict
-        from datetime import date as date_type, timedelta as td
+        from datetime import date as date_type
+        from datetime import timedelta as td
+
         from hmis.apps.scheduling.models import Shift
 
         resource = self._get_my_resource(request)
@@ -1964,7 +1964,9 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         import csv
         import io
         from datetime import date as date_type
+
         from django.http import HttpResponse
+
         from hmis.apps.scheduling.models import Shift
 
         from_date_str = request.query_params.get("from_date")
@@ -2057,7 +2059,7 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         """
         import hashlib
         from datetime import date as date_type
-        from hmis.apps.scheduling.models import SchedulingSettings
+
 
         qr_token = request.data.get("qr_token", "")
         if not qr_token or ":" not in qr_token:
@@ -2153,6 +2155,7 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         Only accessible to users with manage_schedules permission.
         """
         import hashlib
+
         from django.conf import settings as django_settings
 
         if not request.user.has_perm("scheduling.manage_schedules"):

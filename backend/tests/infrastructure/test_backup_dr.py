@@ -226,7 +226,7 @@ class TestBackupMonitor:
     ):
         """Should verify checksum when checksum file exists."""
         import hashlib
-        
+
         backup_file = backup_dir / "vitora_staging_20260222_020000_db.sql.gz"
         backup_content = b"x" * (2 * 1024 * 1024)
         backup_file.write_bytes(backup_content)
@@ -442,7 +442,7 @@ class TestBackupMonitorIntegrity:
             backup_dir=str(backup_dir),
             environment="staging",
         )
-        
+
         # First run check_local_backups to set latest_backup
         monitor.check_local_backups()
         result = monitor.verify_backup_integrity()

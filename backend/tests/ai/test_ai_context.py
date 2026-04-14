@@ -18,6 +18,7 @@ from unittest.mock import MagicMock, patch
 import pytest  # type: ignore
 from django.test import override_settings
 from rest_framework import status
+
 from tests.conftest import ensure_staff_profile
 
 

@@ -14,7 +14,6 @@ from hmis.apps.core.emergency_access.serializers import (
     EmergencyAccessSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         EmergencyAccessCreateSerializer,

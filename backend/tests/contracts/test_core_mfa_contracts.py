@@ -24,7 +24,6 @@ from hmis.apps.core.mfa.serializers import (
     WebAuthnRegisterCompleteSerializer,
 )
 
-
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         BackupCodesRegenerateSerializer,

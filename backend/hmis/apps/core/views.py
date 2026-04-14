@@ -46,7 +46,6 @@ from .role_permissions_sync import sync_role_group_permissions
 from .serializers import (
     AuditLogSerializer,
     CertificateAuthoritySerializer,
-    CertificateRevocationSerializer,
     CodeSystemSerializer,
     CountySerializer,
     DepartmentSerializer,

@@ -2,9 +2,10 @@
 Tests for analytics ETL services.
 """
 
-import pytest  # type: ignore
 from datetime import date, timedelta
 from decimal import Decimal
+
+import pytest  # type: ignore
 
 from hmis.apps.analytics.services import (
     _age_band,

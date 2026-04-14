@@ -163,7 +163,7 @@ def validate_extracted_json(filepath: str) -> tuple[bool, list[str]]:
     errors = []
 
     try:
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
         return False, [f"Invalid JSON: {e}"]
@@ -221,7 +221,7 @@ def process_ocr_output(ocr_filepath: str) -> dict:
 
     This is a best-effort parser for OCR text. Results should be reviewed.
     """
-    with open(ocr_filepath, "r") as f:
+    with open(ocr_filepath) as f:
         ocr_text = f.read()
 
     extracted = {"diseases": [], "_warnings": []}
@@ -286,10 +286,10 @@ def process_ocr_output(ocr_filepath: str) -> dict:
 
 def merge_into_main_json(extracted_filepath: str, main_filepath: str, output_filepath: str):
     """Merge extracted data into main notifiable_diseases.json."""
-    with open(extracted_filepath, "r") as f:
+    with open(extracted_filepath) as f:
         extracted = json.load(f)
 
-    with open(main_filepath, "r") as f:
+    with open(main_filepath) as f:
         main_data = json.load(f)
 
     # Create lookup for extracted diseases

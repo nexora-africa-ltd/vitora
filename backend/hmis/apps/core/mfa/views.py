@@ -45,7 +45,6 @@ from hmis.apps.core.mfa.serializers import (
     WebAuthnAuthenticateCompleteSerializer,
     WebAuthnCredentialSerializer,
     WebAuthnDeleteSerializer,
-    WebAuthnRegisterBeginSerializer,
     WebAuthnRegisterCompleteSerializer,
 )
 from hmis.apps.core.mfa.utils import get_client_ip, get_mfa_status, is_mfa_required
@@ -715,7 +714,11 @@ class WebAuthnAuthenticateBeginView(APIView):
         """Generate authentication options for the user identified by mfa_token."""
         from webauthn import generate_authentication_options
         from webauthn.helpers import bytes_to_base64url
-        from webauthn.helpers.structs import AuthenticatorTransport, PublicKeyCredentialDescriptor, UserVerificationRequirement
+        from webauthn.helpers.structs import (
+            AuthenticatorTransport,
+            PublicKeyCredentialDescriptor,
+            UserVerificationRequirement,
+        )
 
         mfa_token_str = request.data.get("mfa_token")
         if not mfa_token_str:

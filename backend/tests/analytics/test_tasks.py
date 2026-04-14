@@ -2,9 +2,10 @@
 Tests for analytics Celery tasks.
 """
 
-import pytest  # type: ignore
 from datetime import date, timedelta
 from unittest.mock import patch
+
+import pytest  # type: ignore
 
 from hmis.apps.analytics.models import (
     DepartmentMonthlySummary,

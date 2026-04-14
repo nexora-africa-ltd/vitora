@@ -8,12 +8,12 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.immunizations.serializers import (
+    AdministerVaccineSerializer,
     AEFICreateSerializer,
     AEFIFollowUpSerializer,
     AEFIListSerializer,
     AEFISerializer,
     AEFISubmitToAuthoritiesSerializer,
-    AdministerVaccineSerializer,
     ColdChainEquipmentListSerializer,
     ColdChainEquipmentSerializer,
     GenerateAdultScheduleSerializer,
@@ -31,7 +31,6 @@ from hmis.apps.immunizations.serializers import (
     VaccineStockListSerializer,
     VaccineStockSerializer,
 )
-
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (

@@ -11,7 +11,6 @@ import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from rest_framework import status
 
-
 # ============================================================================
 # Model Tests
 # ============================================================================

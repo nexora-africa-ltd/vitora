@@ -43,7 +43,6 @@ from hmis.apps.imaging.models import (
 )
 from hmis.apps.inpatient.models import (
     Admission,
-    Bed,
     BloodTransfusionObservation,
     BPMonitoringReading,
     Discharge,
@@ -56,8 +55,8 @@ from hmis.apps.inpatient.models import (
     ShiftHandover,
     SupervisorAlertAcknowledgment,
     TemperatureReading,
-    TransfusionObservationEntry,
     Transfer,
+    TransfusionObservationEntry,
     Ward,
     WardRound,
 )
@@ -67,9 +66,9 @@ from hmis.apps.laboratory.models import (
     LabResult,
     TestCatalog,
 )
+from hmis.apps.mch.models import LabourPartograph, LabourPartographObservation, MCHRegistration
 from hmis.apps.patients.models import Allergy, Patient
 from hmis.apps.pharmacy.models import Drug, Prescription, PrescriptionItem
-from hmis.apps.mch.models import LabourPartograph, LabourPartographObservation, MCHRegistration
 
 User = get_user_model()
 

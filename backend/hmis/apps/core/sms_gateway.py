@@ -12,7 +12,6 @@ Configuration required in Django settings:
 """
 
 import logging
-from typing import TYPE_CHECKING
 
 from django.conf import settings
 
@@ -153,7 +152,7 @@ def send_bulk_sms(
     client = _get_sms_client()
     if not client:
         logger.warning(f"Bulk SMS not sent (client not configured): {len(phones)} recipients")
-        return {phone: False for phone in phones}
+        return dict.fromkeys(phones, False)
 
     sender = sender_id or getattr(settings, "SMS_SENDER_ID", None)
 
@@ -179,7 +178,7 @@ def send_bulk_sms(
 
     except Exception as e:
         logger.error(f"Failed to send bulk SMS: {e}")
-        return {phone: False for phone in phones}
+        return dict.fromkeys(phones, False)
 
 
 def _normalize_phone(phone: str) -> str:

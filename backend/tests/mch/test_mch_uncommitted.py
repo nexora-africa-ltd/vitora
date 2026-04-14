@@ -138,11 +138,11 @@ def child_patient(db, sample_county, sample_sub_county, sample_organization):
 @pytest.fixture
 def anc_visit_no_signal(db, mch_registration):
     """Create a sample ANC visit without triggering billing signal."""
-    from hmis.apps.mch.models import ANCVisit
-
     # Use update_or_create pattern to avoid triggering post_save
     from django.db import connection
     from django.db.models.signals import post_save
+
+    from hmis.apps.mch.models import ANCVisit
     from hmis.apps.mch.signals import auto_create_anc_visit_invoice
 
     # Disconnect signal temporarily
@@ -161,9 +161,9 @@ def anc_visit_no_signal(db, mch_registration):
 @pytest.fixture
 def pnc_visit_no_signal(db, mch_registration):
     """Create a sample PNC visit without triggering billing signal."""
-    from hmis.apps.mch.models import PNCVisit
-
     from django.db.models.signals import post_save
+
+    from hmis.apps.mch.models import PNCVisit
     from hmis.apps.mch.signals import auto_create_pnc_visit_invoice
 
     # Disconnect signal temporarily
@@ -298,11 +298,11 @@ class TestMCHBillingService:
 
     def test_create_delivery_invoice_for_normal_delivery(self, delivery, test_user):
         """Should create invoice for normal vaginal delivery."""
-        from hmis.apps.mch.services.billing import create_delivery_invoice
-
         # Disconnect signal to avoid double invoice creation
         from django.db.models.signals import post_save
+
         from hmis.apps.mch.models import Delivery
+        from hmis.apps.mch.services.billing import create_delivery_invoice
         from hmis.apps.mch.signals import auto_create_delivery_invoice
 
         post_save.disconnect(auto_create_delivery_invoice, sender=Delivery)
@@ -319,11 +319,11 @@ class TestMCHBillingService:
 
     def test_create_delivery_invoice_for_cesarean(self, delivery, test_user):
         """Should create invoice for cesarean delivery."""
-        from hmis.apps.mch.services.billing import create_delivery_invoice
-
         # Disconnect signal to avoid double invoice creation
         from django.db.models.signals import post_save
+
         from hmis.apps.mch.models import Delivery
+        from hmis.apps.mch.services.billing import create_delivery_invoice
         from hmis.apps.mch.signals import auto_create_delivery_invoice
 
         post_save.disconnect(auto_create_delivery_invoice, sender=Delivery)

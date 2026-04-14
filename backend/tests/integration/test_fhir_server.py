@@ -31,7 +31,7 @@ Usage:
 import os
 import time
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest  # type: ignore
@@ -1888,7 +1888,7 @@ class TestVitoraSpecificScenarios:
 
         # Create encounter in planned status
         # Use timezone-aware datetimes (FHIR requires timezone if time is present)
-        now_tz = datetime.now(tz.utc).isoformat()
+        now_tz = datetime.now(UTC).isoformat()
         encounter = {
             "resourceType": "Encounter",
             "status": "planned",
@@ -1929,8 +1929,8 @@ class TestVitoraSpecificScenarios:
         encounter_resource = current.resource
         encounter_resource["status"] = "finished"
         if "period" not in encounter_resource:
-            encounter_resource["period"] = {"start": datetime.now(tz.utc).isoformat()}
-        encounter_resource["period"]["end"] = datetime.now(tz.utc).isoformat()
+            encounter_resource["period"] = {"start": datetime.now(UTC).isoformat()}
+        encounter_resource["period"]["end"] = datetime.now(UTC).isoformat()
         fhir_client.update_resource("Encounter", encounter_id, encounter_resource)
 
         # Verify final state
