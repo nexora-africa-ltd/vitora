@@ -189,11 +189,13 @@ export const TriageAssessmentSchema = z.object({
   vitals: z.record(z.unknown()).optional(),
 
   // ETAT pediatric fields
+  // Django uses blank=True, default="" for optional CharField choices,
+  // so empty strings must be accepted alongside the enum values.
   age_group: AgeGroupSchema.optional().nullable(),
   etat_danger_signs: z.array(z.string()).optional().default([]),
-  dehydration_level: DehydrationLevelSchema.optional().nullable().default(null),
-  fontanelle_status: FontanelleStatusSchema.optional().nullable().default(null),
-  breastfeeding_ability: BreastfeedingAbilitySchema.optional().nullable().default(null),
+  dehydration_level: DehydrationLevelSchema.or(z.literal('')).optional().nullable().default(null),
+  fontanelle_status: FontanelleStatusSchema.or(z.literal('')).optional().nullable().default(null),
+  breastfeeding_ability: BreastfeedingAbilitySchema.or(z.literal('')).optional().nullable().default(null),
   capillary_refill_seconds: z.number().optional().nullable().default(null),
   muac_cm: z.number().optional().nullable().default(null),
 
