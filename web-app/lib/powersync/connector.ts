@@ -78,10 +78,9 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
    * backend doesn't have the endpoint yet during a rolling deploy).
    */
   async fetchCredentials() {
-    const accessToken = tokenStorage.getAccessToken();
-
-    if (!accessToken) {
-      throw new Error('No access token available — user must log in first.');
+    // Auth is handled by httpOnly cookies; check if user is logged in
+    if (!tokenStorage.isAuthenticated()) {
+      throw new Error('User is not authenticated — please log in first.');
     }
 
     // Try the dedicated PowerSync credentials endpoint first
@@ -100,26 +99,10 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
         expiresAt: new Date(expires_at * 1000),
       };
     } catch (error) {
-      // Fallback: use the main access token directly (old behavior).
-      // This path runs if the backend doesn't have the endpoint yet.
-      console.warn('[PowerSync] Credentials endpoint failed, falling back to access token:', error);
-
-      let expiresAt: Date | undefined;
-      try {
-        const parts = accessToken.split('.');
-        const payload = JSON.parse(atob(parts[1] ?? ''));
-        if (payload.exp) {
-          expiresAt = new Date(payload.exp * 1000);
-        }
-      } catch {
-        // If decode fails, let PowerSync handle expiry via 401
-      }
-
-      return {
-        endpoint: POWERSYNC_URL,
-        token: accessToken,
-        expiresAt,
-      };
+      // The PowerSync credentials endpoint is the only way to get a token now
+      // (access tokens are in httpOnly cookies, inaccessible to JS)
+      console.error('[PowerSync] Credentials endpoint failed:', error);
+      throw new Error('Failed to fetch PowerSync credentials');
     }
   }
 

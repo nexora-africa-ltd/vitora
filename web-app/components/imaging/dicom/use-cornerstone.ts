@@ -8,7 +8,6 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { DICOMViewerTool } from '@/lib/types/imaging';
-import { tokenStorage } from '@/lib/auth/storage';
 
 // =============================================================================
 // MODULE REFERENCES (populated after dynamic import)
@@ -66,12 +65,9 @@ export async function initCornerstone(): Promise<void> {
         // Allow native decoding where possible
         convertFloatPixelDataToInt: false,
       },
-      // Configure request headers for authentication
+      // Configure request headers for authentication (httpOnly cookies)
       beforeSend: (xhr: XMLHttpRequest) => {
-        const token = tokenStorage.getAccessToken();
-        if (token) {
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        }
+        xhr.withCredentials = true;  // Include httpOnly auth cookies
       },
     };
 
@@ -86,10 +82,7 @@ export async function initCornerstone(): Promise<void> {
     if (dicomImageLoader.wadouri?.configure) {
       dicomImageLoader.wadouri.configure({
         beforeSend: (xhr: XMLHttpRequest) => {
-          const token = tokenStorage.getAccessToken();
-          if (token) {
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-          }
+          xhr.withCredentials = true;  // Include httpOnly auth cookies
         },
       });
     }

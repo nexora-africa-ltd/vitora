@@ -432,7 +432,8 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            logger.exception("SHA claim submission failed for claim %s", pk)
+            return Response({"error": "Claim submission failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"], url_path="appeal")
     def appeal(self, request, pk=None):
@@ -461,7 +462,8 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            logger.exception("SHA claim appeal failed for claim %s", pk)
+            return Response({"error": "Appeal creation failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["get", "post"], url_path="items")
     def items(self, request, pk=None):
@@ -882,7 +884,8 @@ class TerminologySearchView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("ICD terminology search failed")
+            return Response({"error": "Terminology search failed. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _search_icd11_with_fallback(self, search: str, limit: int):
         """
@@ -1013,8 +1016,6 @@ class TerminologySearchView(APIView):
             return Response(
                 {
                     "error": "All ICD services unavailable",
-                    "original_error": original_error,
-                    "icd10_error": str(e),
                 },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
@@ -1056,8 +1057,9 @@ class TerminologySearchView(APIView):
             )
 
         except Exception as e:
+            logger.exception("ICD-11 local search failed")
             return Response(
-                {"error": f"ICD-11 local search failed: {str(e)}"},
+                {"error": "ICD-11 local search failed. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -1176,8 +1178,9 @@ class ClientRegistryView(APIView):
                 {"error": str(e), "found": False}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
         except Exception as e:
+            logger.exception("Client Registry lookup failed")
             return Response(
-                {"error": str(e), "found": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Client Registry lookup failed. Please try again.", "found": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     @extend_schema(
@@ -1302,8 +1305,9 @@ class ClientRegistryView(APIView):
         except ClientRegistryError as e:
             return Response({"error": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception("Client Registry registration failed")
             return Response(
-                {"error": str(e), "success": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Client registration failed. Please try again.", "success": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     @extend_schema(
@@ -1397,8 +1401,9 @@ class ClientRegistryView(APIView):
         except ClientRegistryError as e:
             return Response({"error": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception("Client Registry update failed")
             return Response(
-                {"error": str(e), "success": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Client update failed. Please try again.", "success": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -1474,8 +1479,9 @@ class FacilitySearchView(APIView):
                 {"error": str(e), "found": False}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
         except Exception as e:
+            logger.exception("Facility search failed")
             return Response(
-                {"error": str(e), "found": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Facility search failed. Please try again.", "found": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -1632,8 +1638,9 @@ class PractitionerSearchView(APIView):
                 {"error": str(e), "message": None}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
         except Exception as e:
+            logger.exception("Practitioner search failed")
             return Response(
-                {"error": str(e), "message": None}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Practitioner search failed. Please try again.", "message": None}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -1728,8 +1735,9 @@ class EligibilityCheckView(APIView):
             )
 
         except Exception as e:
+            logger.exception("SHA eligibility check failed")
             return Response(
-                {"error": str(e), "is_eligible": False},
+                {"error": "Eligibility check failed. Please try again.", "is_eligible": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -1829,10 +1837,11 @@ class DirectEligibilityCheckView(APIView):
             return Response(result)
 
         except Exception as e:
+            logger.exception("Direct SHA eligibility check failed")
             return Response(
                 {
                     "is_eligible": False,
-                    "error": str(e),
+                    "error": "Eligibility check failed. Please try again.",
                     "sha_number": None,
                     "full_name": None,
                     "coverage_end_date": None,
@@ -1936,7 +1945,7 @@ class SHAWebhookView(APIView):
         except Exception as e:
             logger.exception(f"Error processing SHA webhook: {e}")
             return Response(
-                {"error": "Processing error", "detail": str(e)},
+                {"error": "Processing error"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

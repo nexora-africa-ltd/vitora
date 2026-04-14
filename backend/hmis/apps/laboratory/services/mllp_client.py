@@ -270,6 +270,12 @@ class MLLPClient:
         context = ssl.create_default_context()
 
         if not self.config.ssl_verify:
+            logger.warning(
+                "SSL certificate verification is disabled for MLLP connection to %s:%s. "
+                "This is insecure and should only be used for testing.",
+                self.config.host,
+                self.config.port,
+            )
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
 
@@ -537,6 +543,13 @@ class AsyncMLLPClient:
                     if self.config.use_ssl:
                         ssl_context = ssl.create_default_context()
                         if not self.config.ssl_verify:
+                            logger.warning(
+                                "SSL certificate verification is disabled for async MLLP "
+                                "connection to %s:%s. This is insecure and should only be "
+                                "used for testing.",
+                                self.config.host,
+                                self.config.port,
+                            )
                             ssl_context.check_hostname = False
                             ssl_context.verify_mode = ssl.CERT_NONE
                     else:

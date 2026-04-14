@@ -582,7 +582,8 @@ class ClientRegistryService:
         }
 
         logger.info(
-            f"Registering new client in CR: {first_name} {last_name} ({identification_type}: {identification_number[:4]}...)"
+            "Registering new client in CR (identification_type=%s)",
+            identification_type,
         )
 
         try:

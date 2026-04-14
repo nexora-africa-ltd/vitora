@@ -19,7 +19,10 @@ API endpoints for MFA management:
 
 import base64
 import io
+import logging
 from datetime import UTC
+
+logger = logging.getLogger(__name__)
 
 import qrcode
 from django.conf import settings as django_settings
@@ -587,8 +590,9 @@ class WebAuthnRegisterCompleteView(APIView):
                 expected_origin=_get_webauthn_origin(),
             )
         except Exception as e:
+            logger.exception("WebAuthn registration verification failed")
             return Response(
-                {"error": f"Registration verification failed: {e!s}"},
+                {"error": "Registration verification failed. Please try again."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

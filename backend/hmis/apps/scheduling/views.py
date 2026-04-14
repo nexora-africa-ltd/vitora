@@ -17,6 +17,10 @@ This module contains ViewSets for:
 
 from datetime import datetime, timedelta
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from django.utils import timezone
 from django_filters import rest_framework as filters
 from drf_spectacular.types import OpenApiTypes
@@ -1422,7 +1426,8 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 shift = serializer.save(**tenant_kwargs)
                 created.append(shift.id)
             except Exception as e:
-                errors.append({"index": idx, "errors": str(e)})
+                logger.exception("Failed to create shift at index %d in bulk_create", idx)
+                errors.append({"index": idx, "errors": "Failed to create shift"})
 
         return Response({
             "created": len(created),
