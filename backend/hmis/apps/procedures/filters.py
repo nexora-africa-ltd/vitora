@@ -16,12 +16,8 @@ class ProcedureCatalogFilter(django_filters.FilterSet):
 
 
 class ProcedureOrderFilter(django_filters.FilterSet):
-    scheduled_date_from = django_filters.DateFilter(
-        field_name="scheduled_date", lookup_expr="gte"
-    )
-    scheduled_date_to = django_filters.DateFilter(
-        field_name="scheduled_date", lookup_expr="lte"
-    )
+    scheduled_date_from = django_filters.DateFilter(field_name="scheduled_date", lookup_expr="gte")
+    scheduled_date_to = django_filters.DateFilter(field_name="scheduled_date", lookup_expr="lte")
 
     class Meta:
         model = ProcedureOrder

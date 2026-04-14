@@ -433,7 +433,10 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             logger.exception("SHA claim submission failed for claim %s", pk)
-            return Response({"error": "Claim submission failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Claim submission failed. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["post"], url_path="appeal")
     def appeal(self, request, pk=None):
@@ -463,7 +466,10 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             logger.exception("SHA claim appeal failed for claim %s", pk)
-            return Response({"error": "Appeal creation failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Appeal creation failed. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["get", "post"], url_path="items")
     def items(self, request, pk=None):
@@ -765,9 +771,9 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
                 output.read(),
                 content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
-            response[
-                "Content-Disposition"
-            ] = f'attachment; filename="sha_claims_{date.today()}.xlsx"'
+            response["Content-Disposition"] = (
+                f'attachment; filename="sha_claims_{date.today()}.xlsx"'
+            )
             return response
 
         except ImportError:
@@ -885,7 +891,10 @@ class TerminologySearchView(APIView):
             )
         except Exception as e:
             logger.exception("ICD terminology search failed")
-            return Response({"error": "Terminology search failed. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Terminology search failed. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def _search_icd11_with_fallback(self, search: str, limit: int):
         """
@@ -1180,7 +1189,8 @@ class ClientRegistryView(APIView):
         except Exception as e:
             logger.exception("Client Registry lookup failed")
             return Response(
-                {"error": "Client Registry lookup failed. Please try again.", "found": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Client Registry lookup failed. Please try again.", "found": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     @extend_schema(
@@ -1307,7 +1317,8 @@ class ClientRegistryView(APIView):
         except Exception as e:
             logger.exception("Client Registry registration failed")
             return Response(
-                {"error": "Client registration failed. Please try again.", "success": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Client registration failed. Please try again.", "success": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     @extend_schema(
@@ -1403,7 +1414,8 @@ class ClientRegistryView(APIView):
         except Exception as e:
             logger.exception("Client Registry update failed")
             return Response(
-                {"error": "Client update failed. Please try again.", "success": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Client update failed. Please try again.", "success": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
@@ -1481,7 +1493,8 @@ class FacilitySearchView(APIView):
         except Exception as e:
             logger.exception("Facility search failed")
             return Response(
-                {"error": "Facility search failed. Please try again.", "found": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Facility search failed. Please try again.", "found": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
@@ -1640,7 +1653,8 @@ class PractitionerSearchView(APIView):
         except Exception as e:
             logger.exception("Practitioner search failed")
             return Response(
-                {"error": "Practitioner search failed. Please try again.", "message": None}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": "Practitioner search failed. Please try again.", "message": None},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 

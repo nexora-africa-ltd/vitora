@@ -146,11 +146,36 @@ RR_THRESHOLDS: dict[str, dict[str, int]] = {
 # Temperature thresholds by age group (°C)
 # Neonates and infants are more vulnerable to temperature extremes
 TEMP_THRESHOLDS: dict[str, dict[str, float]] = {
-    "neonate": {"critical_low": 35.0, "normal_low": 36.5, "normal_high": 37.5, "critical_high": 38.0},
-    "infant": {"critical_low": 35.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 38.5},
-    "young_child": {"critical_low": 35.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 39.0},
-    "school_age": {"critical_low": 35.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 39.5},
-    "adolescent": {"critical_low": 35.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 40.0},
+    "neonate": {
+        "critical_low": 35.0,
+        "normal_low": 36.5,
+        "normal_high": 37.5,
+        "critical_high": 38.0,
+    },
+    "infant": {
+        "critical_low": 35.0,
+        "normal_low": 36.0,
+        "normal_high": 37.5,
+        "critical_high": 38.5,
+    },
+    "young_child": {
+        "critical_low": 35.0,
+        "normal_low": 36.0,
+        "normal_high": 37.5,
+        "critical_high": 39.0,
+    },
+    "school_age": {
+        "critical_low": 35.0,
+        "normal_low": 36.0,
+        "normal_high": 37.5,
+        "critical_high": 39.5,
+    },
+    "adolescent": {
+        "critical_low": 35.0,
+        "normal_low": 36.0,
+        "normal_high": 37.5,
+        "critical_high": 40.0,
+    },
     "adult": {"critical_low": 32.0, "normal_low": 36.0, "normal_high": 37.5, "critical_high": 40.0},
 }
 
@@ -185,9 +210,7 @@ PEDIATRIC_COMPLAINT_CATEGORIES = [
 ]
 
 
-def check_heart_rate_status(
-    hr: int, age_years: float = 30
-) -> tuple[str, AlertDict | None]:
+def check_heart_rate_status(hr: int, age_years: float = 30) -> tuple[str, AlertDict | None]:
     """
     Check heart rate against age-appropriate thresholds.
 
@@ -256,9 +279,7 @@ def check_heart_rate_status(
     return ("normal", None)
 
 
-def check_respiratory_rate_status(
-    rr: int, age_years: float = 30
-) -> tuple[str, AlertDict | None]:
+def check_respiratory_rate_status(rr: int, age_years: float = 30) -> tuple[str, AlertDict | None]:
     """
     Check respiratory rate against age-appropriate thresholds.
 
@@ -327,9 +348,7 @@ def check_respiratory_rate_status(
     return ("normal", None)
 
 
-def check_temperature_status(
-    temp: float, age_years: float = 30
-) -> tuple[str, AlertDict | None]:
+def check_temperature_status(temp: float, age_years: float = 30) -> tuple[str, AlertDict | None]:
     """
     Check temperature against age-appropriate thresholds.
 
@@ -436,7 +455,11 @@ def check_map_status(
                 value=map_value,
                 threshold=thresholds["critical_low"],
                 clinical_note="Immediate intervention required for hypotensive crisis",
-                actions=["Assess airway and breathing", "Establish IV access", "Prepare vasopressors"],
+                actions=[
+                    "Assess airway and breathing",
+                    "Establish IV access",
+                    "Prepare vasopressors",
+                ],
             ),
         )
 
@@ -576,7 +599,11 @@ class TriageCategoryCalculator:
 
         # Check ORANGE criteria (very urgent)
         orange_alerts = self._check_orange_criteria(
-            vitals, pain_score, chief_complaint_category, mobility, gcs_total,
+            vitals,
+            pain_score,
+            chief_complaint_category,
+            mobility,
+            gcs_total,
             capillary_refill_seconds=capillary_refill_seconds,
             muac_cm=muac_cm,
             patient_age_years=patient_age_years,
@@ -647,7 +674,10 @@ class TriageCategoryCalculator:
                             vital_type="GENERAL",
                             message=f"ETAT danger sign: {sign_labels[sign]}",
                             clinical_note="WHO ETAT: immediate assessment and treatment required",
-                            actions=["Assess ABC (Airway, Breathing, Circulation)", "Initiate emergency treatment"],
+                            actions=[
+                                "Assess ABC (Airway, Breathing, Circulation)",
+                                "Initiate emergency treatment",
+                            ],
                         )
                     )
 
@@ -659,7 +689,11 @@ class TriageCategoryCalculator:
                     vital_type="GENERAL",
                     message="Severe dehydration (WHO classification)",
                     clinical_note="Immediate IV/IO fluid resuscitation required",
-                    actions=["IV access", "Ringer's lactate 20ml/kg bolus", "Reassess after 30 min"],
+                    actions=[
+                        "IV access",
+                        "Ringer's lactate 20ml/kg bolus",
+                        "Reassess after 30 min",
+                    ],
                 )
             )
 
@@ -695,15 +729,23 @@ class TriageCategoryCalculator:
                     vital_type="GENERAL",
                     message="Unable to breastfeed / drink (infant)",
                     clinical_note="ETAT danger sign — risk of hypoglycaemia and dehydration",
-                    actions=["Check blood glucose", "NG tube feed or IV dextrose", "Assess for sepsis"],
+                    actions=[
+                        "Check blood glucose",
+                        "NG tube feed or IV dextrose",
+                        "Assess for sepsis",
+                    ],
                 )
             )
 
         return alerts
 
     def _check_red_criteria(
-        self, vitals: dict, mental_status: str, chief_complaint: str, patient_age_years: float = 30,
-        gcs_total: int | None = None
+        self,
+        vitals: dict,
+        mental_status: str,
+        chief_complaint: str,
+        patient_age_years: float = 30,
+        gcs_total: int | None = None,
     ) -> list[AlertDict]:
         """
         Check for RED (Emergency) criteria.
@@ -768,7 +810,12 @@ class TriageCategoryCalculator:
                     value=gcs_total,
                     threshold=8,
                     clinical_note="GCS ≤8 indicates severe brain injury; intubation likely needed",
-                    actions=["Protect airway", "Consider intubation", "Urgent CT head", "Neurosurgery consult"],
+                    actions=[
+                        "Protect airway",
+                        "Consider intubation",
+                        "Urgent CT head",
+                        "Neurosurgery consult",
+                    ],
                 )
             )
             return alerts
@@ -884,7 +931,11 @@ class TriageCategoryCalculator:
         return alerts if has_red_criteria else []
 
     def _check_orange_criteria(
-        self, vitals: dict, pain_score: int | None, chief_complaint: str, mobility: str | None,
+        self,
+        vitals: dict,
+        pain_score: int | None,
+        chief_complaint: str,
+        mobility: str | None,
         gcs_total: int | None = None,
         capillary_refill_seconds: int | None = None,
         muac_cm: float | None = None,
@@ -1019,7 +1070,11 @@ class TriageCategoryCalculator:
                     value=float(muac_cm),
                     threshold=11.5,
                     clinical_note="SAM — high mortality risk; initiate therapeutic feeding",
-                    actions=["F-75 therapeutic milk", "Check blood glucose", "Assess for complications"],
+                    actions=[
+                        "F-75 therapeutic milk",
+                        "Check blood glucose",
+                        "Assess for complications",
+                    ],
                 )
             )
             return alerts
@@ -1197,9 +1252,7 @@ def find_best_triage_room(facility):
 
     # --- 1. Check settings ---------------------------------------------------
     try:
-        settings = TriageSettings.objects.select_related("triage_department").get(
-            facility=facility
-        )
+        settings = TriageSettings.objects.select_related("triage_department").get(facility=facility)
     except TriageSettings.DoesNotExist:
         return None
 

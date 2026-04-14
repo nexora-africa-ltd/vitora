@@ -200,7 +200,10 @@ class MCHRegistrationSerializer(serializers.ModelSerializer):
 
     def get_registered_by_name(self, obj):
         if obj.registered_by:
-            return f"{obj.registered_by.first_name} {obj.registered_by.last_name}".strip() or obj.registered_by.username
+            return (
+                f"{obj.registered_by.first_name} {obj.registered_by.last_name}".strip()
+                or obj.registered_by.username
+            )
         return None
 
     def get_gravida(self, obj):
@@ -337,7 +340,10 @@ class ANCVisitSerializer(serializers.ModelSerializer):
 
     def get_conducted_by_name(self, obj):
         if obj.conducted_by:
-            return f"{obj.conducted_by.first_name} {obj.conducted_by.last_name}".strip() or obj.conducted_by.username
+            return (
+                f"{obj.conducted_by.first_name} {obj.conducted_by.last_name}".strip()
+                or obj.conducted_by.username
+            )
         return None
 
     def get_alerts(self, obj):
@@ -555,18 +561,26 @@ class DeliverySerializer(serializers.ModelSerializer):
         if self.instance is None and registration:
             if Delivery.objects.filter(registration=registration).exists():
                 raise serializers.ValidationError(
-                    {"registration": "A delivery has already been recorded for this MCH registration."}
+                    {
+                        "registration": "A delivery has already been recorded for this MCH registration."
+                    }
                 )
             if registration.status not in ("ACTIVE", "DELIVERED"):
                 raise serializers.ValidationError(
-                    {"registration": f"Cannot record delivery for a registration with status '{registration.status}'."}
+                    {
+                        "registration": f"Cannot record delivery for a registration with status '{registration.status}'."
+                    }
                 )
 
         partograph = (
-            attrs.get("partograph") if "partograph" in attrs else getattr(self.instance, "partograph", None)
+            attrs.get("partograph")
+            if "partograph" in attrs
+            else getattr(self.instance, "partograph", None)
         )
         admission = (
-            attrs.get("admission") if "admission" in attrs else getattr(self.instance, "admission", None)
+            attrs.get("admission")
+            if "admission" in attrs
+            else getattr(self.instance, "admission", None)
         )
 
         if registration and partograph and partograph.registration_id != registration.id:
@@ -584,9 +598,16 @@ class DeliverySerializer(serializers.ModelSerializer):
                     {"admission": "Admission must belong to the same MCH registration."}
                 )
 
-        if partograph and admission and partograph.admission_id and partograph.admission_id != admission.id:
+        if (
+            partograph
+            and admission
+            and partograph.admission_id
+            and partograph.admission_id != admission.id
+        ):
             raise serializers.ValidationError(
-                {"admission": "Delivery admission must match the linked labour partograph admission."}
+                {
+                    "admission": "Delivery admission must match the linked labour partograph admission."
+                }
             )
 
         return attrs
@@ -599,13 +620,20 @@ class DeliverySerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         partograph = validated_data.get("partograph", instance.partograph)
-        if partograph and validated_data.get("admission", instance.admission) is None and partograph.admission_id:
+        if (
+            partograph
+            and validated_data.get("admission", instance.admission) is None
+            and partograph.admission_id
+        ):
             validated_data["admission"] = partograph.admission
         return super().update(instance, validated_data)
 
     def get_delivered_by_name(self, obj):
         if obj.delivered_by:
-            return f"{obj.delivered_by.first_name} {obj.delivered_by.last_name}".strip() or obj.delivered_by.username
+            return (
+                f"{obj.delivered_by.first_name} {obj.delivered_by.last_name}".strip()
+                or obj.delivered_by.username
+            )
         return None
 
     def get_baby_patient_mrn(self, obj):
@@ -624,9 +652,7 @@ class DeliveryListSerializer(serializers.ModelSerializer):
         source="registration.mch_number", read_only=True
     )
     mother_name = serializers.SerializerMethodField()
-    mother_mrn = serializers.CharField(
-        source="registration.mother.mrn", read_only=True
-    )
+    mother_mrn = serializers.CharField(source="registration.mother.mrn", read_only=True)
     place_of_delivery = serializers.CharField(read_only=True)
     delivered_by_name = serializers.SerializerMethodField()
     alerts = serializers.SerializerMethodField()
@@ -784,10 +810,14 @@ class LabourPartographSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         registration = attrs.get("registration") or getattr(self.instance, "registration", None)
         admission = (
-            attrs.get("admission") if "admission" in attrs else getattr(self.instance, "admission", None)
+            attrs.get("admission")
+            if "admission" in attrs
+            else getattr(self.instance, "admission", None)
         )
         encounter = (
-            attrs.get("encounter") if "encounter" in attrs else getattr(self.instance, "encounter", None)
+            attrs.get("encounter")
+            if "encounter" in attrs
+            else getattr(self.instance, "encounter", None)
         )
 
         if registration and admission:
@@ -800,7 +830,12 @@ class LabourPartographSerializer(serializers.ModelSerializer):
                     {"admission": "Admission must belong to the same MCH registration."}
                 )
 
-        if encounter and admission and admission.opd_encounter_id and admission.opd_encounter_id != encounter.id:
+        if (
+            encounter
+            and admission
+            and admission.opd_encounter_id
+            and admission.opd_encounter_id != encounter.id
+        ):
             raise serializers.ValidationError(
                 {"encounter": "Labour encounter must match the linked admission OPD encounter."}
             )
@@ -875,16 +910,29 @@ class PNCVisitSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         registration = attrs.get("registration") or getattr(self.instance, "registration", None)
-        admission = attrs.get("admission") if "admission" in attrs else getattr(self.instance, "admission", None)
-        discharge = attrs.get("discharge") if "discharge" in attrs else getattr(self.instance, "discharge", None)
+        admission = (
+            attrs.get("admission")
+            if "admission" in attrs
+            else getattr(self.instance, "admission", None)
+        )
+        discharge = (
+            attrs.get("discharge")
+            if "discharge" in attrs
+            else getattr(self.instance, "discharge", None)
+        )
 
         if registration and discharge:
             discharge_admission = discharge.admission
             if discharge_admission.patient_id != registration.mother_id:
                 raise serializers.ValidationError(
-                    {"discharge": "Discharge admission patient must match the MCH registration mother."}
+                    {
+                        "discharge": "Discharge admission patient must match the MCH registration mother."
+                    }
                 )
-            if discharge_admission.mch_registration_id and discharge_admission.mch_registration_id != registration.id:
+            if (
+                discharge_admission.mch_registration_id
+                and discharge_admission.mch_registration_id != registration.id
+            ):
                 raise serializers.ValidationError(
                     {"discharge": "Discharge must belong to the same MCH registration."}
                 )
@@ -901,7 +949,9 @@ class PNCVisitSerializer(serializers.ModelSerializer):
 
         if admission and discharge and discharge.admission_id != admission.id:
             raise serializers.ValidationError(
-                {"discharge": "Discharge must belong to the same admission linked to this PNC visit."}
+                {
+                    "discharge": "Discharge must belong to the same admission linked to this PNC visit."
+                }
             )
 
         return attrs
@@ -920,7 +970,10 @@ class PNCVisitSerializer(serializers.ModelSerializer):
 
     def get_conducted_by_name(self, obj):
         if obj.conducted_by:
-            return f"{obj.conducted_by.first_name} {obj.conducted_by.last_name}".strip() or obj.conducted_by.username
+            return (
+                f"{obj.conducted_by.first_name} {obj.conducted_by.last_name}".strip()
+                or obj.conducted_by.username
+            )
         return None
 
     def get_alerts(self, obj):
@@ -1014,7 +1067,10 @@ class GrowthMeasurementSerializer(serializers.ModelSerializer):
 
     def get_measured_by_name(self, obj):
         if obj.measured_by:
-            return f"{obj.measured_by.first_name} {obj.measured_by.last_name}".strip() or obj.measured_by.username
+            return (
+                f"{obj.measured_by.first_name} {obj.measured_by.last_name}".strip()
+                or obj.measured_by.username
+            )
         return None
 
     def get_alerts(self, obj):
@@ -1135,7 +1191,10 @@ class ImmunizationRecordSerializer(serializers.ModelSerializer):
 
     def get_administered_by_name(self, obj):
         if obj.administered_by:
-            return f"{obj.administered_by.first_name} {obj.administered_by.last_name}".strip() or obj.administered_by.username
+            return (
+                f"{obj.administered_by.first_name} {obj.administered_by.last_name}".strip()
+                or obj.administered_by.username
+            )
         return None
 
 
@@ -1208,7 +1267,10 @@ class VitaminASupplementSerializer(serializers.ModelSerializer):
 
     def get_administered_by_name(self, obj):
         if obj.administered_by:
-            return f"{obj.administered_by.first_name} {obj.administered_by.last_name}".strip() or obj.administered_by.username
+            return (
+                f"{obj.administered_by.first_name} {obj.administered_by.last_name}".strip()
+                or obj.administered_by.username
+            )
         return None
 
 
@@ -1220,12 +1282,8 @@ class VitaminASupplementSerializer(serializers.ModelSerializer):
 class AEFISerializer(serializers.ModelSerializer):
     """Full serializer for AEFI report (MCH compatibility layer)."""
 
-    vaccine_code = serializers.CharField(
-        source="immunization_record.vaccine.code", read_only=True
-    )
-    vaccine_name = serializers.CharField(
-        source="immunization_record.vaccine.name", read_only=True
-    )
+    vaccine_code = serializers.CharField(source="immunization_record.vaccine.code", read_only=True)
+    vaccine_name = serializers.CharField(source="immunization_record.vaccine.name", read_only=True)
     patient_name = serializers.SerializerMethodField()
     investigated_by_name = serializers.SerializerMethodField()
 
@@ -1257,16 +1315,17 @@ class AEFISerializer(serializers.ModelSerializer):
 
     def get_investigated_by_name(self, obj):
         if obj.investigated_by:
-            return f"{obj.investigated_by.first_name} {obj.investigated_by.last_name}".strip() or obj.investigated_by.username
+            return (
+                f"{obj.investigated_by.first_name} {obj.investigated_by.last_name}".strip()
+                or obj.investigated_by.username
+            )
         return None
 
 
 class AEFIListSerializer(serializers.ModelSerializer):
     """Lean serializer for AEFI list (MCH compatibility layer)."""
 
-    vaccine_code = serializers.CharField(
-        source="immunization_record.vaccine.code", read_only=True
-    )
+    vaccine_code = serializers.CharField(source="immunization_record.vaccine.code", read_only=True)
 
     class Meta:
         model = AEFI
@@ -1373,7 +1432,10 @@ class HEIFollowUpSerializer(serializers.ModelSerializer):
 
     def get_enrolled_by_name(self, obj):
         if obj.enrolled_by:
-            return f"{obj.enrolled_by.first_name} {obj.enrolled_by.last_name}".strip() or obj.enrolled_by.username
+            return (
+                f"{obj.enrolled_by.first_name} {obj.enrolled_by.last_name}".strip()
+                or obj.enrolled_by.username
+            )
         return None
 
 

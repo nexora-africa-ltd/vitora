@@ -207,7 +207,9 @@ class TestSpO2API:
         assert response.status_code == 201
         assert float(response.data["spo2"]) == 97.0
 
-    def test_spo2_included_in_encounter_response(self, authenticated_client, sample_patient, sample_facility):
+    def test_spo2_included_in_encounter_response(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """Test that SpO2 is included in encounter response."""
         from hmis.apps.encounters.models import Encounter
 

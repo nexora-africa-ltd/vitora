@@ -214,9 +214,7 @@ class TestFacilityBillingConfigAPI:
 
     def test_retrieve_config(self, authenticated_client, billing_config):
         """Should return config with computed fields."""
-        response = authenticated_client.get(
-            f"/api/billing/facility-configs/{billing_config.id}/"
-        )
+        response = authenticated_client.get(f"/api/billing/facility-configs/{billing_config.id}/")
         assert response.status_code == status.HTTP_200_OK
         data = response.data
         assert data["facility_name"] == "Test Clinic - Main"
@@ -269,9 +267,7 @@ class TestSHAContractTracking:
 
     def test_sha_contracts_endpoint(self, authenticated_client, billing_config):
         """Should return SHA-related facility configs."""
-        response = authenticated_client.get(
-            "/api/billing/facility-configs/sha-contracts/"
-        )
+        response = authenticated_client.get("/api/billing/facility-configs/sha-contracts/")
         assert response.status_code == status.HTTP_200_OK
         data = response.data
         assert len(data) >= 1
@@ -284,17 +280,13 @@ class TestSHAContractTracking:
         self, authenticated_client, billing_config, second_config
     ):
         """Should exclude facilities that haven't applied for SHA."""
-        response = authenticated_client.get(
-            "/api/billing/facility-configs/sha-contracts/"
-        )
+        response = authenticated_client.get("/api/billing/facility-configs/sha-contracts/")
         assert response.status_code == status.HTTP_200_OK
         facility_names = [item["facility_name"] for item in response.data]
         assert "Test Clinic - Main" in facility_names
         assert "Test Clinic - Branch" not in facility_names
 
-    def test_sha_contracts_filter_by_status(
-        self, authenticated_client, billing_config
-    ):
+    def test_sha_contracts_filter_by_status(self, authenticated_client, billing_config):
         """Should filter by accreditation status."""
         response = authenticated_client.get(
             "/api/billing/facility-configs/sha-contracts/?status=accredited"
@@ -312,9 +304,7 @@ class TestSHAContractTracking:
 class TestFacilityScopedReports:
     """Tests for facility-scoped daily collection report."""
 
-    def test_daily_collection_per_facility(
-        self, authenticated_client, billing_config
-    ):
+    def test_daily_collection_per_facility(self, authenticated_client, billing_config):
         """Should return daily collection with facility context."""
         today = date.today().isoformat()
         response = authenticated_client.get(
@@ -327,18 +317,14 @@ class TestFacilityScopedReports:
         assert "total_collections" in data
         assert "by_payment_method" in data
 
-    def test_daily_collection_requires_date(
-        self, authenticated_client, billing_config
-    ):
+    def test_daily_collection_requires_date(self, authenticated_client, billing_config):
         """Should return 400 when date parameter is missing."""
         response = authenticated_client.get(
             f"/api/billing/facility-configs/{billing_config.id}/daily-collection/"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_daily_collection_invalid_date(
-        self, authenticated_client, billing_config
-    ):
+    def test_daily_collection_invalid_date(self, authenticated_client, billing_config):
         """Should return 400 for invalid date format."""
         response = authenticated_client.get(
             f"/api/billing/facility-configs/{billing_config.id}/daily-collection/?date=not-a-date"

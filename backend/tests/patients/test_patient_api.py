@@ -72,7 +72,9 @@ def sample_patient_data(sample_county, sample_sub_county):
 class TestPatientAPIEndpoints:
     """Test Patient API CRUD operations."""
 
-    def test_list_patients(self, auth_client, sample_county, sample_sub_county, sample_organization):
+    def test_list_patients(
+        self, auth_client, sample_county, sample_sub_county, sample_organization
+    ):
         """Test GET /api/patients/ - List all patients."""
         from hmis.apps.patients.models import Patient
 
@@ -126,7 +128,10 @@ class TestPatientAPIEndpoints:
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="M",
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
             organization=sample_organization,
         )
 
@@ -148,7 +153,10 @@ class TestPatientAPIEndpoints:
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="M",
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
             organization=sample_organization,
         )
 
@@ -172,7 +180,10 @@ class TestPatientAPIEndpoints:
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="M",
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
             organization=sample_organization,
         )
 
@@ -189,7 +200,10 @@ class TestPatientAPIEndpoints:
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="M",
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
             organization=sample_organization,
         )
 
@@ -205,11 +219,17 @@ class TestPatientAPIEndpoints:
         from hmis.apps.patients.models import Patient
 
         Patient.objects.create(
-            first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="M",
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
             organization=sample_organization,
         )
         Patient.objects.create(
-            first_name="Jane", last_name="Smith", date_of_birth=date(1985, 5, 15), gender="F",
+            first_name="Jane",
+            last_name="Smith",
+            date_of_birth=date(1985, 5, 15),
+            gender="F",
             organization=sample_organization,
         )
 
@@ -224,11 +244,17 @@ class TestPatientAPIEndpoints:
         from hmis.apps.patients.models import Patient
 
         Patient.objects.create(
-            first_name="John", last_name="Doe", date_of_birth=date(1990, 1, 1), gender="M",
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
             organization=sample_organization,
         )
         Patient.objects.create(
-            first_name="Jane", last_name="Smith", date_of_birth=date(1985, 5, 15), gender="F",
+            first_name="Jane",
+            last_name="Smith",
+            date_of_birth=date(1985, 5, 15),
+            gender="F",
             organization=sample_organization,
         )
 
@@ -249,7 +275,7 @@ class TestPatientAPIEndpoints:
                 last_name="Test",
                 date_of_birth=date(1990, 1, 1),
                 gender="M",
-            organization=sample_organization,
+                organization=sample_organization,
             )
 
         response = auth_client.get("/api/patients/")
@@ -271,7 +297,7 @@ class TestPatientAPIEndpoints:
                 last_name="Test",
                 date_of_birth=date(1990, 1, 1),
                 gender="M",
-            organization=sample_organization,
+                organization=sample_organization,
             )
 
         # Request page 10 which doesn't exist
@@ -293,7 +319,7 @@ class TestPatientAPIEndpoints:
                 last_name="Test",
                 date_of_birth=date(1990, 1, 1),
                 gender="M",
-            organization=sample_organization,
+                organization=sample_organization,
             )
 
         # Request with page_size=5
@@ -341,7 +367,9 @@ class TestPatientAPIEndpoints:
         assert response.data["address"] == "123 Main St, Nairobi"
         assert response.data["national_id"] == "12345678"
 
-    def test_patient_age_in_response(self, auth_client, sample_county, sample_sub_county, sample_organization):
+    def test_patient_age_in_response(
+        self, auth_client, sample_county, sample_sub_county, sample_organization
+    ):
         """Test that patient age is included in API response."""
         from hmis.apps.patients.models import Patient
 
@@ -361,7 +389,9 @@ class TestPatientAPIEndpoints:
         assert "age" in response.data
         assert isinstance(response.data["age"], int)
 
-    def test_patient_full_name_in_response(self, auth_client, sample_county, sample_sub_county, sample_organization):
+    def test_patient_full_name_in_response(
+        self, auth_client, sample_county, sample_sub_county, sample_organization
+    ):
         """Test that patient full name is included in API response."""
         from hmis.apps.patients.models import Patient
 

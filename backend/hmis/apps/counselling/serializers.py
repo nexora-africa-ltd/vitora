@@ -73,7 +73,9 @@ class CounsellingSessionSerializer(serializers.ModelSerializer):
     counsellor_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     outcome_display = serializers.CharField(source="get_outcome_display", read_only=True)
-    follow_up_display = serializers.CharField(source="get_follow_up_required_display", read_only=True)
+    follow_up_display = serializers.CharField(
+        source="get_follow_up_required_display", read_only=True
+    )
     risk_level_display = serializers.CharField(source="get_risk_level_display", read_only=True)
     mood_improvement = serializers.IntegerField(read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
@@ -137,7 +139,10 @@ class CounsellingSessionSerializer(serializers.ModelSerializer):
     def get_counsellor_name(self, obj):
         """Return counsellor full name."""
         if obj.counsellor:
-            return f"{obj.counsellor.first_name} {obj.counsellor.last_name}".strip() or obj.counsellor.username
+            return (
+                f"{obj.counsellor.first_name} {obj.counsellor.last_name}".strip()
+                or obj.counsellor.username
+            )
         return None
 
 
@@ -236,7 +241,10 @@ class CounsellingSessionListSerializer(serializers.ModelSerializer):
     def get_counsellor_name(self, obj):
         """Return counsellor full name."""
         if obj.counsellor:
-            return f"{obj.counsellor.first_name} {obj.counsellor.last_name}".strip() or obj.counsellor.username
+            return (
+                f"{obj.counsellor.first_name} {obj.counsellor.last_name}".strip()
+                or obj.counsellor.username
+            )
         return None
 
     def get_patient_name(self, obj):
@@ -330,7 +338,9 @@ class CounsellingReferralSerializer(serializers.ModelSerializer):
     def get_assigned_counsellor_name(self, obj):
         """Return assigned counsellor full name."""
         if obj.assigned_counsellor:
-            name = f"{obj.assigned_counsellor.first_name} {obj.assigned_counsellor.last_name}".strip()
+            name = (
+                f"{obj.assigned_counsellor.first_name} {obj.assigned_counsellor.last_name}".strip()
+            )
             return name or obj.assigned_counsellor.username
         return None
 
@@ -402,7 +412,9 @@ class CounsellingReferralListSerializer(serializers.ModelSerializer):
     def get_assigned_counsellor_name(self, obj):
         """Return assigned counsellor full name."""
         if obj.assigned_counsellor:
-            name = f"{obj.assigned_counsellor.first_name} {obj.assigned_counsellor.last_name}".strip()
+            name = (
+                f"{obj.assigned_counsellor.first_name} {obj.assigned_counsellor.last_name}".strip()
+            )
             return name or obj.assigned_counsellor.username
         return None
 
@@ -437,17 +449,26 @@ class CounsellingReferralCreateSerializer(serializers.ModelSerializer):
             if patient_age is not None:
                 if counselling_type.min_age and patient_age < counselling_type.min_age:
                     raise serializers.ValidationError(
-                        {"counselling_type": f"Patient must be at least {counselling_type.min_age} years old"}
+                        {
+                            "counselling_type": f"Patient must be at least {counselling_type.min_age} years old"
+                        }
                     )
                 if counselling_type.max_age and patient_age > counselling_type.max_age:
                     raise serializers.ValidationError(
-                        {"counselling_type": f"Patient must be under {counselling_type.max_age} years old"}
+                        {
+                            "counselling_type": f"Patient must be under {counselling_type.max_age} years old"
+                        }
                     )
 
             # Validate gender restrictions
-            if counselling_type.gender_specific and patient.gender != counselling_type.gender_specific:
+            if (
+                counselling_type.gender_specific
+                and patient.gender != counselling_type.gender_specific
+            ):
                 raise serializers.ValidationError(
-                    {"counselling_type": f"This counselling type is for {counselling_type.get_gender_specific_display()} patients only"}
+                    {
+                        "counselling_type": f"This counselling type is for {counselling_type.get_gender_specific_display()} patients only"
+                    }
                 )
 
         return data

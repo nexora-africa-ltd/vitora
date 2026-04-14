@@ -205,7 +205,9 @@ class TestMedicalHistoryAPI:
         assert response.data["chronic_conditions"] == "Asthma"
         assert response.data["current_medications"] == "Salbutamol inhaler PRN"
 
-    def test_medical_history_in_encounter_response(self, authenticated_client, sample_patient, sample_facility):
+    def test_medical_history_in_encounter_response(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """Test medical history fields included in encounter response."""
         from hmis.apps.encounters.models import Encounter
 
@@ -228,7 +230,9 @@ class TestMedicalHistoryAPI:
         assert "family_history" in response.data
         assert "social_history" in response.data
 
-    def test_update_medical_history_via_api(self, authenticated_client, sample_patient, sample_facility):
+    def test_update_medical_history_via_api(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """Test updating medical history via API."""
         from hmis.apps.encounters.models import Encounter
 

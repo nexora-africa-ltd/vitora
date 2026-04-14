@@ -683,7 +683,9 @@ class TestConsultationQueueEndpoint:
         assert triaged_encounter.id in encounter_ids
         assert bypassed_encounter.id not in encounter_ids
 
-    def test_consultation_queue_filter_by_consultation_status(self, auth_client, sample_patient, sample_facility):
+    def test_consultation_queue_filter_by_consultation_status(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Should support filtering by consultation_status."""
         waiting = Encounter.objects.create(
             patient=sample_patient,

@@ -133,7 +133,11 @@ class TestSHAMemberModel:
     # Test 4: Unique SHA number constraint
     # =========================================================================
     def test_unique_sha_number_constraint(
-        self, sample_patient, test_user, sample_county, sample_sub_county,
+        self,
+        sample_patient,
+        test_user,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Should reject duplicate SHA numbers."""

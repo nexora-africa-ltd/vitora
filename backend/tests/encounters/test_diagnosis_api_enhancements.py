@@ -72,7 +72,9 @@ def diagnosis_api_sample_icd10_code(db):
 
 
 @pytest.fixture
-def diagnosis_api_authenticated_client(db, diagnosis_api_test_user, sample_organization, sample_facility):
+def diagnosis_api_authenticated_client(
+    db, diagnosis_api_test_user, sample_organization, sample_facility
+):
     """Provide authenticated API client for diagnosis API tests."""
     client = APIClient()
     ensure_staff_profile(diagnosis_api_test_user, sample_organization, sample_facility)

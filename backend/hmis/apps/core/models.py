@@ -224,9 +224,7 @@ class AuditLog(models.Model):
             # SQLite uses serialized transactions inherently.
             from django.db import connection
 
-            qs = cls.objects.filter(sequence_number__isnull=False).order_by(
-                "-sequence_number"
-            )
+            qs = cls.objects.filter(sequence_number__isnull=False).order_by("-sequence_number")
             if connection.vendor != "sqlite":
                 qs = qs.select_for_update()
             last_entry = qs.values("sequence_number", "entry_hash").first()
@@ -1590,14 +1588,13 @@ class StaffProfile(models.Model):
         allowed_org_ids = set()
         if self.organization_id:
             allowed_org_ids.add(self.organization_id)
-        allowed_org_ids.update(
-            self.secondary_organizations.values_list("id", flat=True)
-        )
+        allowed_org_ids.update(self.secondary_organizations.values_list("id", flat=True))
         if not allowed_org_ids:
             return
         bad = list(
-            self.secondary_facilities.exclude(organization_id__in=allowed_org_ids)
-            .values_list("name", flat=True)
+            self.secondary_facilities.exclude(organization_id__in=allowed_org_ids).values_list(
+                "name", flat=True
+            )
         )
         if bad:
             raise ValidationError(
@@ -2710,16 +2707,24 @@ class Facility(TimeStampedModel):
         """Auto-apply default modules based on KEPH level on creation."""
         if self._state.adding and not getattr(self, "_skip_module_defaults", False):
             module_fields = [
-                "has_outpatient", "has_inpatient", "has_emergency", "has_pharmacy",
-                "has_laboratory", "has_imaging", "has_theatre", "has_dialysis",
-                "has_icu", "has_maternity", "has_mortuary", "has_blood_bank",
+                "has_outpatient",
+                "has_inpatient",
+                "has_emergency",
+                "has_pharmacy",
+                "has_laboratory",
+                "has_imaging",
+                "has_theatre",
+                "has_dialysis",
+                "has_icu",
+                "has_maternity",
+                "has_mortuary",
+                "has_blood_bank",
             ]
             # Only apply defaults if no module was explicitly set beyond the
             # model-level defaults (outpatient=True, pharmacy=True, rest=False).
             defaults_from_model = {"has_outpatient": True, "has_pharmacy": True}
             all_at_model_default = all(
-                getattr(self, f) == defaults_from_model.get(f, False)
-                for f in module_fields
+                getattr(self, f) == defaults_from_model.get(f, False) for f in module_fields
             )
             if all_at_model_default and self.level:
                 level_defaults = self.default_modules_for_level(self.level)

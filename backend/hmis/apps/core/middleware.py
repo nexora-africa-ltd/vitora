@@ -251,13 +251,15 @@ class MFAGraceEnforcementMiddleware:
 
         if is_mfa_grace_period_expired(user):
             return HttpResponse(
-                json.dumps({
-                    "detail": (
-                        "Your MFA setup grace period has expired. "
-                        "Please configure multi-factor authentication to continue."
-                    ),
-                    "code": "mfa_setup_required",
-                }),
+                json.dumps(
+                    {
+                        "detail": (
+                            "Your MFA setup grace period has expired. "
+                            "Please configure multi-factor authentication to continue."
+                        ),
+                        "code": "mfa_setup_required",
+                    }
+                ),
                 content_type="application/json",
                 status=403,
             )

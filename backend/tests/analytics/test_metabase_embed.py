@@ -29,9 +29,7 @@ class TestMetabaseEmbedView:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_invalid_resource_type_returns_400(self, authenticated_client):
-        response = authenticated_client.get(
-            EMBED_URL, {"resource_type": "table", "resource_id": 1}
-        )
+        response = authenticated_client.get(EMBED_URL, {"resource_type": "table", "resource_id": 1})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_negative_resource_id_returns_400(self, authenticated_client):

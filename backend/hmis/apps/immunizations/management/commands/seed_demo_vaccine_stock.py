@@ -22,26 +22,158 @@ from django.utils import timezone
 #                         days_until_expiry, manufacturer, supplier, storage, vvm, min_stock)
 STOCK_BATCHES = [
     # Well-stocked KEPI vaccines
-    ("BCG", "BCG-KE-2026-A01", 200, 145, 300, "Serum Institute of India", "KEMSA", "Main Fridge 1", "Stage 1", 30),
-    ("OPV0", "OPV-KE-2026-B03", 500, 380, 240, "Bio Farma", "KEMSA", "Main Fridge 1", "Stage 1", 50),
-    ("PENTA1", "PNT-KE-2026-C02", 300, 220, 180, "Serum Institute of India", "KEMSA", "Main Fridge 2", "Stage 1", 40),
+    (
+        "BCG",
+        "BCG-KE-2026-A01",
+        200,
+        145,
+        300,
+        "Serum Institute of India",
+        "KEMSA",
+        "Main Fridge 1",
+        "Stage 1",
+        30,
+    ),
+    (
+        "OPV0",
+        "OPV-KE-2026-B03",
+        500,
+        380,
+        240,
+        "Bio Farma",
+        "KEMSA",
+        "Main Fridge 1",
+        "Stage 1",
+        50,
+    ),
+    (
+        "PENTA1",
+        "PNT-KE-2026-C02",
+        300,
+        220,
+        180,
+        "Serum Institute of India",
+        "KEMSA",
+        "Main Fridge 2",
+        "Stage 1",
+        40,
+    ),
     ("PCV1", "PCV-KE-2026-D01", 250, 190, 200, "Pfizer", "KEMSA", "Main Fridge 1", "Stage 1", 35),
-    ("MR1", "MR-KE-2026-E01", 400, 310, 270, "Serum Institute of India", "KEMSA", "Main Fridge 2", "Stage 1", 50),
+    (
+        "MR1",
+        "MR-KE-2026-E01",
+        400,
+        310,
+        270,
+        "Serum Institute of India",
+        "KEMSA",
+        "Main Fridge 2",
+        "Stage 1",
+        50,
+    ),
     ("RV1", "RV-KE-2026-F01", 300, 245, 210, "GSK", "KEMSA", "Main Fridge 1", "Stage 1", 40),
-    ("IPV", "IPV-KE-2026-G01", 200, 155, 250, "Sanofi Pasteur", "KEMSA", "Main Fridge 2", "Stage 1", 25),
-    ("YF", "YF-KE-2026-H01", 150, 120, 350, "Institut Pasteur de Dakar", "KEMSA", "Main Fridge 1", "Stage 1", 20),
+    (
+        "IPV",
+        "IPV-KE-2026-G01",
+        200,
+        155,
+        250,
+        "Sanofi Pasteur",
+        "KEMSA",
+        "Main Fridge 2",
+        "Stage 1",
+        25,
+    ),
+    (
+        "YF",
+        "YF-KE-2026-H01",
+        150,
+        120,
+        350,
+        "Institut Pasteur de Dakar",
+        "KEMSA",
+        "Main Fridge 1",
+        "Stage 1",
+        20,
+    ),
     # Low stock batch (triggers alert)
-    ("PENTA2", "PNT-KE-2025-L01", 200, 8, 90, "Serum Institute of India", "KEMSA", "Main Fridge 2", "Stage 2", 30),
+    (
+        "PENTA2",
+        "PNT-KE-2025-L01",
+        200,
+        8,
+        90,
+        "Serum Institute of India",
+        "KEMSA",
+        "Main Fridge 2",
+        "Stage 2",
+        30,
+    ),
     # Near-expiry batch (within 30 days)
     ("OPV1", "OPV-KE-2025-N01", 300, 75, 18, "Bio Farma", "KEMSA", "Main Fridge 1", "Stage 2", 50),
     # Expired batch (for demo/training purposes)
-    ("HEPB0", "HBV-KE-2024-X01", 100, 12, -30, "LG Life Sciences", "KEMSA", "Cold Room A", "Stage 3", 15),
+    (
+        "HEPB0",
+        "HBV-KE-2024-X01",
+        100,
+        12,
+        -30,
+        "LG Life Sciences",
+        "KEMSA",
+        "Cold Room A",
+        "Stage 3",
+        15,
+    ),
     # Adult vaccines
-    ("HEPB_ADULT_1", "HBA-KE-2026-A01", 100, 78, 365, "GSK", "KEMSA", "Main Fridge 2", "Stage 1", 15),
-    ("TD_BOOSTER", "TD-KE-2026-B01", 200, 165, 300, "Serum Institute of India", "KEMSA", "Main Fridge 1", "Stage 1", 25),
-    ("FLU_ANNUAL", "FLU-KE-2026-C01", 150, 110, 120, "Sanofi Pasteur", "Direct", "Main Fridge 2", "Stage 1", 20),
+    (
+        "HEPB_ADULT_1",
+        "HBA-KE-2026-A01",
+        100,
+        78,
+        365,
+        "GSK",
+        "KEMSA",
+        "Main Fridge 2",
+        "Stage 1",
+        15,
+    ),
+    (
+        "TD_BOOSTER",
+        "TD-KE-2026-B01",
+        200,
+        165,
+        300,
+        "Serum Institute of India",
+        "KEMSA",
+        "Main Fridge 1",
+        "Stage 1",
+        25,
+    ),
+    (
+        "FLU_ANNUAL",
+        "FLU-KE-2026-C01",
+        150,
+        110,
+        120,
+        "Sanofi Pasteur",
+        "Direct",
+        "Main Fridge 2",
+        "Stage 1",
+        20,
+    ),
     # Campaign vaccines
-    ("COVID19_PF_1", "CPF-KE-2026-A01", 500, 320, 150, "Pfizer-BioNTech", "UNICEF", "Ultra-Cold Freezer", "N/A", 50),
+    (
+        "COVID19_PF_1",
+        "CPF-KE-2026-A01",
+        500,
+        320,
+        150,
+        "Pfizer-BioNTech",
+        "UNICEF",
+        "Ultra-Cold Freezer",
+        "N/A",
+        50,
+    ),
 ]
 
 COLD_CHAIN_EQUIPMENT = [
@@ -158,14 +290,18 @@ class Command(BaseCommand):
         try:
             demo_org = Organization.objects.get(slug="demo-health-services")
         except Organization.DoesNotExist:
-            self.stderr.write(self.style.ERROR("Demo organization not found. Run seed_demo_data first."))
+            self.stderr.write(
+                self.style.ERROR("Demo organization not found. Run seed_demo_data first.")
+            )
             return
 
         hq_facility = Facility.objects.filter(organization=demo_org, is_headquarters=True).first()
         if not hq_facility:
             hq_facility = Facility.objects.filter(organization=demo_org, is_active=True).first()
         if not hq_facility:
-            self.stderr.write(self.style.ERROR("No active facility found. Run seed_demo_data first."))
+            self.stderr.write(
+                self.style.ERROR("No active facility found. Run seed_demo_data first.")
+            )
             return
 
         # Verify seed_vaccines has been run
@@ -234,8 +370,16 @@ class Command(BaseCommand):
         # ── Vaccine Stock Batches ─────────────────────────────────────
         stock_created = 0
         for (
-            vax_code, batch_num, qty_recv, qty_hand, days_exp,
-            manufacturer, supplier, storage, vvm, min_stock,
+            vax_code,
+            batch_num,
+            qty_recv,
+            qty_hand,
+            days_exp,
+            manufacturer,
+            supplier,
+            storage,
+            vvm,
+            min_stock,
         ) in STOCK_BATCHES:
             vaccine = VaccineDefinition.objects.filter(code=vax_code).first()
             if not vaccine:
@@ -251,7 +395,9 @@ class Command(BaseCommand):
                     label = " [NEAR EXPIRY]"
                 elif qty_hand <= min_stock:
                     label = " [LOW STOCK]"
-                self.stdout.write(f"  Would create stock: {vax_code} {batch_num} ({qty_hand}/{qty_recv}){label}")
+                self.stdout.write(
+                    f"  Would create stock: {vax_code} {batch_num} ({qty_hand}/{qty_recv}){label}"
+                )
                 stock_created += 1
                 continue
 
@@ -297,9 +443,15 @@ class Command(BaseCommand):
         if total == 0:
             self.stdout.write(self.style.SUCCESS("\nAll demo stock data already exists."))
         elif dry_run:
-            self.stdout.write(self.style.WARNING(f"\nWould create ~{total} records. Run without --dry-run to apply."))
+            self.stdout.write(
+                self.style.WARNING(
+                    f"\nWould create ~{total} records. Run without --dry-run to apply."
+                )
+            )
         else:
-            self.stdout.write(self.style.SUCCESS(f"\n✅ Created {total} demo vaccine stock records."))
+            self.stdout.write(
+                self.style.SUCCESS(f"\n✅ Created {total} demo vaccine stock records.")
+            )
 
     # ── Helper: build realistic temperature log entries ────────────
     def _build_temp_logs(self, equip):
@@ -320,7 +472,7 @@ class Command(BaseCommand):
         # Base temperature depends on equipment type
         if equip.equipment_type == "FREEZER":
             base_temp = Decimal("-70.0")
-            _amplitude = Decimal("2.0")       # ±2°C swing
+            _amplitude = Decimal("2.0")  # ±2°C swing
         elif equip.equipment_type == "COLD_ROOM":
             base_temp = Decimal("4.5")
             _amplitude = Decimal("1.2")
@@ -335,7 +487,10 @@ class Command(BaseCommand):
         for days_ago in range(14, -1, -1):
             for hour in (8, 16):
                 reading_time = now.replace(
-                    hour=hour, minute=17, second=0, microsecond=0,
+                    hour=hour,
+                    minute=17,
+                    second=0,
+                    microsecond=0,
                 ) - timedelta(days=days_ago)
 
                 # Pseudo-random component from seed + day + hour
@@ -352,9 +507,11 @@ class Command(BaseCommand):
                 if (days_ago, hour) in excursion_slots:
                     if equip.equipment_type == "FREEZER":
                         temp = Decimal("-52.0")  # warmed significantly
-                        action_taken = "Power restored, generator started. Stock checked — VVM intact."
+                        action_taken = (
+                            "Power restored, generator started. Stock checked — VVM intact."
+                        )
                     else:
-                        temp = Decimal("12.5")   # well above +8°C
+                        temp = Decimal("12.5")  # well above +8°C
                         action_taken = "Door secured, ice packs replaced. Stock inspected."
 
                 # Clamp to sensible physical range
@@ -366,11 +523,13 @@ class Command(BaseCommand):
                 temp = temp.quantize(Decimal("0.01"))
                 is_excursion = temp < equip.min_temp or temp > equip.max_temp
 
-                logs.append({
-                    "temperature": temp,
-                    "recorded_at": reading_time,
-                    "is_excursion": is_excursion,
-                    "action_taken": action_taken,
-                })
+                logs.append(
+                    {
+                        "temperature": temp,
+                        "recorded_at": reading_time,
+                        "is_excursion": is_excursion,
+                        "action_taken": action_taken,
+                    }
+                )
 
         return logs

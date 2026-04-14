@@ -168,7 +168,9 @@ def sample_role(db):
 
 
 @pytest.fixture
-def test_staff_profile(db, test_user, sample_organization, sample_facility, sample_department, sample_role):
+def test_staff_profile(
+    db, test_user, sample_organization, sample_facility, sample_department, sample_role
+):
     """Create a StaffProfile linking test_user to the sample org/facility."""
     from datetime import date
 
@@ -310,7 +312,9 @@ def patient_data(sample_county, sample_sub_county):
 
 
 @pytest.fixture
-def sample_patient(db, test_user, sample_county, sample_sub_county, sample_organization, sample_facility):
+def sample_patient(
+    db, test_user, sample_county, sample_sub_county, sample_organization, sample_facility
+):
     """Create a sample patient for testing."""
     from hmis.apps.patients.models import Patient
 
@@ -482,7 +486,15 @@ def sample_test_catalog(db):
 
 
 @pytest.fixture
-def sample_lab_order(db, sample_patient, sample_encounter, test_user, sample_test_catalog, sample_facility, sample_organization):
+def sample_lab_order(
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    sample_test_catalog,
+    sample_facility,
+    sample_organization,
+):
     """Create a sample lab order for testing."""
     from hmis.apps.laboratory.models import LabOrder, LabOrderItem
 
@@ -532,8 +544,14 @@ def sample_lab_result(db, sample_lab_order, test_user):
 
 @pytest.fixture
 def sample_admission(
-    db, sample_patient, sample_encounter, test_user, sample_inpatient_ward, sample_bed,
-    sample_organization, sample_facility,
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    sample_inpatient_ward,
+    sample_bed,
+    sample_organization,
+    sample_facility,
 ):
     """Create a sample admission for testing."""
     from django.utils import timezone
@@ -957,7 +975,9 @@ def sample_patient_with_recent_visit(db, sample_county, sample_sub_county):
 
 
 @pytest.fixture
-def sample_patient_with_allergies(db, sample_county, sample_sub_county, sample_facility, sample_organization):
+def sample_patient_with_allergies(
+    db, sample_county, sample_sub_county, sample_facility, sample_organization
+):
     """Create a sample patient with known allergies."""
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.patients.models import Patient
@@ -1251,7 +1271,9 @@ def sample_treatment_plan(db, sample_encounter):
 
 
 @pytest.fixture
-def sample_prescription(db, sample_patient, sample_encounter, test_user, sample_organization, sample_facility):
+def sample_prescription(
+    db, sample_patient, sample_encounter, test_user, sample_organization, sample_facility
+):
     """Create a sample prescription for testing."""
     from datetime import timedelta
 

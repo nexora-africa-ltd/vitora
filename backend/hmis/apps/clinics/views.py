@@ -486,12 +486,17 @@ class ClinicSessionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         from hmis.apps.procedures.serializers import ProcedureOrderListSerializer
 
         session = self.get_object()
-        orders = ProcedureOrder.objects.filter(
-            scheduled_clinic=session.clinic,
-            scheduled_date=session.session_date,
-        ).exclude(
-            status__in=["COMPLETED", "CANCELLED"],
-        ).select_related("procedure", "patient", "scheduled_clinic").order_by("scheduled_time")
+        orders = (
+            ProcedureOrder.objects.filter(
+                scheduled_clinic=session.clinic,
+                scheduled_date=session.session_date,
+            )
+            .exclude(
+                status__in=["COMPLETED", "CANCELLED"],
+            )
+            .select_related("procedure", "patient", "scheduled_clinic")
+            .order_by("scheduled_time")
+        )
 
         serializer = ProcedureOrderListSerializer(orders, many=True)
         return Response(serializer.data)
@@ -799,9 +804,7 @@ class ClinicRoomViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filter rooms to the parent clinic."""
-        return ClinicRoom.objects.filter(
-            clinic_id=self.kwargs["clinic_pk"]
-        ).select_related("room")
+        return ClinicRoom.objects.filter(clinic_id=self.kwargs["clinic_pk"]).select_related("room")
 
     def get_serializer_class(self):
         """Get appropriate serializer class."""
@@ -818,9 +821,7 @@ class ClinicRoomViewSet(viewsets.ModelViewSet):
         room_id = room.pk if hasattr(room, "pk") else room
         existing = ClinicRoom.objects.filter(clinic=clinic, room_id=room_id).first()
         if existing:
-            return Response(
-                ClinicRoomSerializer(existing).data, status=status.HTTP_200_OK
-            )
+            return Response(ClinicRoomSerializer(existing).data, status=status.HTTP_200_OK)
         serializer.save(clinic=clinic)
         read_serializer = ClinicRoomSerializer(serializer.instance)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
@@ -836,14 +837,11 @@ class ClinicRoomViewSet(viewsets.ModelViewSet):
         from hmis.apps.scheduling.models import Shift
 
         today = date_type.today()
-        occupied_room_ids = (
-            Shift.objects.filter(
-                shift_date=today,
-                status__in=["ACTIVE", "ON_BREAK"],
-                room__isnull=False,
-            )
-            .values_list("room_id", flat=True)
-        )
+        occupied_room_ids = Shift.objects.filter(
+            shift_date=today,
+            status__in=["ACTIVE", "ON_BREAK"],
+            room__isnull=False,
+        ).values_list("room_id", flat=True)
         qs = (
             ClinicRoom.objects.filter(clinic_id=clinic_pk)
             .exclude(room_id__in=occupied_room_ids)

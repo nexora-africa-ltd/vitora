@@ -81,7 +81,11 @@ class Command(BaseCommand):
             {"key": "management", "label": "Management", "enabled": True},
             {"key": "condition_at_discharge", "label": "Condition at Discharge", "enabled": True},
             {"key": "discharge_medications", "label": "Discharge Medications", "enabled": True},
-            {"key": "discharge_instructions", "label": "Outcome / Discharge Instructions", "enabled": True},
+            {
+                "key": "discharge_instructions",
+                "label": "Outcome / Discharge Instructions",
+                "enabled": True,
+            },
             {"key": "follow_up", "label": "Follow-up / TCA", "enabled": True},
         ]
 
@@ -149,9 +153,7 @@ class Command(BaseCommand):
                 if force:
                     existing.delete()
 
-                default_layout = LEVEL_DEFAULT_LAYOUT.get(
-                    str(facility.level), "STANDARD"
-                )
+                default_layout = LEVEL_DEFAULT_LAYOUT.get(str(facility.level), "STANDARD")
 
                 for tpl_data in TEMPLATES:
                     is_default = tpl_data["layout"] == default_layout

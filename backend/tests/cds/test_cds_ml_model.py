@@ -253,9 +253,7 @@ class TestMLModelEvaluator:
                 "threshold": 0.5,
             },
         )
-        context = self._make_context(
-            ml_predictions={"some_model": {"risk_score": 0.9}}
-        )
+        context = self._make_context(ml_predictions={"some_model": {"risk_score": 0.9}})
 
         result = evaluate_rule(rule, context)
         assert result.triggered is False

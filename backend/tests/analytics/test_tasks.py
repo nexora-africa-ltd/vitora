@@ -73,6 +73,4 @@ class TestRefreshDemographicsSnapshot:
         result = refresh_demographics_snapshot()
 
         assert result["facilities"] >= 1
-        assert PatientDemographicSnapshot.objects.filter(
-            facility=sample_facility
-        ).exists()
+        assert PatientDemographicSnapshot.objects.filter(facility=sample_facility).exists()

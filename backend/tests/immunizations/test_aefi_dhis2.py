@@ -40,8 +40,12 @@ def bcg_vaccine(db):
 
 @pytest.fixture
 def child_patient(
-    db, test_user, sample_county, sample_sub_county,
-    sample_organization, sample_facility,
+    db,
+    test_user,
+    sample_county,
+    sample_sub_county,
+    sample_organization,
+    sample_facility,
 ):
     from hmis.apps.patients.models import Patient
 

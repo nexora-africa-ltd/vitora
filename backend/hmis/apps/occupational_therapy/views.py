@@ -429,7 +429,9 @@ class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewS
 
         if order.status != "IN_PROGRESS":
             return Response(
-                {"error": f"Cannot complete order with status '{order.status}'. Must be IN_PROGRESS."},
+                {
+                    "error": f"Cannot complete order with status '{order.status}'. Must be IN_PROGRESS."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

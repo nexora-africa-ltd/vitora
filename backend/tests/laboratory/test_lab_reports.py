@@ -35,7 +35,15 @@ def lab_test_catalog(db):
 
 
 @pytest.fixture
-def report_data(sample_patient, sample_encounter, test_user, another_user, lab_test_catalog, sample_organization, sample_facility):
+def report_data(
+    sample_patient,
+    sample_encounter,
+    test_user,
+    another_user,
+    lab_test_catalog,
+    sample_organization,
+    sample_facility,
+):
     now = timezone.now()
     start_date = (now - timedelta(days=7)).date()
     end_date = now.date()

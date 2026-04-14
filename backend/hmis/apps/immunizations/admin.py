@@ -52,7 +52,14 @@ class ImmunizationRecordAdmin(admin.ModelAdmin):
         "patient__mrn",
         "vaccine__code",
     ]
-    raw_id_fields = ["patient", "administered_by", "encounter", "campaign", "facility", "organization"]
+    raw_id_fields = [
+        "patient",
+        "administered_by",
+        "encounter",
+        "campaign",
+        "facility",
+        "organization",
+    ]
     ordering = ["-scheduled_date"]
 
     def vaccine_code(self, obj):
@@ -80,7 +87,15 @@ class ImmunizationRecordAdmin(admin.ModelAdmin):
 
 @admin.register(VaccineCampaign)
 class VaccineCampaignAdmin(admin.ModelAdmin):
-    list_display = ["name", "status", "start_date", "end_date", "target_population", "target_count", "facility"]
+    list_display = [
+        "name",
+        "status",
+        "start_date",
+        "end_date",
+        "target_population",
+        "target_count",
+        "facility",
+    ]
     list_filter = ["status", "target_population", "facility"]
     search_fields = ["name"]
     filter_horizontal = ["vaccines"]
@@ -125,63 +140,99 @@ class AEFIAdmin(admin.ModelAdmin):
     readonly_fields = ["dhis2_submitted_at", "dhis2_response", "national_classification"]
     ordering = ["-event_date"]
     fieldsets = (
-        ("Report Metadata", {
-            "fields": ("report_type", "parent_report", "immunization_record"),
-        }),
-        ("Patient Context", {
-            "fields": ("guardian_name",),
-        }),
-        ("Vaccination Centre", {
-            "fields": (
-                "vaccination_centre_name",
-                "vaccination_centre_county",
-                "institution_mfl_code",
-                "vaccination_service_type",
-            ),
-        }),
-        ("Event Details", {
-            "fields": (
-                "event_date",
-                "onset_time",
-                "event_types",
-                "other_event_type_detail",
-                "severity",
-                "description",
-            ),
-        }),
-        ("Outcome", {
-            "fields": ("outcome",),
-        }),
-        ("Past Medical History", {
-            "fields": ("past_medical_history_notes",),
-        }),
-        ("Action Taken", {
-            "fields": (
-                "treatment_given",
-                "treatment_details",
-                "specimen_collected",
-                "specimen_type",
-            ),
-        }),
-        ("Reporter", {
-            "fields": ("reported_by", "reported_by_designation"),
-        }),
-        ("Reporting to Authorities", {
-            "fields": ("reported_to_authorities", "report_date"),
-        }),
-        ("Investigation", {
-            "fields": ("investigated_by", "investigation_notes"),
-        }),
-        ("National / DHIS2", {
-            "fields": (
-                "national_classification",
-                "dhis2_submitted_at",
-                "dhis2_response",
-            ),
-        }),
-        ("Tenant", {
-            "fields": ("facility", "organization"),
-        }),
+        (
+            "Report Metadata",
+            {
+                "fields": ("report_type", "parent_report", "immunization_record"),
+            },
+        ),
+        (
+            "Patient Context",
+            {
+                "fields": ("guardian_name",),
+            },
+        ),
+        (
+            "Vaccination Centre",
+            {
+                "fields": (
+                    "vaccination_centre_name",
+                    "vaccination_centre_county",
+                    "institution_mfl_code",
+                    "vaccination_service_type",
+                ),
+            },
+        ),
+        (
+            "Event Details",
+            {
+                "fields": (
+                    "event_date",
+                    "onset_time",
+                    "event_types",
+                    "other_event_type_detail",
+                    "severity",
+                    "description",
+                ),
+            },
+        ),
+        (
+            "Outcome",
+            {
+                "fields": ("outcome",),
+            },
+        ),
+        (
+            "Past Medical History",
+            {
+                "fields": ("past_medical_history_notes",),
+            },
+        ),
+        (
+            "Action Taken",
+            {
+                "fields": (
+                    "treatment_given",
+                    "treatment_details",
+                    "specimen_collected",
+                    "specimen_type",
+                ),
+            },
+        ),
+        (
+            "Reporter",
+            {
+                "fields": ("reported_by", "reported_by_designation"),
+            },
+        ),
+        (
+            "Reporting to Authorities",
+            {
+                "fields": ("reported_to_authorities", "report_date"),
+            },
+        ),
+        (
+            "Investigation",
+            {
+                "fields": ("investigated_by", "investigation_notes"),
+            },
+        ),
+        (
+            "National / DHIS2",
+            {
+                "fields": (
+                    "national_classification",
+                    "dhis2_submitted_at",
+                    "dhis2_response",
+                ),
+            },
+        ),
+        (
+            "Tenant",
+            {
+                "fields": ("facility", "organization"),
+            },
+        ),
     )
 
     def vaccine_code(self, obj):
@@ -229,7 +280,13 @@ class VaccineStockAdmin(admin.ModelAdmin):
 class StockTransactionInline(admin.TabularInline):
     model = StockTransaction
     extra = 0
-    readonly_fields = ["transaction_type", "quantity", "balance_after", "performed_by", "created_at"]
+    readonly_fields = [
+        "transaction_type",
+        "quantity",
+        "balance_after",
+        "performed_by",
+        "created_at",
+    ]
 
 
 @admin.register(ColdChainEquipment)

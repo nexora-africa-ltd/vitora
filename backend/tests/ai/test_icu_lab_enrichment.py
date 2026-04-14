@@ -212,8 +212,11 @@ class TestICULabEnrichmentService:
         from hmis.apps.ai.services.icu_lab_enrichment import get_latest_labs_for_icu
 
         order = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=sample_admission,
         )
         _create_verified_result(order, wbc_test_catalog, 15.2, test_user)
@@ -243,8 +246,11 @@ class TestICULabEnrichmentService:
         from hmis.apps.ai.services.icu_lab_enrichment import get_latest_labs_for_icu
 
         order = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=sample_admission,
         )
         _create_verified_result(order, creatinine_no_loinc, 3.5, test_user)
@@ -271,8 +277,11 @@ class TestICULabEnrichmentService:
         from hmis.apps.laboratory.models import LabOrderItem, LabResult
 
         order = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=sample_admission,
         )
         item = LabOrderItem.objects.create(
@@ -310,16 +319,22 @@ class TestICULabEnrichmentService:
 
         # Create patient-wide result (no admission link)
         order_patient = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=None,
         )
         _create_verified_result(order_patient, wbc_test_catalog, 8.0, test_user)
 
         # Create admission-scoped result
         order_admission = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=sample_admission,
         )
         _create_verified_result(order_admission, wbc_test_catalog, 15.2, test_user)
@@ -346,16 +361,22 @@ class TestICULabEnrichmentService:
 
         # Admission has WBC only
         order_admission = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=sample_admission,
         )
         _create_verified_result(order_admission, wbc_test_catalog, 15.2, test_user)
 
         # Patient-wide has Lactate (not linked to admission)
         order_patient = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=None,
         )
         _create_verified_result(order_patient, lactate_test_catalog, 3.5, test_user)
@@ -381,8 +402,11 @@ class TestICULabEnrichmentService:
         from hmis.apps.ai.services.icu_lab_enrichment import get_latest_labs_for_icu
 
         order = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
         )
         _create_verified_result(order, wbc_test_catalog, 12.0, test_user)
 
@@ -439,8 +463,11 @@ class TestICULabEnrichmentEndpoint:
     ):
         """Should return enriched lab values for the admission."""
         order = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=sample_admission,
         )
         _create_verified_result(order, wbc_test_catalog, 15.2, test_user)
@@ -512,8 +539,11 @@ class TestICUPredictViewLabEnrichment:
     ):
         """Should enrich patient_data with labs when admission_id is provided."""
         order = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=sample_admission,
         )
         _create_verified_result(order, wbc_test_catalog, 15.2, test_user)
@@ -570,8 +600,11 @@ class TestICUPredictViewLabEnrichment:
     ):
         """Frontend-provided lab values should NOT be overwritten by enrichment."""
         order = _create_lab_order(
-            sample_patient, sample_encounter, test_user,
-            sample_facility, sample_organization,
+            sample_patient,
+            sample_encounter,
+            test_user,
+            sample_facility,
+            sample_organization,
             admission=sample_admission,
         )
         _create_verified_result(order, wbc_test_catalog, 15.2, test_user)

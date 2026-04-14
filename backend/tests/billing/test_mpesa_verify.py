@@ -181,9 +181,7 @@ class TestMpesaVerifyAPI:
 
     def test_too_long_code(self, authenticated_client):
         """Should reject codes longer than 12 characters."""
-        response = authenticated_client.post(
-            self._url(), {"transaction_id": "ABCDEFGHIJKLMNOP"}
-        )
+        response = authenticated_client.post(self._url(), {"transaction_id": "ABCDEFGHIJKLMNOP"})
         assert response.status_code == status.HTTP_200_OK
         assert response.data["verified"] is False
 
@@ -195,9 +193,7 @@ class TestMpesaVerifyAPI:
 
     def test_code_uppercased(self, authenticated_client):
         """Should uppercase the transaction code before processing."""
-        with patch(
-            "hmis.apps.billing.services.MpesaService"
-        ) as MockService:
+        with patch("hmis.apps.billing.services.MpesaService") as MockService:
             mock_instance = MockService.return_value
             mock_instance.verify_transaction.return_value = {
                 "verified": True,
@@ -205,9 +201,7 @@ class TestMpesaVerifyAPI:
                 "error": None,
             }
 
-            response = authenticated_client.post(
-                self._url(), {"transaction_id": "slk4h42rqo"}
-            )
+            response = authenticated_client.post(self._url(), {"transaction_id": "slk4h42rqo"})
 
             assert response.status_code == status.HTTP_200_OK
             mock_instance.verify_transaction.assert_called_once_with("SLK4H42RQO")
@@ -227,9 +221,7 @@ class TestMpesaVerifyAPI:
             received_by=test_user,
         )
 
-        response = authenticated_client.post(
-            self._url(), {"transaction_id": "SLK4H42RQO"}
-        )
+        response = authenticated_client.post(self._url(), {"transaction_id": "SLK4H42RQO"})
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["verified"] is False
@@ -248,9 +240,7 @@ class TestMpesaVerifyAPI:
             "error": None,
         }
 
-        response = authenticated_client.post(
-            self._url(), {"transaction_id": "SLK4H42RQO"}
-        )
+        response = authenticated_client.post(self._url(), {"transaction_id": "SLK4H42RQO"})
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["verified"] is True
@@ -265,9 +255,7 @@ class TestMpesaVerifyAPI:
             "error": "Transaction not found",
         }
 
-        response = authenticated_client.post(
-            self._url(), {"transaction_id": "FAKEXXXXXX"}
-        )
+        response = authenticated_client.post(self._url(), {"transaction_id": "FAKEXXXXXX"})
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["verified"] is False
@@ -283,9 +271,7 @@ class TestMpesaVerifyAPI:
 class TestReceiptMpesaFields:
     """Tests for M-Pesa fields on ReceiptSerializer."""
 
-    def test_mpesa_phone_display_254_format(
-        self, sample_invoice, sample_invoice_item, test_user
-    ):
+    def test_mpesa_phone_display_254_format(self, sample_invoice, sample_invoice_item, test_user):
         """Should obscure 254 phone as 0712**5678."""
         sample_invoice.calculate_totals()
         sample_invoice.save()
@@ -312,9 +298,7 @@ class TestReceiptMpesaFields:
         assert serializer.data["mpesa_phone_display"] == "0712**5678"
         assert serializer.data["mpesa_receipt_number"] == "SLK4H42RQO"
 
-    def test_mpesa_phone_display_07_format(
-        self, sample_invoice, sample_invoice_item, test_user
-    ):
+    def test_mpesa_phone_display_07_format(self, sample_invoice, sample_invoice_item, test_user):
         """Should obscure 07xx phone as 0712**5678."""
         sample_invoice.calculate_totals()
         sample_invoice.save()
@@ -345,9 +329,7 @@ class TestReceiptMpesaFields:
         assert serializer.data["mpesa_phone_display"] is None
         assert serializer.data["mpesa_receipt_number"] is None
 
-    def test_empty_phone_returns_null(
-        self, sample_invoice, sample_invoice_item, test_user
-    ):
+    def test_empty_phone_returns_null(self, sample_invoice, sample_invoice_item, test_user):
         """Should return null when mpesa_phone is empty string."""
         sample_invoice.calculate_totals()
         sample_invoice.save()

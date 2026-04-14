@@ -661,9 +661,7 @@ class Command(BaseCommand):
                 demo_org.county = demo_county
                 demo_org.sub_county = demo_sub_county
                 demo_org.save(update_fields=["county", "sub_county"])
-            self.stdout.write(
-                f"  {'Created' if org_created else 'Updated'}: {demo_org.name}"
-            )
+            self.stdout.write(f"  {'Created' if org_created else 'Updated'}: {demo_org.name}")
 
             # Headquarters facility
             hq_defaults = {
@@ -814,9 +812,7 @@ class Command(BaseCommand):
                 department = departments_map.get(department_code)
                 primary_facility = facility_map.get(facility_key)
                 # Admin gets the other facility as secondary
-                other_facility = facility_map.get(
-                    "BRANCH" if facility_key == "HQ" else "HQ"
-                )
+                other_facility = facility_map.get("BRANCH" if facility_key == "HQ" else "HQ")
 
                 if role and department:
                     staff_profile, sp_created = StaffProfile.objects.update_or_create(
@@ -867,9 +863,7 @@ class Command(BaseCommand):
             # =============================================================
             # Step 3b: Assign Department Heads
             # =============================================================
-            self.stdout.write(
-                self.style.MIGRATE_HEADING("\n3b. Assigning Department Heads...")
-            )
+            self.stdout.write(self.style.MIGRATE_HEADING("\n3b. Assigning Department Heads..."))
             # Use HQ heads as the canonical department heads (since Department
             # model has a single head FK, not per-facility).
             for (dept_code, fac_key), staff_profile in dept_head_candidates.items():
@@ -879,9 +873,7 @@ class Command(BaseCommand):
                 if dept:
                     dept.head = staff_profile
                     dept.save(update_fields=["head"])
-                    self.stdout.write(
-                        f"  {dept.name} head -> {staff_profile.user.get_full_name()}"
-                    )
+                    self.stdout.write(f"  {dept.name} head -> {staff_profile.user.get_full_name()}")
 
             # =============================================================
             # Step 4: Create Sample Patients
@@ -1695,9 +1687,11 @@ class Command(BaseCommand):
                     patient=patient,
                     invoice_date=invoice_date,
                     due_date=invoice_date + timedelta(days=30),
-                    status=Invoice.Status.DRAFT
-                    if target_status != Invoice.Status.PROFORMA
-                    else Invoice.Status.PROFORMA,
+                    status=(
+                        Invoice.Status.DRAFT
+                        if target_status != Invoice.Status.PROFORMA
+                        else Invoice.Status.PROFORMA
+                    ),
                     payment_type=choice(
                         [
                             Invoice.PaymentType.CASH,
@@ -2582,9 +2576,9 @@ class Command(BaseCommand):
                     priority=priority,
                     source="TRIAGE" if clinic.triage_required else "DIRECT",
                     visit_type=choice(["NEW", "RETURN", "FOLLOW_UP"]),
-                    assigned=assigned_user
-                    if s in {"CALLED", "IN_CONSULTATION", "CLOSED"}
-                    else None,
+                    assigned=(
+                        assigned_user if s in {"CALLED", "IN_CONSULTATION", "CLOSED"} else None
+                    ),
                 )
 
                 # Add timestamps for realism
@@ -2937,22 +2931,24 @@ class Command(BaseCommand):
                         order=order,
                         procedure=item_procedure,
                         laterality=laterality,
-                        specific_instructions=""
-                        if randint(0, 3)
-                        else choice(
-                            [
-                                "Use small focal spot",
-                                "Include comparison with previous study",
-                                "Full bladder required",
-                                "Patient anxious, may need reassurance",
-                                "Portable study if patient unstable",
-                            ]
+                        specific_instructions=(
+                            ""
+                            if randint(0, 3)
+                            else choice(
+                                [
+                                    "Use small focal spot",
+                                    "Include comparison with previous study",
+                                    "Full bladder required",
+                                    "Patient anxious, may need reassurance",
+                                    "Portable study if patient unstable",
+                                ]
+                            )
                         ),
                         unit_cost=item_procedure.cost,
                         is_completed=status in ["COMPLETED", "REPORTED"],
-                        completed_at=order.completed_at
-                        if status in ["COMPLETED", "REPORTED"]
-                        else None,
+                        completed_at=(
+                            order.completed_at if status in ["COMPLETED", "REPORTED"] else None
+                        ),
                     )
                     items_created += 1
 
@@ -3209,7 +3205,11 @@ class Command(BaseCommand):
                 mother=grace,
                 status="ACTIVE",
                 defaults={
-                    "registration_date": (grace_enrollment.enrollment_date if grace_enrollment else today - timedelta(weeks=20)),
+                    "registration_date": (
+                        grace_enrollment.enrollment_date
+                        if grace_enrollment
+                        else today - timedelta(weeks=20)
+                    ),
                     "anc_enrollment": grace_enrollment,
                     "is_high_risk": False,
                     "linda_jamii_beneficiary": True,
@@ -3218,13 +3218,18 @@ class Command(BaseCommand):
                     "notes": "Gravida 2 Para 1, normal pregnancy. Linda Jamii beneficiary.",
                 },
             )
-            self.stdout.write(f"    MCH Registration: {grace_reg.mch_number} ({'new' if created else 'exists'})")
+            self.stdout.write(
+                f"    MCH Registration: {grace_reg.mch_number} ({'new' if created else 'exists'})"
+            )
 
             # ANC Visits (3 completed visits at weeks 12, 20, 28)
             anc_visit_data = [
                 {
                     "visit_number": 1,
-                    "visit_date": (grace_enrollment.lmp if grace_enrollment else today - timedelta(weeks=28)) + timedelta(weeks=12),
+                    "visit_date": (
+                        grace_enrollment.lmp if grace_enrollment else today - timedelta(weeks=28)
+                    )
+                    + timedelta(weeks=12),
                     "gestation_weeks": 12,
                     "weight": Decimal("62.0"),
                     "blood_pressure": "110/70",
@@ -3246,7 +3251,10 @@ class Command(BaseCommand):
                 },
                 {
                     "visit_number": 2,
-                    "visit_date": (grace_enrollment.lmp if grace_enrollment else today - timedelta(weeks=28)) + timedelta(weeks=20),
+                    "visit_date": (
+                        grace_enrollment.lmp if grace_enrollment else today - timedelta(weeks=28)
+                    )
+                    + timedelta(weeks=20),
                     "gestation_weeks": 20,
                     "weight": Decimal("65.5"),
                     "blood_pressure": "115/75",
@@ -3268,7 +3276,10 @@ class Command(BaseCommand):
                 },
                 {
                     "visit_number": 3,
-                    "visit_date": (grace_enrollment.lmp if grace_enrollment else today - timedelta(weeks=28)) + timedelta(weeks=28),
+                    "visit_date": (
+                        grace_enrollment.lmp if grace_enrollment else today - timedelta(weeks=28)
+                    )
+                    + timedelta(weeks=28),
                     "gestation_weeks": 28,
                     "weight": Decimal("68.2"),
                     "blood_pressure": "118/78",
@@ -3356,7 +3367,9 @@ class Command(BaseCommand):
                     "notes": "Gravida 3 Para 2. Normal pregnancy, SVD at term.",
                 },
             )
-            self.stdout.write(f"    MCH Registration: {faith_reg.mch_number} ({'new' if created else 'exists'})")
+            self.stdout.write(
+                f"    MCH Registration: {faith_reg.mch_number} ({'new' if created else 'exists'})"
+            )
 
             # 4 ANC visits (complete ANC journey)
             faith_anc_data = [
@@ -3469,7 +3482,9 @@ class Command(BaseCommand):
             if faith_delivery.baby_patient:
                 faith_reg.baby = faith_delivery.baby_patient
                 faith_reg.save(update_fields=["baby"])
-            self.stdout.write(f"    Delivery: {'created' if d_created else 'exists'} (SVD, live birth, 3.45kg)")
+            self.stdout.write(
+                f"    Delivery: {'created' if d_created else 'exists'} (SVD, live birth, 3.45kg)"
+            )
 
             # PNC Visits (3 visits at 1 day, 7 days, 21 days postpartum)
             pnc_data = [
@@ -3579,7 +3594,9 @@ class Command(BaseCommand):
         # ─────────────────────────────────────────────────────────────
         brian = get_patient("DEMO-PT-0104")
         if brian:
-            self.stdout.write("  Scenario 3: Brian Mwangi – Child welfare (growth + immunizations)...")
+            self.stdout.write(
+                "  Scenario 3: Brian Mwangi – Child welfare (growth + immunizations)..."
+            )
 
             # Growth measurements at key milestones
             brian_dob = brian.date_of_birth
@@ -3672,6 +3689,7 @@ class Command(BaseCommand):
             if not ImmunizationRecord.objects.filter(patient=brian).exists():
                 try:
                     from hmis.apps.mch.services.immunization import generate_immunization_schedule
+
                     generate_immunization_schedule(brian)
                     self.stdout.write("    Generated KEPI immunization schedule")
                 except Exception as exc:
@@ -3685,9 +3703,7 @@ class Command(BaseCommand):
                 if scheduled > today:
                     continue  # Future vaccines stay SCHEDULED
 
-                record = ImmunizationRecord.objects.filter(
-                    patient=brian, vaccine=vaccine
-                ).first()
+                record = ImmunizationRecord.objects.filter(patient=brian, vaccine=vaccine).first()
                 if record and record.status == "SCHEDULED":
                     record.status = "ADMINISTERED"
                     record.administered_date = scheduled
@@ -3781,7 +3797,9 @@ class Command(BaseCommand):
                     "notes": "Primigravida. HIV+ on ART (TDF/3TC/DTG). Viral load suppressed.",
                 },
             )
-            self.stdout.write(f"    MCH Registration: {amina_reg.mch_number} (high-risk, sensitive)")
+            self.stdout.write(
+                f"    MCH Registration: {amina_reg.mch_number} (high-risk, sensitive)"
+            )
 
             # ANC visits for Amina (4 visits, closer monitoring due to HIV)
             amina_anc = [
@@ -3898,7 +3916,9 @@ class Command(BaseCommand):
                 amina_reg.baby = baby_for_hei
                 amina_reg.save(update_fields=["baby"])
 
-            self.stdout.write(f"    Delivery: {'created' if d_created else 'exists'} (SVD, 2.90kg, PMTCT)")
+            self.stdout.write(
+                f"    Delivery: {'created' if d_created else 'exists'} (SVD, 2.90kg, PMTCT)"
+            )
 
             # PNC Visit for Amina
             amina_pnc_data = [
@@ -3965,7 +3985,9 @@ class Command(BaseCommand):
                         "notes": "HEI enrolled at birth. Mother VL suppressed on TDF/3TC/DTG. Baby on NVP prophylaxis × 6 weeks.",
                     },
                 )
-                self.stdout.write(f"    HEI Follow-Up: {hei.hei_number} ({'new' if hei_created else 'exists'})")
+                self.stdout.write(
+                    f"    HEI Follow-Up: {hei.hei_number} ({'new' if hei_created else 'exists'})"
+                )
 
                 # PCR Test #1 scheduled at 6 weeks (due now)
                 pcr1_scheduled = amina_delivery_date + timedelta(weeks=6)
@@ -4034,15 +4056,16 @@ class Command(BaseCommand):
                         from hmis.apps.mch.services.immunization import (
                             generate_immunization_schedule,
                         )
+
                         generate_immunization_schedule(baby_for_hei)
                         self.stdout.write("    Generated KEPI immunization schedule for baby")
                     except Exception as exc:
-                        self.stdout.write(self.style.WARNING(f"    Could not generate schedule: {exc}"))
+                        self.stdout.write(
+                            self.style.WARNING(f"    Could not generate schedule: {exc}")
+                        )
 
                 # Mark birth-dose immunizations as administered for Blessing
-                birth_vaccines = Vaccine.objects.filter(
-                    is_active=True, standard_age_days__lte=1
-                )
+                birth_vaccines = Vaccine.objects.filter(is_active=True, standard_age_days__lte=1)
                 imm_count = 0
                 for vaccine in birth_vaccines:
                     record = ImmunizationRecord.objects.filter(
@@ -4064,7 +4087,9 @@ class Command(BaseCommand):
                     standard_age_days__lte=49,
                 )
                 for vaccine in six_week_vaccines:
-                    scheduled = baby_for_hei.date_of_birth + timedelta(days=vaccine.standard_age_days)
+                    scheduled = baby_for_hei.date_of_birth + timedelta(
+                        days=vaccine.standard_age_days
+                    )
                     if scheduled > today:
                         continue
                     record = ImmunizationRecord.objects.filter(
@@ -4078,7 +4103,9 @@ class Command(BaseCommand):
                         record.site = "ORAL" if vaccine.route == "ORAL" else "LEFT_THIGH"
                         record.save()
                         imm_count += 1
-                self.stdout.write(f"    Immunizations administered: {imm_count} (birth + 6wk doses)")
+                self.stdout.write(
+                    f"    Immunizations administered: {imm_count} (birth + 6wk doses)"
+                )
         else:
             self.stdout.write(self.style.WARNING("    Amina Hassan (DEMO-PT-0105) not found"))
 

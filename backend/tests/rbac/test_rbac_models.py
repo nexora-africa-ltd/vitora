@@ -134,9 +134,7 @@ class TestDepartmentModel:
         other_dept.head = staff
         other_dept.save()
 
-        assert other_dept.pk in list(
-            staff.secondary_departments.values_list("pk", flat=True)
-        )
+        assert other_dept.pk in list(staff.secondary_departments.values_list("pk", flat=True))
         # Primary department should not change
         staff.refresh_from_db()
         assert staff.primary_department == primary_dept
@@ -145,9 +143,7 @@ class TestDepartmentModel:
         """Should not add to secondary if it's already the staff's primary department."""
         from hmis.apps.core.models import Department, Role, StaffProfile
 
-        dept = Department.objects.create(
-            code="OPD_PH", name="OPD", department_type="CLINICAL"
-        )
+        dept = Department.objects.create(code="OPD_PH", name="OPD", department_type="CLINICAL")
         role = Role.objects.create(code="DOC_PH", name="Doctor", category="CLINICAL")
         user = User.objects.create_user(username="doc_head", password="test123")
         staff = StaffProfile.objects.create(
@@ -162,9 +158,7 @@ class TestDepartmentModel:
         dept.head = staff
         dept.save()
 
-        assert dept.pk not in list(
-            staff.secondary_departments.values_list("pk", flat=True)
-        )
+        assert dept.pk not in list(staff.secondary_departments.values_list("pk", flat=True))
 
     def test_department_head_auto_adds_supervisor_role(self):
         """Assigning department head should add SUPERVISOR to staff's secondary_roles."""
@@ -189,9 +183,7 @@ class TestDepartmentModel:
         dept.head = staff
         dept.save()
 
-        assert supervisor_role.pk in list(
-            staff.secondary_roles.values_list("pk", flat=True)
-        )
+        assert supervisor_role.pk in list(staff.secondary_roles.values_list("pk", flat=True))
 
     def test_department_head_no_head_skips_signal(self):
         """Signal should not error when department has no head."""

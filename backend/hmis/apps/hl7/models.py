@@ -134,10 +134,7 @@ class HL7Message(models.Model):
     @property
     def is_retryable(self) -> bool:
         """Check if the message can be retried."""
-        return (
-            self.status == HL7MessageStatus.FAILED
-            and self.retry_count < self.max_retries
-        )
+        return self.status == HL7MessageStatus.FAILED and self.retry_count < self.max_retries
 
     def mark_dead_letter(self) -> None:
         """Move to dead letter after exhausting retries."""

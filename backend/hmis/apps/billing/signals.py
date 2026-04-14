@@ -118,9 +118,7 @@ def handle_discharge_billing(sender, instance, created, **kwargs):
             facility_id=getattr(instance, "facility_id", None),
         )
     except Exception:
-        logger.exception(
-            "Billing agent: discharge billing failed for discharge %s", instance.id
-        )
+        logger.exception("Billing agent: discharge billing failed for discharge %s", instance.id)
 
 
 def handle_admission_billing(sender, instance, created, **kwargs):
@@ -141,9 +139,7 @@ def handle_admission_billing(sender, instance, created, **kwargs):
             facility_id=getattr(instance, "facility_id", None),
         )
     except Exception:
-        logger.exception(
-            "Billing agent: admission billing failed for admission %s", instance.id
-        )
+        logger.exception("Billing agent: admission billing failed for admission %s", instance.id)
 
 
 def handle_immunization_billing(sender, instance, created, **kwargs):
@@ -165,9 +161,7 @@ def handle_immunization_billing(sender, instance, created, **kwargs):
             facility_id=getattr(instance, "facility_id", None),
         )
     except Exception:
-        logger.exception(
-            "Billing agent: immunization billing failed for record %s", instance.id
-        )
+        logger.exception("Billing agent: immunization billing failed for record %s", instance.id)
 
 
 # =============================================================================

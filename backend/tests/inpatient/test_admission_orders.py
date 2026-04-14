@@ -45,7 +45,9 @@ def sample_imaging_procedure(db):
 
 
 @pytest.fixture
-def admission_lab_order(db, sample_admission, sample_lab_test, test_user, sample_organization, sample_facility):
+def admission_lab_order(
+    db, sample_admission, sample_lab_test, test_user, sample_organization, sample_facility
+):
     """Create a lab order linked to an admission."""
     order = LabOrder.objects.create(
         patient=sample_admission.patient,
@@ -86,7 +88,9 @@ def admission_imaging_order(db, sample_admission, sample_imaging_procedure, test
 
 
 @pytest.fixture
-def admission_prescription(db, sample_admission, sample_drug, test_user, sample_facility, sample_organization):
+def admission_prescription(
+    db, sample_admission, sample_drug, test_user, sample_facility, sample_organization
+):
     """Create a prescription linked to an admission."""
     from datetime import date, timedelta
 
@@ -242,7 +246,12 @@ class TestAdmissionFKOnOrders:
     """Tests for admission FK field on order models."""
 
     def test_lab_order_admission_field_optional(
-        self, db, sample_patient, sample_encounter, sample_lab_test, test_user,
+        self,
+        db,
+        sample_patient,
+        sample_encounter,
+        sample_lab_test,
+        test_user,
         sample_facility,
         sample_organization,
     ):
@@ -287,7 +296,9 @@ class TestAdmissionFKOnOrders:
         )
         assert prescription.admission is None
 
-    def test_lab_order_with_admission(self, db, sample_lab_test, sample_admission, test_user, sample_organization, sample_facility):
+    def test_lab_order_with_admission(
+        self, db, sample_lab_test, sample_admission, test_user, sample_organization, sample_facility
+    ):
         """Test lab order with admission FK."""
         order = LabOrder.objects.create(
             patient=sample_admission.patient,

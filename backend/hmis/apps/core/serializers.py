@@ -2,8 +2,6 @@
 Serializers for core app.
 """
 
-
-
 from django.contrib.auth.models import Permission
 from rest_framework import serializers
 
@@ -410,14 +408,18 @@ class StaffProfileUpdateSerializer(serializers.ModelSerializer):
         """Cross-field validation for facility-organization consistency."""
         attrs = super().validate(attrs)
         instance = self.instance
-        primary_facility = attrs.get("primary_facility", getattr(instance, "primary_facility", None))
+        primary_facility = attrs.get(
+            "primary_facility", getattr(instance, "primary_facility", None)
+        )
         if primary_facility and instance and instance.organization_id:
             if primary_facility.organization_id != instance.organization_id:
-                raise serializers.ValidationError({
-                    "primary_facility": (
-                        "Primary facility must belong to the staff member's organization."
-                    )
-                })
+                raise serializers.ValidationError(
+                    {
+                        "primary_facility": (
+                            "Primary facility must belong to the staff member's organization."
+                        )
+                    }
+                )
         return attrs
 
     def validate_email(self, value):
@@ -490,7 +492,6 @@ class StaffProfileCreateSerializer(serializers.Serializer):
     license_expiry = serializers.DateField(required=False, allow_null=True)
     licensing_body = serializers.CharField(max_length=100, required=False, allow_blank=True)
     specialization = serializers.CharField(max_length=100, required=False, allow_blank=True)
-
 
     hire_date = serializers.DateField(required=False, allow_null=True, source="date_joined")
 
@@ -722,9 +723,7 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
     facility_count = serializers.IntegerField(read_only=True, default=0)
     staff_count = serializers.IntegerField(read_only=True, default=0)
     county_name = serializers.CharField(source="county.name", read_only=True, default=None)
-    sub_county_name = serializers.CharField(
-        source="sub_county.name", read_only=True, default=None
-    )
+    sub_county_name = serializers.CharField(source="sub_county.name", read_only=True, default=None)
 
     class Meta:
         """Meta options for OrganizationDetailSerializer."""
@@ -831,16 +830,12 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
 
     county_name = serializers.CharField(source="county.name", read_only=True)
     sub_county_name = serializers.CharField(source="sub_county.name", read_only=True)
-    ward_name = serializers.CharField(
-        source="ward.name", read_only=True, default=None
-    )
+    ward_name = serializers.CharField(source="ward.name", read_only=True, default=None)
     organization_name = serializers.CharField(
         source="organization.name", read_only=True, default=None
     )
     modules = serializers.DictField(read_only=True)
-    enabled_module_names = serializers.ListField(
-        child=serializers.CharField(), read_only=True
-    )
+    enabled_module_names = serializers.ListField(child=serializers.CharField(), read_only=True)
     effective_logo_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -1092,9 +1087,7 @@ class UserCertificateSerializer(serializers.ModelSerializer):
 class CertificateRevocationSerializer(serializers.ModelSerializer):
     """Serializer for CertificateRevocation."""
 
-    certificate_serial = serializers.CharField(
-        source="certificate.serial_number", read_only=True
-    )
+    certificate_serial = serializers.CharField(source="certificate.serial_number", read_only=True)
     revoked_by_username = serializers.CharField(
         source="revoked_by.username", read_only=True, default=""
     )
@@ -1119,9 +1112,7 @@ class DocumentSignatureSerializer(serializers.ModelSerializer):
 
     signer_username = serializers.CharField(source="signer.username", read_only=True)
     signer_name = serializers.SerializerMethodField()
-    certificate_serial = serializers.CharField(
-        source="certificate.serial_number", read_only=True
-    )
+    certificate_serial = serializers.CharField(source="certificate.serial_number", read_only=True)
 
     class Meta:
         model = DocumentSignature
@@ -1361,9 +1352,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data["new_password"] != data["confirm_password"]:
-            raise serializers.ValidationError(
-                {"confirm_password": "Passwords do not match."}
-            )
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return data
 
 
@@ -1371,7 +1360,9 @@ class ChangePasswordSerializer(serializers.Serializer):
     """Change password (authenticated, for must_change_password flow)."""
 
     current_password = serializers.CharField(
-        max_length=128, write_only=True, required=False,
+        max_length=128,
+        write_only=True,
+        required=False,
         help_text="Required unless the user has must_change_password=True.",
     )
     new_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
@@ -1379,9 +1370,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data["new_password"] != data["confirm_password"]:
-            raise serializers.ValidationError(
-                {"confirm_password": "Passwords do not match."}
-            )
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return data
 
 
@@ -1452,9 +1441,7 @@ class OrgSignupSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data["admin_password"] != data["confirm_password"]:
-            raise serializers.ValidationError(
-                {"confirm_password": "Passwords do not match."}
-            )
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return data
 
 
@@ -1479,7 +1466,9 @@ class SetupWizardSerializer(serializers.Serializer):
     # Organization
     org_name = serializers.CharField(max_length=200)
     org_contact_email = serializers.EmailField(required=False, allow_blank=True, default="")
-    org_contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True, default="")
+    org_contact_phone = serializers.CharField(
+        max_length=20, required=False, allow_blank=True, default=""
+    )
 
     # Facility
     facility_name = serializers.CharField(max_length=200)
@@ -1530,7 +1519,5 @@ class SetupWizardSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data["admin_password"] != data["confirm_password"]:
-            raise serializers.ValidationError(
-                {"confirm_password": "Passwords do not match."}
-            )
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return data

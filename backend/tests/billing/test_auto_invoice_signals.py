@@ -364,9 +364,9 @@ class TestDispensingAutoBilling:
         draft_invoice.refresh_from_db()
 
         # Should NOT have created an invoice item
-        assert draft_invoice.items.count() == initial_item_count, (
-            "External prescription should not create an invoice item"
-        )
+        assert (
+            draft_invoice.items.count() == initial_item_count
+        ), "External prescription should not create an invoice item"
 
     def test_internal_prescription_creates_invoice_item(
         self,
@@ -403,9 +403,9 @@ class TestDispensingAutoBilling:
 
         draft_invoice.refresh_from_db()
 
-        assert draft_invoice.items.count() == initial_item_count + 1, (
-            "Internal prescription should create an invoice item"
-        )
+        assert (
+            draft_invoice.items.count() == initial_item_count + 1
+        ), "Internal prescription should create an invoice item"
 
 
 # ============================================================================
@@ -612,7 +612,11 @@ class TestAutoBillingEdgeCases:
     """Tests for edge cases in auto-billing signals."""
 
     def test_dispensing_without_encounter_invoice_logs_warning(
-        self, sample_patient_for_billing, sample_drug, sample_stock_batch, sample_user,
+        self,
+        sample_patient_for_billing,
+        sample_drug,
+        sample_stock_batch,
+        sample_user,
         sample_organization,
     ):
         """Dispensing without linked encounter/invoice should not crash.

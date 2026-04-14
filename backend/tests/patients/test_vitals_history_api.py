@@ -159,32 +159,24 @@ class TestVitalsHistoryEndpoint:
 
     def test_endpoint_exists(self, vitals_auth_client, vitals_patient):
         """Endpoint returns 200, not 404."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         assert response.status_code == status.HTTP_200_OK
 
     def test_requires_authentication(self, vitals_patient):
         """Unauthenticated requests are rejected."""
         client = APIClient()
-        response = client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_returns_list(self, vitals_auth_client, vitals_patient):
         """Response is a list."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.data, list)
 
     def test_empty_for_patient_without_vitals(self, vitals_auth_client, vitals_patient):
         """Returns empty list when patient has no vitals data."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data == []
 
@@ -197,26 +189,18 @@ class TestVitalsHistoryEndpoint:
 class TestVitalsHistoryEncounterSource:
     """Tests for encounter vitals in the aggregate response."""
 
-    def test_includes_encounter_vitals(
-        self, vitals_auth_client, vitals_patient, vitals_encounter
-    ):
+    def test_includes_encounter_vitals(self, vitals_auth_client, vitals_patient, vitals_encounter):
         """Encounter vitals appear in the response."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
         point = response.data[0]
         assert set(point.keys()) == VITALS_FIELDS
 
-    def test_encounter_vitals_values(
-        self, vitals_auth_client, vitals_patient, vitals_encounter
-    ):
+    def test_encounter_vitals_values(self, vitals_auth_client, vitals_patient, vitals_encounter):
         """Encounter vitals have correct values."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         # Find the encounter source point
         enc_points = [p for p in response.data if p["source"] == "CONSULTATION"]
         assert len(enc_points) >= 1
@@ -229,13 +213,9 @@ class TestVitalsHistoryEncounterSource:
         assert point["weight"] == 72.0
         assert point["height"] == 175.0
 
-    def test_blood_pressure_parsing(
-        self, vitals_auth_client, vitals_patient, vitals_encounter
-    ):
+    def test_blood_pressure_parsing(self, vitals_auth_client, vitals_patient, vitals_encounter):
         """Blood pressure string '130/85' is parsed to systolic/diastolic."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         enc_points = [p for p in response.data if p["source"] == "CONSULTATION"]
         assert len(enc_points) >= 1
         assert enc_points[0]["systolic_bp"] == 130
@@ -245,9 +225,7 @@ class TestVitalsHistoryEncounterSource:
         self, vitals_auth_client, vitals_patient, vitals_encounter_no_vitals
     ):
         """Encounters with no vitals at all are excluded."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 0
 
@@ -255,24 +233,16 @@ class TestVitalsHistoryEncounterSource:
 class TestVitalsHistoryTriageSource:
     """Tests for triage assessment vitals in the aggregate response."""
 
-    def test_includes_triage_vitals(
-        self, vitals_auth_client, vitals_patient, vitals_triage
-    ):
+    def test_includes_triage_vitals(self, vitals_auth_client, vitals_patient, vitals_triage):
         """Triage vitals appear in the response."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         assert response.status_code == status.HTTP_200_OK
         triage_points = [p for p in response.data if p["source"] == "Triage"]
         assert len(triage_points) >= 1
 
-    def test_triage_vitals_values(
-        self, vitals_auth_client, vitals_patient, vitals_triage
-    ):
+    def test_triage_vitals_values(self, vitals_auth_client, vitals_patient, vitals_triage):
         """Triage vitals have correct values."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         triage_points = [p for p in response.data if p["source"] == "Triage"]
         assert len(triage_points) >= 1
         point = triage_points[0]
@@ -299,9 +269,7 @@ class TestVitalsHistoryTimeRangeFiltering:
         # Encounter was just created, so it should be within 24h
         assert len(response.data) >= 1
 
-    def test_filter_1h_excludes_old_data(
-        self, vitals_auth_client, vitals_patient, sample_facility
-    ):
+    def test_filter_1h_excludes_old_data(self, vitals_auth_client, vitals_patient, sample_facility):
         """range=1h excludes encounters older than 1 hour."""
         from hmis.apps.encounters.models import Encounter
 
@@ -333,9 +301,7 @@ class TestVitalsHistoryTimeRangeFiltering:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 2  # encounter + triage
 
-    def test_invalid_range_returns_all(
-        self, vitals_auth_client, vitals_patient, vitals_encounter
-    ):
+    def test_invalid_range_returns_all(self, vitals_auth_client, vitals_patient, vitals_encounter):
         """Invalid range param defaults to all."""
         response = vitals_auth_client.get(
             f"/api/patients/{vitals_patient.id}/vitals-history/?range=invalid"
@@ -351,9 +317,7 @@ class TestVitalsHistoryOrdering:
         self, vitals_auth_client, vitals_patient, vitals_encounter, vitals_triage
     ):
         """Data points are sorted by timestamp ascending."""
-        response = vitals_auth_client.get(
-            f"/api/patients/{vitals_patient.id}/vitals-history/"
-        )
+        response = vitals_auth_client.get(f"/api/patients/{vitals_patient.id}/vitals-history/")
         assert response.status_code == status.HTTP_200_OK
         timestamps = [p["timestamp"] for p in response.data]
         assert timestamps == sorted(timestamps)

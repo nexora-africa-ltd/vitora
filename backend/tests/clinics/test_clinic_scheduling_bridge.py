@@ -201,8 +201,12 @@ class TestScheduleViewSetTenantScoping:
         assert len(results) >= 1
 
     def test_list_excludes_other_facility_schedules(
-        self, authenticated_client, clinic_schedule, sample_organization,
-        sample_county, sample_sub_county,
+        self,
+        authenticated_client,
+        clinic_schedule,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
     ):
         """Should NOT return schedules from another facility."""
         from hmis.apps.clinics.models import Clinic, ClinicSchedule

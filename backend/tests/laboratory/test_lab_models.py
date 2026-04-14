@@ -277,7 +277,9 @@ class TestLabOrder:
         """Create a lab technician user."""
         return User.objects.create_user(username="labtech", password="testpass")
 
-    def test_order_number_auto_generated(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_order_number_auto_generated(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Lab order number should be auto-generated."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -289,7 +291,9 @@ class TestLabOrder:
         assert order.order_number.startswith("LAB-")
         assert len(order.order_number) == 17  # LAB-YYYYMMDD-XXXX
 
-    def test_order_number_uniqueness(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_order_number_uniqueness(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Order numbers should be unique."""
         order1 = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -307,7 +311,9 @@ class TestLabOrder:
         )
         assert order1.order_number != order2.order_number
 
-    def test_status_workflow_valid_transition(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_status_workflow_valid_transition(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Valid status transitions should succeed."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -334,7 +340,9 @@ class TestLabOrder:
         assert order.status == "COMPLETED"
         assert order.completed_at is not None
 
-    def test_status_workflow_invalid_transition(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_status_workflow_invalid_transition(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Invalid status transitions should raise error."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -348,7 +356,9 @@ class TestLabOrder:
         with pytest.raises(ValidationError):
             order.update_status("COMPLETED", lab_user)
 
-    def test_specimen_collection_recording(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_specimen_collection_recording(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should record specimen collection details."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -366,7 +376,9 @@ class TestLabOrder:
         assert order.specimen_collected_by == lab_user
         assert order.status == "SPECIMEN_COLLECTED"
 
-    def test_external_lab_designation(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_external_lab_designation(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should support external lab orders."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -381,7 +393,9 @@ class TestLabOrder:
         assert order.order_type == "EXTERNAL"
         assert order.external_lab == "Lancet Kenya"
 
-    def test_priority_level_assignment(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_priority_level_assignment(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should support different priority levels."""
         stat_order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -393,7 +407,9 @@ class TestLabOrder:
         )
         assert stat_order.priority == "STAT"
 
-    def test_clinical_notes_attachment(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_clinical_notes_attachment(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should allow clinical notes."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -405,7 +421,9 @@ class TestLabOrder:
         )
         assert order.clinical_notes == "Patient has history of anemia"
 
-    def test_total_cost_calculation(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_total_cost_calculation(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should calculate total cost from items."""
         test1 = TestCatalog.objects.create(
             code="TEST1",
@@ -441,7 +459,9 @@ class TestLabOrder:
         assert total == Decimal("300.00")
         assert order.total_cost == Decimal("300.00")
 
-    def test_ordered_by_user_tracking(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_ordered_by_user_tracking(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should track who ordered the tests."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -452,7 +472,9 @@ class TestLabOrder:
         )
         assert order.ordered_by == lab_user
 
-    def test_status_change_audit(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_status_change_audit(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should track status changes."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -466,7 +488,9 @@ class TestLabOrder:
         assert order.status_changed_by == lab_user
         assert order.status_changed_at is not None
 
-    def test_in_house_vs_external_routing(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_in_house_vs_external_routing(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should route to in-house or external labs."""
         in_house_order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -478,7 +502,9 @@ class TestLabOrder:
         )
         assert in_house_order.order_type == "IN_HOUSE"
 
-    def test_order_cancellation(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_order_cancellation(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should allow order cancellation."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -491,7 +517,9 @@ class TestLabOrder:
         order.update_status("CANCELLED", lab_user)
         assert order.status == "CANCELLED"
 
-    def test_order_rejection_with_reason(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_order_rejection_with_reason(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should support order rejection."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -505,7 +533,9 @@ class TestLabOrder:
         order.update_status("REJECTED", lab_user)
         assert order.status == "REJECTED"
 
-    def test_turnaround_time_calculation(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_turnaround_time_calculation(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should calculate turnaround time."""
         order = LabOrder.objects.create(
             patient=sample_encounter.patient,
@@ -522,7 +552,9 @@ class TestLabOrder:
         assert turnaround is not None
         assert isinstance(turnaround, timedelta)
 
-    def test_pending_results_identification(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_pending_results_identification(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should identify tests without results."""
         test = TestCatalog.objects.create(
             code="TEST1",
@@ -546,7 +578,9 @@ class TestLabOrder:
         pending = order.get_pending_results()
         assert item in pending
 
-    def test_completion_detection(self, sample_encounter, lab_user, sample_organization, sample_facility):
+    def test_completion_detection(
+        self, sample_encounter, lab_user, sample_organization, sample_facility
+    ):
         """Should detect when all results are in."""
         test = TestCatalog.objects.create(
             code="TEST1",

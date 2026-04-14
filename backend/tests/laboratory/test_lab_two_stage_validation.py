@@ -78,7 +78,15 @@ def complex_test(db):
 
 
 @pytest.fixture
-def lab_result_simple(db, sample_patient, sample_encounter, simple_test, lab_technician, sample_organization, sample_facility):
+def lab_result_simple(
+    db,
+    sample_patient,
+    sample_encounter,
+    simple_test,
+    lab_technician,
+    sample_organization,
+    sample_facility,
+):
     """Create a lab result for a simple test."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -103,7 +111,15 @@ def lab_result_simple(db, sample_patient, sample_encounter, simple_test, lab_tec
 
 
 @pytest.fixture
-def lab_result_complex(db, sample_patient, sample_encounter, complex_test, lab_technician, sample_organization, sample_facility):
+def lab_result_complex(
+    db,
+    sample_patient,
+    sample_encounter,
+    complex_test,
+    lab_technician,
+    sample_organization,
+    sample_facility,
+):
     """Create a lab result for a complex test requiring clinical sign-off."""
     order = LabOrder.objects.create(
         patient=sample_patient,

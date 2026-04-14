@@ -249,14 +249,10 @@ def sync_role_group_permissions(role: Role) -> int:
                 codename = f"{django_action}_{model}"
 
             try:
-                perm = Permission.objects.get(
-                    content_type__app_label=app_label, codename=codename
-                )
+                perm = Permission.objects.get(content_type__app_label=app_label, codename=codename)
                 permissions_to_add.append(perm)
             except Permission.DoesNotExist:
-                logger.warning(
-                    "sync_role_group_permissions: %s.%s not found", app_label, codename
-                )
+                logger.warning("sync_role_group_permissions: %s.%s not found", app_label, codename)
 
     group.permissions.set(permissions_to_add)
     return len(permissions_to_add)

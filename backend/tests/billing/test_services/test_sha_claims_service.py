@@ -224,7 +224,9 @@ def claims_encounter_emergency(db, claims_patient, claims_icd10_code, test_user,
 
 
 @pytest.fixture
-def claims_encounter_no_sha(db, claims_patient_no_sha, claims_icd10_code, test_user, sample_facility):
+def claims_encounter_no_sha(
+    db, claims_patient_no_sha, claims_icd10_code, test_user, sample_facility
+):
     """Create an encounter for patient without SHA."""
     from hmis.apps.encounters.models import Diagnosis, Encounter
 
@@ -246,7 +248,9 @@ def claims_encounter_no_sha(db, claims_patient_no_sha, claims_icd10_code, test_u
 
 
 @pytest.fixture
-def claims_invoice(db, claims_patient, claims_encounter_opd, test_user, sample_facility, sample_organization):
+def claims_invoice(
+    db, claims_patient, claims_encounter_opd, test_user, sample_facility, sample_organization
+):
     """Create an invoice for claims tests."""
     return Invoice.objects.create(
         patient=claims_patient,
@@ -334,7 +338,9 @@ def valid_claim(
 
 
 @pytest.fixture
-def clinic_visit_for_sha_claim_context(db, claims_patient, test_user, sample_facility, sample_organization):
+def clinic_visit_for_sha_claim_context(
+    db, claims_patient, test_user, sample_facility, sample_organization
+):
     """Create a clinic visit to attach to an encounter for clinic-context tests."""
 
     from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit

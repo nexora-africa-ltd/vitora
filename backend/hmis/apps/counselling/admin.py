@@ -31,31 +31,34 @@ class CounsellingTypeAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at", "updated_at"]
 
     fieldsets = [
-        (None, {
-            "fields": ["code", "name", "description", "category"]
-        }),
-        ("Session Parameters", {
-            "fields": [
-                "typical_duration_minutes",
-                "recommended_sessions",
-                "recommended_frequency",
-            ]
-        }),
-        ("Pricing & SHA", {
-            "fields": ["cost_per_session", "sha_claimable", "sha_intervention_code"]
-        }),
-        ("Requirements", {
-            "fields": [
-                "requires_privacy",
-                "requires_referral",
-                "min_age",
-                "max_age",
-                "gender_specific",
-            ]
-        }),
-        ("Status", {
-            "fields": ["is_active", "created_at", "updated_at"]
-        }),
+        (None, {"fields": ["code", "name", "description", "category"]}),
+        (
+            "Session Parameters",
+            {
+                "fields": [
+                    "typical_duration_minutes",
+                    "recommended_sessions",
+                    "recommended_frequency",
+                ]
+            },
+        ),
+        (
+            "Pricing & SHA",
+            {"fields": ["cost_per_session", "sha_claimable", "sha_intervention_code"]},
+        ),
+        (
+            "Requirements",
+            {
+                "fields": [
+                    "requires_privacy",
+                    "requires_referral",
+                    "min_age",
+                    "max_age",
+                    "gender_specific",
+                ]
+            },
+        ),
+        ("Status", {"fields": ["is_active", "created_at", "updated_at"]}),
     ]
 
 
@@ -121,54 +124,67 @@ class CounsellingReferralAdmin(SimpleHistoryAdmin):
     inlines = [CounsellingSessionInline]
 
     fieldsets = [
-        (None, {
-            "fields": [
-                "referral_number",
-                "patient",
-                "encounter",
-                "counselling_type",
-            ]
-        }),
-        ("Referral Details", {
-            "fields": [
-                "referred_by",
-                "assigned_counsellor",
-                "reason",
-                "urgency",
-                "clinical_summary",
-                "presenting_issues",
-                "goals",
-                "risk_assessment",
-            ]
-        }),
-        ("Status & Sessions", {
-            "fields": [
-                "status",
-                "total_sessions",
-                "sessions_completed",
-                "is_sensitive",
-            ]
-        }),
-        ("Billing", {
-            "fields": ["is_paid", "invoice", "clinic_visit"]
-        }),
-        ("Completion", {
-            "fields": [
-                "completion_notes",
-                "cancellation_reason",
-                "completed_by",
-            ]
-        }),
-        ("Timestamps", {
-            "fields": [
-                "created_at",
-                "updated_at",
-                "accepted_at",
-                "started_at",
-                "completed_at",
-            ],
-            "classes": ["collapse"],
-        }),
+        (
+            None,
+            {
+                "fields": [
+                    "referral_number",
+                    "patient",
+                    "encounter",
+                    "counselling_type",
+                ]
+            },
+        ),
+        (
+            "Referral Details",
+            {
+                "fields": [
+                    "referred_by",
+                    "assigned_counsellor",
+                    "reason",
+                    "urgency",
+                    "clinical_summary",
+                    "presenting_issues",
+                    "goals",
+                    "risk_assessment",
+                ]
+            },
+        ),
+        (
+            "Status & Sessions",
+            {
+                "fields": [
+                    "status",
+                    "total_sessions",
+                    "sessions_completed",
+                    "is_sensitive",
+                ]
+            },
+        ),
+        ("Billing", {"fields": ["is_paid", "invoice", "clinic_visit"]}),
+        (
+            "Completion",
+            {
+                "fields": [
+                    "completion_notes",
+                    "cancellation_reason",
+                    "completed_by",
+                ]
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": [
+                    "created_at",
+                    "updated_at",
+                    "accepted_at",
+                    "started_at",
+                    "completed_at",
+                ],
+                "classes": ["collapse"],
+            },
+        ),
     ]
 
 
@@ -213,69 +229,93 @@ class CounsellingSessionAdmin(SimpleHistoryAdmin):
     raw_id_fields = ["referral", "counsellor"]
 
     fieldsets = [
-        (None, {
-            "fields": [
-                "session_number",
-                "referral",
-                "counsellor",
-                "session_sequence",
-            ]
-        }),
-        ("Scheduling", {
-            "fields": [
-                "scheduled_date",
-                "scheduled_time",
-                "actual_date",
-                "actual_start_time",
-                "actual_end_time",
-                "duration_minutes",
-                "status",
-            ]
-        }),
-        ("Pre-Session", {
-            "fields": [
-                "pre_session_mood",
-                "pre_session_notes",
-            ]
-        }),
-        ("Session Content", {
-            "fields": [
-                "session_type",
-                "topics_discussed",
-                "techniques_used",
-                "client_responses",
-                "progress_notes",
-            ]
-        }),
-        ("Post-Session Assessment", {
-            "fields": [
-                "post_session_mood",
-                "outcome",
-                "risk_assessment",
-                "risk_level",
-                "safety_plan",
-            ]
-        }),
-        ("Follow-up", {
-            "fields": [
-                "follow_up_required",
-                "follow_up_date",
-                "homework",
-                "goals_for_next_session",
-            ]
-        }),
-        ("Privacy & Billing", {
-            "fields": [
-                "confidentiality_level",
-                "is_sensitive",
-                "clinic_visit",
-                "is_billed",
-            ]
-        }),
-        ("Timestamps", {
-            "fields": ["created_at", "updated_at", "completed_at"],
-            "classes": ["collapse"],
-        }),
+        (
+            None,
+            {
+                "fields": [
+                    "session_number",
+                    "referral",
+                    "counsellor",
+                    "session_sequence",
+                ]
+            },
+        ),
+        (
+            "Scheduling",
+            {
+                "fields": [
+                    "scheduled_date",
+                    "scheduled_time",
+                    "actual_date",
+                    "actual_start_time",
+                    "actual_end_time",
+                    "duration_minutes",
+                    "status",
+                ]
+            },
+        ),
+        (
+            "Pre-Session",
+            {
+                "fields": [
+                    "pre_session_mood",
+                    "pre_session_notes",
+                ]
+            },
+        ),
+        (
+            "Session Content",
+            {
+                "fields": [
+                    "session_type",
+                    "topics_discussed",
+                    "techniques_used",
+                    "client_responses",
+                    "progress_notes",
+                ]
+            },
+        ),
+        (
+            "Post-Session Assessment",
+            {
+                "fields": [
+                    "post_session_mood",
+                    "outcome",
+                    "risk_assessment",
+                    "risk_level",
+                    "safety_plan",
+                ]
+            },
+        ),
+        (
+            "Follow-up",
+            {
+                "fields": [
+                    "follow_up_required",
+                    "follow_up_date",
+                    "homework",
+                    "goals_for_next_session",
+                ]
+            },
+        ),
+        (
+            "Privacy & Billing",
+            {
+                "fields": [
+                    "confidentiality_level",
+                    "is_sensitive",
+                    "clinic_visit",
+                    "is_billed",
+                ]
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ["created_at", "updated_at", "completed_at"],
+                "classes": ["collapse"],
+            },
+        ),
     ]
 
     @admin.display(description="Patient")

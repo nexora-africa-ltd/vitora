@@ -44,9 +44,21 @@ urlpatterns = [
     # Login verification
     path("verify/", MFAVerifyView.as_view(), name="verify"),
     # WebAuthn / Passkey
-    path("webauthn/register/begin/", WebAuthnRegisterBeginView.as_view(), name="webauthn-register-begin"),
-    path("webauthn/register/complete/", WebAuthnRegisterCompleteView.as_view(), name="webauthn-register-complete"),
-    path("webauthn/credentials/", WebAuthnCredentialsListView.as_view(), name="webauthn-credentials-list"),
+    path(
+        "webauthn/register/begin/",
+        WebAuthnRegisterBeginView.as_view(),
+        name="webauthn-register-begin",
+    ),
+    path(
+        "webauthn/register/complete/",
+        WebAuthnRegisterCompleteView.as_view(),
+        name="webauthn-register-complete",
+    ),
+    path(
+        "webauthn/credentials/",
+        WebAuthnCredentialsListView.as_view(),
+        name="webauthn-credentials-list",
+    ),
     path(
         "webauthn/credentials/<int:credential_id>/",
         WebAuthnCredentialDeleteView.as_view(),

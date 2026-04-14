@@ -156,15 +156,16 @@ class TestStaffConstraints:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
-    def test_filter_by_staff_resource(self, authenticated_client, staff_constraint, sample_person_resource):
+    def test_filter_by_staff_resource(
+        self, authenticated_client, staff_constraint, sample_person_resource
+    ):
         """GET ?staff_resource=X should filter by staff."""
         response = authenticated_client.get(
             f"/api/scheduling/constraints/?staff_resource={sample_person_resource.id}"
         )
         assert response.status_code == status.HTTP_200_OK
         assert all(
-            c["staff_resource"] == sample_person_resource.id
-            for c in response.data["results"]
+            c["staff_resource"] == sample_person_resource.id for c in response.data["results"]
         )
 
     def test_filter_by_is_active(self, authenticated_client, staff_constraint):

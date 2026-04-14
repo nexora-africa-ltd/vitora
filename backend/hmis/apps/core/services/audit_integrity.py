@@ -186,9 +186,7 @@ class AuditIntegrityService:
         from hmis.apps.core.models import AuditLog
 
         total_entries = AuditLog.objects.count()
-        chained_entries = AuditLog.objects.filter(
-            sequence_number__isnull=False
-        ).count()
+        chained_entries = AuditLog.objects.filter(sequence_number__isnull=False).count()
         unchained_entries = total_entries - chained_entries
 
         last_entry = (
@@ -217,25 +215,15 @@ class AuditIntegrityService:
             "total_entries": total_entries,
             "chained_entries": chained_entries,
             "unchained_entries": unchained_entries,
-            "last_sequence_number": (
-                last_entry["sequence_number"] if last_entry else None
-            ),
-            "last_entry_hash": (
-                last_entry["entry_hash"] if last_entry else None
-            ),
-            "last_entry_timestamp": (
-                last_entry["timestamp"].isoformat() if last_entry else None
-            ),
+            "last_sequence_number": (last_entry["sequence_number"] if last_entry else None),
+            "last_entry_hash": (last_entry["entry_hash"] if last_entry else None),
+            "last_entry_timestamp": (last_entry["timestamp"].isoformat() if last_entry else None),
             "tamper_alerts_count": tamper_alerts,
             "last_verified_at": (
-                last_verification["timestamp"].isoformat()
-                if last_verification
-                else None
+                last_verification["timestamp"].isoformat() if last_verification else None
             ),
             "last_verification_valid": (
-                last_verification["details"].get("valid")
-                if last_verification
-                else None
+                last_verification["details"].get("valid") if last_verification else None
             ),
         }
 

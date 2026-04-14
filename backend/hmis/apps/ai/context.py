@@ -23,9 +23,9 @@ logger = logging.getLogger(__name__)
 # hierarchy_level is 0-based where 0 = highest authority.
 # We bucket into three labels that TibaBot can interpret.
 _SENIORITY_MAP: dict[str, tuple[int, int]] = {
-    "SENIOR": (0, 2),    # hierarchy_level 0-2 → consultant / HOD / specialist
-    "MID": (3, 5),       # hierarchy_level 3-5 → registrar / experienced CO
-    "JUNIOR": (6, 99),   # hierarchy_level 6+ → intern / student / new hire
+    "SENIOR": (0, 2),  # hierarchy_level 0-2 → consultant / HOD / specialist
+    "MID": (3, 5),  # hierarchy_level 3-5 → registrar / experienced CO
+    "JUNIOR": (6, 99),  # hierarchy_level 6+ → intern / student / new hire
 }
 
 
@@ -101,7 +101,9 @@ def build_facility_context(request: Request | None = None) -> dict[str, Any]:
     if request is not None:
         try:
             staff_profile = getattr(request.user, "staff_profile", None)
-            primary_facility = getattr(staff_profile, "primary_facility", None) if staff_profile else None
+            primary_facility = (
+                getattr(staff_profile, "primary_facility", None) if staff_profile else None
+            )
             if primary_facility is not None:
                 facility_level = getattr(primary_facility, "level", None) or None
         except Exception:

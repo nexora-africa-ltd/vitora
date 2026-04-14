@@ -95,7 +95,9 @@ class TestNursingKardex:
         kardex = sample_admission.kardex
 
         kardex.maternity_continuity_action = "ROUTE_TO_PNC_QUEUE"
-        kardex.maternity_continuity_notes = "Keep discharge teaching complete, then escort mother to PNC queue."
+        kardex.maternity_continuity_notes = (
+            "Keep discharge teaching complete, then escort mother to PNC queue."
+        )
         kardex.save()
 
         refreshed_kardex = NursingKardex.objects.get(pk=kardex.pk)

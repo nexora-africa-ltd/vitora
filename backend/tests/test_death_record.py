@@ -96,7 +96,9 @@ class TestDeathRecordModel:
         assert sample_death_record.burial_permit_number == "BP-001"
         assert sample_death_record.release_date is not None
 
-    def test_void_reverses_patient_deceased(self, sample_death_record, sample_patient, another_user):
+    def test_void_reverses_patient_deceased(
+        self, sample_death_record, sample_patient, another_user
+    ):
         """Voiding a death record should reverse Patient.is_deceased."""
         sample_patient.refresh_from_db()
         assert sample_patient.is_deceased is True
@@ -190,9 +192,7 @@ class TestDeathRecordAPI:
 
     def test_list_filter_by_status(self, authenticated_client, sample_death_record):
         """Should filter by status."""
-        response = authenticated_client.get(
-            "/api/death-records/?status=PENDING_CERTIFICATION"
-        )
+        response = authenticated_client.get("/api/death-records/?status=PENDING_CERTIFICATION")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
@@ -204,9 +204,7 @@ class TestDeathRecordAPI:
 
     def test_retrieve_death_record(self, authenticated_client, sample_death_record):
         """Should retrieve a death record with full detail."""
-        response = authenticated_client.get(
-            f"/api/death-records/{sample_death_record.id}/"
-        )
+        response = authenticated_client.get(f"/api/death-records/{sample_death_record.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["patient_mrn"] == sample_death_record.patient.mrn
         assert response.data["patient_name"] is not None
@@ -258,9 +256,7 @@ class TestDeathRecordWorkflow:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_release_body_action(
-        self, authenticated_client, sample_death_record, another_user
-    ):
+    def test_release_body_action(self, authenticated_client, sample_death_record, another_user):
         """Should release body after certification."""
         sample_death_record.certify(user=another_user)
         response = authenticated_client.post(
@@ -309,9 +305,7 @@ class TestDeathRecordWorkflow:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "REPORTED_TO_CIVIL_REGISTRY"
 
-    def test_report_without_certification_fails(
-        self, authenticated_client, sample_death_record
-    ):
+    def test_report_without_certification_fails(self, authenticated_client, sample_death_record):
         """Should not report without certification."""
         response = authenticated_client.post(
             f"/api/death-records/{sample_death_record.id}/report-to-civil-registry/"
@@ -374,9 +368,7 @@ class TestPatientDeceasedStatus:
         patient = response.data["results"][0]
         assert "is_deceased" in patient
 
-    def test_patient_detail_shows_deceased_field(
-        self, authenticated_client, sample_death_record
-    ):
+    def test_patient_detail_shows_deceased_field(self, authenticated_client, sample_death_record):
         """Patient detail should show deceased status after death record creation."""
         patient_id = sample_death_record.patient.id
         response = authenticated_client.get(f"/api/patients/{patient_id}/")
@@ -389,9 +381,7 @@ class TestPatientDeceasedStatus:
 class TestDeceasedDischargeAutoCreation:
     """Tests for auto-creation of DeathRecord from DECEASED inpatient discharge."""
 
-    def test_deceased_discharge_creates_death_record(
-        self, sample_admission, test_user
-    ):
+    def test_deceased_discharge_creates_death_record(self, sample_admission, test_user):
         """DECEASED discharge should auto-create a DeathRecord."""
         from django.utils import timezone
 
@@ -423,9 +413,7 @@ class TestDeceasedDischargeAutoCreation:
         assert death_record.recorded_by == test_user
         assert death_record.status == "PENDING_CERTIFICATION"
 
-    def test_deceased_discharge_skips_existing_death_record(
-        self, sample_admission, test_user
-    ):
+    def test_deceased_discharge_skips_existing_death_record(self, sample_admission, test_user):
         """If patient already has a death record, discharge should not duplicate."""
         from django.utils import timezone
 
@@ -458,9 +446,7 @@ class TestDeceasedDischargeAutoCreation:
         assert DeathRecord.objects.filter(patient=patient).count() == 1
         assert patient.death_record.notification_source == "MANUAL_ENTRY"
 
-    def test_normal_discharge_does_not_create_death_record(
-        self, sample_admission, test_user
-    ):
+    def test_normal_discharge_does_not_create_death_record(self, sample_admission, test_user):
         """Non-DECEASED discharge should NOT create a DeathRecord."""
         from django.utils import timezone
 
@@ -479,9 +465,7 @@ class TestDeceasedDischargeAutoCreation:
             patient_instructions="Continue oral antibiotics for 5 days",
         )
 
-        assert not DeathRecord.objects.filter(
-            patient=sample_admission.patient
-        ).exists()
+        assert not DeathRecord.objects.filter(patient=sample_admission.patient).exists()
         sample_admission.patient.refresh_from_db()
         assert sample_admission.patient.is_deceased is False
 

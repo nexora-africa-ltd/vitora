@@ -150,9 +150,9 @@ def broadcast_consultation_started(visit) -> None:
             "patient_name": visit.patient.full_name,
             "queue_number": visit.queue_number,
             "encounter_id": visit.encounter_id,
-            "consultation_start": visit.consultation_start.isoformat()
-            if visit.consultation_start
-            else None,
+            "consultation_start": (
+                visit.consultation_start.isoformat() if visit.consultation_start else None
+            ),
         },
     )
 
@@ -172,9 +172,9 @@ def broadcast_visit_completed(visit) -> None:
             "patient_id": visit.patient_id,
             "patient_name": visit.patient.full_name,
             "queue_number": visit.queue_number,
-            "consultation_end": visit.consultation_end.isoformat()
-            if visit.consultation_end
-            else None,
+            "consultation_end": (
+                visit.consultation_end.isoformat() if visit.consultation_end else None
+            ),
         },
     )
 

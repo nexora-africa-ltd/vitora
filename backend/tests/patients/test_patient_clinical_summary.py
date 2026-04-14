@@ -49,16 +49,16 @@ def auth_client(db, sample_organization, sample_facility, sample_department, sam
 class TestPatientAllergySummary:
     """Tests for the allergy_summary computed field on PatientSerializer."""
 
-    def test_patient_with_no_allergies_returns_empty_list(
-        self, auth_client, sample_patient
-    ):
+    def test_patient_with_no_allergies_returns_empty_list(self, auth_client, sample_patient):
         """Should return an empty list when patient has no allergies."""
         response = auth_client.get(f"/api/patients/{sample_patient.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["allergy_summary"] == []
 
     def test_patient_with_active_allergies_returns_substances(
-        self, auth_client, sample_patient,
+        self,
+        auth_client,
+        sample_patient,
         sample_organization,
     ):
         """Should return list of active allergy substances."""
@@ -90,7 +90,9 @@ class TestPatientAllergySummary:
         assert "Penicillin" in summary
         assert "Peanuts" in summary
 
-    def test_inactive_allergies_are_excluded(self, auth_client, sample_patient, sample_organization):
+    def test_inactive_allergies_are_excluded(
+        self, auth_client, sample_patient, sample_organization
+    ):
         """Should only include active allergies in summary."""
         from hmis.apps.patients.models import Allergy
 
@@ -120,7 +122,9 @@ class TestPatientAllergySummary:
         assert "Aspirin" not in summary
 
     def test_allergy_summary_appears_in_list_view(
-        self, auth_client, sample_patient,
+        self,
+        auth_client,
+        sample_patient,
         sample_organization,
     ):
         """Should include allergy_summary in list endpoint too."""
@@ -139,9 +143,7 @@ class TestPatientAllergySummary:
         response = auth_client.get("/api/patients/")
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
-        patient_data = next(
-            (p for p in results if p["id"] == sample_patient.id), None
-        )
+        patient_data = next((p for p in results if p["id"] == sample_patient.id), None)
         assert patient_data is not None
         assert "Latex" in patient_data["allergy_summary"]
 

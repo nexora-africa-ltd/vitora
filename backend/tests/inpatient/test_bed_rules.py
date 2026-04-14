@@ -332,9 +332,7 @@ class TestBedAssignmentRuleEvaluator:
         assert result.decision.decision_outcome == "UNASSIGNED"
         assert "No available beds" in result.decision.decision_reason
 
-    def test_gender_constraint_maternity(
-        self, evaluator, male_patient, maternity_ward, test_user
-    ):
+    def test_gender_constraint_maternity(self, evaluator, male_patient, maternity_ward, test_user):
         """Should fail male patient for maternity ward."""
         result = evaluator.evaluate_beds_for_patient(
             patient=male_patient,
@@ -361,9 +359,7 @@ class TestBedAssignmentRuleEvaluator:
         assert result.success is True
         assert result.assigned_bed is not None
 
-    def test_pediatric_age_constraint(
-        self, evaluator, male_patient, pediatric_ward, test_user
-    ):
+    def test_pediatric_age_constraint(self, evaluator, male_patient, pediatric_ward, test_user):
         """Should fail adult patient for pediatric ward."""
         # male_patient is 40 years old, too old for pediatric
         result = evaluator.evaluate_beds_for_patient(
@@ -376,9 +372,7 @@ class TestBedAssignmentRuleEvaluator:
         violations = [v for e in result.candidates_evaluated for v in e.compatibility_violations]
         assert any("AGE" in str(v) for v in violations)
 
-    def test_pediatric_accepts_child(
-        self, evaluator, child_patient, pediatric_ward, test_user
-    ):
+    def test_pediatric_accepts_child(self, evaluator, child_patient, pediatric_ward, test_user):
         """Should accept child patient for pediatric ward."""
         result = evaluator.evaluate_beds_for_patient(
             patient=child_patient,
@@ -389,9 +383,7 @@ class TestBedAssignmentRuleEvaluator:
         assert result.success is True
         assert result.assigned_bed is not None
 
-    def test_isolation_requirement(
-        self, evaluator, female_patient, general_ward, test_user
-    ):
+    def test_isolation_requirement(self, evaluator, female_patient, general_ward, test_user):
         """Should fail when isolation required but ward not capable."""
         result = evaluator.evaluate_beds_for_patient(
             patient=female_patient,
@@ -402,8 +394,7 @@ class TestBedAssignmentRuleEvaluator:
 
         # General ward is not isolation-capable
         assert result.success is False or any(
-            "ISOLATION" in str(e.compatibility_violations)
-            for e in result.candidates_evaluated
+            "ISOLATION" in str(e.compatibility_violations) for e in result.candidates_evaluated
         )
 
     def test_isolation_passes_for_capable_ward(
@@ -420,9 +411,7 @@ class TestBedAssignmentRuleEvaluator:
         assert result.success is True
         assert result.assigned_bed is not None
 
-    def test_oxygen_requirement(
-        self, evaluator, male_patient, test_user
-    ):
+    def test_oxygen_requirement(self, evaluator, male_patient, test_user):
         """Should add oxygen requirement to context."""
         # Create a ward without oxygen
         ward = Ward.objects.create(
@@ -463,9 +452,7 @@ class TestBedAssignmentRuleEvaluator:
         assert result.rule_applied == general_ward_rule
         assert result.decision.rule_applied == general_ward_rule
 
-    def test_decision_logged_to_database(
-        self, evaluator, female_patient, general_ward, test_user
-    ):
+    def test_decision_logged_to_database(self, evaluator, female_patient, general_ward, test_user):
         """Should create AssignmentDecision record."""
         initial_count = AssignmentDecision.objects.count()
 
@@ -481,9 +468,7 @@ class TestBedAssignmentRuleEvaluator:
         assert result.decision.target_id == female_patient.id
         assert result.decision.triggered_by == test_user
 
-    def test_evaluation_time_recorded(
-        self, evaluator, female_patient, general_ward, test_user
-    ):
+    def test_evaluation_time_recorded(self, evaluator, female_patient, general_ward, test_user):
         """Should record evaluation time in milliseconds."""
         result = evaluator.evaluate_beds_for_patient(
             patient=female_patient,
@@ -520,9 +505,7 @@ class TestBedAssignmentRuleEvaluator:
 class TestBedAssignmentServiceRuleBased:
     """Tests for rule-based method in BedAssignmentService."""
 
-    def test_rule_based_assign_marks_bed_occupied(
-        self, female_patient, general_ward, test_user
-    ):
+    def test_rule_based_assign_marks_bed_occupied(self, female_patient, general_ward, test_user):
         """Should mark bed as occupied when mark_as_occupied=True."""
         from hmis.apps.inpatient.services.bed_assignment import bed_assignment_service
 
@@ -573,9 +556,7 @@ class TestRecommendBedAPI:
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_recommend_bed_success(
-        self, authenticated_client, general_ward, female_patient
-    ):
+    def test_recommend_bed_success(self, authenticated_client, general_ward, female_patient):
         """Should return recommended bed."""
         response = authenticated_client.post(
             f"/api/inpatient/wards/{general_ward.id}/recommend_bed/",
@@ -599,9 +580,7 @@ class TestRecommendBedAPI:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_recommend_bed_with_requirements(
-        self, authenticated_client, icu_ward, female_patient
-    ):
+    def test_recommend_bed_with_requirements(self, authenticated_client, icu_ward, female_patient):
         """Should handle equipment requirements."""
         response = authenticated_client.post(
             f"/api/inpatient/wards/{icu_ward.id}/recommend_bed/",

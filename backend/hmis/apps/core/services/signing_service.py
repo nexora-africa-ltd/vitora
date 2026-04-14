@@ -101,9 +101,7 @@ class DocumentSigningService:
             cert.private_key_pem_encrypted.encode("latin-1"),
             context={"purpose": "document_signing", "document_type": document_type},
         )
-        private_key = serialization.load_pem_private_key(
-            private_key_pem, password=None
-        )
+        private_key = serialization.load_pem_private_key(private_key_pem, password=None)
 
         # Sign the hash
         signature_bytes = private_key.sign(
@@ -179,9 +177,7 @@ class DocumentSigningService:
                 signature_record.document_type,
                 signature_record.document_id,
             )
-            content = self.get_signable_content(
-                signature_record.document_type, document
-            )
+            content = self.get_signable_content(signature_record.document_type, document)
             content_bytes = content.encode("utf-8")
             current_hash = hashlib.sha256(content_bytes).hexdigest()
 
@@ -194,9 +190,7 @@ class DocumentSigningService:
                 )
 
             # 3. Verify cryptographic signature
-            public_key = serialization.load_pem_public_key(
-                cert.public_key_pem.encode()
-            )
+            public_key = serialization.load_pem_public_key(cert.public_key_pem.encode())
             # Re-serialize original content for signature check
             # Use the original content bytes (from current content)
             # The signature was created over the content bytes
@@ -212,7 +206,9 @@ class DocumentSigningService:
                 # If content has changed, try verifying against original hash
                 # (signature was over original content, so it won't match new content)
                 if not content_matches:
-                    errors.append("Signature cannot be verified (document was modified after signing)")
+                    errors.append(
+                        "Signature cannot be verified (document was modified after signing)"
+                    )
                 else:
                     signature_valid = False
                     errors.append("Cryptographic signature verification failed")
@@ -320,8 +316,14 @@ class DocumentSigningService:
             "numeric_value": str(doc.numeric_value) if doc.numeric_value is not None else None,
             "text_value": doc.text_value or "",
             "result_unit": getattr(doc, "result_unit", "") or "",
-            "reference_low": str(doc.reference_low) if getattr(doc, "reference_low", None) is not None else None,
-            "reference_high": str(doc.reference_high) if getattr(doc, "reference_high", None) is not None else None,
+            "reference_low": (
+                str(doc.reference_low) if getattr(doc, "reference_low", None) is not None else None
+            ),
+            "reference_high": (
+                str(doc.reference_high)
+                if getattr(doc, "reference_high", None) is not None
+                else None
+            ),
             "verification_status": doc.verification_status,
             "verified_at": str(doc.verified_at) if doc.verified_at else None,
         }
@@ -331,13 +333,15 @@ class DocumentSigningService:
         items = []
         if hasattr(doc, "items"):
             for item in doc.items.all().order_by("id"):
-                items.append({
-                    "drug_id": item.drug_id,
-                    "dosage": item.dosage,
-                    "frequency": item.frequency,
-                    "duration": getattr(item, "duration", ""),
-                    "quantity": str(item.quantity) if item.quantity is not None else None,
-                })
+                items.append(
+                    {
+                        "drug_id": item.drug_id,
+                        "dosage": item.dosage,
+                        "frequency": item.frequency,
+                        "duration": getattr(item, "duration", ""),
+                        "quantity": str(item.quantity) if item.quantity is not None else None,
+                    }
+                )
 
         return {
             "type": "Prescription",
@@ -352,7 +356,9 @@ class DocumentSigningService:
 
     def _extract_discharge(self, doc) -> dict:
         """Extract signable content from a Discharge."""
-        patient_id = doc.admission.patient_id if hasattr(doc, "admission") and doc.admission else None
+        patient_id = (
+            doc.admission.patient_id if hasattr(doc, "admission") and doc.admission else None
+        )
 
         return {
             "type": "Discharge",

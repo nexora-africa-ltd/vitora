@@ -379,9 +379,7 @@ class TestIDSRReportingService:
             patient=sample_patient,
             encounter=sample_encounter,
             county=sample_county,
-            detected_at=timezone.make_aware(
-                timezone.datetime(2026, 2, 18, 10, 0, 0)
-            ),
+            detected_at=timezone.make_aware(timezone.datetime(2026, 2, 18, 10, 0, 0)),
         )
 
         report = IDSRReportingService.generate_weekly_report(
@@ -601,9 +599,7 @@ class TestIDSRAPIEndpoints:
             status="SUBMITTED",
         )
 
-        response = authenticated_client.post(
-            f"/api/surveillance/idsr/{report.id}/approve/", {}
-        )
+        response = authenticated_client.post(f"/api/surveillance/idsr/{report.id}/approve/", {})
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -628,9 +624,7 @@ class TestIDSRAPIEndpoints:
             facility_code="MFL001",
         )
 
-        response = authenticated_client.get(
-            f"/api/surveillance/idsr/{report.id}/dhis2_preview/"
-        )
+        response = authenticated_client.get(f"/api/surveillance/idsr/{report.id}/dhis2_preview/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "payload" in response.data

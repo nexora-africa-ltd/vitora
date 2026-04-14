@@ -75,9 +75,7 @@ def generate_diet_plan_number():
 
     # Find the highest plan number for today
     latest_plan = (
-        DietPlan.objects.filter(plan_number__startswith=prefix)
-        .order_by("-plan_number")
-        .first()
+        DietPlan.objects.filter(plan_number__startswith=prefix).order_by("-plan_number").first()
     )
 
     if latest_plan:
@@ -541,6 +539,7 @@ class NutritionConsultation(HistoryMixin, models.Model):
 
     def save(self, *args, **kwargs):
         from hmis.apps.core.mixins import resolve_tenant_from_related
+
         resolve_tenant_from_related(self)
 
         # Generate consultation number on creation
@@ -550,7 +549,7 @@ class NutritionConsultation(HistoryMixin, models.Model):
         # Calculate BMI if weight and height are available
         if self.weight and self.height:
             height_m = float(self.height) / 100
-            self.bmi = round(float(self.weight) / (height_m ** 2), 1)
+            self.bmi = round(float(self.weight) / (height_m**2), 1)
             self._update_bmi_classification()
 
         # Calculate waist-hip ratio
@@ -683,9 +682,7 @@ class NutritionConsultation(HistoryMixin, models.Model):
             ValidationError: If transition is not allowed
         """
         if not self.can_transition_to(new_status):
-            raise ValidationError(
-                f"Cannot transition from '{self.status}' to '{new_status}'"
-            )
+            raise ValidationError(f"Cannot transition from '{self.status}' to '{new_status}'")
         self.status = new_status
         self.save()
 

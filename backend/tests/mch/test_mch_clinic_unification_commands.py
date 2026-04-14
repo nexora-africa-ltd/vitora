@@ -53,7 +53,9 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, s
 
 
 @pytest.fixture
-def mch_registration(db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization):
+def mch_registration(
+    db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization
+):
     from hmis.apps.mch.models import MCHRegistration
 
     return MCHRegistration.objects.create(
@@ -89,7 +91,9 @@ class TestMCHClinicUnificationCommands:
 
         assert visit.clinic_visit_id == first_link
 
-    def test_reconcile_clinic_enrollment_attendance_recomputes_totals(self, mch_registration, anc_enrollment):
+    def test_reconcile_clinic_enrollment_attendance_recomputes_totals(
+        self, mch_registration, anc_enrollment
+    ):
         from hmis.apps.clinics.models import ClinicVisit
         from hmis.apps.mch.models import ANCVisit
 

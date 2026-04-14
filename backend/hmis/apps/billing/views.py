@@ -875,7 +875,8 @@ class MpesaViewSet(viewsets.ViewSet):
                         "success": False,
                         "result_code": None,
                         "result_description": result_desc or "Transaction is being processed",
-                        "checkout_request_id": result.get("CheckoutRequestID") or checkout_request_id,
+                        "checkout_request_id": result.get("CheckoutRequestID")
+                        or checkout_request_id,
                         "pending": True,
                     },
                     status=status.HTTP_200_OK,
@@ -898,7 +899,11 @@ class MpesaViewSet(viewsets.ViewSet):
             )
 
         except ValidationError as e:
-            msg = e.message if hasattr(e, "message") else "; ".join(e.messages) if hasattr(e, "messages") else str(e)
+            msg = (
+                e.message
+                if hasattr(e, "message")
+                else "; ".join(e.messages) if hasattr(e, "messages") else str(e)
+            )
             return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception("Failed to query M-Pesa transaction status")
@@ -981,7 +986,11 @@ class MpesaViewSet(viewsets.ViewSet):
             return Response(result, status=status.HTTP_200_OK)
 
         except DjangoValidationError as e:
-            msg = e.message if hasattr(e, "message") else "; ".join(e.messages) if hasattr(e, "messages") else str(e)
+            msg = (
+                e.message
+                if hasattr(e, "message")
+                else "; ".join(e.messages) if hasattr(e, "messages") else str(e)
+            )
             return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception("M-Pesa verification failed")

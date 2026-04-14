@@ -19,12 +19,8 @@ class HL7MessageFilter(filters.FilterSet):
         choices=HL7MessageStatus.choices,
     )
     resource_type = filters.CharFilter(lookup_expr="iexact")
-    created_after = filters.DateTimeFilter(
-        field_name="created_at", lookup_expr="gte"
-    )
-    created_before = filters.DateTimeFilter(
-        field_name="created_at", lookup_expr="lte"
-    )
+    created_after = filters.DateTimeFilter(field_name="created_at", lookup_expr="gte")
+    created_before = filters.DateTimeFilter(field_name="created_at", lookup_expr="lte")
 
     class Meta:
         model = HL7Message

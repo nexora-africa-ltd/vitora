@@ -109,7 +109,9 @@ def atr_create_data(sample_transfusion_with_reaction):
 
 
 @pytest.fixture
-def sample_atr(db, sample_transfusion_with_reaction, test_user, sample_facility, sample_organization):
+def sample_atr(
+    db, sample_transfusion_with_reaction, test_user, sample_facility, sample_organization
+):
     """Create a sample ATR report."""
     from hmis.apps.inpatient.models import AdverseTransfusionReaction
 
@@ -164,7 +166,12 @@ class TestAdverseTransfusionReactionModel:
         assert atr.transfusion == sample_transfusion_with_reaction
 
     def test_one_atr_per_transfusion(
-        self, sample_atr, sample_transfusion_with_reaction, test_user, sample_facility, sample_organization
+        self,
+        sample_atr,
+        sample_transfusion_with_reaction,
+        test_user,
+        sample_facility,
+        sample_organization,
     ):
         """Only one ATR report allowed per transfusion (OneToOneField)."""
         from django.db import IntegrityError
@@ -325,9 +332,7 @@ class TestATRAPIRetrieve:
 
     def test_list_atr_reports(self, authenticated_client, sample_atr):
         """Should list ATR reports."""
-        response = authenticated_client.get(
-            "/api/inpatient/adverse-transfusion-reactions/"
-        )
+        response = authenticated_client.get("/api/inpatient/adverse-transfusion-reactions/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
@@ -342,7 +347,9 @@ class TestATRAPIRetrieve:
         assert "has_lab_investigation" in response.data
         assert "reaction_categories_display" in response.data
 
-    def test_retrieve_atr_detail_includes_patient_demographics(self, authenticated_client, sample_atr):
+    def test_retrieve_atr_detail_includes_patient_demographics(
+        self, authenticated_client, sample_atr
+    ):
         """Detail should include patient gender, DOB, ward, diagnosis, and started_by."""
         response = authenticated_client.get(
             f"/api/inpatient/adverse-transfusion-reactions/{sample_atr.id}/"
@@ -375,7 +382,11 @@ class TestATRAPIRetrieve:
             "/api/inpatient/adverse-transfusion-reactions/?status=DRAFT"
         )
         assert response.status_code == status.HTTP_200_OK
-        results = response.data if isinstance(response.data, list) else response.data.get("results", response.data)
+        results = (
+            response.data
+            if isinstance(response.data, list)
+            else response.data.get("results", response.data)
+        )
         assert all(r["status"] == "DRAFT" for r in results)
 
 
@@ -431,7 +442,9 @@ class TestATRAPIActions:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "SUBMITTED"
 
-    def test_submit_to_ppb_already_submitted_fails(self, authenticated_client, sample_atr, test_user):
+    def test_submit_to_ppb_already_submitted_fails(
+        self, authenticated_client, sample_atr, test_user
+    ):
         """Should reject double submission."""
         sample_atr.submit_to_ppb(user=test_user)
         data = {"ppb_submitter_name": "Dr. Test"}
@@ -494,9 +507,7 @@ def sample_test_catalog(db):
 class TestATRLabOrderIntegration:
     """Tests for ATR ↔ Lab Order integration."""
 
-    def test_create_lab_order_from_atr(
-        self, sample_atr, test_user, sample_test_catalog
-    ):
+    def test_create_lab_order_from_atr(self, sample_atr, test_user, sample_test_catalog):
         """create_lab_order() should create a linked URGENT lab order."""
         order = sample_atr.create_lab_order(user=test_user)
 
@@ -511,9 +522,7 @@ class TestATRLabOrderIntegration:
         sample_atr.refresh_from_db()
         assert sample_atr.lab_order_id == order.id
 
-    def test_create_lab_order_rejects_duplicate(
-        self, sample_atr, test_user, sample_test_catalog
-    ):
+    def test_create_lab_order_rejects_duplicate(self, sample_atr, test_user, sample_test_catalog):
         """Should reject creating a second lab order."""
         from django.core.exceptions import ValidationError
 
@@ -549,9 +558,7 @@ class TestATRLabOrderIntegration:
             assert updated is True
             assert "Hemoglobinuria" in sample_atr.urinalysis
 
-    def test_populate_does_not_overwrite_manual(
-        self, sample_atr, test_user, sample_test_catalog
-    ):
+    def test_populate_does_not_overwrite_manual(self, sample_atr, test_user, sample_test_catalog):
         """Should not overwrite manually-entered urinalysis."""
         from hmis.apps.laboratory.models import LabResult
 

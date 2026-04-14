@@ -90,26 +90,33 @@ def generate_growth_chart_pdf(patient: "Patient") -> bytes:
         ["MRN:", patient.mrn],
         ["Date of Birth:", str(patient.date_of_birth or "N/A")],
         ["Age:", age_text or "N/A"],
-        ["Sex:", "Male" if patient.gender == "M" else "Female" if patient.gender == "F" else "Other"],
+        [
+            "Sex:",
+            "Male" if patient.gender == "M" else "Female" if patient.gender == "F" else "Other",
+        ],
         ["Report Date:", str(date.today())],
     ]
 
     patient_table = Table(patient_info, colWidths=[4 * cm, 10 * cm])
-    patient_table.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 10),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-    ]))
+    patient_table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
     elements.append(patient_table)
     elements.append(Spacer(1, 0.5 * cm))
 
     # Growth Measurements
     elements.append(Paragraph("Growth Measurements", subtitle_style))
 
-    measurements = GrowthMeasurement.objects.filter(
-        patient=patient
-    ).order_by("-measurement_date")[:20]  # Last 20 measurements
+    measurements = GrowthMeasurement.objects.filter(patient=patient).order_by("-measurement_date")[
+        :20
+    ]  # Last 20 measurements
 
     if measurements.exists():
         # Table header
@@ -130,39 +137,61 @@ def generate_growth_chart_pdf(patient: "Patient") -> bytes:
         table_data = [headers]
         for m in measurements:
             age_str = f"{m.age_in_days // 30}m" if m.age_in_days else "-"
-            table_data.append([
-                str(m.measurement_date),
-                age_str,
-                f"{m.weight:.1f}" if m.weight else "-",
-                f"{m.height:.1f}" if m.height else "-",
-                f"{m.head_circumference:.1f}" if m.head_circumference else "-",
-                f"{m.muac:.1f}" if m.muac else "-",
-                f"{m.weight_for_age_z:.1f}" if m.weight_for_age_z else "-",
-                f"{m.height_for_age_z:.1f}" if m.height_for_age_z else "-",
-                f"{m.weight_for_height_z:.1f}" if m.weight_for_height_z else "-",
-                m.nutritional_status[:10] if m.nutritional_status else "-",
-            ])
+            table_data.append(
+                [
+                    str(m.measurement_date),
+                    age_str,
+                    f"{m.weight:.1f}" if m.weight else "-",
+                    f"{m.height:.1f}" if m.height else "-",
+                    f"{m.head_circumference:.1f}" if m.head_circumference else "-",
+                    f"{m.muac:.1f}" if m.muac else "-",
+                    f"{m.weight_for_age_z:.1f}" if m.weight_for_age_z else "-",
+                    f"{m.height_for_age_z:.1f}" if m.height_for_age_z else "-",
+                    f"{m.weight_for_height_z:.1f}" if m.weight_for_height_z else "-",
+                    m.nutritional_status[:10] if m.nutritional_status else "-",
+                ]
+            )
 
         # Create table with styling
-        col_widths = [2.2 * cm, 1.3 * cm, 1.4 * cm, 1.4 * cm, 1.2 * cm, 1.2 * cm, 1 * cm, 1 * cm, 1 * cm, 2.3 * cm]
+        col_widths = [
+            2.2 * cm,
+            1.3 * cm,
+            1.4 * cm,
+            1.4 * cm,
+            1.2 * cm,
+            1.2 * cm,
+            1 * cm,
+            1 * cm,
+            1 * cm,
+            2.3 * cm,
+        ]
         measurement_table = Table(table_data, colWidths=col_widths)
-        measurement_table.setStyle(TableStyle([
-            # Header row
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2d3748")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 8),
-            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-            # Data rows
-            ("FONTSIZE", (0, 1), (-1, -1), 8),
-            ("ALIGN", (0, 1), (-1, -1), "CENTER"),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            # Grid
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            # Alternate row colors
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f7fafc")]),
-        ]))
+        measurement_table.setStyle(
+            TableStyle(
+                [
+                    # Header row
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2d3748")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 8),
+                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                    # Data rows
+                    ("FONTSIZE", (0, 1), (-1, -1), 8),
+                    ("ALIGN", (0, 1), (-1, -1), "CENTER"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    # Grid
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    # Alternate row colors
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.white, colors.HexColor("#f7fafc")],
+                    ),
+                ]
+            )
+        )
         elements.append(measurement_table)
     else:
         elements.append(Paragraph("No growth measurements recorded.", normal_style))
@@ -181,16 +210,20 @@ def generate_growth_chart_pdf(patient: "Patient") -> bytes:
         ["> +2", "Obese", "Weight management referral"],
     ]
     legend_table = Table(legend_data, colWidths=[3 * cm, 6 * cm, 5 * cm])
-    legend_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2d3748")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-    ]))
+    legend_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2d3748")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ]
+        )
+    )
     elements.append(legend_table)
 
     elements.append(Spacer(1, 0.5 * cm))
@@ -206,15 +239,19 @@ def generate_growth_chart_pdf(patient: "Patient") -> bytes:
                 ["≥ 12.5 cm", "Normal"],
             ]
             muac_table = Table(muac_data, colWidths=[3 * cm, 11 * cm])
-            muac_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2d3748")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ]))
+            muac_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2d3748")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 9),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ]
+                )
+            )
             elements.append(muac_table)
             break
 
@@ -227,10 +264,12 @@ def generate_growth_chart_pdf(patient: "Patient") -> bytes:
         fontSize=8,
         textColor=colors.grey,
     )
-    elements.append(Paragraph(
-        "Generated by Vitora HMIS • WHO Child Growth Standards • For healthcare provider use only",
-        footer_style,
-    ))
+    elements.append(
+        Paragraph(
+            "Generated by Vitora HMIS • WHO Child Growth Standards • For healthcare provider use only",
+            footer_style,
+        )
+    )
 
     # Build PDF
     doc.build(elements)

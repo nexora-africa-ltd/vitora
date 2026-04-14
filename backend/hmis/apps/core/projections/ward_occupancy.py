@@ -54,26 +54,20 @@ class WardOccupancyProjection(Projection):
             stats.available_beds = max(0, stats.total_beds - stats.occupied_beds)
             stats.admissions_today += 1
             if stats.total_beds > 0:
-                stats.occupancy_rate = round(
-                    (stats.occupied_beds / stats.total_beds) * 100, 2
-                )
+                stats.occupancy_rate = round((stats.occupied_beds / stats.total_beds) * 100, 2)
 
         elif event.event_type == InpatientEvents.DISCHARGE_COMPLETED:
             stats.occupied_beds = max(0, stats.occupied_beds - 1)
             stats.available_beds = stats.total_beds - stats.occupied_beds
             stats.discharges_today += 1
             if stats.total_beds > 0:
-                stats.occupancy_rate = round(
-                    (stats.occupied_beds / stats.total_beds) * 100, 2
-                )
+                stats.occupancy_rate = round((stats.occupied_beds / stats.total_beds) * 100, 2)
 
         elif event.event_type == InpatientEvents.WARD_CAPACITY_CHANGED:
             stats.total_beds = payload.get("total_beds", stats.total_beds)
             stats.available_beds = max(0, stats.total_beds - stats.occupied_beds)
             if stats.total_beds > 0:
-                stats.occupancy_rate = round(
-                    (stats.occupied_beds / stats.total_beds) * 100, 2
-                )
+                stats.occupancy_rate = round((stats.occupied_beds / stats.total_beds) * 100, 2)
 
         stats.last_updated = timezone.now()
         stats.save()

@@ -215,9 +215,9 @@ class BillingReportService:
                     "invoice_number": invoice.invoice_number,
                     "patient_name": f"{invoice.patient.first_name} {invoice.patient.last_name}",
                     "patient_mrn": invoice.patient.mrn,
-                    "invoice_date": invoice.invoice_date.isoformat()
-                    if invoice.invoice_date
-                    else None,
+                    "invoice_date": (
+                        invoice.invoice_date.isoformat() if invoice.invoice_date else None
+                    ),
                     "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
                     "total_amount": str(invoice.total_amount),
                     "amount_paid": str(invoice.amount_paid),

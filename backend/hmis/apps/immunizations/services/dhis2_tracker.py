@@ -61,10 +61,12 @@ class AEFITrackerService:
 
         def _add(de_key: str, value):
             if value is not None and value != "" and de_key in de:
-                data_values.append({
-                    "dataElement": de[de_key],
-                    "value": str(value),
-                })
+                data_values.append(
+                    {
+                        "dataElement": de[de_key],
+                        "value": str(value),
+                    }
+                )
 
         _add("event_date", aefi.event_date.isoformat() if aefi.event_date else None)
         _add("onset_time", str(aefi.onset_time) if aefi.onset_time else None)
@@ -81,7 +83,10 @@ class AEFITrackerService:
             _add("vaccine_manufacturer", record.vaccine_manufacturer)
         if record:
             _add("vaccine_batch", record.batch_number)
-            _add("vaccination_date", record.administered_date.isoformat() if record.administered_date else None)
+            _add(
+                "vaccination_date",
+                record.administered_date.isoformat() if record.administered_date else None,
+            )
             _add("vaccination_service_type", record.vaccination_service_type)
             _add("diluent_name", record.diluent_manufacturer)
             _add("diluent_batch_number", record.diluent_batch_number)
@@ -107,7 +112,9 @@ class AEFITrackerService:
         # National classification (may be empty for initial reports)
         _add("national_classification", aefi.national_classification)
 
-        event_date = aefi.event_date.isoformat() if aefi.event_date else timezone.localdate().isoformat()
+        event_date = (
+            aefi.event_date.isoformat() if aefi.event_date else timezone.localdate().isoformat()
+        )
 
         return {
             "events": [

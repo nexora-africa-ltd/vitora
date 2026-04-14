@@ -183,15 +183,17 @@ def interpret_lab_fallback(payload: dict[str, Any]) -> dict[str, Any]:
 
         ref = _get_range(test_name, patient_sex, patient_age, is_pregnant)
         if ref is None:
-            flags.append({
-                "test_name": test_name,
-                "value": value,
-                "unit": unit,
-                "status": "unknown",
-                "reference_range": None,
-                "deviation_percent": None,
-                "message": f"No reference range available for {test_name}.",
-            })
+            flags.append(
+                {
+                    "test_name": test_name,
+                    "value": value,
+                    "unit": unit,
+                    "status": "unknown",
+                    "reference_range": None,
+                    "deviation_percent": None,
+                    "message": f"No reference range available for {test_name}.",
+                }
+            )
             continue
 
         low, high, ref_unit = ref
@@ -204,15 +206,17 @@ def interpret_lab_fallback(payload: dict[str, Any]) -> dict[str, Any]:
         elif flag_status in ("high", "critical_high") and high > 0:
             deviation = round(((value - high) / high) * 100, 1)
 
-        flags.append({
-            "test_name": test_name,
-            "value": value,
-            "unit": unit,
-            "status": flag_status,
-            "reference_range": {"low": low, "high": high, "unit": ref_unit},
-            "deviation_percent": deviation,
-            "message": f"{test_name}: {value} {unit} ({flag_status})",
-        })
+        flags.append(
+            {
+                "test_name": test_name,
+                "value": value,
+                "unit": unit,
+                "status": flag_status,
+                "reference_range": {"low": low, "high": high, "unit": ref_unit},
+                "deviation_percent": deviation,
+                "message": f"{test_name}: {value} {unit} ({flag_status})",
+            }
+        )
 
         if flag_status.startswith("critical"):
             critical_alerts.append(

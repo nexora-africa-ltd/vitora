@@ -185,12 +185,8 @@ class TestShiftModelPhase2:
             end_time=time(19, 0),
             shift_type="DAY",
             status="COMPLETED",
-            started_at=timezone.make_aware(
-                timezone.datetime.combine(date.today(), time(7, 0))
-            ),
-            completed_at=timezone.make_aware(
-                timezone.datetime.combine(date.today(), time(18, 0))
-            ),
+            started_at=timezone.make_aware(timezone.datetime.combine(date.today(), time(7, 0))),
+            completed_at=timezone.make_aware(timezone.datetime.combine(date.today(), time(18, 0))),
             facility=sample_facility,
             organization=sample_facility.organization,
         )
@@ -207,12 +203,8 @@ class TestShiftModelPhase2:
             end_time=time(19, 0),
             shift_type="DAY",
             status="COMPLETED",
-            started_at=timezone.make_aware(
-                timezone.datetime.combine(date.today(), time(7, 0))
-            ),
-            completed_at=timezone.make_aware(
-                timezone.datetime.combine(date.today(), time(18, 45))
-            ),
+            started_at=timezone.make_aware(timezone.datetime.combine(date.today(), time(7, 0))),
+            completed_at=timezone.make_aware(timezone.datetime.combine(date.today(), time(18, 45))),
             facility=sample_facility,
             organization=sample_facility.organization,
         )
@@ -222,9 +214,7 @@ class TestShiftModelPhase2:
         """actual_hours deducts break minutes from total."""
         from hmis.apps.scheduling.models import Shift
 
-        start = timezone.make_aware(
-            timezone.datetime.combine(date.today(), time(7, 0))
-        )
+        start = timezone.make_aware(timezone.datetime.combine(date.today(), time(7, 0)))
         s = Shift.objects.create(
             staff_resource=my_resource,
             shift_date=date.today(),
@@ -387,9 +377,7 @@ class TestAttendanceTrends:
 
     def test_trends_with_data(self, authenticated_client, completed_shifts_for_trends):
         """Should return weekly trend data."""
-        response = authenticated_client.get(
-            "/api/scheduling/shifts/attendance-trends/?weeks=6"
-        )
+        response = authenticated_client.get("/api/scheduling/shifts/attendance-trends/?weeks=6")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 6
         # Each entry has the expected keys
@@ -433,7 +421,9 @@ class TestPayrollExport:
 
     def test_payroll_export_unauthenticated(self, api_client):
         """Unauthenticated requests rejected."""
-        response = api_client.get("/api/scheduling/shifts/payroll-export/?from_date=2026-01-01&to_date=2026-01-31")
+        response = api_client.get(
+            "/api/scheduling/shifts/payroll-export/?from_date=2026-01-01&to_date=2026-01-31"
+        )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -537,9 +527,7 @@ class TestAttendanceDomainEvents:
     def test_shift_serializer_includes_new_fields(self, authenticated_client, scheduled_shift):
         """Shift serializer should include new Phase 2/3 fields."""
         scheduled_shift.start_shift(method="MANUAL")
-        response = authenticated_client.get(
-            f"/api/scheduling/shifts/{scheduled_shift.id}/"
-        )
+        response = authenticated_client.get(f"/api/scheduling/shifts/{scheduled_shift.id}/")
         assert response.status_code == status.HTTP_200_OK
         data = response.data
         assert "total_break_minutes" in data

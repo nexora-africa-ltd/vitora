@@ -45,7 +45,13 @@ class ResourceSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "staff_profile_name", "department_name"]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "staff_profile_name",
+            "department_name",
+        ]
 
     def get_staff_profile_name(self, obj) -> str | None:
         """Get staff profile display name if linked."""
@@ -82,7 +88,15 @@ class ResourceListSerializer(serializers.ModelSerializer):
         """Meta options for ResourceListSerializer."""
 
         model = Resource
-        fields = ["id", "name", "resource_type", "code", "is_active", "department", "department_name"]
+        fields = [
+            "id",
+            "name",
+            "resource_type",
+            "code",
+            "is_active",
+            "department",
+            "department_name",
+        ]
 
     def get_department_name(self, obj) -> str | None:
         """Get department name — from direct FK first, then staff profile fallback."""
@@ -956,9 +970,7 @@ class ShiftCreateSerializer(serializers.ModelSerializer):
         if start_time and end_time and end_time <= start_time:
             # Allow overnight shifts where end_time is next-day
             if shift_type not in self.OVERNIGHT_TYPES:
-                raise serializers.ValidationError(
-                    {"end_time": "End time must be after start time"}
-                )
+                raise serializers.ValidationError({"end_time": "End time must be after start time"})
 
         staff_resource = attrs.get("staff_resource")
         if staff_resource and staff_resource.resource_type != "PERSON":
@@ -1072,6 +1084,7 @@ class ShiftStartSerializer(serializers.Serializer):
         if value is None:
             return value
         from hmis.apps.clinics.models import Clinic
+
         try:
             clinic = Clinic.objects.get(pk=value)
         except Clinic.DoesNotExist:
@@ -1132,9 +1145,7 @@ class SchedulingSettingsSerializer(serializers.ModelSerializer):
 class StaffConstraintSerializer(serializers.ModelSerializer):
     """Serializer for staff scheduling constraints."""
 
-    staff_resource_name = serializers.CharField(
-        source="staff_resource.name", read_only=True
-    )
+    staff_resource_name = serializers.CharField(source="staff_resource.name", read_only=True)
     constraint_type_display = serializers.CharField(
         source="get_constraint_type_display", read_only=True
     )

@@ -70,7 +70,9 @@ def isolation_ward(db, sample_facility, sample_organization):
 
 
 @pytest.fixture
-def admission_with_critical_violation(db, sample_patient, isolation_ward, test_user, sample_facility):
+def admission_with_critical_violation(
+    db, sample_patient, isolation_ward, test_user, sample_facility
+):
     """
     Admission with CRITICAL violation (isolation patient in non-isolation ward).
     Note: We manually set constraint_violations to simulate a critical override.
@@ -129,7 +131,15 @@ def admission_with_critical_violation(db, sample_patient, isolation_ward, test_u
 
 
 @pytest.fixture
-def admission_with_warning_violation(db, sample_county, sample_sub_county, medical_ward, test_user, sample_organization, sample_facility):
+def admission_with_warning_violation(
+    db,
+    sample_county,
+    sample_sub_county,
+    medical_ward,
+    test_user,
+    sample_organization,
+    sample_facility,
+):
     """Admission with WARNING violation (gender mismatch)."""
     from hmis.apps.inpatient.models import Admission, Bed, Ward
     from hmis.apps.patients.models import Patient

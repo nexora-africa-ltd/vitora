@@ -117,14 +117,18 @@ class TestTriageAssessmentAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "results" in response.data or isinstance(response.data, list)
 
-    def test_filter_by_triage_category(self, authenticated_client, sample_patient, test_user, sample_facility, sample_organization):
+    def test_filter_by_triage_category(
+        self, authenticated_client, sample_patient, test_user, sample_facility, sample_organization
+    ):
         """Should filter assessments by triage category."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.triage.models import TriageAssessment
 
         # Create RED assessment
         encounter1 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Test 1",
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Test 1",
             facility=sample_facility,
         )
         TriageAssessment.objects.create(
@@ -145,7 +149,9 @@ class TestTriageAssessmentAPI:
 
         # Create GREEN assessment
         encounter2 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2",
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Test 2",
             facility=sample_facility,
         )
         TriageAssessment.objects.create(
@@ -170,7 +176,14 @@ class TestTriageAssessmentAPI:
         assert len(data) == 1
         assert data[0]["triage_category"] == "RED"
 
-    def test_retrieve_triage_assessment(self, authenticated_client, sample_encounter, test_user, sample_facility, sample_organization):
+    def test_retrieve_triage_assessment(
+        self,
+        authenticated_client,
+        sample_encounter,
+        test_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should retrieve specific triage assessment."""
         from hmis.apps.triage.models import TriageAssessment
 
@@ -407,7 +420,9 @@ class TestQueueEndpoints:
 class TestReportEndpoints:
     """Tests for report endpoints."""
 
-    def test_wait_times_report(self, authenticated_client, test_user, sample_patient, sample_facility):
+    def test_wait_times_report(
+        self, authenticated_client, test_user, sample_patient, sample_facility
+    ):
         """Should return wait time statistics."""
         from datetime import timedelta
 
@@ -417,7 +432,9 @@ class TestReportEndpoints:
         # Create some assessments with different wait times
         for i in range(3):
             encounter = Encounter.objects.create(
-                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {i}",
+                patient=sample_patient,
+                encounter_type="OPD",
+                chief_complaint=f"Test {i}",
                 facility=sample_facility,
             )
             TriageAssessment.objects.create(
@@ -452,7 +469,9 @@ class TestReportEndpoints:
         # Create assessments of different categories
         for category in ["RED", "YELLOW", "GREEN"]:
             encounter = Encounter.objects.create(
-                patient=sample_patient, encounter_type="OPD", chief_complaint=f"Test {category}",
+                patient=sample_patient,
+                encounter_type="OPD",
+                chief_complaint=f"Test {category}",
                 facility=sample_facility,
             )
             TriageAssessment.objects.create(
@@ -506,9 +525,7 @@ class TestEmergencyModuleEndpoints:
         response = api_client.get("/api/triage/queue/critical/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_critical_patients_returns_empty_when_none(
-        self, authenticated_client, test_user
-    ):
+    def test_critical_patients_returns_empty_when_none(self, authenticated_client, test_user):
         """Should return empty list when no critical patients."""
         permission = Permission.objects.get(codename="view_triage_queue")
         test_user.user_permissions.add(permission)
@@ -519,7 +536,10 @@ class TestEmergencyModuleEndpoints:
         assert response.data["patients"] == []
 
     def test_critical_patients_returns_red_patients_in_er(
-        self, authenticated_client, test_user, sample_patient,
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
         sample_facility,
     ):
         """Should return RED category patients in ER areas."""
@@ -531,7 +551,9 @@ class TestEmergencyModuleEndpoints:
 
         # Create an encounter and RED triage assessment in ER_RESUS
         encounter = Encounter.objects.create(
-            patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Chest Pain",
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            chief_complaint="Chest Pain",
             facility=sample_facility,
         )
         assessment = TriageAssessment.objects.create(
@@ -558,7 +580,10 @@ class TestEmergencyModuleEndpoints:
         assert response.data["count"] == 1
         assert len(response.data["patients"]) == 1
         assert response.data["patients"][0]["assigned_area"] == "ER_RESUS"
-        assert response.data["patients"][0]["patient_name"] == f"{sample_patient.first_name} {sample_patient.last_name}"
+        assert (
+            response.data["patients"][0]["patient_name"]
+            == f"{sample_patient.first_name} {sample_patient.last_name}"
+        )
 
     def test_zones_summary_requires_authentication(self, api_client):
         """Should require authentication for zones summary endpoint."""
@@ -586,7 +611,10 @@ class TestEmergencyModuleEndpoints:
         assert "by_category" in zone
 
     def test_zones_summary_counts_patients_correctly(
-        self, authenticated_client, test_user, sample_patient,
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
         sample_facility,
     ):
         """Should correctly count patients per zone and category."""

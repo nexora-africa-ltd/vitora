@@ -56,8 +56,17 @@ class ProcedureCatalogAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        ("Follow-up", {"fields": ("requires_follow_up", "default_follow_up_days", "follow_up_clinic")}),
-        ("Procedure Clinics", {"fields": ("default_clinics",), "description": "Clinics where this procedure can be performed. When set, scheduling auto-lists available slots."}),
+        (
+            "Follow-up",
+            {"fields": ("requires_follow_up", "default_follow_up_days", "follow_up_clinic")},
+        ),
+        (
+            "Procedure Clinics",
+            {
+                "fields": ("default_clinics",),
+                "description": "Clinics where this procedure can be performed. When set, scheduling auto-lists available slots.",
+            },
+        ),
         ("Billing & SHA", {"fields": ("base_fee", "sha_tariff_code", "sha_package_code")}),
         ("Tenant", {"fields": ("organization", "facility")}),
     )

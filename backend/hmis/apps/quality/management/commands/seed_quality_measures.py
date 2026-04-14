@@ -45,9 +45,7 @@ KENYA_QUALITY_MEASURES = [
             "viral load < 1000 copies/ml (virally suppressed)."
         ),
         "domain": "CLINICAL",
-        "numerator_logic": (
-            "CCC patients on ART >= 6 months with latest VL < 1000 copies/ml"
-        ),
+        "numerator_logic": ("CCC patients on ART >= 6 months with latest VL < 1000 copies/ml"),
         "denominator_logic": (
             "All CCC patients on ART for >= 6 months with a VL test in the period"
         ),
@@ -112,9 +110,7 @@ KENYA_QUALITY_MEASURES = [
             "vaccines per the KEPI schedule."
         ),
         "domain": "PUBLIC_HEALTH",
-        "numerator_logic": (
-            "Children under 5 with all age-appropriate KEPI vaccines administered"
-        ),
+        "numerator_logic": ("Children under 5 with all age-appropriate KEPI vaccines administered"),
         "denominator_logic": "All children under 5 seen in the reporting period",
         "target_percentage": 90,
         "low_threshold": 70,
@@ -124,9 +120,7 @@ KENYA_QUALITY_MEASURES = [
     {
         "code": "KE-CQM-008",
         "name": "Patient Waiting Time (OPD)",
-        "description": (
-            "Percentage of OPD patients seen within 30 minutes of registration."
-        ),
+        "description": ("Percentage of OPD patients seen within 30 minutes of registration."),
         "domain": "EFFICIENCY",
         "numerator_logic": (
             "OPD visits where time from REGISTERED to IN_CONSULTATION <= 30 minutes"
@@ -140,9 +134,7 @@ KENYA_QUALITY_MEASURES = [
     {
         "code": "KE-CQM-009",
         "name": "Maternal Mortality Ratio",
-        "description": (
-            "Number of maternal deaths per 100,000 live births in the facility."
-        ),
+        "description": ("Number of maternal deaths per 100,000 live births in the facility."),
         "domain": "PATIENT_SAFETY",
         "numerator_logic": "Maternal deaths during or within 42 days of delivery",
         "denominator_logic": "Live births in the reporting period (per 100,000)",
@@ -192,9 +184,7 @@ KENYA_QUALITY_MEASURES = [
             "who were traced and returned to care."
         ),
         "domain": "CARE_COORDINATION",
-        "numerator_logic": (
-            "Chronic care defaulters traced and returned to care in the period"
-        ),
+        "numerator_logic": ("Chronic care defaulters traced and returned to care in the period"),
         "denominator_logic": "All chronic care defaulters identified in the period",
         "target_percentage": 80,
         "low_threshold": 50,

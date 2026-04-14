@@ -209,7 +209,11 @@ class TestEncounterAutoInvoiceCreation:
         assert item.quantity == 1
 
     def test_lab_order_adds_invoice_items(
-        self, test_encounter, cbc_test, urinalysis_test, test_user,
+        self,
+        test_encounter,
+        cbc_test,
+        urinalysis_test,
+        test_user,
         sample_facility,
         sample_organization,
     ):
@@ -320,7 +324,9 @@ class TestEncounterAutoInvoiceCreation:
         expected_total += lab_test_service.unit_price
         assert invoice.subtotal == expected_total
 
-    def test_cancelled_lab_order_removes_invoice_item(self, test_encounter, cbc_test, test_user, sample_organization, sample_facility):
+    def test_cancelled_lab_order_removes_invoice_item(
+        self, test_encounter, cbc_test, test_user, sample_organization, sample_facility
+    ):
         """Cancelling a lab order should remove the invoice item."""
         # Add lab order
         lab_order = LabOrder.objects.create(
@@ -355,7 +361,9 @@ class TestEncounterAutoInvoiceCreation:
 class TestEncounterInvoiceEdgeCases:
     """Edge case tests for encounter-invoice integration."""
 
-    def test_existing_invoice_used_for_same_day_encounter(self, sample_patient, test_user, sample_facility):
+    def test_existing_invoice_used_for_same_day_encounter(
+        self, sample_patient, test_user, sample_facility
+    ):
         """If patient has draft invoice from today, use it instead of creating new."""
         # Create existing draft invoice
         existing_invoice = Invoice.objects.create(
@@ -388,7 +396,9 @@ class TestEncounterInvoiceEdgeCases:
         assert invoice.subtotal == Decimal("0.00")
 
     def test_emergency_encounter_creates_invoice_with_priority_flag(
-        self, sample_patient, test_user,
+        self,
+        sample_patient,
+        test_user,
         sample_facility,
     ):
         """Emergency encounters should flag invoices appropriately."""

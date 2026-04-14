@@ -152,7 +152,5 @@ class Command(BaseCommand):
                 logger.exception(f"Failed to replay event {record.event_id}")
 
         self.stdout.write(
-            self.style.SUCCESS(
-                f"Replay complete: {dispatched} dispatched, {errors} errors."
-            )
+            self.style.SUCCESS(f"Replay complete: {dispatched} dispatched, {errors} errors.")
         )

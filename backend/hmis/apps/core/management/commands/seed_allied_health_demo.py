@@ -403,15 +403,11 @@ class Command(BaseCommand):
         self.stdout.write("\n🗑️  Clearing existing Allied Health demo data...")
 
         # Get demo patients
-        demo_patients = Patient.objects.filter(
-            identification_number__startswith="DEMO-PT-AH"
-        )
+        demo_patients = Patient.objects.filter(identification_number__startswith="DEMO-PT-AH")
 
         if demo_patients.exists():
             # Delete related records
-            count = PhysiotherapySession.objects.filter(
-                order__patient__in=demo_patients
-            ).count()
+            count = PhysiotherapySession.objects.filter(order__patient__in=demo_patients).count()
             PhysiotherapySession.objects.filter(order__patient__in=demo_patients).delete()
             self.stdout.write(f"  Deleted {count} physiotherapy sessions")
 
@@ -447,9 +443,7 @@ class Command(BaseCommand):
             SocialWorkReferral.objects.filter(patient__in=demo_patients).delete()
             self.stdout.write(f"  Deleted {count} social work referrals")
 
-            count = CounsellingSession.objects.filter(
-                referral__patient__in=demo_patients
-            ).count()
+            count = CounsellingSession.objects.filter(referral__patient__in=demo_patients).count()
             CounsellingSession.objects.filter(referral__patient__in=demo_patients).delete()
             self.stdout.write(f"  Deleted {count} counselling sessions")
 
@@ -469,9 +463,7 @@ class Command(BaseCommand):
             department_code = staff_data["department_code"]
 
             if dry_run:
-                self.stdout.write(
-                    f"  Would create: {staff_data['username']} ({role_code})"
-                )
+                self.stdout.write(f"  Would create: {staff_data['username']} ({role_code})")
                 continue
 
             # Create/update user
@@ -573,9 +565,7 @@ class Command(BaseCommand):
             )
 
             self.stdout.write(
-                self.style.SUCCESS(
-                    f"  ✓ {'Created' if created else 'Updated'}: {clinic.name}"
-                )
+                self.style.SUCCESS(f"  ✓ {'Created' if created else 'Updated'}: {clinic.name}")
             )
             clinics_map[clinic_data["clinic_type"]] = clinic
 
@@ -590,18 +580,14 @@ class Command(BaseCommand):
 
         if not counties:
             self.stdout.write(
-                self.style.WARNING(
-                    "  ⚠ No counties found. Run import_kenya_locations first."
-                )
+                self.style.WARNING("  ⚠ No counties found. Run import_kenya_locations first.")
             )
             return patients
 
         default_county = counties[0]
         default_sub_counties = list(default_county.sub_counties.all()[:5])
         if not default_sub_counties:
-            self.stdout.write(
-                self.style.WARNING("  ⚠ No sub-counties found.")
-            )
+            self.stdout.write(self.style.WARNING("  ⚠ No sub-counties found."))
             return patients
 
         default_sub_county = default_sub_counties[0]
@@ -613,9 +599,7 @@ class Command(BaseCommand):
             registered_by = User.objects.filter(is_active=True).first()
 
         if not registered_by:
-            self.stdout.write(
-                self.style.WARNING("  ⚠ No user found for registered_by.")
-            )
+            self.stdout.write(self.style.WARNING("  ⚠ No user found for registered_by."))
             return patients
 
         for spec in self.ALLIED_HEALTH_PATIENTS:
@@ -864,7 +848,9 @@ class Command(BaseCommand):
             defaults={
                 "dietitian": dietitian,
                 "referred_by": referred_by,
-                "referral_reason": random.choice(["DIABETES", "WEIGHT_MANAGEMENT", "CARDIOVASCULAR"]),
+                "referral_reason": random.choice(
+                    ["DIABETES", "WEIGHT_MANAGEMENT", "CARDIOVASCULAR"]
+                ),
                 "status": "COMPLETED",
                 "priority": "ROUTINE",
                 "weight": Decimal(str(round(random.uniform(60, 95), 2))),
@@ -947,8 +933,12 @@ class Command(BaseCommand):
                     "actual_date": session_date,
                     "status": "COMPLETED",
                     "duration_minutes": 45,
-                    "pre_functional_status": independence_levels[i] if i < len(independence_levels) else "MIN_ASSIST",
-                    "post_functional_status": independence_levels[min(i + 1, len(independence_levels) - 1)],
+                    "pre_functional_status": (
+                        independence_levels[i] if i < len(independence_levels) else "MIN_ASSIST"
+                    ),
+                    "post_functional_status": independence_levels[
+                        min(i + 1, len(independence_levels) - 1)
+                    ],
                     "outcome": "IMPROVED",
                     "activities_performed": f"Session {i + 1}: {treatment_type.name}",
                     "progress_notes": f"ADL training session {i + 1} - good progress",
@@ -1100,6 +1090,4 @@ class Command(BaseCommand):
                 f"{staff['username']} / {staff['password']}"
             )
 
-        self.stdout.write(
-            "\n💡 Tip: Run with --clear to reset allied health demo data"
-        )
+        self.stdout.write("\n💡 Tip: Run with --clear to reset allied health demo data")

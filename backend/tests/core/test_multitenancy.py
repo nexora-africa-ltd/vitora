@@ -333,9 +333,7 @@ class TestTenantMiddleware:
         response = api_client.get("/api/patients/")
         assert response.status_code == status.HTTP_200_OK
 
-    def test_middleware_fallback_to_primary_facility(
-        self, api_client, staff_user, staff_profile
-    ):
+    def test_middleware_fallback_to_primary_facility(self, api_client, staff_user, staff_profile):
         """Without header, middleware should use primary_facility."""
         api_client.force_authenticate(user=staff_user)
         response = api_client.get("/api/patients/")
@@ -346,9 +344,7 @@ class TestTenantMiddleware:
         response = authenticated_client.get("/api/patients/")
         assert response.status_code == status.HTTP_200_OK
 
-    def test_middleware_superuser_can_access_any_facility(
-        self, admin_client, other_org_facility
-    ):
+    def test_middleware_superuser_can_access_any_facility(self, admin_client, other_org_facility):
         """Superusers should be able to use any facility header."""
         admin_client.credentials(HTTP_X_FACILITY_ID=str(other_org_facility.pk))
         response = admin_client.get("/api/patients/")
@@ -468,9 +464,7 @@ class TestOrganizationAPI:
         self, authenticated_client, sample_org, sample_facility, second_facility
     ):
         """The facilities action should list facilities for the org."""
-        response = authenticated_client.get(
-            f"/api/organizations/{sample_org.pk}/facilities/"
-        )
+        response = authenticated_client.get(f"/api/organizations/{sample_org.pk}/facilities/")
         assert response.status_code == status.HTTP_200_OK
         mfl_codes = [f["mfl_code"] for f in response.data]
         assert "12345" in mfl_codes
@@ -495,9 +489,7 @@ class TestOrganizationAPI:
 class TestFacilityAPIOrganization:
     """Tests that Facility API includes organization fields."""
 
-    def test_facility_list_includes_organization(
-        self, authenticated_client, sample_facility
-    ):
+    def test_facility_list_includes_organization(self, authenticated_client, sample_facility):
         """Facility list should include organization and organization_name."""
         response = authenticated_client.get("/api/facilities/")
         assert response.status_code == status.HTTP_200_OK
@@ -507,9 +499,7 @@ class TestFacilityAPIOrganization:
             assert "organization" in facility_data
             assert "organization_name" in facility_data
 
-    def test_facility_detail_includes_branch_fields(
-        self, authenticated_client, sample_facility
-    ):
+    def test_facility_detail_includes_branch_fields(self, authenticated_client, sample_facility):
         """Facility detail should include is_headquarters and branch_code."""
         response = authenticated_client.get(f"/api/facilities/{sample_facility.pk}/")
         assert response.status_code == status.HTTP_200_OK
@@ -564,13 +554,21 @@ class TestPatientOrganizationScoping:
         from hmis.apps.patients.models import Patient
 
         p1 = Patient.objects.create(
-            first_name="A", last_name="B", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="A",
+            last_name="B",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         p2 = Patient.objects.create(
-            first_name="C", last_name="D", date_of_birth="1991-02-02",
-            gender="F", county=org_county, sub_county=org_sub_county,
+            first_name="C",
+            last_name="D",
+            date_of_birth="1991-02-02",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         assert sample_org.patients.count() == 2
@@ -581,14 +579,20 @@ class TestPatientOrganizationScoping:
 class TestEncounterFacilityScoping:
     """Tests for Encounter → Facility scoping."""
 
-    def test_encounter_can_have_facility(self, sample_org, sample_facility, org_county, org_sub_county):
+    def test_encounter_can_have_facility(
+        self, sample_org, sample_facility, org_county, org_sub_county
+    ):
         """Encounter should accept facility + organization FKs."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="E", last_name="F", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="E",
+            last_name="F",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         encounter = Encounter.objects.create(
@@ -607,8 +611,12 @@ class TestEncounterFacilityScoping:
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="G", last_name="H", date_of_birth="1987-03-03",
-            gender="F", county=org_county, sub_county=org_sub_county,
+            first_name="G",
+            last_name="H",
+            date_of_birth="1987-03-03",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
         )
         encounter = Encounter.objects.create(
             patient=patient,
@@ -626,17 +634,27 @@ class TestEncounterFacilityScoping:
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="I", last_name="J", date_of_birth="1992-04-04",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="I",
+            last_name="J",
+            date_of_birth="1992-04-04",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         enc1 = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="At HQ",
-            organization=sample_org, facility=sample_facility,
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="At HQ",
+            organization=sample_org,
+            facility=sample_facility,
         )
         enc2 = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="At branch",
-            organization=sample_org, facility=second_facility,
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="At branch",
+            organization=sample_org,
+            facility=second_facility,
         )
         assert sample_facility.encounters.count() == 1
         assert sample_facility.encounters.first() == enc1
@@ -654,8 +672,12 @@ class TestAllergyOrganizationScoping:
         from hmis.apps.patients.models import Allergy, Patient
 
         patient = Patient.objects.create(
-            first_name="K", last_name="L", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="K",
+            last_name="L",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         allergy = Allergy.objects.create(
@@ -711,14 +733,20 @@ class TestClinicalModelFKs:
         assert entry.organization == sample_org
         assert entry.facility == sample_facility
 
-    def test_invoice_accepts_tenant_fks(self, sample_org, sample_facility, org_county, org_sub_county, staff_user):
+    def test_invoice_accepts_tenant_fks(
+        self, sample_org, sample_facility, org_county, org_sub_county, staff_user
+    ):
         """Invoice should accept facility + organization FKs."""
         from hmis.apps.billing.models import Invoice
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="Bill", last_name="Payer", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="Bill",
+            last_name="Payer",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
         )
         invoice = Invoice.objects.create(
             patient=patient,
@@ -729,18 +757,26 @@ class TestClinicalModelFKs:
         assert invoice.organization == sample_org
         assert invoice.facility == sample_facility
 
-    def test_lab_order_accepts_tenant_fks(self, sample_org, sample_facility, org_county, org_sub_county, staff_user):
+    def test_lab_order_accepts_tenant_fks(
+        self, sample_org, sample_facility, org_county, org_sub_county, staff_user
+    ):
         """LabOrder should accept facility + organization FKs."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.laboratory.models import LabOrder
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="Lab", last_name="Test", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="Lab",
+            last_name="Test",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
         )
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Lab test",
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Lab test",
         )
         order = LabOrder.objects.create(
             patient=patient,
@@ -764,8 +800,12 @@ class TestClinicalModelFKs:
         from hmis.apps.pharmacy.models import Prescription
 
         patient = Patient.objects.create(
-            first_name="Rx", last_name="Patient", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="Rx",
+            last_name="Patient",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
         )
         rx = Prescription.objects.create(
             patient=patient,
@@ -802,11 +842,17 @@ class TestClinicalModelFKs:
         from hmis.apps.triage.models import TriageAssessment
 
         patient = Patient.objects.create(
-            first_name="Tri", last_name="Age", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="Tri",
+            last_name="Age",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
         )
         encounter = Encounter.objects.create(
-            patient=patient, encounter_type="OPD", chief_complaint="Triage test",
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Triage test",
         )
         now = timezone.now()
         triage = TriageAssessment.objects.create(
@@ -830,20 +876,26 @@ class TestClinicalModelFKs:
 class TestCrossOrgIsolation:
     """Tests verifying data isolation between organizations."""
 
-    def test_patients_isolated_by_org(
-        self, sample_org, another_org, org_county, org_sub_county
-    ):
+    def test_patients_isolated_by_org(self, sample_org, another_org, org_county, org_sub_county):
         """Patients in different orgs should be isolated via queryset."""
         from hmis.apps.patients.models import Patient
 
         p_org1 = Patient.objects.create(
-            first_name="Org1", last_name="Pat", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="Org1",
+            last_name="Pat",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         p_org2 = Patient.objects.create(
-            first_name="Org2", last_name="Pat", date_of_birth="1991-02-02",
-            gender="F", county=org_county, sub_county=org_sub_county,
+            first_name="Org2",
+            last_name="Pat",
+            date_of_birth="1991-02-02",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=another_org,
         )
         org1_patients = Patient.objects.filter(organization=sample_org)
@@ -855,30 +907,49 @@ class TestCrossOrgIsolation:
         assert p_org1 not in org2_patients
 
     def test_encounters_isolated_by_facility(
-        self, sample_org, another_org, sample_facility, other_org_facility,
-        org_county, org_sub_county
+        self,
+        sample_org,
+        another_org,
+        sample_facility,
+        other_org_facility,
+        org_county,
+        org_sub_county,
     ):
         """Encounters at different facilities should be isolated."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
 
         p1 = Patient.objects.create(
-            first_name="P1", last_name="F", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="P1",
+            last_name="F",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         p2 = Patient.objects.create(
-            first_name="P2", last_name="F", date_of_birth="1991-01-01",
-            gender="F", county=org_county, sub_county=org_sub_county,
+            first_name="P2",
+            last_name="F",
+            date_of_birth="1991-01-01",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=another_org,
         )
         enc1 = Encounter.objects.create(
-            patient=p1, encounter_type="OPD", chief_complaint="Org1",
-            organization=sample_org, facility=sample_facility,
+            patient=p1,
+            encounter_type="OPD",
+            chief_complaint="Org1",
+            organization=sample_org,
+            facility=sample_facility,
         )
         enc2 = Encounter.objects.create(
-            patient=p2, encounter_type="OPD", chief_complaint="Org2",
-            organization=another_org, facility=other_org_facility,
+            patient=p2,
+            encounter_type="OPD",
+            chief_complaint="Org2",
+            organization=another_org,
+            facility=other_org_facility,
         )
         fac1_encounters = Encounter.objects.filter(facility=sample_facility)
         fac2_encounters = Encounter.objects.filter(facility=other_org_facility)
@@ -894,9 +965,14 @@ class TestCrossOrgIsolation:
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="Shared", last_name="Patient", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
-            organization=sample_org, registered_at_facility=sample_facility,
+            first_name="Shared",
+            last_name="Patient",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
+            organization=sample_org,
+            registered_at_facility=sample_facility,
         )
         # Org-wide query (used when user is at any facility in the org)
         org_patients = Patient.objects.filter(organization=sample_org)
@@ -919,9 +995,7 @@ def other_staff_user(db):
 
 
 @pytest.fixture
-def other_staff_profile(
-    db, other_staff_user, other_org_facility, sample_department, sample_role
-):
+def other_staff_profile(db, other_staff_user, other_org_facility, sample_department, sample_role):
     """Create a StaffProfile at the other org's facility."""
     return StaffProfile.objects.create(
         user=other_staff_user,
@@ -947,7 +1021,10 @@ def staff_client(db, staff_user, staff_profile, sample_facility, sample_organiza
 
 @pytest.fixture
 def other_staff_client(
-    db, other_staff_user, other_staff_profile, other_org_facility,
+    db,
+    other_staff_user,
+    other_staff_profile,
+    other_org_facility,
     sample_organization,
     sample_facility,
 ):
@@ -971,13 +1048,21 @@ class TestPatientAPIScopping:
         from hmis.apps.patients.models import Patient
 
         Patient.objects.create(
-            first_name="OrgOne", last_name="Pat", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="OrgOne",
+            last_name="Pat",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         Patient.objects.create(
-            first_name="OrgTwo", last_name="Pat", date_of_birth="1991-02-02",
-            gender="F", county=org_county, sub_county=org_sub_county,
+            first_name="OrgTwo",
+            last_name="Pat",
+            date_of_birth="1991-02-02",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=another_org,
         )
 
@@ -1005,8 +1090,14 @@ class TestPatientAPIScopping:
         assert response.data["organization"] == sample_org.pk
 
     def test_patient_visible_from_branch_facility(
-        self, sample_org, sample_facility, second_facility,
-        staff_user, staff_profile, org_county, org_sub_county
+        self,
+        sample_org,
+        sample_facility,
+        second_facility,
+        staff_user,
+        staff_profile,
+        org_county,
+        org_sub_county,
     ):
         """Patient created at HQ should be visible from branch facility."""
         from rest_framework.test import APIClient
@@ -1014,9 +1105,14 @@ class TestPatientAPIScopping:
         from hmis.apps.patients.models import Patient
 
         Patient.objects.create(
-            first_name="HQPatient", last_name="Cross", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
-            organization=sample_org, registered_at_facility=sample_facility,
+            first_name="HQPatient",
+            last_name="Cross",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
+            organization=sample_org,
+            registered_at_facility=sample_facility,
         )
         # Staff assigned to second_facility
         staff_profile.secondary_facilities.add(second_facility)
@@ -1035,30 +1131,50 @@ class TestEncounterAPIScopping:
     """Tests that Encounter API respects facility scoping."""
 
     def test_encounter_list_scoped_to_facility(
-        self, staff_client, sample_org, another_org,
-        sample_facility, other_org_facility, org_county, org_sub_county
+        self,
+        staff_client,
+        sample_org,
+        another_org,
+        sample_facility,
+        other_org_facility,
+        org_county,
+        org_sub_county,
     ):
         """Encounter list should only return encounters at the user's facility."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
 
         p1 = Patient.objects.create(
-            first_name="P1", last_name="E", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="P1",
+            last_name="E",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         p2 = Patient.objects.create(
-            first_name="P2", last_name="E", date_of_birth="1991-01-01",
-            gender="F", county=org_county, sub_county=org_sub_county,
+            first_name="P2",
+            last_name="E",
+            date_of_birth="1991-01-01",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=another_org,
         )
         Encounter.objects.create(
-            patient=p1, encounter_type="OPD", chief_complaint="At my facility",
-            organization=sample_org, facility=sample_facility,
+            patient=p1,
+            encounter_type="OPD",
+            chief_complaint="At my facility",
+            organization=sample_org,
+            facility=sample_facility,
         )
         Encounter.objects.create(
-            patient=p2, encounter_type="OPD", chief_complaint="At other facility",
-            organization=another_org, facility=other_org_facility,
+            patient=p2,
+            encounter_type="OPD",
+            chief_complaint="At other facility",
+            organization=another_org,
+            facility=other_org_facility,
         )
 
         response = staff_client.get("/api/encounters/")
@@ -1075,8 +1191,12 @@ class TestEncounterAPIScopping:
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="EncAuto", last_name="Pat", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="EncAuto",
+            last_name="Pat",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         data = {
@@ -1090,22 +1210,35 @@ class TestEncounterAPIScopping:
         assert response.data["organization"] == sample_org.pk
 
     def test_encounters_at_branch_not_visible_from_hq(
-        self, staff_client, sample_org, sample_facility, second_facility,
-        staff_user, staff_profile, org_county, org_sub_county
+        self,
+        staff_client,
+        sample_org,
+        sample_facility,
+        second_facility,
+        staff_user,
+        staff_profile,
+        org_county,
+        org_sub_county,
     ):
         """Encounters at branch should NOT be visible from HQ (facility-scoped)."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
 
         patient = Patient.objects.create(
-            first_name="BranchPat", last_name="Enc", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="BranchPat",
+            last_name="Enc",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         Encounter.objects.create(
-            patient=patient, encounter_type="OPD",
+            patient=patient,
+            encounter_type="OPD",
             chief_complaint="At branch only",
-            organization=sample_org, facility=second_facility,
+            organization=sample_org,
+            facility=second_facility,
         )
         # Staff at HQ (sample_facility)
         response = staff_client.get("/api/encounters/")
@@ -1119,20 +1252,27 @@ class TestCrossOrgAPIIsolation:
     """Tests that cross-org API access is denied."""
 
     def test_other_org_patients_not_visible(
-        self, staff_client, other_staff_client,
-        sample_org, another_org, org_county, org_sub_county
+        self, staff_client, other_staff_client, sample_org, another_org, org_county, org_sub_county
     ):
         """Staff at org1 should not see org2 patients and vice versa."""
         from hmis.apps.patients.models import Patient
 
         Patient.objects.create(
-            first_name="Org1Only", last_name="Pat", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="Org1Only",
+            last_name="Pat",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         Patient.objects.create(
-            first_name="Org2Only", last_name="Pat", date_of_birth="1991-02-02",
-            gender="F", county=org_county, sub_county=org_sub_county,
+            first_name="Org2Only",
+            last_name="Pat",
+            date_of_birth="1991-02-02",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=another_org,
         )
 
@@ -1149,31 +1289,51 @@ class TestCrossOrgAPIIsolation:
         assert "Org1Only" not in names2
 
     def test_other_org_encounters_not_visible(
-        self, staff_client, other_staff_client,
-        sample_org, another_org, sample_facility, other_org_facility,
-        org_county, org_sub_county
+        self,
+        staff_client,
+        other_staff_client,
+        sample_org,
+        another_org,
+        sample_facility,
+        other_org_facility,
+        org_county,
+        org_sub_county,
     ):
         """Staff at org1 should not see org2 encounters."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
 
         p1 = Patient.objects.create(
-            first_name="E1", last_name="P", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="E1",
+            last_name="P",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         p2 = Patient.objects.create(
-            first_name="E2", last_name="P", date_of_birth="1991-01-01",
-            gender="F", county=org_county, sub_county=org_sub_county,
+            first_name="E2",
+            last_name="P",
+            date_of_birth="1991-01-01",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=another_org,
         )
         Encounter.objects.create(
-            patient=p1, encounter_type="OPD", chief_complaint="Org1 enc",
-            organization=sample_org, facility=sample_facility,
+            patient=p1,
+            encounter_type="OPD",
+            chief_complaint="Org1 enc",
+            organization=sample_org,
+            facility=sample_facility,
         )
         Encounter.objects.create(
-            patient=p2, encounter_type="OPD", chief_complaint="Org2 enc",
-            organization=another_org, facility=other_org_facility,
+            patient=p2,
+            encounter_type="OPD",
+            chief_complaint="Org2 enc",
+            organization=another_org,
+            facility=other_org_facility,
         )
 
         r1 = staff_client.get("/api/encounters/")
@@ -1187,15 +1347,18 @@ class TestCrossOrgAPIIsolation:
         assert "Org1 enc" not in c2
 
     def test_no_facility_header_uses_primary(
-        self, api_client, staff_user, staff_profile,
-        sample_org, org_county, org_sub_county
+        self, api_client, staff_user, staff_profile, sample_org, org_county, org_sub_county
     ):
         """Without X-Facility-Id, middleware falls back to primary_facility."""
         from hmis.apps.patients.models import Patient
 
         Patient.objects.create(
-            first_name="FallbackPat", last_name="Test", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="FallbackPat",
+            last_name="Test",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         api_client.force_authenticate(user=staff_user)
@@ -1216,13 +1379,21 @@ class TestCrossOrgAPIIsolation:
         StaffProfile.objects.filter(user=admin_user).delete()
 
         Patient.objects.create(
-            first_name="Super1", last_name="A", date_of_birth="1990-01-01",
-            gender="M", county=org_county, sub_county=org_sub_county,
+            first_name="Super1",
+            last_name="A",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=sample_org,
         )
         Patient.objects.create(
-            first_name="Super2", last_name="B", date_of_birth="1991-01-01",
-            gender="F", county=org_county, sub_county=org_sub_county,
+            first_name="Super2",
+            last_name="B",
+            date_of_birth="1991-01-01",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
             organization=another_org,
         )
         # Superuser without StaffProfile — should bypass tenant filter

@@ -107,7 +107,15 @@ def family_planning_type(db):
 
 
 @pytest.fixture
-def counselling_referral(db, sample_patient, sample_encounter, test_user, counselling_type, sample_facility, sample_organization):
+def counselling_referral(
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    counselling_type,
+    sample_facility,
+    sample_organization,
+):
     """Create a sample counselling referral (non-sensitive)."""
     referral = CounsellingReferral.objects.create(
         patient=sample_patient,
@@ -129,7 +137,15 @@ def counselling_referral(db, sample_patient, sample_encounter, test_user, counse
 
 
 @pytest.fixture
-def hiv_referral(db, sample_patient, sample_encounter, test_user, hiv_counselling_type, sample_facility, sample_organization):
+def hiv_referral(
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    hiv_counselling_type,
+    sample_facility,
+    sample_organization,
+):
     """Create an HIV counselling referral (sensitive)."""
     return CounsellingReferral.objects.create(
         patient=sample_patient,
@@ -149,7 +165,9 @@ def hiv_referral(db, sample_patient, sample_encounter, test_user, hiv_counsellin
 
 
 @pytest.fixture
-def crisis_referral(db, sample_patient, sample_encounter, test_user, sample_facility, sample_organization):
+def crisis_referral(
+    db, sample_patient, sample_encounter, test_user, sample_facility, sample_organization
+):
     """Create a crisis/suicidal ideation referral."""
     return CounsellingReferral.objects.create(
         patient=sample_patient,
@@ -245,7 +263,9 @@ class TestCounsellingReferralModel:
         """Crisis/suicidal referrals should be marked as sensitive."""
         assert crisis_referral.is_sensitive is True
 
-    def test_mental_health_related_property(self, hiv_referral, crisis_referral, counselling_referral):
+    def test_mental_health_related_property(
+        self, hiv_referral, crisis_referral, counselling_referral
+    ):
         """Should correctly identify mental health related referrals."""
         # Stress is not in MENTAL_HEALTH_REASONS list
         assert counselling_referral.is_mental_health_related is False
@@ -290,7 +310,9 @@ class TestCounsellingReferralModel:
 
         assert counselling_referral.completion_percentage == 50.0
 
-    def test_generate_referral_number_sequential(self, db, sample_patient, sample_encounter, test_user):
+    def test_generate_referral_number_sequential(
+        self, db, sample_patient, sample_encounter, test_user
+    ):
         """Referral numbers should be sequential for the same day."""
         ref1 = CounsellingReferral.objects.create(
             patient=sample_patient,
@@ -313,7 +335,9 @@ class TestCounsellingReferralModel:
 
         # Both should have same date prefix but sequential numbers
         assert ref1.referral_number.rsplit("-", 1)[0] == ref2.referral_number.rsplit("-", 1)[0]
-        assert int(ref2.referral_number.split("-")[-1]) == int(ref1.referral_number.split("-")[-1]) + 1
+        assert (
+            int(ref2.referral_number.split("-")[-1]) == int(ref1.referral_number.split("-")[-1]) + 1
+        )
 
 
 class TestCounsellingSessionModel:
@@ -382,7 +406,9 @@ class TestCounsellingSessionModel:
 class TestCounsellingTypeAPI:
     """Tests for CounsellingType API endpoints."""
 
-    def test_list_counselling_types(self, authenticated_client, counselling_type, family_planning_type):
+    def test_list_counselling_types(
+        self, authenticated_client, counselling_type, family_planning_type
+    ):
         """Should list all active counselling types."""
         response = authenticated_client.get("/api/counselling/types/")
         assert response.status_code == status.HTTP_200_OK
@@ -415,7 +441,9 @@ class TestCounsellingTypeAPI:
 class TestCounsellingReferralAPI:
     """Tests for CounsellingReferral API endpoints."""
 
-    def test_create_referral(self, authenticated_client, sample_patient, sample_encounter, counselling_type):
+    def test_create_referral(
+        self, authenticated_client, sample_patient, sample_encounter, counselling_type
+    ):
         """Should create a counselling referral."""
         data = {
             "patient": sample_patient.id,
@@ -441,7 +469,9 @@ class TestCounsellingReferralAPI:
 
     def test_retrieve_referral(self, authenticated_client, counselling_referral):
         """Should retrieve a specific referral."""
-        response = authenticated_client.get(f"/api/counselling/referrals/{counselling_referral.id}/")
+        response = authenticated_client.get(
+            f"/api/counselling/referrals/{counselling_referral.id}/"
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["referral_number"] == counselling_referral.referral_number
 
@@ -451,7 +481,9 @@ class TestCounsellingReferralAPI:
         counselling_referral.status = "PENDING"
         counselling_referral.save()
 
-        response = authenticated_client.post(f"/api/counselling/referrals/{counselling_referral.id}/accept/")
+        response = authenticated_client.post(
+            f"/api/counselling/referrals/{counselling_referral.id}/accept/"
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "ACCEPTED"
         assert response.data["accepted_at"] is not None
@@ -470,7 +502,9 @@ class TestCounsellingReferralAPI:
         counselling_referral.status = "ACCEPTED"
         counselling_referral.save()
 
-        response = authenticated_client.post(f"/api/counselling/referrals/{counselling_referral.id}/start/")
+        response = authenticated_client.post(
+            f"/api/counselling/referrals/{counselling_referral.id}/start/"
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "IN_PROGRESS"
         assert response.data["started_at"] is not None
@@ -518,7 +552,9 @@ class TestCounsellingReferralAPI:
         assert "sessions" in response.data
         assert len(response.data["sessions"]) == 4
 
-    def test_filter_sensitive_referrals(self, authenticated_client, hiv_referral, counselling_referral):
+    def test_filter_sensitive_referrals(
+        self, authenticated_client, hiv_referral, counselling_referral
+    ):
         """Should filter out sensitive referrals for users without permission."""
         # By default, test user doesn't have view_sensitive_counselling_referral permission
         response = authenticated_client.get("/api/counselling/referrals/")
@@ -556,7 +592,9 @@ class TestCounsellingSessionAPI:
 
     def test_start_session(self, authenticated_client, counselling_session):
         """Should start a scheduled session."""
-        response = authenticated_client.post(f"/api/counselling/sessions/{counselling_session.id}/start/")
+        response = authenticated_client.post(
+            f"/api/counselling/sessions/{counselling_session.id}/start/"
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "IN_PROGRESS"
         assert response.data["actual_date"] is not None
@@ -583,13 +621,17 @@ class TestCounsellingSessionAPI:
 
     def test_cancel_session(self, authenticated_client, counselling_session):
         """Should cancel a scheduled session."""
-        response = authenticated_client.post(f"/api/counselling/sessions/{counselling_session.id}/cancel/")
+        response = authenticated_client.post(
+            f"/api/counselling/sessions/{counselling_session.id}/cancel/"
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "CANCELLED"
 
     def test_no_show_session(self, authenticated_client, counselling_session):
         """Should mark session as no-show."""
-        response = authenticated_client.post(f"/api/counselling/sessions/{counselling_session.id}/no_show/")
+        response = authenticated_client.post(
+            f"/api/counselling/sessions/{counselling_session.id}/no_show/"
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "NO_SHOW"
 
@@ -611,7 +653,9 @@ class TestCounsellingSessionAPI:
 class TestCounsellingReferralWorkflow:
     """Tests for complete referral workflow."""
 
-    def test_complete_referral_workflow(self, authenticated_client, sample_patient, sample_encounter, counselling_type, test_user):
+    def test_complete_referral_workflow(
+        self, authenticated_client, sample_patient, sample_encounter, counselling_type, test_user
+    ):
         """Should complete full workflow from referral to completion."""
         # 1. Create referral
         create_data = {
@@ -635,7 +679,9 @@ class TestCounsellingReferralWorkflow:
         referral.save()
 
         # 3. Accept referral
-        accept_response = authenticated_client.post(f"/api/counselling/referrals/{referral_id}/accept/")
+        accept_response = authenticated_client.post(
+            f"/api/counselling/referrals/{referral_id}/accept/"
+        )
         assert accept_response.status_code == status.HTTP_200_OK
 
         # 4. Generate sessions
@@ -647,7 +693,9 @@ class TestCounsellingReferralWorkflow:
         session_ids = [s["id"] for s in sessions_response.data["sessions"]]
 
         # 5. Start first session
-        start_response = authenticated_client.post(f"/api/counselling/sessions/{session_ids[0]}/start/")
+        start_response = authenticated_client.post(
+            f"/api/counselling/sessions/{session_ids[0]}/start/"
+        )
         assert start_response.status_code == status.HTTP_200_OK
 
         # 6. Complete first session
@@ -663,7 +711,9 @@ class TestCounsellingReferralWorkflow:
         assert referral.status == "IN_PROGRESS"
 
         # 8. Complete second session
-        start_response2 = authenticated_client.post(f"/api/counselling/sessions/{session_ids[1]}/start/")
+        start_response2 = authenticated_client.post(
+            f"/api/counselling/sessions/{session_ids[1]}/start/"
+        )
         complete_session_response2 = authenticated_client.post(
             f"/api/counselling/sessions/{session_ids[1]}/complete/",
             {"progress_notes": "Second session notes", "outcome": "GOOD_PROGRESS"},

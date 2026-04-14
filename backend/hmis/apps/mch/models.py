@@ -81,9 +81,7 @@ def generate_hei_number():
     HEIFollowUp = apps.get_model("mch", "HEIFollowUp")
 
     latest = (
-        HEIFollowUp.objects.filter(hei_number__startswith=prefix)
-        .order_by("-hei_number")
-        .first()
+        HEIFollowUp.objects.filter(hei_number__startswith=prefix).order_by("-hei_number").first()
     )
 
     if latest:
@@ -264,6 +262,7 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
     def save(self, *args, **kwargs):
         """Override save for auto-sensitivity and MCH number generation."""
         from hmis.apps.core.mixins import resolve_tenant_from_related
+
         resolve_tenant_from_related(self, encounter_field=None, patient_field="mother")
 
         if not self.mch_number:
@@ -276,10 +275,7 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
         # Auto-detect high-risk from enrollment
         if self.anc_enrollment and self.anc_enrollment.high_risk_pregnancy:
             self.is_high_risk = True
-            if (
-                self.anc_enrollment.high_risk_factors
-                and not self.risk_factors
-            ):
+            if self.anc_enrollment.high_risk_factors and not self.risk_factors:
                 self.risk_factors = self.anc_enrollment.high_risk_factors
 
         super().save(*args, **kwargs)
@@ -890,15 +886,25 @@ class Delivery(HistoryMixin, TimeStampedModel):
         if self.partograph_id:
             if self.partograph.registration_id != self.registration_id:
                 errors["partograph"] = "Labour partograph must belong to the same MCH registration."
-            if self.admission_id and self.partograph.admission_id and self.partograph.admission_id != self.admission_id:
-                errors["admission"] = "Delivery admission must match the linked labour partograph admission."
+            if (
+                self.admission_id
+                and self.partograph.admission_id
+                and self.partograph.admission_id != self.admission_id
+            ):
+                errors["admission"] = (
+                    "Delivery admission must match the linked labour partograph admission."
+                )
 
             # Validate delivery time falls within partograph window
             if self.delivery_date and self.delivery_time:
-                delivery_dt = timezone.make_aware(
-                    datetime.combine(self.delivery_date, self.delivery_time),
-                    timezone.get_current_timezone(),
-                ) if timezone.is_naive(datetime.combine(self.delivery_date, self.delivery_time)) else datetime.combine(self.delivery_date, self.delivery_time)
+                delivery_dt = (
+                    timezone.make_aware(
+                        datetime.combine(self.delivery_date, self.delivery_time),
+                        timezone.get_current_timezone(),
+                    )
+                    if timezone.is_naive(datetime.combine(self.delivery_date, self.delivery_time))
+                    else datetime.combine(self.delivery_date, self.delivery_time)
+                )
                 partograph_start = self.partograph.started_at
                 partograph_end = self.partograph.completed_at or timezone.now()
                 # Allow 1h buffer for documentation lag
@@ -917,7 +923,10 @@ class Delivery(HistoryMixin, TimeStampedModel):
         if self.admission_id:
             if self.admission.patient_id != self.registration.mother_id:
                 errors["admission"] = "Admission patient must match the MCH registration mother."
-            if self.admission.mch_registration_id and self.admission.mch_registration_id != self.registration_id:
+            if (
+                self.admission.mch_registration_id
+                and self.admission.mch_registration_id != self.registration_id
+            ):
                 errors["admission"] = "Admission must belong to the same MCH registration."
 
         if errors:
@@ -1081,10 +1090,19 @@ class LabourPartograph(HistoryMixin, TimeStampedModel):
         if self.admission_id:
             if self.admission.patient_id != self.registration.mother_id:
                 errors["admission"] = "Admission patient must match the MCH registration mother."
-            if self.admission.mch_registration_id and self.admission.mch_registration_id != self.registration_id:
+            if (
+                self.admission.mch_registration_id
+                and self.admission.mch_registration_id != self.registration_id
+            ):
                 errors["admission"] = "Admission must belong to the same MCH registration."
-            if self.encounter_id and self.admission.opd_encounter_id and self.admission.opd_encounter_id != self.encounter_id:
-                errors["encounter"] = "Labour encounter must match the linked admission OPD encounter when both are set."
+            if (
+                self.encounter_id
+                and self.admission.opd_encounter_id
+                and self.admission.opd_encounter_id != self.encounter_id
+            ):
+                errors["encounter"] = (
+                    "Labour encounter must match the linked admission OPD encounter when both are set."
+                )
 
         if errors:
             raise ValidationError(errors)
@@ -1595,7 +1613,9 @@ class PNCVisit(HistoryMixin, TimeStampedModel):
         if self.discharge_id:
             discharge_admission = self.discharge.admission
             if linked_admission and discharge_admission.id != linked_admission.id:
-                errors["discharge"] = "Discharge must belong to the same admission linked to this PNC visit."
+                errors["discharge"] = (
+                    "Discharge must belong to the same admission linked to this PNC visit."
+                )
             linked_admission = discharge_admission
 
         if linked_admission:
@@ -1608,7 +1628,9 @@ class PNCVisit(HistoryMixin, TimeStampedModel):
                 errors["admission"] = "Admission must belong to the same MCH registration."
 
         if self.discharge_id and self.discharge.admission.patient_id != self.registration.mother_id:
-            errors["discharge"] = "Discharge admission patient must match the MCH registration mother."
+            errors["discharge"] = (
+                "Discharge admission patient must match the MCH registration mother."
+            )
 
         if errors:
             raise ValidationError(errors)
@@ -2049,10 +2071,8 @@ class GrowthMeasurement(HistoryMixin, TimeStampedModel):
                 # BMI-for-age
                 height_m = float(self.height) / 100
                 if height_m > 0:
-                    bmi = float(self.weight) / (height_m ** 2)
-                    self.bmi_for_age_z = calculator.bmi_for_age_z(
-                        bmi, self.age_in_days, sex
-                    )
+                    bmi = float(self.weight) / (height_m**2)
+                    self.bmi_for_age_z = calculator.bmi_for_age_z(bmi, self.age_in_days, sex)
 
             if self.head_circumference:
                 self.head_circumference_for_age_z = calculator.head_circumference_for_age_z(

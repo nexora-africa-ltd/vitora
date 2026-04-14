@@ -311,9 +311,7 @@ def _get_triage_stats(today, facility=None, organization=None) -> dict:
 
         waiting = qs.filter(status="WAITING").count()
 
-        emergency_count = qs.filter(
-            status="WAITING", category="EMERGENCY"
-        ).count()
+        emergency_count = qs.filter(status="WAITING", category="EMERGENCY").count()
 
         # Calculate average wait time for completed assessments today
         completed_today = qs.filter(
@@ -414,9 +412,7 @@ def _get_checkin_stats(today, facility=None, organization=None) -> dict:
 
         return {
             "checked_in_today": today_checkins.count(),
-            "waiting": today_checkins.filter(
-                status__in=["WAITING", "IN_TRIAGE"]
-            ).count(),
+            "waiting": today_checkins.filter(status__in=["WAITING", "IN_TRIAGE"]).count(),
             "completed_today": today_checkins.filter(status="COMPLETED").count(),
         }
     except Exception:
@@ -435,9 +431,7 @@ def _get_inpatient_stats(today, facility=None, organization=None) -> dict:
         scope = _build_scope_filter(facility, organization)
         bed_scope = _build_scope_filter(facility, organization, facility_field="ward__facility")
 
-        current_admissions = Admission.objects.filter(
-            admission_status="ACTIVE", **scope
-        ).count()
+        current_admissions = Admission.objects.filter(admission_status="ACTIVE", **scope).count()
 
         total_beds = Bed.objects.filter(**bed_scope).count()
         available_beds = Bed.objects.filter(status="AVAILABLE", **bed_scope).count()
@@ -481,7 +475,8 @@ def _get_imaging_stats(today, facility=None, organization=None) -> dict:
 
         urgent_orders = ImagingOrder.objects.filter(
             status__in=["ORDERED", "SCHEDULED", "IN_PROGRESS"],
-            priority__in=["URGENT", "STAT"], **scope
+            priority__in=["URGENT", "STAT"],
+            **scope,
         ).count()
 
         return {
@@ -507,15 +502,13 @@ def _get_emergency_stats(facility=None, organization=None) -> dict:
             facility, organization, facility_field="patient__registered_at_facility"
         )
 
-        active_overrides = EmergencyAccess.objects.filter(
-            status="ACTIVE", **scope
-        ).count()
+        active_overrides = EmergencyAccess.objects.filter(status="ACTIVE", **scope).count()
 
-        pending_review = EmergencyAccess.objects.exclude(
-            status__in=["REVIEWED", "REVOKED"]
-        ).filter(
-            status__in=["ACTIVE", "EXPIRED"], **scope
-        ).count()
+        pending_review = (
+            EmergencyAccess.objects.exclude(status__in=["REVIEWED", "REVOKED"])
+            .filter(status__in=["ACTIVE", "EXPIRED"], **scope)
+            .count()
+        )
 
         return {
             "active_overrides": active_overrides,
@@ -536,17 +529,11 @@ def _get_mch_stats(today, facility=None, organization=None) -> dict:
         scope = _build_scope_filter(facility, organization)
         qs = MCHRegistration.objects.filter(**scope)
 
-        active_registrations = qs.filter(
-            status="ACTIVE"
-        ).count()
+        active_registrations = qs.filter(status="ACTIVE").count()
 
-        high_risk = qs.filter(
-            status="ACTIVE", is_high_risk=True
-        ).count()
+        high_risk = qs.filter(status="ACTIVE", is_high_risk=True).count()
 
-        deliveries_today = qs.filter(
-            status="DELIVERED", updated_at__date=today
-        ).count()
+        deliveries_today = qs.filter(status="DELIVERED", updated_at__date=today).count()
 
         return {
             "active_registrations": active_registrations,
@@ -626,7 +613,9 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
         try:
             from hmis.apps.physiotherapy.models import PhysiotherapyOrder
 
-            pending_referrals += PhysiotherapyOrder.objects.filter(status="PENDING", **scope).count()
+            pending_referrals += PhysiotherapyOrder.objects.filter(
+                status="PENDING", **scope
+            ).count()
             sessions_today += PhysiotherapyOrder.objects.filter(
                 status="IN_PROGRESS", updated_at__date=today, **scope
             ).count()
@@ -636,7 +625,9 @@ def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
         try:
             from hmis.apps.nutrition.models import NutritionConsultation
 
-            pending_referrals += NutritionConsultation.objects.filter(status="PENDING", **scope).count()
+            pending_referrals += NutritionConsultation.objects.filter(
+                status="PENDING", **scope
+            ).count()
             sessions_today += NutritionConsultation.objects.filter(
                 consultation_date__date=today, **scope
             ).count()

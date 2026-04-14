@@ -160,13 +160,8 @@ class AuditLogPermission(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         """Check if user can access specific audit log."""
-        return (
-            request.method in permissions.SAFE_METHODS
-            and (
-                request.user.is_staff
-                or request.user.is_superuser
-                or obj.user_id == request.user.id
-            )
+        return request.method in permissions.SAFE_METHODS and (
+            request.user.is_staff or request.user.is_superuser or obj.user_id == request.user.id
         )
 
 
@@ -480,7 +475,15 @@ class RequiresActiveShiftPermission(permissions.BasePermission):
     ON_DUTY_STATUSES = {"ACTIVE", "ON_BREAK"}
 
     # Off-type shift types that should be excluded from the check
-    OFF_SHIFT_TYPES = {"OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF", "LEAVE", "SICK_LEAVE", "REST"}
+    OFF_SHIFT_TYPES = {
+        "OFF",
+        "DAY_OFF",
+        "NIGHT_OFF",
+        "AFTERNOON_OFF",
+        "LEAVE",
+        "SICK_LEAVE",
+        "REST",
+    }
 
     def has_permission(self, request, view):
         """Allow reads; require active shift for writes."""
@@ -548,13 +551,17 @@ class RequiresActiveShiftPermission(permissions.BasePermission):
         if not resource:
             return False
 
-        return Shift.objects.filter(
-            staff_resource=resource,
-            shift_date=date_type.today(),
-            status__in=self.ON_DUTY_STATUSES,
-        ).exclude(
-            shift_type__in=self.OFF_SHIFT_TYPES,
-        ).exists()
+        return (
+            Shift.objects.filter(
+                staff_resource=resource,
+                shift_date=date_type.today(),
+                status__in=self.ON_DUTY_STATUSES,
+            )
+            .exclude(
+                shift_type__in=self.OFF_SHIFT_TYPES,
+            )
+            .exists()
+        )
 
     def _log_emergency_override(self, request, view):
         """Log emergency override in the audit trail."""

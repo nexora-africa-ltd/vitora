@@ -176,20 +176,14 @@ class TestQuarterlyReportModel:
 
     def test_quarterly_report_str(self, sample_clinic):
         """Should return readable string representation."""
-        report = QuarterlyReport.objects.create(
-            clinic=sample_clinic, year=2026, quarter=2
-        )
+        report = QuarterlyReport.objects.create(clinic=sample_clinic, year=2026, quarter=2)
         assert str(report) == "General OPD - 2026 Q2"
 
     def test_quarterly_report_unique_constraint(self, sample_clinic):
         """Should enforce unique_together on clinic, year, quarter."""
-        QuarterlyReport.objects.create(
-            clinic=sample_clinic, year=2026, quarter=1
-        )
+        QuarterlyReport.objects.create(clinic=sample_clinic, year=2026, quarter=1)
         with pytest.raises(Exception):
-            QuarterlyReport.objects.create(
-                clinic=sample_clinic, year=2026, quarter=1
-            )
+            QuarterlyReport.objects.create(clinic=sample_clinic, year=2026, quarter=1)
 
     def test_quarter_months_q1(self, sample_clinic):
         report = QuarterlyReport(clinic=sample_clinic, year=2026, quarter=1)
@@ -241,9 +235,7 @@ class TestAnnualReportModel:
 class TestReportingService:
     """Tests for quarterly/annual report generation service."""
 
-    def test_generate_quarterly_report_aggregates_months(
-        self, sample_clinic, monthly_reports_q1
-    ):
+    def test_generate_quarterly_report_aggregates_months(self, sample_clinic, monthly_reports_q1):
         """Should aggregate 3 monthly reports into quarterly report."""
         report = generate_quarterly_report(sample_clinic, 2026, 1)
 
@@ -265,28 +257,22 @@ class TestReportingService:
         assert report.total_revenue == Decimal("0.00")
         assert report.monthly_reports.count() == 0
 
-    def test_generate_quarterly_report_updates_existing(
-        self, sample_clinic, monthly_reports_q1
-    ):
+    def test_generate_quarterly_report_updates_existing(self, sample_clinic, monthly_reports_q1):
         """Should update existing quarterly report on re-generation."""
         report1 = generate_quarterly_report(sample_clinic, 2026, 1)
         report2 = generate_quarterly_report(sample_clinic, 2026, 1)
 
         assert report1.id == report2.id
-        assert QuarterlyReport.objects.filter(
-            clinic=sample_clinic, year=2026, quarter=1
-        ).count() == 1
+        assert (
+            QuarterlyReport.objects.filter(clinic=sample_clinic, year=2026, quarter=1).count() == 1
+        )
 
-    def test_generate_all_quarterly_reports(
-        self, sample_clinic, second_clinic, monthly_reports_q1
-    ):
+    def test_generate_all_quarterly_reports(self, sample_clinic, second_clinic, monthly_reports_q1):
         """Should generate reports for all clinics."""
         reports = generate_all_quarterly_reports(2026, 1)
         assert len(reports) >= 2  # At least our 2 test clinics
 
-    def test_generate_annual_report_from_quarterly(
-        self, sample_clinic, monthly_reports_q1
-    ):
+    def test_generate_annual_report_from_quarterly(self, sample_clinic, monthly_reports_q1):
         """Should aggregate quarterly reports into annual report."""
         # First generate quarterly report
         generate_quarterly_report(sample_clinic, 2026, 1)
@@ -296,9 +282,7 @@ class TestReportingService:
         assert report.total_visits == 300  # Only Q1 exists
         assert report.quarterly_reports.count() == 1
 
-    def test_generate_annual_report_fallback_to_monthly(
-        self, sample_clinic, monthly_reports_q1
-    ):
+    def test_generate_annual_report_fallback_to_monthly(self, sample_clinic, monthly_reports_q1):
         """Should fallback to monthly reports if no quarterly exist."""
         # Don't generate quarterly reports first
         report = generate_annual_report(sample_clinic, 2026)
@@ -322,9 +306,7 @@ class TestReportingService:
         self, sample_clinic, monthly_reports_q1, test_user
     ):
         """Should set generated_by to the provided user."""
-        report = generate_quarterly_report(
-            sample_clinic, 2026, 1, user=test_user
-        )
+        report = generate_quarterly_report(sample_clinic, 2026, 1, user=test_user)
         assert report.generated_by == test_user
 
 
@@ -336,9 +318,7 @@ class TestReportingService:
 class TestCeleryTasks:
     """Tests for Celery tasks."""
 
-    def test_quarterly_task_with_explicit_params(
-        self, sample_clinic, monthly_reports_q1
-    ):
+    def test_quarterly_task_with_explicit_params(self, sample_clinic, monthly_reports_q1):
         """Should generate quarterly reports with explicit year/quarter."""
         count = generate_quarterly_reports_task(year=2026, quarter=1)
         assert count >= 1
@@ -616,9 +596,7 @@ class TestQuarterlyReportAPI:
 
     def test_list_quarterly_reports(self, authenticated_client, sample_clinic):
         """Should list quarterly reports."""
-        QuarterlyReport.objects.create(
-            clinic=sample_clinic, year=2026, quarter=1, total_visits=300
-        )
+        QuarterlyReport.objects.create(clinic=sample_clinic, year=2026, quarter=1, total_visits=300)
         response = authenticated_client.get("/api/quality/quarterly-reports/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
@@ -664,15 +642,9 @@ class TestQuarterlyReportAPI:
 
     def test_filter_by_year(self, authenticated_client, sample_clinic):
         """Should filter quarterly reports by year."""
-        QuarterlyReport.objects.create(
-            clinic=sample_clinic, year=2025, quarter=4
-        )
-        QuarterlyReport.objects.create(
-            clinic=sample_clinic, year=2026, quarter=1
-        )
-        response = authenticated_client.get(
-            "/api/quality/quarterly-reports/", {"year": 2026}
-        )
+        QuarterlyReport.objects.create(clinic=sample_clinic, year=2025, quarter=4)
+        QuarterlyReport.objects.create(clinic=sample_clinic, year=2026, quarter=1)
+        response = authenticated_client.get("/api/quality/quarterly-reports/", {"year": 2026})
         assert response.status_code == status.HTTP_200_OK
         assert all(r["year"] == 2026 for r in response.data["results"])
 
@@ -692,26 +664,20 @@ class TestAnnualReportAPI:
 
     def test_list_annual_reports(self, authenticated_client, sample_clinic):
         """Should list annual reports."""
-        AnnualReport.objects.create(
-            clinic=sample_clinic, year=2026, total_visits=1200
-        )
+        AnnualReport.objects.create(clinic=sample_clinic, year=2026, total_visits=1200)
         response = authenticated_client.get("/api/quality/annual-reports/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
     def test_retrieve_annual_report(self, authenticated_client, sample_clinic):
         """Should retrieve a specific annual report."""
-        report = AnnualReport.objects.create(
-            clinic=sample_clinic, year=2026, total_visits=1200
-        )
+        report = AnnualReport.objects.create(clinic=sample_clinic, year=2026, total_visits=1200)
         response = authenticated_client.get(f"/api/quality/annual-reports/{report.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["total_visits"] == 1200
         assert response.data["clinic_name"] == "General OPD"
 
-    def test_generate_annual_report_endpoint(
-        self, authenticated_client, sample_clinic
-    ):
+    def test_generate_annual_report_endpoint(self, authenticated_client, sample_clinic):
         """Should generate annual report via API."""
         response = authenticated_client.post(
             "/api/quality/annual-reports/generate/",
@@ -739,22 +705,16 @@ class TestQualityMeasureAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
-    def test_retrieve_quality_measure(
-        self, authenticated_client, sample_quality_measure
-    ):
+    def test_retrieve_quality_measure(self, authenticated_client, sample_quality_measure):
         """Should retrieve a specific quality measure."""
-        response = authenticated_client.get(
-            f"/api/quality/measures/{sample_quality_measure.id}/"
-        )
+        response = authenticated_client.get(f"/api/quality/measures/{sample_quality_measure.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["code"] == "KE-TEST-001"
         assert response.data["domain_display"] == "Clinical Quality"
         assert response.data["status_display"] == "Active"
         assert response.data["reporting_period_display"] == "Quarterly"
 
-    def test_create_quality_measure(
-        self, authenticated_client, quality_measure_data
-    ):
+    def test_create_quality_measure(self, authenticated_client, quality_measure_data):
         """Should create a quality measure."""
         response = authenticated_client.post(
             "/api/quality/measures/", quality_measure_data, format="json"
@@ -762,9 +722,7 @@ class TestQualityMeasureAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["code"] == "KE-API-001"
 
-    def test_update_quality_measure(
-        self, authenticated_client, sample_quality_measure
-    ):
+    def test_update_quality_measure(self, authenticated_client, sample_quality_measure):
         """Should update a quality measure."""
         response = authenticated_client.patch(
             f"/api/quality/measures/{sample_quality_measure.id}/",
@@ -774,36 +732,24 @@ class TestQualityMeasureAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["name"] == "Updated Measure Name"
 
-    def test_delete_quality_measure(
-        self, authenticated_client, sample_quality_measure
-    ):
+    def test_delete_quality_measure(self, authenticated_client, sample_quality_measure):
         """Should delete a quality measure."""
         response = authenticated_client.delete(
             f"/api/quality/measures/{sample_quality_measure.id}/"
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    def test_search_quality_measures(
-        self, authenticated_client, sample_quality_measure
-    ):
+    def test_search_quality_measures(self, authenticated_client, sample_quality_measure):
         """Should search quality measures by code/name."""
-        response = authenticated_client.get(
-            "/api/quality/measures/", {"search": "KE-TEST"}
-        )
+        response = authenticated_client.get("/api/quality/measures/", {"search": "KE-TEST"})
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
-    def test_filter_by_domain(
-        self, authenticated_client, sample_quality_measure
-    ):
+    def test_filter_by_domain(self, authenticated_client, sample_quality_measure):
         """Should filter measures by domain."""
-        response = authenticated_client.get(
-            "/api/quality/measures/", {"domain": "CLINICAL"}
-        )
+        response = authenticated_client.get("/api/quality/measures/", {"domain": "CLINICAL"})
         assert response.status_code == status.HTTP_200_OK
-        assert all(
-            r["domain"] == "CLINICAL" for r in response.data["results"]
-        )
+        assert all(r["domain"] == "CLINICAL" for r in response.data["results"])
 
     def test_unauthenticated_request_fails(self, api_client):
         """Should reject unauthenticated requests."""
@@ -819,9 +765,7 @@ class TestQualityMeasureAPI:
 class TestQualityMeasureResultAPI:
     """Tests for quality measure result API."""
 
-    def test_create_result(
-        self, authenticated_client, sample_quality_measure, sample_clinic
-    ):
+    def test_create_result(self, authenticated_client, sample_quality_measure, sample_clinic):
         """Should create a measure result and auto-calculate percentage."""
         response = authenticated_client.post(
             "/api/quality/results/",
@@ -843,9 +787,7 @@ class TestQualityMeasureResultAPI:
         assert response.data["measure_name"] == "Test Quality Measure"
         assert response.data["clinic_name"] == "General OPD"
 
-    def test_list_results(
-        self, authenticated_client, sample_quality_measure, sample_clinic
-    ):
+    def test_list_results(self, authenticated_client, sample_quality_measure, sample_clinic):
         """Should list measure results."""
         QualityMeasureResult.objects.create(
             measure=sample_quality_measure,
@@ -873,14 +815,10 @@ class TestQualityMeasureResultAPI:
             numerator=85,
             denominator=100,
         )
-        response = authenticated_client.get(
-            "/api/quality/results/", {"meets_target": "true"}
-        )
+        response = authenticated_client.get("/api/quality/results/", {"meets_target": "true"})
         assert response.status_code == status.HTTP_200_OK
 
-    def test_trends_endpoint(
-        self, authenticated_client, sample_quality_measure, sample_clinic
-    ):
+    def test_trends_endpoint(self, authenticated_client, sample_quality_measure, sample_clinic):
         """Should return trend data for a measure."""
         for q in range(1, 5):
             QualityMeasureResult.objects.create(
@@ -915,15 +853,17 @@ class TestQualityMeasureImportExportAPI:
 
     def test_import_json_file(self, authenticated_client):
         """Should import measures from JSON file upload."""
-        data = json.dumps([
-            {
-                "code": "IMPORT-001",
-                "name": "Imported via API",
-                "domain": "CLINICAL",
-                "numerator_logic": "test",
-                "denominator_logic": "test",
-            }
-        ])
+        data = json.dumps(
+            [
+                {
+                    "code": "IMPORT-001",
+                    "name": "Imported via API",
+                    "domain": "CLINICAL",
+                    "numerator_logic": "test",
+                    "denominator_logic": "test",
+                }
+            ]
+        )
         file = BytesIO(data.encode("utf-8"))
         file.name = "measures.json"
 
@@ -985,9 +925,7 @@ class TestQualityMeasureImportExportAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["document_type"] == "quality_measure_set"
 
-    def test_export_specific_measures(
-        self, authenticated_client, sample_quality_measure
-    ):
+    def test_export_specific_measures(self, authenticated_client, sample_quality_measure):
         """Should export only specified measures."""
         response = authenticated_client.post(
             "/api/quality/measures/export/",
@@ -1013,9 +951,7 @@ class TestQualityDashboard:
         assert response.data["total_measures"] == 0
         assert response.data["overall_compliance_rate"] == 0
 
-    def test_dashboard_with_data(
-        self, authenticated_client, sample_quality_measure, sample_clinic
-    ):
+    def test_dashboard_with_data(self, authenticated_client, sample_quality_measure, sample_clinic):
         """Should return computed dashboard data."""
         QualityMeasureResult.objects.create(
             measure=sample_quality_measure,
@@ -1046,9 +982,7 @@ class TestQualityDashboard:
             numerator=85,
             denominator=100,
         )
-        response = authenticated_client.get(
-            "/api/quality/dashboard/", {"year": 2026}
-        )
+        response = authenticated_client.get("/api/quality/dashboard/", {"year": 2026})
         assert response.status_code == status.HTTP_200_OK
 
     def test_dashboard_unauthenticated(self, api_client):

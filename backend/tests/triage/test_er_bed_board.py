@@ -38,9 +38,7 @@ def er_beds(db):
     ]
     for zone, numbers in zone_configs:
         for num in numbers:
-            beds.append(
-                ERBed.objects.create(zone=zone, bed_number=num, status="AVAILABLE")
-            )
+            beds.append(ERBed.objects.create(zone=zone, bed_number=num, status="AVAILABLE"))
     return beds
 
 
@@ -119,7 +117,9 @@ class TestERBedModel:
         assert er_bed.current_triage_assessment == triage_assessment
         assert er_bed.triage_category == "RED"
 
-    def test_assign_patient_to_occupied_bed_fails(self, er_bed, sample_patient, test_user, sample_organization):
+    def test_assign_patient_to_occupied_bed_fails(
+        self, er_bed, sample_patient, test_user, sample_organization
+    ):
         """Should raise ValueError when bed is not available."""
         er_bed.assign_patient(patient=sample_patient, user=test_user)
 
@@ -237,7 +237,9 @@ class TestERBedAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 4
 
-    def test_list_beds_filter_by_status(self, authenticated_client, er_beds, sample_patient, test_user):
+    def test_list_beds_filter_by_status(
+        self, authenticated_client, er_beds, sample_patient, test_user
+    ):
         """Should filter beds by status."""
         # Occupy one bed
         er_beds[0].assign_patient(patient=sample_patient, user=test_user)
@@ -296,9 +298,7 @@ class TestERBedAPI:
     def test_assign_patient_to_bed(self, authenticated_client, er_bed, sample_patient):
         """Should assign patient to available bed."""
         data = {"patient": sample_patient.id}
-        response = authenticated_client.post(
-            f"/api/triage/er-beds/{er_bed.id}/assign/", data
-        )
+        response = authenticated_client.post(f"/api/triage/er-beds/{er_bed.id}/assign/", data)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "OCCUPIED"
@@ -313,9 +313,7 @@ class TestERBedAPI:
             "patient": sample_patient.id,
             "triage_assessment": triage_assessment.id,
         }
-        response = authenticated_client.post(
-            f"/api/triage/er-beds/{er_bed.id}/assign/", data
-        )
+        response = authenticated_client.post(f"/api/triage/er-beds/{er_bed.id}/assign/", data)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["triage_category"] == "RED"
@@ -327,9 +325,7 @@ class TestERBedAPI:
         er_bed.assign_patient(patient=sample_patient, user=test_user)
 
         data = {"patient": sample_patient.id}
-        response = authenticated_client.post(
-            f"/api/triage/er-beds/{er_bed.id}/assign/", data
-        )
+        response = authenticated_client.post(f"/api/triage/er-beds/{er_bed.id}/assign/", data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "error" in response.data
@@ -365,9 +361,7 @@ class TestERBedAPI:
 
     def test_release_available_bed_returns_400(self, authenticated_client, er_bed):
         """Should return 400 when releasing non-occupied bed."""
-        response = authenticated_client.post(
-            f"/api/triage/er-beds/{er_bed.id}/release/", {}
-        )
+        response = authenticated_client.post(f"/api/triage/er-beds/{er_bed.id}/release/", {})
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 

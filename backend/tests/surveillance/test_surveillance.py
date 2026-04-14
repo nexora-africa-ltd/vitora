@@ -123,9 +123,7 @@ class TestNotifiableCaseModel:
             reporting_hours=24,
         )
 
-    def test_create_notifiable_case(
-        self, db, cholera_disease, sample_patient, sample_encounter
-    ):
+    def test_create_notifiable_case(self, db, cholera_disease, sample_patient, sample_encounter):
         """Should create a notifiable case with valid data."""
         from hmis.apps.surveillance.models import NotifiableCase
 
@@ -205,9 +203,7 @@ class TestNotifiableCaseModel:
 
         assert case.is_overdue is False
 
-    def test_mark_notified(
-        self, db, cholera_disease, sample_patient, sample_encounter, test_user
-    ):
+    def test_mark_notified(self, db, cholera_disease, sample_patient, sample_encounter, test_user):
         """Should update status and timestamp when marked as notified."""
         from hmis.apps.surveillance.models import NotifiableCase
 
@@ -244,9 +240,7 @@ class TestNotifiableCaseModel:
                 encounter=sample_encounter,
             )
 
-    def test_hours_until_deadline(
-        self, db, cholera_disease, sample_patient, sample_encounter
-    ):
+    def test_hours_until_deadline(self, db, cholera_disease, sample_patient, sample_encounter):
         """Should calculate hours until deadline correctly."""
         from hmis.apps.surveillance.models import NotifiableCase
 
@@ -313,7 +307,11 @@ class TestOutbreakThresholdModel:
         assert count == 0
 
     def test_check_threshold_exceeded(
-        self, db, cholera_disease, sample_patient, sample_encounter,
+        self,
+        db,
+        cholera_disease,
+        sample_patient,
+        sample_encounter,
         sample_facility,
     ):
         """Should return True when threshold exceeded."""
@@ -357,7 +355,9 @@ class TestSurveillanceAlertModel:
     """Tests for SurveillanceAlert model."""
 
     @pytest.fixture
-    def sample_case(self, db, sample_patient, sample_encounter, sample_facility, sample_organization):
+    def sample_case(
+        self, db, sample_patient, sample_encounter, sample_facility, sample_organization
+    ):
         """Create sample notifiable case."""
         from hmis.apps.surveillance.models import NotifiableCase, NotifiableDisease
 
@@ -456,9 +456,7 @@ class TestSurveillanceService:
         assert matched is not None
         assert matched.name == "Cholera"
 
-    def test_check_diagnosis_no_match(
-        self, db, cholera_disease, sample_encounter
-    ):
+    def test_check_diagnosis_no_match(self, db, cholera_disease, sample_encounter):
         """Should return None when no matching disease."""
         from hmis.apps.encounters.models import Diagnosis, ICD10Code
         from hmis.apps.surveillance.services import SurveillanceService
@@ -535,9 +533,7 @@ class TestSurveillanceService:
         assert NotifiableCase.objects.count() == 1
 
     @patch("hmis.apps.surveillance.services.get_channel_layer")
-    def test_broadcast_alert(
-        self, mock_channel_layer, db, sample_patient, sample_encounter
-    ):
+    def test_broadcast_alert(self, mock_channel_layer, db, sample_patient, sample_encounter):
         """Should broadcast alert via WebSocket."""
         from hmis.apps.surveillance.models import (
             NotifiableCase,
@@ -603,9 +599,7 @@ class TestNotifiableDiseaseAPI:
 
         call_command("seed_notifiable_diseases", verbosity=0)
 
-        response = authenticated_client.get(
-            "/api/surveillance/diseases/?category=IMMEDIATE"
-        )
+        response = authenticated_client.get("/api/surveillance/diseases/?category=IMMEDIATE")
 
         assert response.status_code == status.HTTP_200_OK
         for disease in response.data["results"]:
@@ -728,7 +722,9 @@ class TestSurveillanceAlertAPI:
     """Tests for SurveillanceAlert API endpoints."""
 
     @pytest.fixture
-    def sample_alert(self, db, sample_patient, sample_encounter, sample_facility, sample_organization):
+    def sample_alert(
+        self, db, sample_patient, sample_encounter, sample_facility, sample_organization
+    ):
         """Create sample alert."""
         from hmis.apps.surveillance.models import (
             NotifiableCase,
@@ -806,9 +802,7 @@ class TestCountyReportAPI:
 
     def test_county_report(self, authenticated_client, sample_county):
         """Should generate county report."""
-        response = authenticated_client.get(
-            f"/api/surveillance/reports/county/{sample_county.id}/"
-        )
+        response = authenticated_client.get(f"/api/surveillance/reports/county/{sample_county.id}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["county_id"] == sample_county.id

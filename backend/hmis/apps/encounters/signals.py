@@ -61,8 +61,7 @@ def auto_release_er_bed_on_close(sender, instance, **kwargs):
             bed.release(user=None, mark_cleaning=True)
             released_count += 1
             logger.info(
-                "Auto-released ER bed %s (zone=%s) for patient %s — "
-                "encounter %s moved to %s",
+                "Auto-released ER bed %s (zone=%s) for patient %s — " "encounter %s moved to %s",
                 bed.bed_number,
                 bed.zone,
                 instance.patient_id,
@@ -127,15 +126,11 @@ def _broadcast_bed_auto_release(bed, encounter) -> None:
             pass
 
         if loop and loop.is_running():
-            asyncio.ensure_future(
-                channel_layer.group_send("emergency_queue", message)
-            )
+            asyncio.ensure_future(channel_layer.group_send("emergency_queue", message))
         else:
             new_loop = asyncio.new_event_loop()
             try:
-                new_loop.run_until_complete(
-                    channel_layer.group_send("emergency_queue", message)
-                )
+                new_loop.run_until_complete(channel_layer.group_send("emergency_queue", message))
             finally:
                 new_loop.close()
     except Exception:

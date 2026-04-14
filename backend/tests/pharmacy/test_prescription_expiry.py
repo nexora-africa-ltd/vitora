@@ -18,7 +18,10 @@ from rest_framework import status
 # Helpers
 # ============================================================================
 
-def _create_prescription_with_items(valid_until, sample_organization=None, sample_facility=None, rx_status="PENDING"):
+
+def _create_prescription_with_items(
+    valid_until, sample_organization=None, sample_facility=None, rx_status="PENDING"
+):
     """Helper to create a prescription with one drug item."""
     from django.contrib.auth import get_user_model
 

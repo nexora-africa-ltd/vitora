@@ -356,9 +356,7 @@ class TestGrowthMeasurement5to19:
         # ~96 months for 8y
         assert 90 < data["age_in_months"] < 102
 
-    def test_adult_triage_unchanged(
-        self, sample_county, sample_sub_county, sample_organization
-    ):
+    def test_adult_triage_unchanged(self, sample_county, sample_sub_county, sample_organization):
         """Verify that adult records (>19y) get None z-scores as before."""
         from hmis.apps.mch.models import GrowthMeasurement
         from hmis.apps.patients.models import Patient
@@ -393,9 +391,7 @@ class TestGrowthMeasurement5to19:
 class TestChartDataView:
     """Tests for the chart-data endpoint with 5-19y support."""
 
-    def test_chart_data_returns_5_19_reference_curves(
-        self, authenticated_client
-    ):
+    def test_chart_data_returns_5_19_reference_curves(self, authenticated_client):
         """Chart data with age_range=5_19 should return percentile lines."""
         response = authenticated_client.get(
             "/api/mch/growth-measurements/chart-data/",
@@ -413,9 +409,7 @@ class TestChartDataView:
         max_x = max(p["x"] for p in z0_points)
         assert max_x > 5000  # Should reach ~6940 days
 
-    def test_chart_data_returns_all_range(
-        self, authenticated_client
-    ):
+    def test_chart_data_returns_all_range(self, authenticated_client):
         """Chart data with age_range=all should combine 0-5 and 5-19 data."""
         response = authenticated_client.get(
             "/api/mch/growth-measurements/chart-data/",
@@ -431,9 +425,7 @@ class TestChartDataView:
         assert min_x < 100  # Near birth
         assert max_x > 6000  # Near 19y
 
-    def test_chart_data_default_is_0_5(
-        self, authenticated_client
-    ):
+    def test_chart_data_default_is_0_5(self, authenticated_client):
         """Default age_range should return 0-5 data only."""
         response = authenticated_client.get(
             "/api/mch/growth-measurements/chart-data/",
@@ -446,9 +438,7 @@ class TestChartDataView:
             max_x = max(p["x"] for p in z0_points)
             assert max_x <= 1856  # 0-5y only
 
-    def test_chart_data_hcfa_no_5_19(
-        self, authenticated_client
-    ):
+    def test_chart_data_hcfa_no_5_19(self, authenticated_client):
         """Head circumference should only return 0-5y data regardless of age_range."""
         response = authenticated_client.get(
             "/api/mch/growth-measurements/chart-data/",

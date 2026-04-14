@@ -109,9 +109,7 @@ class ADXExportService:
         # Priority breakdown
         for priority in ["red", "orange", "yellow", "green", "blue"]:
             field = f"priority_{priority}"
-            self._add_value(
-                group, f"PRIORITY_{priority.upper()}", getattr(report, field, 0)
-            )
+            self._add_value(group, f"PRIORITY_{priority.upper()}", getattr(report, field, 0))
 
         return tostring(adx, encoding="unicode", xml_declaration=True)
 

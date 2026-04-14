@@ -83,16 +83,12 @@ class Command(BaseCommand):
             if not entry.get("prefix"):
                 raise CommandError(f"Missing 'prefix' for zone '{zone_code}'")
             if not isinstance(entry.get("count"), int) or entry["count"] < 1:
-                raise CommandError(
-                    f"'count' for zone '{zone_code}' must be a positive integer"
-                )
+                raise CommandError(f"'count' for zone '{zone_code}' must be a positive integer")
 
         # Reset if requested
         if reset and not dry_run:
             deleted, _ = ERBed.objects.all().delete()
-            self.stdout.write(
-                self.style.WARNING(f"Deleted {deleted} existing ER bed(s)")
-            )
+            self.stdout.write(self.style.WARNING(f"Deleted {deleted} existing ER bed(s)"))
 
         total_created = 0
         total_skipped = 0
@@ -110,9 +106,7 @@ class Command(BaseCommand):
                 bed_number = f"{prefix}-{i:02d}"
 
                 if dry_run:
-                    exists = ERBed.objects.filter(
-                        zone=zone_code, bed_number=bed_number
-                    ).exists()
+                    exists = ERBed.objects.filter(zone=zone_code, bed_number=bed_number).exists()
                     if exists:
                         skipped += 1
                     else:
@@ -133,8 +127,7 @@ class Command(BaseCommand):
 
             status = "Would create" if dry_run else "Created"
             self.stdout.write(
-                f"  {zone_label}: {status} {created}, skipped {skipped} "
-                f"(total: {count})"
+                f"  {zone_label}: {status} {created}, skipped {skipped} " f"(total: {count})"
             )
 
         if dry_run:

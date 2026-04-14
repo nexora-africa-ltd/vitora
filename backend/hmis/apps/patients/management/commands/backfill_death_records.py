@@ -47,22 +47,16 @@ class Command(BaseCommand):
         )
 
         # Filter to patients without existing death records
-        existing_patient_ids = set(
-            DeathRecord.objects.values_list("patient_id", flat=True)
-        )
+        existing_patient_ids = set(DeathRecord.objects.values_list("patient_id", flat=True))
         to_backfill = [
-            d
-            for d in deceased_discharges
-            if d.admission.patient_id not in existing_patient_ids
+            d for d in deceased_discharges if d.admission.patient_id not in existing_patient_ids
         ]
 
         if not to_backfill:
             self.stdout.write(self.style.SUCCESS("No DECEASED discharges need backfilling."))
             return
 
-        self.stdout.write(
-            f"Found {len(to_backfill)} DECEASED discharge(s) without death records:"
-        )
+        self.stdout.write(f"Found {len(to_backfill)} DECEASED discharge(s) without death records:")
         for d in to_backfill:
             patient = d.admission.patient
             self.stdout.write(
@@ -113,9 +107,9 @@ class Command(BaseCommand):
 
         # Also ensure Patient.is_deceased flags are set
         patient_ids = [d.admission.patient_id for d in to_backfill]
-        updated = Patient.objects.filter(
-            id__in=patient_ids, is_deceased=False
-        ).update(is_deceased=True)
+        updated = Patient.objects.filter(id__in=patient_ids, is_deceased=False).update(
+            is_deceased=True
+        )
 
         self.stdout.write(
             self.style.SUCCESS(

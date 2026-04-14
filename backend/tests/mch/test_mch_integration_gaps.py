@@ -81,7 +81,9 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, s
 
 
 @pytest.fixture
-def mch_registration_with_enrollment(db, sample_patient, anc_enrollment, sample_facility, sample_organization):
+def mch_registration_with_enrollment(
+    db, sample_patient, anc_enrollment, sample_facility, sample_organization
+):
     """Create MCH registration with existing ANC enrollment (signal won't auto-create)."""
     from hmis.apps.mch.models import MCHRegistration
 
@@ -252,9 +254,7 @@ class TestAutoTransitionToDelivered:
         registration.refresh_from_db()
         assert registration.status == "DELIVERED"
 
-    def test_does_not_transition_on_pending_delivery(
-        self, mch_registration_with_enrollment
-    ):
+    def test_does_not_transition_on_pending_delivery(self, mch_registration_with_enrollment):
         """Should NOT transition if delivery status is PENDING."""
         from hmis.apps.mch.models import Delivery
 
@@ -274,9 +274,7 @@ class TestAutoTransitionToDelivered:
         registration.refresh_from_db()
         assert registration.status == "ACTIVE"  # Should remain ACTIVE
 
-    def test_does_not_transition_if_already_delivered(
-        self, mch_registration_with_enrollment
-    ):
+    def test_does_not_transition_if_already_delivered(self, mch_registration_with_enrollment):
         """Should not error if registration is already DELIVERED."""
         from hmis.apps.mch.models import Delivery
 
@@ -298,9 +296,7 @@ class TestAutoTransitionToDelivered:
         registration.refresh_from_db()
         assert registration.status == "DELIVERED"
 
-    def test_delivery_serializer_defaults_to_completed(
-        self, mch_registration_with_enrollment
-    ):
+    def test_delivery_serializer_defaults_to_completed(self, mch_registration_with_enrollment):
         """DeliverySerializer should default status to COMPLETED."""
         from hmis.apps.mch.serializers import DeliverySerializer
 
@@ -411,9 +407,7 @@ class TestAutoCreateANCAppointment:
 
         assert count == 1  # No duplicate
 
-    def test_no_error_when_no_scheduling_resource(
-        self, mch_registration_with_enrollment
-    ):
+    def test_no_error_when_no_scheduling_resource(self, mch_registration_with_enrollment):
         """Should gracefully handle missing scheduling resource."""
         from hmis.apps.mch.models import ANCVisit
 

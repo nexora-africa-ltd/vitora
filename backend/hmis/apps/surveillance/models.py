@@ -972,9 +972,9 @@ class IDSRDiseaseSummary(models.Model):
         if self.total_cases > 0 and self.total_deaths > 0:
             from decimal import Decimal
 
-            self.case_fatality_rate = Decimal(self.total_deaths) / Decimal(
-                self.total_cases
-            ) * Decimal("100")
+            self.case_fatality_rate = (
+                Decimal(self.total_deaths) / Decimal(self.total_cases) * Decimal("100")
+            )
         else:
             self.case_fatality_rate = None
         super().save(*args, **kwargs)
@@ -1406,9 +1406,7 @@ class IHRNotification(models.Model):
         self.resolved_at = timezone.now()
         if notes:
             self.resolution_notes = notes
-        self.save(
-            update_fields=["status", "resolved_at", "resolution_notes", "updated_at"]
-        )
+        self.save(update_fields=["status", "resolved_at", "resolution_notes", "updated_at"])
 
     def reject(self, user=None, notes: str = "") -> None:
         """Reject the IHR notification (not IHR-reportable upon review)."""
@@ -1416,9 +1414,7 @@ class IHRNotification(models.Model):
         self.resolved_at = timezone.now()
         if notes:
             self.resolution_notes = notes
-        self.save(
-            update_fields=["status", "resolved_at", "resolution_notes", "updated_at"]
-        )
+        self.save(update_fields=["status", "resolved_at", "resolution_notes", "updated_at"])
 
 
 class IndicatorType(models.TextChoices):
@@ -1568,4 +1564,3 @@ class DHIS2DataElementMapping(models.Model):
             result[key][m.indicator_type] = m.data_element_uid
 
         return result
-

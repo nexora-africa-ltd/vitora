@@ -138,9 +138,7 @@ class TestComputeDiagnosisTrends:
         else:
             period_end = date(enc_date.year, enc_date.month + 1, 1) - timedelta(days=1)
 
-        results = compute_diagnosis_trends(
-            sample_facility, period_start, period_end, "MONTHLY"
-        )
+        results = compute_diagnosis_trends(sample_facility, period_start, period_end, "MONTHLY")
         assert len(results) >= 1
         assert results[0]["icd10_code"] == sample_icd10_code.code
         assert results[0]["case_count"] >= 1

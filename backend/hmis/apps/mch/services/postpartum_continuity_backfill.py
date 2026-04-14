@@ -118,10 +118,14 @@ def _update_related_postpartum_records(discharge: Discharge, *, dry_run: bool) -
     if kardex is not None and kardex.maternity_continuity_action == "NONE":
         if not dry_run:
             kardex.maternity_continuity_action = discharge.maternity_continuity_action
-            kardex.maternity_continuity_notes = (
-                f"Backfilled from discharge continuity action on {discharge.discharge_date.date().isoformat()}."
+            kardex.maternity_continuity_notes = f"Backfilled from discharge continuity action on {discharge.discharge_date.date().isoformat()}."
+            kardex.save(
+                update_fields=[
+                    "maternity_continuity_action",
+                    "maternity_continuity_notes",
+                    "updated_at",
+                ]
             )
-            kardex.save(update_fields=["maternity_continuity_action", "maternity_continuity_notes", "updated_at"])
         kardex_updates += 1
 
     ward_rounds = discharge.admission.ward_rounds.filter(
@@ -132,9 +136,7 @@ def _update_related_postpartum_records(discharge: Discharge, *, dry_run: bool) -
         if not dry_run:
             for ward_round in ward_rounds:
                 ward_round.maternity_continuity_action = discharge.maternity_continuity_action
-                ward_round.maternity_continuity_notes = (
-                    f"Backfilled from discharge continuity action on {discharge.discharge_date.date().isoformat()}."
-                )
+                ward_round.maternity_continuity_notes = f"Backfilled from discharge continuity action on {discharge.discharge_date.date().isoformat()}."
                 ward_round.save(
                     update_fields=[
                         "maternity_continuity_action",
@@ -159,7 +161,9 @@ def backfill_maternity_postpartum_continuity(
 ) -> PostpartumContinuityBackfillSummary:
     summary = PostpartumContinuityBackfillSummary()
 
-    queryset = _discharge_queryset(from_date=from_date, to_date=to_date, start_after_id=start_after_id)
+    queryset = _discharge_queryset(
+        from_date=from_date, to_date=to_date, start_after_id=start_after_id
+    )
 
     for index, discharge in enumerate(queryset.iterator(chunk_size=batch_size), start=1):
         if limit is not None and index > limit:
@@ -175,7 +179,9 @@ def backfill_maternity_postpartum_continuity(
             )
 
             if already_reconciled:
-                kardex_updates, ward_round_updates = _update_related_postpartum_records(discharge, dry_run=dry_run)
+                kardex_updates, ward_round_updates = _update_related_postpartum_records(
+                    discharge, dry_run=dry_run
+                )
                 summary.kardex_updated += kardex_updates
                 summary.ward_rounds_updated += ward_round_updates
                 summary.skipped += 1
@@ -206,7 +212,9 @@ def backfill_maternity_postpartum_continuity(
             elif discharge.follow_up_date is not None:
                 inferred_action = "SCHEDULE_EARLY_PNC"
                 inferred_status = "SCHEDULED"
-                appointment_id = existing_appointment.id if existing_appointment is not None else None
+                appointment_id = (
+                    existing_appointment.id if existing_appointment is not None else None
+                )
             else:
                 summary.skipped += 1
                 summary.add_record(
@@ -253,7 +261,9 @@ def backfill_maternity_postpartum_continuity(
                     ]
                 )
 
-            kardex_updates, ward_round_updates = _update_related_postpartum_records(discharge, dry_run=dry_run)
+            kardex_updates, ward_round_updates = _update_related_postpartum_records(
+                discharge, dry_run=dry_run
+            )
             summary.discharges_updated += 1
             summary.kardex_updated += kardex_updates
             summary.ward_rounds_updated += ward_round_updates
@@ -265,7 +275,11 @@ def backfill_maternity_postpartum_continuity(
                 maternity_continuity_status=inferred_status,
                 pnc_clinic_visit_id=clinic_visit_id,
                 pnc_appointment_id=appointment_id,
-                notes="Dry run only." if dry_run else "Backfilled discharge continuity and related maternity workflow records.",
+                notes=(
+                    "Dry run only."
+                    if dry_run
+                    else "Backfilled discharge continuity and related maternity workflow records."
+                ),
             )
         except Exception as exc:  # pragma: no cover - defensive path
             summary.errors += 1

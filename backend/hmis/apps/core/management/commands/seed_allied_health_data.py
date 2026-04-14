@@ -68,9 +68,7 @@ class Command(BaseCommand):
                 else:
                     try:
                         call_command("loaddata", fixture_name, verbosity=0)
-                        self.stdout.write(
-                            self.style.SUCCESS(f"  ✓ Loaded: {fixture_name}")
-                        )
+                        self.stdout.write(self.style.SUCCESS(f"  ✓ Loaded: {fixture_name}"))
                     except Exception as e:
                         self.stdout.write(
                             self.style.ERROR(f"  ✗ Failed to load {fixture_name}: {e}")
@@ -86,13 +84,9 @@ class Command(BaseCommand):
             else:
                 try:
                     call_command("setup_allied_health_permissions", verbosity=1)
-                    self.stdout.write(
-                        self.style.SUCCESS("  ✓ Permission groups configured")
-                    )
+                    self.stdout.write(self.style.SUCCESS("  ✓ Permission groups configured"))
                 except Exception as e:
-                    self.stdout.write(
-                        self.style.ERROR(f"  ✗ Failed to set up permissions: {e}")
-                    )
+                    self.stdout.write(self.style.ERROR(f"  ✗ Failed to set up permissions: {e}"))
         else:
             self.stdout.write("\n⏭️  Skipping permissions (--skip-permissions)")
 
@@ -113,9 +107,5 @@ class Command(BaseCommand):
         self.stdout.write("  • social_workers (with sensitive access)")
         self.stdout.write("  • counsellors (with sensitive access)")
 
-        self.stdout.write(
-            "\n💡 To assign users to groups, use Django admin or:"
-        )
-        self.stdout.write(
-            "   user.groups.add(Group.objects.get(name='physiotherapists'))"
-        )
+        self.stdout.write("\n💡 To assign users to groups, use Django admin or:")
+        self.stdout.write("   user.groups.add(Group.objects.get(name='physiotherapists'))")

@@ -486,7 +486,9 @@ class TestDischargeQueries:
         expected = f"Discharge: {active_admission.admission_number} - {discharge.discharge_type}"
         assert str(discharge) == expected
 
-    def test_filter_discharges_by_type(self, sample_patient, sample_ward, test_user, sample_facility):
+    def test_filter_discharges_by_type(
+        self, sample_patient, sample_ward, test_user, sample_facility
+    ):
         """Should filter discharges by type."""
         # Get available beds from the ward (auto-generated)
         available_beds = list(sample_ward.beds.order_by("bed_number")[:3])
@@ -575,13 +577,19 @@ class TestDischargeDiagnosis:
             discharge=discharge, role="PRIMARY", code="K35.8", description="Acute appendicitis"
         )
         DischargeDiagnosis.objects.create(
-            discharge=discharge, role="SECONDARY", code="E11.9", description="Type 2 diabetes mellitus"
+            discharge=discharge,
+            role="SECONDARY",
+            code="E11.9",
+            description="Type 2 diabetes mellitus",
         )
         DischargeDiagnosis.objects.create(
             discharge=discharge, role="SECONDARY", code="I10", description="Essential hypertension"
         )
         DischargeDiagnosis.objects.create(
-            discharge=discharge, role="COMPLICATION", code="T81.4", description="Post-procedural infection"
+            discharge=discharge,
+            role="COMPLICATION",
+            code="T81.4",
+            description="Post-procedural infection",
         )
 
         assert discharge.diagnoses.count() == 4

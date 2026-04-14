@@ -193,9 +193,7 @@ class DrugProduct:
 
         generic_concept_id = data.get("generic_concept_id")
         if isinstance(generic_concept_id, str):
-            generic_concept_id = (
-                int(generic_concept_id) if generic_concept_id.isdigit() else None
-            )
+            generic_concept_id = int(generic_concept_id) if generic_concept_id.isdigit() else None
 
         return cls(
             product_id=product_id,
@@ -265,11 +263,7 @@ class ActiveComponent:
     @property
     def atc_codes(self) -> list[str]:
         """Extract all ATC codes from component links."""
-        return [
-            link.component_atc_code
-            for link in self.component_links
-            if link.component_atc_code
-        ]
+        return [link.component_atc_code for link in self.component_links if link.component_atc_code]
 
     @property
     def atc_code(self) -> str | None:

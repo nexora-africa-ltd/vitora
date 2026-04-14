@@ -127,7 +127,9 @@ class TestPreTriageQueueEndpoint:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_pre_triage_queue_returns_pending_mandatory_encounters(
-        self, auth_client, sample_patient,
+        self,
+        auth_client,
+        sample_patient,
         sample_facility,
     ):
         """Should include encounters with triage_status=PENDING and triage_requirement=MANDATORY."""
@@ -151,7 +153,9 @@ class TestPreTriageQueueEndpoint:
         assert results[0]["triage_requirement"] == "MANDATORY"
 
     def test_pre_triage_queue_returns_pending_optional_encounters(
-        self, auth_client, sample_patient,
+        self,
+        auth_client,
+        sample_patient,
         sample_facility,
     ):
         """Should include encounters with triage_status=PENDING and triage_requirement=OPTIONAL."""
@@ -173,7 +177,9 @@ class TestPreTriageQueueEndpoint:
         assert results[0]["triage_status"] == "PENDING"
         assert results[0]["triage_requirement"] == "OPTIONAL"
 
-    def test_pre_triage_queue_excludes_not_required_encounters(self, auth_client, sample_patient, sample_facility):
+    def test_pre_triage_queue_excludes_not_required_encounters(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Should exclude encounters with triage_requirement=NOT_REQUIRED."""
         # PROCEDURE = NOT_REQUIRED triage
         encounter = Encounter.objects.create(
@@ -190,7 +196,9 @@ class TestPreTriageQueueEndpoint:
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
-    def test_pre_triage_queue_excludes_completed_triage(self, auth_client, sample_patient, sample_facility):
+    def test_pre_triage_queue_excludes_completed_triage(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Should exclude encounters with triage_status=COMPLETED."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -210,7 +218,10 @@ class TestPreTriageQueueEndpoint:
         assert len(results) == 0
 
     def test_pre_triage_queue_excludes_bypassed_triage(
-        self, auth_client, sample_patient, auth_user,
+        self,
+        auth_client,
+        sample_patient,
+        auth_user,
         sample_facility,
     ):
         """Should exclude encounters with triage_status=BYPASSED."""
@@ -234,7 +245,9 @@ class TestPreTriageQueueEndpoint:
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
-    def test_pre_triage_queue_excludes_not_applicable_triage(self, auth_client, sample_patient, sample_facility):
+    def test_pre_triage_queue_excludes_not_applicable_triage(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Should exclude encounters with triage_status=NOT_APPLICABLE."""
         # NOT_REQUIRED encounters auto-set to NOT_APPLICABLE
         encounter = Encounter.objects.create(
@@ -252,7 +265,11 @@ class TestPreTriageQueueEndpoint:
         assert len(results) == 0
 
     def test_pre_triage_queue_sorted_by_arrival_time(
-        self, auth_client, sample_patient, second_patient, third_patient,
+        self,
+        auth_client,
+        sample_patient,
+        second_patient,
+        third_patient,
         sample_facility,
     ):
         """Should sort encounters by created_at (arrival time) ascending."""
@@ -291,7 +308,9 @@ class TestPreTriageQueueEndpoint:
         assert results[1]["id"] == encounter2.id
         assert results[2]["id"] == encounter3.id
 
-    def test_pre_triage_queue_includes_patient_info(self, auth_client, sample_patient, sample_facility):
+    def test_pre_triage_queue_includes_patient_info(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Should include patient name, MRN, age, gender in response."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -313,7 +332,9 @@ class TestPreTriageQueueEndpoint:
         assert "patient_age" in item or "patient" in item
         assert "patient_gender" in item or "patient" in item
 
-    def test_pre_triage_queue_includes_encounter_info(self, auth_client, sample_patient, sample_facility):
+    def test_pre_triage_queue_includes_encounter_info(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Should include encounter type, chief complaint, created_at."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -334,7 +355,9 @@ class TestPreTriageQueueEndpoint:
         assert item["chief_complaint"] == "Headache and fever"
         assert "created_at" in item
 
-    def test_pre_triage_queue_includes_wait_time(self, auth_client, sample_patient, sample_facility):
+    def test_pre_triage_queue_includes_wait_time(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Should include calculated wait time in minutes."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -357,7 +380,10 @@ class TestPreTriageQueueEndpoint:
         assert item["wait_time_minutes"] >= 0
 
     def test_pre_triage_queue_includes_triage_requirement(
-        self, auth_client, sample_patient, second_patient,
+        self,
+        auth_client,
+        sample_patient,
+        second_patient,
         sample_facility,
     ):
         """Should include triage_requirement field to distinguish MANDATORY vs OPTIONAL."""
@@ -393,7 +419,10 @@ class TestPreTriageQueueEndpoint:
         assert followup_result["triage_requirement"] == "OPTIONAL"
 
     def test_pre_triage_queue_filter_by_triage_requirement(
-        self, auth_client, sample_patient, second_patient,
+        self,
+        auth_client,
+        sample_patient,
+        second_patient,
         sample_facility,
     ):
         """Should support filtering by triage_requirement."""
@@ -424,7 +453,10 @@ class TestPreTriageQueueEndpoint:
         assert results[0]["id"] == encounter1.id
 
     def test_pre_triage_queue_filter_by_encounter_type(
-        self, auth_client, sample_patient, second_patient,
+        self,
+        auth_client,
+        sample_patient,
+        second_patient,
         sample_facility,
     ):
         """Should support filtering by encounter_type."""
@@ -454,7 +486,9 @@ class TestPreTriageQueueEndpoint:
         assert len(results) == 1
         assert results[0]["id"] == encounter2.id
 
-    def test_pre_triage_queue_empty_when_no_pending(self, auth_client, sample_patient, sample_facility):
+    def test_pre_triage_queue_empty_when_no_pending(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Should return empty list when no encounters are pending triage."""
         # Create an encounter but complete its triage
         encounter = Encounter.objects.create(
@@ -473,7 +507,9 @@ class TestPreTriageQueueEndpoint:
         results = response.data.get("results", response.data)
         assert len(results) == 0
 
-    def test_pre_triage_queue_excludes_in_progress_triage(self, auth_client, sample_patient, sample_facility):
+    def test_pre_triage_queue_excludes_in_progress_triage(
+        self, auth_client, sample_patient, sample_facility
+    ):
         """Should exclude encounters with triage_status=IN_PROGRESS."""
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -494,7 +530,10 @@ class TestPreTriageQueueEndpoint:
         assert len(results) == 0
 
     def test_pre_triage_queue_includes_in_progress_by_default(
-        self, auth_client, sample_patient, second_patient,
+        self,
+        auth_client,
+        sample_patient,
+        second_patient,
         sample_facility,
     ):
         """

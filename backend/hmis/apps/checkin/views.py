@@ -300,10 +300,12 @@ class PatientSearchView(views.APIView):
         )
 
         serializer = PatientSearchResultSerializer(patients, many=True)
-        return Response({
-            "count": len(serializer.data),
-            "results": serializer.data,
-        })
+        return Response(
+            {
+                "count": len(serializer.data),
+                "results": serializer.data,
+            }
+        )
 
 
 class PatientCheckinView(views.APIView):

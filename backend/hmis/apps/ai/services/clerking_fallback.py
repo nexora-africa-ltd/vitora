@@ -86,9 +86,7 @@ def clerking_structure_fallback(payload: dict[str, Any]) -> dict[str, Any]:
 def clinical_document_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     """Return empty document template when TibaBot is unavailable."""
     document_type = payload.get("document_type", "discharge_summary")
-    sections = _DOCUMENT_SECTIONS.get(
-        document_type, _DOCUMENT_SECTIONS["discharge_summary"]
-    )
+    sections = _DOCUMENT_SECTIONS.get(document_type, _DOCUMENT_SECTIONS["discharge_summary"])
 
     return {
         "document_type": document_type,

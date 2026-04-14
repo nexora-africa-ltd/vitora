@@ -117,7 +117,11 @@ class TestCreateLabQueueEntrySignal:
     """Tests for automatic LabQueue creation when LabOrder is created."""
 
     def test_queue_created_for_in_house_order_with_ordered_status(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -151,7 +155,11 @@ class TestCreateLabQueueEntrySignal:
         assert queue.specimen.barcode == queue.queue_number
 
     def test_queue_created_for_in_house_order_with_draft_status(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -179,7 +187,11 @@ class TestCreateLabQueueEntrySignal:
         assert queue.specimen is not None
 
     def test_queue_not_created_for_external_order(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -205,7 +217,11 @@ class TestCreateLabQueueEntrySignal:
         assert not LabQueue.objects.filter(lab_order=order).exists()
 
     def test_queue_not_duplicated_on_order_update(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -238,7 +254,11 @@ class TestCreateLabQueueEntrySignal:
         assert LabQueue.objects.filter(lab_order=order).count() == 1
 
     def test_queue_inherits_specimen_type_from_test(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog_urine,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog_urine,
         sample_facility,
         sample_organization,
     ):
@@ -283,7 +303,11 @@ class TestCreateLabQueueOnItemAddSignal:
     """Tests for LabQueue creation triggered by adding first order item."""
 
     def test_queue_created_when_first_item_added(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -313,7 +337,12 @@ class TestCreateLabQueueOnItemAddSignal:
         assert LabQueue.objects.filter(lab_order=order).exists()
 
     def test_queue_not_duplicated_when_second_item_added(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
+        lab_test_catalog_urine,
         sample_facility,
         sample_organization,
     ):
@@ -359,7 +388,11 @@ class TestSyncLabQueuePrioritySignal:
     """Tests for priority synchronization from LabOrder to LabQueue."""
 
     def test_priority_synced_on_order_update(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -392,7 +425,11 @@ class TestSyncLabQueuePrioritySignal:
         assert queue.priority == "STAT"
 
     def test_priority_synced_from_routine_to_urgent(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -431,7 +468,12 @@ class TestUpdateOrderStatusOnResultSignal:
     """Tests for order/queue status updates when results are entered."""
 
     def test_first_result_transitions_order_to_in_progress(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
+        lab_test_catalog_urine,
         sample_facility,
         sample_organization,
     ):
@@ -483,7 +525,12 @@ class TestUpdateOrderStatusOnResultSignal:
         assert queue.queue_status == "PROCESSING"
 
     def test_queue_transitions_to_review_when_all_results_entered(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
+        lab_test_catalog_urine,
         sample_facility,
         sample_organization,
     ):
@@ -538,7 +585,11 @@ class TestUpdateOrderStatusOnResultSignal:
         assert queue.queue_status == "REVIEW"
 
     def test_processing_timestamps_set_on_first_result(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -577,7 +628,11 @@ class TestUpdateOrderStatusOnResultSignal:
         assert queue.processing_started_at is not None
 
     def test_completion_timestamp_set_when_all_results_entered(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -625,7 +680,12 @@ class TestNotifyOnResultVerificationSignal:
     """Tests for WebSocket notifications when results are verified."""
 
     def test_broadcast_result_verified_called_on_verification(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
+        lab_tech_user,
         sample_facility,
         sample_organization,
     ):
@@ -665,7 +725,12 @@ class TestNotifyOnResultVerificationSignal:
             mock_broadcast.assert_called_once_with(result)
 
     def test_broadcast_critical_alert_called_for_critical_results(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
+        lab_tech_user,
         sample_facility,
         sample_organization,
     ):
@@ -696,11 +761,10 @@ class TestNotifyOnResultVerificationSignal:
             entered_by=lab_user,
         )
 
-        with patch(
-            "hmis.apps.laboratory.websockets.broadcast_result_verified"
-        ) as mock_verified, patch(
-            "hmis.apps.laboratory.websockets.broadcast_critical_alert"
-        ) as mock_critical:
+        with (
+            patch("hmis.apps.laboratory.websockets.broadcast_result_verified") as mock_verified,
+            patch("hmis.apps.laboratory.websockets.broadcast_critical_alert") as mock_critical,
+        ):
             result.verification_status = "VERIFIED"
             result.verified_by = lab_tech_user
             result.verified_at = timezone.now()
@@ -710,7 +774,12 @@ class TestNotifyOnResultVerificationSignal:
             mock_critical.assert_called_once_with(result)
 
     def test_broadcast_order_completed_when_all_results_verified(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
+        lab_tech_user,
         sample_facility,
         sample_organization,
     ):
@@ -740,10 +809,12 @@ class TestNotifyOnResultVerificationSignal:
             entered_by=lab_user,
         )
 
-        with patch("hmis.apps.laboratory.websockets.broadcast_result_verified"), patch(
-            "hmis.apps.laboratory.websockets.broadcast_order_completed"
-        ) as mock_completed, patch(
-            "hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification"
+        with (
+            patch("hmis.apps.laboratory.websockets.broadcast_result_verified"),
+            patch("hmis.apps.laboratory.websockets.broadcast_order_completed") as mock_completed,
+            patch(
+                "hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification"
+            ),
         ):
             result.verification_status = "VERIFIED"
             result.verified_by = lab_tech_user
@@ -753,7 +824,12 @@ class TestNotifyOnResultVerificationSignal:
             mock_completed.assert_called_once_with(order)
 
     def test_notification_service_called_on_order_completion(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
+        lab_tech_user,
         sample_facility,
         sample_organization,
     ):
@@ -783,11 +859,13 @@ class TestNotifyOnResultVerificationSignal:
             entered_by=lab_user,
         )
 
-        with patch("hmis.apps.laboratory.websockets.broadcast_result_verified"), patch(
-            "hmis.apps.laboratory.websockets.broadcast_order_completed"
-        ), patch(
-            "hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification"
-        ) as mock_notify:
+        with (
+            patch("hmis.apps.laboratory.websockets.broadcast_result_verified"),
+            patch("hmis.apps.laboratory.websockets.broadcast_order_completed"),
+            patch(
+                "hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification"
+            ) as mock_notify,
+        ):
             result.verification_status = "VERIFIED"
             result.verified_by = lab_tech_user
             result.verified_at = timezone.now()
@@ -796,7 +874,11 @@ class TestNotifyOnResultVerificationSignal:
             mock_notify.assert_called_once_with(order)
 
     def test_no_broadcast_on_result_creation(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -832,7 +914,11 @@ class TestNotifyOnResultVerificationSignal:
             mock_broadcast.assert_not_called()
 
     def test_no_broadcast_when_status_not_verified(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -880,7 +966,12 @@ class TestSignalErrorHandling:
     """Tests for signal error handling and logging."""
 
     def test_queue_creation_handles_exception_gracefully(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, caplog,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
+        caplog,
         sample_facility,
         sample_organization,
     ):
@@ -907,7 +998,12 @@ class TestSignalErrorHandling:
         assert LabQueue.objects.filter(lab_order=order).exists()
 
     def test_notification_error_does_not_break_verification(
-        self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_tech_user,
+        self,
+        lab_patient,
+        lab_encounter,
+        lab_user,
+        lab_test_catalog,
+        lab_tech_user,
         sample_facility,
         sample_organization,
     ):
@@ -937,11 +1033,13 @@ class TestSignalErrorHandling:
             entered_by=lab_user,
         )
 
-        with patch("hmis.apps.laboratory.websockets.broadcast_result_verified"), patch(
-            "hmis.apps.laboratory.websockets.broadcast_order_completed"
-        ), patch(
-            "hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification",
-            side_effect=Exception("Notification service error"),
+        with (
+            patch("hmis.apps.laboratory.websockets.broadcast_result_verified"),
+            patch("hmis.apps.laboratory.websockets.broadcast_order_completed"),
+            patch(
+                "hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification",
+                side_effect=Exception("Notification service error"),
+            ),
         ):
             # Should not raise exception
             result.verification_status = "VERIFIED"

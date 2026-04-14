@@ -74,9 +74,7 @@ def import_measures_from_csv(file_content: str) -> dict[str, int]:
         # CSV returns strings; convert applicable_clinic_types
         if "applicable_clinic_types" in item:
             try:
-                item["applicable_clinic_types"] = json.loads(
-                    item["applicable_clinic_types"]
-                )
+                item["applicable_clinic_types"] = json.loads(item["applicable_clinic_types"])
             except (json.JSONDecodeError, TypeError):
                 item["applicable_clinic_types"] = []
 

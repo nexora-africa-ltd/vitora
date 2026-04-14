@@ -18,7 +18,9 @@ from hmis.apps.laboratory.models import LabOrder, LabResultAttachment
 
 
 @pytest.fixture
-def external_lab_order(db, sample_patient, sample_encounter, test_user, sample_organization, sample_facility):
+def external_lab_order(
+    db, sample_patient, sample_encounter, test_user, sample_organization, sample_facility
+):
     """Create an EXTERNAL lab order suitable for attachments/requisition."""
     return LabOrder.objects.create(
         patient=sample_patient,

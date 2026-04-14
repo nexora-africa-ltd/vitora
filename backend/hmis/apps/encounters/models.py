@@ -1021,13 +1021,15 @@ class Encounter(HistoryMixin, models.Model):
         Returns:
             bool: True if vitals have been recorded, False otherwise
         """
-        return any([
-            self.temperature is not None,
-            self.pulse is not None,
-            self.blood_pressure,  # Non-empty string
-            self.respiratory_rate is not None,
-            self.spo2 is not None,
-        ])
+        return any(
+            [
+                self.temperature is not None,
+                self.pulse is not None,
+                self.blood_pressure,  # Non-empty string
+                self.respiratory_rate is not None,
+                self.spo2 is not None,
+            ]
+        )
 
     def can_edit(self) -> bool:
         """

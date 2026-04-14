@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-
 class SurveillanceService:
     """
     Service class for disease surveillance operations.
@@ -213,9 +212,11 @@ class SurveillanceService:
             return
 
         event_type_map = {
-            SurveillanceAlert.AlertType.NEW_CASE: "surveillance_immediate_alert"
-            if alert.case.disease.is_immediate
-            else "surveillance_new_case",
+            SurveillanceAlert.AlertType.NEW_CASE: (
+                "surveillance_immediate_alert"
+                if alert.case.disease.is_immediate
+                else "surveillance_new_case"
+            ),
             SurveillanceAlert.AlertType.OVERDUE: "surveillance_overdue_alert",
             SurveillanceAlert.AlertType.OUTBREAK: "surveillance_outbreak_alert",
             SurveillanceAlert.AlertType.CASE_UPDATE: "surveillance_new_case",
@@ -397,9 +398,13 @@ Please log in to Vitora HMIS to review and process this case.
                     # Get most recent case to attach alert to
                     from .models import NotifiableCase
 
-                    recent_case = NotifiableCase.objects.filter(
-                        disease=disease,
-                    ).order_by("-detected_at").first()
+                    recent_case = (
+                        NotifiableCase.objects.filter(
+                            disease=disease,
+                        )
+                        .order_by("-detected_at")
+                        .first()
+                    )
 
                     if recent_case:
                         cls.create_alert(
@@ -435,9 +440,7 @@ Please log in to Vitora HMIS to review and process this case.
         overdue_cases = NotifiableCase.objects.filter(
             notification_deadline__lt=now,
             notification_status=NotificationStatus.PENDING,
-        ).exclude(
-            alerts__alert_type=SurveillanceAlert.AlertType.OVERDUE
-        )
+        ).exclude(alerts__alert_type=SurveillanceAlert.AlertType.OVERDUE)
 
         newly_overdue = []
         for case in overdue_cases:
@@ -781,12 +784,14 @@ class IDSRReportingService:
                 if value > 0:
                     uid = get_data_element_uid(disease_name, indicator_type, environment)
                     if uid:
-                        data_values.append({
-                            "dataElement": uid,
-                            "period": period,
-                            "orgUnit": org_unit,
-                            "value": value,
-                        })
+                        data_values.append(
+                            {
+                                "dataElement": uid,
+                                "period": period,
+                                "orgUnit": org_unit,
+                                "value": value,
+                            }
+                        )
                     else:
                         # Track unmapped diseases for debugging
                         unmapped_diseases.append(f"{disease_name}/{indicator_type}")

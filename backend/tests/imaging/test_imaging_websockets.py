@@ -37,9 +37,7 @@ def create_test_organization():
 def create_test_facility(organization):
     """Create a test facility (async-safe)."""
     county, _ = County.objects.get_or_create(code=1, defaults={"name": "Nairobi"})
-    sub_county, _ = SubCounty.objects.get_or_create(
-        name="Westlands", defaults={"county": county}
-    )
+    sub_county, _ = SubCounty.objects.get_or_create(name="Westlands", defaults={"county": county})
     facility, _ = Facility.objects.get_or_create(
         name="Imaging Test Hospital",
         defaults={
@@ -71,9 +69,7 @@ class TestImagingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/imaging/{facility.id}/orders/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/imaging/{facility.id}/orders/")
         connected, _ = await communicator.connect()
 
         assert connected is True
@@ -83,9 +79,7 @@ class TestImagingConsumerConnection:
         """Should reject connection to non-existent facility."""
         from hmis.asgi import application
 
-        communicator = WebsocketCommunicator(
-            application, "/ws/imaging/99999/orders/"
-        )
+        communicator = WebsocketCommunicator(application, "/ws/imaging/99999/orders/")
         connected, _ = await communicator.connect()
 
         assert connected is False
@@ -97,9 +91,7 @@ class TestImagingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/imaging/{facility.id}/orders/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/imaging/{facility.id}/orders/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -128,9 +120,7 @@ class TestImagingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/imaging/{facility.id}/orders/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/imaging/{facility.id}/orders/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -156,9 +146,7 @@ class TestImagingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/imaging/{facility.id}/orders/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/imaging/{facility.id}/orders/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -176,9 +164,7 @@ class TestImagingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/imaging/{facility.id}/orders/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/imaging/{facility.id}/orders/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -206,9 +192,7 @@ class TestImagingEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/imaging/{facility.id}/orders/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/imaging/{facility.id}/orders/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -241,9 +225,7 @@ class TestImagingEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/imaging/{facility.id}/orders/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/imaging/{facility.id}/orders/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -275,9 +257,7 @@ class TestImagingEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/imaging/{facility.id}/orders/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/imaging/{facility.id}/orders/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -309,9 +289,7 @@ class TestImagingEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/imaging/{facility.id}/orders/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/imaging/{facility.id}/orders/")
         connected, _ = await communicator.connect()
         assert connected is True
 

@@ -88,7 +88,9 @@ def authenticated_regular_client(regular_user, sample_organization, sample_facil
 
 
 @pytest.fixture
-def authenticated_approver_client(user_with_approve_permission, sample_organization, sample_facility):
+def authenticated_approver_client(
+    user_with_approve_permission, sample_organization, sample_facility
+):
     """API client authenticated as approver."""
     client = APIClient()
     ensure_staff_profile(user_with_approve_permission, sample_organization, sample_facility)

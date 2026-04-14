@@ -66,15 +66,9 @@ class Command(BaseCommand):
 
         today = timezone.localdate()
         start = (
-            date.fromisoformat(options["start"])
-            if options["start"]
-            else today - timedelta(days=90)
+            date.fromisoformat(options["start"]) if options["start"] else today - timedelta(days=90)
         )
-        end = (
-            date.fromisoformat(options["end"])
-            if options["end"]
-            else today - timedelta(days=1)
-        )
+        end = date.fromisoformat(options["end"]) if options["end"] else today - timedelta(days=1)
         dry_run = options["dry_run"]
 
         facilities = Facility.objects.filter(is_active=True)
@@ -101,9 +95,7 @@ class Command(BaseCommand):
                         )
                         daily_count += 1
                     except Exception as e:
-                        self.stderr.write(
-                            f"  ERROR: {facility.name} – {current}: {e}"
-                        )
+                        self.stderr.write(f"  ERROR: {facility.name} – {current}: {e}")
             current += timedelta(days=1)
 
         self.stdout.write(self.style.SUCCESS(f"Daily summaries: {daily_count} rows"))
@@ -126,9 +118,7 @@ class Command(BaseCommand):
                         )
                     else:
                         try:
-                            dept_rows = compute_department_monthly(
-                                facility, ym[0], ym[1]
-                            )
+                            dept_rows = compute_department_monthly(facility, ym[0], ym[1])
                             for row in dept_rows:
                                 DepartmentMonthlySummary.objects.update_or_create(
                                     facility=facility,
@@ -147,9 +137,7 @@ class Command(BaseCommand):
                             if ym[1] == 12:
                                 month_end = date(ym[0] + 1, 1, 1) - timedelta(days=1)
                             else:
-                                month_end = (
-                                    date(ym[0], ym[1] + 1, 1) - timedelta(days=1)
-                                )
+                                month_end = date(ym[0], ym[1] + 1, 1) - timedelta(days=1)
                             dx_rows = compute_diagnosis_trends(
                                 facility, month_start, month_end, "MONTHLY"
                             )
@@ -165,9 +153,7 @@ class Command(BaseCommand):
                                     },
                                 )
                         except Exception as e:
-                            self.stderr.write(
-                                f"  ERROR monthly: {facility.name} – {ym}: {e}"
-                            )
+                            self.stderr.write(f"  ERROR monthly: {facility.name} – {ym}: {e}")
             # Advance to next month
             if current.month == 12:
                 current = current.replace(year=current.year + 1, month=1)
@@ -191,11 +177,7 @@ class Command(BaseCommand):
                     )
                     demo_count += 1
                 except Exception as e:
-                    self.stderr.write(
-                        f"  ERROR demographics: {facility.name}: {e}"
-                    )
+                    self.stderr.write(f"  ERROR demographics: {facility.name}: {e}")
 
-        self.stdout.write(
-            self.style.SUCCESS(f"Demographics snapshots: {demo_count} rows")
-        )
+        self.stdout.write(self.style.SUCCESS(f"Demographics snapshots: {demo_count} rows"))
         self.stdout.write(self.style.SUCCESS("Backfill complete."))

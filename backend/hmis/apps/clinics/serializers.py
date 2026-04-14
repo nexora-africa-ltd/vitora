@@ -829,7 +829,11 @@ class ClinicRoomSerializer(serializers.ModelSerializer):
 
         return [
             {
-                "id": s.staff_resource.staff_profile.user.id if s.staff_resource.staff_profile else None,
+                "id": (
+                    s.staff_resource.staff_profile.user.id
+                    if s.staff_resource.staff_profile
+                    else None
+                ),
                 "name": s.staff_resource.name,
                 "status": s.status,
             }

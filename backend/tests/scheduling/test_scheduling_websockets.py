@@ -43,9 +43,7 @@ def create_test_organization():
 def create_test_facility(organization):
     """Create a test facility (async-safe)."""
     county, _ = County.objects.get_or_create(code=1, defaults={"name": "Nairobi"})
-    sub_county, _ = SubCounty.objects.get_or_create(
-        name="Westlands", defaults={"county": county}
-    )
+    sub_county, _ = SubCounty.objects.get_or_create(name="Westlands", defaults={"county": county})
     facility, _ = Facility.objects.get_or_create(
         name="Scheduling Test Hospital",
         defaults={
@@ -89,9 +87,7 @@ class TestSchedulingConsumerConnection:
         """Should reject connection to non-existent facility."""
         from hmis.asgi import application
 
-        communicator = WebsocketCommunicator(
-            application, "/ws/scheduling/99999/appointments/"
-        )
+        communicator = WebsocketCommunicator(application, "/ws/scheduling/99999/appointments/")
         connected, _ = await communicator.connect()
 
         assert connected is False

@@ -47,13 +47,17 @@ class Command(BaseCommand):
         total = unchained.count()
 
         if total == 0:
-            self.stdout.write(self.style.SUCCESS("All audit entries already have hashes. Nothing to do."))
+            self.stdout.write(
+                self.style.SUCCESS("All audit entries already have hashes. Nothing to do.")
+            )
             return
 
         self.stdout.write(f"Found {total} audit entries without hashes.")
 
         if dry_run:
-            self.stdout.write(self.style.WARNING("[DRY RUN] Would backfill hashes for these entries."))
+            self.stdout.write(
+                self.style.WARNING("[DRY RUN] Would backfill hashes for these entries.")
+            )
             return
 
         # Get the current chain's last entry (if any chained entries exist)
@@ -106,9 +110,7 @@ class Command(BaseCommand):
                     entry.sequence_number = next_seq
                     entry.previous_hash = prev_hash
                     entry.entry_hash = entry_hash
-                    entry.save(
-                        update_fields=["sequence_number", "previous_hash", "entry_hash"]
-                    )
+                    entry.save(update_fields=["sequence_number", "previous_hash", "entry_hash"])
 
                     prev_hash = entry_hash
                     next_seq += 1

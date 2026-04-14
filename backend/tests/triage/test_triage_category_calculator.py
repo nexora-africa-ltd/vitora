@@ -77,7 +77,10 @@ class TestTriageCategoryCalculator:
         )
 
         assert category == "RED"
-        assert any("spo2" in alert["message"].lower() or "oxygen" in alert["message"].lower() for alert in alerts)
+        assert any(
+            "spo2" in alert["message"].lower() or "oxygen" in alert["message"].lower()
+            for alert in alerts
+        )
 
     def test_red_for_severe_hypotension(self):
         """Should return RED for severe hypotension (systolic < 90)."""
@@ -94,7 +97,9 @@ class TestTriageCategoryCalculator:
 
         assert category == "RED"
         assert any(
-            "hypotension" in alert["message"].lower() or "blood pressure" in alert["message"].lower() for alert in alerts
+            "hypotension" in alert["message"].lower()
+            or "blood pressure" in alert["message"].lower()
+            for alert in alerts
         )
 
     def test_red_for_severe_hypertension(self):
@@ -112,7 +117,9 @@ class TestTriageCategoryCalculator:
 
         assert category == "RED"
         assert any(
-            "hypertension" in alert["message"].lower() or "blood pressure" in alert["message"].lower() for alert in alerts
+            "hypertension" in alert["message"].lower()
+            or "blood pressure" in alert["message"].lower()
+            for alert in alerts
         )
 
     def test_red_for_severe_bradycardia(self):
@@ -130,7 +137,8 @@ class TestTriageCategoryCalculator:
 
         assert category == "RED"
         assert any(
-            "bradycardia" in alert["message"].lower() or "heart rate" in alert["message"].lower() for alert in alerts
+            "bradycardia" in alert["message"].lower() or "heart rate" in alert["message"].lower()
+            for alert in alerts
         )
 
     def test_red_for_severe_tachycardia(self):
@@ -148,7 +156,8 @@ class TestTriageCategoryCalculator:
 
         assert category == "RED"
         assert any(
-            "tachycardia" in alert["message"].lower() or "heart rate" in alert["message"].lower() for alert in alerts
+            "tachycardia" in alert["message"].lower() or "heart rate" in alert["message"].lower()
+            for alert in alerts
         )
 
     def test_red_for_altered_consciousness_chief_complaint(self):
@@ -198,7 +207,10 @@ class TestTriageCategoryCalculator:
         )
 
         assert category == "ORANGE"
-        assert any("breathing" in alert["message"].lower() or "oxygen" in alert["message"].lower() for alert in alerts)
+        assert any(
+            "breathing" in alert["message"].lower() or "oxygen" in alert["message"].lower()
+            for alert in alerts
+        )
 
     def test_orange_for_severe_pain(self):
         """Should return ORANGE for severe pain (score 9-10)."""
@@ -264,7 +276,10 @@ class TestTriageCategoryCalculator:
         )
 
         assert category == "YELLOW"
-        assert any("fever" in alert["message"].lower() or "temperature" in alert["message"].lower() for alert in alerts)
+        assert any(
+            "fever" in alert["message"].lower() or "temperature" in alert["message"].lower()
+            for alert in alerts
+        )
 
     def test_green_for_stable_vitals_and_low_pain(self):
         """Should return GREEN for stable vitals and low pain."""
@@ -317,7 +332,10 @@ class TestTriageCategoryCalculator:
 
         assert category == "RED"
         assert len(alerts) >= 3  # Should have multiple alerts
-        assert any("spo2" in alert["message"].lower() or "oxygen" in alert["message"].lower() for alert in alerts)
+        assert any(
+            "spo2" in alert["message"].lower() or "oxygen" in alert["message"].lower()
+            for alert in alerts
+        )
         assert any("heart" in alert["message"].lower() for alert in alerts)
         assert any("blood pressure" in alert["message"].lower() for alert in alerts)
 

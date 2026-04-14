@@ -52,7 +52,9 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, s
 
 
 @pytest.fixture
-def mch_registration(db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization):
+def mch_registration(
+    db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization
+):
     from hmis.apps.mch.models import MCHRegistration
 
     return MCHRegistration.objects.create(
@@ -79,7 +81,16 @@ def maternity_resource(db):
 
 
 @pytest.fixture
-def maternity_admission(db, sample_patient, sample_encounter, sample_inpatient_ward, sample_bed, test_user, mch_registration, sample_facility):
+def maternity_admission(
+    db,
+    sample_patient,
+    sample_encounter,
+    sample_inpatient_ward,
+    sample_bed,
+    test_user,
+    mch_registration,
+    sample_facility,
+):
     from hmis.apps.encounters.models import Encounter
     from hmis.apps.inpatient.models import Admission
 
@@ -192,7 +203,10 @@ class TestMaternityPostpartumContinuityCommand:
         assert legacy_maternity_discharge.maternity_continuity_status == "SCHEDULED"
         assert appointment.scheduled_start.date() == legacy_maternity_discharge.follow_up_date
         assert maternity_admission.kardex.maternity_continuity_action == "SCHEDULE_EARLY_PNC"
-        assert "backfilled from discharge" in maternity_admission.kardex.maternity_continuity_notes.lower()
+        assert (
+            "backfilled from discharge"
+            in maternity_admission.kardex.maternity_continuity_notes.lower()
+        )
         assert ward_round.maternity_continuity_action == "SCHEDULE_EARLY_PNC"
         assert mch_registration.status == "POSTNATAL"
         assert "Discharges updated: 1" in out.getvalue()

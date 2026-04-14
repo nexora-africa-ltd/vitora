@@ -184,7 +184,11 @@ class TestSHAClaimModel:
         assert len(parts[2]) == 4  # Sequence number padded to 4 digits
 
     def test_claim_number_sequential_generation(
-        self, valid_claim_data, sample_county, sample_sub_county, test_user,
+        self,
+        valid_claim_data,
+        sample_county,
+        sample_sub_county,
+        test_user,
         sample_facility,
         sample_organization,
     ):
@@ -256,7 +260,12 @@ class TestSHAClaimModel:
     # Test 4: Patient must have SHA membership
     # =========================================================================
     def test_patient_must_have_sha_membership(
-        self, sample_patient, sample_encounter, test_user, sample_county, sample_sub_county,
+        self,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        sample_county,
+        sample_sub_county,
         sample_facility,
         sample_organization,
     ):
@@ -1261,7 +1270,11 @@ class TestSHAClaimModelMeta:
         assert "Draft" in str_repr  # Default status display
 
     def test_claim_ordering_by_created_at_desc(
-        self, valid_claim_data, sample_county, sample_sub_county, test_user,
+        self,
+        valid_claim_data,
+        sample_county,
+        sample_sub_county,
+        test_user,
         sample_facility,
         sample_organization,
     ):

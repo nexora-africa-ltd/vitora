@@ -122,7 +122,9 @@ class TestNursingCarePlanEntryModel:
         )
 
         # Later: nurse adds implementation
-        entry.implementation = "Administered Paracetamol 1g PO at 14:00hrs. Patient positioned comfortably."
+        entry.implementation = (
+            "Administered Paracetamol 1g PO at 14:00hrs. Patient positioned comfortably."
+        )
         entry.save()
 
         entry.refresh_from_db()
@@ -408,9 +410,7 @@ class TestNursingCarePlanEntryAPI:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "No valid fields" in response.data["error"]
 
-    def test_update_nonexistent_care_plan_entry(
-        self, authenticated_client, sample_admission
-    ):
+    def test_update_nonexistent_care_plan_entry(self, authenticated_client, sample_admission):
         """Should return 404 for nonexistent entry."""
         kardex = sample_admission.kardex
 

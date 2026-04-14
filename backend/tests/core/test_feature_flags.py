@@ -116,12 +116,18 @@ class TestFeatureFlagAPI:
             {"is_enabled": True},
         )
         # ListModelMixin-only viewset has no detail routes — returns 404
-        assert response.status_code in (status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_ALLOWED)
+        assert response.status_code in (
+            status.HTTP_404_NOT_FOUND,
+            status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
 
     def test_no_delete_via_api(self, authenticated_client, feature_flag):
         """Should not allow deleting flags via API."""
         response = authenticated_client.delete(f"/api/core/features/{feature_flag.id}/")
-        assert response.status_code in (status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_ALLOWED)
+        assert response.status_code in (
+            status.HTTP_404_NOT_FOUND,
+            status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
 
     def test_check_endpoint(self, authenticated_client, feature_flag, enabled_flag):
         """Should provide a check endpoint for specific flag by name."""

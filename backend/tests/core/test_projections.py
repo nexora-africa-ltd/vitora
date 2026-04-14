@@ -49,8 +49,9 @@ def _clean_state():
     reset_projection_registry()
 
 
-def _make_event(event_type, aggregate_type="Test", aggregate_id=1, payload=None,
-                facility_id=1, **kwargs):
+def _make_event(
+    event_type, aggregate_type="Test", aggregate_id=1, payload=None, facility_id=1, **kwargs
+):
     """Helper to create a DomainEvent."""
     return DomainEvent(
         event_type=event_type,
@@ -177,15 +178,19 @@ class TestClinicQueueProjection:
         """WAITING → IN_CONSULTATION should decrement waiting, increment consultation."""
         proj = ClinicQueueProjection()
         # First: create a visit
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_CREATED,
-            payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_CREATED,
+                payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
+            )
+        )
         # Then: change to IN_CONSULTATION
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
-            payload={"clinic_id": 10, "old_status": "WAITING", "new_status": "IN_CONSULTATION"},
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
+                payload={"clinic_id": 10, "old_status": "WAITING", "new_status": "IN_CONSULTATION"},
+            )
+        )
 
         stats = ClinicQueueStats.objects.get(facility_id=1, clinic_id=10)
         assert stats.waiting_count == 0
@@ -195,19 +200,29 @@ class TestClinicQueueProjection:
         """IN_CONSULTATION → COMPLETED should decrement consultation, increment completed."""
         proj = ClinicQueueProjection()
         # Setup: 1 in consultation
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_CREATED,
-            payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
-        ))
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
-            payload={"clinic_id": 10, "old_status": "WAITING", "new_status": "IN_CONSULTATION"},
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_CREATED,
+                payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
+            )
+        )
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
+                payload={"clinic_id": 10, "old_status": "WAITING", "new_status": "IN_CONSULTATION"},
+            )
+        )
         # Complete
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
-            payload={"clinic_id": 10, "old_status": "IN_CONSULTATION", "new_status": "COMPLETED"},
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
+                payload={
+                    "clinic_id": 10,
+                    "old_status": "IN_CONSULTATION",
+                    "new_status": "COMPLETED",
+                },
+            )
+        )
 
         stats = ClinicQueueStats.objects.get(facility_id=1, clinic_id=10)
         assert stats.waiting_count == 0
@@ -217,14 +232,18 @@ class TestClinicQueueProjection:
     def test_no_show_counted(self):
         """WAITING → NO_SHOW should increment no_show_today."""
         proj = ClinicQueueProjection()
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_CREATED,
-            payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
-        ))
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
-            payload={"clinic_id": 10, "old_status": "WAITING", "new_status": "NO_SHOW"},
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_CREATED,
+                payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
+            )
+        )
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
+                payload={"clinic_id": 10, "old_status": "WAITING", "new_status": "NO_SHOW"},
+            )
+        )
 
         stats = ClinicQueueStats.objects.get(facility_id=1, clinic_id=10)
         assert stats.waiting_count == 0
@@ -233,10 +252,12 @@ class TestClinicQueueProjection:
     def test_missing_clinic_id_ignored(self):
         """Events without clinic_id should be silently ignored."""
         proj = ClinicQueueProjection()
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_CREATED,
-            payload={"patient_id": 1, "status": "REGISTERED"},
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_CREATED,
+                payload={"patient_id": 1, "status": "REGISTERED"},
+            )
+        )
 
         assert ClinicQueueStats.objects.count() == 0
 
@@ -244,19 +265,23 @@ class TestClinicQueueProjection:
     def test_broadcasts_on_update(self, mock_broadcast):
         """Should broadcast after each event."""
         proj = ClinicQueueProjection()
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_CREATED,
-            payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_CREATED,
+                payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
+            )
+        )
         assert mock_broadcast.called
 
     def test_reset_clears_all(self):
         """reset() should delete all stats."""
         proj = ClinicQueueProjection()
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_CREATED,
-            payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_CREATED,
+                payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
+            )
+        )
         assert ClinicQueueStats.objects.count() == 1
 
         proj.reset()
@@ -265,16 +290,20 @@ class TestClinicQueueProjection:
     def test_reset_scoped_to_facility(self):
         """reset(facility_id=X) should only delete stats for that facility."""
         proj = ClinicQueueProjection()
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_CREATED,
-            payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
-            facility_id=1,
-        ))
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_CREATED,
-            payload={"clinic_id": 20, "patient_id": 2, "status": "REGISTERED"},
-            facility_id=2,
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_CREATED,
+                payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
+                facility_id=1,
+            )
+        )
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_CREATED,
+                payload={"clinic_id": 20, "patient_id": 2, "status": "REGISTERED"},
+                facility_id=2,
+            )
+        )
         assert ClinicQueueStats.objects.count() == 2
 
         proj.reset(facility_id=1)
@@ -295,15 +324,19 @@ class TestWardOccupancyProjection:
         """Admission event should increase occupied beds."""
         proj = WardOccupancyProjection()
         # First set capacity
-        proj.handle_event(_make_event(
-            InpatientEvents.WARD_CAPACITY_CHANGED,
-            payload={"ward_id": 5, "total_beds": 20},
-        ))
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.WARD_CAPACITY_CHANGED,
+                payload={"ward_id": 5, "total_beds": 20},
+            )
+        )
         # Admit
-        proj.handle_event(_make_event(
-            InpatientEvents.ADMISSION_CREATED,
-            payload={"ward_id": 5},
-        ))
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.ADMISSION_CREATED,
+                payload={"ward_id": 5},
+            )
+        )
 
         stats = WardOccupancyStats.objects.get(facility_id=1, ward_id=5)
         assert stats.occupied_beds == 1
@@ -314,18 +347,24 @@ class TestWardOccupancyProjection:
     def test_discharge_decrements_occupancy(self):
         """Discharge event should decrease occupied beds."""
         proj = WardOccupancyProjection()
-        proj.handle_event(_make_event(
-            InpatientEvents.WARD_CAPACITY_CHANGED,
-            payload={"ward_id": 5, "total_beds": 20},
-        ))
-        proj.handle_event(_make_event(
-            InpatientEvents.ADMISSION_CREATED,
-            payload={"ward_id": 5},
-        ))
-        proj.handle_event(_make_event(
-            InpatientEvents.DISCHARGE_COMPLETED,
-            payload={"ward_id": 5},
-        ))
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.WARD_CAPACITY_CHANGED,
+                payload={"ward_id": 5, "total_beds": 20},
+            )
+        )
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.ADMISSION_CREATED,
+                payload={"ward_id": 5},
+            )
+        )
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.DISCHARGE_COMPLETED,
+                payload={"ward_id": 5},
+            )
+        )
 
         stats = WardOccupancyStats.objects.get(facility_id=1, ward_id=5)
         assert stats.occupied_beds == 0
@@ -335,19 +374,25 @@ class TestWardOccupancyProjection:
     def test_capacity_change_recalculates(self):
         """Ward capacity change should recalculate available beds."""
         proj = WardOccupancyProjection()
-        proj.handle_event(_make_event(
-            InpatientEvents.WARD_CAPACITY_CHANGED,
-            payload={"ward_id": 5, "total_beds": 10},
-        ))
-        proj.handle_event(_make_event(
-            InpatientEvents.ADMISSION_CREATED,
-            payload={"ward_id": 5},
-        ))
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.WARD_CAPACITY_CHANGED,
+                payload={"ward_id": 5, "total_beds": 10},
+            )
+        )
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.ADMISSION_CREATED,
+                payload={"ward_id": 5},
+            )
+        )
         # Capacity increases
-        proj.handle_event(_make_event(
-            InpatientEvents.WARD_CAPACITY_CHANGED,
-            payload={"ward_id": 5, "total_beds": 20},
-        ))
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.WARD_CAPACITY_CHANGED,
+                payload={"ward_id": 5, "total_beds": 20},
+            )
+        )
 
         stats = WardOccupancyStats.objects.get(facility_id=1, ward_id=5)
         assert stats.total_beds == 20
@@ -357,14 +402,18 @@ class TestWardOccupancyProjection:
     def test_discharged_cannot_go_negative(self):
         """Discharging when 0 occupied should not go negative."""
         proj = WardOccupancyProjection()
-        proj.handle_event(_make_event(
-            InpatientEvents.WARD_CAPACITY_CHANGED,
-            payload={"ward_id": 5, "total_beds": 10},
-        ))
-        proj.handle_event(_make_event(
-            InpatientEvents.DISCHARGE_COMPLETED,
-            payload={"ward_id": 5},
-        ))
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.WARD_CAPACITY_CHANGED,
+                payload={"ward_id": 5, "total_beds": 10},
+            )
+        )
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.DISCHARGE_COMPLETED,
+                payload={"ward_id": 5},
+            )
+        )
 
         stats = WardOccupancyStats.objects.get(facility_id=1, ward_id=5)
         assert stats.occupied_beds == 0
@@ -373,19 +422,23 @@ class TestWardOccupancyProjection:
     def test_missing_ward_id_ignored(self):
         """Events without ward_id should be silently ignored."""
         proj = WardOccupancyProjection()
-        proj.handle_event(_make_event(
-            InpatientEvents.ADMISSION_CREATED,
-            payload={},
-        ))
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.ADMISSION_CREATED,
+                payload={},
+            )
+        )
         assert WardOccupancyStats.objects.count() == 0
 
     def test_reset(self):
         """reset() should clear all stats."""
         proj = WardOccupancyProjection()
-        proj.handle_event(_make_event(
-            InpatientEvents.WARD_CAPACITY_CHANGED,
-            payload={"ward_id": 5, "total_beds": 20},
-        ))
+        proj.handle_event(
+            _make_event(
+                InpatientEvents.WARD_CAPACITY_CHANGED,
+                payload={"ward_id": 5, "total_beds": 20},
+            )
+        )
         proj.reset()
         assert WardOccupancyStats.objects.count() == 0
 
@@ -402,10 +455,12 @@ class TestPharmacyQueueProjection:
     def test_prescription_created_increments_pending(self):
         """New prescription should increment pending count."""
         proj = PharmacyQueueProjection()
-        proj.handle_event(_make_event(
-            PharmacyEvents.PRESCRIPTION_CREATED,
-            aggregate_type="Prescription",
-        ))
+        proj.handle_event(
+            _make_event(
+                PharmacyEvents.PRESCRIPTION_CREATED,
+                aggregate_type="Prescription",
+            )
+        )
 
         stats = PharmacyQueueStats.objects.get(facility_id=1)
         assert stats.pending_prescriptions == 1
@@ -458,12 +513,14 @@ class TestPharmacyQueueProjection:
     def test_missing_facility_ignored(self):
         """Events without facility_id should be silently ignored."""
         proj = PharmacyQueueProjection()
-        proj.handle_event(DomainEvent(
-            event_type=PharmacyEvents.PRESCRIPTION_CREATED,
-            aggregate_type="Prescription",
-            aggregate_id=1,
-            facility_id=None,
-        ))
+        proj.handle_event(
+            DomainEvent(
+                event_type=PharmacyEvents.PRESCRIPTION_CREATED,
+                aggregate_type="Prescription",
+                aggregate_id=1,
+                facility_id=None,
+            )
+        )
         assert PharmacyQueueStats.objects.count() == 0
 
     def test_reset(self):
@@ -549,10 +606,12 @@ class TestProjectionRebuild:
         """Rebuild should clear existing state before replaying."""
         proj = ClinicQueueProjection()
         # Create some existing state
-        proj.handle_event(_make_event(
-            ClinicalEvents.CLINIC_VISIT_CREATED,
-            payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
-        ))
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_CREATED,
+                payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
+            )
+        )
         assert ClinicQueueStats.objects.first().waiting_count == 1
 
         # Rebuild with no events in store → should be empty
@@ -577,7 +636,10 @@ class TestProjectionAPIs:
     def test_clinic_queue_stats_returns_data(self, authenticated_client):
         """GET /api/projections/clinic-queue/?clinic_id=10 should return stats."""
         ClinicQueueStats.objects.create(
-            facility_id=1, clinic_id=10, waiting_count=5, in_consultation_count=2,
+            facility_id=1,
+            clinic_id=10,
+            waiting_count=5,
+            in_consultation_count=2,
         )
         response = authenticated_client.get("/api/projections/clinic-queue/?clinic_id=10")
         assert response.status_code == 200
@@ -594,8 +656,12 @@ class TestProjectionAPIs:
     def test_ward_occupancy_stats_returns_data(self, authenticated_client):
         """GET /api/projections/ward-occupancy/ should return stats."""
         WardOccupancyStats.objects.create(
-            facility_id=1, ward_id=5, total_beds=20, occupied_beds=8,
-            available_beds=12, occupancy_rate=40.0,
+            facility_id=1,
+            ward_id=5,
+            total_beds=20,
+            occupied_beds=8,
+            available_beds=12,
+            occupancy_rate=40.0,
         )
         response = authenticated_client.get("/api/projections/ward-occupancy/?ward_id=5")
         assert response.status_code == 200
@@ -615,7 +681,9 @@ class TestProjectionAPIs:
     def test_pharmacy_queue_stats_returns_data(self, authenticated_client):
         """GET /api/projections/pharmacy-queue/ should return stats."""
         PharmacyQueueStats.objects.create(
-            facility_id=1, pending_prescriptions=15, dispensed_today=30,
+            facility_id=1,
+            pending_prescriptions=15,
+            dispensed_today=30,
         )
         response = authenticated_client.get("/api/projections/pharmacy-queue/?facility_id=1")
         assert response.status_code == 200
@@ -647,20 +715,24 @@ class TestProjectionEndToEnd:
 
         # 2. Publish events through the EventBus
         bus = get_event_bus()
-        bus.publish(DomainEvent(
-            event_type=ClinicalEvents.CLINIC_VISIT_CREATED,
-            aggregate_type="ClinicVisit",
-            aggregate_id=1,
-            payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
-            facility_id=1,
-        ))
-        bus.publish(DomainEvent(
-            event_type=ClinicalEvents.CLINIC_VISIT_CREATED,
-            aggregate_type="ClinicVisit",
-            aggregate_id=2,
-            payload={"clinic_id": 10, "patient_id": 2, "status": "REGISTERED"},
-            facility_id=1,
-        ))
+        bus.publish(
+            DomainEvent(
+                event_type=ClinicalEvents.CLINIC_VISIT_CREATED,
+                aggregate_type="ClinicVisit",
+                aggregate_id=1,
+                payload={"clinic_id": 10, "patient_id": 1, "status": "REGISTERED"},
+                facility_id=1,
+            )
+        )
+        bus.publish(
+            DomainEvent(
+                event_type=ClinicalEvents.CLINIC_VISIT_CREATED,
+                aggregate_type="ClinicVisit",
+                aggregate_id=2,
+                payload={"clinic_id": 10, "patient_id": 2, "status": "REGISTERED"},
+                facility_id=1,
+            )
+        )
 
         # 3. Verify projection state
         stats = ClinicQueueStats.objects.get(facility_id=1, clinic_id=10)

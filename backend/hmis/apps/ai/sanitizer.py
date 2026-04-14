@@ -15,9 +15,7 @@ _MRN_PATTERN = re.compile(r"\bMRN-\d{8}-\d{4}\b", re.IGNORECASE)
 _NATIONAL_ID_PATTERN = re.compile(r"\b\d{7,8}\b")
 
 # Patterns that look like phone numbers (+254..., 07..., 01...)
-_PHONE_PATTERN = re.compile(
-    r"(\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}"
-)
+_PHONE_PATTERN = re.compile(r"(\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}")
 
 
 def sanitize_clinical_text(text: str) -> str:

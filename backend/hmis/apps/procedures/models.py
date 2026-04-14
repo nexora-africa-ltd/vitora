@@ -60,15 +60,11 @@ class ProcedureCatalog(TimeStampedModel):
     description = models.TextField(
         blank=True, default="", help_text="Detailed description of the procedure"
     )
-    category = models.CharField(
-        max_length=20, choices=Category.choices, default=Category.MINOR
-    )
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.MINOR)
     body_system = models.CharField(
         max_length=20, choices=BodySystem.choices, default=BodySystem.GENERAL
     )
-    risk_level = models.CharField(
-        max_length=10, choices=RiskLevel.choices, default=RiskLevel.LOW
-    )
+    risk_level = models.CharField(max_length=10, choices=RiskLevel.choices, default=RiskLevel.LOW)
 
     # Standard Coding (ICHI, CPT)
     ichi_code = models.CharField(
@@ -124,9 +120,7 @@ class ProcedureCatalog(TimeStampedModel):
         default="",
         help_text="Staff qualifications required (e.g., 'Surgeon, Nurse')",
     )
-    minimum_staff_count = models.PositiveIntegerField(
-        default=1, help_text="Minimum staff required"
-    )
+    minimum_staff_count = models.PositiveIntegerField(default=1, help_text="Minimum staff required")
 
     # Billing & SHA
     billing_service = models.ForeignKey(
@@ -178,7 +172,9 @@ class ProcedureCatalog(TimeStampedModel):
     )
 
     # Status
-    is_active = models.BooleanField(default=True, help_text="Whether procedure is currently offered")
+    is_active = models.BooleanField(
+        default=True, help_text="Whether procedure is currently offered"
+    )
 
     # Multi-tenancy
     organization = models.ForeignKey(
@@ -228,12 +224,8 @@ class ProcedureKit(TimeStampedModel):
     allowing quick addition of all consumables.
     """
 
-    procedure = models.ForeignKey(
-        ProcedureCatalog, on_delete=models.CASCADE, related_name="kits"
-    )
-    name = models.CharField(
-        max_length=100, help_text="Kit name (e.g., 'Standard Suturing Kit')"
-    )
+    procedure = models.ForeignKey(ProcedureCatalog, on_delete=models.CASCADE, related_name="kits")
+    name = models.CharField(max_length=100, help_text="Kit name (e.g., 'Standard Suturing Kit')")
     description = models.TextField(blank=True, default="")
     is_default = models.BooleanField(default=False, help_text="Default kit for this procedure")
     is_active = models.BooleanField(default=True)
@@ -304,9 +296,7 @@ class ProcedureOrder(TimeStampedModel):
         editable=False,
         help_text="Auto-generated order number (PROC-YYYYMMDD-XXXX)",
     )
-    procedure = models.ForeignKey(
-        ProcedureCatalog, on_delete=models.PROTECT, related_name="orders"
-    )
+    procedure = models.ForeignKey(ProcedureCatalog, on_delete=models.PROTECT, related_name="orders")
     patient = models.ForeignKey(
         "patients.Patient", on_delete=models.CASCADE, related_name="procedure_orders"
     )
@@ -336,24 +326,19 @@ class ProcedureOrder(TimeStampedModel):
     )
 
     # Order Details
-    status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.ORDERED
-    )
-    priority = models.CharField(
-        max_length=20, choices=Priority.choices, default=Priority.ROUTINE
-    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ORDERED)
+    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.ROUTINE)
     indication = models.TextField(help_text="Clinical indication / reason for procedure")
-    clinical_notes = models.TextField(
-        blank=True, default="", help_text="Additional clinical notes"
-    )
+    clinical_notes = models.TextField(blank=True, default="", help_text="Additional clinical notes")
 
     # Site/Laterality
     body_site = models.CharField(
-        max_length=100, blank=True, default="", help_text="Specific body site (e.g., 'Right forearm')"
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Specific body site (e.g., 'Right forearm')",
     )
-    laterality = models.CharField(
-        max_length=20, choices=Laterality.choices, default=Laterality.NA
-    )
+    laterality = models.CharField(max_length=20, choices=Laterality.choices, default=Laterality.NA)
 
     # Scheduling
     appointment = models.ForeignKey(
@@ -375,7 +360,9 @@ class ProcedureOrder(TimeStampedModel):
         help_text="Clinic/procedure room where procedure is scheduled",
     )
     scheduled_location = models.CharField(
-        max_length=100, blank=True, default="",
+        max_length=100,
+        blank=True,
+        default="",
         help_text="Free-text location (fallback when scheduled_clinic is not set)",
     )
     estimated_duration_minutes = models.PositiveIntegerField(
@@ -597,7 +584,10 @@ class ProcedureOrder(TimeStampedModel):
             return False, "Order not in performable status"
 
         if self.procedure.consent_required:
-            if not hasattr(self, "consent") or self.consent.status != ProcedureConsent.Status.SIGNED:
+            if (
+                not hasattr(self, "consent")
+                or self.consent.status != ProcedureConsent.Status.SIGNED
+            ):
                 return False, "Consent not obtained"
 
         return True, "Ready to perform"
@@ -631,14 +621,10 @@ class ProcedureConsent(TimeStampedModel):
         VERBAL = "VERBAL", "Verbal Consent (documented)"
         EMERGENCY = "EMERGENCY", "Emergency (implied consent)"
 
-    order = models.OneToOneField(
-        ProcedureOrder, on_delete=models.CASCADE, related_name="consent"
-    )
+    order = models.OneToOneField(ProcedureOrder, on_delete=models.CASCADE, related_name="consent")
 
     # Consent Details
-    status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.PENDING
-    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     consent_type = models.CharField(
         max_length=20, choices=ConsentType.choices, default=ConsentType.WRITTEN
     )
@@ -659,9 +645,7 @@ class ProcedureConsent(TimeStampedModel):
     )
 
     # Patient/Guardian Signature
-    signed_by_patient = models.BooleanField(
-        default=False, help_text="Whether patient signed"
-    )
+    signed_by_patient = models.BooleanField(default=False, help_text="Whether patient signed")
     patient_signature = models.TextField(
         blank=True, default="", help_text="Patient signature (base64 image or typed name)"
     )
@@ -762,9 +746,7 @@ class ProcedureConsent(TimeStampedModel):
         self.status = self.Status.SIGNED
         self.obtained_by = user
         self.obtained_at = timezone.now()
-        self.save(
-            update_fields=["status", "obtained_by", "obtained_at", "updated_at"]
-        )
+        self.save(update_fields=["status", "obtained_by", "obtained_at", "updated_at"])
 
     def decline(self, reason: str = "") -> None:
         """Mark consent as declined."""
@@ -796,15 +778,11 @@ class ProcedureLog(TimeStampedModel):
         ABANDONED = "ABANDONED", "Abandoned"
         COMPLICATED = "COMPLICATED", "Completed with Complications"
 
-    order = models.OneToOneField(
-        ProcedureOrder, on_delete=models.CASCADE, related_name="log"
-    )
+    order = models.OneToOneField(ProcedureOrder, on_delete=models.CASCADE, related_name="log")
 
     # Timing
     started_at = models.DateTimeField(help_text="Procedure start time")
-    ended_at = models.DateTimeField(
-        null=True, blank=True, help_text="Procedure end time"
-    )
+    ended_at = models.DateTimeField(null=True, blank=True, help_text="Procedure end time")
     actual_duration_minutes = models.PositiveIntegerField(
         null=True, blank=True, help_text="Actual duration in minutes"
     )
@@ -856,9 +834,7 @@ class ProcedureLog(TimeStampedModel):
     )
 
     # Status & Outcome
-    status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.IN_PROGRESS
-    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.IN_PROGRESS)
     immediate_outcome = models.TextField(
         blank=True, default="", help_text="Immediate post-procedure notes"
     )
@@ -962,9 +938,7 @@ class ProcedureConsumable(models.Model):
     and billing purposes. Stock is deducted via StockBatch.
     """
 
-    log = models.ForeignKey(
-        ProcedureLog, on_delete=models.CASCADE, related_name="consumables"
-    )
+    log = models.ForeignKey(ProcedureLog, on_delete=models.CASCADE, related_name="consumables")
     drug = models.ForeignKey(
         "pharmacy.Drug",
         on_delete=models.PROTECT,
@@ -994,9 +968,7 @@ class ProcedureConsumable(models.Model):
     )
     notes = models.CharField(max_length=200, blank=True, default="")
     recorded_at = models.DateTimeField(auto_now_add=True)
-    recorded_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
-    )
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
 
     class Meta:
         ordering = ["log", "drug__generic_name"]
@@ -1024,9 +996,7 @@ class ProcedureConsumable(models.Model):
         StockMovement model. StockBatch tracks quantity_available.
         """
         if self.batch:
-            self.batch.quantity_available = max(
-                0, self.batch.quantity_available - self.quantity
-            )
+            self.batch.quantity_available = max(0, self.batch.quantity_available - self.quantity)
             self.batch.save(update_fields=["quantity_available"])
 
 
@@ -1048,9 +1018,7 @@ class ProcedureOutcome(TimeStampedModel):
         RE_PROCEDURE_NEEDED = "RE_PROCEDURE_NEEDED", "Re-procedure Needed"
         REFERRED = "REFERRED", "Referred for Further Care"
 
-    log = models.ForeignKey(
-        ProcedureLog, on_delete=models.CASCADE, related_name="outcomes"
-    )
+    log = models.ForeignKey(ProcedureLog, on_delete=models.CASCADE, related_name="outcomes")
     assessment_date = models.DateField(help_text="Date of outcome assessment")
     outcome = models.CharField(max_length=30, choices=OutcomeStatus.choices)
     findings = models.TextField(help_text="Clinical findings")
@@ -1066,9 +1034,7 @@ class ProcedureOutcome(TimeStampedModel):
     follow_up_notes = models.TextField(blank=True, default="")
 
     # Photos/images (stored as references)
-    images = models.JSONField(
-        null=True, blank=True, help_text="List of image file references"
-    )
+    images = models.JSONField(null=True, blank=True, help_text="List of image file references")
 
     # Multi-tenancy
     organization = models.ForeignKey(

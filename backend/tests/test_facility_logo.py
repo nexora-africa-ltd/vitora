@@ -110,7 +110,9 @@ class TestFacilityLogoSerializer:
         assert response.data["effective_logo_url"] is not None
         assert "my_logo" in response.data["effective_logo_url"]
 
-    def test_effective_logo_url_falls_back_to_org(self, authenticated_client, sample_facility, sample_organization):
+    def test_effective_logo_url_falls_back_to_org(
+        self, authenticated_client, sample_facility, sample_organization
+    ):
         """effective_logo_url should use org logo when facility logo is not set."""
         sample_organization.logo = _create_test_image("org_brand.png")
         sample_organization.save()
@@ -130,7 +132,9 @@ class TestFacilityLogoSerializer:
 class TestFacilityLogoAPI:
     """Test logo upload and removal via the API."""
 
-    def test_upload_logo_via_multipart_patch(self, authenticated_client, sample_facility, test_user):
+    def test_upload_logo_via_multipart_patch(
+        self, authenticated_client, sample_facility, test_user
+    ):
         """PATCH with multipart form data should upload a facility logo."""
         test_user.is_staff = True
         test_user.is_superuser = True

@@ -32,7 +32,9 @@ class TestBirthCertificateIdentificationType:
         assert "birth_certificate" in choices
         assert choices["birth_certificate"] == "Birth Certificate"
 
-    def test_create_patient_with_birth_certificate(self, db, sample_county, sample_sub_county, sample_organization):
+    def test_create_patient_with_birth_certificate(
+        self, db, sample_county, sample_sub_county, sample_organization
+    ):
         """Should create patient with birth_certificate identification type."""
         patient = Patient.objects.create(
             first_name="Baby",
@@ -89,7 +91,9 @@ class TestBirthCertificateIdentificationType:
         assert serializer.is_valid(), f"Serializer errors: {serializer.errors}"
         assert serializer.validated_data["identification_type"] == "birth_certificate"
 
-    def test_different_birth_certificate_numbers_unique(self, db, sample_county, sample_sub_county, sample_organization):
+    def test_different_birth_certificate_numbers_unique(
+        self, db, sample_county, sample_sub_county, sample_organization
+    ):
         """Different patients can have birth certificates with different numbers."""
         # Create first patient with birth certificate
         p1 = Patient.objects.create(

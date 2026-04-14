@@ -474,11 +474,13 @@ class CounsellingReferralViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             },
         )
 
-        return Response({
-            "message": f"Generated {len(sessions_created)} session(s)",
-            "sessions": CounsellingSessionListSerializer(sessions_created, many=True).data,
-            "referral": CounsellingReferralSerializer(referral).data,
-        })
+        return Response(
+            {
+                "message": f"Generated {len(sessions_created)} session(s)",
+                "sessions": CounsellingSessionListSerializer(sessions_created, many=True).data,
+                "referral": CounsellingReferralSerializer(referral).data,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def no_show(self, request, pk=None):
@@ -634,6 +636,7 @@ class CounsellingSessionViewSet(viewsets.ModelViewSet):
         session.status = "IN_PROGRESS"
         session.actual_date = date.today()
         from datetime import datetime as dt
+
         session.actual_start_time = dt.now().time()
         session.save()
 
@@ -816,8 +819,10 @@ class CounsellingSessionViewSet(viewsets.ModelViewSet):
             },
         )
 
-        return Response({
-            "message": "Session rescheduled successfully",
-            "old_session": CounsellingSessionSerializer(session).data,
-            "new_session": CounsellingSessionSerializer(new_session).data,
-        })
+        return Response(
+            {
+                "message": "Session rescheduled successfully",
+                "old_session": CounsellingSessionSerializer(session).data,
+                "new_session": CounsellingSessionSerializer(new_session).data,
+            }
+        )

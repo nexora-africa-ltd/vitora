@@ -40,9 +40,7 @@ User = get_user_model()
 class TestDiagnosticReportModel:
     """Tests for DiagnosticReport model."""
 
-    def test_create_diagnostic_report_with_required_fields(
-        self, sample_lab_order, test_user
-    ):
+    def test_create_diagnostic_report_with_required_fields(self, sample_lab_order, test_user):
         """Should create diagnostic report with lab_order and issued_by."""
         report = DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
@@ -64,7 +62,15 @@ class TestDiagnosticReportModel:
         assert report.report_number.startswith("RPT-")
         assert len(report.report_number) == 17  # RPT-YYYYMMDD-XXXX
 
-    def test_report_number_uniqueness(self, sample_lab_order, test_user, sample_patient, sample_encounter, sample_organization, sample_facility):
+    def test_report_number_uniqueness(
+        self,
+        sample_lab_order,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        sample_organization,
+        sample_facility,
+    ):
         """Report number should be unique."""
         report1 = DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
@@ -318,7 +324,16 @@ class TestDiagnosticReportListAPI:
         assert len(results) == 1
         assert results[0]["status"] == "FINAL"
 
-    def test_filter_by_lab_order(self, authenticated_client, sample_lab_order, test_user, sample_patient, sample_encounter, sample_organization, sample_facility):
+    def test_filter_by_lab_order(
+        self,
+        authenticated_client,
+        sample_lab_order,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        sample_organization,
+        sample_facility,
+    ):
         """Should filter reports by lab order."""
         DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
@@ -385,7 +400,9 @@ class TestDiagnosticReportCreateAPI:
         assert response.data["conclusion"] == "All results normal."
         assert response.data["clinical_info"] == "Routine check-up requested."
 
-    def test_create_sets_issued_by_to_current_user(self, authenticated_client, sample_lab_order, test_user):
+    def test_create_sets_issued_by_to_current_user(
+        self, authenticated_client, sample_lab_order, test_user
+    ):
         """Should auto-set issued_by to current user."""
         response = authenticated_client.post(
             "/api/lab/diagnostic-reports/",
@@ -418,7 +435,9 @@ class TestDiagnosticReportRetrieveAPI:
         assert response.data["report_number"] == report.report_number
         assert response.data["conclusion"] == "Test conclusion"
 
-    def test_retrieve_includes_lab_order_details(self, authenticated_client, sample_lab_order, test_user):
+    def test_retrieve_includes_lab_order_details(
+        self, authenticated_client, sample_lab_order, test_user
+    ):
         """Should include lab order details in response."""
         report = DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
@@ -455,7 +474,9 @@ class TestDiagnosticReportUpdateAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["conclusion"] == "Updated conclusion"
 
-    def test_update_final_report_restricted(self, authenticated_client, sample_lab_order, test_user):
+    def test_update_final_report_restricted(
+        self, authenticated_client, sample_lab_order, test_user
+    ):
         """Should not allow updating finalized report status directly."""
         report = DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
@@ -541,7 +562,9 @@ class TestDiagnosticReportActionsAPI:
         assert report.status == "CANCELLED"
         assert "Created in error" in report.cancellation_reason
 
-    def test_generate_pdf_action(self, authenticated_client, sample_lab_order, sample_lab_result, test_user):
+    def test_generate_pdf_action(
+        self, authenticated_client, sample_lab_order, sample_lab_result, test_user
+    ):
         """Should generate PDF for diagnostic report."""
         report = DiagnosticReport.objects.create(
             lab_order=sample_lab_order,
@@ -580,7 +603,9 @@ class TestDiagnosticReportNestedAPI:
 
         assert response.status_code == status.HTTP_200_OK
         # The nested endpoint returns a list directly, not paginated
-        results = response.data if isinstance(response.data, list) else response.data.get("results", [])
+        results = (
+            response.data if isinstance(response.data, list) else response.data.get("results", [])
+        )
         assert len(results) == 1
 
     def test_create_report_for_order(self, authenticated_client, sample_lab_order, test_user):

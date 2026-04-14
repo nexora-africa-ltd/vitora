@@ -137,9 +137,7 @@ class NutritionConsultationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
         """Override create to return detail serializer."""
         response = super().create(request, *args, **kwargs)
         if hasattr(self, "_created_consultation"):
-            response.data = NutritionConsultationSerializer(
-                self._created_consultation
-            ).data
+            response.data = NutritionConsultationSerializer(self._created_consultation).data
         return response
 
     def perform_update(self, serializer):
@@ -276,9 +274,7 @@ class NutritionConsultationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
 
         if not consultation.can_transition_to("COMPLETED"):
             return Response(
-                {
-                    "error": f"Cannot complete consultation with status '{consultation.status}'"
-                },
+                {"error": f"Cannot complete consultation with status '{consultation.status}'"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -314,9 +310,7 @@ class NutritionConsultationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet)
 
         if not consultation.can_transition_to("CANCELLED"):
             return Response(
-                {
-                    "error": f"Cannot cancel consultation with status '{consultation.status}'"
-                },
+                {"error": f"Cannot cancel consultation with status '{consultation.status}'"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -372,17 +366,13 @@ class DietPlanFilter(django_filters.FilterSet):
             return queryset.filter(
                 status="ACTIVE",
                 start_date__lte=today,
-            ).filter(
-                models.Q(end_date__gte=today) | models.Q(end_date__isnull=True)
-            )
+            ).filter(models.Q(end_date__gte=today) | models.Q(end_date__isnull=True))
         else:
             # Inactive plans
             return queryset.exclude(
                 status="ACTIVE",
                 start_date__lte=today,
-            ).exclude(
-                models.Q(end_date__gte=today) | models.Q(end_date__isnull=True)
-            )
+            ).exclude(models.Q(end_date__gte=today) | models.Q(end_date__isnull=True))
 
 
 class DietPlanViewSet(viewsets.ModelViewSet):

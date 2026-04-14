@@ -94,7 +94,15 @@ def catalog_with_clinics(db, sample_catalog, procedure_clinic, procedure_clinic_
 
 
 @pytest.fixture
-def sample_order(db, sample_catalog, sample_patient, sample_encounter, test_user, sample_facility, sample_organization):
+def sample_order(
+    db,
+    sample_catalog,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    sample_facility,
+    sample_organization,
+):
     """Create a sample ORDERED procedure order."""
     return ProcedureOrder.objects.create(
         procedure=sample_catalog,
@@ -214,9 +222,7 @@ class TestScheduleWithClinic:
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
-        other_user = User.objects.create_user(
-            username="other_performer", password="test1234"
-        )
+        other_user = User.objects.create_user(username="other_performer", password="test1234")
         sample_order.assigned_performer = other_user
         sample_order.save(update_fields=["assigned_performer"])
 
@@ -375,9 +381,7 @@ class TestAvailableSlotsEndpoint:
         assert "available" in slot
         assert "duration_minutes" in slot
 
-    def test_no_clinics_returns_empty_with_message(
-        self, authenticated_client, sample_catalog
-    ):
+    def test_no_clinics_returns_empty_with_message(self, authenticated_client, sample_catalog):
         """Catalog without default_clinics should return empty slots with helpful message."""
         response = authenticated_client.get(
             f"/api/procedures/catalog/{sample_catalog.id}/available-slots/",
@@ -431,7 +435,11 @@ class TestAvailableSlotsEndpoint:
 
         # Find the 08:00 slot for procedure_clinic
         booked_slot = next(
-            (s for s in slots if s["start_time"] == "08:00" and s["clinic_id"] == procedure_clinic.id),
+            (
+                s
+                for s in slots
+                if s["start_time"] == "08:00" and s["clinic_id"] == procedure_clinic.id
+            ),
             None,
         )
         assert booked_slot is not None
@@ -446,9 +454,7 @@ class TestAvailableSlotsEndpoint:
 class TestScheduleActionWithClinic:
     """Tests for POST /api/procedures/orders/{id}/schedule/ with scheduled_clinic."""
 
-    def test_schedule_with_clinic_id(
-        self, authenticated_client, sample_order, procedure_clinic
-    ):
+    def test_schedule_with_clinic_id(self, authenticated_client, sample_order, procedure_clinic):
         """Should accept scheduled_clinic in the schedule action."""
         response = authenticated_client.post(
             f"/api/procedures/orders/{sample_order.id}/schedule/",
@@ -465,9 +471,7 @@ class TestScheduleActionWithClinic:
         assert sample_order.scheduled_clinic == procedure_clinic
         assert sample_order.status == ProcedureOrder.Status.SCHEDULED
 
-    def test_schedule_without_clinic_still_works(
-        self, authenticated_client, sample_order
-    ):
+    def test_schedule_without_clinic_still_works(self, authenticated_client, sample_order):
         """Should still work without scheduled_clinic (manual scheduling)."""
         response = authenticated_client.post(
             f"/api/procedures/orders/{sample_order.id}/schedule/",

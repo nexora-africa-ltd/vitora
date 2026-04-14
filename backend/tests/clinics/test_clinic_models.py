@@ -113,7 +113,9 @@ def sample_clinic_session(db, sample_clinic, clinic_user, sample_facility, sampl
 
 
 @pytest.fixture
-def sample_clinic_visit(db, sample_clinic_session, sample_patient, clinic_user, sample_facility, sample_organization):
+def sample_clinic_visit(
+    db, sample_clinic_session, sample_patient, clinic_user, sample_facility, sample_organization
+):
     """Create a sample clinic visit for testing."""
     from hmis.apps.clinics.models import ClinicVisit
 
@@ -826,7 +828,10 @@ class TestClinicVisitModel:
         assert visit.queue_number is not None  # Auto-assigned
 
     def test_clinic_visit_auto_queue_number(
-        self, sample_clinic_session, sample_patient, clinic_user,
+        self,
+        sample_clinic_session,
+        sample_patient,
+        clinic_user,
         sample_organization,
     ):
         """ClinicVisit should auto-assign queue number if not set."""
@@ -869,7 +874,10 @@ class TestClinicVisitModel:
         assert visit2.queue_number > visit1.queue_number
 
     def test_clinic_visit_unique_queue_number_per_session(
-        self, sample_clinic_session, sample_patient, clinic_user,
+        self,
+        sample_clinic_session,
+        sample_patient,
+        clinic_user,
         sample_organization,
     ):
         """Queue number must be unique within a session."""

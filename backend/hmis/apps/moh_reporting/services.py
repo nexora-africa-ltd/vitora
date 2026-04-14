@@ -85,16 +85,13 @@ class MOH705Generator:
         period_start = _first_day_of_month(year, month)
         period_end = _last_day_of_month(year, month)
 
-        diagnoses = (
-            Diagnosis.objects.filter(
-                encounter__encounter_type__in=cls.OPD_TYPES,
-                encounter__encounter_date__range=(period_start, period_end),
-                encounter__facility=facility,
-                diagnosis_type="PRIMARY",
-                icd10_code__isnull=False,
-            )
-            .select_related("encounter__patient", "icd10_code")
-        )
+        diagnoses = Diagnosis.objects.filter(
+            encounter__encounter_type__in=cls.OPD_TYPES,
+            encounter__encounter_date__range=(period_start, period_end),
+            encounter__facility=facility,
+            diagnosis_type="PRIMARY",
+            icd10_code__isnull=False,
+        ).select_related("encounter__patient", "icd10_code")
 
         # Aggregate by ICD-10 chapter
         chapter_agg: dict[int, dict] = {}
@@ -109,11 +106,14 @@ class MOH705Generator:
             cat_name = dx.icd10_code.category  # type: ignore[union-attr]
             age = _age_on_date(enc.patient.date_of_birth, enc.encounter_date)
 
-            bucket = chapter_agg.setdefault(ch, {
-                "category_name": cat_name,
-                "under_5": 0,
-                "5_and_above": 0,
-            })
+            bucket = chapter_agg.setdefault(
+                ch,
+                {
+                    "category_name": cat_name,
+                    "under_5": 0,
+                    "5_and_above": 0,
+                },
+            )
             if age is not None and age < 5:
                 bucket["under_5"] += 1
                 total_u5 += 1
@@ -208,9 +208,7 @@ class MOH711Generator:
         return report
 
     @classmethod
-    def _reproductive_health(
-        cls, facility: Facility, start: date, end: date
-    ) -> dict:
+    def _reproductive_health(cls, facility: Facility, start: date, end: date) -> dict:
         from hmis.apps.encounters.models import Encounter
 
         anc_visits = Encounter.objects.filter(
@@ -241,24 +239,17 @@ class MOH711Generator:
                 delivery_type__in=["ELECTIVE_CS", "EMERGENCY_CS"]
             ).count()
             delivery_data["deliveries_normal"] = (
-                delivery_data["deliveries_total"]
-                - delivery_data["deliveries_caesarean"]
+                delivery_data["deliveries_total"] - delivery_data["deliveries_caesarean"]
             )
-            delivery_data["live_births"] = deliveries.filter(
-                delivery_outcome="LIVE_BIRTH"
-            ).count()
-            delivery_data["still_births"] = deliveries.filter(
-                delivery_outcome="STILLBIRTH"
-            ).count()
+            delivery_data["live_births"] = deliveries.filter(delivery_outcome="LIVE_BIRTH").count()
+            delivery_data["still_births"] = deliveries.filter(delivery_outcome="STILLBIRTH").count()
         except (ImportError, Exception):
             logger.debug("MCH/Delivery data unavailable — zeroed in MOH 711")
 
         return delivery_data
 
     @classmethod
-    def _malaria_indicators(
-        cls, facility: Facility, start: date, end: date
-    ) -> dict:
+    def _malaria_indicators(cls, facility: Facility, start: date, end: date) -> dict:
         """Count malaria diagnoses by age band from outpatient encounters."""
         from hmis.apps.encounters.models import Diagnosis
 
@@ -292,9 +283,7 @@ class MOH711Generator:
         }
 
     @classmethod
-    def _immunisation_summary(
-        cls, facility: Facility, start: date, end: date
-    ) -> dict:
+    def _immunisation_summary(cls, facility: Facility, start: date, end: date) -> dict:
         """Pull immunisation counts if the module is available."""
         data: dict[str, int] = {
             "bcg_given": 0,
@@ -312,18 +301,10 @@ class MOH711Generator:
                 administered_date__range=(start, end),
                 status="ADMINISTERED",
             )
-            data["bcg_given"] = base.filter(
-                vaccine__code__icontains="BCG"
-            ).count()
-            data["opv_given"] = base.filter(
-                vaccine__code__icontains="OPV"
-            ).count()
-            data["penta_given"] = base.filter(
-                vaccine__code__icontains="PENTA"
-            ).count()
-            data["measles_given"] = base.filter(
-                vaccine__code__icontains="MEASLES"
-            ).count()
+            data["bcg_given"] = base.filter(vaccine__code__icontains="BCG").count()
+            data["opv_given"] = base.filter(vaccine__code__icontains="OPV").count()
+            data["penta_given"] = base.filter(vaccine__code__icontains="PENTA").count()
+            data["measles_given"] = base.filter(vaccine__code__icontains="MEASLES").count()
         except (ImportError, Exception):
             logger.debug("Immunization data unavailable — zeroed in MOH 711")
 
@@ -420,9 +401,7 @@ class MOH717Generator:
                 discharge_date__date__range=(start, end),
             )
             data["discharges_total"] = discharges.count()
-            data["deaths_total"] = discharges.filter(
-                discharge_type="DECEASED"
-            ).count()
+            data["deaths_total"] = discharges.filter(discharge_type="DECEASED").count()
         except (ImportError, Exception):
             logger.debug("Inpatient data unavailable — zeroed in MOH 717")
 
@@ -555,45 +534,41 @@ class DHIS2SubmissionService:
     # -- Per-report-type payloads -------------------------------------------
 
     @classmethod
-    def _payload_705(
-        cls, report: MOH705Report, period: str, org_unit: str, env: str
-    ) -> dict:
+    def _payload_705(cls, report: MOH705Report, period: str, org_unit: str, env: str) -> dict:
         data_values = []
         for row in report.disease_rows.all():  # type: ignore[attr-defined]
-            u5_uid = MOHDataElementMapping.get_uid(
-                "MOH705", f"ch{row.icd10_chapter}_under_5", env
-            )
+            u5_uid = MOHDataElementMapping.get_uid("MOH705", f"ch{row.icd10_chapter}_under_5", env)
             o5_uid = MOHDataElementMapping.get_uid(
                 "MOH705", f"ch{row.icd10_chapter}_5_and_above", env
             )
             if u5_uid:
-                data_values.append({
-                    "dataElement": u5_uid,
-                    "period": period,
-                    "orgUnit": org_unit,
-                    "value": str(row.cases_under_5),
-                })
+                data_values.append(
+                    {
+                        "dataElement": u5_uid,
+                        "period": period,
+                        "orgUnit": org_unit,
+                        "value": str(row.cases_under_5),
+                    }
+                )
             if o5_uid:
-                data_values.append({
-                    "dataElement": o5_uid,
-                    "period": period,
-                    "orgUnit": org_unit,
-                    "value": str(row.cases_5_and_above),
-                })
+                data_values.append(
+                    {
+                        "dataElement": o5_uid,
+                        "period": period,
+                        "orgUnit": org_unit,
+                        "value": str(row.cases_5_and_above),
+                    }
+                )
 
         return {
             "dataValues": data_values,
             "period": period,
             "orgUnit": org_unit,
-            "completeDate": report.generated_at.strftime("%Y-%m-%d")
-            if report.generated_at
-            else "",
+            "completeDate": report.generated_at.strftime("%Y-%m-%d") if report.generated_at else "",
         }
 
     @classmethod
-    def _payload_711(
-        cls, report: MOH711Report, period: str, org_unit: str, env: str
-    ) -> dict:
+    def _payload_711(cls, report: MOH711Report, period: str, org_unit: str, env: str) -> dict:
         fields = [
             "anc_visits",
             "deliveries_normal",
@@ -613,9 +588,7 @@ class DHIS2SubmissionService:
         return cls._simple_payload(report, "MOH711", fields, period, org_unit, env)
 
     @classmethod
-    def _payload_717(
-        cls, report: MOH717Report, period: str, org_unit: str, env: str
-    ) -> dict:
+    def _payload_717(cls, report: MOH717Report, period: str, org_unit: str, env: str) -> dict:
         fields = [
             "opd_new_visits",
             "opd_revisits",
@@ -649,17 +622,17 @@ class DHIS2SubmissionService:
         for field in fields:
             uid = MOHDataElementMapping.get_uid(report_type, field, env)
             if uid:
-                data_values.append({
-                    "dataElement": uid,
-                    "period": period,
-                    "orgUnit": org_unit,
-                    "value": str(getattr(report, field, 0)),
-                })
+                data_values.append(
+                    {
+                        "dataElement": uid,
+                        "period": period,
+                        "orgUnit": org_unit,
+                        "value": str(getattr(report, field, 0)),
+                    }
+                )
         return {
             "dataValues": data_values,
             "period": period,
             "orgUnit": org_unit,
-            "completeDate": report.generated_at.strftime("%Y-%m-%d")
-            if report.generated_at
-            else "",
+            "completeDate": report.generated_at.strftime("%Y-%m-%d") if report.generated_at else "",
         }

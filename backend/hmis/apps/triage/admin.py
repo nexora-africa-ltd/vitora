@@ -62,10 +62,10 @@ class ERBedAdmin(admin.ModelAdmin):
     def colored_status(self, obj):
         """Display colored status badge."""
         colors = {
-            "AVAILABLE": "#22c55e",      # green
-            "OCCUPIED": "#ef4444",       # red
-            "CLEANING": "#f59e0b",       # amber
-            "OUT_OF_SERVICE": "#6b7280", # gray
+            "AVAILABLE": "#22c55e",  # green
+            "OCCUPIED": "#ef4444",  # red
+            "CLEANING": "#f59e0b",  # amber
+            "OUT_OF_SERVICE": "#6b7280",  # gray
         }
         color = colors.get(obj.status, "#6b7280")
         return format_html(
@@ -101,9 +101,13 @@ class WaitTimeBreachAdmin(admin.ModelAdmin):
             "Breach Details",
             {
                 "fields": (
-                    "queue_entry", "triage_assessment", "patient",
-                    "triage_category", "severity",
-                    "target_wait_minutes", "actual_wait_minutes",
+                    "queue_entry",
+                    "triage_assessment",
+                    "patient",
+                    "triage_category",
+                    "severity",
+                    "target_wait_minutes",
+                    "actual_wait_minutes",
                     "assigned_area",
                 )
             },
@@ -122,9 +126,9 @@ class WaitTimeBreachAdmin(admin.ModelAdmin):
     def colored_severity(self, obj):
         colors = {
             "CRITICAL": "#ef4444",  # red
-            "URGENT": "#f97316",    # orange
-            "WARNING": "#eab308",   # yellow
-            "INFO": "#6b7280",      # gray
+            "URGENT": "#f97316",  # orange
+            "WARNING": "#eab308",  # yellow
+            "INFO": "#6b7280",  # gray
         }
         color = colors.get(obj.severity, "#6b7280")
         return format_html(
@@ -137,10 +141,10 @@ class WaitTimeBreachAdmin(admin.ModelAdmin):
     @admin.display(description="Status")
     def colored_breach_status(self, obj):
         colors = {
-            "ACTIVE": "#ef4444",        # red
+            "ACTIVE": "#ef4444",  # red
             "ACKNOWLEDGED": "#f59e0b",  # amber
-            "ESCALATED": "#f97316",     # orange
-            "RESOLVED": "#22c55e",      # green
+            "ESCALATED": "#f97316",  # orange
+            "RESOLVED": "#22c55e",  # green
         }
         color = colors.get(obj.status, "#6b7280")
         return format_html(
@@ -168,8 +172,11 @@ class EscalationAdmin(admin.ModelAdmin):
     list_filter = ["escalation_type", "status", "triage_category", "assigned_area"]
     search_fields = ["patient__first_name", "patient__last_name", "patient__mrn", "reason"]
     raw_id_fields = [
-        "queue_entry", "triage_assessment", "patient",
-        "escalated_by", "resolved_by",
+        "queue_entry",
+        "triage_assessment",
+        "patient",
+        "escalated_by",
+        "resolved_by",
     ]
     readonly_fields = ["created_at", "updated_at"]
 
@@ -178,9 +185,13 @@ class EscalationAdmin(admin.ModelAdmin):
             "Escalation Details",
             {
                 "fields": (
-                    "queue_entry", "triage_assessment", "patient",
-                    "escalation_type", "reason",
-                    "triage_category", "assigned_area",
+                    "queue_entry",
+                    "triage_assessment",
+                    "patient",
+                    "escalation_type",
+                    "reason",
+                    "triage_category",
+                    "assigned_area",
                     "wait_time_at_escalation",
                 )
             },
@@ -189,8 +200,11 @@ class EscalationAdmin(admin.ModelAdmin):
             "Status",
             {
                 "fields": (
-                    "status", "escalated_by",
-                    "resolved_by", "resolved_at", "resolution_notes",
+                    "status",
+                    "escalated_by",
+                    "resolved_by",
+                    "resolved_at",
+                    "resolution_notes",
                 )
             },
         ),
@@ -203,10 +217,10 @@ class EscalationAdmin(admin.ModelAdmin):
     @admin.display(description="Status")
     def colored_escalation_status(self, obj):
         colors = {
-            "PENDING": "#ef4444",       # red
-            "IN_PROGRESS": "#f59e0b",   # amber
-            "RESOLVED": "#22c55e",      # green
-            "DISMISSED": "#6b7280",     # gray
+            "PENDING": "#ef4444",  # red
+            "IN_PROGRESS": "#f59e0b",  # amber
+            "RESOLVED": "#22c55e",  # green
+            "DISMISSED": "#6b7280",  # gray
         }
         color = colors.get(obj.status, "#6b7280")
         return format_html(

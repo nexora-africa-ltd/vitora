@@ -71,9 +71,7 @@ class SDMXExportService:
         """
         root = Element(
             _ns("message", "StructureSpecificData"),
-            {
-                f"xmlns:{k}": v for k, v in NS.items()
-            },
+            {f"xmlns:{k}": v for k, v in NS.items()},
         )
 
         clinic_name = str(report.clinic) if report.clinic else "UNKNOWN"

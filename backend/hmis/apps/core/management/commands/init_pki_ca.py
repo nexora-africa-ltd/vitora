@@ -62,13 +62,13 @@ class Command(BaseCommand):
 
         existing_count = CertificateAuthority.objects.filter(is_root=True, is_active=True).count()
         if existing_count > 1:
-            self.stdout.write(self.style.WARNING(
-                f"Active root CA already existed: {ca.name}"
-            ))
+            self.stdout.write(self.style.WARNING(f"Active root CA already existed: {ca.name}"))
         else:
-            self.stdout.write(self.style.SUCCESS(
-                f"Root CA initialized: {ca.name}\n"
-                f"  Serial: {ca.serial_number}\n"
-                f"  Valid: {ca.valid_from.date()} to {ca.valid_to.date()}\n"
-                f"  Key size: {ca.key_size} bits"
-            ))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Root CA initialized: {ca.name}\n"
+                    f"  Serial: {ca.serial_number}\n"
+                    f"  Valid: {ca.valid_from.date()} to {ca.valid_to.date()}\n"
+                    f"  Key size: {ca.key_size} bits"
+                )
+            )

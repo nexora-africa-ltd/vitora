@@ -360,9 +360,7 @@ class EncounterSerializer(serializers.ModelSerializer):
     organization_name = serializers.CharField(
         source="organization.name", read_only=True, allow_null=True
     )
-    facility_name = serializers.CharField(
-        source="facility.name", read_only=True, allow_null=True
-    )
+    facility_name = serializers.CharField(source="facility.name", read_only=True, allow_null=True)
 
     created_by_name = serializers.SerializerMethodField()
 
@@ -581,10 +579,14 @@ class EncounterSerializer(serializers.ModelSerializer):
         Returns lightweight alert data embedded in the encounter response
         so the frontend can render advisory banners without a second API call.
         """
-        qs = CDSAlert.objects.filter(
-            encounter=obj,
-            status__in=[CDSAlertStatus.PENDING, CDSAlertStatus.ACKNOWLEDGED],
-        ).select_related("rule").order_by("-priority", "-created_at")[:20]
+        qs = (
+            CDSAlert.objects.filter(
+                encounter=obj,
+                status__in=[CDSAlertStatus.PENDING, CDSAlertStatus.ACKNOWLEDGED],
+            )
+            .select_related("rule")
+            .order_by("-priority", "-created_at")[:20]
+        )
         return InlineCDSAlertSerializer(qs, many=True).data
 
     def get_bmi_classification(self, obj: Encounter) -> str | None:

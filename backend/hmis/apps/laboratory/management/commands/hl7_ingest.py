@@ -87,9 +87,7 @@ class Command(BaseCommand):
             self.stdout.write(f"Read ORU message from: {file_path}")
         else:
             if sys.stdin.isatty():
-                raise CommandError(
-                    "No input provided. Use --file or pipe message to stdin."
-                )
+                raise CommandError("No input provided. Use --file or pipe message to stdin.")
             oru_message = sys.stdin.read()
             self.stdout.write("Read ORU message from stdin")
 

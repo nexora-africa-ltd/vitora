@@ -143,10 +143,12 @@ class MOHReportActionsMixin:
 
         report.refresh_from_db()
         read_serializer = self.get_serializer(report)  # type: ignore[attr-defined]
-        return Response({
-            "report": read_serializer.data,
-            "dhis2_response": result,
-        })
+        return Response(
+            {
+                "report": read_serializer.data,
+                "dhis2_response": result,
+            }
+        )
 
     @action(detail=True, methods=["get"], url_path="dhis2-preview")
     def dhis2_preview(self, request, pk=None):
@@ -160,9 +162,7 @@ class MOHReportActionsMixin:
 # ---------------------------------------------------------------------------
 
 
-class MOH705ReportViewSet(
-    MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet
-):
+class MOH705ReportViewSet(MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = MOH705Report.objects.select_related("facility", "generated_by", "approved_by")
     permission_classes = [IsAuthenticated, CanViewAnalytics]
     tenant_scope = "facility"
@@ -180,9 +180,7 @@ class MOH705ReportViewSet(
         return MOH705ReportSerializer
 
 
-class MOH711ReportViewSet(
-    MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet
-):
+class MOH711ReportViewSet(MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = MOH711Report.objects.select_related("facility", "generated_by", "approved_by")
     permission_classes = [IsAuthenticated, CanViewAnalytics]
     tenant_scope = "facility"
@@ -200,9 +198,7 @@ class MOH711ReportViewSet(
         return MOH711ReportSerializer
 
 
-class MOH717ReportViewSet(
-    MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet
-):
+class MOH717ReportViewSet(MOHReportActionsMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     queryset = MOH717Report.objects.select_related("facility", "generated_by", "approved_by")
     permission_classes = [IsAuthenticated, CanViewAnalytics]
     tenant_scope = "facility"

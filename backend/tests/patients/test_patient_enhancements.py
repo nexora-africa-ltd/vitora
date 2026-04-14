@@ -147,7 +147,11 @@ class TestRegisteredByTracking:
         assert response.data["registered_by_username"] == test_user.username
 
     def test_registered_by_not_changed_on_update(
-        self, authenticated_client, test_user, sample_county, sample_sub_county,
+        self,
+        authenticated_client,
+        test_user,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Test registered_by is not changed when patient is updated."""
@@ -182,7 +186,11 @@ class TestRegisteredByTracking:
         assert patient.registered_by == other_user
 
     def test_registered_by_displayed_in_patient_details(
-        self, authenticated_client, test_user, sample_county, sample_sub_county,
+        self,
+        authenticated_client,
+        test_user,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Test registered_by info is included in patient details."""
@@ -224,7 +232,10 @@ class TestRegisteredByTracking:
         assert patient.registered_by is None
 
     def test_registered_by_preserved_when_user_deleted(
-        self, test_user, sample_county, sample_sub_county,
+        self,
+        test_user,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Test patient record preserved when registering user is deleted."""

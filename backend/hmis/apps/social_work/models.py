@@ -141,7 +141,13 @@ class SocialWorkReferral(HistoryMixin, models.Model):
     ]
 
     # GBV/sensitive case types requiring enhanced privacy
-    SENSITIVE_REASONS = ["GBV", "CHILD_ABUSE", "CHILD_PROTECTION", "ELDER_ABUSE", "HUMAN_TRAFFICKING"]
+    SENSITIVE_REASONS = [
+        "GBV",
+        "CHILD_ABUSE",
+        "CHILD_PROTECTION",
+        "ELDER_ABUSE",
+        "HUMAN_TRAFFICKING",
+    ]
 
     # Valid status transitions
     STATUS_TRANSITIONS = {
@@ -308,6 +314,7 @@ class SocialWorkReferral(HistoryMixin, models.Model):
     def save(self, *args, **kwargs):
         """Override save to auto-generate referral number and set sensitivity."""
         from hmis.apps.core.mixins import resolve_tenant_from_related
+
         resolve_tenant_from_related(self)
 
         if not self.pk:
@@ -370,7 +377,11 @@ class SocialWorkReferral(HistoryMixin, models.Model):
     @property
     def requires_immediate_attention(self):
         """Check if referral requires immediate attention."""
-        return self.urgency == "EMERGENCY" or self.reason in ["GBV", "CHILD_ABUSE", "HUMAN_TRAFFICKING"]
+        return self.urgency == "EMERGENCY" or self.reason in [
+            "GBV",
+            "CHILD_ABUSE",
+            "HUMAN_TRAFFICKING",
+        ]
 
 
 class SocialWorkCase(HistoryMixin, models.Model):

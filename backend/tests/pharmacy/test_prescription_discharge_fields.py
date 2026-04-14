@@ -87,7 +87,9 @@ class TestPrescriptionDispensingTypeAPI:
         assert response.data["dispensing_type"] == "INTERNAL"
         assert response.data["is_discharge_medication"] is False
 
-    def test_create_prescription_with_external_type(self, rx_client, sample_patient, sample_encounter):
+    def test_create_prescription_with_external_type(
+        self, rx_client, sample_patient, sample_encounter
+    ):
         """Should be able to create a prescription with EXTERNAL dispensing type."""
         from hmis.apps.pharmacy.models import Drug
 
@@ -134,7 +136,15 @@ class TestPrescriptionDispensingTypeAPI:
         assert response.data["is_discharge_medication"] is True
         assert response.data["dispensing_type"] == "EXTERNAL"
 
-    def test_filter_by_admission(self, rx_client, sample_admission, sample_patient, rx_user, sample_facility, sample_organization):
+    def test_filter_by_admission(
+        self,
+        rx_client,
+        sample_admission,
+        sample_patient,
+        rx_user,
+        sample_facility,
+        sample_organization,
+    ):
         """Should be able to filter prescriptions by admission."""
         rx = Prescription.objects.create(
             patient=sample_patient,
@@ -159,7 +169,9 @@ class TestPrescriptionDispensingTypeAPI:
         ids = [r["id"] for r in response.data["results"]]
         assert rx.id in ids
 
-    def test_filter_by_dispensing_type(self, rx_client, sample_patient, rx_user, sample_facility, sample_organization):
+    def test_filter_by_dispensing_type(
+        self, rx_client, sample_patient, rx_user, sample_facility, sample_organization
+    ):
         """Should filter prescriptions by dispensing_type."""
         internal = Prescription.objects.create(
             patient=sample_patient,
@@ -183,7 +195,9 @@ class TestPrescriptionDispensingTypeAPI:
         assert external.id in ids
         assert internal.id not in ids
 
-    def test_filter_by_is_discharge_medication(self, rx_client, sample_patient, rx_user, sample_facility, sample_organization):
+    def test_filter_by_is_discharge_medication(
+        self, rx_client, sample_patient, rx_user, sample_facility, sample_organization
+    ):
         """Should filter prescriptions by is_discharge_medication."""
         regular = Prescription.objects.create(
             patient=sample_patient,

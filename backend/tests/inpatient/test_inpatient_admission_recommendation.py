@@ -299,7 +299,11 @@ class TestAdmissionRecommendationQueries:
     """Tests for recommendation query operations."""
 
     def test_filter_pending_recommendations(
-        self, opd_encounter, test_user, second_user, sample_patient,
+        self,
+        opd_encounter,
+        test_user,
+        second_user,
+        sample_patient,
         sample_facility,
     ):
         """Should filter recommendations by status."""

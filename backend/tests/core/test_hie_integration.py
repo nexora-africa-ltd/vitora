@@ -143,9 +143,7 @@ class TestCRLookupTask:
 
     @patch("hmis.apps.billing.services.client_registry.ClientRegistryService")
     @override_settings(HIE_AUTO_CR_REGISTER=False)
-    def test_skip_register_if_disabled(
-        self, MockCRService, patient_with_national_id
-    ):
+    def test_skip_register_if_disabled(self, MockCRService, patient_with_national_id):
         """Skip registration if HIE_AUTO_CR_REGISTER is False."""
         mock_service = MockCRService.return_value
         mock_service.fetch_client.return_value = None  # Not found
@@ -156,9 +154,7 @@ class TestCRLookupTask:
         mock_service.register_client.assert_not_called()
 
     @patch("hmis.apps.billing.services.client_registry.ClientRegistryService")
-    def test_no_national_id_skips_fetch(
-        self, MockCRService, sample_patient
-    ):
+    def test_no_national_id_skips_fetch(self, MockCRService, sample_patient):
         """Patient without national ID skips CR fetch."""
         sample_patient.national_id = None
         sample_patient.cr_number = None
@@ -191,7 +187,7 @@ class TestADXExportService:
         service = ADXExportService()
         xml = service.export_idsr_to_adx(mock_idsr_report)
 
-        assert '<?xml' in xml
+        assert "<?xml" in xml
         root = fromstring(xml)
         assert root.tag == f"{{{ADX_NS}}}adx"
 
@@ -404,6 +400,7 @@ class TestPatientCreationHook:
         # may not fire in pytest transactions. Verify the hook exists.
         # Direct call test:
         from hmis.apps.patients.views import _fire_cr_sync
+
         assert callable(_fire_cr_sync)
 
     @patch("hmis.apps.patients.views._fire_cr_sync")

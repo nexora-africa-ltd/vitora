@@ -26,7 +26,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            from_date = date.fromisoformat(options["from_date"]) if options.get("from_date") else None
+            from_date = (
+                date.fromisoformat(options["from_date"]) if options.get("from_date") else None
+            )
             to_date = date.fromisoformat(options["to_date"]) if options.get("to_date") else None
         except ValueError as exc:  # pragma: no cover - CLI parsing branch
             raise CommandError(str(exc)) from exc

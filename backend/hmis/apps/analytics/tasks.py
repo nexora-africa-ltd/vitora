@@ -182,9 +182,7 @@ def refresh_demographics_snapshot():
             )
             count += 1
         except Exception:
-            logger.exception(
-                "Failed demographics snapshot for facility=%s", facility.pk
-            )
+            logger.exception("Failed demographics snapshot for facility=%s", facility.pk)
 
     logger.info("Demographics snapshots: %d facilities processed", count)
     return {"snapshot_date": str(snapshot_date), "facilities": count}

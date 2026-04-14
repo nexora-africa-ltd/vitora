@@ -48,9 +48,11 @@ class Command(BaseCommand):
         except ValueError as e:
             raise CommandError(str(e))
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Certificate issued for {username}\n"
-            f"  Serial: {cert.serial_number}\n"
-            f"  Subject: {cert.subject_dn}\n"
-            f"  Valid: {cert.valid_from.date()} to {cert.valid_to.date()}"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Certificate issued for {username}\n"
+                f"  Serial: {cert.serial_number}\n"
+                f"  Subject: {cert.subject_dn}\n"
+                f"  Valid: {cert.valid_from.date()} to {cert.valid_to.date()}"
+            )
+        )

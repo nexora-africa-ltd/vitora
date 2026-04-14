@@ -249,7 +249,9 @@ class TestAllergyDrugInteraction:
         assert len(allergies) == 1
         assert allergies[0].substance == sample_drug.generic_name
 
-    def test_check_drug_allergy_no_match(self, db, sample_patient, sample_drug, sample_organization):
+    def test_check_drug_allergy_no_match(
+        self, db, sample_patient, sample_drug, sample_organization
+    ):
         """Should return empty list when no allergy match."""
         from hmis.apps.patients.models import Allergy
         from hmis.apps.pharmacy.models import Drug
@@ -307,7 +309,9 @@ class TestAllergyDrugInteraction:
 class TestAllergyAPI:
     """Tests for the Allergy API endpoints."""
 
-    def test_list_allergies_for_patient(self, authenticated_client, sample_patient, db, sample_organization):
+    def test_list_allergies_for_patient(
+        self, authenticated_client, sample_patient, db, sample_organization
+    ):
         """Should list allergies for a specific patient."""
         from hmis.apps.patients.models import Allergy
 
@@ -319,9 +323,7 @@ class TestAllergyAPI:
             organization=sample_organization,
         )
 
-        response = authenticated_client.get(
-            f"/api/patients/{sample_patient.id}/allergies/"
-        )
+        response = authenticated_client.get(f"/api/patients/{sample_patient.id}/allergies/")
 
         assert response.status_code == status.HTTP_200_OK
         # API returns paginated response
@@ -353,7 +355,9 @@ class TestAllergyAPI:
         assert response.data["substance"] == "Amoxicillin"
         assert response.data["patient"] == sample_patient.id
 
-    def test_create_allergy_sets_recorded_by(self, authenticated_client, sample_patient, test_user, db):
+    def test_create_allergy_sets_recorded_by(
+        self, authenticated_client, sample_patient, test_user, db
+    ):
         """Should set recorded_by to current user."""
         response = authenticated_client.post(
             f"/api/patients/{sample_patient.id}/allergies/",
@@ -404,7 +408,9 @@ class TestAllergyAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Allergy.objects.filter(id=allergy.id).exists()
 
-    def test_standalone_allergies_endpoint(self, authenticated_client, sample_patient, db, sample_organization):
+    def test_standalone_allergies_endpoint(
+        self, authenticated_client, sample_patient, db, sample_organization
+    ):
         """Should access allergies via standalone endpoint."""
         from hmis.apps.patients.models import Allergy
 
@@ -458,7 +464,9 @@ class TestAllergyLookup:
 class TestDrugAllergyInteractionCheckAPI:
     """Tests for the drug-allergy interaction checking endpoint."""
 
-    def test_check_interactions_by_drug_id(self, authenticated_client, sample_patient, sample_drug, db, sample_organization):
+    def test_check_interactions_by_drug_id(
+        self, authenticated_client, sample_patient, sample_drug, db, sample_organization
+    ):
         """Should find interactions when checking by drug ID."""
         from hmis.apps.patients.models import Allergy
 
@@ -484,7 +492,9 @@ class TestDrugAllergyInteractionCheckAPI:
         assert response.data["has_high_risk"] is True
         assert len(response.data["interactions"]) == 1
 
-    def test_check_interactions_by_drug_name(self, authenticated_client, sample_patient, db, sample_organization):
+    def test_check_interactions_by_drug_name(
+        self, authenticated_client, sample_patient, db, sample_organization
+    ):
         """Should find interactions when checking by drug name."""
         from hmis.apps.patients.models import Allergy
 
@@ -508,7 +518,9 @@ class TestDrugAllergyInteractionCheckAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["has_interactions"] is True
 
-    def test_check_interactions_no_allergies(self, authenticated_client, sample_patient, sample_drug, db):
+    def test_check_interactions_no_allergies(
+        self, authenticated_client, sample_patient, sample_drug, db
+    ):
         """Should return no interactions when patient has no allergies."""
         response = authenticated_client.post(
             "/api/allergies/check-interactions/",
@@ -535,7 +547,9 @@ class TestDrugAllergyInteractionCheckAPI:
 class TestFHIRAllergyIntolerance:
     """Tests for FHIR AllergyIntolerance resource mapping."""
 
-    def test_fhir_allergy_intolerance_get(self, authenticated_client, sample_patient, db, sample_organization):
+    def test_fhir_allergy_intolerance_get(
+        self, authenticated_client, sample_patient, db, sample_organization
+    ):
         """Should return valid FHIR AllergyIntolerance resource."""
         from hmis.apps.patients.models import Allergy
 
@@ -567,7 +581,9 @@ class TestFHIRAllergyIntolerance:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data["resourceType"] == "OperationOutcome"
 
-    def test_fhir_allergy_with_reaction(self, authenticated_client, sample_patient, db, sample_organization):
+    def test_fhir_allergy_with_reaction(
+        self, authenticated_client, sample_patient, db, sample_organization
+    ):
         """Should include reaction details in FHIR resource."""
         from hmis.apps.patients.models import Allergy
 
@@ -592,7 +608,12 @@ class TestPrescriptionAllergyCheck:
     """Tests for drug-allergy checking during prescription creation."""
 
     def test_prescription_blocks_without_acknowledgment(
-        self, authenticated_client, sample_patient, sample_drug, sample_encounter, db,
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_drug,
+        sample_encounter,
+        db,
         sample_organization,
     ):
         """Should block prescription when allergy exists and not acknowledged."""
@@ -629,7 +650,12 @@ class TestPrescriptionAllergyCheck:
         assert "allergy_warnings" in response.data
 
     def test_prescription_proceeds_with_acknowledgment(
-        self, authenticated_client, sample_patient, sample_drug, sample_encounter, db,
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_drug,
+        sample_encounter,
+        db,
         sample_organization,
     ):
         """Should allow prescription when allergy acknowledged."""
@@ -695,7 +721,9 @@ class TestAllergyAuditLogging:
         assert log is not None
         assert log.patient_id == sample_patient.id
 
-    def test_allergy_view_logged(self, authenticated_client, sample_patient, db, sample_organization):
+    def test_allergy_view_logged(
+        self, authenticated_client, sample_patient, db, sample_organization
+    ):
         """Should log allergy view."""
         from hmis.apps.core.models import AuditLog
         from hmis.apps.patients.models import Allergy

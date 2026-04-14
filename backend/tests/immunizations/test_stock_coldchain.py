@@ -391,9 +391,7 @@ class TestVaccineIncidentAPI:
             "doses_affected": 50,
             "doses_lost": 20,
         }
-        response = authenticated_client.post(
-            "/api/immunizations/incidents/", data, format="json"
-        )
+        response = authenticated_client.post("/api/immunizations/incidents/", data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["incident_type"] == "COLD_CHAIN_BREAK"
         assert response.data["severity"] == "CRITICAL"
@@ -431,7 +429,9 @@ class TestVaccineIncidentAPI:
         assert response.data["count"] >= 1
 
     def test_filter_by_type(self, authenticated_client, incident):
-        response = authenticated_client.get("/api/immunizations/incidents/?incident_type=power_outage")
+        response = authenticated_client.get(
+            "/api/immunizations/incidents/?incident_type=power_outage"
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 1
 
@@ -485,7 +485,10 @@ class TestStockLinkedAdministration:
         )
 
     def test_administer_with_stock_batch_deducts_and_fills(
-        self, authenticated_client, imm_record, stock_batch,
+        self,
+        authenticated_client,
+        imm_record,
+        stock_batch,
     ):
         """Selecting a stock batch auto-fills batch details and deducts 1 dose."""
         initial_qty = stock_batch.quantity_on_hand
@@ -502,7 +505,8 @@ class TestStockLinkedAdministration:
 
         # Verify StockTransaction was created
         txn = StockTransaction.objects.filter(
-            stock=stock_batch, immunization_record=imm_record,
+            stock=stock_batch,
+            immunization_record=imm_record,
         ).first()
         assert txn is not None
         assert txn.transaction_type == "ISSUE"
@@ -510,11 +514,17 @@ class TestStockLinkedAdministration:
         assert txn.balance_after == initial_qty - 1
 
     def test_administer_with_wrong_vaccine_stock_fails(
-        self, authenticated_client, imm_record, sample_facility,
+        self,
+        authenticated_client,
+        imm_record,
+        sample_facility,
     ):
         """Stock batch for a different vaccine should be rejected."""
         other_vaccine = VaccineDefinition.objects.create(
-            code="OPV_TEST", name="OPV (Test)", standard_age_days=0, program="KEPI",
+            code="OPV_TEST",
+            name="OPV (Test)",
+            standard_age_days=0,
+            program="KEPI",
         )
         wrong_stock = VaccineStock.objects.create(
             vaccine=other_vaccine,
@@ -533,7 +543,10 @@ class TestStockLinkedAdministration:
         assert "does not match" in str(response.data)
 
     def test_administer_with_expired_stock_fails(
-        self, authenticated_client, imm_record, expired_stock,
+        self,
+        authenticated_client,
+        imm_record,
+        expired_stock,
     ):
         """Expired stock batch should be rejected."""
         response = authenticated_client.post(
@@ -544,7 +557,10 @@ class TestStockLinkedAdministration:
         assert "expired" in str(response.data).lower()
 
     def test_administer_with_empty_stock_fails(
-        self, authenticated_client, imm_record, stock_batch,
+        self,
+        authenticated_client,
+        imm_record,
+        stock_batch,
     ):
         """Stock batch with 0 doses should be rejected."""
         stock_batch.quantity_on_hand = 0
@@ -557,7 +573,9 @@ class TestStockLinkedAdministration:
         assert "0 doses" in str(response.data)
 
     def test_administer_manual_entry_still_works(
-        self, authenticated_client, imm_record,
+        self,
+        authenticated_client,
+        imm_record,
     ):
         """Manual batch entry (no stock_batch) should still work."""
         response = authenticated_client.post(
@@ -577,7 +595,11 @@ class TestAvailableStockFilter:
     """Tests for the `available` query filter on VaccineStock."""
 
     def test_available_filter_excludes_expired_and_empty(
-        self, authenticated_client, stock_batch, expired_stock, sample_facility,
+        self,
+        authenticated_client,
+        stock_batch,
+        expired_stock,
+        sample_facility,
     ):
         """available=true returns only non-expired batches with qty > 0."""
         # Create an empty batch
@@ -591,7 +613,8 @@ class TestAvailableStockFilter:
             facility=sample_facility,
         )
         response = authenticated_client.get(
-            "/api/immunizations/stock/", {"available": "true"},
+            "/api/immunizations/stock/",
+            {"available": "true"},
         )
         assert response.status_code == status.HTTP_200_OK
         batch_numbers = [r["batch_number"] for r in response.data["results"]]

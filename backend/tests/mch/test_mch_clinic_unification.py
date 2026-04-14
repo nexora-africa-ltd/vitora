@@ -52,7 +52,9 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user, sample_facility, s
 
 
 @pytest.fixture
-def mch_registration(db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization):
+def mch_registration(
+    db, sample_patient, anc_enrollment, test_user, sample_facility, sample_organization
+):
     """Create an active MCH registration with ANC enrollment."""
     from hmis.apps.mch.models import MCHRegistration
 
@@ -109,7 +111,9 @@ class TestMCHClinicUnification:
 
         assert response.status_code == 201
 
-        visit = ANCVisit.objects.select_related("clinic_visit", "conducted_by").get(pk=response.data["id"])
+        visit = ANCVisit.objects.select_related("clinic_visit", "conducted_by").get(
+            pk=response.data["id"]
+        )
         anc_enrollment.refresh_from_db()
 
         assert visit.clinic_visit is not None
@@ -179,7 +183,9 @@ class TestMCHClinicUnification:
 
         assert response.status_code == 201
 
-        visit = PNCVisit.objects.select_related("clinic_visit", "conducted_by").get(pk=response.data["id"])
+        visit = PNCVisit.objects.select_related("clinic_visit", "conducted_by").get(
+            pk=response.data["id"]
+        )
 
         assert visit.clinic_visit is not None
         assert visit.clinic_visit.patient_id == mch_registration.mother_id

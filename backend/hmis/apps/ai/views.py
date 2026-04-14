@@ -389,9 +389,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         data = serializer.validated_data
 
         # Resolve verbosity: query-param > body > default
-        data["verbosity"] = _resolve_verbosity(
-            request, data.get("verbosity")
-        )
+        data["verbosity"] = _resolve_verbosity(request, data.get("verbosity"))
 
         # Enrich with server-side context (overrides any frontend-sent values)
         data["user_context"] = build_user_context(request)
@@ -400,9 +398,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         # Add system instruction based on whether encounter context is present.
         # This prevents TibaBot from hallucinating page content when the user
         # asks about "the page we're on" without any clinical context.
-        has_encounter_context = bool(
-            data.get("patient_context") or data.get("encounter_context")
-        )
+        has_encounter_context = bool(data.get("patient_context") or data.get("encounter_context"))
         page_context = data.get("page_context")
         if not has_encounter_context:
             if page_context:
@@ -423,7 +419,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
                     f"{page_context.get('page_title', 'current')} page, but I "
                     "don't have access to the patient data displayed here. "
                     "Use the **Ask about this patient** button (🩺) on an "
-                    "encounter page for clinical analysis.\" "
+                    'encounter page for clinical analysis." '
                     "Otherwise, answer general clinical questions normally."
                 )
             else:
@@ -434,7 +430,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
                     "'the encounter', or any page-specific content, respond with: "
                     "\"I don't have visibility into the page you're viewing. "
                     "Use the **Ask about this patient** button (🩺) for "
-                    "encounter-aware assistance.\" "
+                    'encounter-aware assistance." '
                     "Otherwise, answer general clinical questions normally."
                 )
 
@@ -574,9 +570,7 @@ class ClinicalAssistView(AIFeatureGatedMixin, APIView):
         data = serializer.validated_data
 
         # Resolve verbosity: query-param > body > default
-        data["verbosity"] = _resolve_verbosity(
-            request, data.get("verbosity")
-        )
+        data["verbosity"] = _resolve_verbosity(request, data.get("verbosity"))
 
         # Enrich with server-side context
         data["user_context"] = build_user_context(request)
@@ -809,9 +803,7 @@ class ConditionPredictView(AIFeatureGatedMixin, APIView):
                 patient_features["chief_complaint"]
             )
         if patient_features.get("allergies"):
-            patient_features["allergies"] = sanitize_clinical_text(
-                patient_features["allergies"]
-            )
+            patient_features["allergies"] = sanitize_clinical_text(patient_features["allergies"])
 
         # Enrich with user and facility context
         payload = {
@@ -830,9 +822,7 @@ class ConditionPredictView(AIFeatureGatedMixin, APIView):
             details={
                 "age": patient_features.get("age"),
                 "gender": patient_features.get("gender"),
-                "chief_complaint_category": patient_features.get(
-                    "chief_complaint_category", ""
-                ),
+                "chief_complaint_category": patient_features.get("chief_complaint_category", ""),
             },
         )
 
@@ -1139,7 +1129,14 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
                     patient_id=patient_id,
                     admission_id=admission_id,
                 )
-                lab_fields = ("wbc", "platelets", "creatinine", "bilirubin", "lactate", "pao2_fio2_ratio")
+                lab_fields = (
+                    "wbc",
+                    "platelets",
+                    "creatinine",
+                    "bilirubin",
+                    "lactate",
+                    "pao2_fio2_ratio",
+                )
                 for field in lab_fields:
                     if patient_data.get(field) is None and field in lab_values:
                         patient_data[field] = lab_values[field]
@@ -1157,10 +1154,10 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
         # clinically normal defaults so the prediction can still run and
         # track which fields were defaulted so the UI can warn the user.
         _LAB_NORMAL_DEFAULTS: dict[str, float] = {
-            "creatinine": 0.9,   # mg/dL — mid-normal
-            "wbc": 7.5,          # x10^9/L
+            "creatinine": 0.9,  # mg/dL — mid-normal
+            "wbc": 7.5,  # x10^9/L
             "platelets": 250.0,  # x10^9/L
-            "lactate": 1.0,      # mmol/L
+            "lactate": 1.0,  # mmol/L
         }
         defaulted_labs: list[str] = []
         for lab_field, normal_val in _LAB_NORMAL_DEFAULTS.items():
@@ -1227,8 +1224,14 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
             sofa_total = raw_sofa.get("total")
             sofa_breakdown = {
                 k: raw_sofa.get(k)
-                for k in ("respiratory", "coagulation", "liver",
-                          "cardiovascular", "neurological", "renal")
+                for k in (
+                    "respiratory",
+                    "coagulation",
+                    "liver",
+                    "cardiovascular",
+                    "neurological",
+                    "renal",
+                )
                 if raw_sofa.get(k) is not None
             }
             # TibaBot uses "cns" instead of "neurological"
@@ -1375,19 +1378,21 @@ class AutopopulateView(AIFeatureGatedMixin, APIView):
                         for s in raw_suggestions[:1]:
                             confidence = s.get("confidence", 0.0)
                             if confidence >= 0.85:
-                                suggested_fields.append({
-                                    "field_name": "primary_diagnosis",
-                                    "value": {
-                                        "icd10_code": s.get("code", ""),
-                                        "description": s.get("description", ""),
-                                        "diagnosis_type": "PROVISIONAL",
-                                    },
-                                    "confidence": confidence,
-                                    "reason": f"AI suggests {s.get('code', '')} — "
-                                              f"{s.get('description', '')} "
-                                              f"(confidence: {confidence:.0%})",
-                                    "source": "ai",
-                                })
+                                suggested_fields.append(
+                                    {
+                                        "field_name": "primary_diagnosis",
+                                        "value": {
+                                            "icd10_code": s.get("code", ""),
+                                            "description": s.get("description", ""),
+                                            "diagnosis_type": "PROVISIONAL",
+                                        },
+                                        "confidence": confidence,
+                                        "reason": f"AI suggests {s.get('code', '')} — "
+                                        f"{s.get('description', '')} "
+                                        f"(confidence: {confidence:.0%})",
+                                        "source": "ai",
+                                    }
+                                )
                 except TibaBotError:
                     logger.warning("TibaBot ICD-10 suggest failed during autopopulate")
 
@@ -1431,24 +1436,28 @@ class AutopopulateView(AIFeatureGatedMixin, APIView):
                     )
                     assist_response = assist_result.get("response", "")
                     if assist_response:
-                        suggested_fields.append({
-                            "field_name": "assessment",
-                            "value": assist_response,
-                            "confidence": 0.75,
-                            "reason": "AI-generated clinical assessment based on encounter context",
-                            "source": "ai",
-                        })
+                        suggested_fields.append(
+                            {
+                                "field_name": "assessment",
+                                "value": assist_response,
+                                "confidence": 0.75,
+                                "reason": "AI-generated clinical assessment based on encounter context",
+                                "source": "ai",
+                            }
+                        )
                 except TibaBotError:
                     logger.warning("TibaBot clinical assist failed during autopopulate")
 
         except TibaBotUnavailableError:
             logger.warning("TibaBot unavailable for autopopulate")
             return Response(
-                AutopopulateResponseSerializer({
-                    "suggested_fields": [],
-                    "icd10_suggestions": [],
-                    "error": "AI suggestions temporarily unavailable.",
-                }).data,
+                AutopopulateResponseSerializer(
+                    {
+                        "suggested_fields": [],
+                        "icd10_suggestions": [],
+                        "error": "AI suggestions temporarily unavailable.",
+                    }
+                ).data,
                 status=status.HTTP_200_OK,
             )
 
@@ -1463,11 +1472,13 @@ class AutopopulateView(AIFeatureGatedMixin, APIView):
 
         # Graceful fallback
         return Response(
-            AutopopulateResponseSerializer({
-                "suggested_fields": [],
-                "icd10_suggestions": [],
-                "error": "AI returned unexpected response shape.",
-            }).data,
+            AutopopulateResponseSerializer(
+                {
+                    "suggested_fields": [],
+                    "icd10_suggestions": [],
+                    "error": "AI returned unexpected response shape.",
+                }
+            ).data,
             status=status.HTTP_200_OK,
         )
 
@@ -1530,15 +1541,10 @@ class LabInterpretView(AIFeatureGatedMixin, APIView):
                 created_by=request.user,
                 lab_result_id=data.get("lab_result_id"),
                 encounter_id=data.get("encounter_id"),
-                abnormal_count=sum(
-                    1 for f in flags if f.get("status") in ("abnormal", "critical")
-                ),
-                critical_count=sum(
-                    1 for f in flags if f.get("status") == "critical"
-                ),
+                abnormal_count=sum(1 for f in flags if f.get("status") in ("abnormal", "critical")),
+                critical_count=sum(1 for f in flags if f.get("status") == "critical"),
                 request_data={
-                    k: v for k, v in data.items()
-                    if k not in ("lab_result_id", "encounter_id")
+                    k: v for k, v in data.items() if k not in ("lab_result_id", "encounter_id")
                 },
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
@@ -1596,10 +1602,7 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
         try:
             client = get_tibabot_client()
             # Strip internal-only fields before sending to TibaBot
-            tibabot_payload = {
-                k: v for k, v in data.items()
-                if k != "admission_id"
-            }
+            tibabot_payload = {k: v for k, v in data.items() if k != "admission_id"}
             result = client.assess_discharge(tibabot_payload)
             result["mode"] = "tibabot"
 
@@ -1607,9 +1610,7 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
             # for data categories the LLM ignored
             from .services.discharge_fallback import assess_discharge_fallback
 
-            tibabot_categories = {
-                c.get("category") for c in result.get("criteria", [])
-            }
+            tibabot_categories = {c.get("category") for c in result.get("criteria", [])}
             fallback = assess_discharge_fallback(data)
             supplemented = []
             for fc in fallback.get("criteria", []):
@@ -1658,10 +1659,7 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
                 admission_id=data.get("admission_id"),
                 readiness_level=result.get("readiness_level", ""),
                 readiness_score=result.get("readiness_score"),
-                request_data={
-                    k: v for k, v in data.items()
-                    if k != "admission_id"
-                },
+                request_data={k: v for k, v in data.items() if k != "admission_id"},
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
             )
@@ -1783,8 +1781,7 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
                 admission_id=data.get("admission_id"),
                 primary_diagnosis=data.get("primary_diagnosis", "")[:500],
                 request_data={
-                    k: v for k, v in data.items()
-                    if k not in ("encounter_id", "admission_id")
+                    k: v for k, v in data.items() if k not in ("encounter_id", "admission_id")
                 },
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
@@ -2112,10 +2109,7 @@ class CDSEvaluateView(AIFeatureGatedMixin, APIView):
                 encounter_id=data.get("encounter_id"),
                 rules_fired=result.get("rules_fired", 0),
                 alert_count=len(result.get("alerts", [])),
-                request_data={
-                    k: v for k, v in data.items()
-                    if k != "encounter_id"
-                },
+                request_data={k: v for k, v in data.items() if k != "encounter_id"},
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
             )

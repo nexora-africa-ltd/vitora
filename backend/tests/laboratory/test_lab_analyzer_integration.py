@@ -203,9 +203,7 @@ class TestAnalyzerRunModel:
         assert run.status == "ERROR"
         assert "Invalid MSH segment" in run.error_message
 
-    def test_analyzer_run_without_operator(
-        self, sample_instrument, sample_specimen_for_analyzer
-    ):
+    def test_analyzer_run_without_operator(self, sample_instrument, sample_specimen_for_analyzer):
         """Should allow creating analyzer run without operator (automated runs)."""
         run = AnalyzerRun.objects.create(
             specimen=sample_specimen_for_analyzer,
@@ -272,9 +270,7 @@ class TestAnalyzerRunModel:
         with pytest.raises(Exception):  # ProtectedError
             sample_instrument.delete()
 
-    def test_analyzer_run_str_representation(
-        self, sample_instrument, sample_specimen_for_analyzer
-    ):
+    def test_analyzer_run_str_representation(self, sample_instrument, sample_specimen_for_analyzer):
         """String representation should be informative."""
         run = AnalyzerRun.objects.create(
             specimen=sample_specimen_for_analyzer,
@@ -376,16 +372,12 @@ class TestInstrumentAPI:
 
     def test_filter_instruments_by_interface_type(self, authenticated_client):
         """Should filter instruments by interface type."""
-        Instrument.objects.create(
-            code="HL7-001", name="HL7 Instrument", interface_type="HL7_MLLP"
-        )
+        Instrument.objects.create(code="HL7-001", name="HL7 Instrument", interface_type="HL7_MLLP")
         Instrument.objects.create(
             code="MANUAL-001", name="Manual Instrument", interface_type="MANUAL"
         )
 
-        response = authenticated_client.get(
-            "/api/lab/instruments/?interface_type=HL7_MLLP"
-        )
+        response = authenticated_client.get("/api/lab/instruments/?interface_type=HL7_MLLP")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["code"] == "HL7-001"
@@ -551,9 +543,7 @@ class TestAnalyzerRunAPI:
             raw_payload={},
             status="RECEIVED",
         )
-        other_instrument = Instrument.objects.create(
-            code="OTHER-INST", name="Other Analyzer"
-        )
+        other_instrument = Instrument.objects.create(code="OTHER-INST", name="Other Analyzer")
         specimen2 = Specimen.objects.create(
             barcode="SPE-OTHER-001",
             specimen_type="BLOOD",
@@ -662,9 +652,7 @@ class TestAnalyzerIntegration:
             },
         )
 
-    def test_full_analyzer_workflow(
-        self, sample_lab_order, hematology_instrument, test_user
-    ):
+    def test_full_analyzer_workflow(self, sample_lab_order, hematology_instrument, test_user):
         """Test complete workflow: receive -> parse -> apply results."""
         # Create specimen
         specimen = Specimen.objects.create(
@@ -711,9 +699,7 @@ class TestAnalyzerIntegration:
         assert runs.count() == 1
         assert runs.first().instrument == hematology_instrument
 
-    def test_multiple_runs_for_same_specimen(
-        self, sample_lab_order, hematology_instrument
-    ):
+    def test_multiple_runs_for_same_specimen(self, sample_lab_order, hematology_instrument):
         """Same specimen can have multiple analyzer runs (reruns, QC, etc.)."""
         specimen = Specimen.objects.create(
             barcode="SPE-MULTI-RUN",

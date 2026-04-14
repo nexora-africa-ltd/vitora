@@ -121,8 +121,13 @@ class TestDashboardStatsPatientCounts:
     """Test that patient counts are accurate."""
 
     def test_total_patients_count(
-        self, authenticated_client, sample_patient, sample_county, sample_sub_county,
-        sample_organization, sample_facility,
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
     ):
         """Total patients should reflect actual database count."""
         from django.core.cache import cache
@@ -153,8 +158,13 @@ class TestDashboardStatsPatientCounts:
         assert response.data["patients"]["total"] == actual_count
 
     def test_today_patients_count(
-        self, authenticated_client, sample_county, sample_sub_county, test_user,
-        sample_organization, sample_facility,
+        self,
+        authenticated_client,
+        sample_county,
+        sample_sub_county,
+        test_user,
+        sample_organization,
+        sample_facility,
     ):
         """Today's patients should only count patients created today."""
         from django.core.cache import cache

@@ -70,12 +70,18 @@ class CDSRuleSerializer(serializers.ModelSerializer):
 
     def get_created_by_name(self, obj: CDSRule) -> str:
         if obj.created_by:
-            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip() or obj.created_by.username
+            return (
+                f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+                or obj.created_by.username
+            )
         return ""
 
     def get_approved_by_name(self, obj: CDSRule) -> str:
         if obj.approved_by:
-            return f"{obj.approved_by.first_name} {obj.approved_by.last_name}".strip() or obj.approved_by.username
+            return (
+                f"{obj.approved_by.first_name} {obj.approved_by.last_name}".strip()
+                or obj.approved_by.username
+            )
         return ""
 
 
@@ -217,7 +223,10 @@ class CDSAlertSerializer(serializers.ModelSerializer):
 
     def get_resolved_by_name(self, obj: CDSAlert) -> str:
         if obj.resolved_by:
-            return f"{obj.resolved_by.first_name} {obj.resolved_by.last_name}".strip() or obj.resolved_by.username
+            return (
+                f"{obj.resolved_by.first_name} {obj.resolved_by.last_name}".strip()
+                or obj.resolved_by.username
+            )
         return ""
 
     def get_suggested_actions(self, obj: CDSAlert) -> list:

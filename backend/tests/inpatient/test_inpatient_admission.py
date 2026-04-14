@@ -210,7 +210,15 @@ class TestAdmissionCreation:
         assert len(parts[1]) == 8  # YYYYMMDD
         assert len(parts[2]) == 4  # XXXX (sequence)
 
-    def test_unique_admission_number(self, sample_patient, sample_ward, available_bed, test_user, sample_organization, sample_facility):
+    def test_unique_admission_number(
+        self,
+        sample_patient,
+        sample_ward,
+        available_bed,
+        test_user,
+        sample_organization,
+        sample_facility,
+    ):
         """Should generate unique admission numbers."""
         from hmis.apps.patients.models import Patient
 
@@ -477,7 +485,11 @@ class TestAdmissionBusinessLogic:
         assert admission.length_of_stay == 4
 
     def test_prevent_duplicate_active_admission(
-        self, sample_patient, sample_ward, available_bed, test_user,
+        self,
+        sample_patient,
+        sample_ward,
+        available_bed,
+        test_user,
         sample_facility,
     ):
         """Should prevent multiple active admissions for same patient."""
@@ -539,7 +551,9 @@ class TestAdmissionBusinessLogic:
 class TestAdmissionQueries:
     """Tests for Admission query operations."""
 
-    def test_patient_admission_history(self, sample_patient, sample_ward, test_user, sample_facility):
+    def test_patient_admission_history(
+        self, sample_patient, sample_ward, test_user, sample_facility
+    ):
         """Should retrieve patient admission history."""
         # Use auto-generated beds from the ward
         beds = list(sample_ward.beds.filter(status="AVAILABLE").order_by("bed_number")[:3])
@@ -571,7 +585,9 @@ class TestAdmissionQueries:
         patient_admissions = sample_patient.admissions.all()
         assert patient_admissions.count() == 3
 
-    def test_filter_active_admissions(self, sample_patient, sample_ward, test_user, sample_organization, sample_facility):
+    def test_filter_active_admissions(
+        self, sample_patient, sample_ward, test_user, sample_organization, sample_facility
+    ):
         """Should filter active admissions."""
         from hmis.apps.patients.models import Patient
 

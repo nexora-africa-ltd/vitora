@@ -43,9 +43,7 @@ class Command(BaseCommand):
             if existing:
                 if force:
                     if dry_run:
-                        self.stdout.write(
-                            self.style.WARNING(f"Would update: {rule_code}")
-                        )
+                        self.stdout.write(self.style.WARNING(f"Would update: {rule_code}"))
                     else:
                         for key, value in rule_data.items():
                             if key != "rule_code":
@@ -58,9 +56,7 @@ class Command(BaseCommand):
                     updated_count += 1
                 else:
                     self.stdout.write(
-                        self.style.WARNING(
-                            f"Skipped: {rule_code} (exists, use --force to update)"
-                        )
+                        self.style.WARNING(f"Skipped: {rule_code} (exists, use --force to update)")
                     )
                     skipped_count += 1
             else:

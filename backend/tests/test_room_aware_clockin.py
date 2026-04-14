@@ -27,6 +27,7 @@ def _safe_shift_times():
     end = (now + timedelta(hours=8)).time().replace(microsecond=0)
     return start, end
 
+
 from hmis.apps.clinics.models import Clinic, ClinicRoom, ClinicSession, ClinicStaff, ClinicVisit
 from hmis.apps.scheduling.models import Resource, Shift
 
@@ -140,9 +141,7 @@ class TestClockInWithRoom:
         assert response.data["clinic_name"] == "General OPD"
         assert response.data["status"] == "ACTIVE"
 
-    def test_clockin_without_room_still_works(
-        self, authenticated_client, today_shift
-    ):
+    def test_clockin_without_room_still_works(self, authenticated_client, today_shift):
         """Clock-in without room/clinic is backward compatible."""
         response = authenticated_client.post(
             f"/api/scheduling/shifts/{today_shift.id}/start/",
@@ -154,9 +153,7 @@ class TestClockInWithRoom:
         assert response.data["room"] is None
         assert response.data["clinic"] is None
 
-    def test_clockin_with_nonexistent_room_fails(
-        self, authenticated_client, today_shift
-    ):
+    def test_clockin_with_nonexistent_room_fails(self, authenticated_client, today_shift):
         """Clock-in with invalid room_id returns 400."""
         response = authenticated_client.post(
             f"/api/scheduling/shifts/{today_shift.id}/start/",
@@ -177,7 +174,12 @@ class TestClockInWithRoom:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_clockin_with_room_from_different_facility_fails(
-        self, authenticated_client, today_shift, sample_organization, sample_county, sample_sub_county
+        self,
+        authenticated_client,
+        today_shift,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
     ):
         """Clock-in with a room from a different facility fails."""
         from hmis.apps.core.models import Facility
@@ -256,8 +258,14 @@ class TestAutoSessionLifecycle:
         assert session.status == "OPEN"
 
     def test_second_clockin_does_not_duplicate_session(
-        self, authenticated_client, today_shift, room_resource, facility_clinic,
-        sample_facility, sample_organization, test_staff_profile
+        self,
+        authenticated_client,
+        today_shift,
+        room_resource,
+        facility_clinic,
+        sample_facility,
+        sample_organization,
+        test_staff_profile,
     ):
         """Second clock-in with same clinic does not duplicate session."""
         # First clock-in opens session
@@ -296,9 +304,10 @@ class TestAutoSessionLifecycle:
         assert response.data["session_auto_opened"] is False  # Already open
 
         # Only one session exists
-        assert ClinicSession.objects.filter(
-            clinic=facility_clinic, session_date=date.today()
-        ).count() == 1
+        assert (
+            ClinicSession.objects.filter(clinic=facility_clinic, session_date=date.today()).count()
+            == 1
+        )
 
     def test_last_clockout_auto_closes_session(
         self, authenticated_client, today_shift, room_resource, facility_clinic
@@ -322,8 +331,13 @@ class TestAutoSessionLifecycle:
         assert session.status == "CLOSED"
 
     def test_clockout_with_remaining_shifts_keeps_session_open(
-        self, authenticated_client, today_shift, room_resource, facility_clinic,
-        sample_facility, sample_organization
+        self,
+        authenticated_client,
+        today_shift,
+        room_resource,
+        facility_clinic,
+        sample_facility,
+        sample_organization,
     ):
         """Clocking out with other active shifts keeps the session open."""
         # Clock in first clinician
@@ -364,9 +378,7 @@ class TestAutoSessionLifecycle:
         session = ClinicSession.objects.get(clinic=facility_clinic, session_date=date.today())
         assert session.status == "OPEN"
 
-    def test_clockin_without_clinic_no_session_created(
-        self, authenticated_client, today_shift
-    ):
+    def test_clockin_without_clinic_no_session_created(self, authenticated_client, today_shift):
         """Clock-in without clinic does not create any session."""
         response = authenticated_client.post(
             f"/api/scheduling/shifts/{today_shift.id}/start/",
@@ -386,8 +398,15 @@ class TestRoomAwareRouting:
     """Tests for auto-assigning room when calling a patient."""
 
     def test_call_patient_auto_assigns_room(
-        self, db, test_user, today_shift, room_resource, facility_clinic,
-        sample_patient, sample_facility, sample_organization
+        self,
+        db,
+        test_user,
+        today_shift,
+        room_resource,
+        facility_clinic,
+        sample_patient,
+        sample_facility,
+        sample_organization,
     ):
         """Calling a patient auto-assigns the clinician's room."""
         # Clock in with a room
@@ -419,8 +438,7 @@ class TestRoomAwareRouting:
         assert visit.assigned_clinician == test_user
 
     def test_call_patient_no_room_when_clinician_has_no_shift(
-        self, db, test_user, facility_clinic, sample_patient,
-        sample_facility, sample_organization
+        self, db, test_user, facility_clinic, sample_patient, sample_facility, sample_organization
     ):
         """Room is null when clinician has no active shift."""
         session = ClinicSession.objects.create(
@@ -454,23 +472,17 @@ class TestRoomAwareRouting:
 class TestClinicRoomCrud:
     """Tests for ClinicRoom API endpoints."""
 
-    def test_list_clinic_rooms(
-        self, authenticated_client, facility_clinic, room_resource
-    ):
+    def test_list_clinic_rooms(self, authenticated_client, facility_clinic, room_resource):
         """List rooms linked to a clinic."""
         ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource)
 
-        response = authenticated_client.get(
-            f"/api/clinics/{facility_clinic.id}/rooms/"
-        )
+        response = authenticated_client.get(f"/api/clinics/{facility_clinic.id}/rooms/")
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         assert len(results) == 1
         assert results[0]["room_name"] == "Room 1"
 
-    def test_create_clinic_room(
-        self, authenticated_client, facility_clinic, room_resource
-    ):
+    def test_create_clinic_room(self, authenticated_client, facility_clinic, room_resource):
         """Link a room to a clinic."""
         response = authenticated_client.post(
             f"/api/clinics/{facility_clinic.id}/rooms/",
@@ -478,9 +490,7 @@ class TestClinicRoomCrud:
             format="json",
         )
         assert response.status_code == status.HTTP_201_CREATED
-        assert ClinicRoom.objects.filter(
-            clinic=facility_clinic, room=room_resource
-        ).exists()
+        assert ClinicRoom.objects.filter(clinic=facility_clinic, room=room_resource).exists()
 
     def test_create_clinic_room_non_place_fails(
         self, authenticated_client, facility_clinic, staff_resource
@@ -493,14 +503,10 @@ class TestClinicRoomCrud:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_delete_clinic_room(
-        self, authenticated_client, facility_clinic, room_resource
-    ):
+    def test_delete_clinic_room(self, authenticated_client, facility_clinic, room_resource):
         """Unlink a room from a clinic."""
         cr = ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource)
-        response = authenticated_client.delete(
-            f"/api/clinics/{facility_clinic.id}/rooms/{cr.id}/"
-        )
+        response = authenticated_client.delete(f"/api/clinics/{facility_clinic.id}/rooms/{cr.id}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not ClinicRoom.objects.filter(pk=cr.id).exists()
 
@@ -529,9 +535,7 @@ class TestClinicRoomCrud:
 
         assert room_resource.clinic_rooms.count() == 2
 
-    def test_duplicate_clinic_room_rejected(
-        self, db, facility_clinic, room_resource
-    ):
+    def test_duplicate_clinic_room_rejected(self, db, facility_clinic, room_resource):
         """Duplicate clinic-room association is rejected."""
         ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource)
         from django.db import IntegrityError
@@ -602,8 +606,13 @@ class TestAvailableRooms:
     """Tests for the available rooms endpoint."""
 
     def test_available_rooms_excludes_occupied(
-        self, authenticated_client, facility_clinic, room_resource, room_resource_2,
-        today_shift, sample_facility
+        self,
+        authenticated_client,
+        facility_clinic,
+        room_resource,
+        room_resource_2,
+        today_shift,
+        sample_facility,
     ):
         """Available endpoint excludes rooms with active shifts."""
         ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource)
@@ -612,9 +621,7 @@ class TestAvailableRooms:
         # Clock in to room_resource
         today_shift.start_shift(room=room_resource, clinic=facility_clinic)
 
-        response = authenticated_client.get(
-            f"/api/clinics/{facility_clinic.id}/rooms/available/"
-        )
+        response = authenticated_client.get(f"/api/clinics/{facility_clinic.id}/rooms/available/")
         assert response.status_code == status.HTTP_200_OK
         room_ids = [r["room"] for r in response.data]
         assert room_resource.id not in room_ids
@@ -627,9 +634,7 @@ class TestAvailableRooms:
         ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource)
         ClinicRoom.objects.create(clinic=facility_clinic, room=room_resource_2)
 
-        response = authenticated_client.get(
-            f"/api/clinics/{facility_clinic.id}/rooms/available/"
-        )
+        response = authenticated_client.get(f"/api/clinics/{facility_clinic.id}/rooms/available/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 2
 
@@ -653,15 +658,18 @@ class TestPublicQueueDisplay:
             facility=sample_facility,
             organization=sample_organization,
         )
-        response = api_client.get(
-            f"/api/clinics/{facility_clinic.id}/public-queue/"
-        )
+        response = api_client.get(f"/api/clinics/{facility_clinic.id}/public-queue/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["clinic_name"] == "General OPD"
 
     def test_public_queue_returns_no_pii(
-        self, api_client, facility_clinic, sample_patient,
-        sample_facility, sample_organization, room_resource
+        self,
+        api_client,
+        facility_clinic,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+        room_resource,
     ):
         """Public queue does NOT expose patient name, MRN, or other PII."""
         session = ClinicSession.objects.create(
@@ -682,9 +690,7 @@ class TestPublicQueueDisplay:
             organization=sample_organization,
         )
 
-        response = api_client.get(
-            f"/api/clinics/{facility_clinic.id}/public-queue/"
-        )
+        response = api_client.get(f"/api/clinics/{facility_clinic.id}/public-queue/")
         assert response.status_code == status.HTTP_200_OK
         queue = response.data["queue"]
         assert len(queue) == 1
@@ -703,8 +709,14 @@ class TestPublicQueueDisplay:
         assert "id" not in item
 
     def test_public_queue_only_shows_active_visits(
-        self, api_client, facility_clinic, sample_patient,
-        sample_facility, sample_organization, sample_county, sample_sub_county
+        self,
+        api_client,
+        facility_clinic,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+        sample_county,
+        sample_sub_county,
     ):
         """Public queue only shows WAITING, CALLED, IN_CONSULTATION visits."""
         from hmis.apps.patients.models import Patient
@@ -752,9 +764,7 @@ class TestPublicQueueDisplay:
                 organization=sample_organization,
             )
 
-        response = api_client.get(
-            f"/api/clinics/{facility_clinic.id}/public-queue/"
-        )
+        response = api_client.get(f"/api/clinics/{facility_clinic.id}/public-queue/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["queue"]) == 3
 

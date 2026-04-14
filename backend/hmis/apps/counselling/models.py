@@ -126,7 +126,9 @@ class CounsellingType(models.Model):
         help_text="Unique counselling type code (e.g., CT-HIV-001)",
     )
     name = models.CharField(max_length=200, help_text="Full counselling type name")
-    description = models.TextField(blank=True, help_text="Detailed description of counselling service")
+    description = models.TextField(
+        blank=True, help_text="Detailed description of counselling service"
+    )
     category = models.CharField(
         max_length=30,
         choices=CATEGORY_CHOICES,
@@ -260,10 +262,25 @@ class CounsellingReferral(HistoryMixin, models.Model):
     ]
 
     # Sensitive referral reasons requiring enhanced privacy
-    SENSITIVE_REASONS = ["HIV_DIAGNOSIS", "HIV_ADHERENCE", "HIV_PARTNER", "HIV_PMTCT", "SUICIDAL", "PSYCHOSIS", "GBV"]
+    SENSITIVE_REASONS = [
+        "HIV_DIAGNOSIS",
+        "HIV_ADHERENCE",
+        "HIV_PARTNER",
+        "HIV_PMTCT",
+        "SUICIDAL",
+        "PSYCHOSIS",
+        "GBV",
+    ]
 
     # Mental health related reasons for mental health encounter integration
-    MENTAL_HEALTH_REASONS = ["DEPRESSION", "ANXIETY", "PTSD", "SUICIDAL", "PSYCHOSIS", "SUBSTANCE_ABUSE"]
+    MENTAL_HEALTH_REASONS = [
+        "DEPRESSION",
+        "ANXIETY",
+        "PTSD",
+        "SUICIDAL",
+        "PSYCHOSIS",
+        "SUBSTANCE_ABUSE",
+    ]
 
     # Valid status transitions
     STATUS_TRANSITIONS = {
@@ -420,7 +437,9 @@ class CounsellingReferral(HistoryMixin, models.Model):
 
     # Notes
     completion_notes = models.TextField(blank=True, help_text="Summary notes upon completion")
-    cancellation_reason = models.TextField(blank=True, help_text="Reason for cancellation if applicable")
+    cancellation_reason = models.TextField(
+        blank=True, help_text="Reason for cancellation if applicable"
+    )
 
     # Version tracking
     history = HistoricalRecords()
@@ -448,6 +467,7 @@ class CounsellingReferral(HistoryMixin, models.Model):
     def save(self, *args, **kwargs):
         """Override save to generate referral number and handle sensitive flags."""
         from hmis.apps.core.mixins import resolve_tenant_from_related
+
         resolve_tenant_from_related(self)
 
         # Generate referral number only on creation
@@ -457,7 +477,11 @@ class CounsellingReferral(HistoryMixin, models.Model):
         else:
             # Prevent modifying referral number after creation
             if self.pk:
-                original = CounsellingReferral.objects.filter(pk=self.pk).values_list('referral_number', flat=True).first()
+                original = (
+                    CounsellingReferral.objects.filter(pk=self.pk)
+                    .values_list("referral_number", flat=True)
+                    .first()
+                )
                 if original and self.referral_number != original:
                     self.referral_number = original
 
@@ -791,7 +815,11 @@ class CounsellingSession(HistoryMixin, models.Model):
         else:
             # Prevent modifying session number after creation
             if self.pk:
-                original = CounsellingSession.objects.filter(pk=self.pk).values_list('session_number', flat=True).first()
+                original = (
+                    CounsellingSession.objects.filter(pk=self.pk)
+                    .values_list("session_number", flat=True)
+                    .first()
+                )
                 if original and self.session_number != original:
                     self.session_number = original
 
@@ -808,7 +836,8 @@ class CounsellingSession(HistoryMixin, models.Model):
             max_sequence = (
                 CounsellingSession.objects.filter(referral=self.referral)
                 .aggregate(max_seq=models.Max("session_sequence"))
-                .get("max_seq") or 0
+                .get("max_seq")
+                or 0
             )
             self.session_sequence = max_sequence + 1
 

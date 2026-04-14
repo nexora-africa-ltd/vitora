@@ -127,9 +127,7 @@ class TestCertificateRevocation:
 
     def test_revoke_marks_cert_as_revoked(self, user_cert, pki_service, test_user):
         """Revoking a certificate marks it as revoked."""
-        pki_service.revoke_certificate(
-            cert=user_cert, reason="KEY_COMPROMISE", user=test_user
-        )
+        pki_service.revoke_certificate(cert=user_cert, reason="KEY_COMPROMISE", user=test_user)
         user_cert.refresh_from_db()
         assert user_cert.is_revoked is True
         assert user_cert.revocation_reason == "KEY_COMPROMISE"
@@ -137,9 +135,7 @@ class TestCertificateRevocation:
 
     def test_revocation_creates_crl_entry(self, user_cert, pki_service, test_user):
         """Revoking creates a CertificateRevocation record."""
-        pki_service.revoke_certificate(
-            cert=user_cert, reason="SUPERSEDED", user=test_user
-        )
+        pki_service.revoke_certificate(cert=user_cert, reason="SUPERSEDED", user=test_user)
         revocations = CertificateRevocation.objects.filter(certificate=user_cert)
         assert revocations.count() == 1
         assert revocations.first().reason == "SUPERSEDED"
@@ -150,9 +146,7 @@ class TestCRLGeneration:
 
     def test_crl_includes_revoked_certs(self, root_ca, user_cert, pki_service, test_user):
         """CRL contains revoked certificates."""
-        pki_service.revoke_certificate(
-            cert=user_cert, reason="KEY_COMPROMISE", user=test_user
-        )
+        pki_service.revoke_certificate(cert=user_cert, reason="KEY_COMPROMISE", user=test_user)
         crl_bytes = pki_service.get_crl(root_ca)
         assert isinstance(crl_bytes, bytes)
         assert len(crl_bytes) > 0
@@ -231,7 +225,9 @@ class TestDocumentSigning:
         assert result.content_matches is True
         assert result.signature_valid is True
 
-    def test_verify_tampered_document(self, user_cert, test_user, sample_lab_result, signing_service):
+    def test_verify_tampered_document(
+        self, user_cert, test_user, sample_lab_result, signing_service
+    ):
         """Verifying a modified document returns valid=False."""
         sig = signing_service.sign_document(
             document_type="LabResult",
@@ -248,7 +244,9 @@ class TestDocumentSigning:
         assert result.valid is False
         assert result.content_matches is False
 
-    def test_user_without_cert_cannot_sign(self, db, another_user, sample_lab_result, signing_service):
+    def test_user_without_cert_cannot_sign(
+        self, db, another_user, sample_lab_result, signing_service
+    ):
         """A user without a certificate cannot sign documents."""
         with pytest.raises(ValueError, match="no valid certificate"):
             signing_service.sign_document(
@@ -257,7 +255,9 @@ class TestDocumentSigning:
                 user=another_user,
             )
 
-    def test_content_serialization_is_deterministic(self, user_cert, test_user, sample_lab_result, signing_service):
+    def test_content_serialization_is_deterministic(
+        self, user_cert, test_user, sample_lab_result, signing_service
+    ):
         """Serializing the same document twice produces the same content."""
         content1 = signing_service.get_signable_content("LabResult", sample_lab_result)
         content2 = signing_service.get_signable_content("LabResult", sample_lab_result)

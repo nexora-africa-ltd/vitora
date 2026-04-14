@@ -700,9 +700,11 @@ class TestInpatientSignalEvents:
         instance.constraint_override_reason = "Emergency override"
         instance.facility_id = 1
 
-        with patch("hmis.apps.inpatient.signals.broadcast_ward_event_sync"), \
-             patch("hmis.apps.inpatient.signals.broadcast_supervisor_alert_sync"), \
-             patch("hmis.apps.inpatient.signals.notify_supervisors_critical_violation"):
+        with (
+            patch("hmis.apps.inpatient.signals.broadcast_ward_event_sync"),
+            patch("hmis.apps.inpatient.signals.broadcast_supervisor_alert_sync"),
+            patch("hmis.apps.inpatient.signals.notify_supervisors_critical_violation"),
+        ):
             notify_compatibility_violation(sender=None, instance=instance, created=True)
 
         assert len(received) == 2
@@ -761,8 +763,10 @@ class TestMCHSignalEvents:
             mock_clinic = MagicMock()
             mock_clinic.id = 1
 
-            with patch("hmis.apps.clinics.models.Clinic") as MockClinic, \
-                 patch("hmis.apps.clinics.models.ClinicEnrollment") as MockEnrollment:
+            with (
+                patch("hmis.apps.clinics.models.Clinic") as MockClinic,
+                patch("hmis.apps.clinics.models.ClinicEnrollment") as MockEnrollment,
+            ):
                 MockClinic.objects.filter.return_value.first.return_value = mock_clinic
                 enrollment = MagicMock()
                 enrollment.id = 100
@@ -902,8 +906,10 @@ class TestMCHSignalEvents:
         instance.facility_id = 1
         instance.organization_id = 2
 
-        with patch("hmis.apps.scheduling.models.Appointment") as MockAppointment, \
-             patch("hmis.apps.scheduling.models.Resource") as MockResource:
+        with (
+            patch("hmis.apps.scheduling.models.Appointment") as MockAppointment,
+            patch("hmis.apps.scheduling.models.Resource") as MockResource,
+        ):
             MockAppointment.objects.filter.return_value.exists.return_value = False
             resource = MagicMock()
             resource.id = 1
@@ -936,7 +942,9 @@ class TestMCHSignalEvents:
         instance.facility_id = 1
         instance.organization_id = 2
 
-        with patch("hmis.apps.mch.services.immunization.generate_immunization_schedule") as mock_gen:
+        with patch(
+            "hmis.apps.mch.services.immunization.generate_immunization_schedule"
+        ) as mock_gen:
             mock_gen.return_value = [MagicMock(), MagicMock(), MagicMock()]
             auto_generate_immunization_schedule(sender=None, instance=instance, created=True)
 
@@ -1067,8 +1075,10 @@ class TestImagingSignalEvents:
         instance.laterality = "NA"
         instance.get_laterality_display.return_value = "N/A"
 
-        with patch("hmis.apps.imaging.signals.Invoice") as MockInvoice, \
-             patch("hmis.apps.imaging.signals.InvoiceItem") as MockInvoiceItem:
+        with (
+            patch("hmis.apps.imaging.signals.Invoice") as MockInvoice,
+            patch("hmis.apps.imaging.signals.InvoiceItem") as MockInvoiceItem,
+        ):
             invoice = MagicMock()
             invoice.id = 90
             MockInvoice.objects.filter.return_value.first.return_value = invoice

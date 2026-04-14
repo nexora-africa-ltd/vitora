@@ -413,8 +413,10 @@ class StaffProfileAdmin(admin.ModelAdmin):
     ordering = ["user__last_name", "user__first_name"]
     readonly_fields = ["created_at", "updated_at", "organization", "is_license_valid_display"]
     filter_horizontal = [
-        "secondary_roles", "secondary_departments",
-        "secondary_facilities", "secondary_organizations",
+        "secondary_roles",
+        "secondary_departments",
+        "secondary_facilities",
+        "secondary_organizations",
     ]
 
     actions = ["activate_staff", "deactivate_staff", "suspend_staff", "export_to_csv"]
@@ -789,8 +791,12 @@ class OrgStaffInline(admin.TabularInline):
     fk_name = "organization"
     extra = 0
     fields = [
-        "employee_id", "user", "primary_role",
-        "primary_department", "primary_facility", "employment_status",
+        "employee_id",
+        "user",
+        "primary_role",
+        "primary_department",
+        "primary_facility",
+        "employment_status",
     ]
     readonly_fields = fields
     show_change_link = True
@@ -913,8 +919,11 @@ class FacilityStaffInline(admin.TabularInline):
     fk_name = "primary_facility"
     extra = 0
     fields = [
-        "employee_id", "user", "primary_role",
-        "primary_department", "employment_status",
+        "employee_id",
+        "user",
+        "primary_role",
+        "primary_department",
+        "employment_status",
     ]
     readonly_fields = fields
     show_change_link = True
@@ -1041,11 +1050,7 @@ class FacilityAdmin(admin.ModelAdmin):
         ),
         (
             "Status",
-            {
-                "fields": (
-                    "is_active",
-                )
-            },
+            {"fields": ("is_active",)},
         ),
         (
             "Timestamps",
@@ -1100,34 +1105,63 @@ class CertificateAuthorityAdmin(admin.ModelAdmin):
     """Admin for Certificate Authority with intermediate CA creation support."""
 
     list_display = [
-        "name", "ca_type_badge", "serial_number", "parent_ca",
-        "is_active", "valid_from", "valid_to", "key_size",
+        "name",
+        "ca_type_badge",
+        "serial_number",
+        "parent_ca",
+        "is_active",
+        "valid_from",
+        "valid_to",
+        "key_size",
     ]
     list_filter = ["is_active", "is_root"]
     readonly_fields = [
-        "serial_number", "subject_dn", "public_key_pem", "certificate_pem",
+        "serial_number",
+        "subject_dn",
+        "public_key_pem",
+        "certificate_pem",
         "private_key_pem_encrypted",
-        "valid_from", "valid_to", "is_root", "parent_ca", "key_size",
-        "created_at", "updated_at",
+        "valid_from",
+        "valid_to",
+        "is_root",
+        "parent_ca",
+        "key_size",
+        "created_at",
+        "updated_at",
     ]
     search_fields = ["name", "serial_number", "subject_dn"]
     fieldsets = (
-        (None, {
-            "fields": ("name", "serial_number", "subject_dn"),
-        }),
-        ("Hierarchy", {
-            "fields": ("is_root", "parent_ca"),
-        }),
-        ("Validity", {
-            "fields": ("valid_from", "valid_to", "is_active", "key_size"),
-        }),
-        ("Keys & Certificate (read-only)", {
-            "classes": ("collapse",),
-            "fields": ("public_key_pem", "certificate_pem", "private_key_pem_encrypted"),
-        }),
-        ("Timestamps", {
-            "fields": ("created_at", "updated_at"),
-        }),
+        (
+            None,
+            {
+                "fields": ("name", "serial_number", "subject_dn"),
+            },
+        ),
+        (
+            "Hierarchy",
+            {
+                "fields": ("is_root", "parent_ca"),
+            },
+        ),
+        (
+            "Validity",
+            {
+                "fields": ("valid_from", "valid_to", "is_active", "key_size"),
+            },
+        ),
+        (
+            "Keys & Certificate (read-only)",
+            {
+                "classes": ("collapse",),
+                "fields": ("public_key_pem", "certificate_pem", "private_key_pem_encrypted"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+            },
+        ),
     )
     actions = ["create_intermediate_ca_action"]
 
@@ -1186,8 +1220,14 @@ class UserCertificateAdmin(admin.ModelAdmin):
     list_display = ["serial_number", "user", "is_revoked", "valid_from", "valid_to", "created_at"]
     list_filter = ["is_revoked"]
     readonly_fields = [
-        "serial_number", "subject_dn", "public_key_pem", "certificate_pem",
-        "valid_from", "valid_to", "created_at", "updated_at",
+        "serial_number",
+        "subject_dn",
+        "public_key_pem",
+        "certificate_pem",
+        "valid_from",
+        "valid_to",
+        "created_at",
+        "updated_at",
     ]
     search_fields = ["serial_number", "user__username", "subject_dn"]
     raw_id_fields = ["user", "certificate_authority"]
@@ -1196,6 +1236,7 @@ class UserCertificateAdmin(admin.ModelAdmin):
     @admin.action(description="Revoke selected certificates")
     def revoke_certificates(self, request, queryset):
         from .services.pki_service import PKIService
+
         service = PKIService()
         count = 0
         for cert in queryset.filter(is_revoked=False):
@@ -1226,9 +1267,17 @@ class DocumentSignatureAdmin(admin.ModelAdmin):
     list_display = ["document_type", "document_id", "signer", "signed_at", "is_valid"]
     list_filter = ["document_type", "is_valid"]
     readonly_fields = [
-        "document_type", "document_id", "signer", "certificate",
-        "content_hash", "signature", "hash_algorithm", "signed_at",
-        "is_valid", "verification_note", "created_at",
+        "document_type",
+        "document_id",
+        "signer",
+        "certificate",
+        "content_hash",
+        "signature",
+        "hash_algorithm",
+        "signed_at",
+        "is_valid",
+        "verification_note",
+        "created_at",
     ]
     search_fields = ["document_type", "signer__username"]
     raw_id_fields = ["signer", "certificate"]
@@ -1250,13 +1299,26 @@ class StaffInvitationAdmin(admin.ModelAdmin):
     """Admin for Staff Invitations."""
 
     list_display = [
-        "email", "organization", "facility", "role",
-        "status", "invited_by", "expires_at", "created_at",
+        "email",
+        "organization",
+        "facility",
+        "role",
+        "status",
+        "invited_by",
+        "expires_at",
+        "created_at",
     ]
     list_filter = ["status", "organization"]
     search_fields = ["email", "organization__name", "token"]
     readonly_fields = ["token", "accepted_at", "accepted_user", "created_at", "updated_at"]
-    raw_id_fields = ["invited_by", "accepted_user", "organization", "facility", "role", "department"]
+    raw_id_fields = [
+        "invited_by",
+        "accepted_user",
+        "organization",
+        "facility",
+        "role",
+        "department",
+    ]
     ordering = ["-created_at"]
 
 
@@ -1325,9 +1387,16 @@ class FrontendEventAdmin(admin.ModelAdmin):
     list_filter = ["event_type", "device_type", "was_offline"]
     search_fields = ["user__username", "resource_type", "session_id"]
     readonly_fields = [
-        "user", "event_type", "resource_type", "resource_id",
-        "client_timestamp", "server_timestamp", "session_id",
-        "device_type", "details", "was_offline",
+        "user",
+        "event_type",
+        "resource_type",
+        "resource_id",
+        "client_timestamp",
+        "server_timestamp",
+        "session_id",
+        "device_type",
+        "details",
+        "was_offline",
     ]
     ordering = ["-server_timestamp"]
 
@@ -1355,7 +1424,15 @@ class IdempotencyKeyAdmin(admin.ModelAdmin):
     list_display = ["key", "user", "resource_type", "resource_id", "response_status", "created_at"]
     list_filter = ["resource_type", "response_status"]
     search_fields = ["key", "user__username", "resource_type"]
-    readonly_fields = ["key", "user", "resource_type", "resource_id", "response_status", "response_data", "created_at"]
+    readonly_fields = [
+        "key",
+        "user",
+        "resource_type",
+        "resource_id",
+        "response_status",
+        "response_data",
+        "created_at",
+    ]
     raw_id_fields = ["user"]
     ordering = ["-created_at"]
 

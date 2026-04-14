@@ -293,10 +293,14 @@ class BedAssignmentRuleEvaluator:
 
     def _get_available_beds(self, ward: Ward) -> QuerySet[Bed]:
         """Get available beds in a ward, ordered by bed number."""
-        return Bed.objects.filter(
-            ward=ward,
-            status="AVAILABLE",
-        ).select_related("ward").order_by("bed_number")
+        return (
+            Bed.objects.filter(
+                ward=ward,
+                status="AVAILABLE",
+            )
+            .select_related("ward")
+            .order_by("bed_number")
+        )
 
     def _build_context(
         self,

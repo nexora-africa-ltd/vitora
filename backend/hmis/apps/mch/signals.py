@@ -258,9 +258,7 @@ def auto_create_anc_appointment(sender, instance, **kwargs):
         import zoneinfo
 
         tz = zoneinfo.ZoneInfo("Africa/Nairobi")
-        start_dt = datetime.combine(
-            instance.next_visit_date, time(8, 0), tzinfo=tz
-        )
+        start_dt = datetime.combine(instance.next_visit_date, time(8, 0), tzinfo=tz)
         end_dt = start_dt + timedelta(minutes=30)
 
         appointment = Appointment(
@@ -386,9 +384,11 @@ def broadcast_labour_partograph_observation(sender, instance, created, **kwargs)
                     else str(instance.observation_time)
                 ),
                 "fetal_heart_rate": instance.fetal_heart_rate,
-                "cervical_dilation_cm": str(instance.cervical_dilation_cm)
-                if instance.cervical_dilation_cm is not None
-                else None,
+                "cervical_dilation_cm": (
+                    str(instance.cervical_dilation_cm)
+                    if instance.cervical_dilation_cm is not None
+                    else None
+                ),
                 "contractions_per_10_min": instance.contractions_per_10_min,
                 "contraction_duration_seconds": instance.contraction_duration_seconds,
                 "maternal_pulse": instance.maternal_pulse,
@@ -456,9 +456,7 @@ def auto_enroll_confirmed_positive_to_ccc(sender, instance, **kwargs):
                 "source": "HEI_AUTO_ENROLLMENT",
                 "hei_number": instance.hei_number,
                 "mother_mch_number": (
-                    instance.mch_registration.mch_number
-                    if instance.mch_registration
-                    else None
+                    instance.mch_registration.mch_number if instance.mch_registration else None
                 ),
             },
         )
@@ -663,9 +661,7 @@ def auto_create_immunization_appointment(sender, instance, created, **kwargs):
         import zoneinfo
 
         tz = zoneinfo.ZoneInfo("Africa/Nairobi")
-        start_dt = datetime.combine(
-            instance.scheduled_date, time(8, 0), tzinfo=tz
-        )
+        start_dt = datetime.combine(instance.scheduled_date, time(8, 0), tzinfo=tz)
         end_dt = start_dt + timedelta(minutes=15)
 
         vaccine_name = instance.vaccine.name if instance.vaccine else "Vaccination"

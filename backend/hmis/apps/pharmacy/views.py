@@ -116,26 +116,28 @@ class DrugViewSet(viewsets.ModelViewSet):
                 product_id=int(product_id) if product_id else None,
                 generic_concept_id=int(generic_concept_id) if generic_concept_id else None,
             )
-            return Response({
-                "count": len(results),
-                "results": [
-                    {
-                        "product_id": r.product_id,
-                        "brand_name": r.brand_name,
-                        "generic_name": r.generic_name,
-                        "brand_display_name": r.brand_display_name,
-                        "generic_display_name": r.generic_display_name,
-                        "generic_concept_id": r.generic_concept_id,
-                        "strength_amount": r.strength_amount,
-                        "strength_unit": r.strength_unit,
-                        "route_description": r.route_description,
-                        "form_description": r.form_description,
-                        "ppb_registration_code": r.ppb_registration_code,
-                        "knhts_concept_id": r.knhts_concept_id,
-                    }
-                    for r in results
-                ],
-            })
+            return Response(
+                {
+                    "count": len(results),
+                    "results": [
+                        {
+                            "product_id": r.product_id,
+                            "brand_name": r.brand_name,
+                            "generic_name": r.generic_name,
+                            "brand_display_name": r.brand_display_name,
+                            "generic_display_name": r.generic_display_name,
+                            "generic_concept_id": r.generic_concept_id,
+                            "strength_amount": r.strength_amount,
+                            "strength_unit": r.strength_unit,
+                            "route_description": r.route_description,
+                            "form_description": r.form_description,
+                            "ppb_registration_code": r.ppb_registration_code,
+                            "knhts_concept_id": r.knhts_concept_id,
+                        }
+                        for r in results
+                    ],
+                }
+            )
         except TerminologyError as e:
             return Response(
                 {"error": str(e)},
@@ -289,7 +291,14 @@ class PrescriptionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     serializer_class = PrescriptionSerializer
     permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["patient", "status", "encounter", "admission", "dispensing_type", "is_discharge_medication"]
+    filterset_fields = [
+        "patient",
+        "status",
+        "encounter",
+        "admission",
+        "dispensing_type",
+        "is_discharge_medication",
+    ]
     search_fields = [
         "patient__first_name",
         "patient__last_name",

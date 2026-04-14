@@ -42,12 +42,9 @@ def check_wait_time_breaches(self):
     new_breaches = []
 
     # Get all active ER queue entries (WAITING or CALLED — not yet with clinician)
-    active_entries = (
-        TriageQueue.objects.filter(status__in=["WAITING", "CALLED"])
-        .select_related(
-            "triage_assessment",
-            "triage_assessment__encounter__patient",
-        )
+    active_entries = TriageQueue.objects.filter(status__in=["WAITING", "CALLED"]).select_related(
+        "triage_assessment",
+        "triage_assessment__encounter__patient",
     )
 
     for entry in active_entries:
@@ -100,9 +97,7 @@ def check_wait_time_breaches(self):
     if new_breaches:
         _broadcast_breach_alerts(new_breaches)
 
-    logger.debug(
-        "Wait time breach check complete: %d new breaches detected", len(new_breaches)
-    )
+    logger.debug("Wait time breach check complete: %d new breaches detected", len(new_breaches))
 
     return len(new_breaches)
 
@@ -151,22 +146,22 @@ def _broadcast_breach_alerts(breaches):
 
         alerts = []
         for breach in breaches:
-            alerts.append({
-                "id": breach.id,
-                "queue_entry_id": breach.queue_entry_id,
-                "triage_assessment_id": breach.triage_assessment_id,
-                "patient_name": (
-                    f"{breach.patient.first_name} {breach.patient.last_name}"
-                ),
-                "patient_mrn": breach.patient.mrn,
-                "triage_category": breach.triage_category,
-                "severity": breach.severity,
-                "target_wait_minutes": breach.target_wait_minutes,
-                "actual_wait_minutes": breach.actual_wait_minutes,
-                "assigned_area": breach.assigned_area,
-                "status": breach.status,
-                "created_at": breach.created_at.isoformat(),
-            })
+            alerts.append(
+                {
+                    "id": breach.id,
+                    "queue_entry_id": breach.queue_entry_id,
+                    "triage_assessment_id": breach.triage_assessment_id,
+                    "patient_name": (f"{breach.patient.first_name} {breach.patient.last_name}"),
+                    "patient_mrn": breach.patient.mrn,
+                    "triage_category": breach.triage_category,
+                    "severity": breach.severity,
+                    "target_wait_minutes": breach.target_wait_minutes,
+                    "actual_wait_minutes": breach.actual_wait_minutes,
+                    "assigned_area": breach.assigned_area,
+                    "status": breach.status,
+                    "created_at": breach.created_at.isoformat(),
+                }
+            )
 
         message = {
             "type": "emergency.wait.breach",
@@ -185,15 +180,11 @@ def _broadcast_breach_alerts(breaches):
             pass
 
         if loop and loop.is_running():
-            asyncio.ensure_future(
-                channel_layer.group_send("emergency_queue", message)
-            )
+            asyncio.ensure_future(channel_layer.group_send("emergency_queue", message))
         else:
             new_loop = asyncio.new_event_loop()
             try:
-                new_loop.run_until_complete(
-                    channel_layer.group_send("emergency_queue", message)
-                )
+                new_loop.run_until_complete(channel_layer.group_send("emergency_queue", message))
             finally:
                 new_loop.close()
 

@@ -329,7 +329,15 @@ class TestPhysiotherapySession:
         )
 
     @pytest.fixture
-    def physio_order(self, sample_patient, sample_encounter, test_user, treatment_type, sample_facility, sample_organization):
+    def physio_order(
+        self,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        treatment_type,
+        sample_facility,
+        sample_organization,
+    ):
         """Create a physiotherapy order for testing."""
         from hmis.apps.physiotherapy.models import PhysiotherapyOrder
 
@@ -492,7 +500,9 @@ class TestPhysiotherapyOrderAPI:
         response = api_client.post("/api/physiotherapy/orders/", order_data)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_list_orders(self, authenticated_client, sample_patient, sample_encounter, treatment_type, test_user):
+    def test_list_orders(
+        self, authenticated_client, sample_patient, sample_encounter, treatment_type, test_user
+    ):
         """Should list orders."""
         from hmis.apps.physiotherapy.models import PhysiotherapyOrder
 
@@ -515,7 +525,9 @@ class TestPhysiotherapyOrderAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 2
 
-    def test_retrieve_order(self, authenticated_client, sample_patient, sample_encounter, treatment_type, test_user):
+    def test_retrieve_order(
+        self, authenticated_client, sample_patient, sample_encounter, treatment_type, test_user
+    ):
         """Should retrieve single order."""
         from hmis.apps.physiotherapy.models import PhysiotherapyOrder
 
@@ -573,7 +585,13 @@ class TestPhysiotherapyOrderAPI:
         assert response.data["status"] == "APPROVED"
 
     def test_assign_therapist_action(
-        self, authenticated_client, sample_patient, sample_encounter, treatment_type, test_user, another_user
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        treatment_type,
+        test_user,
+        another_user,
     ):
         """Should assign therapist to order."""
         from hmis.apps.physiotherapy.models import PhysiotherapyOrder
@@ -645,7 +663,15 @@ class TestPhysiotherapySessionAPI:
         )
 
     @pytest.fixture
-    def physio_order(self, sample_patient, sample_encounter, test_user, treatment_type, sample_facility, sample_organization):
+    def physio_order(
+        self,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        treatment_type,
+        sample_facility,
+        sample_organization,
+    ):
         """Create a physiotherapy order for testing."""
         from hmis.apps.physiotherapy.models import PhysiotherapyOrder
 
@@ -813,9 +839,7 @@ class TestPhysiotherapyTreatmentTypeAPI:
             category="MUSCULOSKELETAL",
         )
 
-        response = authenticated_client.get(
-            "/api/physiotherapy/treatment-types/?search=spinal"
-        )
+        response = authenticated_client.get("/api/physiotherapy/treatment-types/?search=spinal")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
         assert "Spinal" in response.data["results"][0]["name"]

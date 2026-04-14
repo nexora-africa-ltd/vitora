@@ -304,7 +304,10 @@ class TestICUPredictValidation:
             )
             assert response.status_code == status.HTTP_200_OK
             assert set(response.data["defaulted_labs"]) == {
-                "creatinine", "wbc", "platelets", "lactate",
+                "creatinine",
+                "wbc",
+                "platelets",
+                "lactate",
             }
 
     @override_settings(TIBABOT_ENABLED=True)
@@ -465,9 +468,7 @@ class TestICUPredictResponse:
         """Should return risk stratification probabilities."""
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client.predict_icu_risk_stratify.return_value = (
-                tibabot_icu_risk_stratify_response
-            )
+            mock_client.predict_icu_risk_stratify.return_value = tibabot_icu_risk_stratify_response
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.post(
@@ -516,9 +517,7 @@ class TestICUPredictResponse:
         """Should call predict_icu_risk_stratify for risk-stratify type."""
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client.predict_icu_risk_stratify.return_value = (
-                tibabot_icu_risk_stratify_response
-            )
+            mock_client.predict_icu_risk_stratify.return_value = tibabot_icu_risk_stratify_response
             mock_get_client.return_value = mock_client
 
             authenticated_client.post(
@@ -535,17 +534,13 @@ class TestICUPredictGracefulDegradation:
     """Tests graceful degradation when TibaBot is unavailable."""
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_returns_200_on_tibabot_unavailable(
-        self, authenticated_client, icu_predict_payload
-    ):
+    def test_returns_200_on_tibabot_unavailable(self, authenticated_client, icu_predict_payload):
         """Should return 200 with empty defaults when TibaBot is unavailable."""
         from hmis.apps.ai.client import TibaBotUnavailableError
 
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
-            mock_client.predict_icu.side_effect = TibaBotUnavailableError(
-                "Service unavailable"
-            )
+            mock_client.predict_icu.side_effect = TibaBotUnavailableError("Service unavailable")
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.post(
@@ -562,9 +557,7 @@ class TestICUPredictGracefulDegradation:
             assert "unavailable" in response.data["error"].lower()
 
     @override_settings(TIBABOT_ENABLED=True)
-    def test_returns_200_on_tibabot_error(
-        self, authenticated_client, icu_predict_payload
-    ):
+    def test_returns_200_on_tibabot_error(self, authenticated_client, icu_predict_payload):
         """Should return 200 with empty defaults on TibaBot error."""
         from hmis.apps.ai.client import TibaBotError
 
@@ -629,9 +622,9 @@ class TestICUPredictSanitization:
         tibabot_icu_predict_response,
     ):
         """Should strip MRN from admission_diagnosis."""
-        icu_predict_payload["patient_data"]["admission_diagnosis"] = (
-            "Sepsis MRN-20260101-0001 patient admitted"
-        )
+        icu_predict_payload["patient_data"][
+            "admission_diagnosis"
+        ] = "Sepsis MRN-20260101-0001 patient admitted"
 
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
@@ -657,9 +650,7 @@ class TestICUPredictSanitization:
         tibabot_icu_predict_response,
     ):
         """Should strip phone numbers from admission_diagnosis."""
-        icu_predict_payload["patient_data"]["admission_diagnosis"] = (
-            "UTI sepsis call 0712345678"
-        )
+        icu_predict_payload["patient_data"]["admission_diagnosis"] = "UTI sepsis call 0712345678"
 
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()

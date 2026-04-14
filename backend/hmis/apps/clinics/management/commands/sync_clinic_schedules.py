@@ -53,7 +53,9 @@ class Command(BaseCommand):
             if not clinic.scheduling_resource_id:
                 code = f"CLINIC-{clinic.code}"
                 if dry_run:
-                    self.stdout.write(f"  [DRY-RUN] Would create Resource '{code}' for {clinic.name}")
+                    self.stdout.write(
+                        f"  [DRY-RUN] Would create Resource '{code}' for {clinic.name}"
+                    )
                 else:
                     resource = Resource.objects.create(
                         name=clinic.name,
@@ -98,8 +100,12 @@ class Command(BaseCommand):
                         existing.notes = f"{tag} — {cs.notes}".strip()
                         existing.save(
                             update_fields=[
-                                "start_time", "end_time", "is_active",
-                                "max_appointments", "notes", "updated_at",
+                                "start_time",
+                                "end_time",
+                                "is_active",
+                                "max_appointments",
+                                "notes",
+                                "updated_at",
                             ]
                         )
                         self.stdout.write(

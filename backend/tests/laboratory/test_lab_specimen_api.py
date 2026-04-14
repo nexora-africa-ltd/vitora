@@ -42,8 +42,12 @@ def authenticated_user(db):
 
 @pytest.fixture
 def auth_client(
-    api_client, authenticated_user, sample_organization, sample_facility,
-    sample_department, sample_role
+    api_client,
+    authenticated_user,
+    sample_organization,
+    sample_facility,
+    sample_department,
+    sample_role,
 ):
     """Provide API client with authentication and multitenancy context."""
     from hmis.apps.core.models import StaffProfile
@@ -101,7 +105,14 @@ def sample_test_catalog(db):
 
 
 @pytest.fixture
-def sample_order(sample_patient, sample_encounter, authenticated_user, sample_test_catalog, sample_facility, sample_organization):
+def sample_order(
+    sample_patient,
+    sample_encounter,
+    authenticated_user,
+    sample_test_catalog,
+    sample_facility,
+    sample_organization,
+):
     """Create a sample lab order with order item."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -237,7 +248,6 @@ class TestSpecimenDetailAPI:
         response = auth_client.get(f"/api/lab/specimens/{sample_specimen.barcode}/")
         assert response.status_code == status.HTTP_200_OK
 
-
         expected_fields = [
             "id",
             "barcode",
@@ -313,7 +323,13 @@ class TestOrderSpecimensNestedAPI:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_list_order_specimens_only_returns_own_specimens(
-        self, auth_client, sample_order, sample_specimen, sample_patient, sample_encounter, authenticated_user,
+        self,
+        auth_client,
+        sample_order,
+        sample_specimen,
+        sample_patient,
+        sample_encounter,
+        authenticated_user,
         sample_facility,
         sample_organization,
     ):

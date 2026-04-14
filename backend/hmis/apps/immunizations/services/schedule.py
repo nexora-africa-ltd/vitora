@@ -27,9 +27,9 @@ def generate_kepi_schedule(patient, *, create_appointments: bool = True, created
     Returns:
         List of ImmunizationRecord instances, ordered by scheduled_date.
     """
-    vaccines = VaccineDefinition.objects.filter(
-        program="KEPI", is_active=True
-    ).order_by("standard_age_days", "code")
+    vaccines = VaccineDefinition.objects.filter(program="KEPI", is_active=True).order_by(
+        "standard_age_days", "code"
+    )
 
     if not vaccines.exists():
         return []
@@ -37,9 +37,7 @@ def generate_kepi_schedule(patient, *, create_appointments: bool = True, created
     records = []
     with transaction.atomic():
         for vaccine in vaccines:
-            scheduled_date = patient.date_of_birth + timedelta(
-                days=vaccine.standard_age_days
-            )
+            scheduled_date = patient.date_of_birth + timedelta(days=vaccine.standard_age_days)
             record, _ = ImmunizationRecord.objects.get_or_create(
                 patient=patient,
                 vaccine=vaccine,
@@ -60,7 +58,12 @@ def generate_kepi_schedule(patient, *, create_appointments: bool = True, created
 
 
 def generate_adult_schedule(
-    patient, vaccine, start_date, *, create_appointments: bool = True, created_by=None,
+    patient,
+    vaccine,
+    start_date,
+    *,
+    create_appointments: bool = True,
+    created_by=None,
 ):
     """
     Generate a multi-dose schedule for an adult vaccine.
@@ -93,9 +96,7 @@ def generate_adult_schedule(
             )
             # Set next_dose_date for all but the last dose
             if dose_num < total and not record.next_dose_date:
-                record.next_dose_date = start_date + timedelta(
-                    days=interval * dose_num
-                )
+                record.next_dose_date = start_date + timedelta(days=interval * dose_num)
                 record.save(update_fields=["next_dose_date"])
             records.append(record)
 
@@ -121,7 +122,8 @@ def _create_appointments_for_records(records, *, created_by=None):
         scheduled_records = [r for r in records if r.status == "SCHEDULED"]
         if scheduled_records:
             appointments = create_appointments_for_schedule(
-                scheduled_records, created_by=created_by,
+                scheduled_records,
+                created_by=created_by,
             )
             logger.info(
                 "Created %d vaccination appointments for %d scheduled records",

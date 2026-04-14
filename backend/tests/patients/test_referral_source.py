@@ -55,7 +55,9 @@ class TestReferralSourceModel:
         )
         patient.full_clean()  # Should not raise
 
-    def test_referral_source_default_is_self(self, sample_county, sample_sub_county, sample_organization):
+    def test_referral_source_default_is_self(
+        self, sample_county, sample_sub_county, sample_organization
+    ):
         """Test referral source defaults to 'self'."""
         from hmis.apps.patients.models import Patient
 
@@ -110,7 +112,9 @@ class TestReferralSourceModel:
         assert "referred_from_facility" in str(exc_info.value)
 
     def test_referred_from_facility_with_valid_facility_name(
-        self, sample_county, sample_sub_county,
+        self,
+        sample_county,
+        sample_sub_county,
         sample_organization,
     ):
         """Test creating patient with valid facility name."""

@@ -108,14 +108,16 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
             critical_data = await self._get_critical_patients()
             zones_data = await self._get_zones_summary()
 
-            await self.send_json({
-                "type": "state_update",
-                "data": {
-                    "critical": critical_data,
-                    "zones": zones_data,
-                    "timestamp": timezone.now().isoformat(),
-                },
-            })
+            await self.send_json(
+                {
+                    "type": "state_update",
+                    "data": {
+                        "critical": critical_data,
+                        "zones": zones_data,
+                        "timestamp": timezone.now().isoformat(),
+                    },
+                }
+            )
         except Exception as e:
             logger.error(f"Error sending state: {e}")
 
@@ -125,17 +127,26 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
         from hmis.apps.triage.models import TriageQueue
 
         er_areas = [
-            "ER_RESUS", "ER_ACUTE", "TRAUMA", "ER_FAST_TRACK",
-            "OBSERVATION", "PEDIATRIC_ER", "MATERNITY"
+            "ER_RESUS",
+            "ER_ACUTE",
+            "TRAUMA",
+            "ER_FAST_TRACK",
+            "OBSERVATION",
+            "PEDIATRIC_ER",
+            "MATERNITY",
         ]
 
-        queryset = TriageQueue.objects.filter(
-            triage_assessment__triage_category="RED",
-            triage_assessment__assigned_area__in=er_areas,
-            status__in=["WAITING", "CALLED"],
-        ).select_related(
-            "triage_assessment__encounter__patient",
-        ).order_by("triage_assessment__arrival_time")
+        queryset = (
+            TriageQueue.objects.filter(
+                triage_assessment__triage_category="RED",
+                triage_assessment__assigned_area__in=er_areas,
+                status__in=["WAITING", "CALLED"],
+            )
+            .select_related(
+                "triage_assessment__encounter__patient",
+            )
+            .order_by("triage_assessment__arrival_time")
+        )
 
         patients = []
         now = timezone.now()
@@ -147,20 +158,22 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
             wait_delta = now - assessment.arrival_time
             wait_minutes = int(wait_delta.total_seconds() / 60)
 
-            patients.append({
-                "id": assessment.id,  # Triage assessment ID for routing
-                "queue_id": entry.id,  # Queue entry ID
-                "encounter_id": encounter.id,
-                "encounter_status": encounter.status,
-                "patient_name": f"{patient.first_name} {patient.last_name}",
-                "mrn": patient.mrn,
-                "chief_complaint": assessment.chief_complaint or "",
-                "assigned_area": assessment.assigned_area,
-                "assigned_area_display": assessment.get_assigned_area_display(),
-                "wait_minutes": wait_minutes,
-                "arrival_time": assessment.arrival_time.isoformat(),
-                "status": entry.status,
-            })
+            patients.append(
+                {
+                    "id": assessment.id,  # Triage assessment ID for routing
+                    "queue_id": entry.id,  # Queue entry ID
+                    "encounter_id": encounter.id,
+                    "encounter_status": encounter.status,
+                    "patient_name": f"{patient.first_name} {patient.last_name}",
+                    "mrn": patient.mrn,
+                    "chief_complaint": assessment.chief_complaint or "",
+                    "assigned_area": assessment.assigned_area,
+                    "assigned_area_display": assessment.get_assigned_area_display(),
+                    "wait_minutes": wait_minutes,
+                    "arrival_time": assessment.arrival_time.isoformat(),
+                    "status": entry.status,
+                }
+            )
 
         return {"count": len(patients), "patients": patients}
 
@@ -171,11 +184,31 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
 
         er_zones = [
             {"code": "ER_RESUS", "name": "Resuscitation", "capacity": 4, "default_category": "RED"},
-            {"code": "ER_ACUTE", "name": "Acute Care", "capacity": 10, "default_category": "ORANGE"},
+            {
+                "code": "ER_ACUTE",
+                "name": "Acute Care",
+                "capacity": 10,
+                "default_category": "ORANGE",
+            },
             {"code": "TRAUMA", "name": "Trauma Bay", "capacity": 2, "default_category": "RED"},
-            {"code": "ER_FAST_TRACK", "name": "Fast Track", "capacity": 12, "default_category": "GREEN"},
-            {"code": "OBSERVATION", "name": "Observation", "capacity": 8, "default_category": "YELLOW"},
-            {"code": "PEDIATRIC_ER", "name": "Pediatric ER", "capacity": 6, "default_category": "ORANGE"},
+            {
+                "code": "ER_FAST_TRACK",
+                "name": "Fast Track",
+                "capacity": 12,
+                "default_category": "GREEN",
+            },
+            {
+                "code": "OBSERVATION",
+                "name": "Observation",
+                "capacity": 8,
+                "default_category": "YELLOW",
+            },
+            {
+                "code": "PEDIATRIC_ER",
+                "name": "Pediatric ER",
+                "capacity": 6,
+                "default_category": "ORANGE",
+            },
             {"code": "MATERNITY", "name": "Maternity", "capacity": 4, "default_category": "ORANGE"},
         ]
 
@@ -202,14 +235,16 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
                     primary_category = cat
                     break
 
-            zone_stats.append({
-                "code": zone["code"],
-                "name": zone["name"],
-                "capacity": zone["capacity"],
-                "total": total,
-                "primary_category": primary_category,
-                "by_category": category_counts,
-            })
+            zone_stats.append(
+                {
+                    "code": zone["code"],
+                    "name": zone["name"],
+                    "capacity": zone["capacity"],
+                    "total": total,
+                    "primary_category": primary_category,
+                    "by_category": category_counts,
+                }
+            )
 
         return {
             "zones": zone_stats,
@@ -222,45 +257,57 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
 
     async def emergency_critical_update(self, event):
         """Handle critical patient update broadcast."""
-        await self.send_json({
-            "type": "critical_update",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "critical_update",
+                "data": event["data"],
+            }
+        )
 
     async def emergency_zones_update(self, event):
         """Handle zones stats update broadcast."""
-        await self.send_json({
-            "type": "zones_update",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "zones_update",
+                "data": event["data"],
+            }
+        )
 
     async def emergency_patient_event(self, event):
         """Handle individual patient events (added, moved, removed)."""
-        await self.send_json({
-            "type": event["event_type"],
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": event["event_type"],
+                "data": event["data"],
+            }
+        )
 
     async def emergency_bed_update(self, event):
         """Handle ER bed status change broadcasts."""
-        await self.send_json({
-            "type": "bed_update",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "bed_update",
+                "data": event["data"],
+            }
+        )
 
     async def emergency_wait_breach(self, event):
         """Handle wait time breach alert broadcasts."""
-        await self.send_json({
-            "type": "wait_time_breach",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "wait_time_breach",
+                "data": event["data"],
+            }
+        )
 
     async def emergency_escalation_event(self, event):
         """Handle escalation event broadcasts."""
-        await self.send_json({
-            "type": "escalation_event",
-            "data": event["data"],
-        })
+        await self.send_json(
+            {
+                "type": "escalation_event",
+                "data": event["data"],
+            }
+        )
 
 
 # =============================================================================

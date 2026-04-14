@@ -266,9 +266,7 @@ class TestSNOMEDSearchEndpoint:
 
     @pytest.mark.django_db
     @patch("hmis.apps.core.services.snomed_service.requests.get")
-    def test_search_with_semantic_tag_filter(
-        self, mock_get, authenticated_client, snomed_concepts
-    ):
+    def test_search_with_semantic_tag_filter(self, mock_get, authenticated_client, snomed_concepts):
         mock_get.side_effect = Exception("Network error")
 
         response = authenticated_client.get(
@@ -326,9 +324,7 @@ class TestDiagnosisSNOMEDFields:
         assert response.data["icd10_code"] == sample_icd10_code.id
 
     @pytest.mark.django_db
-    def test_diagnosis_requires_at_least_one_code(
-        self, authenticated_client, sample_encounter
-    ):
+    def test_diagnosis_requires_at_least_one_code(self, authenticated_client, sample_encounter):
         response = authenticated_client.post(
             f"/api/encounters/{sample_encounter.id}/diagnoses/",
             {
@@ -398,9 +394,7 @@ class TestFHIRConditionSNOMEDCoding:
         assert len(snomed_codings) == 0
 
     @pytest.mark.django_db
-    def test_fhir_condition_with_icd11_and_snomed(
-        self, authenticated_client, sample_encounter
-    ):
+    def test_fhir_condition_with_icd11_and_snomed(self, authenticated_client, sample_encounter):
         from hmis.apps.encounters.models import Diagnosis
 
         diagnosis = Diagnosis.objects.create(

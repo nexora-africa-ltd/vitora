@@ -218,7 +218,14 @@ class DeathRecordAdmin(admin.ModelAdmin):
         "voided_at",
         "release_date",
     ]
-    raw_id_fields = ["patient", "admission", "encounter", "recorded_by", "certified_by", "voided_by"]
+    raw_id_fields = [
+        "patient",
+        "admission",
+        "encounter",
+        "recorded_by",
+        "certified_by",
+        "voided_by",
+    ]
     ordering = ["-date_of_death"]
 
     fieldsets = (

@@ -51,12 +51,12 @@ def _fire_cr_sync(patient_id: int) -> None:
         # Don't break patient creation if Celery/Redis unavailable
         import logging
 
-        logging.getLogger(__name__).warning(
-            "Failed to queue CR sync for patient %s", patient_id
-        )
+        logging.getLogger(__name__).warning("Failed to queue CR sync for patient %s", patient_id)
 
 
-class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelViewSet):
+class PatientViewSet(
+    TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelViewSet
+):
     tenant_scope = "organization"  # Patients are org-scoped (visible across facilities)
     """
     ViewSet for Patient model.
@@ -183,9 +183,7 @@ class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateM
             if not patient.cr_number:
                 from django.db import transaction as txn
 
-                txn.on_commit(
-                    lambda pid=patient.id: _fire_cr_sync(pid)
-                )
+                txn.on_commit(lambda pid=patient.id: _fire_cr_sync(pid))
 
             # Re-serialize to include the newly created emergency contact
             response_serializer = self.get_serializer(patient)
@@ -670,15 +668,17 @@ class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateM
             ).first()
 
             if exact_match:
-                matches.append({
-                    "id": exact_match.id,
-                    "mrn": exact_match.mrn,
-                    "full_name": exact_match.full_name,
-                    "date_of_birth": exact_match.date_of_birth,
-                    "gender": exact_match.gender,
-                    "match_confidence": 100,
-                    "match_reason": "Exact ID match",
-                })
+                matches.append(
+                    {
+                        "id": exact_match.id,
+                        "mrn": exact_match.mrn,
+                        "full_name": exact_match.full_name,
+                        "date_of_birth": exact_match.date_of_birth,
+                        "gender": exact_match.gender,
+                        "match_confidence": 100,
+                        "match_reason": "Exact ID match",
+                    }
+                )
                 match_type = "exact_id"
 
         # Priority 2: Demographic matching (if no exact ID match)
@@ -695,15 +695,17 @@ class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateM
                     demographic_qs = demographic_qs.filter(gender=gender)
 
                 for patient in demographic_qs[:5]:  # Limit to 5 matches
-                    matches.append({
-                        "id": patient.id,
-                        "mrn": patient.mrn,
-                        "full_name": patient.full_name,
-                        "date_of_birth": patient.date_of_birth,
-                        "gender": patient.gender,
-                        "match_confidence": 95 if gender else 85,
-                        "match_reason": "Name + DOB match" + (" + Gender" if gender else ""),
-                    })
+                    matches.append(
+                        {
+                            "id": patient.id,
+                            "mrn": patient.mrn,
+                            "full_name": patient.full_name,
+                            "date_of_birth": patient.date_of_birth,
+                            "gender": patient.gender,
+                            "match_confidence": 95 if gender else 85,
+                            "match_reason": "Name + DOB match" + (" + Gender" if gender else ""),
+                        }
+                    )
                     match_type = "demographic"
             except ValueError:
                 pass  # Invalid date format
@@ -732,22 +734,26 @@ class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateM
                 if date_of_birth and str(patient.date_of_birth) == date_of_birth:
                     confidence += 10
 
-                matches.append({
-                    "id": patient.id,
-                    "mrn": patient.mrn,
-                    "full_name": patient.full_name,
-                    "date_of_birth": patient.date_of_birth,
-                    "gender": patient.gender,
-                    "match_confidence": confidence,
-                    "match_reason": "Partial name match",
-                })
+                matches.append(
+                    {
+                        "id": patient.id,
+                        "mrn": patient.mrn,
+                        "full_name": patient.full_name,
+                        "date_of_birth": patient.date_of_birth,
+                        "gender": patient.gender,
+                        "match_confidence": confidence,
+                        "match_reason": "Partial name match",
+                    }
+                )
                 match_type = "partial"
 
-        return Response({
-            "has_duplicate": len(matches) > 0,
-            "match_type": match_type,
-            "matches": matches,
-        })
+        return Response(
+            {
+                "has_duplicate": len(matches) > 0,
+                "match_type": match_type,
+                "matches": matches,
+            }
+        )
 
     # =========================================================================
     # Vitals History (Aggregate Endpoint)
@@ -807,18 +813,20 @@ class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateM
 
             for t in triage_qs:
                 ts = t.arrival_time if t.arrival_time else t.created_at
-                data_points.append({
-                    "timestamp": ts.isoformat(),
-                    "source": "Triage",
-                    "temperature": float(t.temperature) if t.temperature is not None else None,
-                    "heart_rate": t.heart_rate,
-                    "spo2": float(t.spo2) if t.spo2 is not None else None,
-                    "respiratory_rate": t.respiratory_rate,
-                    "systolic_bp": t.systolic_bp,
-                    "diastolic_bp": t.diastolic_bp,
-                    "weight": float(t.weight) if t.weight is not None else None,
-                    "height": float(t.height) if t.height is not None else None,
-                })
+                data_points.append(
+                    {
+                        "timestamp": ts.isoformat(),
+                        "source": "Triage",
+                        "temperature": float(t.temperature) if t.temperature is not None else None,
+                        "heart_rate": t.heart_rate,
+                        "spo2": float(t.spo2) if t.spo2 is not None else None,
+                        "respiratory_rate": t.respiratory_rate,
+                        "systolic_bp": t.systolic_bp,
+                        "diastolic_bp": t.diastolic_bp,
+                        "weight": float(t.weight) if t.weight is not None else None,
+                        "height": float(t.height) if t.height is not None else None,
+                    }
+                )
         except ImportError:
             pass
 
@@ -846,18 +854,20 @@ class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateM
                     except (ValueError, TypeError):
                         pass
 
-            data_points.append({
-                "timestamp": ts.isoformat(),
-                "source": enc.vitals_source or "Encounter",
-                "temperature": float(enc.temperature) if enc.temperature is not None else None,
-                "heart_rate": enc.pulse,
-                "spo2": float(enc.spo2) if enc.spo2 is not None else None,
-                "respiratory_rate": enc.respiratory_rate,
-                "systolic_bp": systolic,
-                "diastolic_bp": diastolic,
-                "weight": float(enc.weight) if enc.weight is not None else None,
-                "height": float(enc.height) if enc.height is not None else None,
-            })
+            data_points.append(
+                {
+                    "timestamp": ts.isoformat(),
+                    "source": enc.vitals_source or "Encounter",
+                    "temperature": float(enc.temperature) if enc.temperature is not None else None,
+                    "heart_rate": enc.pulse,
+                    "spo2": float(enc.spo2) if enc.spo2 is not None else None,
+                    "respiratory_rate": enc.respiratory_rate,
+                    "systolic_bp": systolic,
+                    "diastolic_bp": diastolic,
+                    "weight": float(enc.weight) if enc.weight is not None else None,
+                    "height": float(enc.height) if enc.height is not None else None,
+                }
+            )
 
         # --- Source 3: Inpatient Temperature Readings ---
         try:
@@ -870,18 +880,22 @@ class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateM
                 temp_qs = temp_qs.filter(recorded_at__gte=cutoff)
 
             for tr in temp_qs:
-                data_points.append({
-                    "timestamp": tr.recorded_at.isoformat(),
-                    "source": "Nursing",
-                    "temperature": float(tr.temperature) if tr.temperature is not None else None,
-                    "heart_rate": tr.pulse,
-                    "spo2": None,
-                    "respiratory_rate": tr.respiratory_rate,
-                    "systolic_bp": None,
-                    "diastolic_bp": None,
-                    "weight": None,
-                    "height": None,
-                })
+                data_points.append(
+                    {
+                        "timestamp": tr.recorded_at.isoformat(),
+                        "source": "Nursing",
+                        "temperature": (
+                            float(tr.temperature) if tr.temperature is not None else None
+                        ),
+                        "heart_rate": tr.pulse,
+                        "spo2": None,
+                        "respiratory_rate": tr.respiratory_rate,
+                        "systolic_bp": None,
+                        "diastolic_bp": None,
+                        "weight": None,
+                        "height": None,
+                    }
+                )
         except ImportError:
             pass
 
@@ -896,27 +910,27 @@ class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateM
                 bp_qs = bp_qs.filter(recorded_at__gte=cutoff)
 
             for bp in bp_qs:
-                data_points.append({
-                    "timestamp": bp.recorded_at.isoformat(),
-                    "source": "Nursing",
-                    "temperature": None,
-                    "heart_rate": bp.pulse,
-                    "spo2": None,
-                    "respiratory_rate": None,
-                    "systolic_bp": bp.systolic,
-                    "diastolic_bp": bp.diastolic,
-                    "weight": None,
-                    "height": None,
-                })
+                data_points.append(
+                    {
+                        "timestamp": bp.recorded_at.isoformat(),
+                        "source": "Nursing",
+                        "temperature": None,
+                        "heart_rate": bp.pulse,
+                        "spo2": None,
+                        "respiratory_rate": None,
+                        "systolic_bp": bp.systolic,
+                        "diastolic_bp": bp.diastolic,
+                        "weight": None,
+                        "height": None,
+                    }
+                )
         except ImportError:
             pass
 
         # Sort by timestamp ascending
         data_points.sort(key=lambda x: x["timestamp"])
 
-        serializer = VitalsDataPointSerializer(
-            data_points, many=True
-        )
+        serializer = VitalsDataPointSerializer(data_points, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -1217,14 +1231,16 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )[:20]
 
             for drug in drugs:
-                results.append({
-                    "substance": drug.generic_name,
-                    "code": drug.code,
-                    "code_system": "local_drug_code",
-                    "drug_id": drug.id,
-                    "type": "medication",
-                    "display": f"{drug.generic_name} ({drug.strength})",
-                })
+                results.append(
+                    {
+                        "substance": drug.generic_name,
+                        "code": drug.code,
+                        "code_system": "local_drug_code",
+                        "drug_id": drug.id,
+                        "type": "medication",
+                        "display": f"{drug.generic_name} ({drug.strength})",
+                    }
+                )
 
             # Also search brand names (using Python search to avoid SQLite JSON limitations)
             existing_drug_ids = {r.get("drug_id") for r in results}
@@ -1235,18 +1251,19 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     continue
                 # Check if query matches any brand name
                 brand_matches = [
-                    bn for bn in (drug.brand_names or [])
-                    if query.lower() in bn.lower()
+                    bn for bn in (drug.brand_names or []) if query.lower() in bn.lower()
                 ]
                 if brand_matches:
-                    results.append({
-                        "substance": drug.generic_name,
-                        "code": drug.code,
-                        "code_system": "local_drug_code",
-                        "drug_id": drug.id,
-                        "type": "medication",
-                        "display": f"{drug.generic_name} ({', '.join(drug.brand_names[:2])})",
-                    })
+                    results.append(
+                        {
+                            "substance": drug.generic_name,
+                            "code": drug.code,
+                            "code_system": "local_drug_code",
+                            "drug_id": drug.id,
+                            "type": "medication",
+                            "display": f"{drug.generic_name} ({', '.join(drug.brand_names[:2])})",
+                        }
+                    )
                     if len(results) >= 30:
                         break
 
@@ -1254,16 +1271,36 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             # For non-medication allergies, provide common allergens
             common_allergens = {
                 "food": [
-                    "Peanuts", "Tree nuts", "Milk", "Eggs", "Wheat", "Soy",
-                    "Fish", "Shellfish", "Sesame", "Corn", "Gluten",
+                    "Peanuts",
+                    "Tree nuts",
+                    "Milk",
+                    "Eggs",
+                    "Wheat",
+                    "Soy",
+                    "Fish",
+                    "Shellfish",
+                    "Sesame",
+                    "Corn",
+                    "Gluten",
                 ],
                 "environmental": [
-                    "Dust mites", "Pollen", "Mold", "Pet dander", "Latex",
-                    "Insect stings", "Cockroach", "Grass", "Ragweed",
+                    "Dust mites",
+                    "Pollen",
+                    "Mold",
+                    "Pet dander",
+                    "Latex",
+                    "Insect stings",
+                    "Cockroach",
+                    "Grass",
+                    "Ragweed",
                 ],
                 "biological": [
-                    "Blood products", "Vaccines", "Insulin", "Latex",
-                    "Contrast media", "Antisera",
+                    "Blood products",
+                    "Vaccines",
+                    "Insulin",
+                    "Latex",
+                    "Contrast media",
+                    "Antisera",
                 ],
             }
 
@@ -1271,14 +1308,16 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             filtered = [a for a in allergens if query.lower() in a.lower()]
 
             for allergen in filtered[:20]:
-                results.append({
-                    "substance": allergen,
-                    "code": "",
-                    "code_system": "",
-                    "drug_id": None,
-                    "type": substance_type,
-                    "display": allergen,
-                })
+                results.append(
+                    {
+                        "substance": allergen,
+                        "code": "",
+                        "code_system": "",
+                        "drug_id": None,
+                        "type": substance_type,
+                        "display": allergen,
+                    }
+                )
 
         return Response(results)
 
@@ -1305,25 +1344,25 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         try:
             service = TerminologyService()
-            results = service.search_active_components(
-                query, exact_match=exact_match
+            results = service.search_active_components(query, exact_match=exact_match)
+            return Response(
+                {
+                    "count": len(results),
+                    "results": [
+                        {
+                            "component_id": r.component_id,
+                            "name": r.name,
+                            "atc_code": r.atc_code,
+                            "atc_codes": r.atc_codes,
+                            "substance_code": r.atc_code or "",
+                            "substance_code_system": (
+                                "http://www.whocc.no/atc" if r.atc_code else ""
+                            ),
+                        }
+                        for r in results
+                    ],
+                }
             )
-            return Response({
-                "count": len(results),
-                "results": [
-                    {
-                        "component_id": r.component_id,
-                        "name": r.name,
-                        "atc_code": r.atc_code,
-                        "atc_codes": r.atc_codes,
-                        "substance_code": r.atc_code or "",
-                        "substance_code_system": (
-                            "http://www.whocc.no/atc" if r.atc_code else ""
-                        ),
-                    }
-                    for r in results
-                ],
-            })
         except TerminologyError as e:
             return Response(
                 {"error": str(e)},
@@ -1365,16 +1404,18 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         for drug_id in drug_ids:
             allergies = Allergy.check_drug_allergy(patient_id, drug_id)
             for allergy in allergies:
-                interactions.append({
-                    "allergy_id": allergy.id,
-                    "substance": allergy.substance,
-                    "severity": allergy.severity,
-                    "severity_display": allergy.get_severity_display(),
-                    "reaction_type": allergy.reaction_type,
-                    "is_high_risk": allergy.is_high_risk,
-                    "drug_id": drug_id,
-                    "warning": f"Patient is allergic to {allergy.substance} ({allergy.get_severity_display()} severity)",
-                })
+                interactions.append(
+                    {
+                        "allergy_id": allergy.id,
+                        "substance": allergy.substance,
+                        "severity": allergy.severity,
+                        "severity_display": allergy.get_severity_display(),
+                        "reaction_type": allergy.reaction_type,
+                        "is_high_risk": allergy.is_high_risk,
+                        "drug_id": drug_id,
+                        "warning": f"Patient is allergic to {allergy.substance} ({allergy.get_severity_display()} severity)",
+                    }
+                )
 
         # Check by drug name
         for drug_name in drug_names:
@@ -1382,27 +1423,31 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             for allergy in allergies:
                 # Avoid duplicates
                 if allergy.id not in [i["allergy_id"] for i in interactions]:
-                    interactions.append({
-                        "allergy_id": allergy.id,
-                        "substance": allergy.substance,
-                        "severity": allergy.severity,
-                        "severity_display": allergy.get_severity_display(),
-                        "reaction_type": allergy.reaction_type,
-                        "is_high_risk": allergy.is_high_risk,
-                        "drug_name": drug_name,
-                        "warning": f"Patient is allergic to {allergy.substance} ({allergy.get_severity_display()} severity)",
-                    })
+                    interactions.append(
+                        {
+                            "allergy_id": allergy.id,
+                            "substance": allergy.substance,
+                            "severity": allergy.severity,
+                            "severity_display": allergy.get_severity_display(),
+                            "reaction_type": allergy.reaction_type,
+                            "is_high_risk": allergy.is_high_risk,
+                            "drug_name": drug_name,
+                            "warning": f"Patient is allergic to {allergy.substance} ({allergy.get_severity_display()} severity)",
+                        }
+                    )
 
         # Sort by severity (life_threatening > severe > moderate > mild)
         severity_order = {"life_threatening": 0, "severe": 1, "moderate": 2, "mild": 3}
         interactions.sort(key=lambda x: severity_order.get(x["severity"], 4))
 
-        return Response({
-            "patient_id": patient_id,
-            "has_interactions": len(interactions) > 0,
-            "has_high_risk": any(i["is_high_risk"] for i in interactions),
-            "interactions": interactions,
-        })
+        return Response(
+            {
+                "patient_id": patient_id,
+                "has_interactions": len(interactions) > 0,
+                "has_high_risk": any(i["is_high_risk"] for i in interactions),
+                "interactions": interactions,
+            }
+        )
 
 
 class DeathRecordViewSet(ReadOnCreateMixin, NestedTenantScopeMixin, viewsets.ModelViewSet):

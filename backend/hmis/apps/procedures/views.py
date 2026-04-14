@@ -86,7 +86,10 @@ class ProcedureCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         clinics = catalog.default_clinics.filter(status="ACTIVE")
         if not clinics.exists():
             return Response(
-                {"slots": [], "message": "No clinics configured for this procedure. Use manual scheduling."},
+                {
+                    "slots": [],
+                    "message": "No clinics configured for this procedure. Use manual scheduling.",
+                },
             )
 
         from hmis.apps.clinics.models import ClinicSchedule
@@ -131,7 +134,9 @@ class ProcedureCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                             "clinic_name": clinic.name,
                             "date": date_str,
                             "start_time": slot_time.strftime("%H:%M"),
-                            "end_time": (current + timedelta(minutes=duration)).time().strftime("%H:%M"),
+                            "end_time": (current + timedelta(minutes=duration))
+                            .time()
+                            .strftime("%H:%M"),
                             "duration_minutes": duration,
                             "available": slot_time not in booked_times,
                         }
@@ -144,9 +149,7 @@ class ProcedureCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for procedure orders with workflow @actions."""
 
-    queryset = ProcedureOrder.objects.select_related(
-        "procedure", "patient"
-    ).all()
+    queryset = ProcedureOrder.objects.select_related("procedure", "patient").all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ProcedureOrderFilter
@@ -233,7 +236,9 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         self.perform_create(serializer)
         # Return detail serializer for the created object
         detail = ProcedureOrderDetailSerializer(serializer.instance)
-        self._audit("procedure_order_create", serializer.instance, priority=serializer.instance.priority)
+        self._audit(
+            "procedure_order_create", serializer.instance, priority=serializer.instance.priority
+        )
         return Response(detail.data, status=status.HTTP_201_CREATED)
 
     # ----- Workflow Actions -----
@@ -254,9 +259,12 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             clinic=data.get("scheduled_clinic"),
         )
         self._audit(
-            "procedure_order_schedule", order,
+            "procedure_order_schedule",
+            order,
             scheduled_date=str(data["scheduled_date"]),
-            scheduled_clinic=data["scheduled_clinic"].name if data.get("scheduled_clinic") else None,
+            scheduled_clinic=(
+                data["scheduled_clinic"].name if data.get("scheduled_clinic") else None
+            ),
         )
         return Response(ProcedureOrderDetailSerializer(order).data)
 
@@ -298,7 +306,8 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             ]
         )
         self._audit(
-            "procedure_order_reschedule", order,
+            "procedure_order_reschedule",
+            order,
             old_date=old_date,
             new_date=str(data["scheduled_date"]),
         )
@@ -354,7 +363,8 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         order.refresh_from_db()
         self._audit(
-            "procedure_complete", order,
+            "procedure_complete",
+            order,
             outcome_status=data.get("status", "COMPLETED"),
             complications=data.get("complications_occurred", False),
         )
@@ -414,7 +424,8 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
         order.request_consent()
         self._audit(
-            "procedure_consent_create", order,
+            "procedure_consent_create",
+            order,
             consent_type=consent.consent_type,
         )
         return Response(

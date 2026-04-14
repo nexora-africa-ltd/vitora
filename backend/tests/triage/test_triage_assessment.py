@@ -247,15 +247,21 @@ class TestTriageAssessmentModel:
 
         # Create three encounters and assessments
         encounter1 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 1",
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Test 1",
             facility=sample_facility,
         )
         encounter2 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 2",
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Test 2",
             facility=sample_facility,
         )
         encounter3 = Encounter.objects.create(
-            patient=sample_patient, encounter_type="OPD", chief_complaint="Test 3",
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Test 3",
             facility=sample_facility,
         )
 

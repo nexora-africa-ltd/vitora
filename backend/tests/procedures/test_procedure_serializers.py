@@ -51,10 +51,20 @@ class TestProcedureOrderListSerializer:
         serializer = ProcedureOrderListSerializer(procedure_order)
         data = serializer.data
         expected_fields = {
-            "id", "order_number", "procedure", "procedure_name",
-            "patient", "patient_name", "status", "priority",
-            "scheduled_date", "scheduled_time", "is_overdue", "ordered_at",
-            "scheduled_clinic", "scheduled_clinic_name",
+            "id",
+            "order_number",
+            "procedure",
+            "procedure_name",
+            "patient",
+            "patient_name",
+            "status",
+            "priority",
+            "scheduled_date",
+            "scheduled_time",
+            "is_overdue",
+            "ordered_at",
+            "scheduled_clinic",
+            "scheduled_clinic_name",
         }
         assert set(data.keys()) == expected_fields
 

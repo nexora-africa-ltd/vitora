@@ -45,8 +45,7 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
                 reported_by=instance.diagnosed_by,
             )
             logger.info(
-                f"Auto-created notifiable case for {disease.name} "
-                f"from diagnosis {instance.id}"
+                f"Auto-created notifiable case for {disease.name} " f"from diagnosis {instance.id}"
             )
 
             # Publish domain event
@@ -63,6 +62,4 @@ def check_diagnosis_for_surveillance(sender, instance, created, **kwargs):
                 facility_id=getattr(instance.encounter, "facility_id", None),
             )
         except Exception as e:
-            logger.error(
-                f"Failed to create notifiable case for diagnosis {instance.id}: {e}"
-            )
+            logger.error(f"Failed to create notifiable case for diagnosis {instance.id}: {e}")

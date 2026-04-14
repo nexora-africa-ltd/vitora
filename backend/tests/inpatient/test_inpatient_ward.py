@@ -435,7 +435,9 @@ class TestWardQueryOperations:
 class TestWardAPISerializer:
     """Tests for Ward API serializer output."""
 
-    def test_ward_serializer_includes_bed_counts(self, authenticated_client, sample_facility, sample_organization):
+    def test_ward_serializer_includes_bed_counts(
+        self, authenticated_client, sample_facility, sample_organization
+    ):
         """Should include total_beds and occupied_beds in API response."""
         from rest_framework import status
 
@@ -478,7 +480,9 @@ class TestWardAPISerializer:
         assert data["available_beds"] == 6
         assert data["occupancy_rate"] == 30.0  # 3/10 = 30%
 
-    def test_ward_list_api_includes_bed_counts(self, authenticated_client, sample_facility, sample_organization):
+    def test_ward_list_api_includes_bed_counts(
+        self, authenticated_client, sample_facility, sample_organization
+    ):
         """Should include bed counts in ward list API response."""
         from rest_framework import status
 

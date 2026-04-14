@@ -101,7 +101,14 @@ class ResourceFilter(filters.FilterSet):
         """Meta options for ResourceFilter."""
 
         model = Resource
-        fields = ["resource_type", "is_active", "code", "name", "department", "exclude_clinic_resources"]
+        fields = [
+            "resource_type",
+            "is_active",
+            "code",
+            "name",
+            "department",
+            "exclude_clinic_resources",
+        ]
 
 
 class ScheduleFilter(filters.FilterSet):
@@ -349,12 +356,16 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
 
         # Find staff profiles that don't have a scheduling resource at this facility
-        staff_without_resource = StaffProfile.objects.filter(
-            employment_status="ACTIVE",
-            primary_facility=facility,
-        ).exclude(
-            scheduling_resources__facility=facility,
-        ).select_related("user")
+        staff_without_resource = (
+            StaffProfile.objects.filter(
+                employment_status="ACTIVE",
+                primary_facility=facility,
+            )
+            .exclude(
+                scheduling_resources__facility=facility,
+            )
+            .select_related("user")
+        )
 
         created_count = 0
         for profile in staff_without_resource:
@@ -376,16 +387,20 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 metadata={
                     "employee_id": profile.employee_id or "",
                     "role": str(profile.primary_role) if profile.primary_role else "",
-                    "department": str(profile.primary_department) if profile.primary_department else "",
+                    "department": (
+                        str(profile.primary_department) if profile.primary_department else ""
+                    ),
                     "synced_from_staff": True,
                 },
             )
             created_count += 1
 
-        return Response({
-            "created": created_count,
-            "message": f"Created {created_count} resource(s) from staff profiles",
-        })
+        return Response(
+            {
+                "created": created_count,
+                "message": f"Created {created_count} resource(s) from staff profiles",
+            }
+        )
 
     def _get_facility(self, request):
         """Resolve the current facility from request context or user profile."""
@@ -446,10 +461,12 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             clinic.save(update_fields=["scheduling_resource"])
             created_count += 1
 
-        return Response({
-            "created": created_count,
-            "message": f"Created {created_count} resource(s) from clinics",
-        })
+        return Response(
+            {
+                "created": created_count,
+                "message": f"Created {created_count} resource(s) from clinics",
+            }
+        )
 
     @action(detail=False, methods=["post"], url_path="sync-from-wards")
     def sync_from_wards(self, request):
@@ -500,10 +517,12 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             ward.save(update_fields=["scheduling_resource"])
             created_count += 1
 
-        return Response({
-            "created": created_count,
-            "message": f"Created {created_count} resource(s) from wards",
-        })
+        return Response(
+            {
+                "created": created_count,
+                "message": f"Created {created_count} resource(s) from wards",
+            }
+        )
 
 
 class ScheduleViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
@@ -1001,12 +1020,14 @@ class AssignmentViewSet(viewsets.ViewSet):
 
         response_data = {
             "success": result.success,
-            "assigned_resource": ResourceListSerializer(result.assigned_resource).data
-            if result.assigned_resource
-            else None,
-            "decision": AssignmentDecisionSerializer(result.decision).data
-            if result.decision
-            else None,
+            "assigned_resource": (
+                ResourceListSerializer(result.assigned_resource).data
+                if result.assigned_resource
+                else None
+            ),
+            "decision": (
+                AssignmentDecisionSerializer(result.decision).data if result.decision else None
+            ),
             "target_id": result.target_id,
             "error": result.error,
         }
@@ -1074,9 +1095,9 @@ class AssignmentViewSet(viewsets.ViewSet):
 
         response_data = {
             "success": result.success,
-            "override": AssignmentOverrideSerializer(result.override).data
-            if result.override
-            else None,
+            "override": (
+                AssignmentOverrideSerializer(result.override).data if result.override else None
+            ),
             "error": result.error,
         }
 
@@ -1164,7 +1185,10 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             user=self.request.user,
             resource_type="Shift",
             resource_id=shift.id,
-            details={"staff_resource": shift.staff_resource.name, "shift_date": str(shift.shift_date)},
+            details={
+                "staff_resource": shift.staff_resource.name,
+                "shift_date": str(shift.shift_date),
+            },
             ip_address=self._get_client_ip(),
         )
 
@@ -1219,11 +1243,11 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         settings = SchedulingSettings.objects.filter(facility=shift.facility).first()
         if settings and settings.enforce_punctuality and settings.late_cutoff_minutes:
-            shift_start_dt = timezone.make_aware(
-                datetime.combine(shift.shift_date, shift.start_time)
-            ) if timezone.is_naive(
-                datetime.combine(shift.shift_date, shift.start_time)
-            ) else datetime.combine(shift.shift_date, shift.start_time)
+            shift_start_dt = (
+                timezone.make_aware(datetime.combine(shift.shift_date, shift.start_time))
+                if timezone.is_naive(datetime.combine(shift.shift_date, shift.start_time))
+                else datetime.combine(shift.shift_date, shift.start_time)
+            )
             minutes_late = (now - shift_start_dt).total_seconds() / 60
             is_admin = request.user.has_perm("scheduling.manage_schedules")
             if minutes_late > settings.late_cutoff_minutes and not is_admin:
@@ -1259,10 +1283,12 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         if clinic_id:
             from hmis.apps.clinics.models import Clinic as ClinicModel
+
             clinic = ClinicModel.objects.get(pk=clinic_id)
         else:
             # Auto-resolve clinic from ClinicStaff (primary clinic)
             from hmis.apps.clinics.models import ClinicStaff
+
             staff_user = (
                 shift.staff_resource.staff_profile.user
                 if shift.staff_resource.staff_profile
@@ -1313,13 +1339,18 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         # Auto-close clinic session if this was the last active shift
         session_auto_closed = False
         if clinic:
-            remaining = Shift.objects.filter(
-                clinic=clinic,
-                shift_date=shift.shift_date,
-                status__in=["ACTIVE", "ON_BREAK"],
-            ).exclude(pk=shift.pk).exists()
+            remaining = (
+                Shift.objects.filter(
+                    clinic=clinic,
+                    shift_date=shift.shift_date,
+                    status__in=["ACTIVE", "ON_BREAK"],
+                )
+                .exclude(pk=shift.pk)
+                .exists()
+            )
             if not remaining:
                 from hmis.apps.clinics.models import ClinicSession
+
                 session = ClinicSession.objects.filter(
                     clinic=clinic,
                     session_date=shift.shift_date,
@@ -1408,18 +1439,24 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
             vd = serializer.validated_data
             # Skip duplicates: same staff + date + type already exists
-            exists = Shift.objects.filter(
-                staff_resource=vd["staff_resource"],
-                shift_date=vd["shift_date"],
-                shift_type=vd["shift_type"],
-                **{k: v for k, v in tenant_kwargs.items() if k == "facility"},
-            ).exclude(status="CANCELLED").exists()
+            exists = (
+                Shift.objects.filter(
+                    staff_resource=vd["staff_resource"],
+                    shift_date=vd["shift_date"],
+                    shift_type=vd["shift_type"],
+                    **{k: v for k, v in tenant_kwargs.items() if k == "facility"},
+                )
+                .exclude(status="CANCELLED")
+                .exists()
+            )
 
             if exists:
-                skipped.append({
-                    "index": idx,
-                    "reason": f"Shift already exists for this staff on {vd['shift_date']} ({vd['shift_type']})",
-                })
+                skipped.append(
+                    {
+                        "index": idx,
+                        "reason": f"Shift already exists for this staff on {vd['shift_date']} ({vd['shift_type']})",
+                    }
+                )
                 continue
 
             try:
@@ -1429,14 +1466,17 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 logger.exception("Failed to create shift at index %d in bulk_create", idx)
                 errors.append({"index": idx, "errors": "Failed to create shift"})
 
-        return Response({
-            "created": len(created),
-            "skipped": len(skipped),
-            "errors": len(errors),
-            "created_ids": created,
-            "skipped_details": skipped,
-            "error_details": errors,
-        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        return Response(
+            {
+                "created": len(created),
+                "skipped": len(skipped),
+                "errors": len(errors),
+                "created_ids": created,
+                "skipped_details": skipped,
+                "error_details": errors,
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
@@ -1490,7 +1530,6 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         """
         from datetime import date as date_type
 
-
         from_date_str = request.query_params.get("from_date")
         to_date_str = request.query_params.get("to_date")
 
@@ -1539,16 +1578,18 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             active_count = sum(1 for s in shift_list if s.status == "ACTIVE")
             completed_count = sum(1 for s in shift_list if s.status == "COMPLETED")
 
-            workload.append({
-                "resource_id": resource.id,
-                "resource_name": resource.name,
-                "resource_code": resource.code,
-                "shift_count": len(shift_list),
-                "total_hours": round(total_hours, 1),
-                "appointment_count": appointments.count(),
-                "active_shifts": active_count,
-                "completed_shifts": completed_count,
-            })
+            workload.append(
+                {
+                    "resource_id": resource.id,
+                    "resource_name": resource.name,
+                    "resource_code": resource.code,
+                    "shift_count": len(shift_list),
+                    "total_hours": round(total_hours, 1),
+                    "appointment_count": appointments.count(),
+                    "active_shifts": active_count,
+                    "completed_shifts": completed_count,
+                }
+            )
 
         serializer = StaffWorkloadSerializer(workload, many=True)
         return Response(serializer.data)
@@ -1564,14 +1605,11 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         facility = getattr(request, "facility", None)
         if not facility:
             return None
-        return (
-            Resource.objects.filter(
-                staff_profile=staff_profile,
-                facility=facility,
-                resource_type="PERSON",
-            )
-            .first()
-        )
+        return Resource.objects.filter(
+            staff_profile=staff_profile,
+            facility=facility,
+            resource_type="PERSON",
+        ).first()
 
     @action(detail=False, methods=["get"], url_path="my-today")
     def my_today(self, request):
@@ -1598,7 +1636,17 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 shift_date=today,
             )
             .exclude(status="CANCELLED")
-            .exclude(shift_type__in=["OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF", "LEAVE", "SICK_LEAVE", "REST"])
+            .exclude(
+                shift_type__in=[
+                    "OFF",
+                    "DAY_OFF",
+                    "NIGHT_OFF",
+                    "AFTERNOON_OFF",
+                    "LEAVE",
+                    "SICK_LEAVE",
+                    "REST",
+                ]
+            )
             .order_by("start_time")
         )
 
@@ -1608,11 +1656,11 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         # Determine overall attendance status from the primary (first) shift
         primary = shifts[0]
         now = timezone.now()
-        shift_start_dt = timezone.make_aware(
-            datetime.combine(primary.shift_date, primary.start_time)
-        ) if timezone.is_naive(
-            datetime.combine(primary.shift_date, primary.start_time)
-        ) else datetime.combine(primary.shift_date, primary.start_time)
+        shift_start_dt = (
+            timezone.make_aware(datetime.combine(primary.shift_date, primary.start_time))
+            if timezone.is_naive(datetime.combine(primary.shift_date, primary.start_time))
+            else datetime.combine(primary.shift_date, primary.start_time)
+        )
 
         if primary.status == "COMPLETED":
             att_status = "COMPLETED"
@@ -1626,10 +1674,12 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             att_status = "UPCOMING"
 
         serializer = ShiftSerializer(shifts, many=True)
-        return Response({
-            "shifts": serializer.data,
-            "attendance_status": att_status,
-        })
+        return Response(
+            {
+                "shifts": serializer.data,
+                "attendance_status": att_status,
+            }
+        )
 
     @action(detail=False, methods=["get"], url_path="my-history")
     def my_history(self, request):
@@ -1646,24 +1696,28 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         resource = self._get_my_resource(request)
         if not resource:
-            return Response({
-                "results": [],
-                "count": 0,
-                "stats": {
-                    "total_shifts": 0,
-                    "total_hours": 0,
-                    "on_time_count": 0,
-                    "late_count": 0,
-                    "on_time_rate": 0,
-                    "overtime_hours": 0,
-                },
-            })
+            return Response(
+                {
+                    "results": [],
+                    "count": 0,
+                    "stats": {
+                        "total_shifts": 0,
+                        "total_hours": 0,
+                        "on_time_count": 0,
+                        "late_count": 0,
+                        "on_time_rate": 0,
+                        "overtime_hours": 0,
+                    },
+                }
+            )
 
         today = date_type.today()
         from_date_str = request.query_params.get("from_date")
         to_date_str = request.query_params.get("to_date")
         try:
-            from_date = date_type.fromisoformat(from_date_str) if from_date_str else today - td(days=30)
+            from_date = (
+                date_type.fromisoformat(from_date_str) if from_date_str else today - td(days=30)
+            )
             to_date = date_type.fromisoformat(to_date_str) if to_date_str else today
         except ValueError:
             return Response(
@@ -1678,7 +1732,17 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 shift_date__lte=to_date,
             )
             .exclude(status="CANCELLED")
-            .exclude(shift_type__in=["OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF", "LEAVE", "SICK_LEAVE", "REST"])
+            .exclude(
+                shift_type__in=[
+                    "OFF",
+                    "DAY_OFF",
+                    "NIGHT_OFF",
+                    "AFTERNOON_OFF",
+                    "LEAVE",
+                    "SICK_LEAVE",
+                    "REST",
+                ]
+            )
             .order_by("-shift_date", "-start_time")
         )
 
@@ -1705,18 +1769,22 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
             # Late check: started_at vs scheduled start
             if s.started_at:
-                scheduled_start = timezone.make_aware(
-                    datetime.combine(s.shift_date, s.start_time)
-                ) if timezone.is_naive(
-                    datetime.combine(s.shift_date, s.start_time)
-                ) else datetime.combine(s.shift_date, s.start_time)
+                scheduled_start = (
+                    timezone.make_aware(datetime.combine(s.shift_date, s.start_time))
+                    if timezone.is_naive(datetime.combine(s.shift_date, s.start_time))
+                    else datetime.combine(s.shift_date, s.start_time)
+                )
                 diff_minutes = (s.started_at - scheduled_start).total_seconds() / 60
                 if diff_minutes > late_threshold_minutes:
                     late_count += 1
                 else:
                     on_time_count += 1
 
-        on_time_rate = round((on_time_count / (on_time_count + late_count) * 100), 1) if (on_time_count + late_count) > 0 else 0
+        on_time_rate = (
+            round((on_time_count / (on_time_count + late_count) * 100), 1)
+            if (on_time_count + late_count) > 0
+            else 0
+        )
 
         # Paginate
         page_size = int(request.query_params.get("page_size", 20))
@@ -1726,18 +1794,20 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         page_shifts = shifts[start:end]
 
         serializer = ShiftListSerializer(page_shifts, many=True)
-        return Response({
-            "results": serializer.data,
-            "count": total_shifts,
-            "stats": {
-                "total_shifts": total_shifts,
-                "total_hours": round(total_hours, 1),
-                "on_time_count": on_time_count,
-                "late_count": late_count,
-                "on_time_rate": on_time_rate,
-                "overtime_hours": round(overtime_hours, 1),
-            },
-        })
+        return Response(
+            {
+                "results": serializer.data,
+                "count": total_shifts,
+                "stats": {
+                    "total_shifts": total_shifts,
+                    "total_hours": round(total_hours, 1),
+                    "on_time_count": on_time_count,
+                    "late_count": late_count,
+                    "on_time_rate": on_time_rate,
+                    "overtime_hours": round(overtime_hours, 1),
+                },
+            }
+        )
 
     @action(detail=False, methods=["get"], url_path="cross-facility-conflicts")
     def cross_facility_conflicts(self, request):
@@ -1891,8 +1961,13 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         from_date = start_of_week - td(weeks=weeks - 1)
 
         non_working_types = {
-            "OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF",
-            "LEAVE", "SICK_LEAVE", "REST",
+            "OFF",
+            "DAY_OFF",
+            "NIGHT_OFF",
+            "AFTERNOON_OFF",
+            "LEAVE",
+            "SICK_LEAVE",
+            "REST",
         }
         shifts = (
             Shift.objects.filter(
@@ -1906,9 +1981,15 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         )
 
         # Group by ISO week
-        week_data: dict = defaultdict(lambda: {
-            "hours": 0.0, "shifts": 0, "on_time": 0, "late": 0, "overtime": 0.0,
-        })
+        week_data: dict = defaultdict(
+            lambda: {
+                "hours": 0.0,
+                "shifts": 0,
+                "on_time": 0,
+                "late": 0,
+                "overtime": 0.0,
+            }
+        )
         late_threshold = 15  # minutes
 
         for s in shifts:
@@ -1936,18 +2017,27 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         for w in range(weeks):
             monday = from_date + td(weeks=w)
             key = str(monday)
-            d = week_data.get(key, {
-                "hours": 0.0, "shifts": 0, "on_time": 0, "late": 0, "overtime": 0.0,
-            })
+            d = week_data.get(
+                key,
+                {
+                    "hours": 0.0,
+                    "shifts": 0,
+                    "on_time": 0,
+                    "late": 0,
+                    "overtime": 0.0,
+                },
+            )
             total = d["on_time"] + d["late"]
-            result.append({
-                "week_start": key,
-                "hours_worked": round(d["hours"], 1),
-                "shifts_completed": d["shifts"],
-                "on_time_rate": round(d["on_time"] / total * 100, 1) if total > 0 else 0,
-                "late_count": d["late"],
-                "overtime_hours": round(d["overtime"], 1),
-            })
+            result.append(
+                {
+                    "week_start": key,
+                    "hours_worked": round(d["hours"], 1),
+                    "shifts_completed": d["shifts"],
+                    "on_time_rate": round(d["on_time"] / total * 100, 1) if total > 0 else 0,
+                    "late_count": d["late"],
+                    "overtime_hours": round(d["overtime"], 1),
+                }
+            )
 
         return Response(result)
 
@@ -2000,8 +2090,13 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             )
 
         non_working_types = {
-            "OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF",
-            "LEAVE", "SICK_LEAVE", "REST",
+            "OFF",
+            "DAY_OFF",
+            "NIGHT_OFF",
+            "AFTERNOON_OFF",
+            "LEAVE",
+            "SICK_LEAVE",
+            "REST",
         }
 
         shifts = (
@@ -2018,31 +2113,46 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow([
-            "Staff Name", "Staff Code", "Date", "Shift Type",
-            "Scheduled Start", "Scheduled End", "Clock In", "Clock Out",
-            "Scheduled Hours", "Actual Hours", "Break Minutes",
-            "Late Minutes", "Overtime Minutes", "Status", "Auto Clocked Out",
-        ])
+        writer.writerow(
+            [
+                "Staff Name",
+                "Staff Code",
+                "Date",
+                "Shift Type",
+                "Scheduled Start",
+                "Scheduled End",
+                "Clock In",
+                "Clock Out",
+                "Scheduled Hours",
+                "Actual Hours",
+                "Break Minutes",
+                "Late Minutes",
+                "Overtime Minutes",
+                "Status",
+                "Auto Clocked Out",
+            ]
+        )
 
         for s in shifts:
-            writer.writerow([
-                s.staff_resource.name,
-                s.staff_resource.code,
-                str(s.shift_date),
-                s.shift_type,
-                str(s.start_time),
-                str(s.end_time),
-                str(s.started_at) if s.started_at else "",
-                str(s.completed_at) if s.completed_at else "",
-                s.duration_hours,
-                s.actual_hours if s.actual_hours is not None else "",
-                s.total_break_minutes,
-                s.late_minutes,
-                s.overtime_minutes,
-                s.status,
-                "Yes" if s.auto_clocked_out else "No",
-            ])
+            writer.writerow(
+                [
+                    s.staff_resource.name,
+                    s.staff_resource.code,
+                    str(s.shift_date),
+                    s.shift_type,
+                    str(s.start_time),
+                    str(s.end_time),
+                    str(s.started_at) if s.started_at else "",
+                    str(s.completed_at) if s.completed_at else "",
+                    s.duration_hours,
+                    s.actual_hours if s.actual_hours is not None else "",
+                    s.total_break_minutes,
+                    s.late_minutes,
+                    s.overtime_minutes,
+                    s.status,
+                    "Yes" if s.auto_clocked_out else "No",
+                ]
+            )
 
         response = HttpResponse(output.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = (
@@ -2064,7 +2174,6 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         import hashlib
         from datetime import date as date_type
 
-
         qr_token = request.data.get("qr_token", "")
         if not qr_token or ":" not in qr_token:
             return Response(
@@ -2084,6 +2193,7 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         # Validate rotating hash (based on facility_id + date + hour)
         from django.conf import settings as django_settings
+
         now = timezone.now()
         secret = getattr(django_settings, "SECRET_KEY", "vitora")
         expected_hash = hashlib.sha256(
@@ -2118,8 +2228,13 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             )
 
         non_working_types = {
-            "OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF",
-            "LEAVE", "SICK_LEAVE", "REST",
+            "OFF",
+            "DAY_OFF",
+            "NIGHT_OFF",
+            "AFTERNOON_OFF",
+            "LEAVE",
+            "SICK_LEAVE",
+            "REST",
         }
         today = date_type.today()
         shift = (
@@ -2186,13 +2301,15 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         # Valid until the end of current hour
         valid_until = now.replace(minute=59, second=59, microsecond=0)
 
-        return Response({
-            "qr_token": qr_token,
-            "facility_id": facility.id,
-            "facility_name": str(facility),
-            "valid_until": valid_until.isoformat(),
-            "generated_at": now.isoformat(),
-        })
+        return Response(
+            {
+                "qr_token": qr_token,
+                "facility_id": facility.id,
+                "facility_name": str(facility),
+                "valid_until": valid_until.isoformat(),
+                "generated_at": now.isoformat(),
+            }
+        )
 
 
 # =============================================================================

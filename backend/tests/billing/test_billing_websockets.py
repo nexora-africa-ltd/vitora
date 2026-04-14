@@ -74,9 +74,7 @@ class TestBillingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
 
         assert connected is True
@@ -98,9 +96,7 @@ class TestBillingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -130,9 +126,7 @@ class TestBillingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -158,9 +152,7 @@ class TestBillingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -178,9 +170,7 @@ class TestBillingConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -208,9 +198,7 @@ class TestSHAClaimConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/sha-claims/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/sha-claims/")
         connected, _ = await communicator.connect()
 
         assert connected is True
@@ -232,9 +220,7 @@ class TestSHAClaimConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/sha-claims/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/sha-claims/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -275,9 +261,7 @@ class TestBillingEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -307,9 +291,7 @@ class TestBillingEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -340,9 +322,7 @@ class TestBillingEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -372,9 +352,7 @@ class TestBillingEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -403,9 +381,7 @@ class TestBillingEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/invoices/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/invoices/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -444,9 +420,7 @@ class TestSHAClaimEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/sha-claims/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/sha-claims/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -477,9 +451,7 @@ class TestSHAClaimEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/billing/{facility.id}/sha-claims/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/billing/{facility.id}/sha-claims/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -585,9 +557,7 @@ class TestBillingSyncBroadcastHelpers:
         mock_claim.sha_reference = "SHA-REF-001"
         mock_claim.total_amount = "15000.00"
 
-        with patch(
-            "hmis.apps.billing.websockets.broadcast_sha_event_sync"
-        ) as mock_broadcast:
+        with patch("hmis.apps.billing.websockets.broadcast_sha_event_sync") as mock_broadcast:
             broadcast_sha_claim_status_changed(mock_claim, old_status="submitted")
 
             mock_broadcast.assert_called_once()

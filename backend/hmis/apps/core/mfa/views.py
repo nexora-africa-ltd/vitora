@@ -945,9 +945,11 @@ class MFAAwareTokenRefreshView(APIView):
                 raise InvalidToken("User not found") from None
 
             # Check if MFA is enabled for this user
-            mfa_device = UserTOTPDevice.objects.filter(
-                user=user, confirmed=True
-            ).order_by("confirmed_at").first()
+            mfa_device = (
+                UserTOTPDevice.objects.filter(user=user, confirmed=True)
+                .order_by("confirmed_at")
+                .first()
+            )
 
             if mfa_device and mfa_device.confirmed_at:
                 # MFA is enabled - check if token was issued before MFA was enabled

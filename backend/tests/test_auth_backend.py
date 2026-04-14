@@ -93,9 +93,7 @@ class TestEmailOrUsernameBackend:
             return original_get(**kwargs)
 
         with patch.object(type(User.objects), "get", side_effect=get_side_effect):
-            user = backend.authenticate(
-                None, username="jdoe@hospital.ke", password="securePass1!"
-            )
+            user = backend.authenticate(None, username="jdoe@hospital.ke", password="securePass1!")
             assert user is None
 
     def test_non_email_string_skips_email_fallback(self, backend, db):

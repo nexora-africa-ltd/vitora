@@ -71,7 +71,9 @@ def _create_allied_health_order(referral):
     except ImportError:
         logger.warning(f"Module for {service} not available. Skipping order creation.")
     except Exception as e:
-        logger.error(f"Error creating allied health order for referral {referral.referral_number}: {e}")
+        logger.error(
+            f"Error creating allied health order for referral {referral.referral_number}: {e}"
+        )
 
 
 def _create_physio_order(referral):
@@ -141,9 +143,7 @@ def _create_ot_order(referral):
     referral.linked_object_id = order.id
     referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
-    logger.info(
-        f"Created OT Order {order.order_number} from referral {referral.referral_number}"
-    )
+    logger.info(f"Created OT Order {order.order_number} from referral {referral.referral_number}")
 
 
 def _create_counselling_referral(referral):
@@ -228,8 +228,7 @@ def _create_admission_recommendation(referral):
         referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
         logger.info(
-            f"Created AdmissionRecommendation {rec.id} "
-            f"from referral {referral.referral_number}"
+            f"Created AdmissionRecommendation {rec.id} " f"from referral {referral.referral_number}"
         )
 
     except ImportError:
@@ -309,16 +308,13 @@ def _build_clinical_notes(referral):
 
     if referral.relevant_diagnoses:
         dx_list = ", ".join(
-            f"{d.get('code', '')} - {d.get('description', '')}"
-            for d in referral.relevant_diagnoses
+            f"{d.get('code', '')} - {d.get('description', '')}" for d in referral.relevant_diagnoses
         )
         if dx_list:
             parts.append(f"Diagnoses: {dx_list}")
 
     if referral.relevant_vitals:
-        vitals_list = ", ".join(
-            f"{k}: {v}" for k, v in referral.relevant_vitals.items()
-        )
+        vitals_list = ", ".join(f"{k}: {v}" for k, v in referral.relevant_vitals.items())
         if vitals_list:
             parts.append(f"Vitals: {vitals_list}")
 

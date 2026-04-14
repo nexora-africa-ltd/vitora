@@ -135,7 +135,9 @@ class WaitTimeBreach(models.Model):
         self.acknowledged_at = timezone.now()
         if notes:
             self.notes = notes
-        self.save(update_fields=["status", "acknowledged_by", "acknowledged_at", "notes", "updated_at"])
+        self.save(
+            update_fields=["status", "acknowledged_by", "acknowledged_at", "notes", "updated_at"]
+        )
 
     def escalate(self, user=None, notes: str = ""):
         """Escalate the breach to charge nurse/supervisor."""
@@ -258,9 +260,7 @@ class Escalation(models.Model):
         ]
 
     def __str__(self) -> str:
-        return (
-            f"{self.get_escalation_type_display()} - {self.patient} - {self.status}"
-        )
+        return f"{self.get_escalation_type_display()} - {self.patient} - {self.status}"
 
     def mark_in_progress(self, user=None):
         """Mark escalation as being handled."""
@@ -1505,9 +1505,7 @@ class ERBed(models.Model):
         self.status = "OUT_OF_SERVICE"
         self.status_changed_by = user
         self.notes = reason
-        self.save(
-            update_fields=["status", "status_changed_by", "status_changed_at", "notes"]
-        )
+        self.save(update_fields=["status", "status_changed_by", "status_changed_at", "notes"])
 
     # -------------------------------------------------------------------------
     # Properties

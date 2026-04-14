@@ -46,7 +46,15 @@ def lab_technician(db):
 
 
 @pytest.fixture
-def sample_lab_order(db, sample_patient, sample_encounter, test_user, test_catalog, sample_organization, sample_facility):
+def sample_lab_order(
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    test_catalog,
+    sample_organization,
+    sample_facility,
+):
     """Create a lab order for testing."""
     order = LabOrder.objects.create(
         patient=sample_patient,
@@ -603,7 +611,12 @@ class TestLabQueueAutoCreation:
     """Tests for automatic LabQueue creation via signals."""
 
     def test_queue_created_for_in_house_order(
-        self, db, sample_patient, sample_encounter, test_user, test_catalog,
+        self,
+        db,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -635,7 +648,12 @@ class TestLabQueueAutoCreation:
         assert queue.sample_type == test_catalog.specimen_type
 
     def test_no_queue_for_external_order(
-        self, db, sample_patient, sample_encounter, test_user, test_catalog,
+        self,
+        db,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        test_catalog,
         sample_facility,
         sample_organization,
     ):
@@ -665,7 +683,12 @@ class TestLabOrderQueueSync:
     """Tests for LabOrder and LabQueue synchronization."""
 
     def test_order_collect_specimen_updates_queue(
-        self, db, sample_patient, sample_encounter, test_user, test_catalog,
+        self,
+        db,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        test_catalog,
         sample_facility,
         sample_organization,
     ):

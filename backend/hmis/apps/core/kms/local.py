@@ -59,7 +59,9 @@ class LocalKMSProvider(KMSProvider):
 
         # Validate key format
         try:
-            self._fernet = Fernet(encryption_key.encode() if isinstance(encryption_key, str) else encryption_key)
+            self._fernet = Fernet(
+                encryption_key.encode() if isinstance(encryption_key, str) else encryption_key
+            )
         except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid Fernet key format: {e}") from e
 
@@ -170,8 +172,7 @@ class LocalKMSProvider(KMSProvider):
             now = datetime.now(UTC)
 
             logger.warning(
-                "Local key rotation triggered. "
-                "Manual re-encryption of existing data required!"
+                "Local key rotation triggered. " "Manual re-encryption of existing data required!"
             )
 
             return KeyMetadata(

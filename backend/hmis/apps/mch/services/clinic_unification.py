@@ -45,7 +45,9 @@ def _resolve_clinic_for_visit(mch_visit):
 def _validate_explicit_clinic_visit(mch_visit, clinic_visit: ClinicVisit) -> None:
     patient = mch_visit.registration.mother
     if clinic_visit.patient_id != patient.id:
-        raise ValidationError({"clinic_visit": "Clinic visit patient does not match MCH registration mother."})
+        raise ValidationError(
+            {"clinic_visit": "Clinic visit patient does not match MCH registration mother."}
+        )
 
     expected_clinic_type = _clinic_type_for_visit(mch_visit)
     actual_clinic_type = clinic_visit.session.clinic.clinic_type
@@ -54,8 +56,14 @@ def _validate_explicit_clinic_visit(mch_visit, clinic_visit: ClinicVisit) -> Non
             {"clinic_visit": f"Clinic visit must belong to a {expected_clinic_type} clinic."}
         )
 
-    if mch_visit.encounter_id and clinic_visit.encounter_id and clinic_visit.encounter_id != mch_visit.encounter_id:
-        raise ValidationError({"clinic_visit": "Clinic visit encounter does not match the MCH visit encounter."})
+    if (
+        mch_visit.encounter_id
+        and clinic_visit.encounter_id
+        and clinic_visit.encounter_id != mch_visit.encounter_id
+    ):
+        raise ValidationError(
+            {"clinic_visit": "Clinic visit encounter does not match the MCH visit encounter."}
+        )
 
 
 def _chief_complaint_for_visit(mch_visit) -> str:
@@ -76,10 +84,9 @@ def link_or_create_clinic_visit_for_mch_visit(mch_visit, user=None):
     explicit_clinic_visit = getattr(mch_visit, "clinic_visit", None)
 
     if explicit_clinic_visit is not None:
-        explicit_clinic_visit = (
-            ClinicVisit.objects.select_related("session__clinic", "patient", "encounter")
-            .get(pk=explicit_clinic_visit.pk)
-        )
+        explicit_clinic_visit = ClinicVisit.objects.select_related(
+            "session__clinic", "patient", "encounter"
+        ).get(pk=explicit_clinic_visit.pk)
         _validate_explicit_clinic_visit(mch_visit, explicit_clinic_visit)
         clinic_visit = explicit_clinic_visit
     else:

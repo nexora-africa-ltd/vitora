@@ -59,7 +59,15 @@ def sample_drug_2(db):
 
 
 @pytest.fixture
-def sample_prescription_with_items(db, sample_patient, sample_encounter, test_user, sample_drug, sample_facility, sample_organization):
+def sample_prescription_with_items(
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    sample_drug,
+    sample_facility,
+    sample_organization,
+):
     """Create a prescription with items for IPS testing."""
     from hmis.apps.pharmacy.models import Prescription, PrescriptionItem
 
@@ -90,7 +98,12 @@ def sample_prescription_with_items(db, sample_patient, sample_encounter, test_us
 
 @pytest.fixture
 def sample_prescription_multiple_items(
-    db, sample_patient, sample_encounter, test_user, sample_drug, sample_drug_2,
+    db,
+    sample_patient,
+    sample_encounter,
+    test_user,
+    sample_drug,
+    sample_drug_2,
     sample_facility,
     sample_organization,
 ):
@@ -181,9 +194,10 @@ class TestFHIRIPSBundle:
         assert response.data["resourceType"] == "Bundle"
         assert response.data["type"] == "document"
         assert "meta" in response.data
-        assert "http://hl7.org/fhir/uv/ips/StructureDefinition/Bundle-uv-ips" in response.data[
-            "meta"
-        ]["profile"]
+        assert (
+            "http://hl7.org/fhir/uv/ips/StructureDefinition/Bundle-uv-ips"
+            in response.data["meta"]["profile"]
+        )
 
     def test_ips_bundle_contains_composition(self, authenticated_client, sample_patient):
         """Test IPS bundle contains Composition as first entry."""
@@ -382,20 +396,14 @@ class TestFHIRIPSCarePlan:
 
         plan = care_plans[0]
         referral_activity = next(
-            (
-                a
-                for a in plan["activity"]
-                if "Referral" in a["detail"]["code"]["text"]
-            ),
+            (a for a in plan["activity"] if "Referral" in a["detail"]["code"]["text"]),
             None,
         )
 
         assert referral_activity is not None
         assert "ENT" in referral_activity["detail"]["description"]
 
-    def test_care_plan_individual_endpoint(
-        self, authenticated_client, sample_treatment_plan_full
-    ):
+    def test_care_plan_individual_endpoint(self, authenticated_client, sample_treatment_plan_full):
         """Test individual CarePlan endpoint works."""
         url = reverse("fhir:care-plan-read", args=[sample_treatment_plan_full.id])
         response = authenticated_client.get(url)

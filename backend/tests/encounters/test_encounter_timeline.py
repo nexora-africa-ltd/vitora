@@ -19,7 +19,9 @@ pytestmark = pytest.mark.django_db
 class TestEncounterTimeline:
     """Test patient encounter timeline functionality."""
 
-    def test_get_patient_encounter_history(self, sample_patient, sample_county, sample_sub_county, sample_facility):
+    def test_get_patient_encounter_history(
+        self, sample_patient, sample_county, sample_sub_county, sample_facility
+    ):
         """Test retrieving patient's encounter history."""
         from hmis.apps.encounters.models import Encounter
 
@@ -107,7 +109,11 @@ class TestEncounterTimelineAPI:
         assert len(results) >= 1
 
     def test_filter_encounters_by_date_range(
-        self, authenticated_client, sample_patient, sample_county, sample_sub_county,
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
         sample_facility,
     ):
         """Test filtering encounters by date range."""
@@ -142,7 +148,11 @@ class TestEncounterTimelineAPI:
         assert str(recent_encounter.encounter_date) in encounter_dates
 
     def test_filter_encounters_by_type(
-        self, authenticated_client, sample_patient, sample_county, sample_sub_county,
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
         sample_facility,
     ):
         """Test filtering encounters by type."""
@@ -175,7 +185,11 @@ class TestEncounterTimelineAPI:
             assert r["encounter_type"] == "OPD"
 
     def test_search_encounters_by_complaint(
-        self, authenticated_client, sample_patient, sample_county, sample_sub_county,
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
         sample_facility,
     ):
         """Test searching encounters by chief complaint."""
@@ -235,7 +249,9 @@ class TestEncounterTimelineAPI:
 class TestPatientClinicalSummary:
     """Test patient clinical summary functionality."""
 
-    def test_patient_total_encounters(self, sample_patient, sample_county, sample_sub_county, sample_facility):
+    def test_patient_total_encounters(
+        self, sample_patient, sample_county, sample_sub_county, sample_facility
+    ):
         """Test counting total encounters for patient."""
         from hmis.apps.encounters.models import Encounter
 
@@ -252,7 +268,9 @@ class TestPatientClinicalSummary:
         count = Encounter.objects.filter(patient=sample_patient).count()
         assert count == 5
 
-    def test_patient_last_encounter_date(self, sample_patient, sample_county, sample_sub_county, sample_facility):
+    def test_patient_last_encounter_date(
+        self, sample_patient, sample_county, sample_sub_county, sample_facility
+    ):
         """Test getting patient's last encounter date."""
         from hmis.apps.encounters.models import Encounter
 
@@ -313,7 +331,10 @@ class TestEncounterOrdering:
     """Test encounter ordering in timeline."""
 
     def test_encounters_ordered_by_date_desc(
-        self, sample_patient, sample_county, sample_sub_county,
+        self,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
         sample_facility,
     ):
         """Test encounters are ordered by date descending (newest first)."""
@@ -342,7 +363,10 @@ class TestEncounterOrdering:
         assert encounters[1].id == old.id
 
     def test_encounters_ordered_by_created_at_for_same_date(
-        self, sample_patient, sample_county, sample_sub_county,
+        self,
+        sample_patient,
+        sample_county,
+        sample_sub_county,
         sample_facility,
     ):
         """Test encounters on same date are ordered by created_at."""

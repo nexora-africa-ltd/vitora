@@ -47,9 +47,7 @@ class SchedulingConsumer(AsyncJsonWebsocketConsumer):
         # Validate facility exists
         facility_exists = await self._facility_exists(self.facility_id)
         if not facility_exists:
-            logger.warning(
-                f"WebSocket connection rejected: facility {self.facility_id} not found"
-            )
+            logger.warning(f"WebSocket connection rejected: facility {self.facility_id} not found")
             await self.close()
             return
 
@@ -63,9 +61,7 @@ class SchedulingConsumer(AsyncJsonWebsocketConsumer):
         """Handle WebSocket disconnection."""
         if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-            logger.info(
-                f"WebSocket disconnected from scheduling for facility {self.facility_id}"
-            )
+            logger.info(f"WebSocket disconnected from scheduling for facility {self.facility_id}")
 
     async def receive(self, text_data=None, _bytes_data=None):
         """Handle incoming WebSocket messages with error handling."""

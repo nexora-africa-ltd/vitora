@@ -54,9 +54,7 @@ class TestFacilityDailySummary:
 
     def test_str_representation(self, sample_facility):
         """Should return facility name and date."""
-        summary = FacilityDailySummary(
-            facility=sample_facility, date=date(2026, 4, 1)
-        )
+        summary = FacilityDailySummary(facility=sample_facility, date=date(2026, 4, 1))
         assert sample_facility.name in str(summary)
         assert "2026-04-01" in str(summary)
 
@@ -183,9 +181,20 @@ class TestPatientDemographicSnapshot:
             organization=sample_facility.organization,
             snapshot_date=date(2026, 4, 1),
             total_patients=500,
-            age_distribution={"0-4": 50, "5-14": 80, "15-24": 100, "25-34": 120, "35-49": 80, "50-64": 50, "65+": 20},
+            age_distribution={
+                "0-4": 50,
+                "5-14": 80,
+                "15-24": 100,
+                "25-34": 120,
+                "35-49": 80,
+                "50-64": 50,
+                "65+": 20,
+            },
             gender_distribution={"M": 240, "F": 255, "O": 5},
-            county_distribution=[{"county": "Nairobi", "count": 200}, {"county": "Mombasa", "count": 150}],
+            county_distribution=[
+                {"county": "Nairobi", "count": 200},
+                {"county": "Mombasa", "count": 150},
+            ],
         )
         assert snap.total_patients == 500
         assert snap.gender_distribution["F"] == 255

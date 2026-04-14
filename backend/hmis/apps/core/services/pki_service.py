@@ -93,11 +93,13 @@ class PKIService:
         public_key = private_key.public_key()
 
         # Build subject DN
-        subject = issuer = x509.Name([
-            x509.NameAttribute(NameOID.COUNTRY_NAME, country),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, org),
-            x509.NameAttribute(NameOID.COMMON_NAME, name),
-        ])
+        subject = issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COUNTRY_NAME, country),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, org),
+                x509.NameAttribute(NameOID.COMMON_NAME, name),
+            ]
+        )
 
         serial = int(uuid.uuid4().hex[:16], 16)
         now = datetime.now(UTC)
@@ -220,7 +222,11 @@ class PKIService:
 
         # Cap validity to not exceed parent
         now = datetime.now(UTC)
-        max_valid_to = parent_ca.valid_to.replace(tzinfo=UTC) if parent_ca.valid_to.tzinfo is None else parent_ca.valid_to
+        max_valid_to = (
+            parent_ca.valid_to.replace(tzinfo=UTC)
+            if parent_ca.valid_to.tzinfo is None
+            else parent_ca.valid_to
+        )
         requested_valid_to = now + timedelta(days=validity_years * 365)
         valid_to = min(requested_valid_to, max_valid_to)
 
@@ -232,11 +238,13 @@ class PKIService:
         public_key = private_key.public_key()
 
         # Build subject DN
-        subject = x509.Name([
-            x509.NameAttribute(NameOID.COUNTRY_NAME, country),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, org),
-            x509.NameAttribute(NameOID.COMMON_NAME, name),
-        ])
+        subject = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COUNTRY_NAME, country),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, org),
+                x509.NameAttribute(NameOID.COMMON_NAME, name),
+            ]
+        )
 
         # Issuer is the parent CA
         parent_org = (
@@ -244,11 +252,13 @@ class PKIService:
             if "O=" in parent_ca.subject_dn
             else "Nexora Africa Ltd"
         )
-        issuer = x509.Name([
-            x509.NameAttribute(NameOID.COUNTRY_NAME, country),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, parent_org),
-            x509.NameAttribute(NameOID.COMMON_NAME, parent_ca.name),
-        ])
+        issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COUNTRY_NAME, country),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, parent_org),
+                x509.NameAttribute(NameOID.COMMON_NAME, parent_ca.name),
+            ]
+        )
 
         # Load parent CA private key to sign
         kms = get_kms_provider()
@@ -361,13 +371,9 @@ class PKIService:
 
         if ca is None:
             # Prefer an active intermediate CA over root for user cert issuance
-            ca = CertificateAuthority.objects.filter(
-                is_root=False, is_active=True
-            ).first()
+            ca = CertificateAuthority.objects.filter(is_root=False, is_active=True).first()
             if ca is None:
-                ca = CertificateAuthority.objects.filter(
-                    is_root=True, is_active=True
-                ).first()
+                ca = CertificateAuthority.objects.filter(is_root=True, is_active=True).first()
             if ca is None:
                 raise ValueError("No active CA found. Run 'init_pki_ca' first.")
 
@@ -387,24 +393,35 @@ class PKIService:
             ca.private_key_pem_encrypted.encode("latin-1"),
             context={"purpose": "sign_user_cert", "user": user.username},
         )
-        ca_private_key = serialization.load_pem_private_key(
-            ca_private_key_pem, password=None
-        )
+        ca_private_key = serialization.load_pem_private_key(ca_private_key_pem, password=None)
 
         # Build certificate
         full_name = user.get_full_name().strip() or user.username
-        subject = x509.Name([
-            x509.NameAttribute(NameOID.COUNTRY_NAME, "KE"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Vitora HMIS"),
-            x509.NameAttribute(NameOID.COMMON_NAME, full_name),
-            x509.NameAttribute(NameOID.EMAIL_ADDRESS, user.email or f"{user.username}@vitora.health"),
-        ])
+        subject = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COUNTRY_NAME, "KE"),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Vitora HMIS"),
+                x509.NameAttribute(NameOID.COMMON_NAME, full_name),
+                x509.NameAttribute(
+                    NameOID.EMAIL_ADDRESS, user.email or f"{user.username}@vitora.health"
+                ),
+            ]
+        )
 
-        issuer = x509.Name([
-            x509.NameAttribute(NameOID.COUNTRY_NAME, "KE"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, ca.subject_dn.split("O=")[1].split(",")[0].strip() if "O=" in ca.subject_dn else "Nexora Africa Ltd"),
-            x509.NameAttribute(NameOID.COMMON_NAME, ca.name),
-        ])
+        issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COUNTRY_NAME, "KE"),
+                x509.NameAttribute(
+                    NameOID.ORGANIZATION_NAME,
+                    (
+                        ca.subject_dn.split("O=")[1].split(",")[0].strip()
+                        if "O=" in ca.subject_dn
+                        else "Nexora Africa Ltd"
+                    ),
+                ),
+                x509.NameAttribute(NameOID.COMMON_NAME, ca.name),
+            ]
+        )
 
         serial = int(uuid.uuid4().hex[:16], 16)
         now = datetime.now(UTC)
@@ -601,13 +618,13 @@ class PKIService:
             ca.private_key_pem_encrypted.encode("latin-1"),
             context={"purpose": "generate_crl", "ca_name": ca.name},
         )
-        ca_private_key = serialization.load_pem_private_key(
-            ca_private_key_pem, password=None
-        )
+        ca_private_key = serialization.load_pem_private_key(ca_private_key_pem, password=None)
 
-        issuer = x509.Name([
-            x509.NameAttribute(NameOID.COMMON_NAME, ca.name),
-        ])
+        issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COMMON_NAME, ca.name),
+            ]
+        )
 
         now = datetime.now(UTC)
         builder = (

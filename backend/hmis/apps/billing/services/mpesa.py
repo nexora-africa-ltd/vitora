@@ -97,8 +97,7 @@ class MpesaService:
                         "consumer_key": billing_config.mpesa_consumer_key,
                         "consumer_secret": billing_config.mpesa_consumer_secret,
                         "passkey": (
-                            billing_config.mpesa_passkey
-                            or getattr(settings, "MPESA_PASSKEY", "")
+                            billing_config.mpesa_passkey or getattr(settings, "MPESA_PASSKEY", "")
                         ),
                         "shortcode": (
                             billing_config.mpesa_shortcode
@@ -405,7 +404,11 @@ class MpesaService:
                     self._token_expires_at = None
                 return {
                     "ResponseCode": "1",
-                    "ResponseDescription": "Retrying — token refreshed" if response.status_code == 403 else "Rate limited — will retry",
+                    "ResponseDescription": (
+                        "Retrying — token refreshed"
+                        if response.status_code == 403
+                        else "Rate limited — will retry"
+                    ),
                     "CheckoutRequestID": checkout_request_id,
                     "ResultCode": None,
                     "ResultDesc": "Pending",

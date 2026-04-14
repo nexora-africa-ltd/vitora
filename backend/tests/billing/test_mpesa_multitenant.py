@@ -139,9 +139,7 @@ class TestMpesaServiceCredentialResolution:
         assert service.shortcode == "174379"
 
     @patch("hmis.apps.billing.services.mpesa.settings")
-    def test_falls_back_to_global_when_facility_has_no_config(
-        self, mock_settings, facility_a
-    ):
+    def test_falls_back_to_global_when_facility_has_no_config(self, mock_settings, facility_a):
         """If facility exists but has no billing config, fall back to global."""
         mock_settings.MPESA_CONSUMER_KEY = "global_key"
         mock_settings.MPESA_CONSUMER_SECRET = "global_secret"
@@ -177,9 +175,7 @@ class TestMpesaServiceCredentialResolution:
         assert service.shortcode == "174379"
 
     @patch("hmis.apps.billing.services.mpesa.settings")
-    def test_sandbox_uses_global_shortcode_and_passkey_when_empty(
-        self, mock_settings, facility_a
-    ):
+    def test_sandbox_uses_global_shortcode_and_passkey_when_empty(self, mock_settings, facility_a):
         """Sandbox config with only key+secret should fall back to global shortcode/passkey."""
         mock_settings.MPESA_PASSKEY = "global_sandbox_passkey"
         mock_settings.MPESA_SHORTCODE = "174379"

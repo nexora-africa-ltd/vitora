@@ -61,7 +61,11 @@ class Command(BaseCommand):
         single_file = options.get("file")
 
         # Determine data directory
-        data_dir = Path(__file__).resolve().parent.parent.parent.parent.parent.parent / "data" / "who_growth_standards"
+        data_dir = (
+            Path(__file__).resolve().parent.parent.parent.parent.parent.parent
+            / "data"
+            / "who_growth_standards"
+        )
 
         if not data_dir.exists():
             raise CommandError(f"WHO growth standards directory not found: {data_dir}")
@@ -71,7 +75,9 @@ class Command(BaseCommand):
         files_to_validate = self.EXPECTED_FILES
         if single_file:
             if single_file not in self.EXPECTED_FILES:
-                raise CommandError(f"Unknown file: {single_file}. Expected one of: {list(self.EXPECTED_FILES.keys())}")
+                raise CommandError(
+                    f"Unknown file: {single_file}. Expected one of: {list(self.EXPECTED_FILES.keys())}"
+                )
             files_to_validate = {single_file: self.EXPECTED_FILES[single_file]}
 
         errors = []
@@ -109,7 +115,9 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("\nAll validations passed!"))
 
-    def _validate_file(self, filepath: Path, config: dict, verbose: bool) -> tuple[list[str], list[str]]:
+    def _validate_file(
+        self, filepath: Path, config: dict, verbose: bool
+    ) -> tuple[list[str], list[str]]:
         """Validate a single LMS JSON file."""
         errors = []
         warnings = []
@@ -163,11 +171,15 @@ class Command(BaseCommand):
             # Validate index value
             index_val = entry.get(index_key)
             if not isinstance(index_val, (int, float)):
-                errors.append(f"{row_prefix}: '{index_key}' must be a number, got {type(index_val).__name__}")
+                errors.append(
+                    f"{row_prefix}: '{index_key}' must be a number, got {type(index_val).__name__}"
+                )
             else:
                 # Check ordering (should be ascending)
                 if prev_index is not None and index_val <= prev_index:
-                    warnings.append(f"{row_prefix}: Index {index_val} not in ascending order (prev: {prev_index})")
+                    warnings.append(
+                        f"{row_prefix}: Index {index_val} not in ascending order (prev: {prev_index})"
+                    )
                 prev_index = index_val
 
             # Validate LMS values
@@ -208,6 +220,8 @@ class Command(BaseCommand):
                 warnings.append(f"Data ends at {index_key}={last_index}, expected {max_index}")
 
         if verbose and not errors:
-            self.stdout.write(f"    {len(data)} entries, index range: {data[0].get(index_key)} - {data[-1].get(index_key)}")
+            self.stdout.write(
+                f"    {len(data)} entries, index range: {data[0].get(index_key)} - {data[-1].get(index_key)}"
+            )
 
         return errors, warnings

@@ -803,7 +803,13 @@ class DeathRecord(models.Model):
         if certificate_number:
             self.death_certificate_number = certificate_number
         self.save(
-            update_fields=["status", "certified_by", "certified_at", "death_certificate_number", "updated_at"]
+            update_fields=[
+                "status",
+                "certified_by",
+                "certified_at",
+                "death_certificate_number",
+                "updated_at",
+            ]
         )
 
     def report_to_civil_registry(self):
@@ -825,8 +831,14 @@ class DeathRecord(models.Model):
             self.burial_permit_number = burial_permit
         self.save(
             update_fields=[
-                "body_status", "status", "released_to", "released_to_id_number",
-                "released_to_relationship", "release_date", "burial_permit_number", "updated_at",
+                "body_status",
+                "status",
+                "released_to",
+                "released_to_id_number",
+                "released_to_relationship",
+                "release_date",
+                "burial_permit_number",
+                "updated_at",
             ]
         )
 
@@ -838,9 +850,7 @@ class DeathRecord(models.Model):
         self.voided_by = user
         self.voided_at = timezone.now()
         self.void_reason = reason
-        self.save(
-            update_fields=["status", "voided_by", "voided_at", "void_reason", "updated_at"]
-        )
+        self.save(update_fields=["status", "voided_by", "voided_at", "void_reason", "updated_at"])
         # Reverse patient deceased status
         Patient.objects.filter(pk=self.patient_id).update(
             is_deceased=False,

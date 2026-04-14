@@ -71,9 +71,7 @@ class TestPharmacyQueueConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
 
         assert connected is True
@@ -95,9 +93,7 @@ class TestPharmacyQueueConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -127,9 +123,7 @@ class TestPharmacyQueueConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -155,9 +149,7 @@ class TestPharmacyQueueConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -175,9 +167,7 @@ class TestPharmacyQueueConsumerConnection:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -206,9 +196,7 @@ class TestPharmacyEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -239,9 +227,7 @@ class TestPharmacyEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -270,9 +256,7 @@ class TestPharmacyEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -300,9 +284,7 @@ class TestPharmacyEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -330,9 +312,7 @@ class TestPharmacyEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -360,9 +340,7 @@ class TestPharmacyEventBroadcasts:
         org = await create_test_organization()
         facility = await create_test_facility(org)
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/pharmacy/{facility.id}/queue/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/pharmacy/{facility.id}/queue/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -442,9 +420,7 @@ class TestPharmacySyncBroadcastHelpers:
         mock_batch.quantity_available = 0
         mock_batch.status = "OUT_OF_STOCK"
 
-        with patch(
-            "hmis.apps.pharmacy.websockets.broadcast_pharmacy_event_sync"
-        ) as mock_broadcast:
+        with patch("hmis.apps.pharmacy.websockets.broadcast_pharmacy_event_sync") as mock_broadcast:
             broadcast_stock_critical(mock_batch, facility_id=1)
 
             mock_broadcast.assert_called_once()
@@ -466,9 +442,7 @@ class TestPharmacySyncBroadcastHelpers:
         mock_batch.batch_number = "BATCH-002"
         mock_batch.quantity_available = 10
 
-        with patch(
-            "hmis.apps.pharmacy.websockets.broadcast_pharmacy_event_sync"
-        ) as mock_broadcast:
+        with patch("hmis.apps.pharmacy.websockets.broadcast_pharmacy_event_sync") as mock_broadcast:
             broadcast_stock_low_warning(mock_batch, facility_id=1)
 
             mock_broadcast.assert_called_once()

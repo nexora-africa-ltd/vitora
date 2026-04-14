@@ -166,7 +166,9 @@ class TestEncounterStatusTransitions:
         )
         assert encounter.can_edit() is False
 
-    def test_start_progress_transitions_checked_in_to_in_progress(self, sample_patient, sample_facility):
+    def test_start_progress_transitions_checked_in_to_in_progress(
+        self, sample_patient, sample_facility
+    ):
         """start_progress() should transition CHECKED_IN to IN_PROGRESS."""
         from hmis.apps.encounters.models import Encounter
 
@@ -383,7 +385,9 @@ class TestValidStatusTransitionPaths:
             ("CANCELLED", "CLOSED", False),
         ],
     )
-    def test_status_transition_validity(self, sample_patient, from_status, to_status, valid, sample_facility):
+    def test_status_transition_validity(
+        self, sample_patient, from_status, to_status, valid, sample_facility
+    ):
         """Test that status transitions follow valid paths."""
         from hmis.apps.encounters.models import Encounter
 
@@ -420,7 +424,9 @@ class TestEncounterStatusAPI:
         assert response.status_code == http_status.HTTP_201_CREATED
         assert response.data["status"] == "CREATED"
 
-    def test_update_created_encounter_succeeds(self, authenticated_client, sample_patient, sample_facility):
+    def test_update_created_encounter_succeeds(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """PATCH /api/encounters/{id}/ should succeed for CREATED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -439,7 +445,9 @@ class TestEncounterStatusAPI:
         assert response.status_code == http_status.HTTP_200_OK
         assert response.data["chief_complaint"] == "Updated complaint"
 
-    def test_update_closed_encounter_fails(self, authenticated_client, sample_patient, test_user, sample_facility):
+    def test_update_closed_encounter_fails(
+        self, authenticated_client, sample_patient, test_user, sample_facility
+    ):
         """PATCH /api/encounters/{id}/ should fail for CLOSED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -518,7 +526,9 @@ class TestEncounterStatusAPI:
         assert response.status_code == http_status.HTTP_200_OK
         assert response.data["status"] == "CANCELLED"
 
-    def test_finalize_closed_fails(self, authenticated_client, sample_patient, test_user, sample_facility):
+    def test_finalize_closed_fails(
+        self, authenticated_client, sample_patient, test_user, sample_facility
+    ):
         """POST /api/encounters/{id}/finalize/ should fail for already CLOSED."""
         from hmis.apps.encounters.models import Encounter
 
@@ -568,7 +578,9 @@ class TestEncounterStatusFiltering:
         results = response.data.get("results", response.data)
         assert all(e["status"] == "CREATED" for e in results)
 
-    def test_filter_by_multiple_statuses(self, authenticated_client, sample_patient, sample_facility):
+    def test_filter_by_multiple_statuses(
+        self, authenticated_client, sample_patient, sample_facility
+    ):
         """GET /api/encounters/?status=CREATED,IN_PROGRESS should return both."""
         from hmis.apps.encounters.models import Encounter
 
@@ -689,7 +701,9 @@ class TestEncounterStatusAuditTrail:
 
         assert final_count == initial_count + 1
 
-    def test_status_change_audit_includes_old_and_new_status(self, sample_patient, test_user, sample_facility):
+    def test_status_change_audit_includes_old_and_new_status(
+        self, sample_patient, test_user, sample_facility
+    ):
         """Status change audit log should include old and new status."""
         from hmis.apps.core.models import AuditLog
         from hmis.apps.encounters.models import Encounter

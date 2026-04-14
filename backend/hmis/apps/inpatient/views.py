@@ -507,18 +507,14 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "assigned_bed_number": (
                 result.assigned_bed.bed_number if result.assigned_bed else None
             ),
-            "assigned_ward_name": (
-                result.assigned_bed.ward.name if result.assigned_bed else None
-            ),
+            "assigned_ward_name": (result.assigned_bed.ward.name if result.assigned_bed else None),
             "rule_applied": result.rule_applied.rule_code if result.rule_applied else None,
             "decision_id": result.decision.id if result.decision else None,
             "decision_outcome": result.decision.decision_outcome if result.decision else "ERROR",
             "decision_reason": result.decision.decision_reason if result.decision else "",
             "evaluation_time_ms": result.evaluation_time_ms,
             "candidates_evaluated": [e.to_dict() for e in result.candidates_evaluated],
-            "scoring_details": (
-                result.decision.scoring_details if result.decision else {}
-            ),
+            "scoring_details": (result.decision.scoring_details if result.decision else {}),
             "error": result.error,
         }
 
@@ -630,12 +626,9 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
 
         response_data = result.to_dict()
-        response_data["predicted_discharges"] = [
-            p.to_dict() for p in result.predicted_discharges
-        ]
+        response_data["predicted_discharges"] = [p.to_dict() for p in result.predicted_discharges]
 
         return Response(response_data, status=status.HTTP_200_OK)
-
 
     @extend_schema(
         summary="Smart ward recommendation",
@@ -653,7 +646,8 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "requires_ventilator": serializers.BooleanField(required=False, default=False),
                 "admission_type": serializers.ChoiceField(
                     choices=["ELECTIVE", "EMERGENCY", "TRANSFER"],
-                    required=False, default="ELECTIVE",
+                    required=False,
+                    default="ELECTIVE",
                 ),
             },
         ),
@@ -1408,9 +1402,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                     "violations": violation_details,
                     "ward_name": bed.ward.name,
                     "has_critical": result.has_critical_violations,
-                    "override_available": any(
-                        v.override_allowed for v in result.violations
-                    ),
+                    "override_available": any(v.override_allowed for v in result.violations),
                 }
             )
 
@@ -1798,12 +1790,14 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(admission)
-        return Response({
-            "admission": serializer.data,
-            "override_id": override.id,
-            "old_bed": old_bed.bed_number,
-            "new_bed": new_bed.bed_number,
-        })
+        return Response(
+            {
+                "admission": serializer.data,
+                "override_id": override.id,
+                "old_bed": old_bed.bed_number,
+                "new_bed": new_bed.bed_number,
+            }
+        )
 
     # ------------------------------------------------------------------ #
     # Phase C: Smart Allocation — Expected Discharge
@@ -1834,9 +1828,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         serializer = SetExpectedDischargeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        admission.expected_discharge_date = serializer.validated_data[
-            "expected_discharge_date"
-        ]
+        admission.expected_discharge_date = serializer.validated_data["expected_discharge_date"]
         admission.save(update_fields=["expected_discharge_date", "updated_at"])
 
         AuditLog.log(
@@ -1846,9 +1838,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             resource_id=admission.id,
             details={
                 "admission_number": admission.admission_number,
-                "expected_discharge_date": (
-                    admission.expected_discharge_date.isoformat()
-                ),
+                "expected_discharge_date": (admission.expected_discharge_date.isoformat()),
             },
             ip_address=get_client_ip(request),
         )
@@ -1857,9 +1847,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             {
                 "admission_id": admission.id,
                 "admission_number": admission.admission_number,
-                "expected_discharge_date": (
-                    admission.expected_discharge_date.isoformat()
-                ),
+                "expected_discharge_date": (admission.expected_discharge_date.isoformat()),
             }
         )
 
@@ -1909,9 +1897,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 Invoice.Status.WRITTEN_OFF,
             ]
         )
-        outstanding = sum(
-            (inv.balance_due for inv in unpaid_invoices), Decimal("0.00")
-        )
+        outstanding = sum((inv.balance_due for inv in unpaid_invoices), Decimal("0.00"))
         billing_cleared = outstanding <= 0
         first_unpaid_id = unpaid_invoices.values_list("id", flat=True).first()
         billing_info = {
@@ -1929,9 +1915,11 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         # ----- Pharmacy: all INTERNAL prescriptions dispensed or cancelled -----
         # EXTERNAL prescriptions don't require hospital pharmacy clearance
         q = self._admission_order_q(admission)
-        pending_rx = Prescription.objects.filter(q, dispensing_type="INTERNAL").exclude(
-            status__in=["DISPENSED", "CANCELLED"]
-        ).distinct()
+        pending_rx = (
+            Prescription.objects.filter(q, dispensing_type="INTERNAL")
+            .exclude(status__in=["DISPENSED", "CANCELLED"])
+            .distinct()
+        )
         pharmacy_cleared = not pending_rx.exists()
         first_rx_id = pending_rx.values_list("id", flat=True).first()
         pharmacy_info = {
@@ -1946,16 +1934,14 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         }
 
         # ----- Laboratory: all lab orders completed or cancelled -----
-        pending_labs = LabOrder.objects.filter(q).exclude(
-            status__in=["COMPLETED", "CANCELLED"]
-        ).distinct()
+        pending_labs = (
+            LabOrder.objects.filter(q).exclude(status__in=["COMPLETED", "CANCELLED"]).distinct()
+        )
         pending_test_names = list(
             pending_labs.values_list("items__test__name", flat=True).distinct()[:10]
         )
         lab_cleared = not pending_labs.exists()
-        first_lab_order_number = pending_labs.values_list(
-            "order_number", flat=True
-        ).first()
+        first_lab_order_number = pending_labs.values_list("order_number", flat=True).first()
         lab_info = {
             "cleared": lab_cleared,
             "reason": (
@@ -1973,9 +1959,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         active_entries_count = 0
         try:
             kardex = admission.kardex
-            active_entries = kardex.care_plan_entries.filter(
-                status__in=["ACTIVE", "ONGOING"]
-            )
+            active_entries = kardex.care_plan_entries.filter(status__in=["ACTIVE", "ONGOING"])
             active_entries_count = active_entries.count()
             nursing_cleared = active_entries_count == 0
         except NursingKardex.DoesNotExist:
@@ -1991,9 +1975,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "pending_count": active_entries_count,
         }
 
-        all_cleared = (
-            billing_cleared and pharmacy_cleared and lab_cleared and nursing_cleared
-        )
+        all_cleared = billing_cleared and pharmacy_cleared and lab_cleared and nursing_cleared
 
         return Response(
             {
@@ -2033,7 +2015,13 @@ class DischargeViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     tenant_facility_chain = "admission__ward__facility"
     tenant_org_chain = "admission__organization"
-    filterset_fields = ["admission", "discharge_type", "pharmacy_cleared", "billing_cleared", "discharged_by"]
+    filterset_fields = [
+        "admission",
+        "discharge_type",
+        "pharmacy_cleared",
+        "billing_cleared",
+        "discharged_by",
+    ]
     search_fields = [
         "admission__admission_number",
         "admission__patient__first_name",
@@ -2590,9 +2578,7 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
         kardex = self.get_object()
         evaluation = request.data.get("evaluation", "")
 
-        pending_entries = kardex.care_plan_entries.filter(
-            status__in=["ACTIVE", "ONGOING"]
-        )
+        pending_entries = kardex.care_plan_entries.filter(status__in=["ACTIVE", "ONGOING"])
         count = pending_entries.count()
 
         if count == 0:
@@ -2623,7 +2609,9 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
             {"message": f"{count} care plan entry(ies) resolved", "resolved_count": count}
         )
 
-    @action(detail=True, methods=["post"], url_path=r"discontinue-care-plan-entry/(?P<entry_id>\d+)")
+    @action(
+        detail=True, methods=["post"], url_path=r"discontinue-care-plan-entry/(?P<entry_id>\d+)"
+    )
     def discontinue_care_plan_entry(self, request, pk=None, entry_id=None):
         """
         Discontinue a care plan entry (e.g., plan abandoned, patient refused).
@@ -2641,7 +2629,9 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
 
         if entry.status in NursingCarePlanEntry.TERMINAL_STATUSES:
             return Response(
-                {"error": f"Cannot discontinue a {entry.get_status_display().lower()} care plan entry"},
+                {
+                    "error": f"Cannot discontinue a {entry.get_status_display().lower()} care plan entry"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -2653,7 +2643,11 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
             )
 
         entry.status = "DISCONTINUED"
-        entry.evaluation = f"[Discontinued] {reason}" if not entry.evaluation else f"{entry.evaluation}\n[Discontinued] {reason}"
+        entry.evaluation = (
+            f"[Discontinued] {reason}"
+            if not entry.evaluation
+            else f"{entry.evaluation}\n[Discontinued] {reason}"
+        )
         entry.save(update_fields=["status", "evaluation", "updated_at"])
 
         AuditLog.log(
@@ -3022,9 +3016,7 @@ class BloodTransfusionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
         from django.utils import timezone as tz
 
         transfusion.status = "COMPLETED"
-        transfusion.time_ended = request.data.get(
-            "time_ended", tz.localtime().time()
-        )
+        transfusion.time_ended = request.data.get("time_ended", tz.localtime().time())
         if isinstance(transfusion.time_ended, str):
             transfusion.time_ended = datetime.time.fromisoformat(transfusion.time_ended)
         transfusion.save()
@@ -3453,7 +3445,9 @@ class DischargeTemplateViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewset
         self._resolve_tenant_context()
         facility = getattr(request, "facility", None)
         template = DischargeTemplate.objects.filter(
-            facility=facility, is_default=True, is_active=True,
+            facility=facility,
+            is_default=True,
+            is_active=True,
         ).first()
         if not template:
             return Response(

@@ -78,9 +78,7 @@ class AbstractMOHReport(FacilityScopedModel, TimeStampedModel):
         self.status = MOHReportStatus.APPROVED
         self.approved_by = user
         self.approved_at = timezone.now()
-        self.save(
-            update_fields=["status", "approved_by", "approved_at", "updated_at"]
-        )
+        self.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
 
     def mark_submitted(self, dhis2_response: dict):
         from django.utils import timezone
@@ -161,9 +159,7 @@ class MOH705DiseaseRow(models.Model):
         related_name="disease_rows",
     )
     icd10_chapter = models.IntegerField(help_text="ICD-10 chapter (1-22)")
-    category_name = models.CharField(
-        max_length=200, help_text="Disease category name"
-    )
+    category_name = models.CharField(max_length=200, help_text="Disease category name")
     cases_under_5 = models.IntegerField(default=0)
     cases_5_and_above = models.IntegerField(default=0)
     total_cases = models.IntegerField(default=0)

@@ -182,7 +182,10 @@ class TestEnhancedVitalsValidation:
         )
 
         assert encounter.has_critical_vitals() is True
-        assert "fever" in encounter.get_alerts().lower() or "hyperpyrexia" in encounter.get_alerts().lower()
+        assert (
+            "fever" in encounter.get_alerts().lower()
+            or "hyperpyrexia" in encounter.get_alerts().lower()
+        )
 
     def test_pulse_bradycardia_alert(self, sample_patient, sample_facility):
         """Test bradycardia alert for pulse < 50 bpm."""

@@ -34,9 +34,7 @@ class TestClinicalReferralModel:
         assert referral.referral_number.startswith("REF-")
         assert len(referral.referral_number) == 17  # REF-YYYYMMDD-XXXX
 
-    def test_create_referral_auto_derives_type_allied_health(
-        self, db, sample_encounter, test_user
-    ):
+    def test_create_referral_auto_derives_type_allied_health(self, db, sample_encounter, test_user):
         """Should auto-derive referral_type as ALLIED_HEALTH for allied health services."""
         from hmis.apps.referrals.models import ClinicalReferral
 
@@ -50,9 +48,7 @@ class TestClinicalReferralModel:
 
         assert referral.referral_type == "ALLIED_HEALTH"
 
-    def test_create_referral_auto_derives_type_admission(
-        self, db, sample_encounter, test_user
-    ):
+    def test_create_referral_auto_derives_type_admission(self, db, sample_encounter, test_user):
         """Should auto-derive referral_type as ADMISSION for ward services."""
         from hmis.apps.referrals.models import ClinicalReferral
 
@@ -67,9 +63,7 @@ class TestClinicalReferralModel:
 
         assert referral.referral_type == "ADMISSION"
 
-    def test_create_referral_defaults_to_specialty_clinic(
-        self, db, sample_encounter, test_user
-    ):
+    def test_create_referral_defaults_to_specialty_clinic(self, db, sample_encounter, test_user):
         """Should default to SPECIALTY_CLINIC for unmapped services."""
         from hmis.apps.referrals.models import ClinicalReferral
 
@@ -174,9 +168,7 @@ class TestClinicalReferralModel:
         assert referral.declined_by == test_user
         assert referral.decline_reason == "Patient declined referral"
 
-    def test_status_transition_decline_requires_reason(
-        self, db, sample_encounter, test_user
-    ):
+    def test_status_transition_decline_requires_reason(self, db, sample_encounter, test_user):
         """Declining without a reason should raise ValidationError."""
         from hmis.apps.referrals.models import ClinicalReferral
 
@@ -191,9 +183,7 @@ class TestClinicalReferralModel:
         with pytest.raises(ValidationError, match="reason is required"):
             referral.decline(user=test_user, reason="")
 
-    def test_invalid_status_transition_raises_error(
-        self, db, sample_encounter, test_user
-    ):
+    def test_invalid_status_transition_raises_error(self, db, sample_encounter, test_user):
         """Cannot transition from COMPLETED to ACCEPTED."""
         from hmis.apps.referrals.models import ClinicalReferral
 
@@ -327,9 +317,7 @@ class TestClinicalReferralAPI:
 
     def test_create_referral_success(self, authenticated_client, referral_data):
         """Should create a referral with auto-generated fields."""
-        response = authenticated_client.post(
-            "/api/referrals/", referral_data, format="json"
-        )
+        response = authenticated_client.post("/api/referrals/", referral_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["referral_number"].startswith("REF-")
@@ -384,9 +372,7 @@ class TestClinicalReferralAPI:
 
     def test_retrieve_referral(self, authenticated_client, referral_data):
         """Should retrieve a single referral detail."""
-        create_resp = authenticated_client.post(
-            "/api/referrals/", referral_data, format="json"
-        )
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
         referral_id = create_resp.data["id"]
 
         response = authenticated_client.get(f"/api/referrals/{referral_id}/")
@@ -398,9 +384,7 @@ class TestClinicalReferralAPI:
 
     def test_accept_referral(self, authenticated_client, referral_data):
         """Should accept a pending referral."""
-        create_resp = authenticated_client.post(
-            "/api/referrals/", referral_data, format="json"
-        )
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
         referral_id = create_resp.data["id"]
 
         response = authenticated_client.post(
@@ -413,9 +397,7 @@ class TestClinicalReferralAPI:
 
     def test_decline_referral(self, authenticated_client, referral_data):
         """Should decline a referral with a reason."""
-        create_resp = authenticated_client.post(
-            "/api/referrals/", referral_data, format="json"
-        )
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
         referral_id = create_resp.data["id"]
 
         response = authenticated_client.post(
@@ -428,13 +410,9 @@ class TestClinicalReferralAPI:
         assert response.data["status"] == "DECLINED"
         assert response.data["decline_reason"] == "Service not available at this time"
 
-    def test_decline_referral_without_reason_fails(
-        self, authenticated_client, referral_data
-    ):
+    def test_decline_referral_without_reason_fails(self, authenticated_client, referral_data):
         """Declining without a reason should fail."""
-        create_resp = authenticated_client.post(
-            "/api/referrals/", referral_data, format="json"
-        )
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
         referral_id = create_resp.data["id"]
 
         response = authenticated_client.post(
@@ -447,9 +425,7 @@ class TestClinicalReferralAPI:
 
     def test_cancel_referral(self, authenticated_client, referral_data):
         """Should cancel an active referral."""
-        create_resp = authenticated_client.post(
-            "/api/referrals/", referral_data, format="json"
-        )
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
         referral_id = create_resp.data["id"]
 
         response = authenticated_client.post(
@@ -461,9 +437,7 @@ class TestClinicalReferralAPI:
 
     def test_delete_only_draft_referrals(self, authenticated_client, referral_data):
         """Should prevent deleting non-draft referrals."""
-        create_resp = authenticated_client.post(
-            "/api/referrals/", referral_data, format="json"
-        )
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
         referral_id = create_resp.data["id"]
 
         # Default is PENDING, not DRAFT — should fail
@@ -473,14 +447,10 @@ class TestClinicalReferralAPI:
 
     def test_for_encounter_endpoint(self, authenticated_client, referral_data):
         """Should list referrals filtered by encounter."""
-        create_resp = authenticated_client.post(
-            "/api/referrals/", referral_data, format="json"
-        )
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
         encounter_id = referral_data["encounter"]
 
-        response = authenticated_client.get(
-            f"/api/referrals/for-encounter/{encounter_id}/"
-        )
+        response = authenticated_client.get(f"/api/referrals/for-encounter/{encounter_id}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
@@ -494,15 +464,11 @@ class TestClinicalReferralAPI:
 
         assert response.status_code == status.HTTP_200_OK
 
-    def test_pending_endpoint_filter_by_service(
-        self, authenticated_client, referral_data
-    ):
+    def test_pending_endpoint_filter_by_service(self, authenticated_client, referral_data):
         """Should filter pending referrals by target_service."""
         authenticated_client.post("/api/referrals/", referral_data, format="json")
 
-        response = authenticated_client.get(
-            "/api/referrals/pending/?target_service=PHYSIOTHERAPY"
-        )
+        response = authenticated_client.get("/api/referrals/pending/?target_service=PHYSIOTHERAPY")
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -530,31 +496,23 @@ class TestClinicalReferralAPI:
         """Should filter referrals by type."""
         authenticated_client.post("/api/referrals/", referral_data, format="json")
 
-        response = authenticated_client.get(
-            "/api/referrals/?referral_type=ALLIED_HEALTH"
-        )
+        response = authenticated_client.get("/api/referrals/?referral_type=ALLIED_HEALTH")
 
         assert response.status_code == status.HTTP_200_OK
         for r in response.data.get("results", []):
             assert r["referral_type"] == "ALLIED_HEALTH"
 
-    def test_filter_by_patient(
-        self, authenticated_client, referral_data, sample_patient
-    ):
+    def test_filter_by_patient(self, authenticated_client, referral_data, sample_patient):
         """Should filter referrals by patient."""
         authenticated_client.post("/api/referrals/", referral_data, format="json")
 
-        response = authenticated_client.get(
-            f"/api/referrals/?patient={sample_patient.id}"
-        )
+        response = authenticated_client.get(f"/api/referrals/?patient={sample_patient.id}")
 
         assert response.status_code == status.HTTP_200_OK
 
     def test_search_by_referral_number(self, authenticated_client, referral_data):
         """Should search referrals by number."""
-        create_resp = authenticated_client.post(
-            "/api/referrals/", referral_data, format="json"
-        )
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
         ref_number = create_resp.data["referral_number"]
 
         response = authenticated_client.get(f"/api/referrals/?search={ref_number}")
@@ -578,9 +536,7 @@ class TestClinicalReferralAPI:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_create_multiple_referral_types(
-        self, authenticated_client, sample_encounter
-    ):
+    def test_create_multiple_referral_types(self, authenticated_client, sample_encounter):
         """Should support creating different referral types from same encounter."""
         # Allied health
         r1 = authenticated_client.post(
@@ -608,9 +564,7 @@ class TestClinicalReferralAPI:
         assert r1.data["referral_type"] == "ALLIED_HEALTH"
         assert r2.data["referral_type"] == "SPECIALTY_CLINIC"
 
-    def test_referral_captures_vitals_snapshot(
-        self, authenticated_client, sample_encounter
-    ):
+    def test_referral_captures_vitals_snapshot(self, authenticated_client, sample_encounter):
         """Should auto-snapshot encounter vitals."""
         sample_encounter.temperature = 37.5
         sample_encounter.pulse = 80
@@ -638,9 +592,7 @@ class TestClinicalReferralAPI:
 class TestReferralAuditLogging:
     """Tests for referral audit logging."""
 
-    def test_create_referral_creates_audit_log(
-        self, authenticated_client, sample_encounter
-    ):
+    def test_create_referral_creates_audit_log(self, authenticated_client, sample_encounter):
         """Creating a referral should create an audit log entry."""
         from hmis.apps.core.models import AuditLog
 
@@ -655,9 +607,7 @@ class TestReferralAuditLogging:
         assert log is not None
         assert log.resource_type == "ClinicalReferral"
 
-    def test_accept_referral_creates_audit_log(
-        self, authenticated_client, sample_encounter
-    ):
+    def test_accept_referral_creates_audit_log(self, authenticated_client, sample_encounter):
         """Accepting a referral should create an audit log entry."""
         from hmis.apps.core.models import AuditLog
 
@@ -669,9 +619,7 @@ class TestReferralAuditLogging:
         resp = authenticated_client.post("/api/referrals/", data, format="json")
         referral_id = resp.data["id"]
 
-        authenticated_client.post(
-            f"/api/referrals/{referral_id}/accept/", {}, format="json"
-        )
+        authenticated_client.post(f"/api/referrals/{referral_id}/accept/", {}, format="json")
 
         log = AuditLog.objects.filter(action="referral_accept").last()
         assert log is not None
