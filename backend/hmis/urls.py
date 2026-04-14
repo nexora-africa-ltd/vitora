@@ -15,6 +15,12 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenVerifyView
 
+from hmis.apps.core.cookie_auth import (
+    CookieLoginView,
+    CookieLogoutView,
+    CookieMFAVerifyView,
+    CookieRefreshView,
+)
 from hmis.apps.core.mfa.views import MFAAwareTokenRefreshView
 from hmis.apps.core.powersync_tokens import PowerSyncCredentialsView
 from hmis.apps.core.views import (
@@ -320,6 +326,11 @@ urlpatterns = [
     path("api/token/", AuditedTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", MFAAwareTokenRefreshView.as_view(), name="token_refresh"),
     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    # HttpOnly cookie-based auth endpoints (web frontend)
+    path("api/auth/login/", CookieLoginView.as_view(), name="cookie_login"),
+    path("api/auth/refresh/", CookieRefreshView.as_view(), name="cookie_refresh"),
+    path("api/auth/logout/", CookieLogoutView.as_view(), name="cookie_logout"),
+    path("api/auth/mfa-verify/", CookieMFAVerifyView.as_view(), name="cookie_mfa_verify"),
     # PowerSync credentials endpoint (returns purpose-built JWT for PowerSync Cloud)
     path(
         "api/powersync/credentials/",

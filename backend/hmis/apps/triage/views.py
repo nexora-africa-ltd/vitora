@@ -249,7 +249,7 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             except Exception as e:
                 logger.exception("Error calculating triage category")
                 return Response(
-                    {"detail": f"Error calculating category: {str(e)}"},
+                    {"detail": "Error calculating triage category. Please try again."},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 

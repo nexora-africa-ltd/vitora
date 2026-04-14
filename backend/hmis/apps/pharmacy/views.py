@@ -2,7 +2,10 @@
 Views for Pharmacy app API endpoints.
 """
 
+import logging
 from datetime import date, timedelta
+
+logger = logging.getLogger(__name__)
 
 from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
@@ -442,8 +445,9 @@ class DispensingViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         except InsufficientStockError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception("Dispensing failed")
             return Response(
-                {"error": f"Dispensing failed: {str(e)}"},
+                {"error": "Dispensing failed. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

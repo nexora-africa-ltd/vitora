@@ -1,6 +1,5 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from '@/lib/auth/storage';
-import { isTokenExpired } from '@/lib/auth/token-utils';
 import { API_BASE_URL } from '@/lib/utils/constants';
 
 /**
@@ -26,75 +25,53 @@ export function getActiveFacilityId(): number | null {
   return _activeFacilityId;
 }
 
-// Create axios instance
+// Create axios instance — uses httpOnly cookies for auth (withCredentials)
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true,  // Send httpOnly auth cookies with every request
   headers: {
     'Content-Type': 'application/json',
   },
+  xsrfCookieName: 'csrftoken',   // Django's CSRF cookie name
+  xsrfHeaderName: 'X-CSRFToken', // Header Django expects
 });
 
 // Request queue for token refresh
 let isRefreshing = false;
 let failedQueue: Array<{
-  resolve: (token: string) => void;
+  resolve: () => void;
   reject: (error: Error) => void;
 }> = [];
 
-const processQueue = (error: Error | null, token: string | null = null) => {
+const processQueue = (error: Error | null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token!);
+      prom.resolve();
     }
   });
   failedQueue = [];
 };
 
 /**
- * Request interceptor - adds auth token to requests.
+ * Request interceptor — attaches facility scoping header.
+ * Auth is handled automatically by httpOnly cookies (withCredentials).
  */
 apiClient.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     // Attach facility ID header for multi-facility data scoping
     if (_activeFacilityId != null) {
       config.headers['X-Facility-Id'] = String(_activeFacilityId);
     }
-
-    const token = tokenStorage.getAccessToken();
-
-    // Debug logging for auth issues (development only)
-    if (process.env.NODE_ENV === 'development' && !token) {
-      console.debug('[Auth Debug] No access token found for request:', config.url);
-    }
-
-    if (token) {
-      // Check if token needs refresh
-      if (isTokenExpired(token, 60)) {
-        // Token expires within 60 seconds, try to refresh
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('[Auth Debug] Token expiring soon, refreshing for:', config.url);
-        }
-        const newToken = await refreshTokenIfNeeded();
-        if (newToken) {
-          config.headers.Authorization = `Bearer ${newToken}`;
-        } else if (process.env.NODE_ENV === 'development') {
-          console.debug('[Auth Debug] Token refresh failed, no auth header added');
-        }
-      } else {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-
     return config;
   },
   (error) => Promise.reject(error)
 );
 
 /**
- * Response interceptor - handles auth errors and token refresh.
+ * Response interceptor — handles auth errors and cookie-based token refresh.
  */
 apiClient.interceptors.response.use(
   (response) => response,
@@ -105,7 +82,6 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 403) {
       const data = error.response.data as Record<string, unknown> | undefined;
       if (data && data.code === 'mfa_setup_required') {
-        // Redirect to MFA setup (only once, avoid loops)
         if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/settings')) {
           window.location.href = '/settings?tab=security&reason=mfa_required';
         }
@@ -113,16 +89,12 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Handle 401 Unauthorized
+    // Handle 401 Unauthorized — try cookie-based refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        // Wait for token refresh
         return new Promise((resolve, reject) => {
           failedQueue.push({
-            resolve: (token: string) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              resolve(apiClient(originalRequest));
-            },
+            resolve: () => resolve(apiClient(originalRequest)),
             reject: (err: Error) => reject(err),
           });
         });
@@ -132,18 +104,16 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const newToken = await refreshTokenIfNeeded();
-        if (newToken) {
-          processQueue(null, newToken);
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        const refreshed = await refreshViaCookie();
+        if (refreshed) {
+          processQueue(null);
           return apiClient(originalRequest);
         } else {
-          // Refresh failed, redirect to login
           handleAuthError();
           return Promise.reject(error);
         }
       } catch (refreshError) {
-        processQueue(refreshError as Error, null);
+        processQueue(refreshError as Error);
         handleAuthError();
         return Promise.reject(refreshError);
       } finally {
@@ -156,23 +126,16 @@ apiClient.interceptors.response.use(
 );
 
 /**
- * Refresh the access token.
+ * Refresh access token via httpOnly cookie.
+ * The refresh token is in a cookie; the backend reads it and sets a new access cookie.
  */
-async function refreshTokenIfNeeded(): Promise<string | null> {
-  const refreshToken = tokenStorage.getRefreshToken();
-  if (!refreshToken) return null;
-
+async function refreshViaCookie(): Promise<boolean> {
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/token/refresh/`, {
-      refresh: refreshToken,
-    });
-
-    const newAccessToken = response.data.access;
-    tokenStorage.setTokens(newAccessToken, refreshToken);
-    return newAccessToken;
+    await axios.post(`${API_BASE_URL}/api/auth/refresh/`, {}, { withCredentials: true });
+    return true;
   } catch {
     tokenStorage.clearAll();
-    return null;
+    return false;
   }
 }
 

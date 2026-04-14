@@ -32,6 +32,9 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: read
+
 env:
   FHIR_SERVER_URL: http://localhost:8090/fhir
   PYTHON_VERSION: '3.12'

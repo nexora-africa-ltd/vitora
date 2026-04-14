@@ -1,40 +1,49 @@
-const ACCESS_TOKEN_KEY = 'vitora_access_token';
-const REFRESH_TOKEN_KEY = 'vitora_refresh_token';
 const USER_KEY = 'vitora_user';
 const MFA_GRACE_KEY = 'vitora_mfa_grace_deadline';
 
 /**
- * Token storage utilities using localStorage.
- * In production, consider httpOnly cookies for better security.
+ * Auth storage utilities.
+ *
+ * Tokens are stored in httpOnly cookies (set by the backend, inaccessible
+ * to JavaScript). Only user profile data (non-sensitive) is kept in
+ * localStorage for UI display.
  */
 export const tokenStorage = {
   /**
-   * Get the access token from storage.
+   * Check if the user is authenticated.
+   * Since tokens are in httpOnly cookies, we infer auth status from the
+   * presence of saved user data.
+   */
+  isAuthenticated(): boolean {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(USER_KEY) !== null;
+  },
+
+  /**
+   * @deprecated Tokens are now in httpOnly cookies — use isAuthenticated() instead.
+   * Kept for backward compatibility during migration. Always returns null.
    */
   getAccessToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
+    return null;
   },
 
   /**
-   * Get the refresh token from storage.
+   * @deprecated Tokens are now in httpOnly cookies. Always returns null.
    */
   getRefreshToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(REFRESH_TOKEN_KEY);
+    return null;
   },
 
   /**
-   * Store both tokens.
+   * @deprecated Tokens are now set via httpOnly cookies by the backend.
+   * This is a no-op kept for backward compatibility during migration.
    */
-  setTokens(access: string, refresh: string): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(ACCESS_TOKEN_KEY, access);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+  setTokens(_access: string, _refresh: string): void {
+    // No-op: tokens are managed via httpOnly cookies
   },
 
   /**
-   * Get the stored user data.
+   * Get the stored user profile data.
    */
   getUser(): any | null {
     if (typeof window === 'undefined') return null;
@@ -43,7 +52,7 @@ export const tokenStorage = {
   },
 
   /**
-   * Store user data.
+   * Store user profile data (non-sensitive: name, role, permissions).
    */
   setUser(user: any): void {
     if (typeof window === 'undefined') return;
@@ -51,12 +60,11 @@ export const tokenStorage = {
   },
 
   /**
-   * Clear all stored tokens and user data.
+   * Clear all stored user data.
+   * Note: httpOnly cookies are cleared by calling POST /api/auth/logout/
    */
   clearAll(): void {
     if (typeof window === 'undefined') return;
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(MFA_GRACE_KEY);
   },

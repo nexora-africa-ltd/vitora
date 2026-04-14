@@ -52,6 +52,17 @@ function getStorageKey(draftKey: string): string {
   return `${DRAFT_PREFIX}${draftKey}`;
 }
 
+/**
+ * Clear all draft keys from localStorage.
+ * Call on logout to prevent clinical data leaking to subsequent users on shared workstations.
+ */
+export function clearAllDrafts(): number {
+  if (typeof window === 'undefined') return 0;
+  const keys = Object.keys(localStorage).filter(k => k.startsWith(DRAFT_PREFIX));
+  keys.forEach(k => localStorage.removeItem(k));
+  return keys.length;
+}
+
 function isExpired(timestamp: number): boolean {
   const expiryMs = DRAFT_EXPIRY_HOURS * 60 * 60 * 1000;
   return Date.now() - timestamp > expiryMs;

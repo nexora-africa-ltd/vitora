@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { clearAllDrafts } from '@/lib/hooks/use-draft-save';
 
 // Facility modules matching backend Facility.modules property
 export interface FacilityModules {
@@ -84,9 +85,7 @@ export interface LoginResult {
 // Create context with undefined default
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-// Token storage keys
-const ACCESS_TOKEN_KEY = 'vitora_access_token';
-const REFRESH_TOKEN_KEY = 'vitora_refresh_token';
+// Token storage keys — tokens are now in httpOnly cookies (not in localStorage)
 const USER_KEY = 'vitora_user';
 // Cookie name for middleware auth check (must match middleware.ts)
 const AUTH_COOKIE_NAME = 'vitora_authenticated';
@@ -148,33 +147,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-        const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
         const userStr = localStorage.getItem(USER_KEY);
 
-        if (accessToken && refreshToken && userStr) {
+        if (userStr) {
           const storedUser = JSON.parse(userStr) as User;
           setState({
             user: storedUser,
-            tokens: { access: accessToken, refresh: refreshToken },
+            tokens: null, // Tokens are in httpOnly cookies
             isAuthenticated: true,
             isLoading: false,
           });
 
-          const syncedUser = await syncUserFromBackend(storedUser);
-          if (JSON.stringify(syncedUser) !== JSON.stringify(storedUser)) {
-            setState((prev) => ({
-              ...prev,
-              user: syncedUser,
-            }));
+          // Verify auth is still valid by syncing from backend
+          // (if the cookie has expired, this will fail and we'll clear state)
+          try {
+            const syncedUser = await syncUserFromBackend(storedUser);
+            if (JSON.stringify(syncedUser) !== JSON.stringify(storedUser)) {
+              setState((prev) => ({
+                ...prev,
+                user: syncedUser,
+              }));
+            }
+          } catch {
+            // Auth cookie expired — clear state
+            localStorage.removeItem(USER_KEY);
+            setState({
+              user: null,
+              tokens: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
           }
         } else {
           setState((prev) => ({ ...prev, isLoading: false }));
         }
       } catch {
-        // Clear invalid data
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
         setState((prev) => ({ ...prev, isLoading: false }));
       }
@@ -183,17 +190,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void initializeAuth();
   }, [syncUserFromBackend]);
 
-  // Login function
+  // Login function — uses cookie-based auth endpoint
   const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      // Get tokens and user info
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
       const tokenResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088'}/api/token/`,
+        `${apiUrl}/api/auth/login/`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',  // Receive httpOnly cookies
           body: JSON.stringify({ username, password }),
         }
       );
@@ -202,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const error = await tokenResponse.json();
         return {
           success: false,
-          error: error.detail || 'Login failed',
+          error: error.detail || error.error || 'Login failed',
         };
       }
 
@@ -221,14 +229,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // MFA setup required but tokens still issued (grace period)
       if (data.mfa_setup_required && data.mfa_grace_deadline) {
-        // Persist grace deadline so the banner can read it
         localStorage.setItem(MFA_GRACE_KEY, data.mfa_grace_deadline);
       }
 
-      // MFA not required - proceed with normal login
-      const tokens: AuthTokens = { access: data.access, refresh: data.refresh };
-
-      // User info is now included in the token response
+      // User info from response (tokens are in httpOnly cookies, not in body)
       const user: User = data.user || {
         id: 0,
         username: username,
@@ -240,20 +244,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         facility: null,
       };
 
-      // Store in localStorage
-      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access);
-      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
+      // Store user profile (non-sensitive) in localStorage
       localStorage.setItem(USER_KEY, JSON.stringify(user));
 
-      // Reset idle timer activity to prevent immediate logout after re-login
+      // Reset idle timer
       localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
 
-      // Set auth cookie for middleware (httpOnly: false so JS can read, but middleware needs it)
+      // Set auth cookie for middleware
       document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
       setState({
         user,
-        tokens,
+        tokens: null,  // Tokens are in httpOnly cookies
         isAuthenticated: true,
         isLoading: false,
       });
@@ -274,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // MFA verification function
+  // MFA verification function — uses cookie-based endpoint
   const verifyMFA = useCallback(async (
     mfaToken: string,
     options: { token?: string; backupCode?: string }
@@ -282,60 +284,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      // Import mfaApi dynamically to avoid circular imports
-      const { mfaApi } = await import('@/lib/api/mfa');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
+      const response = await fetch(
+        `${apiUrl}/api/auth/mfa-verify/`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',  // Receive httpOnly cookies
+          body: JSON.stringify({
+            mfa_token: mfaToken,
+            ...(options.token && { token: options.token }),
+            ...(options.backupCode && { backup_code: options.backupCode }),
+          }),
+        }
+      );
 
-      const response = await mfaApi.verifyMFA(mfaToken, options);
-      const tokens: AuthTokens = { access: response.access, refresh: response.refresh };
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || errData.detail || 'MFA verification failed');
+      }
 
-      // User info is now included in the MFA verify response
+      const data = await response.json();
+
+      // User info from response (tokens are in httpOnly cookies)
       const user: User = {
-        id: response.user.id,
-        username: response.user.username,
-        email: response.user.email,
-        first_name: response.user.first_name,
-        last_name: response.user.last_name,
-        is_staff: response.user.is_staff,
-        is_superuser: response.user.is_superuser,
-        permissions: response.user.permissions,
-        role: response.user.role ?? undefined,
-        role_display: response.user.role_display ?? undefined,
-        role_category: response.user.role_category ?? undefined,
-        phone_number: response.user.phone_number ?? undefined,
-        facility: response.user.facility ?? null,
+        id: data.user.id,
+        username: data.user.username,
+        email: data.user.email,
+        first_name: data.user.first_name,
+        last_name: data.user.last_name,
+        is_staff: data.user.is_staff,
+        is_superuser: data.user.is_superuser,
+        permissions: data.user.permissions,
+        role: data.user.role ?? undefined,
+        role_display: data.user.role_display ?? undefined,
+        role_category: data.user.role_category ?? undefined,
+        phone_number: data.user.phone_number ?? undefined,
+        facility: data.user.facility ?? null,
       };
 
-      // Store in localStorage
-      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access);
-      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
+      // Store user profile (non-sensitive)
       localStorage.setItem(USER_KEY, JSON.stringify(user));
 
-      // Reset idle timer activity to prevent immediate logout after re-login
-      // This is critical: if user was idle and logged out, the old activity timestamp
-      // would cause the idle timer to immediately trigger logout again
+      // Reset idle timer
       localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
-
-      // Debug logging (development only)
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('[Auth Debug] MFA verify - tokens stored:', {
-          accessTokenLength: tokens.access.length,
-          hasRefreshToken: !!tokens.refresh,
-          username: user.username,
-        });
-        // Verify storage worked
-        const storedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-        console.debug('[Auth Debug] Storage verification:', {
-          tokenStored: !!storedToken,
-          tokenMatch: storedToken === tokens.access,
-        });
-      }
 
       // Set auth cookie for middleware
       document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
       setState({
         user,
-        tokens,
+        tokens: null,  // Tokens are in httpOnly cookies
         isAuthenticated: true,
         isLoading: false,
       });
@@ -345,30 +344,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Logout function
+  // Logout function — clears httpOnly cookies via backend + local state
   const logout = useCallback(() => {
-    // Debug logging (development only)
-    if (process.env.NODE_ENV === 'development') {
-      console.debug('[Auth Debug] Logout - clearing tokens');
-    }
+    // Clear httpOnly cookies server-side (fire-and-forget)
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
+    fetch(`${apiUrl}/api/auth/logout/`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => { /* ignore — local cleanup still happens */ });
 
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    // Clear local data
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(MFA_GRACE_KEY);
 
-    // Clear auth cookie
-    document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    // Clear clinical form drafts to prevent data leaking on shared workstations
+    clearAllDrafts();
 
-    // Clear React Query cache to prevent stale auth errors on re-login
-    // This is done via dynamic import to avoid circular dependencies
-    import('@tanstack/react-query').then(({ QueryClient }) => {
-      // Note: This creates a new client just to signal intent; actual cache
-      // clearing happens when page reloads due to logout redirect
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('[Auth Debug] React state cleared, page will reload');
-      }
-    }).catch(() => { /* ignore */ });
+    // Clear auth cookie for middleware
+    document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 
     setState({
       user: null,
@@ -378,19 +371,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Refresh token function
+  // Refresh token function — uses cookie-based refresh
   const refreshToken = useCallback(async () => {
-    const currentRefresh = localStorage.getItem(REFRESH_TOKEN_KEY);
-    if (!currentRefresh) {
-      throw new Error('No refresh token');
-    }
-
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088';
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:9088'}/api/token/refresh/`,
+      `${apiUrl}/api/auth/refresh/`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh: currentRefresh }),
+        credentials: 'include',
       }
     );
 
@@ -398,14 +386,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout();
       throw new Error('Token refresh failed');
     }
-
-    const data = (await response.json()) as { access: string };
-    localStorage.setItem(ACCESS_TOKEN_KEY, data.access);
-
-    setState((prev) => ({
-      ...prev,
-      tokens: prev.tokens ? { ...prev.tokens, access: data.access } : null,
-    }));
   }, [logout]);
 
   const updateUserFacility = useCallback((facility: UserFacility | null) => {

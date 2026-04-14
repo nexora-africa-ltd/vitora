@@ -188,6 +188,7 @@ AUTHENTICATION_BACKENDS = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "hmis.apps.core.cookie_auth_backend.CookieJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",  # Require authentication by default
@@ -434,6 +435,18 @@ SIMPLE_JWT = {
 # CORS settings (for development, will be more restrictive in production)
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = []
+
+# ---------------------------------------------------------------------------
+# HttpOnly Cookie Auth Settings (web frontend)
+# ---------------------------------------------------------------------------
+AUTH_COOKIE_SECURE = not DEBUG  # True in production, False in dev
+AUTH_COOKIE_SAMESITE = "Lax"  # "None" for cross-origin production deployments
+AUTH_COOKIE_DOMAIN = None  # Set to ".vitora.digital" for cross-subdomain cookies
+
+# CSRF — needed for cookie-based auth.  Django sets csrftoken cookie by default.
+# Keep CSRF_COOKIE_HTTPONLY = False (default) so the frontend JS can read the
+# csrftoken cookie and include it as X-CSRFToken header on mutations.
+CSRF_COOKIE_SAMESITE = "Lax"
 
 # Security settings
 SECURE_BROWSER_XSS_FILTER = True
