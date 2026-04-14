@@ -43,8 +43,8 @@ def my_shift_today(db, my_resource, sample_facility):
     return Shift.objects.create(
         staff_resource=my_resource,
         shift_date=date.today(),
-        start_time=time(7, 0),
-        end_time=time(19, 0),
+        start_time=time(0, 0),
+        end_time=time(23, 59),
         shift_type="DAY",
         status="SCHEDULED",
         facility=sample_facility,
