@@ -12,7 +12,7 @@ interface PageProps {
 
 export default function ImagingOrderDetailPage({ params }: PageProps) {
   const { orderNumber } = use(params);
-  
+
   return (
     <div className="space-y-6">
       <ImagingOrderDetail orderNumber={orderNumber} />

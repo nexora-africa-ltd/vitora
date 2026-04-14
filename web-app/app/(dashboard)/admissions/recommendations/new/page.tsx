@@ -28,25 +28,25 @@ import { getApiErrorMessage } from '@/lib/api/client';
  */
 function parseRecommendationError(error: unknown): string {
   const rawMessage = getApiErrorMessage(error);
-  
+
   // Check for unique constraint on encounter (OneToOneField)
-  if (rawMessage.toLowerCase().includes('encounter') && 
-      (rawMessage.toLowerCase().includes('unique') || 
+  if (rawMessage.toLowerCase().includes('encounter') &&
+      (rawMessage.toLowerCase().includes('unique') ||
        rawMessage.toLowerCase().includes('already exists') ||
        rawMessage.toLowerCase().includes('admission recommendation with this encounter already exists'))) {
     return 'An admission recommendation already exists for this encounter. Please view the existing recommendation or create a new encounter.';
   }
-  
+
   // Check for expired/invalid encounter
   if (rawMessage.toLowerCase().includes('encounter') && rawMessage.toLowerCase().includes('invalid')) {
     return 'The encounter is no longer valid. It may have been finalized or deleted.';
   }
-  
+
   // Check for permission errors
   if (rawMessage.toLowerCase().includes('permission') || rawMessage.toLowerCase().includes('forbidden')) {
     return 'You do not have permission to create admission recommendations.';
   }
-  
+
   return rawMessage;
 }
 
@@ -75,10 +75,10 @@ export default function NewAdmissionRecommendationPage() {
 
   const handleSubmit = async () => {
     if (!encounterId || !user) return;
-    
+
     // Clear previous error
     setSubmitError(null);
-    
+
     try {
       const result = await createRecommendation.mutateAsync({
         encounter: encounterId,
@@ -89,7 +89,7 @@ export default function NewAdmissionRecommendationPage() {
         urgency,
         preferred_ward_type: preferredWardType,
       });
-      
+
       // Show success modal with recommendation data
       setSuccessData({
         patientName,

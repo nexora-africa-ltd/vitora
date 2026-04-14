@@ -187,7 +187,7 @@ export function BedSelectionGrid({
   if (beds.length === 0) {
     // Show generate beds option if ward has capacity but no beds
     const canGenerateBeds = wardCapacity && wardCapacity > 0 && onGenerateBeds;
-    
+
     return (
       <div className="py-6 text-center text-muted-foreground">
         <BedIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />

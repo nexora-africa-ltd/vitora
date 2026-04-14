@@ -202,8 +202,8 @@ export function StartConsultationDialog({
 
         {/* Actions - Stack on mobile */}
         <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-          <AlertDialogCancel 
-            onClick={handleCancel} 
+          <AlertDialogCancel
+            onClick={handleCancel}
             disabled={isLoading}
             className="w-full sm:w-auto"
           >

@@ -245,7 +245,7 @@ function OverrideDialog({ open, onOpenChange, onConfirm, alertMessage, isPending
             <DialogTitle>Override CDS Alert</DialogTitle>
           </div>
           <DialogDescription>
-            You are overriding a clinical decision support recommendation. 
+            You are overriding a clinical decision support recommendation.
             This action is audited and requires a documented clinical rationale.
           </DialogDescription>
         </DialogHeader>

@@ -467,7 +467,10 @@ class Command(BaseCommand):
         now = timezone.now()
 
         # Deterministic seed from serial number so re-runs are idempotent
-        seed = int(hashlib.md5(equip.serial_number.encode()).hexdigest()[:8], 16)
+        seed = int(
+            hashlib.md5(equip.serial_number.encode(), usedforsecurity=False).hexdigest()[:8],
+            16,
+        )
 
         # Base temperature depends on equipment type
         if equip.equipment_type == "FREEZER":

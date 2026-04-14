@@ -857,4 +857,3 @@ export function useLabSampleRejectionReport(startDate: string, endDate: string) 
     enabled: !!startDate && !!endDate,
   });
 }
-

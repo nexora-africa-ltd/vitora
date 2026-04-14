@@ -20,11 +20,7 @@ from django.utils import timezone
 from hmis.apps.core.events import DomainEvent, get_event_bus
 from hmis.apps.core.events.bus import reset_event_bus
 from hmis.apps.core.events.store import EventStore
-from hmis.apps.core.events.types import (
-    ClinicalEvents,
-    InpatientEvents,
-    PharmacyEvents,
-)
+from hmis.apps.core.events.types import ClinicalEvents, InpatientEvents, PharmacyEvents
 from hmis.apps.core.projections.clinic_queue import ClinicQueueProjection
 from hmis.apps.core.projections.models import (
     ClinicQueueStats,
@@ -32,10 +28,7 @@ from hmis.apps.core.projections.models import (
     WardOccupancyStats,
 )
 from hmis.apps.core.projections.pharmacy_queue import PharmacyQueueProjection
-from hmis.apps.core.projections.registry import (
-    get_projection_registry,
-    reset_projection_registry,
-)
+from hmis.apps.core.projections.registry import get_projection_registry, reset_projection_registry
 from hmis.apps.core.projections.ward_occupancy import WardOccupancyProjection
 
 

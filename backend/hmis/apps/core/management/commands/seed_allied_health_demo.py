@@ -308,11 +308,7 @@ class Command(BaseCommand):
                 PhysiotherapySession,
                 PhysiotherapyTreatmentType,
             )
-            from hmis.apps.social_work.models import (
-                CaseNote,
-                SocialWorkCase,
-                SocialWorkReferral,
-            )
+            from hmis.apps.social_work.models import CaseNote, SocialWorkCase, SocialWorkReferral
 
             if clear and not dry_run:
                 self._clear_demo_data()
@@ -527,8 +523,7 @@ class Command(BaseCommand):
 
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f"  ✓ {'Created' if created else 'Updated'}: "
-                        f"{user.username} ({role.name})"
+                        f"  ✓ {'Created' if created else 'Updated'}: {user.username} ({role.name})"
                     )
                 )
                 staff_map[role_code] = user

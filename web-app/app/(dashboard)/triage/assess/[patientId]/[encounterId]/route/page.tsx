@@ -453,8 +453,8 @@ export default function TriageRoutePage() {
                 borderColor: `${TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].bgColor}30`,
               }}>
                 <div className="flex items-start gap-2">
-                  <Clock className="h-4 w-4 mt-0.5" style={{ 
-                    color: TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].bgColor 
+                  <Clock className="h-4 w-4 mt-0.5" style={{
+                    color: TRIAGE_CATEGORY_CONFIG[currentAssessment.triage_category as TriageCategory].bgColor
                   }} />
                   <div>
                     <p className="text-sm font-medium">
@@ -500,8 +500,8 @@ export default function TriageRoutePage() {
                       }`}
                     >
                       <div className={`p-3 rounded-lg ${
-                        field.value === 'emergency' 
-                          ? 'bg-red-500 text-white' 
+                        field.value === 'emergency'
+                          ? 'bg-red-500 text-white'
                           : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                       }`}>
                         <Siren className="h-6 w-6" />
@@ -535,8 +535,8 @@ export default function TriageRoutePage() {
                       }`}
                     >
                       <div className={`p-3 rounded-lg ${
-                        field.value === 'clinic' 
-                          ? 'bg-emerald-500 text-white' 
+                        field.value === 'clinic'
+                          ? 'bg-emerald-500 text-white'
                           : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
                       }`}>
                         <Building2 className="h-6 w-6" />

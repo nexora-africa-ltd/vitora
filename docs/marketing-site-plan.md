@@ -1,8 +1,8 @@
 # Vitora HMIS — Marketing Site Plan
 
-> **Purpose**: Complete implementation plan for the Vitora HMIS marketing/landing website.  
-> **Audience**: Developer or AI agent tasked with building the site.  
-> **Status**: Ready for implementation  
+> **Purpose**: Complete implementation plan for the Vitora HMIS marketing/landing website.
+> **Audience**: Developer or AI agent tasked with building the site.
+> **Status**: Ready for implementation
 > **Date**: March 2, 2026
 
 ---
@@ -83,7 +83,7 @@ Organization: nexora-africa-ltd
 
 The **only integration point** is the TibaBot chat proxy (`/api/chat`), which talks to the upstream TibaBot service via server-only env vars — no code sharing required.
 
-> This plan doc stays in `vitora/docs/marketing-site-plan.md` as the canonical spec.  
+> This plan doc stays in `vitora/docs/marketing-site-plan.md` as the canonical spec.
 > Implementation happens in `vitora-marketing`.
 
 ### 2.2 Tech Stack & Project Structure
@@ -1402,15 +1402,15 @@ NEXT_PUBLIC_SITE_URL=https://vitora.nexora.africa
 ### 11.1 Hero Copy Options
 
 **Option A (Direct)**:
-> **Built for Care Without Limits**  
+> **Built for Care Without Limits**
 > The offline-first hospital management system designed for Kenya's healthcare infrastructure. SHA-compliant. AI-powered. Always available.
 
 **Option B (Problem-led)**:
-> **Healthcare Doesn't Stop When Internet Does**  
+> **Healthcare Doesn't Stop When Internet Does**
 > Vitora HMIS keeps your facility running — online or offline. Full SHA integration, AI clinical support, and rock-solid compliance.
 
 **Option C (Impact-led)**:
-> **Transform Your Facility with Kenya's Smartest HMIS**  
+> **Transform Your Facility with Kenya's Smartest HMIS**
 > From patient registration to SHA claims — one system that works everywhere, even without internet.
 
 ### 11.2 Feature Taglines
@@ -1428,33 +1428,33 @@ NEXT_PUBLIC_SITE_URL=https://vitora.nexora.africa
 
 ### 11.3 Social Proof Placeholders
 
-> "Since implementing Vitora, our SHA claims processing time has decreased by 60%. The offline capability means we never lose patient data during power outages."  
+> "Since implementing Vitora, our SHA claims processing time has decreased by 60%. The offline capability means we never lose patient data during power outages."
 > — *[Name], Hospital Administrator, [Facility Name]*
 
-> "The AI-powered ICD-10 coding saves me 15 minutes per patient encounter. TibaBot's drug interaction warnings have caught several potential issues."  
+> "The AI-powered ICD-10 coding saves me 15 minutes per patient encounter. TibaBot's drug interaction warnings have caught several potential issues."
 > — *[Name], Clinical Officer, [Facility Name]*
 
-> "For the first time, we have real-time visibility into bed occupancy across all our wards. The triage system has streamlined our emergency department flow."  
+> "For the first time, we have real-time visibility into bed occupancy across all our wards. The triage system has streamlined our emergency department flow."
 > — *[Name], Nursing Officer In-Charge, [Facility Name]*
 
 ### 11.4 FAQ Content
 
-**Q: Does Vitora work without internet?**  
+**Q: Does Vitora work without internet?**
 A: Yes. Vitora is built offline-first. All core functions — patient registration, encounters, prescriptions, billing — work without internet. Data syncs automatically when connectivity returns.
 
-**Q: How does SHA integration work?**  
+**Q: How does SHA integration work?**
 A: Vitora integrates with all 15 SHA Digital Health Agency APIs. Eligibility verification, claims submission, and status tracking happen automatically within your normal workflow. No separate SHA portal needed.
 
-**Q: Is my data secure?**  
+**Q: Is my data secure?**
 A: Absolutely. Patient data is encrypted at rest using industry-standard Fernet encryption. We comply fully with the Kenya Data Protection Act 2019. A complete DPIA is available on request.
 
-**Q: What devices does Vitora run on?**  
+**Q: What devices does Vitora run on?**
 A: Vitora runs on desktop (Windows, macOS, Linux via Electron), web browsers (Chrome, Firefox, Safari, Edge), and mobile devices (Android & iOS via React Native).
 
-**Q: What training is provided?**  
+**Q: What training is provided?**
 A: We provide role-based training (30-45 minutes per role), on-site support during pilot, and comprehensive documentation. Most staff are productive within one day.
 
-**Q: Can I try before I buy?**  
+**Q: Can I try before I buy?**
 A: Yes. We offer a free 30-day pilot program at your facility with full onboarding and support.
 
 ---
@@ -1574,7 +1574,7 @@ nexora-africa-ltd/vitora-marketing   # Marketing site implementation
 
 ---
 
-**Document Version**: 1.1  
-**Author**: Engineering Team  
-**Last Updated**: March 2, 2026  
+**Document Version**: 1.1
+**Author**: Engineering Team
+**Last Updated**: March 2, 2026
 **Next Review**: After Phase 1 implementation

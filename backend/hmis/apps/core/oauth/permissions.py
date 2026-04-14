@@ -139,8 +139,7 @@ class SMARTScopePermission(permissions.BasePermission):
                 return True
 
         logger.warning(
-            f"No scope grants access to {resource_type}.{action}. "
-            f"Granted scopes: {granted_scopes}"
+            f"No scope grants access to {resource_type}.{action}. Granted scopes: {granted_scopes}"
         )
         return False
 
@@ -264,8 +263,7 @@ class SMARTPatientAccessPermission(permissions.BasePermission):
             launch_context = getattr(request, "launch_context", {})
             if "patient" not in launch_context:
                 logger.warning(
-                    "Patient scopes used without patient context. "
-                    "Denying access to patient data."
+                    "Patient scopes used without patient context. Denying access to patient data."
                 )
                 return False
 

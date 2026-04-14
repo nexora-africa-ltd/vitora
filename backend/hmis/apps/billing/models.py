@@ -2580,8 +2580,7 @@ class SHAClaimItem(models.Model):
         # Validate against tariff max quantity
         if self.tariff and self.quantity and self.quantity > self.tariff.max_quantity_per_claim:
             errors["quantity"] = (
-                f"Exceeds maximum quantity ({self.tariff.max_quantity_per_claim}) "
-                f"for this tariff"
+                f"Exceeds maximum quantity ({self.tariff.max_quantity_per_claim}) for this tariff"
             )
 
         if errors:

@@ -49,7 +49,7 @@ Gaps are categorized into four tiers:
 
 #### 1. ODPC Registration `P0` `REQUIRED`
 - **Gap**: Data Controller & Data Processor not registered with ODPC
-- **Action**: 
+- **Action**:
   - [ ] Complete DPIA sign-offs (Security Review, Legal Review, DPO Approval)
   - [ ] Submit Data Controller registration (healthcare facility)
   - [ ] Submit Data Processor registration (Nexora Africa Ltd)
@@ -155,7 +155,7 @@ Gaps are categorized into four tiers:
   - [x] Drug-allergy interaction checking in prescription flow
   - [x] FHIR AllergyIntolerance resource mapping
   - [x] IPS Bundle integration (allergies dynamically populated)
-  - [x] Frontend allergy management UI 
+  - [x] Frontend allergy management UI
   - [x] Tests: 39 unit tests (exceeded 35+ requirement)
 - **Owner**: Backend + Frontend Team
 - **Completed**: February 23, 2026 (backend)
@@ -183,7 +183,7 @@ Gaps are categorized into four tiers:
   - [x] Tests: 23 unit tests (exceeded 15+ requirement) ✅
 - **Owner**: Backend Team
 - **Completed**: February 23, 2026
-- **Deliverables**: 
+- **Deliverables**:
   - Updated `fhir/views.py` with enhanced `FHIRMedicationStatementView`, new `FHIRCarePlanView`
   - Updated `FHIRPatientSummaryView._build_ips_bundle()` to include medications and care plans
   - New CarePlan URL endpoint `/fhir/CarePlan/{id}`
@@ -217,7 +217,7 @@ Gaps are categorized into four tiers:
   - [x] Tests: 33 unit tests (exceeded 10+ requirement)
 - **Owner**: Backend Team
 - **Completed**: February 25, 2026
-- **Deliverables**: 
+- **Deliverables**:
   - `hmis/apps/core/kms/` (base, local, azure, gcp, rotation modules)
   - `hmis/apps/core/management/commands/kms.py`
   - `docs/key-management.md`
@@ -233,7 +233,7 @@ Gaps are categorized into four tiers:
   - [x] Tests: 7 frontend tests (exceeded 5+ requirement)
 - **Owner**: Frontend Team
 - **Completed**: February 25, 2026
-- **Deliverables**: 
+- **Deliverables**:
   - `lib/hooks/use-idle-timer.ts` - Core idle timer hook with cross-tab sync
   - `components/shared/idle-warning-modal.tsx` - Countdown warning modal
   - `components/shared/idle-timer-provider.tsx` - Provider wrapper for dashboard
@@ -259,7 +259,7 @@ Gaps are categorized into four tiers:
   - [x] Tests: 37 unit tests (exceeded 25+ requirement)
 - **Owner**: Backend Team
 - **Completed**: February 25, 2026
-- **Deliverables**: 
+- **Deliverables**:
   - `hmis/apps/physiotherapy/` (models, views, serializers, signals, admin)
   - API endpoints: `/api/physiotherapy/orders/`, `/api/physiotherapy/sessions/`, `/api/physiotherapy/treatment-types/`
   - Custom actions: `approve`, `assign_therapist`, `generate_sessions`, `start`, `complete`, `cancel`, `no_show`
@@ -274,7 +274,7 @@ Gaps are categorized into four tiers:
   - [x] Tests: 27 unit tests (exceeded 20+ requirement)
 - **Owner**: Backend Team
 - **Completed**: February 25, 2026
-- **Deliverables**: 
+- **Deliverables**:
   - `hmis/apps/nutrition/` (models, views, serializers, signals, admin)
   - API endpoints: `/api/nutrition/consultations/`, `/api/nutrition/diet-plans/`
   - Custom actions: `update_status`, `assign_dietitian`, `sync_anthropometrics`, `complete`, `cancel`, `activate`, `discontinue`, `put_on_hold`
@@ -293,7 +293,7 @@ Gaps are categorized into four tiers:
   - [x] Tests: 41 unit tests (exceeded 20+ requirement)
 - **Owner**: Backend Team
 - **Completed**: February 25, 2026
-- **Deliverables**: 
+- **Deliverables**:
   - `hmis/apps/occupational_therapy/` (models, views, serializers, signals, admin)
   - API endpoints: `/api/occupational-therapy/orders/`, `/api/occupational-therapy/sessions/`, `/api/occupational-therapy/treatment-types/`
   - Custom actions: `approve`, `assign_therapist`, `generate_sessions`, `start`, `complete`, `cancel`, `put_on_hold`, `no_show`, `reschedule`
@@ -312,7 +312,7 @@ Gaps are categorized into four tiers:
   - [x] Tests: 41 unit tests (exceeded 20+ requirement)
 - **Owner**: Backend Team
 - **Completed**: February 25, 2026
-- **Deliverables**: 
+- **Deliverables**:
   - `hmis/apps/social_work/` (models, views, serializers, signals, admin)
   - API endpoints: `/api/social-work/referrals/`, `/api/social-work/cases/`, `/api/social-work/notes/`, `/api/social-work/interventions/`
   - Custom actions: `accept`, `assign_worker`, `create_case`, `update_status`, `close`, `start`, `complete`, `cancel`
@@ -333,7 +333,7 @@ Gaps are categorized into four tiers:
   - [x] Tests: 40 unit tests (exceeded 15+ requirement)
 - **Owner**: Backend Team
 - **Completed**: February 26, 2026
-- **Deliverables**: 
+- **Deliverables**:
   - `hmis/apps/counselling/` (models, views, serializers, signals, admin)
   - API endpoints: `/api/counselling/types/`, `/api/counselling/referrals/`, `/api/counselling/sessions/`
   - Custom actions: `accept`, `assign_counsellor`, `start`, `complete`, `cancel`, `no_show`, `generate_sessions`, `reschedule`

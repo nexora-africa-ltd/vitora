@@ -1,5 +1,5 @@
 /**
- * Tests for Related Encounters Component  
+ * Tests for Related Encounters Component
  * Sprint 2 - Phase 2B: Encounter Linking
  */
 import React from 'react';

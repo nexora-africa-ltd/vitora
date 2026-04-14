@@ -52,7 +52,7 @@ class EncounterStateMachine:
         # Check terminal states
         if not encounter.VALID_TRANSITIONS.get(from_status):
             raise ValidationError(
-                f"Encounter is in terminal state '{from_status}'. " "No transitions allowed."
+                f"Encounter is in terminal state '{from_status}'. No transitions allowed."
             )
 
         # Validate transition

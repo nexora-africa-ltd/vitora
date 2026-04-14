@@ -20,9 +20,9 @@ class TestEncryptionConfiguration:
 
     def test_encryption_key_is_configured(self, settings):
         """Encryption key should be configured in settings."""
-        assert hasattr(settings, "FIELD_ENCRYPTION_KEY") or hasattr(
-            settings, "ENCRYPTION_KEY"
-        ), "Encryption key must be configured in settings"
+        assert hasattr(settings, "FIELD_ENCRYPTION_KEY") or hasattr(settings, "ENCRYPTION_KEY"), (
+            "Encryption key must be configured in settings"
+        )
 
     def test_encryption_key_is_valid_length(self, settings):
         """Encryption key should be of valid length for AES-256."""

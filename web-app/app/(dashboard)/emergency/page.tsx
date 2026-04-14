@@ -1,16 +1,16 @@
 /**
  * Emergency Department Dashboard
- * 
+ *
  * Landing page for the Emergency Module showing:
  * - Critical patient alerts (RED patients)
  * - Zone summary cards with patient counts by category
  * - Quick navigation to zone-specific views
- * 
+ *
  * Features:
  * - Real-time updates via WebSocket (5-second server push)
  * - Automatic fallback to polling if WebSocket unavailable
  * - Live status indicator
- * 
+ *
  * Route: /emergency
  */
 'use client';

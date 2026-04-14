@@ -5,13 +5,10 @@ Following TDD - implemented to pass API tests.
 """
 
 import logging
-
 from datetime import date
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-
-logger = logging.getLogger(__name__)
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -53,6 +50,8 @@ from hmis.apps.billing.serializers import (
 from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import RequiresActiveShiftPermission
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceCategoryViewSet(viewsets.ModelViewSet):
@@ -656,7 +655,7 @@ class MpesaViewSet(viewsets.ViewSet):
             else:
                 msg = str(e)
             return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to initiate M-Pesa payment")
             return Response(
                 {"error": "Failed to initiate M-Pesa payment. Please try again."},
@@ -772,7 +771,7 @@ class MpesaViewSet(viewsets.ViewSet):
 
         except ValidationError as e:
             return Response({"ResultCode": 1, "ResultDesc": str(e)}, status=status.HTTP_200_OK)
-        except Exception as e:
+        except Exception:
             logger.exception("M-Pesa callback processing failed")
             return Response(
                 {"ResultCode": 1, "ResultDesc": "Callback processing failed"},
@@ -902,10 +901,12 @@ class MpesaViewSet(viewsets.ViewSet):
             msg = (
                 e.message
                 if hasattr(e, "message")
-                else "; ".join(e.messages) if hasattr(e, "messages") else str(e)
+                else "; ".join(e.messages)
+                if hasattr(e, "messages")
+                else str(e)
             )
             return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to query M-Pesa transaction status")
             return Response(
                 {"error": "Failed to query transaction status. Please try again."},
@@ -989,10 +990,12 @@ class MpesaViewSet(viewsets.ViewSet):
             msg = (
                 e.message
                 if hasattr(e, "message")
-                else "; ".join(e.messages) if hasattr(e, "messages") else str(e)
+                else "; ".join(e.messages)
+                if hasattr(e, "messages")
+                else str(e)
             )
             return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
+        except Exception:
             logger.exception("M-Pesa verification failed")
             return Response(
                 {"error": "Verification failed. Please try again."},

@@ -121,34 +121,34 @@ function calculateTotal(scores: GCSScores): number | null {
 
 function getSeverity(total: number | null): { label: string; description: string; color: string; bgColor: string } {
   if (total === null) {
-    return { 
-      label: 'Incomplete', 
+    return {
+      label: 'Incomplete',
       description: 'Complete all three components to calculate total',
-      color: 'text-muted-foreground', 
-      bgColor: 'bg-muted' 
+      color: 'text-muted-foreground',
+      bgColor: 'bg-muted'
     };
   }
   if (total <= 8) {
-    return { 
-      label: 'Severe Brain Injury', 
+    return {
+      label: 'Severe Brain Injury',
       description: 'GCS 3-8: Coma - May require intubation',
-      color: 'text-red-700 dark:text-red-300', 
-      bgColor: 'bg-red-100 dark:bg-red-950' 
+      color: 'text-red-700 dark:text-red-300',
+      bgColor: 'bg-red-100 dark:bg-red-950'
     };
   }
   if (total <= 12) {
-    return { 
-      label: 'Moderate Brain Injury', 
+    return {
+      label: 'Moderate Brain Injury',
       description: 'GCS 9-12: Close neurological monitoring required',
-      color: 'text-orange-700 dark:text-orange-300', 
-      bgColor: 'bg-orange-100 dark:bg-orange-950' 
+      color: 'text-orange-700 dark:text-orange-300',
+      bgColor: 'bg-orange-100 dark:bg-orange-950'
     };
   }
-  return { 
-    label: 'Mild Brain Injury', 
+  return {
+    label: 'Mild Brain Injury',
     description: 'GCS 13-15: Normal or mild impairment',
-    color: 'text-green-700 dark:text-green-300', 
-    bgColor: 'bg-green-100 dark:bg-green-950' 
+    color: 'text-green-700 dark:text-green-300',
+    bgColor: 'bg-green-100 dark:bg-green-950'
   };
 }
 

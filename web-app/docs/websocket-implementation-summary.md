@@ -26,7 +26,7 @@
 function ClinicQueuePage({ clinicId }: { clinicId: number }) {
   const { isConnected, connectionState } = useClinicQueueSocket(clinicId);
   const { data: queue } = useClinicQueue(clinicId); // Still use React Query
-  
+
   return (
     <div>
       <WebSocketStatus connectionState={connectionState} />
@@ -95,7 +95,7 @@ export const patientsApi = {
     const response = await apiClient.get(`/api/patients/${id}/`);
     return parseResponse(PatientSchema, response.data, { context: 'patientsApi.getPatient' });
   },
-  
+
   async getPatients(params: PatientListParams = {}): Promise<PaginatedResponse<Patient>> {
     // ... build searchParams ...
     const response = await apiClient.get<PaginatedResponse<Patient>>(`/api/patients/?${searchParams.toString()}`);
@@ -124,7 +124,7 @@ export function useCallPatient() {
     onSuccess: (data, _visitId) => {
       // Existing invalidation
       queryClient.invalidateQueries({ queryKey: clinicKeys.queue(data.session) });
-      
+
       // NEW: Sync to journey store
       journeyStore.callPatient(data.patient.id);
     },

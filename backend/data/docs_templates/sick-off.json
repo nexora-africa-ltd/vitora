@@ -34,7 +34,7 @@
     ],
     "notes": "string",
     "signatures": {
-      "clinician_signature": "string", 
+      "clinician_signature": "string",
       "date_signed": "YYYY-MM-DD"
     },
     "reporting_metadata": {

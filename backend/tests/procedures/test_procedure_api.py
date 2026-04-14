@@ -5,11 +5,7 @@ from datetime import date, timedelta
 import pytest  # type: ignore
 from rest_framework import status
 
-from hmis.apps.procedures.models import (
-    ProcedureConsent,
-    ProcedureLog,
-    ProcedureOrder,
-)
+from hmis.apps.procedures.models import ProcedureConsent, ProcedureLog, ProcedureOrder
 
 
 class TestProcedureCatalogAPI:

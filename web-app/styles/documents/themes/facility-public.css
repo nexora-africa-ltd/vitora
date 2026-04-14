@@ -10,16 +10,16 @@
   --primary-color: #1b5e20;
   --border-color: #1b5e20;
   --accent-color: #43a047;
-  
+
   /* Text colors */
   --text-color: #1a1a1a;
   --muted-color: #555;
-  
+
   /* Background colors */
   --background-color: #fff;
   --header-bg: #e8f5e9;
   --section-bg: #f1f8e9;
-  
+
   /* Status colors */
   --success-color: #2e7d32;
   --warning-color: #f57c00;

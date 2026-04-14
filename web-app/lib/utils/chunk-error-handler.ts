@@ -33,7 +33,7 @@ function shouldSkipReload(): { skip: boolean; reason: string } {
   if (typeof window === 'undefined') return { skip: true, reason: 'SSR' };
 
   const reloadCount = getReloadCount();
-  
+
   // Check max attempts first
   if (reloadCount >= MAX_RELOAD_ATTEMPTS) {
     return { skip: true, reason: `Max reload attempts (${MAX_RELOAD_ATTEMPTS}) reached` };
@@ -137,7 +137,7 @@ export function handleChunkLoadError(error: Error): boolean {
 function showReloadFailedMessage(): void {
   // Use a simple DOM-based alert since React might not be working
   if (typeof document === 'undefined') return;
-  
+
   // Check if we already showed the message
   if (document.getElementById('chunk-error-banner')) return;
 
@@ -157,7 +157,7 @@ function showReloadFailedMessage(): void {
     font-size: 14px;
   `;
   banner.innerHTML = `
-    <strong>Update Required:</strong> A new version is available. 
+    <strong>Update Required:</strong> A new version is available.
     <button onclick="location.reload(true)" style="margin-left: 10px; padding: 4px 12px; background: white; color: #dc2626; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
       Hard Refresh
     </button>

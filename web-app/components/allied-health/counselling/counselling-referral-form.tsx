@@ -45,10 +45,10 @@ import {
 } from '@/components/ui/popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { 
-  User, 
-  AlertCircle, 
-  Check, 
+import {
+  User,
+  AlertCircle,
+  Check,
   ChevronsUpDown,
   Heart,
   Shield,
@@ -60,8 +60,8 @@ import {
   useUpdateCounsellingReferral,
 } from '@/lib/hooks/use-counselling';
 import { usePatients, usePatient } from '@/lib/hooks/use-patients';
-import { 
-  COUNSELLING_CATEGORY_LABELS, 
+import {
+  COUNSELLING_CATEGORY_LABELS,
   MODALITY_LABELS,
   RISK_LEVEL_CONFIG,
   type SessionModality,
@@ -198,7 +198,7 @@ export function CounsellingReferralForm({
     setSelectedTypeId(id);
     form.setValue('counselling_type_id', id);
     setTypeOpen(false);
-    
+
     // Auto-populate recommended sessions from type
     const type = counsellingTypes.find(t => t.id === id);
     if (type && !isEditMode) {

@@ -76,8 +76,8 @@ Scheduling applies to:
 
 ## Phase 1: Core Scheduling Foundation (No WebSockets) ✅ COMPLETE
 
-> **Implemented**: February 7, 2026  
-> **Test Coverage**: 70 tests passing (34 model + 36 API)  
+> **Implemented**: February 7, 2026
+> **Test Coverage**: 70 tests passing (34 model + 36 API)
 > **Location**: `backend/hmis/apps/scheduling/`
 
 ### Objectives
@@ -149,8 +149,8 @@ All appointment lifecycle actions are logged to `AuditLog` with:
 
 ## Phase 2: Automatic Assignment Engine ✅ COMPLETE
 
-> **Implemented**: February 7, 2026  
-> **Test Coverage**: 47 tests passing (27 model/service + 20 API)  
+> **Implemented**: February 7, 2026
+> **Test Coverage**: 47 tests passing (27 model/service + 20 API)
 > **Location**: `backend/hmis/apps/scheduling/services/assignment.py`
 
 ### Objectives
@@ -486,8 +486,8 @@ Read models are **derived**, never authoritative.
 
 ## Phase 5: WebSockets Introduction ✅ INFRASTRUCTURE COMPLETE
 
-> **Infrastructure Implemented**: February 2026  
-> **Verified Coverage**: 16 ASGI routing tests, plus module-specific clinic and inpatient WebSocket suites  
+> **Infrastructure Implemented**: February 2026
+> **Verified Coverage**: 16 ASGI routing tests, plus module-specific clinic and inpatient WebSocket suites
 > **Location**: `backend/hmis/asgi.py`, module routing/consumer files under `backend/hmis/apps/`
 
 ### Objectives
@@ -674,7 +674,7 @@ broadcast_queue_stats(clinic_id, stats)
 
 ### Phase A: MVP — First Available Bed ✅ COMPLETE
 
-> **Status**: ✅ Complete  
+> **Status**: ✅ Complete
 > **Implemented**: February 2026
 
 #### Algorithm
@@ -718,7 +718,7 @@ def auto_assign_bed(ward: Ward, user: User) -> Bed:
     """
     Assign the first available bed in the ward.
     Uses row-level locking to prevent race conditions.
-    
+
     Raises:
         NoBedAvailableError: If no beds are available.
     """
@@ -728,9 +728,9 @@ def auto_assign_bed(ward: Ward, user: User) -> Bed:
 
 ### Phase B: Rules-Based Assignment ✅ COMPLETE
 
-> **Status**: ✅ Complete  
-> **Implemented**: March 2026  
-> **Test Coverage**: 29 tests in `tests/inpatient/test_bed_rules.py`  
+> **Status**: ✅ Complete
+> **Implemented**: March 2026
+> **Test Coverage**: 29 tests in `tests/inpatient/test_bed_rules.py`
 > **Location**: `backend/hmis/apps/inpatient/services/bed_rules.py`
 
 #### Algorithm
@@ -816,9 +816,9 @@ fallback:
 
 ### Phase C: Smart Allocation ✅ COMPLETE
 
-> **Status**: ✅ Complete  
-> **Implemented**: March 2026  
-> **Test Coverage**: 48 tests in `tests/inpatient/test_smart_allocation.py`  
+> **Status**: ✅ Complete
+> **Implemented**: March 2026
+> **Test Coverage**: 48 tests in `tests/inpatient/test_smart_allocation.py`
 > **Location**: `backend/hmis/apps/inpatient/services/bed_smart.py`
 
 #### Advanced Features
@@ -1014,8 +1014,8 @@ Sprint 1        Sprint 2        Sprint 3        Sprint 4        Sprint 5
 
 **Overlap Strategy**
 
-> Phases 3 and 4 have a deliberate 1-sprint overlap. A single lightweight 
-> projection (e.g., queue waiting count) is built at the end of Sprint 9 
+> Phases 3 and 4 have a deliberate 1-sprint overlap. A single lightweight
+> projection (e.g., queue waiting count) is built at the end of Sprint 9
 > to validate the event layer before committing to all projections.
 
 **Why keep separate (not merge)?**

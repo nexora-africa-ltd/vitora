@@ -85,7 +85,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -99,7 +99,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -129,7 +129,7 @@ describe('Patient Contract Tests', () => {
 
       // Find fields in API but missing from Zod
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       // Log missing fields for debugging
       if (missingInZod.length > 0) {
         console.warn(
@@ -150,7 +150,7 @@ describe('Patient Contract Tests', () => {
 
     it('should have critical required fields from the API', () => {
       const zodFields = getZodSchemaFields(PatientSchema);
-      
+
       // These fields are required by the API and must be present in Zod
       const criticalFields = [
         'id',
@@ -204,7 +204,7 @@ describe('Patient Contract Tests', () => {
       const apiFields = Object.keys(apiProperties);
 
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  EmergencyContactSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -216,7 +216,7 @@ describe('Patient Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(EmergencyContactSchema);
-      
+
       const criticalFields = [
         'id',
         'full_name',

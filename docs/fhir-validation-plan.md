@@ -1,9 +1,9 @@
 # FHIR/HL7/SMART on FHIR Validation Plan
 
-> **Document Version**: 1.2  
-> **Created**: January 31, 2026  
-> **Last Updated**: January 31, 2026  
-> **Status**: Phase 1-3 Complete, Phase 4 In Progress, Phase 5 Complete  
+> **Document Version**: 1.2
+> **Created**: January 31, 2026
+> **Last Updated**: January 31, 2026
+> **Status**: Phase 1-3 Complete, Phase 4 In Progress, Phase 5 Complete
 > **Owner**: Engineering Team
 
 ---
@@ -179,7 +179,7 @@ HAPI is the most widely-used open-source HL7 v2 library (Java) and provides robu
 2. **Generate a test message**:
    ```python
    from hmis.apps.laboratory.services import HL7Service
-   
+
    service = HL7Service()
    message = service.build_orm_o01(lab_order)
    print(message)  # Copy this output

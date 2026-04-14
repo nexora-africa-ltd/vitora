@@ -7,7 +7,6 @@ by DRF during startup via DEFAULT_AUTHENTICATION_CLASSES.
 The cookie-based views (login, refresh, logout) are in cookie_auth.py.
 """
 
-from django.conf import settings
 from django.middleware.csrf import CsrfViewMiddleware
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
@@ -18,7 +17,7 @@ ACCESS_COOKIE = "vitora_access"
 class _CSRFCheck(CsrfViewMiddleware):
     """Thin wrapper to reuse Django's CSRF logic in DRF."""
 
-    def _reject(self, request, reason):  # type: ignore[override]
+    def _reject(self, _request, reason):  # type: ignore[override]
         return reason
 
 
@@ -55,7 +54,7 @@ class CookieJWTAuthentication(BaseAuthentication):
         try:
             user = User.objects.get(pk=validated_token["user_id"])
         except User.DoesNotExist:
-            raise exceptions.AuthenticationFailed("User not found")
+            raise exceptions.AuthenticationFailed("User not found") from None
 
         if not user.is_active:
             raise exceptions.AuthenticationFailed("User is inactive")
@@ -64,11 +63,11 @@ class CookieJWTAuthentication(BaseAuthentication):
 
     def _enforce_csrf(self, request):
         """Enforce CSRF validation for cookie-based auth."""
-        check = _CSRFCheck(lambda req: None)
+        check = _CSRFCheck(lambda _req: None)
         check.process_request(request)
         reason = check.process_view(request, None, (), {})
         if reason:
             raise exceptions.PermissionDenied(f"CSRF validation failed: {reason}")
 
-    def authenticate_header(self, request):
+    def authenticate_header(self, _request):
         return None  # No WWW-Authenticate header for cookie auth

@@ -1,9 +1,9 @@
 # Active Kenya HIE Integration
 
-> **Gap #27**: Active Kenya HIE Integration  
-> **Sprint**: 3.B — Advanced Interoperability  
-> **Priority**: P3 (Enhancement)  
-> **Status**: ✅ Complete  
+> **Gap #27**: Active Kenya HIE Integration
+> **Sprint**: 3.B — Advanced Interoperability
+> **Priority**: P3 (Enhancement)
+> **Status**: ✅ Complete
 > **Completed**: March 13, 2026
 
 ---
@@ -232,7 +232,7 @@ cr_synced_at: z.string().optional().nullable(),
 
 ## Tests
 
-**File**: `tests/core/test_hie_integration.py`  
+**File**: `tests/core/test_hie_integration.py`
 **Count**: 18 tests
 
 | Test Class | Tests | Covers |

@@ -105,9 +105,9 @@ class TestDiagnosisCodingCompliance:
 
         for i, diagnosis in enumerate(claim.get("diagnosis", [])):
             assert "sequence" in diagnosis, f"Diagnosis {i} must have 'sequence' field"
-            assert (
-                "diagnosisCodeableConcept" in diagnosis or "diagnosisReference" in diagnosis
-            ), f"Diagnosis {i} must have diagnosisCodeableConcept or diagnosisReference"
+            assert "diagnosisCodeableConcept" in diagnosis or "diagnosisReference" in diagnosis, (
+                f"Diagnosis {i} must have diagnosisCodeableConcept or diagnosisReference"
+            )
 
     def _get_resource_by_type(self, bundle: dict, resource_type: str) -> dict | None:
         """Helper to extract a resource by type from bundle."""

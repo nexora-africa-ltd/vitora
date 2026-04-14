@@ -1,9 +1,9 @@
 # Terminology Strategy for Vitora HMIS
 
-> **Created**: 2026-02-14  
-> **Updated**: 2026-02-15  
-> **Owner**: Engineering  
-> **Status**: Phase T0-T1 Implemented  
+> **Created**: 2026-02-14
+> **Updated**: 2026-02-15
+> **Owner**: Engineering
+> **Status**: Phase T0-T1 Implemented
 > **Scope**: Clinical coding, external system mappings, interoperability foundation
 
 ---
@@ -87,9 +87,9 @@ Therefore: **Vitora codes are the canonical internal language; external codes ar
 
 ### Phase T0 — External Code Mapping ✅ IMPLEMENTED
 
-**ROI**: High (unblocks HL7/MLLP, SHA claims, LIS integrations)  
-**Effort**: 2-4 hours  
-**Risk**: None (additive, no refactoring)  
+**ROI**: High (unblocks HL7/MLLP, SHA claims, LIS integrations)
+**Effort**: 2-4 hours
+**Risk**: None (additive, no refactoring)
 **Status**: ✅ Completed 2026-02-15
 
 #### Implementation Summary
@@ -177,11 +177,11 @@ from django.db import models
 class ExternalCodeMapping(models.Model):
     """
     Maps external system codes to internal Vitora entities.
-    
-    Supports any model via GenericForeignKey (TestCatalog, ICD10Code, 
+
+    Supports any model via GenericForeignKey (TestCatalog, ICD10Code,
     future ProcedureCatalog, DrugCatalog, etc.)
     """
-    
+
     # External system identifier
     code_system = models.CharField(
         max_length=100,
@@ -196,12 +196,12 @@ class ExternalCodeMapping(models.Model):
         blank=True,
         help_text="Display name in external system (for reference)"
     )
-    
+
     # Internal Vitora entity (generic)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     internal_object = GenericForeignKey('content_type', 'object_id')
-    
+
     # Mapping metadata
     relationship = models.CharField(
         max_length=20,
@@ -217,7 +217,7 @@ class ExternalCodeMapping(models.Model):
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         unique_together = ['code_system', 'external_code']
         indexes = [
@@ -226,15 +226,15 @@ class ExternalCodeMapping(models.Model):
         ]
         verbose_name = 'External Code Mapping'
         verbose_name_plural = 'External Code Mappings'
-    
+
     def __str__(self):
         return f"{self.code_system}:{self.external_code} → {self.internal_object}"
-    
+
     @classmethod
     def resolve(cls, code_system: str, external_code: str):
         """
         Resolve an external code to its internal Vitora object.
-        
+
         Returns the internal object or None if not mapped.
         """
         try:
@@ -246,7 +246,7 @@ class ExternalCodeMapping(models.Model):
             return mapping.internal_object
         except cls.DoesNotExist:
             return None
-    
+
     @classmethod
     def resolve_or_raise(cls, code_system: str, external_code: str):
         """
@@ -303,9 +303,9 @@ else:
 
 ### Phase T1 — Code System Registry ✅ IMPLEMENTED
 
-**ROI**: Medium (enables self-documenting API, FHIR compliance)  
-**Effort**: 4-8 hours  
-**Risk**: Low  
+**ROI**: Medium (enables self-documenting API, FHIR compliance)
+**Effort**: 4-8 hours
+**Risk**: Low
 **Status**: ✅ Completed 2026-02-15
 
 #### Implementation Summary
@@ -377,8 +377,8 @@ fhir_uri = mapping.get_fhir_uri()  # "http://loinc.org"
 
 ### Phase T2 — Search Optimization & Synonyms (Future)
 
-**ROI**: High for UX (clinician autocomplete)  
-**Effort**: 8-16 hours  
+**ROI**: High for UX (clinician autocomplete)
+**Effort**: 8-16 hours
 **Risk**: Low
 
 **Deliverables**:
@@ -387,11 +387,11 @@ fhir_uri = mapping.get_fhir_uri()  # "http://loinc.org"
 ```python
 class ConceptAlias(models.Model):
     """Alternative names for concepts (synonyms, abbreviations, translations)."""
-    
+
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     concept = GenericForeignKey()
-    
+
     alias = models.CharField(max_length=255)
     alias_type = models.CharField(
         max_length=20,
@@ -418,8 +418,8 @@ Aliases: "FBC", "Hemogram", "Blood count", "Kipimo cha damu kamili"
 
 ### Phase T3 — Vitora Procedure Catalogue (Future)
 
-**ROI**: Medium-High (standardized procedures for billing/reporting)  
-**Effort**: 16-32 hours  
+**ROI**: Medium-High (standardized procedures for billing/reporting)
+**Effort**: 16-32 hours
 **Risk**: Medium (billing impact)
 
 **Deliverables**:
@@ -428,17 +428,17 @@ Aliases: "FBC", "Hemogram", "Blood count", "Kipimo cha damu kamili"
 ```python
 class ProcedureCatalog(models.Model):
     """Vitora procedure catalogue with semantic codes."""
-    
+
     code = models.CharField(max_length=20, unique=True)  # VIT-PROC-001
     name = models.CharField(max_length=255)
     short_name = models.CharField(max_length=50, blank=True)
     category = models.CharField(max_length=50)  # CONSULTATION, MINOR_SURGERY, etc.
     department = models.CharField(max_length=50, blank=True)
     description = models.TextField(blank=True)
-    
+
     # Billing linkage (indirect)
     default_charge_item = models.ForeignKey('billing.ChargeItem', null=True, blank=True)
-    
+
     # Status
     is_active = models.BooleanField(default=True)
     effective_from = models.DateField(null=True, blank=True)
@@ -461,8 +461,8 @@ class ProcedureCatalog(models.Model):
 
 ### Phase T4 — FHIR Terminology Operations (Future)
 
-**ROI**: Required for FHIR certification  
-**Effort**: 24-40 hours  
+**ROI**: Required for FHIR certification
+**Effort**: 24-40 hours
 **Risk**: Low (additive)
 
 **Deliverables**:

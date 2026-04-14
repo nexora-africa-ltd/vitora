@@ -10,16 +10,16 @@ import { SWCaseForm } from '@/components/allied-health/social-work';
 
 export default function NewSWCasePage() {
   const searchParams = useSearchParams();
-  
+
   // Support pre-selecting patient or encounter from query params
-  const patientId = searchParams.get('patient_id') 
-    ? Number(searchParams.get('patient_id')) 
+  const patientId = searchParams.get('patient_id')
+    ? Number(searchParams.get('patient_id'))
     : undefined;
-  const encounterId = searchParams.get('encounter_id') 
-    ? Number(searchParams.get('encounter_id')) 
+  const encounterId = searchParams.get('encounter_id')
+    ? Number(searchParams.get('encounter_id'))
     : undefined;
-  const referralId = searchParams.get('referral_id') 
-    ? Number(searchParams.get('referral_id')) 
+  const referralId = searchParams.get('referral_id')
+    ? Number(searchParams.get('referral_id'))
     : undefined;
 
   return (
@@ -28,9 +28,9 @@ export default function NewSWCasePage() {
         title="New Social Work Case"
         helpContent="Create a social work case to track patient support needs. Document presenting issues, safety assessments, and intervention plans."
       />
-      
-      <SWCaseForm 
-        patientId={patientId} 
+
+      <SWCaseForm
+        patientId={patientId}
         encounterId={encounterId}
         referralId={referralId}
       />

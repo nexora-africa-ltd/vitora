@@ -311,7 +311,7 @@ class TestDashboardStatsExtendedCrossCuts:
             "allied_health",
         ):
             for key, value in response.data[section].items():
-                assert isinstance(
-                    value, (int, float)
-                ), f"{section}.{key} should be numeric, got {type(value)}"
+                assert isinstance(value, (int, float)), (
+                    f"{section}.{key} should be numeric, got {type(value)}"
+                )
                 assert value >= 0, f"{section}.{key} should be >= 0, got {value}"

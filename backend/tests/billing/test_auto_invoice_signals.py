@@ -251,16 +251,16 @@ class TestDispensingAutoBilling:
         draft_invoice.refresh_from_db()
 
         # Should NOT create a duplicate - count should remain the same
-        assert (
-            draft_invoice.items.count() == initial_count
-        ), "Should not duplicate billing for prescription-based dispensing"
+        assert draft_invoice.items.count() == initial_count, (
+            "Should not duplicate billing for prescription-based dispensing"
+        )
 
         # The existing invoice item should now be linked to dispensing
         invoice_item = draft_invoice.items.filter(drug=sample_drug).first()
         assert invoice_item is not None
-        assert (
-            invoice_item.dispensing == dispensing
-        ), "Existing invoice item should be linked to the dispensing"
+        assert invoice_item.dispensing == dispensing, (
+            "Existing invoice item should be linked to the dispensing"
+        )
 
     def test_direct_dispensing_no_duplicate_invoice_items(
         self,
@@ -286,9 +286,9 @@ class TestDispensingAutoBilling:
 
         draft_invoice.refresh_from_db()
         item_count_after_create = draft_invoice.items.filter(dispensing=dispensing).count()
-        assert (
-            item_count_after_create == 1
-        ), "Direct dispensing should create exactly 1 invoice item"
+        assert item_count_after_create == 1, (
+            "Direct dispensing should create exactly 1 invoice item"
+        )
 
         # Save the dispensing again (simulating update)
         dispensing.notes = "Updated notes"
@@ -364,9 +364,9 @@ class TestDispensingAutoBilling:
         draft_invoice.refresh_from_db()
 
         # Should NOT have created an invoice item
-        assert (
-            draft_invoice.items.count() == initial_item_count
-        ), "External prescription should not create an invoice item"
+        assert draft_invoice.items.count() == initial_item_count, (
+            "External prescription should not create an invoice item"
+        )
 
     def test_internal_prescription_creates_invoice_item(
         self,
@@ -403,9 +403,9 @@ class TestDispensingAutoBilling:
 
         draft_invoice.refresh_from_db()
 
-        assert (
-            draft_invoice.items.count() == initial_item_count + 1
-        ), "Internal prescription should create an invoice item"
+        assert draft_invoice.items.count() == initial_item_count + 1, (
+            "Internal prescription should create an invoice item"
+        )
 
 
 # ============================================================================

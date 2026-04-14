@@ -37,14 +37,14 @@ export interface IdleTimerState {
 
 /**
  * Hook for tracking user idle time with warning and auto-logout functionality.
- * 
+ *
  * Features:
  * - Tracks mouse, keyboard, touch, scroll, and click events
  * - Shows warning at configurable threshold (default: 15 minutes)
  * - Auto-logouts at configurable threshold (default: 30 minutes)
  * - Syncs across tabs via localStorage
  * - Countdown timer in warning state
- * 
+ *
  * @example
  * ```tsx
  * const { isWarning, secondsRemaining, resetTimer } = useIdleTimer({

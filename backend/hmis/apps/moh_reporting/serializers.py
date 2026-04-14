@@ -2,12 +2,7 @@
 
 from rest_framework import serializers
 
-from .models import (
-    MOH705DiseaseRow,
-    MOH705Report,
-    MOH711Report,
-    MOH717Report,
-)
+from .models import MOH705DiseaseRow, MOH705Report, MOH711Report, MOH717Report
 
 # ---------------------------------------------------------------------------
 # MOH 705

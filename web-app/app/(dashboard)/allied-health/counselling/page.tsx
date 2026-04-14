@@ -34,7 +34,7 @@ import { useClinicVisits } from '@/lib/hooks/use-clinics';
 export default function CounsellingDashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('queue');
-  
+
   const { data: dashboardStats, isLoading: statsLoading } = useAlliedHealthDashboard();
   // Include both counselling and mental health clinic types
   const { data: queueData, isLoading: queueLoading } = useClinicVisits({

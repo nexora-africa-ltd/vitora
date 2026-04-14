@@ -2076,8 +2076,7 @@ class InpatientConsumableUsage(TimeStampedModel):
 
     def __str__(self):
         return (
-            f"{self.drug.generic_name} x{self.quantity_used} for "
-            f"{self.admission.admission_number}"
+            f"{self.drug.generic_name} x{self.quantity_used} for {self.admission.admission_number}"
         )
 
     def clean(self):
@@ -3844,9 +3843,7 @@ class DischargeTemplate(FacilityScopedModel, TimeStampedModel):
             DischargeTemplate.objects.filter(
                 facility=self.facility,
                 is_default=True,
-            ).exclude(
-                pk=self.pk
-            ).update(is_default=False)
+            ).exclude(pk=self.pk).update(is_default=False)
         # Populate default sections when none are specified.
         if not self.sections:
             self.sections = self.get_default_sections()

@@ -73,7 +73,7 @@ const STATUS_OPTIONS: { value: AlliedHealthSessionStatus | ''; label: string }[]
 export default function OccupationalTherapySessionsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  
+
   // Filters
   const [dateFrom, setDateFrom] = useState(() => format(subDays(new Date(), 7), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(() => format(addDays(new Date(), 7), 'yyyy-MM-dd'));

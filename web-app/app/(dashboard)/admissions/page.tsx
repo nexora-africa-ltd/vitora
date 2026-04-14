@@ -60,7 +60,7 @@ export default function AdmissionsPage() {
     const activeAdmissions = admissions?.results?.filter((a) => a.admission_status === 'ACTIVE') || [];
     const pendingRecommendations = recommendations?.count || 0;
     const emergencyRecommendations = recommendations?.results?.filter((r) => r.urgency === 'EMERGENCY').length || 0;
-    
+
     // Calculate average LOS for active admissions
     const totalLos = activeAdmissions.reduce((sum, adm) => {
       if (!adm.admission_date) return sum;
@@ -70,7 +70,7 @@ export default function AdmissionsPage() {
       return sum + days;
     }, 0);
     const avgLos = activeAdmissions.length > 0 ? Math.round(totalLos / activeAdmissions.length) : 0;
-    
+
     return {
       activeAdmissions: activeAdmissions.length,
       pendingRecommendations,

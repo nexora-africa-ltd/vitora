@@ -112,7 +112,7 @@ test-fast:
 	poetry run pytest --no-cov --tb=short -q
 
 test-fast-fail:
-	poetry run pytest tests/ --no-cov --tb=short -x 
+	poetry run pytest tests/ --no-cov --tb=short -x
 
 test-unit:
 	poetry run pytest -m unit

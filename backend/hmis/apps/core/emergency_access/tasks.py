@@ -83,17 +83,17 @@ User: {emergency_access.user.username} ({emergency_access.user.first_name} {emer
 Patient: {patient_info}
 Reason: {emergency_access.get_reason_display()}
 Details: {emergency_access.reason_details}
-Requested At: {emergency_access.requested_at.strftime('%Y-%m-%d %H:%M:%S')}
-Expires At: {emergency_access.expires_at.strftime('%Y-%m-%d %H:%M:%S')}
+Requested At: {emergency_access.requested_at.strftime("%Y-%m-%d %H:%M:%S")}
+Expires At: {emergency_access.expires_at.strftime("%Y-%m-%d %H:%M:%S")}
 Duration: {emergency_access.duration_minutes} minutes
-IP Address: {emergency_access.ip_address or 'Unknown'}
+IP Address: {emergency_access.ip_address or "Unknown"}
 
 ACTION REQUIRED:
 - Review this emergency access request
 - Verify the justification is appropriate
 - Approve or revoke as needed
 
-Review at: {getattr(settings, 'SITE_URL', 'http://localhost')}/admin/emergency-access/{emergency_access.id}/
+Review at: {getattr(settings, "SITE_URL", "http://localhost")}/admin/emergency-access/{emergency_access.id}/
 
 ---
 Vitora HMIS - Emergency Access Monitoring

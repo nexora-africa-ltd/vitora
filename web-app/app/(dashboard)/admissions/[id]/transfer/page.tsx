@@ -69,12 +69,12 @@ export default function TransferPage() {
   const [targetBedId, setTargetBedId] = useState<string>('');
   const [transferReason, setTransferReason] = useState<TransferReason>('SPECIALTY');
   const [clinicalJustification, setClinicalJustification] = useState('');
-  
+
   // Compatibility state - single ward check
   const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityCheckResult | null>(null);
   const [compatibilityOverridden, setCompatibilityOverridden] = useState(false);
   const [showCompatibilityWarning, setShowCompatibilityWarning] = useState(false);
-  
+
   // Bulk compatibility state - all wards check on load
   const [compatibleWards, setCompatibleWards] = useState<CompatibleWardInfo[]>([]);
   const [incompatibleWards, setIncompatibleWards] = useState<IncompatibleWardInfo[]>([]);
@@ -116,16 +116,16 @@ export default function TransferPage() {
     setTargetBedId('');
     setCompatibilityResult(null);
     setCompatibilityOverridden(false);
-    
+
     if (!wardId || !admission?.patient) return;
-    
+
     try {
       const result = await checkCompatibility.mutateAsync({
         wardId: Number(wardId),
         patientId: admission.patient,
       });
       setCompatibilityResult(result);
-      
+
       // Show warning dialog if incompatible
       if (!result.compatible) {
         setShowCompatibilityWarning(true);
@@ -144,7 +144,7 @@ export default function TransferPage() {
       });
       return;
     }
-    
+
     // Check if we need to warn about compatibility
     if (compatibilityResult && !compatibilityResult.compatible && !compatibilityOverridden) {
       setShowCompatibilityWarning(true);
@@ -392,11 +392,11 @@ export default function TransferPage() {
                     <ul className="list-disc list-inside space-y-1">
                       {compatibilityResult.violations.map((v, i) => (
                         <li key={i} className="flex items-start gap-2">
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className={`text-xs shrink-0 ${
-                              v.severity === 'CRITICAL' 
-                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' 
+                              v.severity === 'CRITICAL'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
                                 : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
                             }`}
                           >
@@ -530,8 +530,8 @@ export default function TransferPage() {
                       <Badge
                         variant="secondary"
                         className={`shrink-0 ${
-                          v.severity === 'CRITICAL' 
-                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' 
+                          v.severity === 'CRITICAL'
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
                             : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
                         }`}
                       >

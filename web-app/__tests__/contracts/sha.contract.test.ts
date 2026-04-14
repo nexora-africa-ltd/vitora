@@ -87,7 +87,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -101,7 +101,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -141,7 +141,7 @@ describe('SHA Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  SHAMemberSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -159,7 +159,7 @@ describe('SHA Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(SHAMemberSchema);
-      
+
       const criticalFields = [
         'id',
         'patient',
@@ -177,7 +177,7 @@ describe('SHA Contract Tests', () => {
 
     it('should include PFMS-related fields for government subsidy tracking', () => {
       const zodFields = getZodSchemaFields(SHAMemberSchema);
-      
+
       const pfmsFields = [
         'is_pfms_eligible',
         'pfms_category',
@@ -199,7 +199,7 @@ describe('SHA Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ClaimSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -217,7 +217,7 @@ describe('SHA Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ClaimSchema);
-      
+
       const criticalFields = [
         'id',
         'claim_number',
@@ -233,7 +233,7 @@ describe('SHA Contract Tests', () => {
 
     it('should include claim processing fields', () => {
       const zodFields = getZodSchemaFields(ClaimSchema);
-      
+
       const processingFields = [
         'sha_reference',
         'approved_amount',
@@ -256,7 +256,7 @@ describe('SHA Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ClaimItemSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -273,7 +273,7 @@ describe('SHA Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ClaimItemSchema);
-      
+
       const criticalFields = [
         'id',
         'claim',
@@ -292,7 +292,7 @@ describe('SHA Contract Tests', () => {
 
     it('should include coverage type fields for PFMS support', () => {
       const zodFields = getZodSchemaFields(ClaimItemSchema);
-      
+
       const coverageFields = [
         'coverage_type',
         'coverage_type_display',
@@ -327,7 +327,7 @@ describe('SHA Contract Tests', () => {
       // Check for critical statuses that must exist
       const criticalStatuses = ['draft', 'submitted', 'approved', 'rejected', 'paid'];
       const missingCritical = criticalStatuses.filter(s => !zodValues.includes(s));
-      
+
       if (missingCritical.length > 0) {
         console.warn(`ClaimStatusSchema: Missing critical values: ${missingCritical.join(', ')}`);
       }
@@ -337,7 +337,7 @@ describe('SHA Contract Tests', () => {
 
     it('should include all critical claim statuses', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(ClaimStatusSchema));
-      
+
       const criticalStatuses = [
         'draft',
         'pending',
@@ -361,7 +361,7 @@ describe('SHA Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ClaimItemStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -371,7 +371,7 @@ describe('SHA Contract Tests', () => {
 
     it('should include all claim item statuses', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(ClaimItemStatusSchema));
-      
+
       const allStatuses = [
         'pending',
         'approved',
@@ -393,7 +393,7 @@ describe('SHA Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`MembershipTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -403,7 +403,7 @@ describe('SHA Contract Tests', () => {
 
     it('should include all membership types', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(MembershipTypeSchema));
-      
+
       const allTypes = [
         'principal',
         'spouse',
@@ -425,18 +425,18 @@ describe('SHA Contract Tests', () => {
       if (!apiValues) return;
 
       // Map API values - API uses 'pending_verification', Zod might use different format
-      const normalizedApiValues = apiValues.map(v => 
+      const normalizedApiValues = apiValues.map(v =>
         v === 'pending_verification' ? 'pending_verification' : v
       );
 
       const missingInZod = normalizedApiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`MemberStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
 
       // Only fail on critical statuses
-      const criticalMissing = missingInZod.filter(v => 
+      const criticalMissing = missingInZod.filter(v =>
         ['active', 'inactive', 'suspended'].includes(v)
       );
       expect(criticalMissing).toEqual([]);
@@ -444,7 +444,7 @@ describe('SHA Contract Tests', () => {
 
     it('should include critical member statuses', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(MemberStatusSchema));
-      
+
       const criticalStatuses = [
         'active',
         'inactive',
@@ -465,7 +465,7 @@ describe('SHA Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`CoverageTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -475,7 +475,7 @@ describe('SHA Contract Tests', () => {
 
     it('should include all coverage types', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(CoverageTypeSchema));
-      
+
       const allTypes = [
         'sha',
         'pfms',
@@ -496,7 +496,7 @@ describe('SHA Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`PFMSCategorySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -506,7 +506,7 @@ describe('SHA Contract Tests', () => {
 
     it('should include all PFMS categories', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(PFMSCategorySchema));
-      
+
       const allCategories = [
         'vulnerable',
         'elderly',

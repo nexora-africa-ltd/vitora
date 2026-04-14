@@ -97,7 +97,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -112,7 +112,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null) {
     // Direct enum
     if ('enum' in jsonSchema) {
@@ -168,7 +168,7 @@ describe('Billing Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ServiceCategorySchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -185,7 +185,7 @@ describe('Billing Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ServiceCategorySchema);
-      
+
       const criticalFields = [
         'id',
         'name',
@@ -210,7 +210,7 @@ describe('Billing Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ServiceSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -226,7 +226,7 @@ describe('Billing Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(ServiceSchema);
-      
+
       const criticalFields = [
         'id',
         'code',
@@ -253,7 +253,7 @@ describe('Billing Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  InvoiceSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -269,7 +269,7 @@ describe('Billing Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(InvoiceSchema);
-      
+
       const criticalFields = [
         'id',
         'invoice_number',
@@ -300,7 +300,7 @@ describe('Billing Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  InvoiceItemSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -316,7 +316,7 @@ describe('Billing Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(InvoiceItemSchema);
-      
+
       const criticalFields = [
         'id',
         'invoice',
@@ -343,7 +343,7 @@ describe('Billing Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  PaymentPointSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -359,7 +359,7 @@ describe('Billing Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(PaymentPointSchema);
-      
+
       const criticalFields = [
         'id',
         'name',
@@ -385,7 +385,7 @@ describe('Billing Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  PaymentSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -401,7 +401,7 @@ describe('Billing Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(PaymentSchema);
-      
+
       const criticalFields = [
         'id',
         'payment_reference',
@@ -428,7 +428,7 @@ describe('Billing Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  CreditNoteSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -444,7 +444,7 @@ describe('Billing Contract Tests', () => {
 
     it('should have critical required fields', () => {
       const zodFields = getZodSchemaFields(CreditNoteSchema);
-      
+
       const criticalFields = [
         'id',
         'credit_note_number',
@@ -476,7 +476,7 @@ describe('Billing Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`InvoiceStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -486,7 +486,7 @@ describe('Billing Contract Tests', () => {
 
     it('should include all critical invoice statuses', () => {
       const zodValues = normalizeEnumValues([...INVOICE_STATUSES]);
-      
+
       const criticalStatuses = [
         'draft',
         'pending',
@@ -509,7 +509,7 @@ describe('Billing Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`PaymentMethodSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -519,7 +519,7 @@ describe('Billing Contract Tests', () => {
 
     it('should include all critical payment methods', () => {
       const zodValues = normalizeEnumValues([...PAYMENT_METHODS]);
-      
+
       const criticalMethods = [
         'cash',
         'mpesa',
@@ -541,7 +541,7 @@ describe('Billing Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`PaymentStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -551,7 +551,7 @@ describe('Billing Contract Tests', () => {
 
     it('should include all critical payment statuses', () => {
       const zodValues = normalizeEnumValues([...PAYMENT_STATUSES]);
-      
+
       const criticalStatuses = [
         'pending',
         'completed',
@@ -573,7 +573,7 @@ describe('Billing Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`CreditNoteReasonSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -583,7 +583,7 @@ describe('Billing Contract Tests', () => {
 
     it('should include key credit note reasons', () => {
       const zodValues = normalizeEnumValues([...CREDIT_NOTE_REASONS]);
-      
+
       const keyReasons = [
         'overcharge',
         'other',
@@ -603,7 +603,7 @@ describe('Billing Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`CreditNoteStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -613,7 +613,7 @@ describe('Billing Contract Tests', () => {
 
     it('should include all critical credit note statuses', () => {
       const zodValues = normalizeEnumValues([...CREDIT_NOTE_STATUSES]);
-      
+
       const criticalStatuses = [
         'approved',
         'rejected',

@@ -1,7 +1,7 @@
 # Laboratory Real-Time Sync Gap Analysis & Implementation Plan
 
-> **Created**: February 11, 2026  
-> **Status**: Phase 2 Complete ✅  
+> **Created**: February 11, 2026
+> **Status**: Phase 2 Complete ✅
 > **Priority**: High (Clinical workflow impact)
 
 ---
@@ -86,7 +86,7 @@ export interface LabOrderCompletedEvent {
 
 export function useLabEncounterSocket(encounterId: number | null) {
   const queryClient = useQueryClient();
-  
+
   return useWebSocket(
     encounterId ? `${WS_BASE_URL}/ws/lab/encounters/${encounterId}/` : null,
     {
@@ -101,7 +101,7 @@ export function useLabEncounterSocket(encounterId: number | null) {
 
 export function useLabOrderSocket(orderId: number | null) {
   const queryClient = useQueryClient();
-  
+
   return useWebSocket(
     orderId ? `${WS_BASE_URL}/ws/lab/orders/${orderId}/` : null,
     {
@@ -114,7 +114,7 @@ export function useLabOrderSocket(orderId: number | null) {
 
 export function useLabClinicianSocket() {
   const queryClient = useQueryClient();
-  
+
   return useWebSocket(
     `${WS_BASE_URL}/ws/lab/clinician/`,
     {
@@ -149,13 +149,13 @@ export function useLabClinicianSocket() {
 ```typescript
 // components/laboratory/lab-results-badge-live.tsx
 
-export function LabResultsBadgeLive({ 
+export function LabResultsBadgeLive({
   orderId,
   orderNumber,
   encounterId,
   initialResult,
   showValue = false,
-}: { 
+}: {
   orderId: number;
   orderNumber?: string;
   encounterId?: number;
@@ -163,7 +163,7 @@ export function LabResultsBadgeLive({
   showValue?: boolean;
 }) {
   const [result, setResult] = useState(initialResult);
-  
+
   const handleMessage = useCallback((message: unknown) => {
     const labMessage = message as LabWebSocketMessage;
     if (labMessage.event === 'result_verified') {
@@ -176,7 +176,7 @@ export function LabResultsBadgeLive({
     encounterId,
     onMessage: handleMessage,
   });
-  
+
   return <LabResultsBadge hasResult={!!result} result={result} showValue={showValue} />;
 }
 ```

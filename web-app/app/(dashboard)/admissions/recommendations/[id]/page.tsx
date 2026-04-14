@@ -52,9 +52,9 @@ import {
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
-import type { 
-  AdmissionRecommendationUrgency, 
-  CompatibleWardInfo, 
+import type {
+  AdmissionRecommendationUrgency,
+  CompatibleWardInfo,
   IncompatibleWardInfo,
   PatientCompatibilityResult,
 } from '@/lib/types/inpatient';
@@ -94,7 +94,7 @@ export default function RecommendationDetailPage() {
 
   const { data: recommendation, isLoading, error, refetch } = useAdmissionRecommendation(recommendationId);
   const { data: wards } = useInpatientWards();
-  
+
   const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
@@ -131,7 +131,7 @@ export default function RecommendationDetailPage() {
       setSelectedWard('');
       setSelectedBed('');
       setOverrideReason('');
-      
+
       bulkCompatibilityCheck.mutateAsync({
         patientIds: [recommendation.patient_id],
       }).then((result) => {
@@ -381,7 +381,7 @@ export default function RecommendationDetailPage() {
               Select a ward and bed for the patient to proceed with admission.
             </DialogDescription>
           </DialogHeader>
-          
+
           {/* Loading State */}
           {isCheckingCompatibility && (
             <div className="flex items-center justify-center py-8 gap-3">
@@ -389,7 +389,7 @@ export default function RecommendationDetailPage() {
               <span className="text-sm text-muted-foreground">Checking ward compatibility...</span>
             </div>
           )}
-          
+
           {/* Compatibility Results */}
           {!isCheckingCompatibility && compatibilityResult && (
             <div className="space-y-4">
@@ -405,7 +405,7 @@ export default function RecommendationDetailPage() {
                   </AlertDescription>
                 </Alert>
               )}
-              
+
               {/* Incompatible Wards Warning */}
               {compatibilityResult.incompatible_wards.length > 0 && (
                 <Alert variant="destructive" className="bg-orange-50 dark:bg-orange-950/20 border-orange-500/30">
@@ -418,15 +418,15 @@ export default function RecommendationDetailPage() {
                   </AlertDescription>
                 </Alert>
               )}
-              
+
               {/* Ward Selection */}
               <div className="space-y-2">
                 <Label>Ward</Label>
-                <Select 
-                  value={selectedWard} 
-                  onValueChange={(v) => { 
-                    setSelectedWard(v); 
-                    setSelectedBed(''); 
+                <Select
+                  value={selectedWard}
+                  onValueChange={(v) => {
+                    setSelectedWard(v);
+                    setSelectedBed('');
                     setOverrideReason('');
                   }}
                 >
@@ -454,7 +454,7 @@ export default function RecommendationDetailPage() {
                           ))}
                         </>
                       )}
-                      
+
                       {/* Incompatible Wards - Orange/Red indicators */}
                       {compatibilityResult.incompatible_wards.length > 0 && (
                         <>
@@ -482,7 +482,7 @@ export default function RecommendationDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Show violations for selected incompatible ward */}
               {isSelectedWardIncompatible && selectedIncompatibleWard && (
                 <Alert variant="destructive">
@@ -497,7 +497,7 @@ export default function RecommendationDetailPage() {
                   </AlertDescription>
                 </Alert>
               )}
-              
+
               {/* Override Reason (if incompatible ward selected) */}
               {isSelectedWardIncompatible && (
                 <div className="space-y-2">
@@ -513,7 +513,7 @@ export default function RecommendationDetailPage() {
                   />
                 </div>
               )}
-              
+
               {/* Bed Selection */}
               <div className="space-y-2">
                 <Label>Bed</Label>
@@ -540,7 +540,7 @@ export default function RecommendationDetailPage() {
               </div>
             </div>
           )}
-          
+
           {/* Fallback when compatibility check fails or patient_id missing */}
           {!isCheckingCompatibility && !compatibilityResult && (
             <div className="space-y-4">
@@ -551,7 +551,7 @@ export default function RecommendationDetailPage() {
                   Unable to verify ward compatibility. Please select a ward manually.
                 </AlertDescription>
               </Alert>
-              
+
               <div className="space-y-2">
                 <Label>Ward</Label>
                 <Select value={selectedWard} onValueChange={(v) => { setSelectedWard(v); setSelectedBed(''); }}>
@@ -594,7 +594,7 @@ export default function RecommendationDetailPage() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setAcceptDialogOpen(false)}>
               Cancel
@@ -602,9 +602,9 @@ export default function RecommendationDetailPage() {
             <Button
               onClick={handleAcceptConfirm}
               disabled={
-                !selectedWard || 
-                !selectedBed || 
-                acceptRecommendation.isPending || 
+                !selectedWard ||
+                !selectedBed ||
+                acceptRecommendation.isPending ||
                 isCheckingCompatibility ||
                 needsOverride
               }

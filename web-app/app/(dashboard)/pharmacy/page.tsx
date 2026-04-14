@@ -266,8 +266,8 @@ export default function PharmacyPage() {
             <AlertTriangle className="h-4 w-4" />
             <span className="hidden sm:inline">Alerts</span>
             {unresolvedAlertsCount > 0 && (
-              <Badge 
-                variant="destructive" 
+              <Badge
+                variant="destructive"
                 className="ml-0.5 h-5 w-5 p-0 flex items-center justify-center text-xs"
               >
                 {unresolvedAlertsCount}

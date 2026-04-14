@@ -303,9 +303,9 @@ describe('PhysioOrderForm - Required Field Validation', () => {
   it('should show error when patient is not selected', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm />);
-    
+
     await user.click(screen.getByRole('button', { name: /create order|submit/i }));
-    
+
     await waitFor(() => {
       expect(screen.getByText(/patient is required/i)).toBeInTheDocument();
     });
@@ -314,9 +314,9 @@ describe('PhysioOrderForm - Required Field Validation', () => {
   it('should show error when treatment type is not selected', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     await user.click(screen.getByRole('button', { name: /create order|submit/i }));
-    
+
     await waitFor(() => {
       expect(screen.getByText(/treatment type is required/i)).toBeInTheDocument();
     });
@@ -325,12 +325,12 @@ describe('PhysioOrderForm - Required Field Validation', () => {
   it('should show clinical indication validation error for short text', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     // Type only a few characters (less than min length of 10)
     await user.type(screen.getByLabelText(/clinical indication/i), 'ab');
-    
+
     await user.click(screen.getByRole('button', { name: /create order|submit/i }));
-    
+
     await waitFor(() => {
       // Check for minimum length validation message
       expect(screen.getByText(/at least 10 characters/i)).toBeInTheDocument();
@@ -340,13 +340,13 @@ describe('PhysioOrderForm - Required Field Validation', () => {
   it('should show validation errors when submitting with zero sessions', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     // Set sessions to 0 which is below minimum
     const sessionsInput = screen.getByLabelText(/total sessions/i);
     fireEvent.change(sessionsInput, { target: { value: '0' } });
-    
+
     await user.click(screen.getByRole('button', { name: /create order|submit/i }));
-    
+
     await waitFor(() => {
       // Validation should prevent submission
       expect(mockCreateMutation.mutateAsync).not.toHaveBeenCalled();
@@ -366,10 +366,10 @@ describe('PhysioOrderForm - Field Value Validation', () => {
 
   it('should accept valid session count within range', () => {
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     const sessionsInput = screen.getByLabelText(/total sessions/i);
     fireEvent.change(sessionsInput, { target: { value: '12' } });
-    
+
     // Should not show validation error immediately
     expect(screen.queryByText(/sessions must be between/i)).not.toBeInTheDocument();
   });
@@ -377,12 +377,12 @@ describe('PhysioOrderForm - Field Value Validation', () => {
   it('should validate clinical indication minimum length', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     const clinicalIndication = screen.getByLabelText(/clinical indication/i);
     await user.type(clinicalIndication, 'ab'); // Too short
-    
+
     await user.click(screen.getByRole('button', { name: /create order|submit/i }));
-    
+
     await waitFor(() => {
       expect(screen.getByText(/must be at least.*characters/i)).toBeInTheDocument();
     });
@@ -402,10 +402,10 @@ describe('PhysioOrderForm - Treatment Type Selection', () => {
   it('should display available treatment types when dropdown is opened', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     const treatmentTypeCombobox = screen.getByRole('combobox', { name: /treatment type/i });
     await user.click(treatmentTypeCombobox);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/post-surgery rehabilitation/i)).toBeInTheDocument();
     });
@@ -414,14 +414,14 @@ describe('PhysioOrderForm - Treatment Type Selection', () => {
   it('should show SHA claimable indicator for covered treatments', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     const treatmentTypeCombobox = screen.getByRole('combobox', { name: /treatment type/i });
     await user.click(treatmentTypeCombobox);
-    
+
     // Click the treatment type
     const option = await screen.findByText(/post-surgery rehabilitation/i);
     await user.click(option);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/sha claimable/i)).toBeInTheDocument();
     });
@@ -441,10 +441,10 @@ describe('PhysioOrderForm - Patient Selection', () => {
   it('should display patient options when dropdown is opened', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm />);
-    
+
     const patientCombobox = screen.getByRole('combobox', { name: /patient/i });
     await user.click(patientCombobox);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/john doe/i)).toBeInTheDocument();
     });
@@ -452,7 +452,7 @@ describe('PhysioOrderForm - Patient Selection', () => {
 
   it('should disable patient selection when patientId is provided', () => {
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     const patientInput = screen.getByLabelText(/patient/i);
     expect(patientInput).toBeDisabled();
   });
@@ -477,18 +477,18 @@ describe('PhysioOrderForm - Submission', () => {
       ...mockCreateMutation,
       isPending: true,
     });
-    
+
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     expect(screen.getByRole('button', { name: /creating|submitting|loading/i })).toBeDisabled();
   });
 
   it('should navigate back on cancel', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm />);
-    
+
     await user.click(screen.getByRole('button', { name: /cancel/i }));
-    
+
     expect(mockBack).toHaveBeenCalled();
   });
 });
@@ -521,13 +521,13 @@ describe('PhysioOrderForm - Edit Mode', () => {
 
   it('should show "Update Order" button in edit mode', () => {
     renderWithWrapper(<PhysioOrderForm order={existingOrder} />);
-    
+
     expect(screen.getByRole('button', { name: /update order|save/i })).toBeInTheDocument();
   });
 
   it('should pre-populate form fields with existing order data', () => {
     renderWithWrapper(<PhysioOrderForm order={existingOrder} />);
-    
+
     expect(screen.getByLabelText(/clinical indication/i)).toHaveValue('Existing clinical indication');
     expect(screen.getByLabelText(/total sessions/i)).toHaveValue(12);
     expect(screen.getByLabelText(/frequency/i)).toHaveValue('3x per week');
@@ -539,18 +539,18 @@ describe('PhysioOrderForm - Edit Mode', () => {
       ...existingOrder,
       clinical_indication: 'Updated indication',
     });
-    
+
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm order={existingOrder} />);
-    
+
     // Update a field
     const clinicalIndication = screen.getByLabelText(/clinical indication/i);
     await user.clear(clinicalIndication);
     await user.type(clinicalIndication, 'Updated indication');
-    
+
     // Submit
     await user.click(screen.getByRole('button', { name: /update order|save/i }));
-    
+
     await waitFor(() => {
       expect(mockUpdateMutation.mutateAsync).toHaveBeenCalledWith({
         id: 1,
@@ -564,11 +564,11 @@ describe('PhysioOrderForm - Edit Mode', () => {
   it('should disable status-related fields for completed orders', () => {
     const completedOrder = { ...existingOrder, status: 'COMPLETED' };
     renderWithWrapper(<PhysioOrderForm order={completedOrder} />);
-    
+
     // Treatment type combobox should be disabled
     const treatmentTypeCombobox = screen.getByRole('combobox', { name: /treatment type/i });
     expect(treatmentTypeCombobox).toBeDisabled();
-    
+
     // Total sessions should be disabled
     expect(screen.getByLabelText(/total sessions/i)).toBeDisabled();
   });
@@ -587,10 +587,10 @@ describe('PhysioOrderForm - Priority Selection', () => {
   it('should display priority options when dropdown is opened', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     const priorityTrigger = screen.getByRole('combobox', { name: /priority/i });
     await user.click(priorityTrigger);
-    
+
     await waitFor(() => {
       expect(screen.getByRole('option', { name: /routine/i })).toBeInTheDocument();
       expect(screen.getByRole('option', { name: /urgent/i })).toBeInTheDocument();
@@ -600,7 +600,7 @@ describe('PhysioOrderForm - Priority Selection', () => {
 
   it('should default to ROUTINE priority', () => {
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     expect(screen.getByText(/routine/i)).toBeInTheDocument();
   });
 });
@@ -618,10 +618,10 @@ describe('PhysioOrderForm - Referral Reason Selection', () => {
   it('should display referral reason options when dropdown is opened', async () => {
     const user = userEvent.setup();
     renderWithWrapper(<PhysioOrderForm patientId={1} />);
-    
+
     const referralTrigger = screen.getByRole('combobox', { name: /referral reason/i });
     await user.click(referralTrigger);
-    
+
     await waitFor(() => {
       expect(screen.getByRole('option', { name: /post-surgery/i })).toBeInTheDocument();
     });

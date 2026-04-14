@@ -186,9 +186,9 @@ Critical Values Detected:
 
 Please review these results immediately.
 
-View results: {context['action_url']}
+View results: {context["action_url"]}
 
-{context['facility_name']}
+{context["facility_name"]}
 """
             html_message = None
 

@@ -62,8 +62,7 @@ def _get_azure_imports():
         return DefaultAzureCredential, KeyClient, CryptographyClient, EncryptionAlgorithm
     except ImportError as e:
         raise ImportError(
-            "Azure SDK not installed. Install with: "
-            "poetry add azure-identity azure-keyvault-keys"
+            "Azure SDK not installed. Install with: poetry add azure-identity azure-keyvault-keys"
         ) from e
 
 

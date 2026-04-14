@@ -38,9 +38,9 @@ class TestEncounterTypeChoices:
         choice_values = [choice[0] for choice in Encounter.ENCOUNTER_TYPE_CHOICES]
 
         for encounter_type in mandatory_types:
-            assert (
-                encounter_type in choice_values
-            ), f"{encounter_type} should be in ENCOUNTER_TYPE_CHOICES"
+            assert encounter_type in choice_values, (
+                f"{encounter_type} should be in ENCOUNTER_TYPE_CHOICES"
+            )
 
     def test_encounter_type_choices_include_all_optional_triage_types(self):
         """Verify all optional triage encounter types are available."""
@@ -56,9 +56,9 @@ class TestEncounterTypeChoices:
         choice_values = [choice[0] for choice in Encounter.ENCOUNTER_TYPE_CHOICES]
 
         for encounter_type in optional_types:
-            assert (
-                encounter_type in choice_values
-            ), f"{encounter_type} should be in ENCOUNTER_TYPE_CHOICES"
+            assert encounter_type in choice_values, (
+                f"{encounter_type} should be in ENCOUNTER_TYPE_CHOICES"
+            )
 
     def test_encounter_type_choices_include_all_not_required_triage_types(self):
         """Verify all triage-not-required encounter types are available."""
@@ -68,9 +68,9 @@ class TestEncounterTypeChoices:
         choice_values = [choice[0] for choice in Encounter.ENCOUNTER_TYPE_CHOICES]
 
         for encounter_type in not_required_types:
-            assert (
-                encounter_type in choice_values
-            ), f"{encounter_type} should be in ENCOUNTER_TYPE_CHOICES"
+            assert encounter_type in choice_values, (
+                f"{encounter_type} should be in ENCOUNTER_TYPE_CHOICES"
+            )
 
     def test_new_encounter_type_creates_successfully(self, sample_patient):
         """Test that new encounter types can be used to create encounters."""
@@ -105,24 +105,24 @@ class TestTriageRequirementChoices:
         choice_values = [choice[0] for choice in Encounter.TRIAGE_REQUIREMENT_CHOICES]
 
         for requirement in expected_choices:
-            assert (
-                requirement in choice_values
-            ), f"{requirement} should be in TRIAGE_REQUIREMENT_CHOICES"
+            assert requirement in choice_values, (
+                f"{requirement} should be in TRIAGE_REQUIREMENT_CHOICES"
+            )
 
     def test_encounter_type_to_triage_requirement_mapping_exists(self):
         """Verify mapping from encounter type to triage requirement exists."""
         from hmis.apps.encounters.models import Encounter
 
-        assert hasattr(
-            Encounter, "ENCOUNTER_TYPE_TRIAGE_MAP"
-        ), "ENCOUNTER_TYPE_TRIAGE_MAP should be defined"
+        assert hasattr(Encounter, "ENCOUNTER_TYPE_TRIAGE_MAP"), (
+            "ENCOUNTER_TYPE_TRIAGE_MAP should be defined"
+        )
 
         # Verify mapping for mandatory triage types
         mandatory_types = ["OPD", "IPD", "EMERGENCY", "ANC", "PAEDIATRIC", "DIALYSIS", "ONCOLOGY"]
         for enc_type in mandatory_types:
-            assert (
-                Encounter.ENCOUNTER_TYPE_TRIAGE_MAP.get(enc_type) == "MANDATORY"
-            ), f"{enc_type} should map to MANDATORY triage"
+            assert Encounter.ENCOUNTER_TYPE_TRIAGE_MAP.get(enc_type) == "MANDATORY", (
+                f"{enc_type} should map to MANDATORY triage"
+            )
 
         # Verify mapping for optional triage types
         optional_types = [
@@ -133,16 +133,16 @@ class TestTriageRequirementChoices:
             "SPECIALIST_CLINIC",
         ]
         for enc_type in optional_types:
-            assert (
-                Encounter.ENCOUNTER_TYPE_TRIAGE_MAP.get(enc_type) == "OPTIONAL"
-            ), f"{enc_type} should map to OPTIONAL triage"
+            assert Encounter.ENCOUNTER_TYPE_TRIAGE_MAP.get(enc_type) == "OPTIONAL", (
+                f"{enc_type} should map to OPTIONAL triage"
+            )
 
         # Verify mapping for not-required triage types
         not_required_types = ["PROCEDURE", "DAY_CASE", "WARD_ROUND", "DISCHARGE_REVIEW"]
         for enc_type in not_required_types:
-            assert (
-                Encounter.ENCOUNTER_TYPE_TRIAGE_MAP.get(enc_type) == "NOT_REQUIRED"
-            ), f"{enc_type} should map to NOT_REQUIRED triage"
+            assert Encounter.ENCOUNTER_TYPE_TRIAGE_MAP.get(enc_type) == "NOT_REQUIRED", (
+                f"{enc_type} should map to NOT_REQUIRED triage"
+            )
 
 
 # ============================================================================
@@ -225,9 +225,9 @@ class TestTriageRequirementField:
         """Verify triage_requirement field exists on Encounter model."""
         from hmis.apps.encounters.models import Encounter
 
-        assert hasattr(
-            Encounter, "triage_requirement"
-        ), "Encounter should have triage_requirement field"
+        assert hasattr(Encounter, "triage_requirement"), (
+            "Encounter should have triage_requirement field"
+        )
 
     def test_triage_requirement_auto_set_for_opd(self, sample_patient, sample_facility):
         """OPD encounter should auto-set triage_requirement to MANDATORY."""
@@ -369,25 +369,25 @@ class TestTriageBypassFields:
         """Verify triage_bypass_reason field exists."""
         from hmis.apps.encounters.models import Encounter
 
-        assert hasattr(
-            Encounter, "triage_bypass_reason"
-        ), "Encounter should have triage_bypass_reason field"
+        assert hasattr(Encounter, "triage_bypass_reason"), (
+            "Encounter should have triage_bypass_reason field"
+        )
 
     def test_triage_bypassed_by_field_exists(self):
         """Verify triage_bypassed_by field exists."""
         from hmis.apps.encounters.models import Encounter
 
-        assert hasattr(
-            Encounter, "triage_bypassed_by"
-        ), "Encounter should have triage_bypassed_by field"
+        assert hasattr(Encounter, "triage_bypassed_by"), (
+            "Encounter should have triage_bypassed_by field"
+        )
 
     def test_triage_bypassed_at_field_exists(self):
         """Verify triage_bypassed_at field exists."""
         from hmis.apps.encounters.models import Encounter
 
-        assert hasattr(
-            Encounter, "triage_bypassed_at"
-        ), "Encounter should have triage_bypassed_at field"
+        assert hasattr(Encounter, "triage_bypassed_at"), (
+            "Encounter should have triage_bypassed_at field"
+        )
 
     def test_bypass_reason_required_when_status_bypassed(self, sample_patient, test_user):
         """Validation error should be raised if triage_status is BYPASSED without reason."""
@@ -461,9 +461,9 @@ class TestConsultationStatusFields:
         """Verify consultation_status field exists."""
         from hmis.apps.encounters.models import Encounter
 
-        assert hasattr(
-            Encounter, "consultation_status"
-        ), "Encounter should have consultation_status field"
+        assert hasattr(Encounter, "consultation_status"), (
+            "Encounter should have consultation_status field"
+        )
 
     def test_called_at_field_exists(self):
         """Verify called_at field exists."""
@@ -475,9 +475,9 @@ class TestConsultationStatusFields:
         """Verify consultation_started_at field exists."""
         from hmis.apps.encounters.models import Encounter
 
-        assert hasattr(
-            Encounter, "consultation_started_at"
-        ), "Encounter should have consultation_started_at field"
+        assert hasattr(Encounter, "consultation_started_at"), (
+            "Encounter should have consultation_started_at field"
+        )
 
     def test_consultation_status_default_waiting(self, sample_patient, sample_facility):
         """New encounters should default to WAITING consultation status."""
@@ -505,12 +505,12 @@ class TestCanEnterConsultationMethod:
         """Verify can_enter_consultation method exists on Encounter model."""
         from hmis.apps.encounters.models import Encounter
 
-        assert hasattr(
-            Encounter, "can_enter_consultation"
-        ), "Encounter should have can_enter_consultation method"
-        assert callable(
-            Encounter.can_enter_consultation
-        ), "can_enter_consultation should be callable"
+        assert hasattr(Encounter, "can_enter_consultation"), (
+            "Encounter should have can_enter_consultation method"
+        )
+        assert callable(Encounter.can_enter_consultation), (
+            "can_enter_consultation should be callable"
+        )
 
     def test_cannot_enter_consultation_when_mandatory_pending(
         self, sample_patient, sample_facility
@@ -901,9 +901,9 @@ class TestChiefComplaintEditAuditTrail:
         choice_values = [choice[0] for choice in Encounter.CHIEF_COMPLAINT_EDIT_REASON_CHOICES]
 
         for reason in expected_reasons:
-            assert (
-                reason in choice_values
-            ), f"{reason} should be in CHIEF_COMPLAINT_EDIT_REASON_CHOICES"
+            assert reason in choice_values, (
+                f"{reason} should be in CHIEF_COMPLAINT_EDIT_REASON_CHOICES"
+            )
 
     def test_encounter_has_chief_complaint_audit_fields(self, sample_patient):
         """Verify encounter model has all chief complaint audit fields."""

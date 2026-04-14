@@ -267,6 +267,5 @@ class KENHDDFailedRecord(models.Model):
 
     def __str__(self) -> str:
         return (
-            f"Record {self.record_id} — "
-            f"{self.fail_count} fail(s), {self.warning_count} warning(s)"
+            f"Record {self.record_id} — {self.fail_count} fail(s), {self.warning_count} warning(s)"
         )

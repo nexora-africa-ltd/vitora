@@ -1,6 +1,6 @@
 # RBAC & Capability-Based Access Control — User Guide
 
-> **Audience**: System administrators, facility IT staff, developers  
+> **Audience**: System administrators, facility IT staff, developers
 > **Last Updated**: March 9, 2026
 
 ---

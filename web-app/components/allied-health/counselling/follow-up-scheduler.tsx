@@ -1,6 +1,6 @@
 /**
  * Follow-up Scheduler
- * 
+ *
  * A component for scheduling follow-up counselling sessions.
  * Includes date/time selection, frequency recommendations, and session focus.
  */

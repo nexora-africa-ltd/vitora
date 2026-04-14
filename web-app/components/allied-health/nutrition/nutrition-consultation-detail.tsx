@@ -306,9 +306,9 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
                   <p className="whitespace-pre-wrap">{consultation.recommendations}</p>
                 </div>
               )}
-              {!consultation.food_allergies && 
-               !consultation.dietary_history && 
-               !consultation.current_diet && 
+              {!consultation.food_allergies &&
+               !consultation.dietary_history &&
+               !consultation.current_diet &&
                !consultation.recommendations && (
                 <p className="text-muted-foreground">No dietary information recorded</p>
               )}

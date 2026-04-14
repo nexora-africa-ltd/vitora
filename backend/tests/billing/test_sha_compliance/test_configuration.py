@@ -44,7 +44,7 @@ class TestSHAAPIConfiguration:
         base_url = getattr(settings, "SHA_API_BASE_URL", None)
 
         assert base_url is not None, (
-            "SHA_API_BASE_URL must be configured. " "UAT: https://uat.dha.go.ke"
+            "SHA_API_BASE_URL must be configured. UAT: https://uat.dha.go.ke"
         )
 
         assert base_url.startswith("http"), f"SHA_API_BASE_URL must be a valid URL, got: {base_url}"
@@ -95,7 +95,7 @@ class TestSHAAuthenticationConfiguration:
 
         # In test environment, it might be empty/placeholder
         assert hasattr(settings, "SHA_CONSUMER_KEY"), (
-            "SHA_CONSUMER_KEY setting must exist. " "Obtain from SHA technical team."
+            "SHA_CONSUMER_KEY setting must exist. Obtain from SHA technical team."
         )
 
     def test_sha_api_key_exists(self):
@@ -110,17 +110,17 @@ class TestSHAAuthenticationConfiguration:
         """
         SHA Requirement: API username must be configured.
         """
-        assert hasattr(
-            settings, "SHA_USERNAME"
-        ), "SHA_USERNAME setting must exist for API authentication."
+        assert hasattr(settings, "SHA_USERNAME"), (
+            "SHA_USERNAME setting must exist for API authentication."
+        )
 
     def test_sha_password_exists(self):
         """
         SHA Requirement: API password must be configured.
         """
-        assert hasattr(
-            settings, "SHA_PASSWORD"
-        ), "SHA_PASSWORD setting must exist for API authentication."
+        assert hasattr(settings, "SHA_PASSWORD"), (
+            "SHA_PASSWORD setting must exist for API authentication."
+        )
 
 
 class TestSHAEndpointsConfiguration:
@@ -147,12 +147,12 @@ class TestSHAEndpointsConfiguration:
         eligibility = endpoints.get("eligibility")
 
         assert eligibility is not None, (
-            "SHA_ENDPOINTS['eligibility'] must be configured. " "Expected: /v2/eligibility"
+            "SHA_ENDPOINTS['eligibility'] must be configured. Expected: /v2/eligibility"
         )
 
-        assert (
-            "/v2/eligibility" in eligibility or eligibility == "/v2/eligibility"
-        ), f"Eligibility endpoint should be /v2/eligibility, got: {eligibility}"
+        assert "/v2/eligibility" in eligibility or eligibility == "/v2/eligibility", (
+            f"Eligibility endpoint should be /v2/eligibility, got: {eligibility}"
+        )
 
     def test_claims_submit_endpoint_configured(self):
         """
@@ -166,7 +166,7 @@ class TestSHAEndpointsConfiguration:
         claims_submit = endpoints.get("claims_submit")
 
         assert claims_submit is not None, (
-            "SHA_ENDPOINTS['claims_submit'] must be configured. " "Expected: /v1/shr-med/bundle"
+            "SHA_ENDPOINTS['claims_submit'] must be configured. Expected: /v1/shr-med/bundle"
         )
 
     def test_claims_status_endpoint_configured(self):
@@ -181,8 +181,7 @@ class TestSHAEndpointsConfiguration:
         claims_status = endpoints.get("claims_status")
 
         assert claims_status is not None, (
-            "SHA_ENDPOINTS['claims_status'] must be configured. "
-            "Expected: /v1/shr-med/claim-status"
+            "SHA_ENDPOINTS['claims_status'] must be configured. Expected: /v1/shr-med/claim-status"
         )
 
 
@@ -199,7 +198,7 @@ class TestFacilityConfiguration:
         mfl_code = getattr(settings, "FACILITY_MFL_CODE", None)
 
         assert mfl_code is not None, (
-            "FACILITY_MFL_CODE must be configured. " "Obtain from Kenya Health Facilities Registry."
+            "FACILITY_MFL_CODE must be configured. Obtain from Kenya Health Facilities Registry."
         )
 
     def test_facility_level_configured(self):
@@ -212,7 +211,7 @@ class TestFacilityConfiguration:
         level = getattr(settings, "FACILITY_LEVEL", None)
 
         assert level is not None, (
-            "FACILITY_LEVEL must be configured. " "Valid values: L1, L2, L3A, L3B, L4, L5, L6"
+            "FACILITY_LEVEL must be configured. Valid values: L1, L2, L3A, L3B, L4, L5, L6"
         )
 
     def test_facility_name_configured(self):
@@ -225,9 +224,9 @@ class TestFacilityConfiguration:
 
         # It's OK if not set, but should not be placeholder
         if name:
-            assert (
-                name != "Healthcare Facility"
-            ), "FACILITY_NAME should be actual name, not placeholder"
+            assert name != "Healthcare Facility", (
+                "FACILITY_NAME should be actual name, not placeholder"
+            )
 
 
 class TestAPITimeoutConfiguration:
@@ -239,9 +238,7 @@ class TestAPITimeoutConfiguration:
         """
         timeout = getattr(settings, "SHA_API_TIMEOUT", None)
 
-        assert timeout is not None, (
-            "SHA_API_TIMEOUT should be configured. " "Recommended: 30 seconds"
-        )
+        assert timeout is not None, "SHA_API_TIMEOUT should be configured. Recommended: 30 seconds"
 
         assert timeout > 0, "Timeout must be positive"
         assert timeout <= 120, "Timeout should be reasonable (<=120s)"
@@ -332,5 +329,5 @@ class TestIntegrationChecklistSummary:
         checklist_items = 15
 
         assert checklist_items == 15, (
-            "Review all 15 integration checklist items. " "See docs/sha-guides/claims-submission.md"
+            "Review all 15 integration checklist items. See docs/sha-guides/claims-submission.md"
         )

@@ -622,9 +622,9 @@ class TestICUPredictSanitization:
         tibabot_icu_predict_response,
     ):
         """Should strip MRN from admission_diagnosis."""
-        icu_predict_payload["patient_data"][
-            "admission_diagnosis"
-        ] = "Sepsis MRN-20260101-0001 patient admitted"
+        icu_predict_payload["patient_data"]["admission_diagnosis"] = (
+            "Sepsis MRN-20260101-0001 patient admitted"
+        )
 
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()

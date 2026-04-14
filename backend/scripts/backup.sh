@@ -116,7 +116,7 @@ send_slack_alert() {
     local status="$1"
     local message="$2"
     local color="$3"  # good, warning, danger
-    
+
     if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
         curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
@@ -137,7 +137,7 @@ send_slack_alert() {
 send_email_alert() {
     local subject="$1"
     local body="$2"
-    
+
     if [[ -n "${ALERT_EMAIL:-}" ]] && command -v mail &> /dev/null; then
         echo "$body" | mail -s "$subject" "$ALERT_EMAIL" || true
     fi
@@ -161,19 +161,19 @@ alert_success() {
 # -----------------------------------------------------------------------------
 check_prerequisites() {
     log "Checking prerequisites..."
-    
+
     # Check for pg_dump
     if ! command -v pg_dump &> /dev/null; then
         alert_failure "pg_dump not found. Install postgresql-client."
         exit 1
     fi
-    
+
     # Check for gpg (encryption)
     if ! command -v gpg &> /dev/null; then
         alert_failure "gpg not found. Install gnupg for backup encryption."
         exit 1
     fi
-    
+
     # Check for aws cli (if S3 enabled)
     if [[ "$SKIP_S3" == "false" ]] && [[ -n "${S3_BUCKET:-}" ]]; then
         if ! command -v aws &> /dev/null; then
@@ -181,21 +181,21 @@ check_prerequisites() {
             SKIP_S3=true
         fi
     fi
-    
+
     # Check DATABASE_URL
     if [[ -z "${DATABASE_URL:-}" ]]; then
         alert_failure "DATABASE_URL environment variable not set."
         exit 1
     fi
-    
+
     # Check encryption key
     if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
         log "Warning: BACKUP_ENCRYPTION_KEY not set. Backups will NOT be encrypted."
     fi
-    
+
     # Create backup directory
     mkdir -p "$BACKUP_DIR"
-    
+
     log_verbose "Prerequisites check passed."
 }
 
@@ -205,30 +205,30 @@ check_prerequisites() {
 parse_database_url() {
     # Parse postgres://user:password@host:port/dbname
     local url="${DATABASE_URL}"
-    
+
     # Remove protocol
     url="${url#postgres://}"
     url="${url#postgresql://}"
-    
+
     # Extract user:password
     local userpass="${url%%@*}"
     DB_USER="${userpass%%:*}"
     DB_PASS="${userpass#*:}"
-    
+
     # Extract host:port/dbname
     local hostportdb="${url#*@}"
     local hostport="${hostportdb%%/*}"
     DB_NAME="${hostportdb#*/}"
     DB_NAME="${DB_NAME%%\?*}"  # Remove query params
-    
+
     DB_HOST="${hostport%%:*}"
     DB_PORT="${hostport#*:}"
-    
+
     # Default port if not specified
     if [[ "$DB_PORT" == "$DB_HOST" ]]; then
         DB_PORT="5432"
     fi
-    
+
     log_verbose "Database: $DB_NAME @ $DB_HOST:$DB_PORT"
 }
 
@@ -237,14 +237,14 @@ parse_database_url() {
 # -----------------------------------------------------------------------------
 backup_database() {
     log "Starting PostgreSQL backup..."
-    
+
     local backup_file="$BACKUP_DIR/${BACKUP_NAME}_db.sql"
     local compressed_file="${backup_file}.gz"
     local encrypted_file="${compressed_file}.gpg"
-    
+
     # Set password for pg_dump
     export PGPASSWORD="$DB_PASS"
-    
+
     # Perform backup with custom format for better restoration options
     log_verbose "Running pg_dump..."
     pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
@@ -257,7 +257,7 @@ backup_database() {
         --file="$BACKUP_DIR/${BACKUP_NAME}_db.dump" 2>&1 | while read -r line; do
             log_verbose "pg_dump: $line"
         done
-    
+
     # Also create a plain SQL backup for portability
     pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
         --no-password \
@@ -265,13 +265,13 @@ backup_database() {
         --if-exists \
         --create \
         > "$backup_file" 2>&1
-    
+
     unset PGPASSWORD
-    
+
     # Compress
     log_verbose "Compressing backup..."
     gzip -f "$backup_file"
-    
+
     # Encrypt if key provided
     if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
         log_verbose "Encrypting backup..."
@@ -283,17 +283,17 @@ backup_database() {
     else
         FINAL_BACKUP_FILE="$compressed_file"
     fi
-    
+
     # Calculate size and checksum
     local backup_size=$(du -h "$FINAL_BACKUP_FILE" | cut -f1)
     local checksum=$(sha256sum "$FINAL_BACKUP_FILE" | cut -d' ' -f1)
-    
+
     log "Database backup complete: $FINAL_BACKUP_FILE ($backup_size)"
     log_verbose "SHA256: $checksum"
-    
+
     # Save checksum
     echo "$checksum  $(basename "$FINAL_BACKUP_FILE")" > "${FINAL_BACKUP_FILE}.sha256"
-    
+
     # Also keep the custom format dump (compressed automatically)
     if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
         echo "$BACKUP_ENCRYPTION_KEY" | gpg --batch --yes --passphrase-fd 0 \
@@ -311,20 +311,20 @@ backup_media() {
         log_verbose "Skipping media backup (not requested)"
         return
     fi
-    
+
     log "Starting media files backup..."
-    
+
     local media_dir="$BACKEND_DIR/media"
     local media_backup="$BACKUP_DIR/${BACKUP_NAME}_media.tar.gz"
-    
+
     if [[ ! -d "$media_dir" ]]; then
         log "No media directory found. Skipping."
         return
     fi
-    
+
     # Create tarball
     tar -czf "$media_backup" -C "$BACKEND_DIR" media
-    
+
     # Encrypt if key provided
     if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
         echo "$BACKUP_ENCRYPTION_KEY" | gpg --batch --yes --passphrase-fd 0 \
@@ -333,7 +333,7 @@ backup_media() {
         rm "$media_backup"
         media_backup="${media_backup}.gpg"
     fi
-    
+
     local backup_size=$(du -h "$media_backup" | cut -f1)
     log "Media backup complete: $media_backup ($backup_size)"
 }
@@ -346,9 +346,9 @@ upload_to_s3() {
         log_verbose "Skipping S3 upload"
         return
     fi
-    
+
     log "Uploading to S3: s3://$S3_BUCKET/backups/$ENVIRONMENT/"
-    
+
     # Upload all backup files from this run
     for file in "$BACKUP_DIR/${BACKUP_NAME}"*; do
         if [[ -f "$file" ]]; then
@@ -362,7 +362,7 @@ upload_to_s3() {
             log_verbose "Uploaded: $filename"
         fi
     done
-    
+
     log "S3 upload complete"
 }
 
@@ -371,27 +371,27 @@ upload_to_s3() {
 # -----------------------------------------------------------------------------
 cleanup_old_backups() {
     log "Cleaning up old backups..."
-    
+
     # Local cleanup
     find "$BACKUP_DIR" -name "vitora_${ENVIRONMENT}_*" -type f -mtime +$LOCAL_RETENTION_DAYS -delete
     log_verbose "Removed local backups older than $LOCAL_RETENTION_DAYS days"
-    
+
     # S3 cleanup (if enabled)
     if [[ "$SKIP_S3" == "false" ]] && [[ -n "${S3_BUCKET:-}" ]]; then
         local cutoff_date=$(date -d "-${REMOTE_RETENTION_DAYS} days" +%Y-%m-%d)
-        
+
         aws s3 ls "s3://$S3_BUCKET/backups/$ENVIRONMENT/" \
             ${S3_ENDPOINT:+--endpoint-url "$S3_ENDPOINT"} 2>/dev/null | while read -r line; do
             local file_date=$(echo "$line" | awk '{print $1}')
             local filename=$(echo "$line" | awk '{print $4}')
-            
+
             if [[ "$file_date" < "$cutoff_date" ]]; then
                 aws s3 rm "s3://$S3_BUCKET/backups/$ENVIRONMENT/$filename" \
                     ${S3_ENDPOINT:+--endpoint-url "$S3_ENDPOINT"} || true
                 log_verbose "Removed from S3: $filename"
             fi
         done
-        
+
         log_verbose "Removed S3 backups older than $REMOTE_RETENTION_DAYS days"
     fi
 }
@@ -401,7 +401,7 @@ cleanup_old_backups() {
 # -----------------------------------------------------------------------------
 write_manifest() {
     local manifest_file="$BACKUP_DIR/${BACKUP_NAME}_manifest.json"
-    
+
     cat > "$manifest_file" <<EOF
 {
     "backup_name": "$BACKUP_NAME",
@@ -424,7 +424,7 @@ $(ls -la "$BACKUP_DIR/${BACKUP_NAME}"* 2>/dev/null | awk '{printf "        {\"na
     }
 }
 EOF
-    
+
     log_verbose "Manifest written: $manifest_file"
 }
 
@@ -435,9 +435,9 @@ main() {
     log "=========================================="
     log "Vitora HMIS Backup - $ENVIRONMENT"
     log "=========================================="
-    
+
     local start_time=$(date +%s)
-    
+
     # Run backup steps
     check_prerequisites
     parse_database_url
@@ -446,15 +446,15 @@ main() {
     upload_to_s3
     cleanup_old_backups
     write_manifest
-    
+
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
-    
+
     log "=========================================="
     log "Backup completed in ${duration}s"
     log "Backup location: $BACKUP_DIR"
     log "=========================================="
-    
+
     alert_success "Backup completed successfully in ${duration}s. Files: $BACKUP_NAME"
 }
 

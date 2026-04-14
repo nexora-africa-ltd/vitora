@@ -268,10 +268,10 @@ from hmis.apps.core.oauth.permissions import (
 
 class PatientViewSet(ModelViewSet):
     """Patient API with SMART scope enforcement."""
-    
+
     permission_classes = [SMARTScopePermission, SMARTPatientAccessPermission]
     smart_resource_type = "Patient"  # FHIR resource type
-    
+
     def get_queryset(self):
         qs = super().get_queryset()
         # Automatically filter by patient context for patient/* scopes
@@ -326,5 +326,5 @@ REST_FRAMEWORK = {
 
 ---
 
-**Last Updated**: January 31, 2026  
+**Last Updated**: January 31, 2026
 **Module Version**: 1.0.0

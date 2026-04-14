@@ -20,12 +20,12 @@ class TestMedicationDispenseRequiredFields:
         """
         SHR Requirement: MedicationDispense must have resourceType.
         """
-        assert (
-            "resourceType" in valid_medication_dispense_fhir
-        ), "MedicationDispense must have 'resourceType' field"
-        assert (
-            valid_medication_dispense_fhir["resourceType"] == "MedicationDispense"
-        ), "resourceType must be 'MedicationDispense'"
+        assert "resourceType" in valid_medication_dispense_fhir, (
+            "MedicationDispense must have 'resourceType' field"
+        )
+        assert valid_medication_dispense_fhir["resourceType"] == "MedicationDispense", (
+            "resourceType must be 'MedicationDispense'"
+        )
 
     def test_medication_dispense_has_id(self, valid_medication_dispense_fhir):
         """
@@ -40,9 +40,9 @@ class TestMedicationDispenseRequiredFields:
 
         Quote from spec: '"status": "completed"'
         """
-        assert (
-            "status" in valid_medication_dispense_fhir
-        ), "MedicationDispense must have 'status' field"
+        assert "status" in valid_medication_dispense_fhir, (
+            "MedicationDispense must have 'status' field"
+        )
         valid_statuses = [
             "preparation",
             "in-progress",
@@ -54,9 +54,9 @@ class TestMedicationDispenseRequiredFields:
             "declined",
             "unknown",
         ]
-        assert (
-            valid_medication_dispense_fhir["status"] in valid_statuses
-        ), f"status must be one of {valid_statuses}"
+        assert valid_medication_dispense_fhir["status"] in valid_statuses, (
+            f"status must be one of {valid_statuses}"
+        )
 
     def test_medication_dispense_has_medication(self, valid_medication_dispense_fhir):
         """
@@ -66,9 +66,9 @@ class TestMedicationDispenseRequiredFields:
             "medicationCodeableConcept" in valid_medication_dispense_fhir
             or "medicationReference" in valid_medication_dispense_fhir
         )
-        assert (
-            has_medication
-        ), "MedicationDispense must have 'medicationCodeableConcept' or 'medicationReference'"
+        assert has_medication, (
+            "MedicationDispense must have 'medicationCodeableConcept' or 'medicationReference'"
+        )
 
     def test_medication_dispense_has_subject(self, valid_medication_dispense_fhir):
         """
@@ -76,15 +76,15 @@ class TestMedicationDispenseRequiredFields:
 
         Quote from spec: '"subject": {"reference": "Patient/CR06XX3268000-3-1"}'
         """
-        assert (
-            "subject" in valid_medication_dispense_fhir
-        ), "MedicationDispense must have 'subject' field"
-        assert (
-            "reference" in valid_medication_dispense_fhir["subject"]
-        ), "subject must have 'reference' field"
-        assert valid_medication_dispense_fhir["subject"]["reference"].startswith(
-            "Patient/"
-        ), "subject reference must start with 'Patient/'"
+        assert "subject" in valid_medication_dispense_fhir, (
+            "MedicationDispense must have 'subject' field"
+        )
+        assert "reference" in valid_medication_dispense_fhir["subject"], (
+            "subject must have 'reference' field"
+        )
+        assert valid_medication_dispense_fhir["subject"]["reference"].startswith("Patient/"), (
+            "subject reference must start with 'Patient/'"
+        )
 
 
 class TestMedicationDispenseMedicationCoding:
@@ -129,9 +129,9 @@ class TestMedicationDispenseMedicationCoding:
         dispense_code = dispense_med.get("coding", [{}])[0].get("code")
         request_code = request_med.get("coding", [{}])[0].get("code")
 
-        assert (
-            dispense_code == request_code
-        ), "Dispensed medication code should match prescribed medication code"
+        assert dispense_code == request_code, (
+            "Dispensed medication code should match prescribed medication code"
+        )
 
 
 class TestMedicationDispensePerformer:
@@ -146,12 +146,12 @@ class TestMedicationDispensePerformer:
         """
         SHR Requirement: MedicationDispense must have performer.
         """
-        assert (
-            "performer" in valid_medication_dispense_fhir
-        ), "MedicationDispense must have 'performer' field"
-        assert (
-            len(valid_medication_dispense_fhir["performer"]) > 0
-        ), "performer array must have at least one entry"
+        assert "performer" in valid_medication_dispense_fhir, (
+            "MedicationDispense must have 'performer' field"
+        )
+        assert len(valid_medication_dispense_fhir["performer"]) > 0, (
+            "performer array must have at least one entry"
+        )
 
     def test_performer_has_actor(self, valid_medication_dispense_fhir):
         """
@@ -179,9 +179,9 @@ class TestMedicationDispensePerformer:
         has_practitioner = any(
             "Practitioner/" in p.get("actor", {}).get("reference", "") for p in performers
         )
-        assert (
-            has_practitioner
-        ), "performer should include a Practitioner reference for the pharmacist"
+        assert has_practitioner, (
+            "performer should include a Practitioner reference for the pharmacist"
+        )
 
     def test_performer_includes_organization(self, valid_medication_dispense_fhir):
         """
@@ -193,9 +193,9 @@ class TestMedicationDispensePerformer:
         has_organization = any(
             "Organization/" in p.get("actor", {}).get("reference", "") for p in performers
         )
-        assert (
-            has_organization
-        ), "performer should include an Organization reference for the pharmacy"
+        assert has_organization, (
+            "performer should include an Organization reference for the pharmacy"
+        )
 
 
 class TestMedicationDispenseAuthorizingPrescription:
@@ -210,12 +210,12 @@ class TestMedicationDispenseAuthorizingPrescription:
         """
         SHR Requirement: MedicationDispense must reference authorizing prescription.
         """
-        assert (
-            "authorizingPrescription" in valid_medication_dispense_fhir
-        ), "MedicationDispense must have 'authorizingPrescription' field"
-        assert (
-            len(valid_medication_dispense_fhir["authorizingPrescription"]) > 0
-        ), "authorizingPrescription must have at least one reference"
+        assert "authorizingPrescription" in valid_medication_dispense_fhir, (
+            "MedicationDispense must have 'authorizingPrescription' field"
+        )
+        assert len(valid_medication_dispense_fhir["authorizingPrescription"]) > 0, (
+            "authorizingPrescription must have at least one reference"
+        )
 
     def test_authorizing_prescription_has_reference(self, valid_medication_dispense_fhir):
         """
@@ -233,9 +233,9 @@ class TestMedicationDispenseAuthorizingPrescription:
         auth_rx = valid_medication_dispense_fhir.get("authorizingPrescription", [{}])[0]
         reference = auth_rx.get("reference", "")
 
-        assert reference.startswith(
-            "MedicationRequest/"
-        ), "authorizingPrescription reference must start with 'MedicationRequest/'"
+        assert reference.startswith("MedicationRequest/"), (
+            "authorizingPrescription reference must start with 'MedicationRequest/'"
+        )
 
 
 class TestMedicationDispenseType:
@@ -250,9 +250,9 @@ class TestMedicationDispenseType:
         """
         SHR Requirement: MedicationDispense should have type.
         """
-        assert (
-            "type" in valid_medication_dispense_fhir
-        ), "MedicationDispense should have 'type' field"
+        assert "type" in valid_medication_dispense_fhir, (
+            "MedicationDispense should have 'type' field"
+        )
 
     def test_type_has_coding(self, valid_medication_dispense_fhir):
         """
@@ -284,9 +284,9 @@ class TestMedicationDispenseQuantity:
         """
         SHR Requirement: MedicationDispense must have quantity.
         """
-        assert (
-            "quantity" in valid_medication_dispense_fhir
-        ), "MedicationDispense must have 'quantity' field"
+        assert "quantity" in valid_medication_dispense_fhir, (
+            "MedicationDispense must have 'quantity' field"
+        )
 
     def test_quantity_has_value(self, valid_medication_dispense_fhir):
         """
@@ -316,9 +316,9 @@ class TestMedicationDispenseDaysSupply:
         """
         SHR Requirement: MedicationDispense should have daysSupply for refill calculation.
         """
-        assert (
-            "daysSupply" in valid_medication_dispense_fhir
-        ), "MedicationDispense should have 'daysSupply' field for refill tracking"
+        assert "daysSupply" in valid_medication_dispense_fhir, (
+            "MedicationDispense should have 'daysSupply' field for refill tracking"
+        )
 
     def test_days_supply_has_value(self, valid_medication_dispense_fhir):
         """
@@ -348,9 +348,9 @@ class TestMedicationDispenseTimestamps:
         """
         SHR Requirement: MedicationDispense should have whenPrepared timestamp.
         """
-        assert (
-            "whenPrepared" in valid_medication_dispense_fhir
-        ), "MedicationDispense should have 'whenPrepared' timestamp"
+        assert "whenPrepared" in valid_medication_dispense_fhir, (
+            "MedicationDispense should have 'whenPrepared' timestamp"
+        )
 
     def test_has_when_handed_over(self, valid_medication_dispense_fhir):
         """
@@ -358,9 +358,9 @@ class TestMedicationDispenseTimestamps:
 
         This is critical for computing the next refill date.
         """
-        assert (
-            "whenHandedOver" in valid_medication_dispense_fhir
-        ), "MedicationDispense must have 'whenHandedOver' timestamp for refill tracking"
+        assert "whenHandedOver" in valid_medication_dispense_fhir, (
+            "MedicationDispense must have 'whenHandedOver' timestamp for refill tracking"
+        )
 
     def test_when_handed_over_is_iso_format(self, valid_medication_dispense_fhir):
         """
@@ -368,9 +368,9 @@ class TestMedicationDispenseTimestamps:
         """
         when_handed_over = valid_medication_dispense_fhir.get("whenHandedOver", "")
         # Should contain 'T' separating date and time
-        assert (
-            "T" in when_handed_over
-        ), "whenHandedOver must be ISO 8601 datetime format (contains 'T')"
+        assert "T" in when_handed_over, (
+            "whenHandedOver must be ISO 8601 datetime format (contains 'T')"
+        )
 
 
 class TestMedicationDispenseDosageInstruction:
@@ -382,9 +382,9 @@ class TestMedicationDispenseDosageInstruction:
         """
         SHR Requirement: MedicationDispense should include dosage instructions.
         """
-        assert (
-            "dosageInstruction" in valid_medication_dispense_fhir
-        ), "MedicationDispense should have 'dosageInstruction' field"
+        assert "dosageInstruction" in valid_medication_dispense_fhir, (
+            "MedicationDispense should have 'dosageInstruction' field"
+        )
 
     def test_dosage_instruction_has_text(self, valid_medication_dispense_fhir):
         """
@@ -410,6 +410,6 @@ class TestMedicationDispenseSubjectConsistency:
         dispense_subject = valid_medication_dispense_fhir.get("subject", {}).get("reference", "")
         request_subject = valid_medication_request_fhir.get("subject", {}).get("reference", "")
 
-        assert (
-            dispense_subject == request_subject
-        ), "MedicationDispense subject must match MedicationRequest subject"
+        assert dispense_subject == request_subject, (
+            "MedicationDispense subject must match MedicationRequest subject"
+        )

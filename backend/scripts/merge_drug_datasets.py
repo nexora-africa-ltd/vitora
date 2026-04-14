@@ -407,9 +407,21 @@ def _pick_best_form(forms: list, generic_key: str) -> str:
 
     # Deterministic priority: prefer oral solids, then liquids, then topicals
     priority = [
-        "TABLET", "CAPSULE", "SYRUP", "SUSPENSION", "SOLUTION",
-        "INJECTION", "CREAM", "OINTMENT", "GEL", "DROPS",
-        "INHALER", "SPRAY", "POWDER", "PATCH", "SUPPOSITORY",
+        "TABLET",
+        "CAPSULE",
+        "SYRUP",
+        "SUSPENSION",
+        "SOLUTION",
+        "INJECTION",
+        "CREAM",
+        "OINTMENT",
+        "GEL",
+        "DROPS",
+        "INHALER",
+        "SPRAY",
+        "POWDER",
+        "PATCH",
+        "SUPPOSITORY",
     ]
     for p in priority:
         if p in forms:

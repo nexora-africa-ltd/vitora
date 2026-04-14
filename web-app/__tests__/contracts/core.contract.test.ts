@@ -91,7 +91,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -105,7 +105,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -137,7 +137,7 @@ describe('Core Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  CountySchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -150,7 +150,7 @@ describe('Core Contract Tests', () => {
 
     it('should have all critical fields', () => {
       const zodFields = getZodSchemaFields(CountySchema);
-      
+
       const criticalFields = [
         'id',
         'code',
@@ -172,7 +172,7 @@ describe('Core Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  SubCountySchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -189,7 +189,7 @@ describe('Core Contract Tests', () => {
 
     it('should have all critical fields', () => {
       const zodFields = getZodSchemaFields(SubCountySchema);
-      
+
       const criticalFields = [
         'id',
         'county',
@@ -211,7 +211,7 @@ describe('Core Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  LocationWardSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -228,7 +228,7 @@ describe('Core Contract Tests', () => {
 
     it('should have all critical fields', () => {
       const zodFields = getZodSchemaFields(LocationWardSchema);
-      
+
       const criticalFields = [
         'id',
         'sub_county',
@@ -254,7 +254,7 @@ describe('Core Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  NotificationSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -271,7 +271,7 @@ describe('Core Contract Tests', () => {
 
     it('should have all critical fields', () => {
       const zodFields = getZodSchemaFields(NotificationSchema);
-      
+
       const criticalFields = [
         'id',
         'notification_type',
@@ -288,7 +288,7 @@ describe('Core Contract Tests', () => {
 
     it('should include relation and action fields', () => {
       const zodFields = getZodSchemaFields(NotificationSchema);
-      
+
       const relationFields = [
         'related_model',
         'related_id',
@@ -310,7 +310,7 @@ describe('Core Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`NotificationPrioritySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -320,7 +320,7 @@ describe('Core Contract Tests', () => {
 
     it('should include all priority levels', () => {
       const zodValues = getZodEnumValues(NotificationPrioritySchema);
-      
+
       const allPriorities = [
         'low',
         'normal',
@@ -347,7 +347,7 @@ describe('Core Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ClinicalTemplateSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -364,7 +364,7 @@ describe('Core Contract Tests', () => {
 
     it('should have all critical fields', () => {
       const zodFields = getZodSchemaFields(ClinicalTemplateSchema);
-      
+
       const criticalFields = [
         'id',
         'name',
@@ -384,7 +384,7 @@ describe('Core Contract Tests', () => {
 
     it('should include usage and authorship fields', () => {
       const zodFields = getZodSchemaFields(ClinicalTemplateSchema);
-      
+
       const authorshipFields = [
         'usage_count',
         'created_by',
@@ -406,7 +406,7 @@ describe('Core Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`TemplateTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -416,7 +416,7 @@ describe('Core Contract Tests', () => {
 
     it('should include all template types', () => {
       const zodValues = getZodEnumValues(TemplateTypeSchema);
-      
+
       const allTypes = [
         'encounter',
         'note',
@@ -454,7 +454,7 @@ describe('Core Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingCritical = criticalFields.filter((f) => !apiFields.includes(f));
-      
+
       expect(missingCritical).toEqual([]);
     });
 
@@ -473,7 +473,7 @@ describe('Core Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingDPA = dpaFields.filter((f) => !apiFields.includes(f));
-      
+
       if (missingDPA.length > 0) {
         console.warn(`AuditLog: Missing DPA fields: ${missingDPA.join(', ')}`);
       }
@@ -504,10 +504,10 @@ describe('Core Contract Tests', () => {
 
       expect(countyFields).toContain('id');
       expect(countyFields).toContain('name');
-      
+
       expect(subCountyFields).toContain('id');
       expect(subCountyFields).toContain('name');
-      
+
       expect(wardFields).toContain('id');
       expect(wardFields).toContain('name');
     });

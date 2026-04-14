@@ -10,13 +10,13 @@ import { CounsellingReferralForm } from '@/components/allied-health/counselling'
 
 export default function NewCounsellingReferralPage() {
   const searchParams = useSearchParams();
-  
+
   // Support pre-selecting patient or encounter from query params
-  const patientId = searchParams.get('patient_id') 
-    ? Number(searchParams.get('patient_id')) 
+  const patientId = searchParams.get('patient_id')
+    ? Number(searchParams.get('patient_id'))
     : undefined;
-  const encounterId = searchParams.get('encounter_id') 
-    ? Number(searchParams.get('encounter_id')) 
+  const encounterId = searchParams.get('encounter_id')
+    ? Number(searchParams.get('encounter_id'))
     : undefined;
 
   return (
@@ -25,10 +25,10 @@ export default function NewCounsellingReferralPage() {
         title="New Counselling Referral"
         helpContent="Create a counselling referral for a patient. Specify the type of counselling, presenting concerns, and risk assessment level."
       />
-      
-      <CounsellingReferralForm 
-        patientId={patientId} 
-        encounterId={encounterId} 
+
+      <CounsellingReferralForm
+        patientId={patientId}
+        encounterId={encounterId}
       />
     </div>
   );

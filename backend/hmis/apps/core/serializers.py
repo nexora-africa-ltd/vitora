@@ -1238,8 +1238,7 @@ class StaffInvitationCreateSerializer(serializers.Serializer):
         for inv in pending:
             if inv.is_usable:
                 raise serializers.ValidationError(
-                    "A pending invitation for this email already exists. "
-                    "Revoke it first or resend."
+                    "A pending invitation for this email already exists. Revoke it first or resend."
                 )
         return normalized
 

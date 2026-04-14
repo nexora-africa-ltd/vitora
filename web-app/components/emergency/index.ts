@@ -1,6 +1,6 @@
 /**
  * Emergency Module Components
- * 
+ *
  * Exports for the Emergency Department module.
  */
 

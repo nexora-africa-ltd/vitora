@@ -89,7 +89,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -104,7 +104,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null) {
     // Direct enum
     if ('enum' in jsonSchema) {
@@ -150,7 +150,7 @@ describe('Encounter Contract Tests', () => {
 
       // Find fields in API but missing from Zod
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       // Log missing fields for debugging
       if (missingInZod.length > 0) {
         console.warn(
@@ -172,7 +172,7 @@ describe('Encounter Contract Tests', () => {
 
     it('should have critical required fields from the API', () => {
       const zodFields = getZodSchemaFields(EncounterSchema);
-      
+
       // These fields are required by the API and must be present in Zod
       const criticalFields = [
         'id',

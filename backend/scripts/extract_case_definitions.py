@@ -240,9 +240,7 @@ def process_ocr_output(ocr_filepath: str) -> dict:
     for disease in DISEASE_ORDER:
         # Try to find this disease in the OCR text
         disease_pattern = re.escape(disease)
-        match = re.search(
-            f"{disease_pattern}(.{{500,2000}})", ocr_text, re.IGNORECASE | re.DOTALL
-        )
+        match = re.search(f"{disease_pattern}(.{{500,2000}})", ocr_text, re.IGNORECASE | re.DOTALL)
 
         if match:
             section = match.group(1)
@@ -330,18 +328,12 @@ def main():
         epilog=__doc__,
     )
 
-    parser.add_argument(
-        "--template", action="store_true", help="Generate extraction template"
-    )
+    parser.add_argument("--template", action="store_true", help="Generate extraction template")
     parser.add_argument(
         "--ai-prompt", metavar="DISEASE", help="Generate AI extraction prompt for disease"
     )
-    parser.add_argument(
-        "--validate", metavar="FILE", help="Validate extracted JSON file"
-    )
-    parser.add_argument(
-        "--ocr", metavar="FILE", help="Process OCR text output"
-    )
+    parser.add_argument("--validate", metavar="FILE", help="Validate extracted JSON file")
+    parser.add_argument("--ocr", metavar="FILE", help="Process OCR text output")
     parser.add_argument(
         "--merge",
         metavar="FILE",

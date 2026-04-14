@@ -1,6 +1,6 @@
 /**
  * Therapist Assignment Dialog
- * 
+ *
  * A reusable dialog for assigning therapists to Allied Health orders.
  * Supports Physiotherapy, Occupational Therapy, and Counselling modules.
  */
@@ -119,7 +119,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; className: string }> = {
 
 /**
  * TherapistAssignmentDialog - Dialog for assigning therapists to orders
- * 
+ *
  * Features:
  * - Searchable staff selection
  * - Order details display

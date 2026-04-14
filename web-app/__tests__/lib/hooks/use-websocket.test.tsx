@@ -124,7 +124,7 @@ describe('useWebSocket', () => {
 
   it('should call onMessage when message received', async () => {
     const onMessage = jest.fn();
-    
+
     renderHook(
       () => useWebSocket('ws://localhost/test', { onMessage }),
       { wrapper: createWrapper() }

@@ -1,6 +1,6 @@
 # Encounter Edit Flow Architecture
 
-> **Version**: 1.0  
+> **Version**: 1.0
 > **Last Updated**: February 27, 2026
 
 ## Overview
@@ -54,13 +54,13 @@ interface EncounterEditSession {
   encounter_date: string;
   chief_complaint: string;
   status: string;
-  
+
   // Section data
   vitals: EncounterVitals;
   history: EncounterHistory;
   notes: EncounterNotes;
   diagnoses: DiagnosisFormData[];
-  
+
   // Tracking
   startedAt: Date;
   lastUpdatedAt: Date;

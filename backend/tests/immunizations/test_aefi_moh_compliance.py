@@ -443,9 +443,9 @@ class TestAEFISerializerValidation:
                 **extra,
             }
             response = authenticated_client.post("/api/immunizations/aefi/", data, format="json")
-            assert (
-                response.status_code == status.HTTP_201_CREATED
-            ), f"Failed for event type {event_type.value}: {response.data}"
+            assert response.status_code == status.HTTP_201_CREATED, (
+                f"Failed for event type {event_type.value}: {response.data}"
+            )
 
 
 # =============================================================================

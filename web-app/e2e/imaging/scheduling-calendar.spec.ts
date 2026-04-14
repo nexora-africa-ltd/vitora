@@ -155,9 +155,9 @@ async function setupSchedulingMocks(page: Page) {
     const url = route.request().url();
     const urlParams = new URL(url).searchParams;
     const modality = urlParams.get('modality');
-    
+
     let calendarData = mockCalendarData();
-    
+
     // Filter by modality if specified
     if (modality) {
       calendarData = {
@@ -167,7 +167,7 @@ async function setupSchedulingMocks(page: Page) {
         ),
       };
     }
-    
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -178,7 +178,7 @@ async function setupSchedulingMocks(page: Page) {
   // Mock resources list endpoint
   await page.route(`${API_BASE}/api/imaging/resources/**`, async (route) => {
     const url = route.request().url();
-    
+
     if (url.includes('/availability/')) {
       // Resource availability
       await route.fulfill({

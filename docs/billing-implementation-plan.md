@@ -511,4 +511,3 @@ python manage.py seed_service_catalog --dry-run   # preview, no writes
 
 **Document Status**: ✅ COMPLETE
 **Last Updated**: March 22, 2026
-

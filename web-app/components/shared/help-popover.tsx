@@ -18,7 +18,7 @@ interface HelpPopoverProps {
  */
 export function HelpPopover({ content, size = 'sm' }: HelpPopoverProps) {
   const iconSize = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
-  
+
   return (
     <Popover>
       <PopoverTrigger asChild>

@@ -5,12 +5,7 @@ from datetime import date
 import pytest  # type: ignore
 from rest_framework import status
 
-from hmis.apps.moh_reporting.models import (
-    MOH705Report,
-    MOH711Report,
-    MOH717Report,
-    MOHReportStatus,
-)
+from hmis.apps.moh_reporting.models import MOH705Report, MOH711Report, MOH717Report, MOHReportStatus
 
 pytestmark = pytest.mark.django_db
 

@@ -5,11 +5,7 @@ Admin configuration for the counselling module.
 from django.contrib import admin
 from simple_history.admin import SimpleHistoryAdmin
 
-from hmis.apps.counselling.models import (
-    CounsellingReferral,
-    CounsellingSession,
-    CounsellingType,
-)
+from hmis.apps.counselling.models import CounsellingReferral, CounsellingSession, CounsellingType
 
 
 @admin.register(CounsellingType)

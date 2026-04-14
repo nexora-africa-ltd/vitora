@@ -1,7 +1,7 @@
 # Clinical Decision Support (CDS) Module
 
-> **DHA Gap #25** — Evidence-Based Clinical Decision Support Engine  
-> **Status**: ✅ Complete  
+> **DHA Gap #25** — Evidence-Based Clinical Decision Support Engine
+> **Status**: ✅ Complete
 > **Module**: `backend/hmis/apps/cds/` + `web-app/app/(dashboard)/cds/`
 
 ---
@@ -380,8 +380,8 @@ The CDS module integrates into the encounter workflow at three tiers, following 
 
 ### Tier 1: Contextual Vitals Callouts
 
-**Component**: `VitalsDisplay` (enhanced)  
-**Location**: Encounter detail page, under each vital card  
+**Component**: `VitalsDisplay` (enhanced)
+**Location**: Encounter detail page, under each vital card
 **Trigger**: `cds_alerts` embedded in the encounter API response
 
 When a CDS alert matches a vital sign (via rule code prefix like `VITAL-TEMP-*`, `VITAL-SPO2-*`), a small advisory line appears directly under the relevant vital card:
@@ -408,7 +408,7 @@ The mapping from rule codes to vitals:
 
 ### Tier 2: CDS Alerts Panel
 
-**Component**: `CDSAlertsPanel`  
+**Component**: `CDSAlertsPanel`
 **Location**: Encounter detail page (after vitals) + Encounter edit review page (step 7, before SOAP summary)
 
 A collapsible card that groups alerts by priority:
@@ -440,7 +440,7 @@ A collapsible card that groups alerts by priority:
 
 ### Tier 3: Interruptive Critical Dialog
 
-**Component**: `CDSCriticalDialog`  
+**Component**: `CDSCriticalDialog`
 **Location**: Encounter edit review page — triggered when clicking "Finalize Encounter"
 
 When the clinician attempts to finalize an encounter with unresolved CRITICAL or HIGH alerts, an interruptive dialog appears:

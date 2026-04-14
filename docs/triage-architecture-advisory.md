@@ -1,7 +1,7 @@
 # Triage Module Architecture Advisory
 
-> **Date**: February 21, 2026  
-> **Status**: Implemented (Updated to reflect current state)  
+> **Date**: February 21, 2026
+> **Status**: Implemented (Updated to reflect current state)
 > **Scope**: `web-app/app/(dashboard)/triage/**`, `web-app/lib/stores/triage-assess-store.ts`
 
 ---

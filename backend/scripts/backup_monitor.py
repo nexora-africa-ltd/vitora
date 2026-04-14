@@ -36,6 +36,7 @@ from pathlib import Path
 # Try to import requests for alerting
 try:
     import requests
+
     HAS_REQUESTS = True
 except ImportError:
     HAS_REQUESTS = False
@@ -44,6 +45,7 @@ except ImportError:
 @dataclass
 class BackupInfo:
     """Information about a backup file."""
+
     path: Path
     timestamp: datetime
     size_bytes: int
@@ -55,6 +57,7 @@ class BackupInfo:
 @dataclass
 class MonitoringResult:
     """Result of backup monitoring checks."""
+
     healthy: bool = True
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -67,8 +70,8 @@ class BackupMonitor:
 
     # Thresholds
     MAX_BACKUP_AGE_HOURS = 26  # Allow for daily backup + 2 hour buffer
-    MIN_BACKUP_SIZE_MB = 1     # Minimum expected backup size
-    MAX_BACKUP_SIZE_GB = 50    # Maximum reasonable backup size
+    MIN_BACKUP_SIZE_MB = 1  # Minimum expected backup size
+    MAX_BACKUP_SIZE_GB = 50  # Maximum reasonable backup size
 
     def __init__(
         self,
@@ -95,10 +98,13 @@ class BackupMonitor:
         # Find backup files for this environment (excluding checksum/manifest files)
         pattern = f"vitora_{self.environment}_*_db.*"
         backup_files = sorted(
-            [f for f in self.backup_dir.glob(pattern)
-             if f.suffix not in (".sha256", ".json") and "_manifest" not in f.name],
+            [
+                f
+                for f in self.backup_dir.glob(pattern)
+                if f.suffix not in (".sha256", ".json") and "_manifest" not in f.name
+            ],
             key=lambda f: f.stat().st_mtime,
-            reverse=True
+            reverse=True,
         )
 
         if not backup_files:
@@ -138,9 +144,7 @@ class BackupMonitor:
                 f"Backup suspiciously small: {size_mb:.2f} MB (minimum: {self.MIN_BACKUP_SIZE_MB} MB)"
             )
         elif size_mb > self.MAX_BACKUP_SIZE_GB * 1024:
-            result.warnings.append(
-                f"Backup unusually large: {size_mb:.2f} MB"
-            )
+            result.warnings.append(f"Backup unusually large: {size_mb:.2f} MB")
         else:
             result.info.append(f"Backup size: {size_mb:.2f} MB")
 
@@ -168,7 +172,9 @@ class BackupMonitor:
         result.info.append(f"Total local backups: {backup_count}")
 
         if backup_count < 7:
-            result.warnings.append(f"Low backup count: {backup_count} (expected at least 7 for weekly coverage)")
+            result.warnings.append(
+                f"Low backup count: {backup_count} (expected at least 7 for weekly coverage)"
+            )
 
         return result
 
@@ -184,7 +190,9 @@ class BackupMonitor:
             # List S3 objects
             s3_endpoint = os.environ.get("S3_ENDPOINT", "")
             cmd = [
-                "aws", "s3", "ls",
+                "aws",
+                "s3",
+                "ls",
                 f"s3://{self.s3_bucket}/backups/{self.environment}/",
                 "--recursive",
             ]
@@ -240,9 +248,7 @@ class BackupMonitor:
             # Get latest backup
             pattern = f"vitora_{self.environment}_*_db.*"
             backup_files = sorted(
-                self.backup_dir.glob(pattern),
-                key=lambda f: f.stat().st_mtime,
-                reverse=True
+                self.backup_dir.glob(pattern), key=lambda f: f.stat().st_mtime, reverse=True
             )
             if not backup_files:
                 result.warnings.append("No backup to verify")
@@ -255,7 +261,9 @@ class BackupMonitor:
         # Test decryption if encrypted
         if latest_file.suffix == ".gpg":
             if not self.encryption_key:
-                result.warnings.append("Cannot verify encrypted backup: BACKUP_ENCRYPTION_KEY not set")
+                result.warnings.append(
+                    "Cannot verify encrypted backup: BACKUP_ENCRYPTION_KEY not set"
+                )
                 return result
 
             try:
@@ -319,32 +327,42 @@ class BackupMonitor:
 
         blocks = []
         if result.errors:
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "*Errors:*\n" + "\n".join(f"• {e}" for e in result.errors)
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*Errors:*\n" + "\n".join(f"• {e}" for e in result.errors),
+                    },
                 }
-            })
+            )
         if result.warnings:
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "*Warnings:*\n" + "\n".join(f"• {w}" for w in result.warnings)
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*Warnings:*\n" + "\n".join(f"• {w}" for w in result.warnings),
+                    },
                 }
-            })
+            )
 
         payload = {
-            "attachments": [{
-                "color": color,
-                "title": f"Vitora Backup Monitor: {status}",
-                "fields": [
-                    {"title": "Environment", "value": self.environment, "short": True},
-                    {"title": "Timestamp", "value": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "short": True},
-                ],
-                "blocks": blocks,
-            }]
+            "attachments": [
+                {
+                    "color": color,
+                    "title": f"Vitora Backup Monitor: {status}",
+                    "fields": [
+                        {"title": "Environment", "value": self.environment, "short": True},
+                        {
+                            "title": "Timestamp",
+                            "value": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "short": True,
+                        },
+                    ],
+                    "blocks": blocks,
+                }
+            ]
         }
 
         try:
@@ -366,16 +384,16 @@ class BackupMonitor:
 Vitora HMIS Backup Monitoring Report
 Environment: {self.environment}
 Timestamp: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Status: {'HEALTHY' if result.healthy else 'UNHEALTHY'}
+Status: {"HEALTHY" if result.healthy else "UNHEALTHY"}
 
 ERRORS:
-{chr(10).join('- ' + e for e in result.errors) if result.errors else 'None'}
+{chr(10).join("- " + e for e in result.errors) if result.errors else "None"}
 
 WARNINGS:
-{chr(10).join('- ' + w for w in result.warnings) if result.warnings else 'None'}
+{chr(10).join("- " + w for w in result.warnings) if result.warnings else "None"}
 
 INFO:
-{chr(10).join('- ' + i for i in result.info)}
+{chr(10).join("- " + i for i in result.info)}
 
 --
 Vitora HMIS Automated Backup Monitor
@@ -421,19 +439,19 @@ Vitora HMIS Automated Backup Monitor
             print("LATEST BACKUP:")
             print(f"  File: {result.latest_backup.path.name}")
             print(f"  Time: {result.latest_backup.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"  Size: {result.latest_backup.size_bytes / (1024*1024):.2f} MB")
+            print(f"  Size: {result.latest_backup.size_bytes / (1024 * 1024):.2f} MB")
             print(f"  Encrypted: {'Yes' if result.latest_backup.encrypted else 'No'}")
             if result.latest_backup.checksum_valid is not None:
-                print(f"  Checksum: {'Valid' if result.latest_backup.checksum_valid else 'INVALID'}")
+                print(
+                    f"  Checksum: {'Valid' if result.latest_backup.checksum_valid else 'INVALID'}"
+                )
             print()
 
         print("=" * 60)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Monitor Vitora HMIS backup health"
-    )
+    parser = argparse.ArgumentParser(description="Monitor Vitora HMIS backup health")
     parser.add_argument(
         "--env",
         default=os.environ.get("VITORA_ENV", "staging"),

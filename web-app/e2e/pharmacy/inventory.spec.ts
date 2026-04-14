@@ -342,7 +342,7 @@ test.describe('Inventory - Receive Stock', () => {
 
     await page.getByPlaceholder(/batch-2026/i).fill('BATCH-TEST-001');
     await page.getByRole('spinbutton', { name: /quantity/i }).fill('100');
-    
+
     await page.getByRole('spinbutton', { name: /cost/i }).fill('3.00');
     await page.getByRole('spinbutton', { name: /selling/i }).fill('5.00');
 
@@ -567,18 +567,18 @@ test.describe('Inventory - Location Tracking', () => {
   test('should edit batch location', async ({ page }) => {
     // Click batch to open details
     await page.getByRole('button', { name: 'BATCH-2026-001' }).click();
-    
+
     // Look for edit functionality in dialog or row actions
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    
+
     // Close dialog and try row actions
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
-    
+
     const batchRow = page.locator('tr').filter({ hasText: 'BATCH-2026-001' });
     const moreButton = batchRow.getByRole('button', { name: /more|actions/i });
-    
+
     // Check if more actions available
     if (await moreButton.isVisible()) {
       await moreButton.click();

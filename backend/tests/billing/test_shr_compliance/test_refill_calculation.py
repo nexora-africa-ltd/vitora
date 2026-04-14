@@ -296,9 +296,9 @@ class TestNextRefillDateCalculation:
         result = refill_calculator.calculate_refill_balance(bundle, rx_id)
 
         # Next refill should be based on Jan 5 + 30 days = Feb 4
-        assert (
-            "2025-02-04" in result["nextRefillDueDate"]
-        ), "Next refill should be calculated from most recent dispense (Jan 5 + 30 days)"
+        assert "2025-02-04" in result["nextRefillDueDate"], (
+            "Next refill should be calculated from most recent dispense (Jan 5 + 30 days)"
+        )
 
 
 class TestPrescriptionValidity:
@@ -315,9 +315,9 @@ class TestPrescriptionValidity:
         """
         result = refill_calculator.calculate_refill_balance(ips_with_no_dispenses, "rx-12345")
 
-        assert (
-            result["isPrescriptionValid"] is True
-        ), "Prescription should be valid within validity period"
+        assert result["isPrescriptionValid"] is True, (
+            "Prescription should be valid within validity period"
+        )
 
     def test_expired_prescription(self, refill_calculator):
         """
@@ -340,9 +340,9 @@ class TestPrescriptionValidity:
 
         result = refill_calculator.calculate_refill_balance(bundle, "rx-expired")
 
-        assert (
-            result["isPrescriptionValid"] is False
-        ), "Expired prescription should be marked invalid"
+        assert result["isPrescriptionValid"] is False, (
+            "Expired prescription should be marked invalid"
+        )
 
     def test_returns_prescription_expiry_date(self, refill_calculator, ips_with_no_dispenses):
         """
@@ -350,9 +350,9 @@ class TestPrescriptionValidity:
         """
         result = refill_calculator.calculate_refill_balance(ips_with_no_dispenses, "rx-12345")
 
-        assert (
-            result["prescriptionExpiryDate"] is not None
-        ), "Should return prescription expiry date"
+        assert result["prescriptionExpiryDate"] is not None, (
+            "Should return prescription expiry date"
+        )
 
 
 class TestRefillCalculationErrors:
@@ -369,9 +369,9 @@ class TestRefillCalculationErrors:
         result = refill_calculator.calculate_refill_balance(empty_bundle, "non-existent")
 
         assert "error" in result, "Should return error when MedicationRequest not found"
-        assert (
-            "not found" in result["error"].lower()
-        ), "Error message should indicate MedicationRequest not found"
+        assert "not found" in result["error"].lower(), (
+            "Error message should indicate MedicationRequest not found"
+        )
 
     def test_handles_missing_days_supply(self, prescription_with_5_refills, refill_calculator):
         """
@@ -400,9 +400,9 @@ class TestRefillCalculationErrors:
 
         # Should not error, should use default 30 days
         assert "error" not in result, "Should handle missing daysSupply gracefully"
-        assert (
-            result["nextRefillDueDate"] is not None
-        ), "Should calculate next refill with default 30 days"
+        assert result["nextRefillDueDate"] is not None, (
+            "Should calculate next refill with default 30 days"
+        )
 
 
 class TestRefillCalculationOutput:
@@ -440,9 +440,9 @@ class TestRefillCalculationOutput:
         """
         result = refill_calculator.calculate_refill_balance(ips_with_2_dispenses, "rx-12345")
 
-        assert (
-            result["medicationRequestId"] == "rx-12345"
-        ), "Output should include the queried medication request ID"
+        assert result["medicationRequestId"] == "rx-12345", (
+            "Output should include the queried medication request ID"
+        )
 
     def test_numeric_fields_are_integers(self, refill_calculator, ips_with_2_dispenses):
         """
@@ -450,8 +450,8 @@ class TestRefillCalculationOutput:
         """
         result = refill_calculator.calculate_refill_balance(ips_with_2_dispenses, "rx-12345")
 
-        assert isinstance(
-            result["totalAllowedFills"], int
-        ), "totalAllowedFills should be an integer"
+        assert isinstance(result["totalAllowedFills"], int), (
+            "totalAllowedFills should be an integer"
+        )
         assert isinstance(result["fillsDispensed"], int), "fillsDispensed should be an integer"
         assert isinstance(result["remainingRefills"], int), "remainingRefills should be an integer"

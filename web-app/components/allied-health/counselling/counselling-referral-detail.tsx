@@ -218,7 +218,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-wrap">{referral.presenting_issues}</p>
-              
+
               {referral.clinical_summary && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Clinical Summary</h4>
@@ -240,7 +240,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-sm font-medium text-muted-foreground">Risk Assessment:</span>
               </div>
-              
+
               {referral.risk_assessment ? (
                 <p className="whitespace-pre-wrap">{referral.risk_assessment}</p>
               ) : (

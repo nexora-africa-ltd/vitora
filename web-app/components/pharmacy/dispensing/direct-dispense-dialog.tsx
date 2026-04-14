@@ -89,8 +89,8 @@ export function DirectDispenseDialog({
   const patients = patientsData?.results || [];
 
   // Fetch OTC drugs only (schedule = 'OTC')
-  const { data: drugsData, isLoading: drugsLoading } = useDrugs({ 
-    schedule: 'OTC', 
+  const { data: drugsData, isLoading: drugsLoading } = useDrugs({
+    schedule: 'OTC',
     is_active: true,
     search: debouncedDrugSearch,
   });

@@ -129,10 +129,10 @@ def main():
                     try:
                         decrypted = decrypt_pii(item["_pii"], private_key)
                         decrypted_results.append(decrypted)
-                        print(f"\n=== Record {i+1} ===")
+                        print(f"\n=== Record {i + 1} ===")
                         print(json.dumps(decrypted, indent=2))
                     except Exception as e:
-                        print(f"\n=== Record {i+1} - ERROR ===")
+                        print(f"\n=== Record {i + 1} - ERROR ===")
                         print(f"Failed to decrypt: {e}")
                 else:
                     decrypted_results.append(item)

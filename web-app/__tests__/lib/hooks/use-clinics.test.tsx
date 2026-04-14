@@ -121,7 +121,7 @@ describe('Clinic Hooks - Patient Journey Store Integration', () => {
       // Verify patient journey store was updated
       const journeyStore = usePatientJourneyStore.getState();
       const patient = journeyStore.activePatients[101];
-      
+
       expect(patient).toBeDefined();
       expect(patient?.id).toBe(101);
       expect(patient?.mrn).toBe('MRN-20260126-0001');
@@ -162,7 +162,7 @@ describe('Clinic Hooks - Patient Journey Store Integration', () => {
 
       const journeyStore = usePatientJourneyStore.getState();
       const patient = journeyStore.activePatients[202];
-      
+
       expect(patient).toBeDefined();
       expect(patient?.mrn).toBe('MRN-20260126-0002');
       expect(patient?.name).toBe('Jane Smith');
@@ -205,7 +205,7 @@ describe('Clinic Hooks - Patient Journey Store Integration', () => {
       // Verify journey store was updated
       const journeyStore = usePatientJourneyStore.getState();
       const patient = journeyStore.activePatients[101];
-      
+
       expect(patient?.consultation_status).toBe('CALLED');
     });
   });
@@ -247,7 +247,7 @@ describe('Clinic Hooks - Patient Journey Store Integration', () => {
       // Verify journey store was updated
       const journeyStore = usePatientJourneyStore.getState();
       const patient = journeyStore.activePatients[101];
-      
+
       expect(patient?.stage).toBe('IN_CONSULTATION');
       expect(patient?.consultation_status).toBe('IN_PROGRESS');
       expect(patient?.assigned_clinician_id).toBe(5);
@@ -280,7 +280,7 @@ describe('Clinic Hooks - Patient Journey Store Integration', () => {
 
       const journeyStore = usePatientJourneyStore.getState();
       const patient = journeyStore.activePatients[101];
-      
+
       expect(patient?.stage).toBe('IN_CONSULTATION');
       // Encounter should remain null/undefined
       expect(patient?.encounter_id).toBeNull();
@@ -322,7 +322,7 @@ describe('Clinic Hooks - Patient Journey Store Integration', () => {
       // Verify journey store was updated
       const journeyStore = usePatientJourneyStore.getState();
       const patient = journeyStore.activePatients[101];
-      
+
       expect(patient?.consultation_status).toBe('COMPLETED');
     });
   });
@@ -359,7 +359,7 @@ describe('Clinic Hooks - Patient Journey Store Integration', () => {
       // Verify journey store was updated
       const journeyStore = usePatientJourneyStore.getState();
       const patient = journeyStore.activePatients[101];
-      
+
       expect(patient?.stage).toBe('LEFT_WITHOUT_BEING_SEEN');
     });
   });

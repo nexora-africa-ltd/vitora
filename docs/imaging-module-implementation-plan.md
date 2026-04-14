@@ -1,10 +1,10 @@
 # Imaging/Radiology Module - Implementation Plan
 
-> **Project**: Vitora HMIS  
-> **Module**: Diagnostics (Imaging/Radiology)  
-> **Version**: 1.5  
-> **Last Updated**: February 14, 2026  
-> **Estimated Duration**: 9-12 weeks  
+> **Project**: Vitora HMIS
+> **Module**: Diagnostics (Imaging/Radiology)
+> **Version**: 1.5
+> **Last Updated**: February 14, 2026
+> **Estimated Duration**: 9-12 weeks
 > **Original Roadmap**: Phase 3, Sprint 3.4-3.6 (Apr-Sep 2027)
 
 ---
@@ -243,7 +243,7 @@ web-app/
 ```python
 class ImagingProcedure(models.Model):
     """Master catalog of imaging procedures."""
-    
+
     MODALITY_CHOICES = [
         ('XR', 'X-Ray'),
         ('US', 'Ultrasound'),
@@ -273,26 +273,26 @@ class ImagingProcedure(models.Model):
     name = models.CharField(max_length=200)
     modality = models.CharField(max_length=20, choices=MODALITY_CHOICES)
     body_region = models.CharField(max_length=30, choices=BODY_REGION_CHOICES)
-    
+
     # Interoperability codes
     radlex_code = models.CharField(max_length=50, blank=True)  # RadLex Playbook ID
     loinc_code = models.CharField(max_length=20, blank=True)
-    
+
     # Requirements
     requires_contrast = models.BooleanField(default=False)
     requires_sedation = models.BooleanField(default=False)
     special_preparation = models.TextField(blank=True)
     turnaround_hours = models.IntegerField(default=24)
-    
+
     # Pricing & SHA
     cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     sha_claimable = models.BooleanField(default=True)
     sha_intervention_code = models.CharField(max_length=50, blank=True)
-    
+
     # Status
     is_active = models.BooleanField(default=True)
     available_in_house = models.BooleanField(default=True)
-    
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -303,7 +303,7 @@ class ImagingProcedure(models.Model):
 ```python
 class ImagingOrder(models.Model):
     """Imaging order from clinical encounter."""
-    
+
     ORDER_STATUS = [
         ('DRAFT', 'Draft'),
         ('ORDERED', 'Ordered'),
@@ -333,33 +333,33 @@ class ImagingOrder(models.Model):
 
     # Identity - format: RAD-YYYYMMDD-XXXX
     order_number = models.CharField(max_length=30, unique=True, editable=False)
-    
+
     # Relationships
     patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT)
     encounter = models.ForeignKey('encounters.Encounter', on_delete=models.PROTECT)
     ordered_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    
+
     # Order details
     priority = models.CharField(max_length=20, choices=PRIORITY_LEVELS, default='ROUTINE')
     clinical_indication = models.TextField()
     relevant_clinical_history = models.TextField(blank=True)
-    
+
     # Status tracking
     status = models.CharField(max_length=30, choices=ORDER_STATUS, default='DRAFT')
     status_changed_at = models.DateTimeField(auto_now=True)
-    
+
     # Scheduling
     scheduled_datetime = models.DateTimeField(null=True, blank=True)
     scheduled_room = models.CharField(max_length=50, blank=True)
-    
+
     # DICOM/PACS
     accession_number = models.CharField(max_length=50, blank=True)
     study_instance_uid = models.CharField(max_length=128, blank=True)
-    
+
     # Billing
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_paid = models.BooleanField(default=False)
-    
+
     # Timestamps
     ordered_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -370,14 +370,14 @@ class ImagingOrder(models.Model):
 ```python
 class ImagingOrderItem(models.Model):
     """Individual imaging procedure within an order."""
-    
+
     LATERALITY_CHOICES = [
         ('NA', 'Not Applicable'),
         ('LEFT', 'Left'),
         ('RIGHT', 'Right'),
         ('BILATERAL', 'Bilateral'),
     ]
-    
+
     order = models.ForeignKey(ImagingOrder, on_delete=models.CASCADE, related_name='items')
     procedure = models.ForeignKey(ImagingProcedure, on_delete=models.PROTECT)
     laterality = models.CharField(max_length=20, choices=LATERALITY_CHOICES, default='NA')
@@ -392,31 +392,31 @@ class ImagingOrderItem(models.Model):
 ```python
 class DICOMStudy(models.Model):
     """DICOM Study metadata (collection of imaging series)."""
-    
+
     imaging_order = models.ForeignKey(ImagingOrder, on_delete=models.SET_NULL, null=True)
     patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT)
-    
+
     # DICOM UIDs
     study_instance_uid = models.CharField(max_length=128, unique=True)
     accession_number = models.CharField(max_length=50)
-    
+
     # Study metadata
     study_date = models.DateField()
     study_time = models.TimeField(null=True)
     study_description = models.CharField(max_length=200, blank=True)
     modality = models.CharField(max_length=20)
-    
+
     # Storage
     storage_path = models.CharField(max_length=500)
     number_of_series = models.IntegerField(default=0)
     number_of_instances = models.IntegerField(default=0)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class DICOMSeries(models.Model):
     """DICOM Series within a study."""
-    
+
     study = models.ForeignKey(DICOMStudy, on_delete=models.CASCADE, related_name='series')
     series_instance_uid = models.CharField(max_length=128, unique=True)
     series_number = models.IntegerField()
@@ -428,7 +428,7 @@ class DICOMSeries(models.Model):
 
 class DICOMInstance(models.Model):
     """Individual DICOM image/instance."""
-    
+
     series = models.ForeignKey(DICOMSeries, on_delete=models.CASCADE, related_name='instances')
     sop_instance_uid = models.CharField(max_length=128, unique=True)
     instance_number = models.IntegerField()
@@ -444,41 +444,41 @@ class DICOMInstance(models.Model):
 ```python
 class RadiologyReport(models.Model):
     """Radiology report for an imaging study."""
-    
+
     REPORT_STATUS = [
         ('DRAFT', 'Draft'),
         ('PRELIMINARY', 'Preliminary'),
         ('FINAL', 'Final'),
         ('AMENDED', 'Amended'),
     ]
-    
+
     imaging_order = models.OneToOneField(ImagingOrder, on_delete=models.PROTECT)
     study = models.ForeignKey(DICOMStudy, on_delete=models.SET_NULL, null=True)
-    
+
     # Report content
     technique = models.TextField(blank=True)
     findings = models.TextField()
     impression = models.TextField()
     recommendations = models.TextField(blank=True)
-    
+
     # Critical findings
     is_critical = models.BooleanField(default=False)
     critical_finding_communicated = models.BooleanField(default=False)
     critical_finding_communicated_to = models.CharField(max_length=100, blank=True)
     critical_finding_communicated_at = models.DateTimeField(null=True)
-    
+
     # Status
     status = models.CharField(max_length=20, choices=REPORT_STATUS, default='DRAFT')
-    
+
     # Reporting
     reported_by = models.ForeignKey(User, on_delete=models.PROTECT)
     signed_at = models.DateTimeField(null=True)
-    
+
     # Amendments
     amendment_reason = models.TextField(blank=True)
     amended_at = models.DateTimeField(null=True)
     amended_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='amended_reports')
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 ```
@@ -550,8 +550,8 @@ class RadiologyReport(models.Model):
 
 ### Phase A: Foundation (2-3 weeks) ✅ COMPLETED
 
-> **Completed**: February 6, 2026  
-> **Tests**: 124 passing (71 model + 53 API)  
+> **Completed**: February 6, 2026
+> **Tests**: 124 passing (71 model + 53 API)
 > **Coverage**: 95-100% on imaging app
 
 **Sprint A.1: Backend Models & Catalog** (Week 1) ✅
@@ -744,8 +744,8 @@ class RadiologyReport(models.Model):
 
 ### Phase C: DICOM Integration (3-4 weeks) — Sprint C.1 & C.2 ✅ COMPLETED
 
-> **Sprint C.1-C.2 Completed**: February 7, 2026  
-> **Tests**: 114 passing (41 model + 37 service + 36 API)  
+> **Sprint C.1-C.2 Completed**: February 7, 2026
+> **Tests**: 114 passing (41 model + 37 service + 36 API)
 > **New dependencies**: pydicom ^3.0.1, pynetdicom ^3.0.4, numpy ^2.4.2
 
 **Sprint C.1: DICOM Backend** (Week 1-2) ✅

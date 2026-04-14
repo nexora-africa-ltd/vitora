@@ -167,8 +167,7 @@ def _create_counselling_referral(referral):
     referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
     logger.info(
-        f"Created CounsellingReferral {cr.referral_number} "
-        f"from referral {referral.referral_number}"
+        f"Created CounsellingReferral {cr.referral_number} from referral {referral.referral_number}"
     )
 
 
@@ -193,8 +192,7 @@ def _create_sw_referral(referral):
     referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
     logger.info(
-        f"Created SocialWorkReferral {swr.referral_number} "
-        f"from referral {referral.referral_number}"
+        f"Created SocialWorkReferral {swr.referral_number} from referral {referral.referral_number}"
     )
 
 
@@ -228,7 +226,7 @@ def _create_admission_recommendation(referral):
         referral.save(update_fields=["linked_module", "linked_model", "linked_object_id"])
 
         logger.info(
-            f"Created AdmissionRecommendation {rec.id} " f"from referral {referral.referral_number}"
+            f"Created AdmissionRecommendation {rec.id} from referral {referral.referral_number}"
         )
 
     except ImportError:

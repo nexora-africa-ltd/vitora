@@ -342,8 +342,7 @@ class TestHL7ServiceMessageParsing:
     def test_parse_oru_r01_invalid_message_type_raises_error(self, hl7_service):
         """Should raise error for non-ORU message."""
         adt_message = (
-            "MSH|^~\\&|APP|FAC|REC|FAC|20260131||ADT^A01|MSG001|P|2.5.1\r"
-            "PID|1||12345||Doe^John\r"
+            "MSH|^~\\&|APP|FAC|REC|FAC|20260131||ADT^A01|MSG001|P|2.5.1\rPID|1||12345||Doe^John\r"
         )
 
         with pytest.raises(HL7ValidationError, match="Expected ORU message"):

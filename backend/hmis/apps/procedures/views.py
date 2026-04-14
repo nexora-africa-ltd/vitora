@@ -12,12 +12,7 @@ from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
 from .filters import ProcedureCatalogFilter, ProcedureOrderFilter
-from .models import (
-    ProcedureCatalog,
-    ProcedureConsent,
-    ProcedureLog,
-    ProcedureOrder,
-)
+from .models import ProcedureCatalog, ProcedureConsent, ProcedureLog, ProcedureOrder
 from .serializers import (
     ProcedureCancelSerializer,
     ProcedureCatalogDetailSerializer,

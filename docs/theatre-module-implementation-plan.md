@@ -1,10 +1,10 @@
 # Theatre/Operating Room Module - Implementation Plan
 
-> **Project**: Vitora HMIS  
-> **Module**: Theatre/Operating Room Management  
-> **Version**: 1.0  
-> **Last Updated**: February 6, 2026  
-> **Estimated Duration**: 10-14 weeks  
+> **Project**: Vitora HMIS
+> **Module**: Theatre/Operating Room Management
+> **Version**: 1.0
+> **Last Updated**: February 6, 2026
+> **Estimated Duration**: 10-14 weeks
 > **Original Roadmap**: Phase 2, Sprint 2.3-2.4 (Oct-Dec 2026)
 
 ---
@@ -338,10 +338,10 @@ web-app/
 class OperatingTheatre(TimeStampedModel):
     """
     Operating room/theatre setup.
-    
+
     Represents a physical operating theatre with equipment and capabilities.
     """
-    
+
     THEATRE_TYPE_CHOICES = [
         ('GENERAL', 'General Surgery'),
         ('ORTHO', 'Orthopedic'),
@@ -354,24 +354,24 @@ class OperatingTheatre(TimeStampedModel):
         ('EMERGENCY', 'Emergency/Trauma'),
         ('MINOR', 'Minor Procedures'),
     ]
-    
+
     # Identity
     code = models.CharField(max_length=20, unique=True)  # e.g., "OT-01"
     name = models.CharField(max_length=100)  # e.g., "Operating Theatre 1"
     theatre_type = models.CharField(max_length=20, choices=THEATRE_TYPE_CHOICES)
     location = models.CharField(max_length=100, blank=True)  # Floor/building
-    
+
     # Capabilities
     has_laminar_flow = models.BooleanField(default=False)
     has_cath_lab = models.BooleanField(default=False)
     has_image_intensifier = models.BooleanField(default=False)
     equipment_notes = models.TextField(blank=True)
-    
+
     # Scheduling
     operating_hours_start = models.TimeField(default='08:00')
     operating_hours_end = models.TimeField(default='18:00')
     slot_duration_minutes = models.IntegerField(default=30)
-    
+
     # Status
     is_active = models.BooleanField(default=True)
     maintenance_notes = models.TextField(blank=True)
@@ -383,10 +383,10 @@ class OperatingTheatre(TimeStampedModel):
 class SurgicalProcedure(TimeStampedModel):
     """
     Catalog of surgical procedures that can be performed.
-    
+
     Links to ICHI/CPT coding and defines typical duration, team, and requirements.
     """
-    
+
     SPECIALTY_CHOICES = [
         ('GEN_SURGERY', 'General Surgery'),
         ('ORTHO', 'Orthopedics'),
@@ -401,42 +401,42 @@ class SurgicalProcedure(TimeStampedModel):
         ('VASCULAR', 'Vascular Surgery'),
         ('OTHER', 'Other'),
     ]
-    
+
     COMPLEXITY_CHOICES = [
         ('MINOR', 'Minor'),
         ('INTERMEDIATE', 'Intermediate'),
         ('MAJOR', 'Major'),
         ('COMPLEX', 'Complex'),
     ]
-    
+
     # Identity
     code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=200)
     specialty = models.CharField(max_length=30, choices=SPECIALTY_CHOICES)
     complexity = models.CharField(max_length=20, choices=COMPLEXITY_CHOICES)
-    
+
     # Coding
     ichi_code = models.CharField(max_length=20, blank=True)  # ICHI code
     cpt_code = models.CharField(max_length=20, blank=True)   # CPT code
     sha_intervention_code = models.CharField(max_length=50, blank=True)  # Kenya SHA
-    
+
     # Typical duration
     estimated_duration_minutes = models.IntegerField()
     setup_time_minutes = models.IntegerField(default=15)
     cleanup_time_minutes = models.IntegerField(default=15)
-    
+
     # Requirements
     requires_general_anesthesia = models.BooleanField(default=True)
     requires_icu_bed = models.BooleanField(default=False)
     typical_blood_requirement = models.CharField(max_length=50, blank=True)
     special_equipment = models.TextField(blank=True)
-    
+
     # Pricing
     surgeon_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     theatre_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     anesthesia_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     sha_claimable = models.BooleanField(default=True)
-    
+
     # Status
     is_active = models.BooleanField(default=True)
 ```
@@ -447,10 +447,10 @@ class SurgicalProcedure(TimeStampedModel):
 class SurgeryCase(TimeStampedModel):
     """
     A surgical case from booking to discharge.
-    
+
     Tracks the entire perioperative journey for a patient.
     """
-    
+
     CASE_STATUS_CHOICES = [
         ('REQUESTED', 'Requested'),
         ('SCHEDULED', 'Scheduled'),
@@ -462,13 +462,13 @@ class SurgeryCase(TimeStampedModel):
         ('POSTPONED', 'Postponed'),
         ('CANCELLED', 'Cancelled'),
     ]
-    
+
     PRIORITY_CHOICES = [
         ('ELECTIVE', 'Elective'),
         ('URGENT', 'Urgent'),
         ('EMERGENCY', 'Emergency'),
     ]
-    
+
     ASA_CHOICES = [
         ('I', 'ASA I - Healthy'),
         ('II', 'ASA II - Mild systemic disease'),
@@ -477,7 +477,7 @@ class SurgeryCase(TimeStampedModel):
         ('V', 'ASA V - Moribund'),
         ('VI', 'ASA VI - Brain dead donor'),
     ]
-    
+
     ANESTHESIA_TYPE_CHOICES = [
         ('GENERAL', 'General Anesthesia'),
         ('SPINAL', 'Spinal Anesthesia'),
@@ -487,7 +487,7 @@ class SurgeryCase(TimeStampedModel):
         ('SEDATION', 'Sedation'),
         ('COMBINED', 'Combined'),
     ]
-    
+
     # Valid status transitions
     STATUS_TRANSITIONS = {
         'REQUESTED': ['SCHEDULED', 'CANCELLED'],
@@ -503,43 +503,43 @@ class SurgeryCase(TimeStampedModel):
 
     # Identity - format: SURG-YYYYMMDD-XXXX
     case_number = models.CharField(max_length=30, unique=True, editable=False)
-    
+
     # Patient & Encounter
     patient = models.ForeignKey('patients.Patient', on_delete=models.PROTECT)
     encounter = models.ForeignKey('encounters.Encounter', on_delete=models.PROTECT, null=True)
     admission = models.ForeignKey('inpatient.Admission', on_delete=models.SET_NULL, null=True, blank=True)
-    
+
     # Procedure
     primary_procedure = models.ForeignKey(SurgicalProcedure, on_delete=models.PROTECT)
     additional_procedures = models.ManyToManyField(SurgicalProcedure, related_name='secondary_cases', blank=True)
     procedure_notes = models.TextField(blank=True)  # Pre-op notes about the procedure
-    
+
     # Scheduling
     theatre = models.ForeignKey(OperatingTheatre, on_delete=models.PROTECT)
     scheduled_date = models.DateField()
     scheduled_start_time = models.TimeField()
     estimated_duration_minutes = models.IntegerField()
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='ELECTIVE')
-    
+
     # Clinical
     diagnosis = models.TextField()
     laterality = models.CharField(max_length=20, blank=True)  # Left/Right/Bilateral/N/A
     asa_class = models.CharField(max_length=5, choices=ASA_CHOICES, blank=True)
     anesthesia_type = models.CharField(max_length=20, choices=ANESTHESIA_TYPE_CHOICES, blank=True)
-    
+
     # Status
     status = models.CharField(max_length=20, choices=CASE_STATUS_CHOICES, default='REQUESTED')
     status_changed_at = models.DateTimeField(auto_now=True)
     status_changed_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='case_status_changes')
-    
+
     # Cancellation/Postponement
     cancellation_reason = models.TextField(blank=True)
     postponed_to_date = models.DateField(null=True, blank=True)
-    
+
     # Requesting clinician
     requesting_doctor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='surgery_requests')
     requested_at = models.DateTimeField(auto_now_add=True)
-    
+
     # Billing
     total_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     is_billable = models.BooleanField(default=True)
@@ -551,10 +551,10 @@ class SurgeryCase(TimeStampedModel):
 class SurgicalTeamMember(TimeStampedModel):
     """
     Surgical team assignment for a case.
-    
+
     Tracks all personnel involved in the surgery.
     """
-    
+
     ROLE_CHOICES = [
         ('LEAD_SURGEON', 'Lead Surgeon'),
         ('ASSISTANT_SURGEON', 'Assistant Surgeon'),
@@ -566,18 +566,18 @@ class SurgicalTeamMember(TimeStampedModel):
         ('RECOVERY_NURSE', 'Recovery Nurse'),
         ('OBSERVER', 'Observer/Trainee'),
     ]
-    
+
     surgery_case = models.ForeignKey(SurgeryCase, on_delete=models.CASCADE, related_name='team_members')
     staff_member = models.ForeignKey(User, on_delete=models.PROTECT)
     role = models.CharField(max_length=30, choices=ROLE_CHOICES)
-    
+
     # Timing (for workload tracking)
     scrub_in_time = models.DateTimeField(null=True, blank=True)
     scrub_out_time = models.DateTimeField(null=True, blank=True)
-    
+
     # Notes
     notes = models.TextField(blank=True)
-    
+
     class Meta:
         unique_together = ['surgery_case', 'staff_member', 'role']
 ```
@@ -588,91 +588,91 @@ class SurgicalTeamMember(TimeStampedModel):
 class WHOSafetyChecklist(TimeStampedModel):
     """
     WHO Surgical Safety Checklist implementation.
-    
+
     Three phases: Sign-In (before anesthesia), Time-Out (before incision), Sign-Out (before leaving).
     """
-    
+
     surgery_case = models.OneToOneField(SurgeryCase, on_delete=models.CASCADE, related_name='who_checklist')
-    
+
     # =========================================================================
     # SIGN-IN (Before Anesthesia Induction)
     # =========================================================================
     sign_in_completed_at = models.DateTimeField(null=True, blank=True)
     sign_in_completed_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='who_sign_ins')
-    
+
     # Patient confirmation
     patient_identity_confirmed = models.BooleanField(default=False)
     procedure_site_marked = models.BooleanField(default=False)
     consent_signed = models.BooleanField(default=False)
-    
+
     # Anesthesia safety check
     anesthesia_machine_checked = models.BooleanField(default=False)
     pulse_oximeter_attached = models.BooleanField(default=False)
-    
+
     # Known allergy
     allergies_reviewed = models.BooleanField(default=False)
     allergy_notes = models.TextField(blank=True)
-    
+
     # Airway/aspiration risk
     difficult_airway_risk = models.BooleanField(default=False)
     aspiration_risk = models.BooleanField(default=False)
     airway_equipment_available = models.BooleanField(default=False)
-    
+
     # Blood loss risk
     blood_loss_risk = models.CharField(max_length=20, blank=True)  # Low/Moderate/High
     iv_access_adequate = models.BooleanField(default=False)
     blood_products_available = models.BooleanField(default=False)
-    
+
     # =========================================================================
     # TIME-OUT (Before Skin Incision)
     # =========================================================================
     time_out_completed_at = models.DateTimeField(null=True, blank=True)
     time_out_completed_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='who_time_outs')
-    
+
     # Team introduction
     team_members_introduced = models.BooleanField(default=False)
-    
+
     # Verbal confirmation
     patient_name_confirmed = models.BooleanField(default=False)
     procedure_confirmed = models.BooleanField(default=False)
     site_confirmed = models.BooleanField(default=False)
-    
+
     # Anticipated events
     surgeon_critical_steps_discussed = models.BooleanField(default=False)
     anesthesia_concerns_discussed = models.BooleanField(default=False)
     nursing_concerns_discussed = models.BooleanField(default=False)
-    
+
     # Antibiotic prophylaxis
     prophylactic_antibiotics_given = models.BooleanField(default=False)
     antibiotics_timing_within_60_min = models.BooleanField(default=False)
     antibiotics_not_applicable = models.BooleanField(default=False)
-    
+
     # Imaging
     essential_imaging_displayed = models.BooleanField(default=False)
     imaging_not_applicable = models.BooleanField(default=False)
-    
+
     # =========================================================================
     # SIGN-OUT (Before Patient Leaves)
     # =========================================================================
     sign_out_completed_at = models.DateTimeField(null=True, blank=True)
     sign_out_completed_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='who_sign_outs')
-    
+
     # Procedure confirmation
     procedure_name_recorded = models.BooleanField(default=False)
-    
+
     # Counts
     instrument_count_correct = models.BooleanField(default=False)
     sponge_count_correct = models.BooleanField(default=False)
     needle_count_correct = models.BooleanField(default=False)
-    
+
     # Specimen labeling
     specimens_labeled = models.BooleanField(default=False)
     specimen_count = models.IntegerField(default=0)
-    
+
     # Equipment issues
     equipment_problems_noted = models.BooleanField(default=False)
     equipment_problems_description = models.TextField(blank=True)
-    
+
     # Recovery concerns
     key_recovery_concerns = models.TextField(blank=True)
 ```
@@ -683,36 +683,36 @@ class WHOSafetyChecklist(TimeStampedModel):
 class AnesthesiaRecord(TimeStampedModel):
     """
     Complete anesthesia documentation for a surgery case.
-    
+
     Covers pre-op assessment, intra-op monitoring, and PACU handover.
     """
-    
+
     surgery_case = models.OneToOneField(SurgeryCase, on_delete=models.CASCADE, related_name='anesthesia_record')
     anesthesiologist = models.ForeignKey(User, on_delete=models.PROTECT, related_name='anesthesia_records')
-    
+
     # =========================================================================
     # PRE-OPERATIVE ASSESSMENT
     # =========================================================================
     pre_op_assessment_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Airway assessment
     mallampati_class = models.CharField(max_length=5, blank=True)  # I, II, III, IV
     mouth_opening = models.CharField(max_length=50, blank=True)
     neck_mobility = models.CharField(max_length=50, blank=True)
     dentition_notes = models.TextField(blank=True)
-    
+
     # NPO status
     last_solid_food = models.DateTimeField(null=True, blank=True)
     last_clear_fluids = models.DateTimeField(null=True, blank=True)
     npo_confirmed = models.BooleanField(default=False)
-    
+
     # Pre-medication
     premedication_given = models.TextField(blank=True)
-    
+
     # Consent
     anesthesia_consent_obtained = models.BooleanField(default=False)
     risks_explained = models.BooleanField(default=False)
-    
+
     # =========================================================================
     # INTRA-OPERATIVE
     # =========================================================================
@@ -720,38 +720,38 @@ class AnesthesiaRecord(TimeStampedModel):
     induction_time = models.DateTimeField(null=True, blank=True)
     intubation_time = models.DateTimeField(null=True, blank=True)
     extubation_time = models.DateTimeField(null=True, blank=True)
-    
+
     # Airway
     airway_device = models.CharField(max_length=100, blank=True)  # ETT, LMA, etc.
     tube_size = models.CharField(max_length=20, blank=True)
     intubation_attempts = models.IntegerField(default=1)
     intubation_difficulty = models.TextField(blank=True)
-    
+
     # Anesthesia technique
     anesthesia_technique = models.TextField(blank=True)  # Detailed technique
     induction_agents = models.TextField(blank=True)
     maintenance_agents = models.TextField(blank=True)
     muscle_relaxants = models.TextField(blank=True)
     reversal_agents = models.TextField(blank=True)
-    
+
     # Fluids
     crystalloid_volume = models.IntegerField(default=0)  # mL
     colloid_volume = models.IntegerField(default=0)
     blood_products = models.TextField(blank=True)
-    
+
     # Blood loss
     estimated_blood_loss = models.IntegerField(default=0)  # mL
     urine_output = models.IntegerField(default=0)
-    
+
     # Complications
     intraop_complications = models.TextField(blank=True)
-    
+
     # =========================================================================
     # POST-OPERATIVE (PACU Handover)
     # =========================================================================
     pacu_handover_at = models.DateTimeField(null=True, blank=True)
     pacu_handover_notes = models.TextField(blank=True)
-    
+
     # Post-op orders
     pain_management_plan = models.TextField(blank=True)
     post_op_nausea_plan = models.TextField(blank=True)
@@ -764,32 +764,32 @@ class AnesthesiaRecord(TimeStampedModel):
 class IntraOpVitalReading(TimeStampedModel):
     """
     Timed vital signs recording during surgery.
-    
+
     Typically recorded every 5 minutes.
     """
-    
+
     anesthesia_record = models.ForeignKey(AnesthesiaRecord, on_delete=models.CASCADE, related_name='vital_readings')
     recorded_at = models.DateTimeField()
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    
+
     # Cardiovascular
     systolic_bp = models.IntegerField(null=True, blank=True)
     diastolic_bp = models.IntegerField(null=True, blank=True)
     heart_rate = models.IntegerField(null=True, blank=True)
-    
+
     # Respiratory
     respiratory_rate = models.IntegerField(null=True, blank=True)
     spo2 = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     etco2 = models.IntegerField(null=True, blank=True)  # End-tidal CO2
-    
+
     # Ventilator settings (if applicable)
     fio2 = models.IntegerField(null=True, blank=True)  # Fraction of inspired O2
     tidal_volume = models.IntegerField(null=True, blank=True)
     peak_pressure = models.IntegerField(null=True, blank=True)
-    
+
     # Other
     temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
-    
+
     # Notes
     notes = models.TextField(blank=True)
 ```
@@ -801,44 +801,44 @@ class OperativeNote(TimeStampedModel):
     """
     Surgeon's operative note documenting the procedure.
     """
-    
+
     surgery_case = models.OneToOneField(SurgeryCase, on_delete=models.CASCADE, related_name='operative_note')
     dictated_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='dictated_notes')
-    
+
     # Timings
     incision_time = models.DateTimeField(null=True, blank=True)
     closure_time = models.DateTimeField(null=True, blank=True)
-    
+
     # Procedure details
     pre_operative_diagnosis = models.TextField()
     post_operative_diagnosis = models.TextField()
     procedure_performed = models.TextField()
-    
+
     # Findings
     findings = models.TextField()
-    
+
     # Technique
     technique_description = models.TextField()
-    
+
     # Implants / Materials
     implants_used = models.TextField(blank=True)
     drains_placed = models.TextField(blank=True)
     sutures_used = models.TextField(blank=True)
-    
+
     # Blood loss
     estimated_blood_loss = models.IntegerField(default=0)
-    
+
     # Specimens
     specimens_sent = models.TextField(blank=True)
     frozen_section = models.BooleanField(default=False)
     frozen_section_result = models.TextField(blank=True)
-    
+
     # Complications
     intraoperative_complications = models.TextField(blank=True)
-    
+
     # Plan
     post_operative_plan = models.TextField()
-    
+
     # Signature
     signed_at = models.DateTimeField(null=True, blank=True)
     signed_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='signed_operative_notes')
@@ -851,22 +851,22 @@ class TheatreConsumable(TimeStampedModel):
     """
     Tracks consumables and implants used in surgery.
     """
-    
+
     surgery_case = models.ForeignKey(SurgeryCase, on_delete=models.CASCADE, related_name='consumables')
-    
+
     # Item
     item = models.ForeignKey('pharmacy.Drug', on_delete=models.PROTECT)  # Reuse pharmacy catalog
     lot_number = models.CharField(max_length=50, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
-    
+
     # Quantity
     quantity_used = models.IntegerField()
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    
+
     # Tracking
     added_by = models.ForeignKey(User, on_delete=models.PROTECT)
     added_at = models.DateTimeField(auto_now_add=True)
-    
+
     # For implants
     is_implant = models.BooleanField(default=False)
     implant_serial_number = models.CharField(max_length=100, blank=True)
@@ -879,21 +879,21 @@ class PACURecord(TimeStampedModel):
     """
     Post-Anesthesia Care Unit (PACU) recovery record.
     """
-    
+
     surgery_case = models.OneToOneField(SurgeryCase, on_delete=models.CASCADE, related_name='pacu_record')
-    
+
     # Arrival
     arrival_time = models.DateTimeField()
     arriving_nurse = models.ForeignKey(User, on_delete=models.PROTECT, related_name='pacu_arrivals')
-    
+
     # Initial assessment
     initial_aldrete_score = models.IntegerField()  # 0-10 scale
     initial_pain_score = models.IntegerField(null=True, blank=True)  # 0-10 NRS
-    
+
     # Discharge criteria
     discharge_time = models.DateTimeField(null=True, blank=True)
     discharge_aldrete_score = models.IntegerField(null=True, blank=True)
-    
+
     # Destination
     DISCHARGE_DESTINATION_CHOICES = [
         ('WARD', 'Ward'),
@@ -902,17 +902,17 @@ class PACURecord(TimeStampedModel):
         ('EXTENDED_OBSERVATION', 'Extended Observation'),
     ]
     discharge_destination = models.CharField(max_length=30, choices=DISCHARGE_DESTINATION_CHOICES, blank=True)
-    
+
     # Complications
     nausea_vomiting = models.BooleanField(default=False)
     shivering = models.BooleanField(default=False)
     respiratory_issues = models.BooleanField(default=False)
     cardiovascular_issues = models.BooleanField(default=False)
     complications_notes = models.TextField(blank=True)
-    
+
     # Medications given in PACU
     medications_given = models.TextField(blank=True)
-    
+
     # Discharge
     discharged_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='pacu_discharges')
     discharge_notes = models.TextField(blank=True)
@@ -920,11 +920,11 @@ class PACURecord(TimeStampedModel):
 
 class PACUVitalReading(TimeStampedModel):
     """PACU vital signs monitoring."""
-    
+
     pacu_record = models.ForeignKey(PACURecord, on_delete=models.CASCADE, related_name='vital_readings')
     recorded_at = models.DateTimeField()
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    
+
     # Vitals
     systolic_bp = models.IntegerField(null=True, blank=True)
     diastolic_bp = models.IntegerField(null=True, blank=True)
@@ -932,12 +932,12 @@ class PACUVitalReading(TimeStampedModel):
     respiratory_rate = models.IntegerField(null=True, blank=True)
     spo2 = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
-    
+
     # PACU-specific
     aldrete_score = models.IntegerField(null=True, blank=True)
     pain_score = models.IntegerField(null=True, blank=True)
     sedation_level = models.CharField(max_length=50, blank=True)
-    
+
     notes = models.TextField(blank=True)
 ```
 

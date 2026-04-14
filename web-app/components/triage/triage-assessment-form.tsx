@@ -1548,7 +1548,7 @@ export function TriageAssessmentForm({
       weight: data.weight,
       height: data.height,
     });
-    
+
     setIsSubmitting(true);
     try {
       await onSubmit({
@@ -2421,7 +2421,7 @@ export function TriageAssessmentForm({
           {/* DEBUG: GCS visibility check */}
           {process.env.NODE_ENV === 'development' && (
             <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-              DEBUG: CC={chiefComplaintCategory}, AVPU={mentalStatus}, 
+              DEBUG: CC={chiefComplaintCategory}, AVPU={mentalStatus},
               showGCS={(chiefComplaintCategory === 'TRAUMA' ||
                 chiefComplaintCategory === 'ALTERED_CONSCIOUSNESS' ||
                 mentalStatus === 'P' ||

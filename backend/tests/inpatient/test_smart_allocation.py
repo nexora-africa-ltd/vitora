@@ -23,14 +23,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.inpatient.models import (
-    Admission,
-    Bed,
-    Discharge,
-    NursingKardex,
-    ShiftHandover,
-    Ward,
-)
+from hmis.apps.inpatient.models import Admission, Bed, Discharge, NursingKardex, ShiftHandover, Ward
 from hmis.apps.inpatient.services.bed_smart import (
     SmartBedAllocationService,
     smart_bed_allocation_service,

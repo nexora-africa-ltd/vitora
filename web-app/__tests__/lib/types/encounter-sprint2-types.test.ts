@@ -1,6 +1,6 @@
 /**
- * Tests for Sprint 2 Encounter Types 
- * 
+ * Tests for Sprint 2 Encounter Types
+ *
  * Validates all new type definitions, state transitions, and visit reason taxonomy.
  * Sprint 2 - Phase 2A, 2B, 2C, 2D
  */

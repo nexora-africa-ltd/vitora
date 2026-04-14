@@ -564,7 +564,7 @@ class TestAdmissionQueries:
                 patient=sample_patient,
                 encounter_type="IPD",
                 encounter_date=timezone.now().date(),
-                chief_complaint=f"Admission {i+1}",
+                chief_complaint=f"Admission {i + 1}",
                 facility=sample_facility,
             )
             bed.status = "OCCUPIED"
@@ -595,7 +595,7 @@ class TestAdmissionQueries:
         patients = [sample_patient]
         for i in range(2):
             p = Patient.objects.create(
-                first_name=f"Patient{i+2}",
+                first_name=f"Patient{i + 2}",
                 last_name="TestFilter",
                 date_of_birth="1990-01-15",
                 gender="M",
@@ -617,7 +617,7 @@ class TestAdmissionQueries:
                 patient=patient,
                 encounter_type="IPD",
                 encounter_date=timezone.now().date(),
-                chief_complaint=f"Admission {i+1}",
+                chief_complaint=f"Admission {i + 1}",
                 facility=sample_facility,
             )
             bed = available_beds[i]

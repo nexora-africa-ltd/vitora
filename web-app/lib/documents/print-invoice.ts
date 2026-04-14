@@ -333,7 +333,7 @@ function formatCurrency(amount: number | string): string {
  */
 function buildLineItemsHtml(invoice: Invoice): string {
   const items = invoice.items || [];
-  
+
   if (items.length === 0) {
     return '<tr><td colspan="4" style="text-align: center; color: #666;">No line items</td></tr>';
   }
@@ -391,8 +391,8 @@ export async function printInvoice(options: PrintInvoiceOptions): Promise<Window
   const discount = parseFloat(invoice.discount_amount || '0');
   const total = parseFloat(invoice.total_amount);
   const amountPaid = parseFloat(invoice.amount_paid || '0');
-  const balanceDue = invoice.balance_due 
-    ? parseFloat(invoice.balance_due) 
+  const balanceDue = invoice.balance_due
+    ? parseFloat(invoice.balance_due)
     : (total - amountPaid);
 
   // Build render context
@@ -480,8 +480,8 @@ export async function previewInvoice(options: PrintInvoiceOptions): Promise<stri
   const discount = parseFloat(invoice.discount_amount || '0');
   const total = parseFloat(invoice.total_amount);
   const amountPaid = parseFloat(invoice.amount_paid || '0');
-  const balanceDue = invoice.balance_due 
-    ? parseFloat(invoice.balance_due) 
+  const balanceDue = invoice.balance_due
+    ? parseFloat(invoice.balance_due)
     : (total - amountPaid);
 
   const context: RenderContext = {

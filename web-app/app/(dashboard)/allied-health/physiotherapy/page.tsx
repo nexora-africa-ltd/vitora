@@ -33,7 +33,7 @@ import { useClinicVisits } from '@/lib/hooks/use-clinics';
 export default function PhysiotherapyDashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('queue');
-  
+
   const { data: dashboardStats, isLoading: statsLoading } = useAlliedHealthDashboard();
   const { data: queueData, isLoading: queueLoading } = useClinicVisits({
     clinic_type: 'PHYSIO',

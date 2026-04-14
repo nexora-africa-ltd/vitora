@@ -694,7 +694,7 @@ const { stats, isConnected, connectionState } = useSurveillanceWebSocket({
 
 **Features:**
 - **Primary**: WebSocket connection to `ws://*/ws/surveillance/alerts/`
-- **Fallback**: Automatic polling (30s interval) when WebSocket unavailable  
+- **Fallback**: Automatic polling (30s interval) when WebSocket unavailable
 - **Toast notifications**: Destructive toasts for immediate/outbreak alerts
 - **Query invalidation**: Auto-invalidates React Query cache on events
 - **Status indicator**: `WebSocketStatus` component in page header

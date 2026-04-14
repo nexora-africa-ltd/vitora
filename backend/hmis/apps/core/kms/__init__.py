@@ -94,7 +94,7 @@ def get_kms_provider() -> KMSProvider:
 
     else:
         raise ValueError(
-            f"Invalid KMS_PROVIDER: {provider_name}. " "Valid options: 'local', 'azure', 'gcp'"
+            f"Invalid KMS_PROVIDER: {provider_name}. Valid options: 'local', 'azure', 'gcp'"
         )
 
 

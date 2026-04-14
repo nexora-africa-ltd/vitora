@@ -20,10 +20,11 @@ repos:
       - id: trailing-whitespace
       - id: check-merge-conflict
       - id: check-yaml
+        exclude: ^(mobile/e2e/maestro/|backend/powersync/powersync\.yaml)
 
   # Python: Ruff (lint + import rules)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.6
+    rev: v0.15.4
     hooks:
       - id: ruff
         args: [--fix]

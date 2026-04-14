@@ -1,7 +1,7 @@
 /**
  * Stock Table Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
- * 
+ *
  * Responsive table using ResponsiveTable component with mobile card layout.
  */
 
@@ -177,7 +177,7 @@ export function StockTable({
     const isExpiringSoon = !isExpired && isBefore(expiryDate, addDays(new Date(), 90));
 
     return (
-      <Card 
+      <Card
         className={`p-4 space-y-3 ${batch.status === 'LOW' ? 'border-amber-500/50' : batch.status === 'EXPIRED' ? 'border-destructive/50' : ''}`}
         onClick={() => handleBatchClick(batch)}
       >

@@ -4,6 +4,7 @@ Robust fixer for missing sample_facility/sample_organization parameters.
 Strategy: Use AST parsing to find functions that reference sample_facility
 or sample_organization but don't have them as parameters.
 """
+
 import ast
 import os
 
@@ -35,27 +36,29 @@ def find_functions_needing_params(filepath: str) -> list[dict]:
                 continue
 
             needs = []
-            if 'sample_facility' in body_source and 'sample_facility' not in param_names:
+            if "sample_facility" in body_source and "sample_facility" not in param_names:
                 # Make sure it's actually used as a name, not just in a string
                 for child in ast.walk(node):
-                    if isinstance(child, ast.Name) and child.id == 'sample_facility':
-                        needs.append('sample_facility')
+                    if isinstance(child, ast.Name) and child.id == "sample_facility":
+                        needs.append("sample_facility")
                         break
 
-            if 'sample_organization' in body_source and 'sample_organization' not in param_names:
+            if "sample_organization" in body_source and "sample_organization" not in param_names:
                 for child in ast.walk(node):
-                    if isinstance(child, ast.Name) and child.id == 'sample_organization':
-                        needs.append('sample_organization')
+                    if isinstance(child, ast.Name) and child.id == "sample_organization":
+                        needs.append("sample_organization")
                         break
 
             if needs:
-                issues.append({
-                    'name': node.name,
-                    'lineno': node.lineno,
-                    'end_lineno': node.end_lineno,
-                    'needs': needs,
-                    'has_defaults': bool(node.args.defaults),
-                })
+                issues.append(
+                    {
+                        "name": node.name,
+                        "lineno": node.lineno,
+                        "end_lineno": node.end_lineno,
+                        "needs": needs,
+                        "has_defaults": bool(node.args.defaults),
+                    }
+                )
 
     return issues
 
@@ -72,7 +75,7 @@ def fix_function_params(filepath: str) -> int:
     fixes = 0
     # Process in reverse order to preserve line numbers
     for issue in reversed(issues):
-        func_line_idx = issue['lineno'] - 1
+        func_line_idx = issue["lineno"] - 1
         func_line = lines[func_line_idx]
 
         # Find the complete function signature (may span multiple lines)
@@ -80,10 +83,10 @@ def fix_function_params(filepath: str) -> int:
         sig_text = func_line
 
         # Check if signature is complete (has ):)
-        if '):' not in sig_text:
+        if "):" not in sig_text:
             # Multi-line signature - find the ): line
             j = func_line_idx + 1
-            while j < len(lines) and '):' not in lines[j]:
+            while j < len(lines) and "):" not in lines[j]:
                 sig_lines.append(j)
                 sig_text += lines[j]
                 j += 1
@@ -92,20 +95,20 @@ def fix_function_params(filepath: str) -> int:
                 sig_text += lines[j]
 
         # Now add the missing params
-        params_to_add = issue['needs']
+        params_to_add = issue["needs"]
 
         if len(sig_lines) == 1:
             # Single-line signature: def func(a, b, c):
             line = lines[func_line_idx]
-            close_idx = line.rindex('):')
+            close_idx = line.rindex("):")
             before = line[:close_idx].rstrip()
             after = line[close_idx:]
 
             # Check if we need to handle default params
-            if before.endswith('('):
-                new_params = ', '.join(params_to_add)
+            if before.endswith("("):
+                new_params = ", ".join(params_to_add)
             else:
-                new_params = ', ' + ', '.join(params_to_add)
+                new_params = ", " + ", ".join(params_to_add)
 
             lines[func_line_idx] = before + new_params + after
             fixes += 1
@@ -124,13 +127,13 @@ def fix_function_params(filepath: str) -> int:
             # Insert new param lines before the closing ):
             new_param_lines = []
             for param in params_to_add:
-                new_param_lines.append(' ' * indent + param + ',\n')
+                new_param_lines.append(" " * indent + param + ",\n")
 
             # Ensure previous line has trailing comma
             prev_idx = close_line_idx - 1
             prev_line = lines[prev_idx].rstrip()
-            if prev_line and not prev_line.endswith(',') and not prev_line.endswith('('):
-                lines[prev_idx] = prev_line + ',\n'
+            if prev_line and not prev_line.endswith(",") and not prev_line.endswith("("):
+                lines[prev_idx] = prev_line + ",\n"
 
             # Insert before close line
             for nl in reversed(new_param_lines):
@@ -138,7 +141,7 @@ def fix_function_params(filepath: str) -> int:
             fixes += 1
 
     if fixes:
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.writelines(lines)
 
     return fixes
@@ -148,7 +151,7 @@ if __name__ == "__main__":
     total_fixes = 0
     for root, dirs, files in os.walk("tests"):
         for fn in files:
-            if fn.endswith('.py') and fn.startswith('test_'):
+            if fn.endswith(".py") and fn.startswith("test_"):
                 fp = os.path.join(root, fn)
                 fixes = fix_function_params(fp)
                 if fixes:
@@ -161,11 +164,11 @@ if __name__ == "__main__":
     errors = 0
     for root, dirs, files in os.walk("tests"):
         for fn in files:
-            if fn.endswith('.py'):
+            if fn.endswith(".py"):
                 fp = os.path.join(root, fn)
                 try:
                     with open(fp) as f:
-                        compile(f.read(), fp, 'exec')
+                        compile(f.read(), fp, "exec")
                 except SyntaxError as e:
                     print(f"  SYNTAX ERROR: {fp}: {e}")
                     errors += 1

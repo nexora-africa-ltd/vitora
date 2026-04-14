@@ -93,7 +93,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -107,7 +107,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -139,7 +139,7 @@ describe('RBAC Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  DepartmentSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -156,7 +156,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should have critical department fields', () => {
       const zodFields = getZodSchemaFields(DepartmentSchema);
-      
+
       const criticalFields = [
         'id',
         'name',
@@ -175,7 +175,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include hierarchy and relationship fields', () => {
       const zodFields = getZodSchemaFields(DepartmentSchema);
-      
+
       const relationshipFields = [
         'parent',
         'parent_name',
@@ -198,7 +198,7 @@ describe('RBAC Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  RoleSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -215,7 +215,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should have critical role fields', () => {
       const zodFields = getZodSchemaFields(RoleSchema);
-      
+
       const criticalFields = [
         'id',
         'name',
@@ -235,7 +235,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include permission and hierarchy fields', () => {
       const zodFields = getZodSchemaFields(RoleSchema);
-      
+
       const permissionFields = [
         'permissions_matrix',
         'parent_role',
@@ -260,7 +260,7 @@ describe('RBAC Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  PermissionSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -277,7 +277,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should have core permission fields', () => {
       const zodFields = getZodSchemaFields(PermissionSchema);
-      
+
       const coreFields = [
         'codename',
         'name',
@@ -292,7 +292,7 @@ describe('RBAC Contract Tests', () => {
   describe('PermissionGroupSchema', () => {
     it('should have group structure fields', () => {
       const zodFields = getZodSchemaFields(PermissionGroupSchema);
-      
+
       const structureFields = [
         'app_label',
         'app_name',
@@ -314,7 +314,7 @@ describe('RBAC Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  StaffProfileSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -331,7 +331,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should have critical staff profile fields', () => {
       const zodFields = getZodSchemaFields(StaffProfileSchema);
-      
+
       const criticalFields = [
         'id',
         'user',
@@ -350,7 +350,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include user account fields', () => {
       const zodFields = getZodSchemaFields(StaffProfileSchema);
-      
+
       const userFields = [
         'user_username',
         'user_email',
@@ -364,7 +364,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include role and department fields', () => {
       const zodFields = getZodSchemaFields(StaffProfileSchema);
-      
+
       const roleFields = [
         'primary_role',
         'primary_role_name',
@@ -380,7 +380,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include licensing fields', () => {
       const zodFields = getZodSchemaFields(StaffProfileSchema);
-      
+
       const licenseFields = [
         'hwr_id',
         'license_number',
@@ -396,7 +396,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include contact and personal fields', () => {
       const zodFields = getZodSchemaFields(StaffProfileSchema);
-      
+
       const personalFields = [
         'title',
         'middle_name',
@@ -412,7 +412,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include employment fields', () => {
       const zodFields = getZodSchemaFields(StaffProfileSchema);
-      
+
       const employmentFields = [
         'employment_status',
         'employment_type',
@@ -429,7 +429,7 @@ describe('RBAC Contract Tests', () => {
   describe('UserPermissionsSchema', () => {
     it('should have permissions array field', () => {
       const zodFields = getZodSchemaFields(UserPermissionsSchema);
-      
+
       expect(zodFields).toContain('permissions');
     });
   });
@@ -437,7 +437,7 @@ describe('RBAC Contract Tests', () => {
   describe('UsernameCheckResponseSchema', () => {
     it('should have username availability fields', () => {
       const zodFields = getZodSchemaFields(UsernameCheckResponseSchema);
-      
+
       const requiredFields = [
         'username',
         'available',
@@ -452,7 +452,7 @@ describe('RBAC Contract Tests', () => {
   describe('UsernameSuggestionResponseSchema', () => {
     it('should have suggestions array field', () => {
       const zodFields = getZodSchemaFields(UsernameSuggestionResponseSchema);
-      
+
       expect(zodFields).toContain('suggestions');
     });
   });
@@ -467,7 +467,7 @@ describe('RBAC Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  AuditLogEntrySchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -484,7 +484,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should have critical audit log fields', () => {
       const zodFields = getZodSchemaFields(AuditLogEntrySchema);
-      
+
       const criticalFields = [
         'id',
         'user',
@@ -507,7 +507,7 @@ describe('RBAC Contract Tests', () => {
   describe('GroupSchema', () => {
     it('should have id and name fields', () => {
       const zodFields = getZodSchemaFields(GroupSchema);
-      
+
       const requiredFields = ['id', 'name'];
 
       const missing = requiredFields.filter((field) => !zodFields.includes(field));
@@ -528,7 +528,7 @@ describe('RBAC Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`⚠️  DepartmentTypeSchema: Missing values from API: ${missingInZod.join(', ')}`);
       }
@@ -539,7 +539,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include core department types', () => {
       const zodValues = getZodEnumValues(DepartmentTypeSchema);
-      
+
       const coreTypes = [
         'CLINICAL',
         'ADMINISTRATIVE',
@@ -560,7 +560,7 @@ describe('RBAC Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`⚠️  RoleCategorySchema: Missing values from API: ${missingInZod.join(', ')}`);
       }
@@ -570,7 +570,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include all role categories', () => {
       const zodValues = getZodEnumValues(RoleCategorySchema);
-      
+
       const allCategories = [
         'CLINICAL',
         'ADMINISTRATIVE',
@@ -593,7 +593,7 @@ describe('RBAC Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`⚠️  EmploymentStatusSchema: Missing values from API: ${missingInZod.join(', ')}`);
       }
@@ -603,7 +603,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include core employment statuses', () => {
       const zodValues = getZodEnumValues(EmploymentStatusSchema);
-      
+
       const coreStatuses = [
         'ACTIVE',
         'ON_LEAVE',
@@ -625,7 +625,7 @@ describe('RBAC Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`⚠️  EmploymentTypeSchema: Missing values from API: ${missingInZod.join(', ')}`);
       }
@@ -635,7 +635,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include core employment types', () => {
       const zodValues = getZodEnumValues(EmploymentTypeSchema);
-      
+
       const coreTypes = [
         'PERMANENT',
         'CONTRACT',
@@ -656,7 +656,7 @@ describe('RBAC Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`⚠️  GenderSchema: Missing values from API: ${missingInZod.join(', ')}`);
       }
@@ -666,7 +666,7 @@ describe('RBAC Contract Tests', () => {
 
     it('should include all gender options', () => {
       const zodValues = getZodEnumValues(GenderSchema);
-      
+
       const allGenders = ['M', 'F', 'O'];
 
       const missing = allGenders.filter((g) => !zodValues.includes(g));
@@ -677,7 +677,7 @@ describe('RBAC Contract Tests', () => {
   describe('AuditActionSchema (enum)', () => {
     it('should have RBAC-related audit actions', () => {
       const zodValues = getZodEnumValues(AuditActionSchema);
-      
+
       // The OpenAPI audit action is a string field, not an enum
       // This test ensures our Zod enum covers expected actions
       const rbacActions = [
@@ -732,7 +732,7 @@ describe('RBAC Contract Tests', () => {
     it('StaffProfileSchema should reference same role ID type as RoleSchema', () => {
       const staffFields = getZodSchemaFields(StaffProfileSchema);
       const roleFields = getZodSchemaFields(RoleSchema);
-      
+
       expect(staffFields).toContain('primary_role');
       expect(roleFields).toContain('id');
     });
@@ -740,7 +740,7 @@ describe('RBAC Contract Tests', () => {
     it('StaffProfileSchema should reference same department ID type as DepartmentSchema', () => {
       const staffFields = getZodSchemaFields(StaffProfileSchema);
       const deptFields = getZodSchemaFields(DepartmentSchema);
-      
+
       expect(staffFields).toContain('primary_department');
       expect(deptFields).toContain('id');
     });

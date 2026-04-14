@@ -431,7 +431,7 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
 
             return Response(serializer.data)
 
-        except Exception as e:
+        except Exception:
             logger.exception("SHA claim submission failed for claim %s", pk)
             return Response(
                 {"error": "Claim submission failed. Please try again."},
@@ -464,7 +464,7 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
             serializer = SHAClaimSerializer(appeal_claim, context={"request": request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        except Exception as e:
+        except Exception:
             logger.exception("SHA claim appeal failed for claim %s", pk)
             return Response(
                 {"error": "Appeal creation failed. Please try again."},
@@ -543,7 +543,7 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
             ]
             if file.content_type not in allowed_types:
                 return Response(
-                    {"file": f'File type not allowed. Allowed: {", ".join(allowed_types)}'},
+                    {"file": f"File type not allowed. Allowed: {', '.join(allowed_types)}"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -889,7 +889,7 @@ class TerminologySearchView(APIView):
                 {"error": str(e), "status_code": e.status_code},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("ICD terminology search failed")
             return Response(
                 {"error": "Terminology search failed. Please try again."},
@@ -1065,7 +1065,7 @@ class TerminologySearchView(APIView):
                 }
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception("ICD-11 local search failed")
             return Response(
                 {"error": "ICD-11 local search failed. Please try again."},
@@ -1186,7 +1186,7 @@ class ClientRegistryView(APIView):
             return Response(
                 {"error": str(e), "found": False}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Client Registry lookup failed")
             return Response(
                 {"error": "Client Registry lookup failed. Please try again.", "found": False},
@@ -1269,7 +1269,7 @@ class ClientRegistryView(APIView):
             missing = [f for f in required_fields if not data.get(f)]
             if missing:
                 return Response(
-                    {"error": f'Missing required fields: {", ".join(missing)}'},
+                    {"error": f"Missing required fields: {', '.join(missing)}"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             first_name = data["first_name"]
@@ -1314,7 +1314,7 @@ class ClientRegistryView(APIView):
 
         except ClientRegistryError as e:
             return Response({"error": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
+        except Exception:
             logger.exception("Client Registry registration failed")
             return Response(
                 {"error": "Client registration failed. Please try again.", "success": False},
@@ -1411,7 +1411,7 @@ class ClientRegistryView(APIView):
             return Response({"error": str(e), "success": False}, status=status.HTTP_404_NOT_FOUND)
         except ClientRegistryError as e:
             return Response({"error": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
+        except Exception:
             logger.exception("Client Registry update failed")
             return Response(
                 {"error": "Client update failed. Please try again.", "success": False},
@@ -1490,7 +1490,7 @@ class FacilitySearchView(APIView):
             return Response(
                 {"error": str(e), "found": False}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Facility search failed")
             return Response(
                 {"error": "Facility search failed. Please try again.", "found": False},
@@ -1650,7 +1650,7 @@ class PractitionerSearchView(APIView):
             return Response(
                 {"error": str(e), "message": None}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Practitioner search failed")
             return Response(
                 {"error": "Practitioner search failed. Please try again.", "message": None},
@@ -1748,7 +1748,7 @@ class EligibilityCheckView(APIView):
                 }
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception("SHA eligibility check failed")
             return Response(
                 {"error": "Eligibility check failed. Please try again.", "is_eligible": False},
@@ -1850,7 +1850,7 @@ class DirectEligibilityCheckView(APIView):
 
             return Response(result)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Direct SHA eligibility check failed")
             return Response(
                 {

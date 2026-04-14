@@ -1,8 +1,8 @@
 # Ward Patient Compatibility Constraints - Implementation Plan
 
-> **Status**: In Progress (Phase 3 Partial)  
-> **Created**: February 12, 2026  
-> **Target Sprint**: TBD  
+> **Status**: In Progress (Phase 3 Partial)
+> **Created**: February 12, 2026
+> **Target Sprint**: TBD
 > **PowerSync**: Phase 5 (Future Sprint - documented)
 
 ---
@@ -36,14 +36,14 @@ class Ward(TimeStampedModel):
         ("MALE_ONLY", "Male Only"),
         ("FEMALE_ONLY", "Female Only"),
     ]
-    
+
     gender_restriction = models.CharField(
         max_length=20,
         choices=GENDER_RESTRICTION_CHOICES,
         default="ANY",
         help_text="Gender restriction for patient admission",
     )
-    
+
     # NEW: Age constraints (null = no restriction)
     min_age_years = models.PositiveIntegerField(
         null=True,
@@ -55,13 +55,13 @@ class Ward(TimeStampedModel):
         blank=True,
         help_text="Maximum patient age in years (null = no maximum)",
     )
-    
+
     # NEW: Isolation capability
     isolation_capable = models.BooleanField(
         default=False,
         help_text="Whether ward can handle isolation patients",
     )
-    
+
     # NEW: Special equipment/capability flags
     oxygen_equipped = models.BooleanField(
         default=False,
@@ -119,18 +119,18 @@ class Ward(TimeStampedModel):
         Only sets defaults when creating a new ward (not on updates).
         """
         is_new = self.pk is None
-        
+
         if is_new and self.ward_type in self.WARD_TYPE_AGE_DEFAULTS:
             defaults = self.WARD_TYPE_AGE_DEFAULTS[self.ward_type]
             if self.min_age_years is None:
                 self.min_age_years = defaults.get("min_age_years")
             if self.max_age_years is None:
                 self.max_age_years = defaults.get("max_age_years")
-            
+
             # Maternity wards default to female-only
             if self.ward_type == "MATERNITY" and self.gender_restriction == "ANY":
                 self.gender_restriction = "FEMALE_ONLY"
-        
+
         super().save(*args, **kwargs)
 ```
 
@@ -173,7 +173,7 @@ class CompatibilityResult:
     """Result of compatibility check."""
     compatible: bool
     violations: List[CompatibilityViolation]
-    
+
     @property
     def has_critical_violations(self) -> bool:
         return any(v.severity == "CRITICAL" for v in self.violations)
@@ -183,34 +183,34 @@ class WardCompatibilityService:
     """Service for checking patient-ward compatibility."""
 
     def check_compatibility(
-        self, 
-        patient: Patient, 
+        self,
+        patient: Patient,
         ward: Ward,
         requires_isolation: bool = False,
     ) -> CompatibilityResult:
         """
         Check if patient is compatible with ward.
-        
+
         Args:
             patient: Patient to check
             ward: Target ward
             requires_isolation: Whether patient requires isolation
-            
+
         Returns:
             CompatibilityResult with violations list
         """
         violations = []
-        
+
         # Gender check
         gender_violation = self._check_gender(patient, ward)
         if gender_violation:
             violations.append(gender_violation)
-        
+
         # Age check
         age_violation = self._check_age(patient, ward)
         if age_violation:
             violations.append(age_violation)
-        
+
         # Isolation check
         if requires_isolation and not ward.isolation_capable:
             violations.append(CompatibilityViolation(
@@ -219,12 +219,12 @@ class WardCompatibilityService:
                 message=f"Patient requires isolation but {ward.name} is not isolation-capable",
                 override_allowed=False,
             ))
-        
+
         # Ward type implicit checks
         type_violation = self._check_ward_type(patient, ward)
         if type_violation:
             violations.append(type_violation)
-        
+
         return CompatibilityResult(
             compatible=len(violations) == 0,
             violations=violations,
@@ -234,9 +234,9 @@ class WardCompatibilityService:
         """Check gender compatibility."""
         if ward.gender_restriction == "ANY":
             return None
-        
+
         patient_gender = patient.gender  # 'M', 'F', 'O'
-        
+
         if ward.gender_restriction == "MALE_ONLY" and patient_gender != "M":
             return CompatibilityViolation(
                 code="GENDER_MISMATCH",
@@ -244,7 +244,7 @@ class WardCompatibilityService:
                 message=f"Ward '{ward.name}' is male-only but patient is {patient.get_gender_display()}",
                 override_allowed=True,
             )
-        
+
         if ward.gender_restriction == "FEMALE_ONLY" and patient_gender != "F":
             return CompatibilityViolation(
                 code="GENDER_MISMATCH",
@@ -252,13 +252,13 @@ class WardCompatibilityService:
                 message=f"Ward '{ward.name}' is female-only but patient is {patient.get_gender_display()}",
                 override_allowed=True,
             )
-        
+
         return None
 
     def _check_age(self, patient: Patient, ward: Ward) -> Optional[CompatibilityViolation]:
         """Check age compatibility."""
         patient_age = self._calculate_age(patient.date_of_birth)
-        
+
         if ward.min_age_years is not None and patient_age < ward.min_age_years:
             return CompatibilityViolation(
                 code="AGE_BELOW_MIN",
@@ -266,21 +266,21 @@ class WardCompatibilityService:
                 message=f"Patient is {patient_age} years old but ward requires minimum {ward.min_age_years} years",
                 override_allowed=True,
             )
-        
+
         if ward.max_age_years is not None and patient_age > ward.max_age_years:
             return CompatibilityViolation(
-                code="AGE_ABOVE_MAX", 
+                code="AGE_ABOVE_MAX",
                 severity="WARNING",
                 message=f"Patient is {patient_age} years old but ward maximum is {ward.max_age_years} years",
                 override_allowed=True,
             )
-        
+
         return None
 
     def _check_ward_type(self, patient: Patient, ward: Ward) -> Optional[CompatibilityViolation]:
         """Check ward type implicit constraints."""
         patient_age = self._calculate_age(patient.date_of_birth)
-        
+
         # Maternity ward - should be female
         if ward.ward_type == "MATERNITY" and patient.gender != "F":
             return CompatibilityViolation(
@@ -289,7 +289,7 @@ class WardCompatibilityService:
                 message="Maternity ward is intended for female patients",
                 override_allowed=True,
             )
-        
+
         # Pediatric ward - should be child (default: 0-14)
         if ward.ward_type == "PEDIATRIC" and patient_age > 14:
             return CompatibilityViolation(
@@ -298,7 +298,7 @@ class WardCompatibilityService:
                 message=f"Pediatric ward is intended for patients under 15 years (patient is {patient_age})",
                 override_allowed=True,
             )
-        
+
         return None
 
     def _calculate_age(self, dob: date) -> int:
@@ -328,25 +328,25 @@ class WardViewSet(viewsets.ModelViewSet):
     def check_compatibility(self, request, pk=None):
         """
         Check patient compatibility with this ward.
-        
+
         POST /api/inpatient/wards/{id}/check_compatibility/
         Body: { "patient_id": 123, "requires_isolation": false }
         """
         ward = self.get_object()
         patient_id = request.data.get("patient_id")
         requires_isolation = request.data.get("requires_isolation", False)
-        
+
         try:
             patient = Patient.objects.get(id=patient_id)
         except Patient.DoesNotExist:
             return Response({"error": "Patient not found"}, status=404)
-        
+
         result = ward_compatibility_service.check_compatibility(
             patient=patient,
             ward=ward,
             requires_isolation=requires_isolation,
         )
-        
+
         return Response({
             "compatible": result.compatible,
             "has_critical_violations": result.has_critical_violations,
@@ -375,13 +375,13 @@ class WardViewSet(viewsets.ModelViewSet):
         """
         Bulk check compatibility for multiple patients across all wards.
         Useful for emergency surge scenarios.
-        
+
         POST /api/inpatient/wards/bulk_check_compatibility/
         Body: {
             "patient_ids": [1, 2, 3, 4, 5],
             "requires_isolation": [false, false, true, false, false]
         }
-        
+
         Returns:
         {
             "results": [
@@ -402,43 +402,43 @@ class WardViewSet(viewsets.ModelViewSet):
         """
         patient_ids = request.data.get("patient_ids", [])
         requires_isolation_list = request.data.get("requires_isolation", [])
-        
+
         if not patient_ids:
             return Response({"error": "patient_ids required"}, status=400)
-        
+
         # Pad isolation list if shorter than patient list
         while len(requires_isolation_list) < len(patient_ids):
             requires_isolation_list.append(False)
-        
+
         patients = Patient.objects.filter(id__in=patient_ids)
         wards = Ward.objects.filter(is_active=True).prefetch_related('beds')
-        
+
         results = []
         for patient, requires_isolation in zip(patients, requires_isolation_list):
             compatible_wards = []
             incompatible_wards = []
-            
+
             for ward in wards:
                 result = ward_compatibility_service.check_compatibility(
                     patient=patient,
                     ward=ward,
                     requires_isolation=requires_isolation,
                 )
-                
+
                 ward_info = {
                     "ward_id": ward.id,
                     "ward_name": ward.name,
                     "ward_type": ward.ward_type,
                     "available_beds": ward.available_beds,
                 }
-                
+
                 if result.compatible:
                     compatible_wards.append(ward_info)
                 else:
                     ward_info["violations"] = [v.code for v in result.violations]
                     ward_info["has_critical"] = result.has_critical_violations
                     incompatible_wards.append(ward_info)
-            
+
             results.append({
                 "patient_id": patient.id,
                 "patient_name": f"{patient.first_name} {patient.last_name}",
@@ -446,35 +446,35 @@ class WardViewSet(viewsets.ModelViewSet):
                 "compatible_wards": sorted(compatible_wards, key=lambda x: -x["available_beds"]),
                 "incompatible_wards": incompatible_wards,
             })
-        
+
         return Response({"results": results})
 
 
 class AdmissionViewSet(viewsets.ModelViewSet):
     # ... existing code ...
-    
+
     def perform_create(self, serializer):
         """Override to check compatibility and record violations."""
         patient = serializer.validated_data.get("patient")
         bed = serializer.validated_data.get("bed")
         ward = bed.ward
-        
+
         # Check compatibility
         result = ward_compatibility_service.check_compatibility(
             patient=patient,
             ward=ward,
         )
-        
+
         # If violations exist, require override confirmation
         constraint_override = self.request.data.get("constraint_override", False)
         override_reason = self.request.data.get("constraint_override_reason", "")
-        
+
         if not result.compatible and not constraint_override:
             raise ValidationError({
                 "compatibility": "Patient is not compatible with this ward. Set constraint_override=true to proceed.",
                 "violations": [v.message for v in result.violations],
             })
-        
+
         # Record any violations
         serializer.save(
             admitted_by=self.request.user,
@@ -509,23 +509,23 @@ from channels.db import database_sync_to_async
 class WardCompatibilityConsumer(AsyncJsonWebsocketConsumer):
     """
     WebSocket consumer for ward compatibility events.
-    
+
     URL: /ws/wards/compatibility/
-    
+
     Events sent to client:
     - ward_constraints_updated: Ward constraints changed
     - compatibility_violation: Admission with constraint violation occurred
     - bed_availability_changed: Compatible bed count changed
     """
-    
+
     async def connect(self):
         """Connect to ward compatibility notifications."""
         self.user = self.scope["user"]
-        
+
         if not self.user.is_authenticated:
             await self.close()
             return
-        
+
         # Join facility-wide notification group
         self.group_name = "ward_compatibility"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -587,7 +587,7 @@ from .models import Ward, Admission
 def notify_ward_constraints_updated(sender, instance, **kwargs):
     """Send WebSocket notification when ward constraints change."""
     channel_layer = get_channel_layer()
-    
+
     async_to_sync(channel_layer.group_send)(
         "ward_compatibility",
         {
@@ -610,15 +610,15 @@ def notify_compatibility_violation(sender, instance, created, **kwargs):
     """Send WebSocket notification when admission has constraint violations."""
     if not created or not instance.constraint_override:
         return
-    
+
     channel_layer = get_channel_layer()
-    
+
     # Check if any violations are CRITICAL (requires supervisor escalation)
     has_critical = any(
-        v.get("code") == "ISOLATION_REQUIRED" 
+        v.get("code") == "ISOLATION_REQUIRED"
         for v in instance.constraint_violations
     )
-    
+
     # Standard notification to ward_compatibility group
     async_to_sync(channel_layer.group_send)(
         "ward_compatibility",
@@ -634,7 +634,7 @@ def notify_compatibility_violation(sender, instance, created, **kwargs):
             "has_critical": has_critical,
         }
     )
-    
+
     # CRITICAL violations: Escalate to supervisor channel
     if has_critical:
         async_to_sync(channel_layer.group_send)(
@@ -653,7 +653,7 @@ def notify_compatibility_violation(sender, instance, created, **kwargs):
                 "requires_action": True,
             }
         )
-        
+
         # Also send email notification to supervisors (async via Celery)
         from hmis.apps.inpatient.tasks import notify_supervisors_critical_violation
         notify_supervisors_critical_violation.delay(instance.id)
@@ -689,26 +689,26 @@ class SupervisorAlertConsumer(AsyncJsonWebsocketConsumer):
     """
     WebSocket consumer for supervisor escalation alerts.
     Only users with supervisor permission can connect.
-    
+
     URL: /ws/supervisor/alerts/
     """
-    
+
     async def connect(self):
         self.user = self.scope["user"]
-        
+
         if not self.user.is_authenticated:
             await self.close()
             return
-        
+
         # Check supervisor permission
         has_permission = await database_sync_to_async(
             lambda: self.user.has_perm('inpatient.receive_critical_alerts')
         )()
-        
+
         if not has_permission:
             await self.close()
             return
-        
+
         self.group_name = "supervisor_alerts"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
@@ -748,32 +748,32 @@ User = get_user_model()
 def notify_supervisors_critical_violation(admission_id: int):
     """
     Send email notification to supervisors about a critical constraint violation.
-    
+
     Args:
         admission_id: ID of the admission with critical violations
     """
     from hmis.apps.inpatient.models import Admission
-    
+
     try:
         admission = Admission.objects.select_related(
             'patient', 'bed__ward', 'admitted_by'
         ).get(id=admission_id)
     except Admission.DoesNotExist:
         return
-    
+
     # Get supervisors (users with permission)
     supervisors = User.objects.filter(
         user_permissions__codename='receive_critical_alerts'
     ).values_list('email', flat=True)
-    
+
     if not supervisors:
         return
-    
+
     critical_violations = [
-        v for v in admission.constraint_violations 
+        v for v in admission.constraint_violations
         if v.get("code") == "ISOLATION_REQUIRED"
     ]
-    
+
     subject = f"🚨 CRITICAL: Ward Compatibility Violation - {admission.patient.mrn}"
     message = f"""
 CRITICAL WARD COMPATIBILITY VIOLATION
@@ -795,7 +795,7 @@ or coordinate a transfer to an appropriate ward.
 ---
 Vitora HMIS - Nexora Africa Ltd
     """
-    
+
     send_mail(
         subject=subject,
         message=message,
@@ -823,9 +823,9 @@ class WardViewSet(viewsets.ModelViewSet):
     def compatibility_updates(self, request):
         """
         Poll for recent compatibility-related updates.
-        
+
         GET /api/inpatient/wards/compatibility_updates/?since=2026-02-12T10:00:00Z
-        
+
         Returns recent:
         - Ward constraint changes
         - Compatibility violation admissions
@@ -836,18 +836,18 @@ class WardViewSet(viewsets.ModelViewSet):
             since = datetime.fromisoformat(since_str.replace("Z", "+00:00"))
         else:
             since = datetime.now(timezone.utc) - timedelta(minutes=5)
-        
+
         # Recent constraint violations
         violations = Admission.objects.filter(
             constraint_override=True,
             created_at__gte=since,
         ).select_related("patient", "bed__ward", "admitted_by")[:20]
-        
+
         # Recent ward updates
         ward_updates = Ward.objects.filter(
             updated_at__gte=since,
         )[:20]
-        
+
         return Response({
             "since": since.isoformat(),
             "violations": [
@@ -997,12 +997,12 @@ const handleBedSelect = async (bedId: number, wardId: number) => {
         <DialogTitle>Compatibility Warning</DialogTitle>
       </div>
     </DialogHeader>
-    
+
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
         This patient may not be compatible with the selected ward:
       </p>
-      
+
       <ul className="space-y-2">
         {violations.map((v, i) => (
           <li key={i} className="flex items-start gap-2">
@@ -1014,7 +1014,7 @@ const handleBedSelect = async (bedId: number, wardId: number) => {
         ))}
       </ul>
     </div>
-    
+
     <div className="space-y-2">
       <Label>Override Reason (required)</Label>
       <Textarea
@@ -1023,7 +1023,7 @@ const handleBedSelect = async (bedId: number, wardId: number) => {
         placeholder="Explain why this admission should proceed despite warnings..."
       />
     </div>
-    
+
     <DialogFooter>
       <Button variant="outline" onClick={() => onOpenChange(false)}>
         Select Different Ward
@@ -1055,7 +1055,7 @@ Show ward constraints on the ward detail page:
     <div className="flex justify-between text-sm">
       <span className="text-muted-foreground">Gender Restriction</span>
       <Badge variant="outline">
-        {ward.gender_restriction === 'ANY' ? 'Any Gender' : 
+        {ward.gender_restriction === 'ANY' ? 'Any Gender' :
          ward.gender_restriction === 'MALE_ONLY' ? 'Male Only' : 'Female Only'}
       </Badge>
     </div>
@@ -1118,26 +1118,26 @@ Add a section to admin/quality dashboard showing:
 class TestWardCompatibilityService:
     def test_male_patient_male_only_ward_compatible(self):
         """Male patient should be compatible with male-only ward."""
-        
+
     def test_female_patient_male_only_ward_violation(self):
         """Female patient should have gender violation for male-only ward."""
-        
+
     def test_child_patient_pediatric_ward_compatible(self):
         """Child under 14 should be compatible with pediatric ward."""
-        
+
     def test_adult_patient_pediatric_ward_violation(self):
         """Adult should have age violation for pediatric ward."""
-        
+
     def test_isolation_patient_non_isolation_ward_critical(self):
         """Isolation patient in non-isolation ward should be CRITICAL violation."""
-        
+
     def test_override_admission_records_violations(self):
         """Override admission should record violations in JSON field."""
 
 
 class TestWardAutoPopulateDefaults:
     """Tests for auto-populating age/gender defaults on ward creation."""
-    
+
     def test_pediatric_ward_gets_default_age_range(self):
         """PEDIATRIC ward should auto-populate min_age=0, max_age=14."""
         ward = Ward.objects.create(
@@ -1149,7 +1149,7 @@ class TestWardAutoPopulateDefaults:
         )
         assert ward.min_age_years == 0
         assert ward.max_age_years == 14
-    
+
     def test_maternity_ward_gets_default_age_and_gender(self):
         """MATERNITY ward should auto-populate age 12-55 and FEMALE_ONLY."""
         ward = Ward.objects.create(
@@ -1162,7 +1162,7 @@ class TestWardAutoPopulateDefaults:
         assert ward.min_age_years == 12
         assert ward.max_age_years == 55
         assert ward.gender_restriction == "FEMALE_ONLY"
-    
+
     def test_medical_ward_no_default_age(self):
         """MEDICAL ward should have no default age constraints."""
         ward = Ward.objects.create(
@@ -1174,7 +1174,7 @@ class TestWardAutoPopulateDefaults:
         )
         assert ward.min_age_years is None
         assert ward.max_age_years is None
-    
+
     def test_explicit_values_not_overwritten(self):
         """Explicit age values should not be overwritten by defaults."""
         ward = Ward.objects.create(
@@ -1191,7 +1191,7 @@ class TestWardAutoPopulateDefaults:
 
 class TestBulkCompatibilityCheck:
     """Tests for bulk_check_compatibility endpoint."""
-    
+
     def test_bulk_check_returns_compatible_wards(self, authenticated_client, sample_patients, sample_wards):
         """Bulk check should return compatible wards for each patient."""
         response = authenticated_client.post(
@@ -1207,7 +1207,7 @@ class TestBulkCompatibilityCheck:
         for result in response.data["results"]:
             assert "compatible_wards" in result
             assert "incompatible_wards" in result
-    
+
     def test_bulk_check_empty_patient_list_error(self, authenticated_client):
         """Bulk check with empty patient list should return error."""
         response = authenticated_client.post(
@@ -1220,7 +1220,7 @@ class TestBulkCompatibilityCheck:
 
 class TestSupervisorEscalation:
     """Tests for CRITICAL violation supervisor escalation."""
-    
+
     def test_critical_violation_triggers_supervisor_notification(
         self, authenticated_client, sample_patient, isolation_required_patient, non_isolation_ward
     ):
@@ -1238,7 +1238,7 @@ class TestSupervisorEscalation:
             )
             assert response.status_code == 201
             mock_task.assert_called_once()
-    
+
     def test_warning_violation_does_not_escalate(
         self, authenticated_client, sample_patient, male_only_ward
     ):
@@ -1247,7 +1247,7 @@ class TestSupervisorEscalation:
         female_patient = sample_patient
         female_patient.gender = 'F'
         female_patient.save()
-        
+
         with mock.patch('hmis.apps.inpatient.tasks.notify_supervisors_critical_violation.delay') as mock_task:
             response = authenticated_client.post(
                 '/api/inpatient/admissions/',
@@ -1441,16 +1441,16 @@ bucket_definitions:
                updated_at
         FROM inpatient_ward
         WHERE is_active = true
-    
+
   # Beds sync based on ward access (larger dataset, filtered)
   - name: beds
     parameters: SELECT ward_id FROM user_ward_assignments WHERE user_id = token_parameters.user_id
     data:
-      - SELECT id, ward_id, bed_number, status, bed_type, notes, 
+      - SELECT id, ward_id, bed_number, status, bed_type, notes,
                status_changed_at, updated_at
         FROM inpatient_bed
         WHERE ward_id IN bucket.ward_id
-    
+
   # Active admissions sync (historical admissions excluded to reduce sync size)
   - name: admissions
     parameters: SELECT ward_id FROM user_ward_assignments WHERE user_id = token_parameters.user_id
@@ -1505,9 +1505,9 @@ export async function checkCompatibilityOffline(
     patient_gender: string;
     patient_dob: string;
   }>(`
-    SELECT patient_gender, patient_dob 
-    FROM admissions 
-    WHERE patient_id = ? 
+    SELECT patient_gender, patient_dob
+    FROM admissions
+    WHERE patient_id = ?
     LIMIT 1
   `, [patientId]);
 
@@ -1551,7 +1551,7 @@ export async function checkCompatibilityOffline(
 
   // Age check
   const patientAge = differenceInYears(new Date(), parseISO(patient.patient_dob));
-  
+
   if (ward.min_age_years !== null && patientAge < ward.min_age_years) {
     violations.push({
       code: 'AGE_BELOW_MIN',
@@ -1560,7 +1560,7 @@ export async function checkCompatibilityOffline(
       overrideAllowed: true,
     });
   }
-  
+
   if (ward.max_age_years !== null && patientAge > ward.max_age_years) {
     violations.push({
       code: 'AGE_ABOVE_MAX',
@@ -1615,7 +1615,7 @@ export async function getAvailableBedsOffline(wardId: number): Promise<number> {
     FROM beds
     WHERE ward_id = ? AND status = 'AVAILABLE'
   `, [wardId]);
-  
+
   return result?.count ?? 0;
 }
 
@@ -1628,36 +1628,36 @@ export async function getCompatibleWardsOffline(
   requiresIsolation: boolean = false
 ): Promise<Array<{ id: number; name: string; available_beds: number }>> {
   const patientAge = differenceInYears(new Date(), parseISO(patientDob));
-  
+
   let query = `
     SELECT w.id, w.name,
            (SELECT COUNT(*) FROM beds b WHERE b.ward_id = w.id AND b.status = 'AVAILABLE') as available_beds
     FROM wards w
     WHERE w.is_active = 1
   `;
-  
+
   const params: any[] = [];
-  
+
   // Gender filter
   if (patientGender === 'M') {
     query += ` AND w.gender_restriction IN ('ANY', 'MALE_ONLY')`;
   } else if (patientGender === 'F') {
     query += ` AND w.gender_restriction IN ('ANY', 'FEMALE_ONLY')`;
   }
-  
+
   // Age filter
   query += ` AND (w.min_age_years IS NULL OR w.min_age_years <= ?)`;
   params.push(patientAge);
   query += ` AND (w.max_age_years IS NULL OR w.max_age_years >= ?)`;
   params.push(patientAge);
-  
+
   // Isolation filter
   if (requiresIsolation) {
     query += ` AND w.isolation_capable = 1`;
   }
-  
+
   query += ` ORDER BY available_beds DESC`;
-  
+
   return db.getAll(query, params);
 }
 ```
@@ -1689,7 +1689,7 @@ interface OfflineAdmissionData {
  */
 export async function createAdmissionOffline(data: OfflineAdmissionData): Promise<string> {
   const localId = uuidv4(); // Temporary ID until server assigns real one
-  
+
   await db.execute(`
     INSERT INTO admissions (
       id, patient_id, patient_mrn, patient_name, patient_gender, patient_dob,
@@ -1731,7 +1731,7 @@ import { ConflictHandler } from '@powersync/web';
 
 /**
  * Handle conflicts when offline admission syncs to server.
- * 
+ *
  * Conflict scenarios:
  * 1. Bed was assigned to another patient while offline
  * 2. Ward constraints changed while offline
@@ -1740,7 +1740,7 @@ import { ConflictHandler } from '@powersync/web';
 export const admissionConflictHandler: ConflictHandler = {
   async resolve(conflict) {
     const { local, remote, table } = conflict;
-    
+
     if (table !== 'admissions') {
       return 'remote'; // Default to server wins
     }
@@ -1821,18 +1821,18 @@ describe('Offline Ward Compatibility', () => {
       patientId: 1,
       // ... other data
     });
-    
+
     expect(localId).toBeDefined();
-    
+
     // Verify local state
     const admission = await db.get('SELECT * FROM admissions WHERE id = ?', [localId]);
     expect(admission.local_only).toBe(1);
     expect(admission.sync_status).toBe('PENDING');
-    
+
     // Reconnect and sync
     await powerSync.connect();
     await powerSync.waitForSync();
-    
+
     // Verify synced
     const syncedAdmission = await db.get('SELECT * FROM admissions WHERE patient_id = ?', [1]);
     expect(syncedAdmission.sync_status).toBe('SYNCED');
@@ -1841,13 +1841,13 @@ describe('Offline Ward Compatibility', () => {
   test('handles bed conflict when syncing', async () => {
     // Create offline admission for bed 1
     await createAdmissionOffline({ bedId: 1, ... });
-    
+
     // Simulate: another user took bed 1 while we were offline
     // (inject conflict state)
-    
+
     await powerSync.connect();
     await powerSync.waitForSync();
-    
+
     // Verify conflict flagged
     const admission = await db.get('SELECT * FROM admissions WHERE bed_id = 1 AND local_only = 1');
     expect(admission.sync_status).toBe('CONFLICT');
@@ -1876,7 +1876,7 @@ describe('Offline Ward Compatibility', () => {
 | ICU | null | null |
 | MEDICAL | null | null |
 | SURGICAL | null | null |
-| ISOLATION | null | null | 
+| ISOLATION | null | null |
 
 ---
 

@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/shared/empty-state';
 import { formatDate, formatRelativeTime } from '@/lib/utils/format';
 import { usePatientPhysioOrders } from '@/lib/hooks/use-patient-allied-health';
-import type { PhysiotherapyOrderListItem } from '@/lib/types/physiotherapy';  
+import type { PhysiotherapyOrderListItem } from '@/lib/types/physiotherapy';
 
 // Status color mapping
 const ORDER_STATUS_COLORS: Record<string, string> = {

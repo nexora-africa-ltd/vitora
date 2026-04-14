@@ -169,7 +169,7 @@ export default function SystemBanner({
 
   // Fixed variant - top bar with floating badge
   // Use custom color if provided, otherwise use semantic color
-  const fixedBgClass = color 
+  const fixedBgClass = color
     ? (typeof color === "string" && color.startsWith("#") ? "" : color)
     : fixedColorClasses[semanticColor];
   const fixedBgStyle = color && typeof color === "string" && color.startsWith("#")

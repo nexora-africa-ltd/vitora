@@ -169,7 +169,7 @@ export function DICOMViewer({
       try {
         // Get all instances for the study
         const allInstances = await imagingApi.getStudyInstances(study.study_instance_uid);
-        
+
         // Filter to current series (match by series_instance_uid via the instance's series relation)
         // Since instances don't have series_uid directly, we need to fetch them differently
         // For now, use all instances from the study

@@ -233,10 +233,10 @@ The CDS engine (`hmis/apps/cds/engine.py`) was enhanced to prefer HPT/ATC-based 
 
 ```
 Priority order:
-1. ATC code match (deterministic) — if allergy has substance_code with 
+1. ATC code match (deterministic) — if allergy has substance_code with
    system "http://www.whocc.no/atc" and drug has hpt_code, look up drug's
    active components via TerminologyService and match ATC codes
-2. Text substring match (existing fallback) — match allergy substance 
+2. Text substring match (existing fallback) — match allergy substance
    name against drug generic_name
 ```
 
@@ -246,7 +246,7 @@ Priority order:
 Priority order:
 1. HPT code match (deterministic) — if both drugs have hpt_code values,
    compare generic_concept_id grouping (same generic = potential interaction)
-2. Text match (existing fallback) — match drug names against CDS rule 
+2. Text match (existing fallback) — match drug names against CDS rule
    condition values
 ```
 

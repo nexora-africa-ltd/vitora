@@ -91,7 +91,7 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'properties' in jsonSchema) {
     return Object.keys((jsonSchema as { properties: Record<string, unknown> }).properties);
   }
@@ -105,7 +105,7 @@ function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
-  
+
   if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
     return (jsonSchema as { enum: string[] }).enum;
   }
@@ -135,7 +135,7 @@ describe('Clinic Contract Tests', () => {
 
       // Find fields in API but missing from Zod
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       // Log missing fields for debugging
       if (missingInZod.length > 0) {
         console.warn(
@@ -154,7 +154,7 @@ describe('Clinic Contract Tests', () => {
 
     it('should have critical required fields from the API', () => {
       const zodFields = getZodSchemaFields(ClinicSchema);
-      
+
       const criticalFields = [
         'id',
         'name',
@@ -203,7 +203,7 @@ describe('Clinic Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ClinicSessionSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -230,7 +230,7 @@ describe('Clinic Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ClinicVisitSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -257,7 +257,7 @@ describe('Clinic Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ClinicStaffSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -284,7 +284,7 @@ describe('Clinic Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ClinicScheduleSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -311,7 +311,7 @@ describe('Clinic Contract Tests', () => {
 
       const apiFields = Object.keys(apiProperties);
       const missingInZod = apiFields.filter((field) => !zodFields.includes(field));
-      
+
       if (missingInZod.length > 0) {
         console.warn(
           `⚠️  ClinicEnrollmentSchema: API fields missing from Zod schema:\n  ${missingInZod.join(', ')}`
@@ -339,7 +339,7 @@ describe('Clinic Contract Tests', () => {
       if (!apiValues) return;
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ClinicTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -360,7 +360,7 @@ describe('Clinic Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ClinicStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -380,7 +380,7 @@ describe('Clinic Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ClinicVisitStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -400,7 +400,7 @@ describe('Clinic Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ClinicVisitPrioritySchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -420,7 +420,7 @@ describe('Clinic Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ClinicVisitTypeSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -440,7 +440,7 @@ describe('Clinic Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ClinicVisitSourceSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -460,7 +460,7 @@ describe('Clinic Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ClinicSessionStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -480,7 +480,7 @@ describe('Clinic Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`EnrollmentStatusSchema: Missing values: ${missingInZod.join(', ')}`);
       }
@@ -500,7 +500,7 @@ describe('Clinic Contract Tests', () => {
       }
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
-      
+
       if (missingInZod.length > 0) {
         console.warn(`ClinicStaffRoleSchema: Missing values: ${missingInZod.join(', ')}`);
       }

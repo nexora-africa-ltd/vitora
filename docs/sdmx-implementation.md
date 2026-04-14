@@ -1,9 +1,9 @@
 # SDMX Implementation
 
-> **Gap #29**: SDMX Implementation  
-> **Sprint**: 3.B — Advanced Interoperability  
-> **Priority**: P3 (Enhancement)  
-> **Status**: ✅ Complete  
+> **Gap #29**: SDMX Implementation
+> **Sprint**: 3.B — Advanced Interoperability
+> **Priority**: P3 (Enhancement)
+> **Status**: ✅ Complete
 > **Completed**: March 13, 2026
 
 ---
@@ -183,7 +183,7 @@ SDMX-ML output can be validated against the SDMX 2.1 XSD schema available at:
 
 ## Tests
 
-**File**: `tests/core/test_sdmx.py`  
+**File**: `tests/core/test_sdmx.py`
 **Count**: 17 tests
 
 | Test Class | Tests | Covers |

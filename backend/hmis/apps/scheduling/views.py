@@ -15,11 +15,8 @@ This module contains ViewSets for:
 - Auto-assign and manual override actions
 """
 
-from datetime import datetime, timedelta
-
 import logging
-
-logger = logging.getLogger(__name__)
+from datetime import datetime, timedelta
 
 from django.utils import timezone
 from django_filters import rest_framework as filters
@@ -72,6 +69,8 @@ from hmis.apps.scheduling.services import (
     get_available_slots,
     get_weekly_availability,
 )
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Filters
@@ -961,9 +960,7 @@ class AssignmentViewSet(viewsets.ViewSet):
         """
         from hmis.apps.patients.models import Patient
         from hmis.apps.scheduling.models import Resource
-        from hmis.apps.scheduling.serializers import (
-            AutoAssignRequestSerializer,
-        )
+        from hmis.apps.scheduling.serializers import AutoAssignRequestSerializer
         from hmis.apps.scheduling.services.assignment import AssignmentService
 
         serializer = AutoAssignRequestSerializer(data=request.data)
@@ -1462,7 +1459,7 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             try:
                 shift = serializer.save(**tenant_kwargs)
                 created.append(shift.id)
-            except Exception as e:
+            except Exception:
                 logger.exception("Failed to create shift at index %d in bulk_create", idx)
                 errors.append({"index": idx, "errors": "Failed to create shift"})
 

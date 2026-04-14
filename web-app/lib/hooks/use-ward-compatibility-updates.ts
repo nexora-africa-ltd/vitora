@@ -34,4 +34,3 @@ export {
   useWardCompatibilityUpdates,
   useSupervisorAlerts,
 } from './inpatient-websocket';
-

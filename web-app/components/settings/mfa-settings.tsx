@@ -1,12 +1,12 @@
 /**
  * MFA Settings Component
- * 
+ *
  * Allows users to:
  * - View MFA status
  * - Enable MFA (with setup wizard)
  * - Disable MFA (with password confirmation)
  * - Regenerate backup codes (with TOTP verification)
- * 
+ *
  * DHA Compliance: P0 REQUIRED
  */
 'use client';
@@ -65,7 +65,7 @@ export function MFASettingsTab() {
   // Handle MFA disable
   const handleDisable = async () => {
     if (!disablePassword.trim()) return;
-    
+
     setActionLoading(true);
     setActionError(null);
     try {
@@ -84,7 +84,7 @@ export function MFASettingsTab() {
   // Handle backup codes regeneration
   const handleRegenerate = async () => {
     if (regenerateToken.length !== 6) return;
-    
+
     setActionLoading(true);
     setActionError(null);
     try {
@@ -93,7 +93,7 @@ export function MFASettingsTab() {
       setShowRegenerateDialog(false);
       setRegenerateToken('');
       loadStatus();
-      
+
       // Show the new codes in a dialog
       showNewBackupCodes(result.backup_codes);
     } catch (err) {
@@ -299,7 +299,7 @@ export function MFASettingsTab() {
                   <span className="sm:hidden">Regen</span>
                   <span className="hidden sm:inline">Regenerate Codes</span>
                 </Button>
-                
+
                 {!mfaRequired && (
                   <Button variant="destructive" onClick={() => setShowDisableDialog(true)}>
                     <ShieldOff className="h-4 w-4 mr-2" />
@@ -309,7 +309,7 @@ export function MFASettingsTab() {
               </>
             )}
           </div>
-          
+
           {/* MFA Required Notice */}
           {mfaEnabled && mfaRequired && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
@@ -393,7 +393,7 @@ export function MFASettingsTab() {
               Enter your password to confirm you want to disable MFA. This will make your account less secure.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
@@ -408,7 +408,7 @@ export function MFASettingsTab() {
                 disabled={actionLoading}
               />
             </div>
-            
+
             {actionError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -416,7 +416,7 @@ export function MFASettingsTab() {
               </Alert>
             )}
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDisableDialog(false)}>
               Cancel
@@ -448,7 +448,7 @@ export function MFASettingsTab() {
               Enter a code from your authenticator app to generate new backup codes. Your old codes will be invalidated.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="token" className="text-sm font-medium">
@@ -467,7 +467,7 @@ export function MFASettingsTab() {
                 disabled={actionLoading}
               />
             </div>
-            
+
             {actionError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -475,7 +475,7 @@ export function MFASettingsTab() {
               </Alert>
             )}
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowRegenerateDialog(false)}>
               Cancel
@@ -509,7 +509,7 @@ export function MFASettingsTab() {
               Save these codes in a secure place. They cannot be shown again.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid grid-cols-2 gap-2">
             {newBackupCodes?.map((code, index) => (
               <div

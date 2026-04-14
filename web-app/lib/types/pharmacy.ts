@@ -148,17 +148,17 @@ export interface Drug {
 
 /**
  * Stock batch - represents a single shipment/receipt of a drug.
- * 
+ *
  * IMPORTANT: Each batch belongs to ONE drug only.
  * A drug can have multiple batches (one-to-many relationship).
- * 
+ *
  * Example:
  * - Drug: Paracetamol 500mg Tablets
  *   - Batch A (exp: Mar 2026): 50 available
  *   - Batch B (exp: Jun 2026): 500 available
  *   - Batch C (exp: Dec 2026): 200 available
  *   - Total (Drug.current_stock): 750
- * 
+ *
  * Uses FEFO (First Expiry First Out) dispensing:
  * Batches are ordered by expiry_date, earliest first.
  */
@@ -411,7 +411,7 @@ export interface DispensingListParams {
 
 /**
  * Drug create/update data
- * 
+ *
  * Supports both single category (backward compatible) and multiple categories:
  * - `category`: Single category (will be converted to array)
  * - `categories`: Array of categories (preferred)
@@ -447,10 +447,10 @@ export interface DrugCreateData {
 
 /**
  * Stock batch create data (receiving stock)
- * 
+ *
  * Creates a NEW batch for a drug. Does NOT modify existing batches.
  * The backend auto-sets: quantity_available = quantity_received
- * 
+ *
  * @example
  * // Receiving 500 units of Paracetamol (drug id: 123)
  * {

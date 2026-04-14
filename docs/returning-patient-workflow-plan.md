@@ -97,7 +97,7 @@ Auto-set `visit_type` and suggest `visit_reason` based on patient's visit histor
 ```typescript
 type VisitType = 'NEW' | 'RETURN' | 'FOLLOW_UP';
 
-type VisitReason = 
+type VisitReason =
   | 'NEW_COMPLAINT'
   | 'FOLLOW_UP'           // Linked to prior encounter
   | 'CHRONIC_CARE'        // Ongoing condition management
@@ -106,38 +106,38 @@ type VisitReason =
   | 'LAB_REVIEW'          // Review pending results (skip triage)
   | 'REFERRAL_VISIT';     // From another facility
 
-function determineVisitContext(patient: Patient): { 
-  visitType: VisitType; 
+function determineVisitContext(patient: Patient): {
+  visitType: VisitType;
   suggestedReason: VisitReason;
   skipTriage: boolean;
 } {
   const hasRecentVisits = patient.last_encounter_date !== null;
-  const lastVisitDays = hasRecentVisits 
-    ? daysSince(patient.last_encounter_date) 
+  const lastVisitDays = hasRecentVisits
+    ? daysSince(patient.last_encounter_date)
     : Infinity;
   const hasChronicConditions = patient.clinical_snapshot.active_conditions.length > 0;
   const hasPendingResults = patient.clinical_snapshot.pending_results.length > 0;
-  
+
   if (!hasRecentVisits) {
     return { visitType: 'NEW', suggestedReason: 'NEW_COMPLAINT', skipTriage: false };
   }
-  
+
   if (hasPendingResults) {
     return { visitType: 'RETURN', suggestedReason: 'LAB_REVIEW', skipTriage: true };
   }
-  
+
   if (lastVisitDays <= 30) {
-    return { 
-      visitType: 'FOLLOW_UP', 
+    return {
+      visitType: 'FOLLOW_UP',
       suggestedReason: hasChronicConditions ? 'CHRONIC_CARE' : 'FOLLOW_UP',
-      skipTriage: false 
+      skipTriage: false
     };
   }
-  
-  return { 
-    visitType: 'RETURN', 
+
+  return {
+    visitType: 'RETURN',
     suggestedReason: hasChronicConditions ? 'CHRONIC_CARE' : 'NEW_COMPLAINT',
-    skipTriage: false 
+    skipTriage: false
   };
 }
 ```
@@ -147,7 +147,7 @@ function determineVisitContext(patient: Patient): {
 Implement proper encounter lifecycle tracking:
 
 ```typescript
-type EncounterStatus = 
+type EncounterStatus =
   | 'CREATED'         // Encounter record created
   | 'CHECKED_IN'      // Patient arrived, identity confirmed
   | 'TRIAGED'         // Vitals taken (optional)
@@ -239,7 +239,7 @@ backend/
   "gender": "F",
   "phone_number": "0712******",  # Masked for privacy
   "photo_url": null,
-  
+
   # Last visit info
   "last_visit": {
     "id": 456,
@@ -247,12 +247,12 @@ backend/
     "clinic": "CCC Clinic",
     "encounter_type": "OPD"
   },
-  
+
   # Smart suggestions
   "suggested_visit_type": "FOLLOW_UP",
   "suggested_visit_reason": "CHRONIC_CARE",
   "skip_triage_recommended": false,
-  
+
   # Clinical snapshot (read-only pre-encounter context)
   "clinical_snapshot": {
     "active_conditions": [
@@ -278,14 +278,14 @@ backend/
     ],
     "open_referrals": []
   },
-  
+
   # Enrollments and alerts
   "active_enrollments": ["CCC", "TB"],
   "alerts": [
     {"type": "ALLERGY", "message": "Penicillin - Anaphylaxis risk", "severity": "HIGH"},
     {"type": "CHRONIC", "message": "DM: Last HbA1c pending", "severity": "INFO"}
   ],
-  
+
   # Financial status
   "has_unpaid_balance": false,
   "insurance_status": "ACTIVE"  # ACTIVE, EXPIRED, NONE
@@ -535,7 +535,7 @@ CREATE INDEX idx_checkins_date ON checkins(DATE(checked_in_at));
 
 ---
 
-**Last Updated**: February 7, 2026  
-**Status**: Sprint 1 Complete, Sprint 2 Pending  
-**Priority**: High  
+**Last Updated**: February 7, 2026
+**Status**: Sprint 1 Complete, Sprint 2 Pending
+**Priority**: High
 **Estimated Effort**: Sprint 1: 5-8 days ✅ | Sprint 2: 3-5 days (Total: 8-13 days)

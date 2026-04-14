@@ -5,8 +5,6 @@ Views for Pharmacy app API endpoints.
 import logging
 from datetime import date, timedelta
 
-logger = logging.getLogger(__name__)
-
 from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
@@ -39,6 +37,8 @@ from hmis.apps.pharmacy.serializers import (
     StockBatchSerializer,
 )
 from hmis.apps.pharmacy.services import FEFODispenser, InsufficientStockError
+
+logger = logging.getLogger(__name__)
 
 
 class DrugCategoryViewSet(viewsets.ModelViewSet):
@@ -453,7 +453,7 @@ class DispensingViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         except InsufficientStockError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
+        except Exception:
             logger.exception("Dispensing failed")
             return Response(
                 {"error": "Dispensing failed. Please try again."},

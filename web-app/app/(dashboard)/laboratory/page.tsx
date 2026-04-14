@@ -192,7 +192,7 @@ function ValidationsQuickView() {
             <span className="font-medium">Technical Review</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Verifies analytical accuracy: specimen quality, equipment calibration, 
+            Verifies analytical accuracy: specimen quality, equipment calibration,
             QC results, and procedural compliance.
           </p>
         </div>
@@ -202,7 +202,7 @@ function ValidationsQuickView() {
             <span className="font-medium">Clinical Review</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Verifies clinical relevance: consistency with patient history, 
+            Verifies clinical relevance: consistency with patient history,
             delta checks, and need for interpretation or repeat testing.
           </p>
         </div>

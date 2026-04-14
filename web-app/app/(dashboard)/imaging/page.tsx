@@ -351,7 +351,7 @@ function DICOMStudiesView() {
 function ProcedureCatalogView() {
   const [page, setPage] = useState(1);
   const [modalityFilter, setModalityFilter] = useState<ImagingModality | ''>('');
-  
+
   const { data, isLoading } = useImagingProcedures({
     page,
     page_size: 50,

@@ -1,9 +1,9 @@
 # SNOMED CT Integration
 
-> **Gap #30**: SNOMED CT Active Usage  
-> **Sprint**: 3.B — Advanced Interoperability  
-> **Priority**: P3 (Enhancement)  
-> **Status**: ✅ Complete  
+> **Gap #30**: SNOMED CT Active Usage
+> **Sprint**: 3.B — Advanced Interoperability
+> **Priority**: P3 (Enhancement)
+> **Status**: ✅ Complete
 > **Completed**: March 13, 2026
 
 ---
@@ -115,8 +115,8 @@ class SNOMEDService:
 2. Cache results locally in `SNOMEDConcept`
 3. Fall back to local cache if Snowstorm is unavailable
 
-**Snowstorm API**: `https://browser.ihtsdotools.org/snowstorm/snomed-ct`  
-**Edition**: `MAIN` (International)  
+**Snowstorm API**: `https://browser.ihtsdotools.org/snowstorm/snomed-ct`
+**Edition**: `MAIN` (International)
 **License**: Free for LMICs including Kenya
 
 ### 4. Search API Endpoint
@@ -233,7 +233,7 @@ export const DiagnosisSchema = z.object({
 
 ## Tests
 
-**File**: `tests/core/test_snomed.py`  
+**File**: `tests/core/test_snomed.py`
 **Count**: 26 tests
 
 | Test Class | Tests | Covers |

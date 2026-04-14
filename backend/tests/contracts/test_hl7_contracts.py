@@ -8,10 +8,7 @@ Re-run the script to update after serializer changes:
 
 import pytest  # type: ignore
 
-from hmis.apps.hl7.serializers import (
-    HL7MessageListSerializer,
-    HL7MessageSerializer,
-)
+from hmis.apps.hl7.serializers import HL7MessageListSerializer, HL7MessageSerializer
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
