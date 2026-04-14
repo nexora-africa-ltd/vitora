@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { formatDate } from '@/lib/utils/format';
 import { EncounterLabResultsView } from './encounter-lab-results-view';
+import type { PatientDemographics } from './encounter-lab-results-view';
 import type { LabOrder, LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 
 interface EncounterLabOrdersProps {
@@ -29,6 +30,10 @@ interface EncounterLabOrdersProps {
   onNext?: () => void;
   /** Called before navigating to create lab order - use to save pending changes */
   onBeforeNavigate?: () => Promise<void>;
+  /** Patient demographics for AI interpretation */
+  patientDemographics?: PatientDemographics;
+  /** Current diagnoses for AI interpretation context */
+  diagnoses?: string[];
 }
 
 const STATUS_CONFIG: Record<LabOrderStatus, { label: string; color: string; icon: React.ElementType }> = {
@@ -47,7 +52,7 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; color: string }> = {
   STAT: { label: 'STAT', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
 };
 
-export function EncounterLabOrders({ encounterId, patientId, disabled = false, onNext, onBeforeNavigate }: EncounterLabOrdersProps) {
+export function EncounterLabOrders({ encounterId, patientId, disabled = false, onNext, onBeforeNavigate, patientDemographics, diagnoses }: EncounterLabOrdersProps) {
   const router = useRouter();
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
   const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
@@ -150,7 +155,12 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
         <CardContent className="space-y-4">
           {activeView === 'results' ? (
             /* Inline Lab Results View */
-            <EncounterLabResultsView orders={ordersList} />
+            <EncounterLabResultsView
+              orders={ordersList}
+              encounterId={encounterId}
+              patientDemographics={patientDemographics}
+              diagnoses={diagnoses}
+            />
           ) : (
             <>
               {/* Pending Orders */}
@@ -212,6 +222,10 @@ interface EncounterLabOrdersContentProps {
   patientId: number;
   disabled?: boolean;
   onBeforeNavigate?: () => Promise<void>;
+  /** Patient demographics for AI interpretation */
+  patientDemographics?: PatientDemographics;
+  /** Current diagnoses for AI interpretation context */
+  diagnoses?: string[];
 }
 
 /**
@@ -222,7 +236,9 @@ export function EncounterLabOrdersContent({
   encounterId,
   patientId,
   disabled = false,
-  onBeforeNavigate
+  onBeforeNavigate,
+  patientDemographics,
+  diagnoses,
 }: EncounterLabOrdersContentProps) {
   const router = useRouter();
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
@@ -295,7 +311,12 @@ export function EncounterLabOrdersContent({
           <p className="text-sm">No lab orders for this encounter</p>
         </div>
       ) : activeView === 'results' ? (
-        <EncounterLabResultsView orders={ordersList} />
+        <EncounterLabResultsView
+          orders={ordersList}
+          encounterId={encounterId}
+          patientDemographics={patientDemographics}
+          diagnoses={diagnoses}
+        />
       ) : (
         <div className="space-y-4">
           {pendingOrders.length > 0 && (

@@ -2,11 +2,12 @@
  * Encounter Lab Results View Component
  * Displays lab results inline within the encounter form
  * Allows clinicians to view results without navigating away
+ * Includes per-order AI lab interpretation via TibaBot LabInterpretPanel
  * Sprint 1.5-1.6 Track B: Lab Workflow Integration
  */
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Beaker, AlertTriangle, CheckCircle, ExternalLink, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,12 +16,31 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils/cn';
 import { formatDate } from '@/lib/utils/format';
+import { LabInterpretPanel } from './lab-interpret-panel';
 import type { LabOrder, LabOrderItem, ResultFlag } from '@/lib/types/laboratory';
+import type { AILabResultItem } from '@/lib/types/ai';
 import Link from 'next/link';
+
+export interface PatientDemographics {
+  /** Patient age in years */
+  patientAge: number;
+  /** Patient sex for AI interpretation */
+  patientSex: 'male' | 'female';
+  /** Whether the patient is pregnant */
+  isPregnant?: boolean;
+  /** Gestational weeks if pregnant */
+  gestationalWeeks?: number | null;
+}
 
 interface EncounterLabResultsViewProps {
   orders: LabOrder[];
   isLoading?: boolean;
+  /** Encounter ID for AI interpretation persistence */
+  encounterId?: number;
+  /** Patient demographics for AI interpretation context */
+  patientDemographics?: PatientDemographics;
+  /** Current diagnoses for AI interpretation context */
+  diagnoses?: string[];
 }
 
 const FLAG_CONFIG: Record<ResultFlag | string, { label: string; color: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' }> = {
@@ -60,7 +80,28 @@ function ResultValue({ item }: { item: LabOrderItem }) {
   );
 }
 
-function LabOrderResults({ order }: { order: LabOrder }) {
+/** Convert completed order items to AILabResultItem[] for the interpret panel */
+function orderItemsToAILabResults(items: LabOrderItem[]): AILabResultItem[] {
+  return items
+    .filter((i) => i.has_result && i.result)
+    .map((i) => ({
+      test_name: i.test_name,
+      value: i.result!.numeric_value ?? (parseFloat(String(i.result!.text_value)) || 0),
+      unit: i.result!.result_unit || '',
+    }));
+}
+
+function LabOrderResults({
+  order,
+  encounterId,
+  patientDemographics,
+  diagnoses,
+}: {
+  order: LabOrder;
+  encounterId?: number;
+  patientDemographics?: PatientDemographics;
+  diagnoses?: string[];
+}) {
   const [isOpen, setIsOpen] = useState(true);
 
   const completedItems = order.items?.filter(i => i.has_result) || [];
@@ -178,6 +219,23 @@ function LabOrderResults({ order }: { order: LabOrder }) {
                   ))}
               </div>
             )}
+
+            {/* AI Lab Interpretation (per-order) */}
+            {completedItems.length > 0 && patientDemographics && (
+              <div className="pt-2 border-t">
+                <LabInterpretPanel
+                  labResultId={completedItems[0]?.result?.id}
+                  encounterId={encounterId}
+                  patientAge={patientDemographics.patientAge}
+                  patientSex={patientDemographics.patientSex}
+                  isPregnant={patientDemographics.isPregnant}
+                  gestationalWeeks={patientDemographics.gestationalWeeks}
+                  labResults={orderItemsToAILabResults(completedItems)}
+                  diagnoses={diagnoses}
+                  autoTrigger
+                />
+              </div>
+            )}
           </div>
         </CollapsibleContent>
       </div>
@@ -185,7 +243,13 @@ function LabOrderResults({ order }: { order: LabOrder }) {
   );
 }
 
-export function EncounterLabResultsView({ orders, isLoading }: EncounterLabResultsViewProps) {
+export function EncounterLabResultsView({
+  orders,
+  isLoading,
+  encounterId,
+  patientDemographics,
+  diagnoses,
+}: EncounterLabResultsViewProps) {
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -228,7 +292,13 @@ export function EncounterLabResultsView({ orders, isLoading }: EncounterLabResul
       )}
 
       {ordersWithResults.map((order) => (
-        <LabOrderResults key={order.order_number} order={order} />
+        <LabOrderResults
+          key={order.order_number}
+          order={order}
+          encounterId={encounterId}
+          patientDemographics={patientDemographics}
+          diagnoses={diagnoses}
+        />
       ))}
     </div>
   );

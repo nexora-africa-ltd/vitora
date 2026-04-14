@@ -415,6 +415,12 @@ export interface LabResult {
   created_at: string;
   updated_at: string;
   validation_summary?: ValidationSummary | null;
+  /** Patient gender from related order — for AI lab interpretation */
+  patient_gender?: 'M' | 'F' | 'O' | null;
+  /** Patient date of birth from related order — for AI lab interpretation */
+  patient_date_of_birth?: string | null;
+  /** Encounter ID from related order — for AI lab interpretation */
+  encounter_id?: number | null;
 }
 
 export interface ValidationSummary {
