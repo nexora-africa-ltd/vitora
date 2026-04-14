@@ -594,6 +594,13 @@ export default function EncounterDetailPage() {
                   encounterId={encounterId}
                   patientId={encounter.patient}
                   disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+                  patientDemographics={{
+                    patientAge: calculateAge(encounter.patient_date_of_birth),
+                    patientSex: encounter.patient_gender === 'F' ? 'female' : 'male',
+                  }}
+                  diagnoses={diagnosisFormData
+                    .map(d => d.icd10_display || d.free_text_diagnosis)
+                    .filter(Boolean)}
                 />
               </AccordionContent>
             </AccordionItem>

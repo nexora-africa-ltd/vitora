@@ -396,6 +396,16 @@ class LabResultSerializer(serializers.ModelSerializer):
     verified_by_name = serializers.SerializerMethodField()
     # Two-stage validation summary (Phase L2)
     validation_summary = serializers.SerializerMethodField()
+    # Patient demographics for AI lab interpretation
+    patient_gender = serializers.CharField(
+        source="order_item.lab_order.patient.gender", read_only=True
+    )
+    patient_date_of_birth = serializers.DateField(
+        source="order_item.lab_order.patient.date_of_birth", read_only=True
+    )
+    encounter_id = serializers.IntegerField(
+        source="order_item.lab_order.encounter_id", read_only=True
+    )
 
     class Meta:
         model = LabResult
@@ -433,6 +443,9 @@ class LabResultSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "validation_summary",
+            "patient_gender",
+            "patient_date_of_birth",
+            "encounter_id",
         ]
         read_only_fields = [
             "entered_by",
@@ -441,6 +454,9 @@ class LabResultSerializer(serializers.ModelSerializer):
             "entered_by_name",
             "verified_by_name",
             "validation_summary",
+            "patient_gender",
+            "patient_date_of_birth",
+            "encounter_id",
         ]
 
     def get_numeric_value(self, obj) -> float | None:

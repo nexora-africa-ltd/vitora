@@ -474,6 +474,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "amendment_reason",
                 "created_at",
+                "encounter_id",
                 "entered_at",
                 "entered_by",
                 "entered_by_name",
@@ -491,6 +492,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "option_value",
                 "order_item",
                 "original_value",
+                "patient_date_of_birth",
+                "patient_gender",
                 "reference_high",
                 "reference_low",
                 "reference_range_text",

@@ -27,6 +27,7 @@ import { useEncounterImagingOrders } from '@/lib/hooks/use-imaging';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { useQuery } from '@tanstack/react-query';
 import { proceduresApi } from '@/lib/api/procedures';
+import { calculateAge } from '@/lib/utils/format';
 import { AlertTriangle } from 'lucide-react';
 
 export default function EncounterEditOrdersPage() {
@@ -137,6 +138,10 @@ export default function EncounterEditOrdersPage() {
             encounterId={encounterId}
             patientId={session.patientId}
             disabled={!isEditable}
+            patientDemographics={encounter?.patient_date_of_birth ? {
+              patientAge: calculateAge(encounter.patient_date_of_birth),
+              patientSex: encounter.patient_gender === 'F' ? 'female' : 'male',
+            } : undefined}
           />
         </TabsContent>
 

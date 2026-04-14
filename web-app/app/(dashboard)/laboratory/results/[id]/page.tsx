@@ -28,6 +28,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { LabInterpretPanel } from '@/components/encounters/lab-interpret-panel';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { calculateAge } from '@/lib/utils/format';
 import type { AIQuickAction, AILabResultItem } from '@/lib/types/ai';
 
 type Attachment = { id: number; file: string; file_name: string; uploaded_at?: string };
@@ -295,8 +296,10 @@ export default function LabResultDetailPage() {
           {/* AI Lab Interpretation (Phase 5) */}
           {labResultItems.length > 0 && (
             <LabInterpretPanel
-              patientAge={0}
-              patientSex="male"
+              labResultId={resultId}
+              encounterId={result?.encounter_id ?? undefined}
+              patientAge={result?.patient_date_of_birth ? calculateAge(result.patient_date_of_birth) : 0}
+              patientSex={result?.patient_gender === 'F' ? 'female' : 'male'}
               labResults={labResultItems}
               autoTrigger={autoTriggerInterpret}
               onAutoTriggerConsumed={() => setAutoTriggerInterpret(false)}
