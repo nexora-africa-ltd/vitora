@@ -16,6 +16,8 @@ export interface AIICD10Suggestion {
   description: string;
   /** Confidence score (0.0 to 1.0) */
   confidence: number;
+  /** Whether code is specific enough for billing/SHA claims */
+  is_billable?: boolean;
 }
 
 /** Response from POST /api/ai/icd10-suggest/ */

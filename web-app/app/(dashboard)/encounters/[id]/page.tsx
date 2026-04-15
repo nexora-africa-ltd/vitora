@@ -584,23 +584,25 @@ export default function EncounterDetailPage() {
         {/* Orders — Lab, Imaging, Prescriptions, Procedures */}
         <TabsContent value="orders" className="space-y-4">
           {/* AI Investigation Suggestions — advisory, clinician must accept */}
-          <InvestigationSuggestionsPanel
-            encounterId={encounterId}
-            chiefComplaint={encounter.chief_complaint || undefined}
-            diagnoses={diagnosisFormData.map(d =>
-              d.icd10_display || d.free_text_diagnosis
-            ).filter(Boolean)}
-            symptoms={encounter.chief_complaint
-              ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
-            existingOrders={labOrders?.flatMap(order =>
-              order.items.map(item => item.test_name)
-            )}
-            patientAge={calculateAge(encounter.patient_date_of_birth)}
-            patientSex={encounter.patient_gender === 'F' ? 'F' : encounter.patient_gender === 'M' ? 'M' : undefined}
-            isPregnant={false}
-            autoTrigger={autoTriggerInvestigations}
-            onAutoTriggerConsumed={() => setAutoTriggerInvestigations(false)}
-          />
+          {diagnosisFormData.length > 0 && (
+            <InvestigationSuggestionsPanel
+              encounterId={encounterId}
+              chiefComplaint={encounter.chief_complaint || undefined}
+              diagnoses={diagnosisFormData.map(d =>
+                d.icd10_display || d.free_text_diagnosis
+              ).filter(Boolean)}
+              symptoms={encounter.chief_complaint
+                ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+              existingOrders={labOrders?.flatMap(order =>
+                order.items.map(item => item.test_name)
+              )}
+              patientAge={calculateAge(encounter.patient_date_of_birth)}
+              patientSex={encounter.patient_gender === 'F' ? 'F' : encounter.patient_gender === 'M' ? 'M' : undefined}
+              isPregnant={false}
+              autoTrigger={autoTriggerInvestigations}
+              onAutoTriggerConsumed={() => setAutoTriggerInvestigations(false)}
+            />
+          )}
           <Accordion type="multiple" defaultValue={['lab', 'imaging', 'prescriptions', 'procedures']}>
             <AccordionItem value="lab">
               <AccordionTrigger className="hover:no-underline">

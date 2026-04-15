@@ -36,7 +36,7 @@ export function EncounterTable({
   const router = useRouter();
 
   const hasCriticalVitals = (encounter: Encounter) => {
-    return encounter.spo2 != null && encounter.spo2 < 95;
+    return encounter.has_critical_vitals === true;
   };
 
   if (error) {
@@ -109,7 +109,7 @@ export function EncounterTable({
             {isCritical && (
               <Badge variant="destructive" className="gap-1 text-xs">
                 <AlertTriangle className="h-3 w-3" />
-                SpO2: {encounter.spo2}%
+                Critical
               </Badge>
             )}
           </div>
@@ -178,21 +178,15 @@ export function EncounterTable({
       key: 'vitals',
       header: 'Vitals',
       cell: (encounter: Encounter) => {
-        const isCritical = hasCriticalVitals(encounter);
-        if (isCritical) {
+        if (hasCriticalVitals(encounter)) {
           return (
             <Badge variant="destructive" className="gap-1">
               <AlertTriangle className="h-3 w-3" />
-              SpO2: {encounter.spo2}%
+              Critical
             </Badge>
           );
         }
-        if (encounter.spo2) {
-          return (
-            <span className="text-sm text-muted-foreground">SpO2: {encounter.spo2}%</span>
-          );
-        }
-        return <span className="text-sm text-muted-foreground">—</span>;
+        return <span className="text-sm text-muted-foreground">Normal</span>;
       },
       hideOnMobile: true,
     },

@@ -13,6 +13,7 @@ export const AIICD10SuggestionSchema = z.object({
   code: z.string(),
   description: z.string(),
   confidence: z.number().min(0).max(1),
+  is_billable: z.boolean().optional().default(false),
 });
 
 /** Schema for the ICD-10 suggest response */
@@ -525,8 +526,8 @@ export const AIInvestigationSuggestionSchema = z.object({
   priority: z.enum(['stat', 'urgent', 'routine']),
   rationale: z.string(),
   timing: z.string().optional(),
-  loinc_code: z.string().optional(),
-  loinc_display: z.string().optional(),
+  loinc_code: z.string().nullable().optional(),
+  loinc_display: z.string().nullable().optional(),
   source: z.string().optional(),
   condition_key: z.string().optional(),
   min_facility_level: z.string().optional(),

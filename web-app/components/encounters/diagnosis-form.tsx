@@ -621,6 +621,14 @@ export function DiagnosisEntry({
                     <span className="text-xs truncate max-w-[180px]">
                       {suggestion.description}
                     </span>
+                    {suggestion.is_billable && (
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                      >
+                        Billable
+                      </Badge>
+                    )}
                     <Badge
                       variant="secondary"
                       className={cn(
