@@ -212,4 +212,87 @@ export function resolveClinicalUtilityItems(ctx: ClinicalNavContext): NavItemTyp
   if (ctx.canAccessModule('imaging' as ModuleKey) && ctx.hasModule('imaging' as keyof FacilityModules)) {
     const imagingItems: NavItem[] = [
       { label: 'Imaging Worklist', href: '/imaging/worklist', icon: ListOrdered, moduleKey: 'imaging' as ModuleKey, actionKey: 'imaging.view_orders' as ActionKey },
-      { label
+      { label: 'Imaging Orders', href: '/imaging/orders', icon: ScanLine, moduleKey: 'imaging' as ModuleKey, actionKey: 'imaging.view_orders' as ActionKey },
+      { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon, moduleKey: 'imaging' as ModuleKey, actionKey: 'imaging.view_studies' as ActionKey },
+    ].filter((c) => !c.actionKey || ctx.canPerformAction(c.actionKey));
+    diagnosticsChildren.push(...imagingItems);
+  }
+  if (diagnosticsChildren.length > 0) {
+    items.push({
+      label: 'Diagnostics',
+      icon: Microscope,
+      children: diagnosticsChildren,
+    });
+  }
+
+  // --- Pharmacy ---
+  if (ctx.canAccessModule('pharmacy' as ModuleKey) && ctx.hasModule('pharmacy' as keyof FacilityModules)) {
+    const pharmacyChildren: NavItem[] = [
+      { label: 'Prescriptions', href: '/pharmacy/prescriptions', icon: FileText, actionKey: 'pharmacy.view_prescriptions' as ActionKey },
+      { label: 'Dispensing', href: '/pharmacy/dispensing', icon: FlaskConical, actionKey: 'pharmacy.dispense' as ActionKey },
+      { label: 'Drug Catalog', href: '/pharmacy/drugs', icon: Pill, actionKey: 'pharmacy.view_drugs' as ActionKey },
+    ].filter((c) => !c.actionKey || ctx.canPerformAction(c.actionKey));
+    if (pharmacyChildren.length > 0) {
+      items.push({
+        label: 'Pharmacy',
+        icon: Pill,
+        moduleKey: 'pharmacy' as ModuleKey,
+        facilityModule: 'pharmacy' as keyof FacilityModules,
+        children: pharmacyChildren,
+      });
+    }
+  }
+
+  // --- Procedures ---
+  if (ctx.canAccessModule('procedures' as ModuleKey) && ctx.hasModule('outpatient' as keyof FacilityModules)) {
+    items.push({
+      label: 'Procedures',
+      href: '/procedures/orders',
+      icon: Syringe,
+      moduleKey: 'procedures' as ModuleKey,
+      facilityModule: 'outpatient' as keyof FacilityModules,
+    });
+  }
+
+  // --- Referrals ---
+  if (ctx.canAccessModule('encounters' as ModuleKey) && ctx.canPerformAction('encounters.refer' as ActionKey)) {
+    items.push({
+      label: 'Referrals',
+      href: '/referrals',
+      icon: ArrowLeftRight,
+      moduleKey: 'encounters' as ModuleKey,
+      actionKey: 'encounters.refer' as ActionKey,
+    });
+  }
+
+  // --- CDS Alerts ---
+  if (ctx.canAccessModule('cds' as ModuleKey)) {
+    items.push({
+      label: 'CDS Alerts',
+      href: '/cds/alerts',
+      icon: Shield,
+      moduleKey: 'cds' as ModuleKey,
+      actionKey: 'cds.view_alerts' as ActionKey,
+    });
+  }
+
+  // --- AI Assistant ---
+  if (ENABLE_AI && ctx.canAccessModule('ai' as ModuleKey)) {
+    items.push({
+      label: 'AI Assistant',
+      href: '/ai',
+      icon: BrainCircuit,
+      moduleKey: 'ai' as ModuleKey,
+      actionKey: 'ai.use_chat' as ActionKey,
+    });
+  }
+
+  // --- Displays ---
+  items.push({
+    label: 'Displays',
+    href: '/displays',
+    icon: Monitor,
+  });
+
+  return items;
+}
