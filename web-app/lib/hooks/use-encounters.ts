@@ -317,6 +317,8 @@ export function useAddDiagnosis(encounterId: number) {
     icd10_code?: number | null;
     icd11_code?: string;
     icd11_display?: string;
+    snomed_code?: string;
+    snomed_display?: string;
     diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
     free_text_diagnosis?: string;
     notes?: string;
@@ -331,6 +333,8 @@ export function useAddDiagnosis(encounterId: number) {
       icd10_code_id: data.icd10_code ? String(data.icd10_code) : null,
       icd11_code: data.icd11_code || null,
       icd11_display: data.icd11_display || null,
+      snomed_code: data.snomed_code || null,
+      snomed_display: data.snomed_display || null,
       diagnosis_type: data.diagnosis_type,
       free_text_diagnosis: data.free_text_diagnosis || null,
       notes: data.notes || null,
@@ -376,6 +380,10 @@ export function useUpdateDiagnosis(encounterId: number) {
     diagnosisId: number;
     data: {
       icd10_code?: number | null;
+      icd11_code?: string;
+      icd11_display?: string;
+      snomed_code?: string;
+      snomed_display?: string;
       diagnosis_type?: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
       free_text_diagnosis?: string;
       notes?: string;
@@ -389,6 +397,10 @@ export function useUpdateDiagnosis(encounterId: number) {
     buildLocalData: ({ data }) => {
       const fields: Record<string, string | number | null> = {};
       if (data.icd10_code !== undefined) fields.icd10_code_id = data.icd10_code ? String(data.icd10_code) : null;
+      if (data.icd11_code !== undefined) fields.icd11_code = data.icd11_code || null;
+      if (data.icd11_display !== undefined) fields.icd11_display = data.icd11_display || null;
+      if (data.snomed_code !== undefined) fields.snomed_code = data.snomed_code || null;
+      if (data.snomed_display !== undefined) fields.snomed_display = data.snomed_display || null;
       if (data.diagnosis_type !== undefined) fields.diagnosis_type = data.diagnosis_type;
       if (data.free_text_diagnosis !== undefined) fields.free_text_diagnosis = data.free_text_diagnosis || null;
       if (data.notes !== undefined) fields.notes = data.notes || null;

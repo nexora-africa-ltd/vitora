@@ -122,6 +122,10 @@ class TibaBotClient:
             logger.warning("TibaBot request timed out after %ds", self.timeout)
             raise TibaBotUnavailableError("TibaBot AI service request timed out.") from e
 
+        except requests.exceptions.RetryError as e:
+            logger.warning("TibaBot max retries exceeded: %s", e)
+            raise TibaBotUnavailableError("TibaBot AI service is currently unavailable.") from e
+
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else None
             response_body = ""
