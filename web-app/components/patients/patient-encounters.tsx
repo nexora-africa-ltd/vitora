@@ -1,14 +1,17 @@
 'use client';
 
-import Link from 'next/link';
+import { useCallback, useState } from 'react';
 import { Stethoscope, Calendar, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/shared/empty-state';
+import { FloatingPeekPanel, type PeekPanelState } from '@/components/shared/floating-peek-panel';
+import { EncounterPeekContent } from '@/components/encounters/encounter-peek-content';
 import { formatDate, formatRelativeTime } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
 import { usePatientEncounters } from '@/lib/hooks/use-patients';
+import type { PatientEncounter } from '@/lib/types/patient';
 
 interface PatientEncountersProps {
   patientId: number;
@@ -16,6 +19,13 @@ interface PatientEncountersProps {
 
 export function PatientEncounters({ patientId }: PatientEncountersProps) {
   const { data: encounters, isLoading, error } = usePatientEncounters(patientId);
+  const [peekState, setPeekState] = useState<PeekPanelState>('closed');
+  const [peekEncounter, setPeekEncounter] = useState<PatientEncounter | null>(null);
+
+  const handleSelectEncounter = useCallback((enc: PatientEncounter) => {
+    setPeekEncounter(enc);
+    setPeekState('open');
+  }, []);
 
   if (isLoading) {
     return (
@@ -65,13 +75,18 @@ export function PatientEncounters({ patientId }: PatientEncountersProps) {
         const type = ENCOUNTER_TYPES.find((t) => t.value === encounter.encounter_type);
 
         return (
-          <Link key={encounter.id} href={`/encounters/${encounter.id}`}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <button
+            key={encounter.id}
+            type="button"
+            onClick={() => handleSelectEncounter(encounter)}
+            className="w-full text-left"
+          >
+            <Card className="hover:shadow-md hover:border-teal-500/30 transition-all cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Stethoscope className="h-5 w-5 text-primary" />
+                    <div className="h-10 w-10 rounded-full bg-teal-500/10 flex items-center justify-center shrink-0">
+                      <Stethoscope className="h-5 w-5 text-teal-600 dark:text-teal-400" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -93,9 +108,23 @@ export function PatientEncounters({ patientId }: PatientEncountersProps) {
                 </div>
               </CardContent>
             </Card>
-          </Link>
+          </button>
         );
       })}
+
+      {/* Encounter Peek Panel */}
+      {peekEncounter && (
+        <FloatingPeekPanel
+          state={peekState}
+          onStateChange={setPeekState}
+          title={`${ENCOUNTER_TYPES.find((t) => t.value === peekEncounter.encounter_type)?.label || peekEncounter.encounter_type} — ${formatDate(peekEncounter.encounter_date)}`}
+          subtitle={peekEncounter.chief_complaint}
+          icon={Stethoscope}
+          fullPageHref={`/encounters/${peekEncounter.id}`}
+        >
+          <EncounterPeekContent encounterId={peekEncounter.id} />
+        </FloatingPeekPanel>
+      )}
     </div>
   );
 }

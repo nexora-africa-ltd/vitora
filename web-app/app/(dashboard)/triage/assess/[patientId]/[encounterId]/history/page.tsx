@@ -9,38 +9,42 @@
  */
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
-import { Calendar, History, ExternalLink } from 'lucide-react';
+import { Calendar, History, Stethoscope } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { FloatingPeekPanel, type PeekPanelState } from '@/components/shared/floating-peek-panel';
+import { EncounterPeekContent } from '@/components/encounters/encounter-peek-content';
 import { ClinicalSnapshotBanner } from '@/components/encounters/clinical-snapshot-banner';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { usePatientEncounters } from '@/lib/hooks/use-patients';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { formatDate } from '@/lib/utils/format';
 import type { PatientEncounter } from '@/lib/types/patient';
+import { ENCOUNTER_TYPES } from '@/lib/utils/constants';
 
 // =============================================================================
 // Past Encounter Card Component (Clickable)
 // =============================================================================
 
-function PastEncounterCard({ encounter }: { encounter: PatientEncounter }) {
+function PastEncounterCard({ encounter, onSelect }: { encounter: PatientEncounter; onSelect: (enc: PatientEncounter) => void }) {
+  const type = ENCOUNTER_TYPES.find((t) => t.value === encounter.encounter_type);
   return (
-    <Link
-      href={`/encounters/${encounter.id}`}
-      className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 hover:border-primary/30 transition-colors group"
+    <button
+      type="button"
+      onClick={() => onSelect(encounter)}
+      className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 hover:border-teal-500/30 transition-colors group w-full text-left"
     >
       <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm">{formatDate(encounter.encounter_date)}</span>
           <Badge variant="outline" className="text-xs">
-            {encounter.encounter_type}
+            {type?.label || encounter.encounter_type}
           </Badge>
           <Badge variant="secondary" className="text-xs">{encounter.status}</Badge>
         </div>
@@ -50,8 +54,8 @@ function PastEncounterCard({ encounter }: { encounter: PatientEncounter }) {
           </p>
         )}
       </div>
-      <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
-    </Link>
+      <Stethoscope className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
+    </button>
   );
 }
 
@@ -68,6 +72,15 @@ export default function TriageHistoryPage() {
   const encounterId = params.encounterId as string;
 
   const { markSectionComplete, markSectionVisited } = useTriageAssessStore();
+
+  // Floating encounter peek state
+  const [peekState, setPeekState] = useState<PeekPanelState>('closed');
+  const [peekEncounter, setPeekEncounter] = useState<PatientEncounter | null>(null);
+
+  const handleSelectEncounter = useCallback((enc: PatientEncounter) => {
+    setPeekEncounter(enc);
+    setPeekState('open');
+  }, []);
 
   // Mark history as visited when leaving the tab
   const encounterIdNum = parseInt(encounterId, 10);
@@ -140,7 +153,7 @@ export default function TriageHistoryPage() {
           ) : pastEncounters.length > 0 ? (
             <div className="space-y-2">
               {pastEncounters.map((enc) => (
-                <PastEncounterCard key={enc.id} encounter={enc} />
+                <PastEncounterCard key={enc.id} encounter={enc} onSelect={handleSelectEncounter} />
               ))}
             </div>
           ) : (
@@ -160,6 +173,20 @@ export default function TriageHistoryPage() {
           Next: Assessment
         </Button>
       </div>
+
+      {/* Encounter Peek Panel */}
+      {peekEncounter && (
+        <FloatingPeekPanel
+          state={peekState}
+          onStateChange={setPeekState}
+          title={`${ENCOUNTER_TYPES.find((t) => t.value === peekEncounter.encounter_type)?.label || peekEncounter.encounter_type} — ${formatDate(peekEncounter.encounter_date)}`}
+          subtitle={peekEncounter.chief_complaint}
+          icon={Stethoscope}
+          fullPageHref={`/encounters/${peekEncounter.id}`}
+        >
+          <EncounterPeekContent encounterId={peekEncounter.id} />
+        </FloatingPeekPanel>
+      )}
     </div>
   );
 }
