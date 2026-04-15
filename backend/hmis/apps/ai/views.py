@@ -448,10 +448,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
             content=data["message"],
         )
 
-        # Auto-title: use the first user message (truncated)
-        if session.messages.filter(role="user").count() == 1:
-            session.title = data["message"][:120]
-            session.save(update_fields=["title"])
+        is_first_message = session.messages.filter(role="user").count() == 1
 
         # Audit log
         AuditLog.log(
@@ -500,6 +497,18 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
 
         # Extract model identifier from TibaBot response (if provided)
         model_id = result.get("model_used") or result.get("model") or None
+
+        # Infer a smart title from the first user–assistant exchange
+        if is_first_message:
+            content_str = str(assistant_content) if assistant_content else ""
+            try:
+                inferred = client.generate_chat_title(data["message"], content_str)
+            except Exception:
+                inferred = None
+            session.title = (
+                inferred if isinstance(inferred, str) and inferred else data["message"][:120]
+            )
+            session.save(update_fields=["title"])
 
         return self._build_response(
             session=session,

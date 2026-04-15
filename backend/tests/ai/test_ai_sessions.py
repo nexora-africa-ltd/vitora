@@ -163,6 +163,7 @@ class TestClinicalChatResponseSchema:
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
+            mock_client.generate_chat_title.return_value = "Greeting TibaBot"
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.post(
@@ -174,8 +175,8 @@ class TestClinicalChatResponseSchema:
         session_id = response.data["session_id"]
         session = ChatSession.objects.get(id=session_id)
         assert session.user == test_user
-        # Auto-title from first message
-        assert session.title == "Hello TibaBot"
+        # LLM-inferred title from first exchange
+        assert session.title == "Greeting TibaBot"
         # 2 messages: user + assistant
         assert session.messages.count() == 2
 
@@ -192,6 +193,7 @@ class TestClinicalChatResponseSchema:
         with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.clinical_chat.return_value = mock_response
+            mock_client.generate_chat_title.return_value = "Should Not Be Called"
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.post(
@@ -204,6 +206,8 @@ class TestClinicalChatResponseSchema:
         # Title unchanged since a user message already existed
         session.refresh_from_db()
         assert session.title == "Existing"
+        # generate_chat_title should not be called for subsequent messages
+        mock_client.generate_chat_title.assert_not_called()
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_creates_new_session_when_invalid_session_id(self, authenticated_client):
@@ -250,6 +254,205 @@ class TestClinicalChatResponseSchema:
         assert messages[0].content == "User question"
         assert messages[1].role == "assistant"
         assert messages[1].content == "AI answer"
+
+
+# =============================================================================
+# Chat title inference
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestChatTitleInference:
+    """Tests for LLM-inferred chat session titles."""
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_title_inferred_from_first_exchange(self, authenticated_client, test_user):
+        """Title should come from LLM inference on first user+assistant exchange."""
+        mock_response = {
+            "message": {"role": "assistant", "content": "Consider malaria or typhoid."},
+        }
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_chat.return_value = mock_response
+            mock_client.generate_chat_title.return_value = "Fever Differential Diagnosis"
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.post(
+                "/api/ai/clinical/chat/",
+                {"message": "What causes fever in a 5 year old child in Kenya?"},
+                format="json",
+            )
+
+        session = ChatSession.objects.get(id=response.data["session_id"])
+        assert session.title == "Fever Differential Diagnosis"
+        mock_client.generate_chat_title.assert_called_once()
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_falls_back_to_truncation_when_inference_fails(self, authenticated_client, test_user):
+        """When LLM title inference fails, fall back to truncated first message."""
+        mock_response = {
+            "message": {"role": "assistant", "content": "Some response."},
+        }
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_chat.return_value = mock_response
+            mock_client.generate_chat_title.return_value = None  # inference failed
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.post(
+                "/api/ai/clinical/chat/",
+                {"message": "Chest pain workup"},
+                format="json",
+            )
+
+        session = ChatSession.objects.get(id=response.data["session_id"])
+        assert session.title == "Chest pain workup"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_falls_back_when_inference_raises_exception(self, authenticated_client, test_user):
+        """Any unexpected exception during title inference should not break chat."""
+        mock_response = {
+            "message": {"role": "assistant", "content": "Response"},
+        }
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_chat.return_value = mock_response
+            mock_client.generate_chat_title.side_effect = RuntimeError("boom")
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.post(
+                "/api/ai/clinical/chat/",
+                {"message": "Emergency triage question"},
+                format="json",
+            )
+
+        # Should still succeed with truncated fallback
+        assert response.status_code == status.HTTP_200_OK
+        session = ChatSession.objects.get(id=response.data["session_id"])
+        assert session.title == "Emergency triage question"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_title_not_regenerated_on_subsequent_messages(self, authenticated_client, test_user):
+        """Title should only be generated once, on the first exchange."""
+        mock_response = {
+            "message": {"role": "assistant", "content": "Response"},
+        }
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_chat.return_value = mock_response
+            mock_client.generate_chat_title.return_value = "Initial Topic"
+            mock_get_client.return_value = mock_client
+
+            # First message — title generated
+            resp1 = authenticated_client.post(
+                "/api/ai/clinical/chat/",
+                {"message": "First question"},
+                format="json",
+            )
+            session_id = resp1.data["session_id"]
+            assert mock_client.generate_chat_title.call_count == 1
+
+            # Second message — title should NOT be regenerated
+            mock_client.generate_chat_title.reset_mock()
+            authenticated_client.post(
+                "/api/ai/clinical/chat/",
+                {"message": "Follow-up", "session_id": session_id},
+                format="json",
+            )
+            mock_client.generate_chat_title.assert_not_called()
+
+        session = ChatSession.objects.get(id=session_id)
+        assert session.title == "Initial Topic"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_inferred_title_stripped_of_quotes(self, authenticated_client, test_user):
+        """LLM sometimes wraps titles in quotes — should be stripped."""
+        mock_response = {
+            "message": {"role": "assistant", "content": "Response"},
+        }
+        with patch("hmis.apps.ai.views.get_tibabot_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_chat.return_value = mock_response
+            mock_client.generate_chat_title.return_value = "Pediatric Malaria Management"
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.post(
+                "/api/ai/clinical/chat/",
+                {"message": "How to manage malaria in children?"},
+                format="json",
+            )
+
+        session = ChatSession.objects.get(id=response.data["session_id"])
+        assert session.title == "Pediatric Malaria Management"
+        assert '"' not in session.title
+        assert "'" not in session.title
+
+
+# =============================================================================
+# Client generate_chat_title unit tests
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestTibaBotClientGenerateChatTitle:
+    """Unit tests for TibaBotClient.generate_chat_title()."""
+
+    def test_returns_title_from_successful_response(self):
+        from hmis.apps.ai.client import TibaBotClient
+
+        client = TibaBotClient()
+        mock_result = {
+            "message": {"role": "assistant", "content": '"Pediatric Fever Workup"'},
+        }
+        with patch.object(client, "_request", return_value=mock_result):
+            title = client.generate_chat_title("Child has fever", "Consider malaria")
+        assert title == "Pediatric Fever Workup"
+
+    def test_returns_none_on_tibabot_error(self):
+        from hmis.apps.ai.client import TibaBotClient, TibaBotUnavailableError
+
+        client = TibaBotClient()
+        with patch.object(client, "_request", side_effect=TibaBotUnavailableError("down")):
+            title = client.generate_chat_title("msg", "reply")
+        assert title is None
+
+    def test_returns_none_on_empty_response(self):
+        from hmis.apps.ai.client import TibaBotClient
+
+        client = TibaBotClient()
+        with patch.object(client, "_request", return_value={"message": {}}):
+            title = client.generate_chat_title("msg", "reply")
+        assert title is None
+
+    def test_strips_trailing_period(self):
+        from hmis.apps.ai.client import TibaBotClient
+
+        client = TibaBotClient()
+        mock_result = {
+            "message": {"role": "assistant", "content": "Chest Pain Evaluation."},
+        }
+        with patch.object(client, "_request", return_value=mock_result):
+            title = client.generate_chat_title("chest pain", "consider ACS")
+        assert title == "Chest Pain Evaluation"
+
+    def test_uses_shorter_timeout(self):
+        from hmis.apps.ai.client import TibaBotClient
+
+        client = TibaBotClient()
+        client.timeout = 30
+        captured_timeouts = []
+
+        def capture_request(**kwargs):
+            captured_timeouts.append(client.timeout)
+            return {"message": {"content": "Title"}}
+
+        with patch.object(client, "_request", side_effect=capture_request):
+            client.generate_chat_title("msg", "reply")
+
+        # During the call, timeout should have been reduced
+        assert captured_timeouts[0] == 8
+        # After the call, timeout should be restored
+        assert client.timeout == 30
 
 
 # =============================================================================
