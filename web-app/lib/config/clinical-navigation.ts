@@ -4,11 +4,8 @@ import type { FacilityModules } from '@/lib/auth/context';
 import type { NavItem, NavItemType } from '@/lib/config/navigation';
 import {
   Activity,
-  AlertTriangle,
   ArrowLeftRight,
-  BedDouble,
   BrainCircuit,
-  Building2,
   CalendarCheck,
   CheckSquare,
   ClipboardList,
@@ -19,10 +16,8 @@ import {
   Monitor,
   Pill,
   ScanLine,
-  Siren,
   SquareDashedTopSolid,
   Stethoscope,
-  Syringe,
   CheckCircle2,
   Users,
   FileText,
@@ -166,38 +161,6 @@ export function resolveClinicalUtilityItems(ctx: ClinicalNavContext): NavItemTyp
     });
   }
 
-  // --- Emergency ---
-  if (ctx.canAccessModule('emergency' as ModuleKey) && ctx.hasModule('emergency' as keyof FacilityModules)) {
-    items.push({
-      label: 'Emergency',
-      href: '/emergency',
-      icon: Siren,
-      moduleKey: 'emergency' as ModuleKey,
-      facilityModule: 'emergency' as keyof FacilityModules,
-    });
-  }
-
-  // --- Inpatient ---
-  if (ctx.canAccessModule('inpatient' as ModuleKey) && ctx.hasModule('inpatient' as keyof FacilityModules)) {
-    const inpatientChildren: NavItem[] = [
-      { label: 'Bed Board', href: '/inpatient/bed-board', icon: BedDouble, actionKey: 'inpatient.view_ward' as ActionKey },
-      { label: 'Wards', href: '/wards', icon: Building2, actionKey: 'inpatient.view_ward' as ActionKey },
-      { label: 'Admissions', href: '/admissions', icon: ClipboardList, actionKey: 'inpatient.view_admissions' as ActionKey },
-      { label: 'Kardex', href: '/inpatient/kardex', icon: ClipboardList, actionKey: 'inpatient.view_kardex' as ActionKey },
-      { label: 'Rounds', href: '/inpatient/rounds', icon: Stethoscope, actionKey: 'inpatient.make_rounds' as ActionKey },
-      { label: 'Alerts', href: '/inpatient/alerts', icon: AlertTriangle, actionKey: 'inpatient.view_alerts' as ActionKey },
-    ].filter((c) => !c.actionKey || ctx.canPerformAction(c.actionKey));
-    if (inpatientChildren.length > 0) {
-      items.push({
-        label: 'Inpatient',
-        icon: BedDouble,
-        moduleKey: 'inpatient' as ModuleKey,
-        facilityModule: 'inpatient' as keyof FacilityModules,
-        children: inpatientChildren,
-      });
-    }
-  }
-
   // --- Diagnostics (Lab + Imaging unified) ---
   const diagnosticsChildren: NavItem[] = [];
   if (ctx.canAccessModule('laboratory' as ModuleKey) && ctx.hasModule('laboratory' as keyof FacilityModules)) {
@@ -241,17 +204,6 @@ export function resolveClinicalUtilityItems(ctx: ClinicalNavContext): NavItemTyp
         children: pharmacyChildren,
       });
     }
-  }
-
-  // --- Procedures ---
-  if (ctx.canAccessModule('procedures' as ModuleKey) && ctx.hasModule('outpatient' as keyof FacilityModules)) {
-    items.push({
-      label: 'Procedures',
-      href: '/procedures/orders',
-      icon: Syringe,
-      moduleKey: 'procedures' as ModuleKey,
-      facilityModule: 'outpatient' as keyof FacilityModules,
-    });
   }
 
   // --- Referrals ---
