@@ -188,6 +188,10 @@ export default function NewEncounterReviewPage() {
           diagnoses.map((dx: DiagnosisFormData) =>
             encountersApi.createDiagnosis(draft.id, {
               icd10_code: dx.icd10_code,
+              icd11_code: dx.icd11_code || undefined,
+              icd11_display: dx.icd11_display || undefined,
+              snomed_code: dx.snomed_code || undefined,
+              snomed_display: dx.snomed_display || undefined,
               diagnosis_type: dx.diagnosis_type,
               free_text_diagnosis: dx.free_text_diagnosis,
               notes: dx.notes,
@@ -241,6 +245,10 @@ export default function NewEncounterReviewPage() {
           diagnoses.map((dx: DiagnosisFormData) =>
             encountersApi.createDiagnosis(result.id, {
               icd10_code: dx.icd10_code,
+              icd11_code: dx.icd11_code || undefined,
+              icd11_display: dx.icd11_display || undefined,
+              snomed_code: dx.snomed_code || undefined,
+              snomed_display: dx.snomed_display || undefined,
               diagnosis_type: dx.diagnosis_type,
               free_text_diagnosis: dx.free_text_diagnosis,
               notes: dx.notes,

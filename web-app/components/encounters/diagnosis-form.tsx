@@ -11,16 +11,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import { ICD11Select } from '@/components/terminology';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { useAIEnabled, useAIICD10Suggest } from '@/lib/hooks/use-ai';
 import { useFeatureFlag } from '@/lib/hooks/use-feature-flags';
 import { SmartSuggestion } from '@/components/shared/smart-suggestion';
+import { encountersApi } from '@/lib/api/encounters';
 import { cn } from '@/lib/utils/cn';
 import type { SmartSuggestion as SmartSuggestionType } from '@/lib/hooks/use-smart-suggestions';
 import type { DiagnosisFormData, ICD10SearchResult } from '@/lib/types/encounter-form';
 import type { AIICD10Suggestion } from '@/lib/types/ai';
+import type { SNOMEDSearchResult } from '@/lib/types/encounter';
+
+type CodingSystem = 'icd10' | 'icd11' | 'snomed';
 
 interface DiagnosisEntryProps {
   onAdd: (diagnosis: DiagnosisFormData) => void;
@@ -42,8 +45,13 @@ export function DiagnosisEntry({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedCode, setSelectedCode] = useState<ICD10SearchResult | null>(null);
-  const [useICD11, setUseICD11] = useState(true); // Default to ICD-11
+  const [codingSystem, setCodingSystem] = useState<CodingSystem>('icd11');
   const [icd11Value, setIcd11Value] = useState<{ code: string; title: string } | null>(null);
+  const [snomedValue, setSnomedValue] = useState<{ concept_id: string; display: string } | null>(null);
+  const [snomedQuery, setSnomedQuery] = useState('');
+  const [snomedResults, setSnomedResults] = useState<SNOMEDSearchResult[]>([]);
+  const [snomedSearching, setSnomedSearching] = useState(false);
+  const [isSnomedOpen, setIsSnomedOpen] = useState(false);
 
   const [formData, setFormData] = useState<DiagnosisFormData>({
     icd10_code: null,
@@ -122,16 +130,19 @@ export function DiagnosisEntry({
     };
     setSelectedCode(asResult);
     setIcd11Value(null);
+    setSnomedValue(null);
     setFormData(prev => ({
       ...prev,
       icd10_code: null, // No DB id from AI — code-based selection
       icd10_display: `${suggestion.code} - ${suggestion.description}`,
       icd11_code: undefined,
       icd11_display: undefined,
+      snomed_code: undefined,
+      snomed_display: undefined,
     }));
     setSearchQuery('');
     setIsSearchOpen(false);
-    setUseICD11(false);
+    setCodingSystem('icd10');
   }, []);
 
   // Filter out dismissed suggestions
@@ -143,16 +154,25 @@ export function DiagnosisEntry({
   useEffect(() => {
     if (editingDiagnosis) {
       setFormData(editingDiagnosis.data);
-      // Set ICD-11 or ICD-10 selection based on existing data
-      if (editingDiagnosis.data.icd11_code) {
-        setUseICD11(true);
+      // Set coding system selection based on existing data
+      if (editingDiagnosis.data.snomed_code) {
+        setCodingSystem('snomed');
+        setSnomedValue({
+          concept_id: editingDiagnosis.data.snomed_code,
+          display: editingDiagnosis.data.snomed_display || '',
+        });
+        setSelectedCode(null);
+        setIcd11Value(null);
+      } else if (editingDiagnosis.data.icd11_code) {
+        setCodingSystem('icd11');
         setIcd11Value({
           code: editingDiagnosis.data.icd11_code,
           title: editingDiagnosis.data.icd11_display?.replace(`${editingDiagnosis.data.icd11_code} - `, '') || ''
         });
         setSelectedCode(null);
+        setSnomedValue(null);
       } else if (editingDiagnosis.data.icd10_code) {
-        setUseICD11(false);
+        setCodingSystem('icd10');
         setSelectedCode({
           id: editingDiagnosis.data.icd10_code,
           code: editingDiagnosis.data.icd10_display?.split(' - ')[0] || '',
@@ -161,11 +181,13 @@ export function DiagnosisEntry({
           category: '',
         });
         setIcd11Value(null);
+        setSnomedValue(null);
       }
     } else {
       // Reset form when not editing
       setSelectedCode(null);
       setIcd11Value(null);
+      setSnomedValue(null);
       setFormData({
         icd10_code: null,
         diagnosis_type: existingDiagnoses.some(d => d.diagnosis_type === 'PRIMARY') ? 'SECONDARY' : 'PRIMARY',
@@ -180,12 +202,15 @@ export function DiagnosisEntry({
   const handleSelectCode = useCallback((code: ICD10SearchResult) => {
     setSelectedCode(code);
     setIcd11Value(null);
+    setSnomedValue(null);
     setFormData(prev => ({
       ...prev,
       icd10_code: code.id,
       icd10_display: `${code.code} - ${code.short_description || code.description}`,
       icd11_code: undefined,
       icd11_display: undefined,
+      snomed_code: undefined,
+      snomed_display: undefined,
     }));
     setSearchQuery('');
     setIsSearchOpen(false);
@@ -194,16 +219,20 @@ export function DiagnosisEntry({
   const handleSelectICD11 = useCallback((code: { code: string; title: string }) => {
     setIcd11Value(code);
     setSelectedCode(null);
+    setSnomedValue(null);
     setFormData(prev => ({
       ...prev,
       icd10_code: null,
       icd10_display: undefined,
       icd11_code: code.code,
       icd11_display: `${code.code} - ${code.title}`,
+      snomed_code: undefined,
+      snomed_display: undefined,
     }));
   }, []);
 
-  const handleClearCode = useCallback(() => {
+  const handleSelectSNOMED = useCallback((result: SNOMEDSearchResult) => {
+    setSnomedValue({ concept_id: result.concept_id, display: result.display });
     setSelectedCode(null);
     setIcd11Value(null);
     setFormData(prev => ({
@@ -212,12 +241,49 @@ export function DiagnosisEntry({
       icd10_display: undefined,
       icd11_code: undefined,
       icd11_display: undefined,
+      snomed_code: result.concept_id,
+      snomed_display: result.display,
+    }));
+    setSnomedQuery('');
+    setIsSnomedOpen(false);
+    setSnomedResults([]);
+  }, []);
+
+  const handleSnomedSearch = useCallback(async (query: string) => {
+    setSnomedQuery(query);
+    if (query.length < 2) {
+      setSnomedResults([]);
+      return;
+    }
+    setSnomedSearching(true);
+    try {
+      const data = await encountersApi.searchSNOMED(query);
+      setSnomedResults(data.results);
+    } catch {
+      setSnomedResults([]);
+    } finally {
+      setSnomedSearching(false);
+    }
+  }, []);
+
+  const handleClearCode = useCallback(() => {
+    setSelectedCode(null);
+    setIcd11Value(null);
+    setSnomedValue(null);
+    setFormData(prev => ({
+      ...prev,
+      icd10_code: null,
+      icd10_display: undefined,
+      icd11_code: undefined,
+      icd11_display: undefined,
+      snomed_code: undefined,
+      snomed_display: undefined,
     }));
   }, []);
 
   const handleAdd = useCallback(() => {
-    if (!selectedCode && !icd11Value && !formData.free_text_diagnosis.trim()) {
-      return; // Need either ICD code or free text
+    if (!selectedCode && !icd11Value && !snomedValue && !formData.free_text_diagnosis.trim()) {
+      return; // Need either a code or free text
     }
 
     const diagnosisData: DiagnosisFormData = {
@@ -228,6 +294,8 @@ export function DiagnosisEntry({
       icd11_display: icd11Value
         ? `${icd11Value.code} - ${icd11Value.title}`
         : formData.icd11_display,
+      snomed_code: snomedValue?.concept_id ?? formData.snomed_code,
+      snomed_display: snomedValue?.display ?? formData.snomed_display,
     };
 
     // If editing, update the existing diagnosis
@@ -240,6 +308,7 @@ export function DiagnosisEntry({
     // Reset form for next entry
     setSelectedCode(null);
     setIcd11Value(null);
+    setSnomedValue(null);
     setFormData({
       icd10_code: null,
       diagnosis_type: 'SECONDARY', // Default to secondary for subsequent diagnoses
@@ -248,19 +317,19 @@ export function DiagnosisEntry({
       is_confirmed: false,
       certainty: 'suspected',
     });
-  }, [formData, selectedCode, icd11Value, onAdd, onUpdate, editingDiagnosis]);
+  }, [formData, selectedCode, icd11Value, snomedValue, onAdd, onUpdate, editingDiagnosis]);
 
-  const hasSelectedCode = selectedCode || icd11Value;
+  const hasSelectedCode = selectedCode || icd11Value || snomedValue;
 
   return (
     <div className="space-y-4 border-b pb-4 last:border-0 last:pb-0">
-      {/* ICD Code Search with ICD-10/ICD-11 Tabs */}
+      {/* ICD Code Search with ICD-10/ICD-11/SNOMED Tabs */}
       <div className="space-y-2">
         <Label>Diagnosis Code Search</Label>
         {hasSelectedCode ? (
           <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
             <Badge variant="outline" className="font-mono">
-              {selectedCode?.code || icd11Value?.code}
+              {selectedCode?.code || icd11Value?.code || snomedValue?.concept_id}
             </Badge>
             {icd11Value && (
               <Badge variant="secondary" className="text-xs">
@@ -272,8 +341,13 @@ export function DiagnosisEntry({
                 ICD-10
               </Badge>
             )}
+            {snomedValue && (
+              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                SNOMED
+              </Badge>
+            )}
             <span className="flex-1 text-sm truncate">
-              {selectedCode?.short_description || selectedCode?.description || icd11Value?.title}
+              {selectedCode?.short_description || selectedCode?.description || icd11Value?.title || snomedValue?.display}
             </span>
             <Button
               type="button"
@@ -287,137 +361,42 @@ export function DiagnosisEntry({
           </div>
         ) : (
           <div className="space-y-3">
-            {/* ICD Version Toggle */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className={cn("text-sm", !useICD11 && "font-medium")}>ICD-10</span>
-                <Switch
-                  checked={useICD11}
-                  onCheckedChange={setUseICD11}
-                  disabled={disabled}
-                />
-                <span className={cn("text-sm", useICD11 && "font-medium")}>ICD-11</span>
-              </div>
+            {/* Coding System Pill Selector */}
+            <div className="flex gap-1 rounded-md border p-1 w-fit">
+              <button
+                type="button"
+                onClick={() => setCodingSystem('icd10')}
+                className={cn(
+                  'px-3 py-1 rounded text-xs font-medium transition-colors',
+                  codingSystem === 'icd10' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                )}
+              >
+                ICD-10
+              </button>
+              <button
+                type="button"
+                onClick={() => setCodingSystem('icd11')}
+                className={cn(
+                  'px-3 py-1 rounded text-xs font-medium transition-colors',
+                  codingSystem === 'icd11' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                )}
+              >
+                ICD-11
+              </button>
+              <button
+                type="button"
+                onClick={() => setCodingSystem('snomed')}
+                className={cn(
+                  'px-3 py-1 rounded text-xs font-medium transition-colors',
+                  codingSystem === 'snomed' ? 'bg-purple-600 text-white' : 'hover:bg-accent'
+                )}
+              >
+                SNOMED
+              </button>
             </div>
 
-            {/* AI-Powered ICD-10 Suggestions */}
-            {aiEnabled && !useICD11 && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAISuggest}
-                    disabled={disabled || isAISuggesting || formData.free_text_diagnosis.trim().length < 3}
-                    className="gap-1.5 text-xs"
-                  >
-                    {isAISuggesting ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <BrainCircuit className="h-3.5 w-3.5" />
-                    )}
-                    <span className="hidden sm:inline">
-                      {isAISuggesting ? 'Suggesting...' : 'AI Suggest ICD-10'}
-                    </span>
-                    <span className="sm:hidden">
-                      {isAISuggesting ? '...' : 'AI Suggest'}
-                    </span>
-                  </Button>
-                  {formData.free_text_diagnosis.trim().length < 3 && (
-                    <span className="text-xs text-muted-foreground">
-                      Type a diagnosis description below first
-                    </span>
-                  )}
-                </div>
-
-                {/* Smart Suggestion — high-confidence auto-suggested (smart_autopopulate only) */}
-                {topSmartSuggestion && (
-                  <SmartSuggestion
-                    suggestion={topSmartSuggestion}
-                    onAccept={() => {
-                      const s = topSmartSuggestion.value as AIICD10Suggestion;
-                      handleAcceptAISuggestion(s);
-                    }}
-                    onReject={() => {
-                      const s = topSmartSuggestion.value as AIICD10Suggestion;
-                      handleDismissAISuggestion(s.code);
-                    }}
-                    variant="inline"
-                    formatValue={(v) => {
-                      const s = v as AIICD10Suggestion;
-                      return `${s.code} — ${s.description}`;
-                    }}
-                    disabled={disabled}
-                  />
-                )}
-
-                {/* AI Suggestion Results */}
-                {visibleAISuggestions.length > 0 && (
-                  <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 p-3 space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-purple-700 dark:text-purple-400">
-                      <BrainCircuit className="h-3.5 w-3.5" />
-                      AI Suggested Codes
-                      <span className="text-muted-foreground font-normal">(click to accept)</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {visibleAISuggestions.map((suggestion) => (
-                        <div
-                          key={suggestion.code}
-                          className="group flex items-center gap-1 rounded-md border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/40 px-2 py-1 text-sm transition-colors hover:border-purple-400 dark:hover:border-purple-500"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleAcceptAISuggestion(suggestion)}
-                            className="flex items-center gap-1.5 text-left"
-                            disabled={disabled}
-                          >
-                            <Badge variant="outline" className="font-mono text-xs shrink-0">
-                              {suggestion.code}
-                            </Badge>
-                            <span className="text-xs truncate max-w-[180px]">
-                              {suggestion.description}
-                            </span>
-                            <Badge
-                              variant="secondary"
-                              className={cn(
-                                "text-[10px] shrink-0",
-                                suggestion.confidence >= 0.8
-                                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                                  : suggestion.confidence >= 0.5
-                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                    : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                              )}
-                            >
-                              {Math.round(suggestion.confidence * 100)}%
-                            </Badge>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDismissAISuggestion(suggestion.code)}
-                            className="ml-0.5 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity"
-                            title="Dismiss suggestion"
-                          >
-                            <X className="h-3 w-3 text-muted-foreground" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* AI Error/Unavailable Message */}
-                {aiSuggestions?.error && visibleAISuggestions.length === 0 && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {aiSuggestions.error}
-                  </p>
-                )}
-              </div>
-            )}
-
             {/* ICD-10 Search */}
-            {!useICD11 && (
+            {codingSystem === 'icd10' && (
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -477,7 +456,7 @@ export function DiagnosisEntry({
             )}
 
             {/* ICD-11 Search */}
-            {useICD11 && (
+            {codingSystem === 'icd11' && (
               <ICD11Select
                 value={icd11Value}
                 onSelect={handleSelectICD11}
@@ -485,22 +464,198 @@ export function DiagnosisEntry({
                 disabled={disabled}
               />
             )}
+
+            {/* SNOMED CT Search */}
+            {codingSystem === 'snomed' && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search SNOMED CT (e.g., diabetes mellitus, fracture)..."
+                  value={snomedQuery}
+                  onChange={(e) => {
+                    handleSnomedSearch(e.target.value);
+                    setIsSnomedOpen(true);
+                  }}
+                  onFocus={() => setIsSnomedOpen(true)}
+                  onBlur={() => {
+                    setTimeout(() => setIsSnomedOpen(false), 200);
+                  }}
+                  className="pl-9"
+                  disabled={disabled}
+                />
+
+                {isSnomedOpen && snomedQuery.length >= 2 && (
+                  <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">
+                    <CardContent className="p-2">
+                      {snomedSearching ? (
+                        <div className="space-y-2">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center gap-2 p-2">
+                              <Skeleton className="h-5 w-20" />
+                              <Skeleton className="h-4 flex-1" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : snomedResults.length > 0 ? (
+                        <ul className="space-y-1">
+                          {snomedResults.map((result) => (
+                            <li key={result.concept_id}>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleSelectSNOMED(result);
+                                }}
+                                className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
+                              >
+                                <Badge variant="outline" className="font-mono shrink-0 bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">
+                                  {result.concept_id}
+                                </Badge>
+                                <div className="min-w-0">
+                                  <span className="text-sm">{result.display}</span>
+                                  {result.semantic_tag && (
+                                    <span className="text-xs text-muted-foreground ml-1">
+                                      ({result.semantic_tag})
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-center text-muted-foreground py-4 text-sm">
+                          No SNOMED CT concepts found for &quot;{snomedQuery}&quot;
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Free Text Diagnosis (alternative) */}
+      {/* Free Text Diagnosis with inline AI Suggest button */}
       <div className="space-y-2">
         <Label htmlFor="free_text_diagnosis">
-          {selectedCode ? 'Additional Description (Optional)' : 'Free Text Diagnosis'}
+          {hasSelectedCode ? 'Additional Description (Optional)' : 'Free Text Diagnosis'}
         </Label>
-        <Input
-          id="free_text_diagnosis"
-          placeholder={selectedCode ? 'Additional notes about this diagnosis...' : 'Enter diagnosis if ICD code not available...'}
-          value={formData.free_text_diagnosis}
-          onChange={(e) => setFormData(prev => ({ ...prev, free_text_diagnosis: e.target.value }))}
-          disabled={disabled}
-        />
+        <div className="relative">
+          <Input
+            id="free_text_diagnosis"
+            placeholder={hasSelectedCode ? 'Additional notes about this diagnosis...' : 'Enter diagnosis if code not available...'}
+            value={formData.free_text_diagnosis}
+            onChange={(e) => setFormData(prev => ({ ...prev, free_text_diagnosis: e.target.value }))}
+            disabled={disabled}
+            className={cn(aiEnabled && formData.free_text_diagnosis.trim().length >= 3 && 'pr-28 sm:pr-36')}
+          />
+          {/* AI Suggest button — rendered inside input when sufficient text */}
+          {aiEnabled && formData.free_text_diagnosis.trim().length >= 3 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleAISuggest}
+              disabled={disabled || isAISuggesting}
+              className="absolute right-1 top-1/2 -translate-y-1/2 gap-1 h-7 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-950/40"
+            >
+              {isAISuggesting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <BrainCircuit className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {isAISuggesting ? 'Suggesting...' : 'AI Suggest'}
+              </span>
+            </Button>
+          )}
+        </div>
+
+        {/* Smart Suggestion — high-confidence auto-suggested (smart_autopopulate only) */}
+        {topSmartSuggestion && (
+          <SmartSuggestion
+            suggestion={topSmartSuggestion}
+            onAccept={() => {
+              const s = topSmartSuggestion.value as AIICD10Suggestion;
+              handleAcceptAISuggestion(s);
+            }}
+            onReject={() => {
+              const s = topSmartSuggestion.value as AIICD10Suggestion;
+              handleDismissAISuggestion(s.code);
+            }}
+            variant="inline"
+            formatValue={(v) => {
+              const s = v as AIICD10Suggestion;
+              return `${s.code} — ${s.description}`;
+            }}
+            disabled={disabled}
+          />
+        )}
+
+        {/* AI Suggestion Results */}
+        {visibleAISuggestions.length > 0 && (
+          <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 p-3 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-purple-700 dark:text-purple-400">
+              <BrainCircuit className="h-3.5 w-3.5" />
+              AI Suggested Codes
+              <span className="text-muted-foreground font-normal">(click to accept)</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {visibleAISuggestions.map((suggestion) => (
+                <div
+                  key={suggestion.code}
+                  className="group flex items-center gap-1 rounded-md border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/40 px-2 py-1 text-sm transition-colors hover:border-purple-400 dark:hover:border-purple-500"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleAcceptAISuggestion(suggestion)}
+                    className="flex items-center gap-1.5 text-left"
+                    disabled={disabled}
+                  >
+                    <Badge variant="outline" className="font-mono text-xs shrink-0">
+                      {suggestion.code}
+                    </Badge>
+                    <span className="text-xs truncate max-w-[180px]">
+                      {suggestion.description}
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "text-[10px] shrink-0",
+                        suggestion.confidence >= 0.8
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                          : suggestion.confidence >= 0.5
+                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                      )}
+                    >
+                      {Math.round(suggestion.confidence * 100)}%
+                    </Badge>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDismissAISuggestion(suggestion.code)}
+                    className="ml-0.5 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity"
+                    title="Dismiss suggestion"
+                  >
+                    <X className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AI Error/Unavailable Message */}
+        {aiSuggestions?.error && visibleAISuggestions.length === 0 && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {aiSuggestions.error}
+          </p>
+        )}
       </div>
 
       {/* Diagnosis Type & Certainty */}
@@ -609,7 +764,7 @@ export function DiagnosisEntry({
         <Button
           type="button"
           onClick={handleAdd}
-          disabled={disabled || (!selectedCode && !icd11Value && !formData.free_text_diagnosis.trim())}
+          disabled={disabled || (!selectedCode && !icd11Value && !snomedValue && !formData.free_text_diagnosis.trim())}
           className={editingDiagnosis ? "flex-1" : "w-full"}
           variant={editingDiagnosis ? "default" : hasSelectedCode || formData.free_text_diagnosis.trim() ? "default" : "outline"}
         >
@@ -633,10 +788,13 @@ export function DiagnosisEntry({
       </div>
 
       {/* Click outside to close search */}
-      {isSearchOpen && (
+      {(isSearchOpen || isSnomedOpen) && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => setIsSearchOpen(false)}
+          onClick={() => {
+            setIsSearchOpen(false);
+            setIsSnomedOpen(false);
+          }}
         />
       )}
     </div>
@@ -707,8 +865,15 @@ export function DiagnosisListDisplay({
                 "font-medium text-sm",
                 diagnosis.certainty === 'ruled_out' && "line-through text-muted-foreground"
               )}>
-                {diagnosis.icd11_display || diagnosis.icd10_display || diagnosis.free_text_diagnosis}
+                {diagnosis.snomed_display
+                  ? `${diagnosis.snomed_display}`
+                  : diagnosis.icd11_display || diagnosis.icd10_display || diagnosis.free_text_diagnosis}
               </p>
+              {diagnosis.snomed_code && (
+                <Badge variant="secondary" className="text-[10px] mt-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                  SNOMED: {diagnosis.snomed_code}
+                </Badge>
+              )}
               {diagnosis.notes && (
                 <p className="text-sm text-muted-foreground mt-1">{diagnosis.notes}</p>
               )}

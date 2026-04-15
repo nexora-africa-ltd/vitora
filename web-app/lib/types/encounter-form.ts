@@ -97,6 +97,8 @@ export interface DiagnosisFormData {
   icd10_display?: string | null;
   icd11_code?: string | null;
   icd11_display?: string | null;
+  snomed_code?: string | null;
+  snomed_display?: string | null;
   diagnosis_type: 'PRIMARY' | 'SECONDARY' | 'DIFFERENTIAL' | 'WORKING';
   free_text_diagnosis: string;
   notes: string;
