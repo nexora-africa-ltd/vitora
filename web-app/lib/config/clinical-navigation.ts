@@ -7,23 +7,16 @@ import {
   ArrowLeftRight,
   BrainCircuit,
   CalendarCheck,
-  CheckSquare,
   ClipboardList,
   Clock3,
   FlaskConical,
   ListOrdered,
-  Microscope,
   Monitor,
   Pill,
-  ScanLine,
-  SquareDashedTopSolid,
   Stethoscope,
   CheckCircle2,
   Users,
-  FileText,
   Shield,
-  TestTubes,
-  Image as ImageIcon,
 } from 'lucide-react';
 import { ENABLE_AI } from '@/lib/utils/constants';
 
@@ -161,49 +154,15 @@ export function resolveClinicalUtilityItems(ctx: ClinicalNavContext): NavItemTyp
     });
   }
 
-  // --- Diagnostics (Lab + Imaging unified) ---
-  const diagnosticsChildren: NavItem[] = [];
-  if (ctx.canAccessModule('laboratory' as ModuleKey) && ctx.hasModule('laboratory' as keyof FacilityModules)) {
-    const labItems: NavItem[] = [
-      { label: 'Lab Orders', href: '/laboratory/orders', icon: SquareDashedTopSolid, moduleKey: 'laboratory' as ModuleKey, actionKey: 'laboratory.view_orders' as ActionKey },
-      { label: 'Lab Validations', href: '/laboratory/validations', icon: CheckSquare, moduleKey: 'laboratory' as ModuleKey, actionKey: 'laboratory.verify_results' as ActionKey },
-      { label: 'Test Catalog', href: '/laboratory/tests', icon: TestTubes, moduleKey: 'laboratory' as ModuleKey, actionKey: 'laboratory.view_dashboard' as ActionKey },
-      { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText, moduleKey: 'laboratory' as ModuleKey, actionKey: 'laboratory.view_reports' as ActionKey },
-    ].filter((c) => !c.actionKey || ctx.canPerformAction(c.actionKey));
-    diagnosticsChildren.push(...labItems);
-  }
-  if (ctx.canAccessModule('imaging' as ModuleKey) && ctx.hasModule('imaging' as keyof FacilityModules)) {
-    const imagingItems: NavItem[] = [
-      { label: 'Imaging Worklist', href: '/imaging/worklist', icon: ListOrdered, moduleKey: 'imaging' as ModuleKey, actionKey: 'imaging.view_orders' as ActionKey },
-      { label: 'Imaging Orders', href: '/imaging/orders', icon: ScanLine, moduleKey: 'imaging' as ModuleKey, actionKey: 'imaging.view_orders' as ActionKey },
-      { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon, moduleKey: 'imaging' as ModuleKey, actionKey: 'imaging.view_studies' as ActionKey },
-    ].filter((c) => !c.actionKey || ctx.canPerformAction(c.actionKey));
-    diagnosticsChildren.push(...imagingItems);
-  }
-  if (diagnosticsChildren.length > 0) {
-    items.push({
-      label: 'Diagnostics',
-      icon: Microscope,
-      children: diagnosticsChildren,
-    });
-  }
-
-  // --- Pharmacy ---
+  // --- My Prescriptions (Rx I've ordered) ---
   if (ctx.canAccessModule('pharmacy' as ModuleKey) && ctx.hasModule('pharmacy' as keyof FacilityModules)) {
-    const pharmacyChildren: NavItem[] = [
-      { label: 'Prescriptions', href: '/pharmacy/prescriptions', icon: FileText, actionKey: 'pharmacy.view_prescriptions' as ActionKey },
-      { label: 'Dispensing', href: '/pharmacy/dispensing', icon: FlaskConical, actionKey: 'pharmacy.dispense' as ActionKey },
-      { label: 'Drug Catalog', href: '/pharmacy/drugs', icon: Pill, actionKey: 'pharmacy.view_drugs' as ActionKey },
-    ].filter((c) => !c.actionKey || ctx.canPerformAction(c.actionKey));
-    if (pharmacyChildren.length > 0) {
-      items.push({
-        label: 'Pharmacy',
-        icon: Pill,
-        moduleKey: 'pharmacy' as ModuleKey,
-        facilityModule: 'pharmacy' as keyof FacilityModules,
-        children: pharmacyChildren,
-      });
-    }
+    items.push({
+      label: 'My Prescriptions',
+      href: '/pharmacy/prescriptions',
+      icon: Pill,
+      moduleKey: 'pharmacy' as ModuleKey,
+      actionKey: 'pharmacy.view_prescriptions' as ActionKey,
+    });
   }
 
   // --- Referrals ---

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
+import { usePeekPanelStore } from '@/lib/stores/peek-panel-store';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
 import {
   Tooltip,
@@ -384,6 +385,7 @@ function StageStatusDot({ stage }: { stage: string }) {
 
 function CurrentPatientCard({ onMobileClose }: { onMobileClose: () => void }) {
   const { canAccessModule } = usePermissions();
+  const openPeek = usePeekPanelStore((s) => s.open);
   const currentPatient = usePatientJourneyStore((state) => {
     if (!state.selectedPatientId) return null;
     return state.activePatients[state.selectedPatientId] ?? null;
@@ -440,11 +442,22 @@ function CurrentPatientCard({ onMobileClose }: { onMobileClose: () => void }) {
         </div>
 
         <div className="mt-3 space-y-2">
-          <Button asChild size="sm" variant="outline" className="w-full">
-            <Link href={`/patients/${currentPatient.id}`} onClick={onMobileClose}>
-              <User className="h-3.5 w-3.5" />
-              View Patient
-            </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              openPeek({
+                type: 'patient',
+                id: currentPatient.id,
+                title: currentPatient.name,
+                subtitle: demographics.join(' · '),
+              });
+              onMobileClose();
+            }}
+          >
+            <User className="h-3.5 w-3.5" />
+            View Patient
           </Button>
 
           <div className="flex items-center gap-2">
@@ -458,11 +471,21 @@ function CurrentPatientCard({ onMobileClose }: { onMobileClose: () => void }) {
             ) : null}
 
             {currentPatient.encounter_id && canAccessModule('encounters' as never) ? (
-              <Button asChild size="sm" className="flex-1">
-                <Link href={`/encounters/${currentPatient.encounter_id}`} onClick={onMobileClose}>
-                  <Stethoscope className="h-3.5 w-3.5" />
-                  Encounter
-                </Link>
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={() => {
+                  openPeek({
+                    type: 'encounter',
+                    id: currentPatient.encounter_id!,
+                    title: 'Encounter',
+                    subtitle: currentPatient.name,
+                  });
+                  onMobileClose();
+                }}
+              >
+                <Stethoscope className="h-3.5 w-3.5" />
+                Encounter
               </Button>
             ) : null}
           </div>

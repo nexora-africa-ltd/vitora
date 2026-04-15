@@ -13,6 +13,7 @@ import { CommandMenu } from '@/components/layout/command-menu';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
 import { OfflineBanner } from '@/components/shared/offline-banner';
+import { GlobalPeekPanel } from '@/components/shared/global-peek-panel';
 import { cn } from '@/lib/utils/cn';
 import { usePageContextForAI } from '@/lib/hooks/use-page-context-for-ai';
 import { useSwipeSidebar } from '@/lib/hooks/use-swipe-sidebar';
@@ -99,6 +100,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* Mobile bottom navigation (Telegram-style) */}
               <MobileBottomNav hidden={mobileSidebarOpen} />
 
+              {/* Global peek panel (patient/encounter slide-over) */}
+              <GlobalPeekPanel />
               {/* TibaBot AI floating widget */}
               <AIChatWidget />
               {/* Global command menu (⌘K / Ctrl+K) */}
