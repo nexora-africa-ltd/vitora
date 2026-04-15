@@ -258,10 +258,12 @@ class MetabaseDashboardListView(APIView):
     permission_classes = [IsAuthenticated, CanViewAnalytics]
 
     def get(self, request: Request) -> Response:
-        site_url = getattr(settings, "METABASE_SITE_URL", "")
+        api_url = getattr(settings, "METABASE_API_URL", "") or getattr(
+            settings, "METABASE_SITE_URL", ""
+        )
         mb_api_key = getattr(settings, "METABASE_API_KEY", "")
 
-        if not site_url:
+        if not api_url:
             return Response(
                 {"detail": "Metabase is not configured."},
                 status=503,
@@ -272,7 +274,7 @@ class MetabaseDashboardListView(APIView):
             if mb_api_key:
                 headers["x-api-key"] = mb_api_key
             resp = http_requests.get(
-                f"{site_url.rstrip('/')}/api/dashboard",
+                f"{api_url.rstrip('/')}/api/dashboard",
                 headers=headers,
                 timeout=10,
             )

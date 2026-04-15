@@ -47,9 +47,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        site_url = (options["metabase_url"] or getattr(settings, "METABASE_SITE_URL", "")).rstrip(
-            "/"
-        )
+        site_url = (
+            options["metabase_url"]
+            or getattr(settings, "METABASE_API_URL", "")
+            or getattr(settings, "METABASE_SITE_URL", "")
+        ).rstrip("/")
         api_key = options["api_key"] or getattr(settings, "METABASE_API_KEY", "")
         dry_run = options["dry_run"]
         secret = options["secret"]
