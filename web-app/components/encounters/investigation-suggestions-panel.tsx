@@ -17,6 +17,7 @@ import {
   Loader2,
   Sparkles,
   CheckCircle2,
+  Plus,
   XCircle,
   Clock,
   AlertTriangle,
@@ -182,7 +183,9 @@ export function InvestigationSuggestionsPanel({
   function handleAccept(suggestion: AIInvestigationSuggestion) {
     setAcceptedNames((prev) => new Set(prev).add(suggestion.name));
     onAcceptSuggestion?.(suggestion);
-    toast.success(`"${suggestion.name}" added to orders`);
+    if (!onAcceptSuggestion) {
+      toast.success(`"${suggestion.name}" accepted`);
+    }
   }
 
   function handleDismiss(suggestion: AIInvestigationSuggestion) {
@@ -406,10 +409,10 @@ function SuggestionCard({ suggestion, isAccepted, onAccept, onDismiss }: Suggest
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAccept}>
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <Plus className="h-4 w-4 text-green-600" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Accept &amp; add to orders</TooltipContent>
+                  <TooltipContent>Add to lab orders</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               <TooltipProvider delayDuration={300}>

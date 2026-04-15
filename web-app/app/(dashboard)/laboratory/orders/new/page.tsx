@@ -19,6 +19,11 @@ export default function NewLabOrderPage() {
   const patientId = searchParams.get('patient');
   const admissionId = searchParams.get('admission');
 
+  // AI suggestion pre-fill params
+  const prefillPriority = searchParams.get('priority') as 'ROUTINE' | 'URGENT' | 'STAT' | null;
+  const prefillClinicalNotes = searchParams.get('clinical_notes');
+  const prefillTestSearch = searchParams.get('test_search');
+
   // Try to get from context first (if within patient/encounter shell)
   let contextPatient: { id?: number; first_name?: string; last_name?: string; mrn?: string; gender?: string; date_of_birth?: string } | null = null;
   let contextEncounter: { id?: number; encounter_type?: string; encounter_date?: string; chief_complaint?: string } | null = null;
@@ -159,6 +164,9 @@ export default function NewLabOrderPage() {
         encounterType={(contextEncounter?.encounter_type || encounter?.encounter_type) ?? undefined}
         encounterDate={(contextEncounter?.encounter_date || encounter?.encounter_date) ?? undefined}
         chiefComplaint={(contextEncounter?.chief_complaint || encounter?.chief_complaint) ?? undefined}
+        prefillPriority={prefillPriority || undefined}
+        prefillClinicalNotes={prefillClinicalNotes || undefined}
+        prefillTestSearch={prefillTestSearch || undefined}
         onSuccess={handleSuccess}
       />
     </div>

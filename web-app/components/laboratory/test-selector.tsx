@@ -36,6 +36,8 @@ interface TestSelectorProps {
   orderType?: OrderType;
   excludeTestIds?: number[];
   showLOINCTab?: boolean;
+  /** Pre-fill search query (e.g. from AI suggestion) */
+  initialSearch?: string;
 }
 
 const CATEGORIES: { value: TestCategory | ''; label: string }[] = [
@@ -74,8 +76,9 @@ export function TestSelector({
   orderType = 'IN_HOUSE',
   excludeTestIds = [],
   showLOINCTab = true,
+  initialSearch = '',
 }: TestSelectorProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [category, setCategory] = useState<TestCategory | ''>('');
   const [page, setPage] = useState(1);
   const [useLOINC, setUseLOINC] = useState(false);
