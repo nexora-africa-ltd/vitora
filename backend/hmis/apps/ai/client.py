@@ -598,6 +598,54 @@ class TibaBotClient:
         )
 
     # -----------------------------------------------------------------
+    # Chat title inference
+    # -----------------------------------------------------------------
+
+    #: System prompt used for LLM-based chat title generation.
+    TITLE_SYSTEM_PROMPT: ClassVar[str] = (
+        "Generate a concise 3-8 word topic title for this clinical conversation. "
+        "Reply with ONLY the title text — no quotes, no punctuation at the end, "
+        "no explanation."
+    )
+
+    def generate_chat_title(self, user_message: str, assistant_message: str) -> str | None:
+        """
+        Infer a short topic title from the first user–assistant exchange.
+
+        Uses the ``/clinical/chat`` endpoint with a title-generation system
+        prompt.  Returns the title string or *None* on any failure so callers
+        can fall back gracefully.
+
+        A shorter timeout (8 s) is used since this is non-critical.
+        """
+        payload = {
+            "message": (f"User message: {user_message}\n\nAssistant reply: {assistant_message}"),
+            "system_instruction": self.TITLE_SYSTEM_PROMPT,
+        }
+
+        saved_timeout = self.timeout
+        try:
+            self.timeout = min(self.timeout, 8)
+            result = self._request(method="POST", endpoint="/clinical/chat", data=payload)
+        except (TibaBotError, TibaBotUnavailableError):
+            logger.debug("Title generation failed — will use fallback")
+            return None
+        finally:
+            self.timeout = saved_timeout
+
+        # Extract the content from the response
+        msg = result.get("message", {})
+        if isinstance(msg, dict):
+            title = msg.get("content", "")
+        elif isinstance(msg, str):
+            title = msg
+        else:
+            title = result.get("response", result.get("content", ""))
+
+        title = str(title).strip().strip('"').strip("'").rstrip(".")
+        return title[:120] if title else None
+
+    # -----------------------------------------------------------------
     # Phase 6 — Clinical Document Generation
     # -----------------------------------------------------------------
 
