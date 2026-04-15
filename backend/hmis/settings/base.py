@@ -487,6 +487,9 @@ CELERY_TIMEZONE = TIME_ZONE
 # Metabase Embedded Analytics
 # ---------------------------------------------------------------------------
 METABASE_SITE_URL = os.getenv("METABASE_SITE_URL", "http://localhost:3333")
+METABASE_API_URL = (
+    os.getenv("METABASE_API_URL", "") or METABASE_SITE_URL
+)  # internal URL for server-to-server
 METABASE_EMBEDDING_SECRET = os.getenv("METABASE_EMBEDDING_SECRET", "")
 METABASE_API_KEY = os.getenv("METABASE_API_KEY", "")
 
