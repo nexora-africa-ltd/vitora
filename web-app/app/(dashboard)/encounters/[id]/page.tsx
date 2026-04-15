@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import {
   PlayCircle, User, Calendar, Stethoscope, Eye,
   ClipboardList, FileText, Beaker, ScanLine, Pill, Scissors,
@@ -57,7 +57,7 @@ import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
-import type { AIQuickAction } from '@/lib/types/ai';
+import type { AIQuickAction, AIInvestigationSuggestion } from '@/lib/types/ai';
 
 // Parse blood pressure string "120/80" to systolic/diastolic
 function parseBP(bp: string | null | undefined): { systolic: number | null; diastolic: number | null } {
@@ -123,6 +123,7 @@ const ENCOUNTER_QUICK_ACTIONS: AIQuickAction[] = [
 
 export default function EncounterDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const encounterId = Number(params.id);
 
   // Use encounter context instead of independent fetch
@@ -179,6 +180,24 @@ export default function EncounterDetailPage() {
   const [autoTriggerCDS, setAutoTriggerCDS] = useState(false);
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
   const [autoTriggerInvestigations, setAutoTriggerInvestigations] = useState(false);
+
+  // Navigate to lab order form pre-filled with AI suggestion data
+  const handleAcceptInvestigation = useCallback((suggestion: AIInvestigationSuggestion) => {
+    const params = new URLSearchParams({
+      encounter: String(encounterId),
+      patient: String(encounter?.patient ?? ''),
+    });
+    if (suggestion.priority) {
+      params.set('priority', suggestion.priority.toUpperCase());
+    }
+    if (suggestion.rationale) {
+      params.set('clinical_notes', suggestion.rationale);
+    }
+    if (suggestion.name) {
+      params.set('test_search', suggestion.name);
+    }
+    router.push(`/laboratory/orders/new?${params.toString()}`);
+  }, [encounterId, encounter?.patient, router]);
 
   useEffect(() => {
     if (!activePanelAction || !clearPanelAction) return;
@@ -601,6 +620,7 @@ export default function EncounterDetailPage() {
               isPregnant={false}
               autoTrigger={autoTriggerInvestigations}
               onAutoTriggerConsumed={() => setAutoTriggerInvestigations(false)}
+              onAcceptSuggestion={handleAcceptInvestigation}
             />
           )}
           <Accordion type="multiple" defaultValue={['lab', 'imaging', 'prescriptions', 'procedures']}>

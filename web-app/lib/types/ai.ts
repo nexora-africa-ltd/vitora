@@ -1081,8 +1081,8 @@ export interface AIInvestigationSuggestion {
   priority: 'stat' | 'urgent' | 'routine';
   rationale: string;
   timing?: string;
-  loinc_code?: string;
-  loinc_display?: string;
+  loinc_code?: string | null;
+  loinc_display?: string | null;
   source?: string;
   condition_key?: string;
   min_facility_level?: string;

@@ -70,6 +70,12 @@ interface LabOrderFormProps {
   encounterType?: string;
   encounterDate?: string;
   chiefComplaint?: string;
+  /** Pre-fill priority (from AI suggestion) */
+  prefillPriority?: LabPriority;
+  /** Pre-fill clinical notes (from AI suggestion rationale) */
+  prefillClinicalNotes?: string;
+  /** Pre-fill test search query (from AI suggestion name) */
+  prefillTestSearch?: string;
   onSuccess?: (orderNumber: string) => void;
   onCancel?: () => void;
 }
@@ -96,6 +102,9 @@ export function LabOrderForm({
   encounterType: propEncounterType,
   encounterDate: propEncounterDate,
   chiefComplaint: propChiefComplaint,
+  prefillPriority,
+  prefillClinicalNotes,
+  prefillTestSearch,
   onSuccess,
   onCancel,
 }: LabOrderFormProps) {
@@ -104,7 +113,6 @@ export function LabOrderForm({
   const router = useRouter();
   const createOrder = useCreateLabOrder();
   const submitOrder = useSubmitLabOrder();
-  const [showTestSelector, setShowTestSelector] = useState(false);
 
   // Try to get data from context (optional - may not be in context)
   const patientContext = useOptionalPatientContext();
@@ -149,8 +157,8 @@ export function LabOrderForm({
       patient: patientId || 0,
       encounter: encounterId || 0,
       order_type: 'IN_HOUSE',
-      priority: 'ROUTINE',
-      clinical_notes: '',
+      priority: prefillPriority || 'ROUTINE',
+      clinical_notes: prefillClinicalNotes || '',
       items: [],
     },
     mode: 'onChange', // Validate on change to catch issues early
@@ -160,6 +168,10 @@ export function LabOrderForm({
     control: form.control,
     name: 'items',
   });
+
+  // Auto-open test selector with prefill search
+  const [initialTestSearch, setInitialTestSearch] = useState(prefillTestSearch || '');
+  const [showTestSelector, setShowTestSelector] = useState(!!prefillTestSearch);
 
   const orderType = form.watch('order_type');
   const items = form.watch('items');
@@ -620,9 +632,13 @@ export function LabOrderForm({
           <TestSelector
             onSelect={handleAddTest}
             onSelectLOINC={handleAddLOINCTest}
-            onClose={() => setShowTestSelector(false)}
+            onClose={() => {
+              setShowTestSelector(false);
+              setInitialTestSearch('');
+            }}
             orderType={orderType as OrderType}
             showLOINCTab={true}
+            initialSearch={initialTestSearch}
           />
         )}
       </form>
