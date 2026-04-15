@@ -12,9 +12,15 @@ import {
 } from '@/lib/config/navigation';
 import {
   resolveClinicalSidebarItems,
+  resolveClinicalUtilityItems,
 } from '@/lib/config/clinical-navigation';
 
-export function useNavigationItems(): NavItemType[] {
+export interface NavigationResult {
+  items: NavItemType[];
+  utilityItems: NavItemType[];
+}
+
+export function useNavigationItems(): NavigationResult {
   const { canAccessModule, canPerformAction } = usePermissions();
   const { hasModule } = useFacility();
   const { navigationMode, isClinicalNavigationEligible } = useNavigationMode();
@@ -43,21 +49,19 @@ export function useNavigationItems(): NavItemType[] {
       .map(filterItem)
       .filter((item): item is NavItemType => item !== null);
 
-    const clinicalItems = resolveClinicalSidebarItems({
-      canAccessModule,
-      canPerformAction,
-      hasModule,
-    });
+    const ctx = { canAccessModule, canPerformAction, hasModule };
+    const clinicalItems = resolveClinicalSidebarItems(ctx);
+    const clinicalUtility = resolveClinicalUtilityItems(ctx);
 
     if (
       navigationMode !== 'clinical' ||
       !isClinicalNavigationEligible ||
       clinicalItems.length === 0
     ) {
-      return standardItems;
+      return { items: standardItems, utilityItems: [] };
     }
 
-    return clinicalItems;
+    return { items: clinicalItems, utilityItems: clinicalUtility };
   }, [
     canAccessModule,
     canPerformAction,

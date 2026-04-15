@@ -49,33 +49,24 @@ export function isClinicalNavigationEligibleForUser(
   return CLINICAL_MODE_ELIGIBLE_ROLES.has(role);
 }
 
+function readStoredMode(): NavigationMode {
+  if (typeof window === 'undefined') return 'standard';
+  try {
+    const stored = localStorage.getItem(NAVIGATION_MODE_STORAGE_KEY);
+    return isNavigationMode(stored) ? stored : 'standard';
+  } catch {
+    return 'standard';
+  }
+}
+
 export function NavigationModeProvider({ children }: { children: ReactNode }) {
   const { role, roleCategory } = usePermissions();
-  const [navigationMode, setNavigationModeState] = useState<NavigationMode>('standard');
+  const [navigationMode, setNavigationModeState] = useState<NavigationMode>(readStoredMode);
 
   const isClinicalNavigationEligible = useMemo(
     () => isClinicalNavigationEligibleForUser(role, roleCategory),
     [role, roleCategory]
   );
-
-  useEffect(() => {
-    try {
-      const storedValue = localStorage.getItem(NAVIGATION_MODE_STORAGE_KEY);
-      if (!isNavigationMode(storedValue)) {
-        return;
-      }
-
-      if (storedValue === 'clinical' && !isClinicalNavigationEligible) {
-        localStorage.setItem(NAVIGATION_MODE_STORAGE_KEY, 'standard');
-        setNavigationModeState('standard');
-        return;
-      }
-
-      setNavigationModeState(storedValue);
-    } catch {
-      setNavigationModeState('standard');
-    }
-  }, [isClinicalNavigationEligible]);
 
   useEffect(() => {
     if (isClinicalNavigationEligible || navigationMode !== 'clinical') {
