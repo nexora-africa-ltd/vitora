@@ -170,6 +170,8 @@ export type MetabaseResourceType = 'dashboard' | 'question';
 
 export interface MetabaseEmbedResponse {
   embed_url: string;
+  token: string;
+  instance_url: string;
 }
 
 export interface MetabaseDashboardInfo {

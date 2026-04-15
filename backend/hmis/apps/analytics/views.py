@@ -223,8 +223,12 @@ class MetabaseEmbedView(APIView):
         payload = {
             "resource": {resource_type: resource_id},
             "params": {
-                "facility_id": facility_id,
+                "facility_id": [facility_id] if facility_id else [],
             },
+            "_embedding_params": {
+                "facility_id": "locked",
+            },
+            "iat": int(time.time()),
             "exp": int(time.time()) + 600,  # 10 minute expiry
         }
 
@@ -241,7 +245,13 @@ class MetabaseEmbedView(APIView):
             facility_id,
         )
 
-        return Response({"embed_url": embed_url})
+        return Response(
+            {
+                "embed_url": embed_url,
+                "token": token,
+                "instance_url": site_url.rstrip("/"),
+            }
+        )
 
 
 class MetabaseDashboardListView(APIView):

@@ -2,50 +2,40 @@
 
 /**
  * MetabaseEmbed — renders an embedded Metabase dashboard or question
- * inside an iframe using a signed embed URL from the backend.
+ * using the Metabase Embedding SDK (web component approach).
  *
- * In development, the embed is proxied through `/api/metabase-proxy` so the
- * browser never needs direct access to the Metabase port (fixes "localhost
- * refused to connect" in remote dev environments).
- *
- * In production, set `NEXT_PUBLIC_METABASE_URL` to the public Metabase URL
- * and the embed will load directly for better performance.
+ * The SDK loads `embed.js` from the Metabase instance and renders via
+ * `<metabase-dashboard>` / `<metabase-question>` custom elements.
+ * This avoids iframe COEP/X-Frame-Options issues entirely.
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, ExternalLink, AlertTriangle, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import Script from 'next/script';
+import { Loader2, AlertTriangle, Settings } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useMetabaseEmbedUrl } from '@/lib/hooks/use-analytics';
 
-/**
- * Rewrite the embed URL to go through the Next.js rewrite proxy, or use a
- * direct public URL if `NEXT_PUBLIC_METABASE_URL` is set to a non-localhost value.
- */
-function rewriteEmbedUrl(embedUrl: string): string {
-  const override = process.env.NEXT_PUBLIC_METABASE_URL;
-
-  // If a non-localhost public URL is configured, rewrite the base directly
-  if (override && !override.includes('localhost') && !override.includes('127.0.0.1')) {
-    try {
-      const parsed = new URL(embedUrl);
-      const base = new URL(override);
-      parsed.protocol = base.protocol;
-      parsed.host = base.host;
-      return parsed.toString();
-    } catch {
-      // fall through to proxy
+// Declare the custom elements for TypeScript
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace JSX {
+    interface IntrinsicElements {
+      'metabase-dashboard': React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          token?: string;
+          'with-title'?: string;
+          'with-downloads'?: string;
+        },
+        HTMLElement
+      >;
+      'metabase-question': React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          token?: string;
+          'with-title'?: string;
+        },
+        HTMLElement
+      >;
     }
-  }
-
-  // Otherwise, proxy through Next.js rewrites (/metabase-embed/* → Metabase)
-  try {
-    const parsed = new URL(embedUrl);
-    // pathname is e.g. /embed/dashboard/<token>
-    // hash is e.g. #bordered=false&titled=true
-    return `/metabase-embed${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return embedUrl;
   }
 }
 
@@ -54,7 +44,7 @@ export interface MetabaseEmbedProps {
   resourceType: 'dashboard' | 'question';
   /** Metabase resource ID */
   resourceId: number;
-  /** Minimum height for the iframe */
+  /** Minimum height for the embed */
   minHeight?: string;
   /** Optional title shown above the embed */
   title?: string;
@@ -67,17 +57,22 @@ export function MetabaseEmbed({
   title,
 }: MetabaseEmbedProps) {
   const { data, isLoading, error } = useMetabaseEmbedUrl(resourceType, resourceId);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [iframeError, setIframeError] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [sdkReady, setSdkReady] = useState(false);
+  const [scriptError, setScriptError] = useState(false);
 
-  const embedUrl = data?.embed_url ? rewriteEmbedUrl(data.embed_url) : null;
+  const token = data?.token ?? null;
+  const instanceUrl = data?.instance_url ?? null;
 
-  // Reset loaded/error state when URL changes
+  // Configure Metabase SDK when instance URL is available
   useEffect(() => {
-    setIframeLoaded(false);
-    setIframeError(false);
-  }, [embedUrl]);
+    if (!instanceUrl) return;
+    (window as unknown as Record<string, unknown>).metabaseConfig = {
+      theme: { preset: 'light' },
+      isGuest: true,
+      instanceUrl,
+    };
+  }, [instanceUrl]);
 
   if (isLoading) {
     return (
@@ -87,7 +82,7 @@ export function MetabaseEmbed({
     );
   }
 
-  if (error || !embedUrl) {
+  if (error || !token || !instanceUrl) {
     const isNotConfigured = error?.message?.includes('503');
     return (
       <Card>
@@ -103,7 +98,7 @@ export function MetabaseEmbed({
     );
   }
 
-  if (iframeError) {
+  if (scriptError) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center gap-4 py-12">
@@ -111,25 +106,10 @@ export function MetabaseEmbed({
           <div className="text-center max-w-md space-y-2">
             <p className="text-sm font-medium">Metabase is not reachable</p>
             <p className="text-sm text-muted-foreground">
-              The embedded dashboard could not connect. This usually means:
+              Could not load the Metabase embed SDK. The Metabase instance may be
+              offline or the URL may be misconfigured.
             </p>
-            <ul className="text-sm text-muted-foreground text-left list-disc pl-5 space-y-1">
-              <li>Metabase needs initial setup — visit the Metabase URL directly to complete the setup wizard</li>
-              <li>The port is not forwarded to your browser (VS Code: forward port 3333)</li>
-              <li>Set <code className="text-xs bg-muted px-1 py-0.5 rounded">NEXT_PUBLIC_METABASE_URL</code> in <code className="text-xs bg-muted px-1 py-0.5 rounded">.env.local</code> if your browser URL differs from <code className="text-xs bg-muted px-1 py-0.5 rounded">localhost:3333</code></li>
-            </ul>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            asChild
-          >
-            <a href={embedUrl.split('/embed/')[0] || embedUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open Metabase directly
-            </a>
-          </Button>
         </CardContent>
       </Card>
     );
@@ -138,37 +118,44 @@ export function MetabaseEmbed({
   return (
     <div className="space-y-2">
       {title && (
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-xs"
-            asChild
-          >
-            <a href={embedUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open in new tab
-            </a>
-          </Button>
-        </div>
+        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
       )}
-      <div className="relative rounded-lg border overflow-hidden" style={{ minHeight }}>
-        {!iframeLoaded && (
+
+      {/* Load the Metabase embed SDK script */}
+      <Script
+        src={`${instanceUrl}/app/embed.js`}
+        strategy="afterInteractive"
+        onLoad={() => setSdkReady(true)}
+        onError={() => setScriptError(true)}
+      />
+
+      <div
+        ref={containerRef}
+        className="relative rounded-lg border overflow-hidden"
+        style={{ minHeight }}
+      >
+        {!sdkReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-background">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         )}
-        <iframe
-          ref={iframeRef}
-          src={embedUrl}
-          className="w-full border-0"
-          style={{ minHeight, display: 'block' }}
-          onLoad={() => setIframeLoaded(true)}
-          onError={() => setIframeError(true)}
-          title={title || `Metabase ${resourceType}`}
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-        />
+
+        {sdkReady && resourceType === 'dashboard' && (
+          <metabase-dashboard
+            token={token}
+            with-title="true"
+            with-downloads="true"
+            style={{ minHeight, display: 'block', width: '100%' }}
+          />
+        )}
+
+        {sdkReady && resourceType === 'question' && (
+          <metabase-question
+            token={token}
+            with-title="true"
+            style={{ minHeight, display: 'block', width: '100%' }}
+          />
+        )}
       </div>
     </div>
   );

@@ -31,7 +31,6 @@ const nextConfig = {
   // Route aliases: /billing/* → /transactions/*
   // Allows cleaner URLs while keeping existing folder structure
   async rewrites() {
-    const metabaseUrl = process.env.METABASE_INTERNAL_URL || 'http://localhost:3333';
     return [
       {
         source: '/billing',
@@ -40,12 +39,6 @@ const nextConfig = {
       {
         source: '/billing/:path*',
         destination: '/transactions/:path*',
-      },
-      // Proxy Metabase embed through Next.js so the browser doesn't need
-      // direct access to the Metabase port (fixes VS Code remote dev)
-      {
-        source: '/metabase-embed/:path*',
-        destination: `${metabaseUrl}/:path*`,
       },
     ];
   },
@@ -102,9 +95,9 @@ const nextConfig = {
         ],
       },
       {
-        // Analytics page embeds cross-origin Metabase iframes that set
-        // cookies, which COEP: credentialless blocks. Exempt this route
-        // by placing it AFTER the /:path* catch-all so it overrides COEP.
+        // Analytics page loads the Metabase Embedding SDK (cross-origin
+        // script + web components). Relax COEP so the SDK can function.
+        // Placed AFTER /:path* so it overrides the default COEP header.
         source: '/analytics',
         headers: [
           {

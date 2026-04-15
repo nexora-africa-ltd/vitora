@@ -139,4 +139,6 @@ export const PaginatedDemographicSnapshotSchema = paginatedResponse(PatientDemog
 
 export const MetabaseEmbedResponseSchema = z.object({
   embed_url: z.string(),
+  token: z.string(),
+  instance_url: z.string(),
 });
