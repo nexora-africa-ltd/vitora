@@ -2118,3 +2118,97 @@ class StoredICURiskResultSerializer(StoredAIResultSerializer):
     prediction_type = serializers.CharField(read_only=True)
     risk_level = serializers.CharField(read_only=True)
     risk_score = serializers.FloatField(read_only=True)
+
+
+# =============================================================================
+# Phase 7 — Investigation Suggestions
+# =============================================================================
+
+
+class InvestigationSuggestRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/investigations/suggest/."""
+
+    chief_complaint = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=1000,
+        help_text="Chief complaint or reason for visit.",
+    )
+    diagnoses = serializers.ListField(
+        child=serializers.CharField(max_length=500),
+        required=False,
+        default=list,
+        help_text="Working/confirmed diagnoses (free text or ICD-10 descriptions).",
+    )
+    symptoms = serializers.ListField(
+        child=serializers.CharField(max_length=200),
+        required=False,
+        default=list,
+        help_text="Current symptoms.",
+    )
+    existing_orders = serializers.ListField(
+        child=serializers.CharField(max_length=200),
+        required=False,
+        default=list,
+        help_text="Investigations already ordered (excluded from suggestions).",
+    )
+    existing_results = serializers.DictField(
+        required=False,
+        default=dict,
+        help_text="Lab results already available (test → value).",
+    )
+    patient_age = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        min_value=0,
+        max_value=120,
+        help_text="Patient age in years.",
+    )
+    patient_sex = serializers.ChoiceField(
+        choices=["M", "F"],
+        required=False,
+        allow_null=True,
+        help_text="Patient sex (M or F).",
+    )
+    is_pregnant = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Whether patient is pregnant.",
+    )
+    facility_level = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=5,
+        help_text="Kenya facility level (H1–H5).",
+    )
+    region = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=50,
+        help_text="Geographic region for protocol rules (e.g. 'lake_endemic').",
+    )
+    include_fhir = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Include draft FHIR R4 ServiceRequest resources in response.",
+    )
+    max_suggestions = serializers.IntegerField(
+        required=False,
+        default=15,
+        min_value=1,
+        max_value=50,
+        help_text="Maximum number of suggestions to return.",
+    )
+    encounter_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="Link result to this encounter for persistence.",
+    )
+
+
+class StoredInvestigationSuggestSerializer(StoredAIResultSerializer):
+    """Persisted investigation suggestion result for GET endpoint."""
+
+    encounter_id = serializers.IntegerField(allow_null=True, read_only=True)
+    matched_conditions = serializers.ListField(child=serializers.CharField(), read_only=True)
+    suggestion_count = serializers.IntegerField(read_only=True)

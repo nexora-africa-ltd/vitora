@@ -58,6 +58,7 @@ import {
 } from '@/lib/hooks/use-inpatient';
 import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel, ConsumableUsagePanel } from '@/components/inpatient';
 import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
+import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
 import { TPRChart } from '@/components/inpatient/tpr-chart';
 import { FluidBalanceSheet } from '@/components/inpatient/fluid-balance-sheet';
 import { PermissionGate } from '@/components/shared/permission-gate';
@@ -131,6 +132,13 @@ const INPATIENT_QUICK_ACTIONS: AIQuickAction[] = [
     userMessage: '📋 Generating care plan suggestions...',
     panelAction: 'care-plan',
   },
+  {
+    id: 'inpatient-investigations',
+    label: 'Suggest investigations',
+    query: '',
+    userMessage: '🔬 Suggesting investigations...',
+    panelAction: 'suggest-investigations',
+  },
 ];
 
 // =============================================================================
@@ -190,6 +198,7 @@ export default function AdmissionDetailPage() {
   // Track which panel was triggered by the AI widget
   const [autoTriggerDischarge, setAutoTriggerDischarge] = useState(false);
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
+  const [autoTriggerInvestigations, setAutoTriggerInvestigations] = useState(false);
   const [isApplyingAIToKardex, setIsApplyingAIToKardex] = useState(false);
   const [appliedAIToKardex, setAppliedAIToKardex] = useState(false);
   const addCarePlanEntry = useAddCarePlanEntry();
@@ -208,6 +217,9 @@ export default function AdmissionDetailPage() {
       clearPanelAction();
     } else if (activePanelAction === 'care-plan') {
       setAutoTriggerCarePlan(true);
+      clearPanelAction();
+    } else if (activePanelAction === 'suggest-investigations') {
+      setAutoTriggerInvestigations(true);
       clearPanelAction();
     }
   }, [activePanelAction, clearPanelAction]);
@@ -1033,6 +1045,26 @@ export default function AdmissionDetailPage() {
               onApplyToKardex={kardex ? handleApplyAIToKardex : undefined}
               isApplyingToKardex={isApplyingAIToKardex}
               appliedToKardex={appliedAIToKardex}
+            />
+          )}
+
+          {/* AI Investigation Suggestions */}
+          {admission.admission_status === 'ACTIVE' && (
+            <InvestigationSuggestionsPanel
+              encounterId={admission.ipd_encounter ?? admission.source_encounter ?? undefined}
+              chiefComplaint={
+                admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined
+              }
+              diagnoses={[
+                admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+              ].filter(Boolean)}
+              patientAge={admission.patient_age ?? undefined}
+              patientSex={
+                admission.patient_gender === 'F' ? 'F' :
+                admission.patient_gender === 'M' ? 'M' : undefined
+              }
+              autoTrigger={autoTriggerInvestigations}
+              onAutoTriggerConsumed={() => setAutoTriggerInvestigations(false)}
             />
           )}
         </TabsContent>

@@ -121,10 +121,12 @@ function FlagItem({ flag }: { flag: AILabFlag }) {
           <p className="text-xs text-muted-foreground">
             {flag.value} {flag.unit}
             {flag.reference_range && (
-              <> &bull; Ref: {flag.reference_range.low}–{flag.reference_range.high} {flag.reference_range.unit ?? flag.unit}</>
+              typeof flag.reference_range === 'string'
+                ? <> &bull; Ref: {flag.reference_range}</>
+                : <> &bull; Ref: {flag.reference_range.low}–{flag.reference_range.high} {flag.reference_range.unit ?? flag.unit}</>
             )}
-            {flag.deviation_percent != null && (
-              <> &bull; {flag.deviation_percent > 0 ? '+' : ''}{flag.deviation_percent.toFixed(1)}%</>
+            {(flag.delta_from_normal_pct ?? flag.deviation_percent) != null && (
+              <> &bull; {(flag.delta_from_normal_pct ?? flag.deviation_percent)! > 0 ? '+' : ''}{(flag.delta_from_normal_pct ?? flag.deviation_percent)!.toFixed(1)}%</>
             )}
           </p>
           {flag.message && (

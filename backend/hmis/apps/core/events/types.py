@@ -107,6 +107,12 @@ class CoreEvents:
     PATIENT_UPDATED = "core.patient.updated"
 
 
+class AIEvents:
+    """AI/TibaBot domain event types."""
+
+    INVESTIGATION_SUGGEST_CREATED = "ai.investigation_suggest.created"
+
+
 class SchedulingEvents:
     """Scheduling domain event types."""
 

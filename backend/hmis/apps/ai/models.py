@@ -286,3 +286,30 @@ class AIICURiskResult(AIResultBase):
 
     def __str__(self) -> str:
         return f"ICURisk {self.id} — {self.risk_level}"
+
+
+class AIInvestigationSuggestResult(AIResultBase):
+    """Persisted investigation suggestion result from TibaBot."""
+
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="ai_investigation_suggestions",
+    )
+    matched_conditions = models.JSONField(
+        default=list,
+        help_text="Care plan template condition keys that matched.",
+    )
+    suggestion_count = models.IntegerField(
+        default=0,
+        help_text="Number of investigation suggestions returned.",
+    )
+
+    class Meta(AIResultBase.Meta):
+        verbose_name = "AI Investigation Suggestion"
+        verbose_name_plural = "AI Investigation Suggestions"
+
+    def __str__(self) -> str:
+        return f"InvestigationSuggest {self.id} — {self.suggestion_count} suggestions"

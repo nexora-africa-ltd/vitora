@@ -20,6 +20,7 @@ import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders
 import { EncounterImagingOrders } from '@/components/encounters/encounter-imaging-orders';
 import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import { EncounterProcedureOrders } from '@/components/encounters/encounter-procedure-orders';
+import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterEditStore } from '@/lib/stores/encounter-edit-store';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
@@ -91,6 +92,25 @@ export default function EncounterEditOrdersPage() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* AI Investigation Suggestions */}
+      <InvestigationSuggestionsPanel
+        encounterId={encounterId}
+        chiefComplaint={session.chief_complaint || encounter?.chief_complaint || undefined}
+        diagnoses={session.diagnoses
+          .map(d => d.icd10_display || d.free_text_diagnosis)
+          .filter(Boolean)}
+        existingOrders={labOrders?.flatMap(order =>
+          order.items.map(item => item.test_name)
+        )}
+        patientAge={encounter?.patient_date_of_birth
+          ? calculateAge(encounter.patient_date_of_birth)
+          : undefined}
+        patientSex={
+          encounter?.patient_gender === 'F' ? 'F' :
+          encounter?.patient_gender === 'M' ? 'M' : undefined}
+        disabled={!isEditable}
+      />
 
       {/* Orders Tabs */}
       <Tabs defaultValue="lab" className="space-y-4">

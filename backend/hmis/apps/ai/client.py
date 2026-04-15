@@ -51,7 +51,9 @@ class TibaBotClient:
             "TIBABOT_API_URL",
             "https://tibabot.vitora.nexora.africa",
         )
-        self.api_key: str = getattr(settings, "TIBABOT_API_KEY", "")
+        raw_key: str = getattr(settings, "TIBABOT_API_KEY", "")
+        # Support comma-separated key list — use the first key
+        self.api_key: str = raw_key.split(",")[0].strip() if raw_key else ""
         self.timeout: int = getattr(settings, "TIBABOT_TIMEOUT", 30)
 
         # Configure session with retry logic
@@ -617,6 +619,36 @@ class TibaBotClient:
         return self._request(
             method="POST",
             endpoint="/clinical/document",
+            data=payload,
+        )
+
+    # -----------------------------------------------------------------
+    # Phase 7 — Investigation Suggestions
+    # -----------------------------------------------------------------
+
+    def suggest_investigations(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Suggest investigations for a clinical encounter.
+
+        Sends diagnoses, symptoms, existing orders, and patient context
+        to TibaBot's ``POST /clinical/investigations/suggest`` endpoint.
+        Returns structured suggestions with LOINC codes and optional
+        FHIR R4 ServiceRequest resources.
+
+        Args:
+            payload: Dict containing chief_complaint, diagnoses[],
+                     symptoms[], existing_orders[], existing_results{},
+                     patient_age, patient_sex, is_pregnant, facility_level,
+                     region, include_fhir, max_suggestions.
+
+        Returns:
+            Dict with suggestions[], fhir_service_requests[],
+            matched_conditions[], cds_alerts_applied, total_suggestions,
+            disclaimer.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/clinical/investigations/suggest",
             data=payload,
         )
 

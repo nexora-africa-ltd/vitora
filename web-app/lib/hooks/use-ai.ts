@@ -48,6 +48,9 @@ import type {
   StoredLabInterpretResult,
   StoredDischargeResult,
   StoredICURiskResult,
+  AIInvestigationSuggestRequest,
+  AIInvestigationSuggestResponse,
+  StoredInvestigationSuggestResult,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -74,6 +77,8 @@ export const aiKeys = {
     [...aiKeys.all, 'stored-icu-risk', admissionId] as const,
   icuLabs: (admissionId: number) =>
     [...aiKeys.all, 'icu-labs', admissionId] as const,
+  storedInvestigationSuggestions: (encounterId: number) =>
+    [...aiKeys.all, 'stored-investigation-suggestions', encounterId] as const,
 };
 
 // =============================================================================
@@ -538,6 +543,40 @@ export function useStoredICURiskResults(admissionId: number | undefined) {
     queryKey: aiKeys.storedICURisk(admissionId ?? 0),
     queryFn: () => aiApi.getStoredICURiskResults({ admission_id: admissionId! }),
     enabled: ENABLE_AI && Boolean(admissionId),
+    staleTime: 30_000,
+  });
+}
+
+// =============================================================================
+// Investigation Suggestions
+// =============================================================================
+
+/**
+ * Hook for suggesting investigations via TibaBot.
+ *
+ * Returns structured investigation suggestions with LOINC codes and
+ * priority grouping. Advisory only — clinician must accept each suggestion.
+ */
+export function useAIInvestigationSuggest() {
+  const queryClient = useQueryClient();
+  return useMutation<AIInvestigationSuggestResponse, Error, AIInvestigationSuggestRequest>({
+    mutationFn: (data) => aiApi.suggestInvestigations(data),
+    retry: false,
+    onSuccess: (_data, variables) => {
+      if (variables.encounter_id) {
+        queryClient.invalidateQueries({
+          queryKey: aiKeys.storedInvestigationSuggestions(variables.encounter_id),
+        });
+      }
+    },
+  });
+}
+
+export function useStoredInvestigationSuggestions(encounterId: number | undefined) {
+  return useQuery<StoredInvestigationSuggestResult[]>({
+    queryKey: aiKeys.storedInvestigationSuggestions(encounterId ?? 0),
+    queryFn: () => aiApi.getStoredInvestigationSuggestions({ encounter_id: encounterId! }),
+    enabled: ENABLE_AI && Boolean(encounterId),
     staleTime: 30_000,
   });
 }

@@ -13,3 +13,6 @@ class AIConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "hmis.apps.ai"
     verbose_name = "AI Integration (TibaBot)"
+
+    def ready(self):
+        import hmis.apps.ai.signals  # noqa: F401

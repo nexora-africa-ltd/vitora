@@ -572,8 +572,11 @@ export interface AILabFlag {
   unit: string;
   /** normal, high, low, critical_high, critical_low, or unknown */
   status: string;
-  reference_range?: { low?: number; high?: number; unit?: string } | null;
+  /** String (e.g. "70-100 mg/dL") or legacy object format */
+  reference_range?: string | { low?: number; high?: number; unit?: string } | null;
   deviation_percent?: number | null;
+  /** Percentage deviation from normal range (TibaBot v2 field) */
+  delta_from_normal_pct?: number | null;
   message?: string;
 }
 
@@ -694,7 +697,11 @@ export interface AICarePlanGenerateRequest {
 
 /** A care plan goal */
 export interface AICarePlanGoal {
+  /** Goal ID (e.g. "G1") */
+  id?: string;
   description: string;
+  /** Target outcome (e.g. "Afebrile for 48h, WBC normalizing") */
+  target?: string;
   priority: 'high' | 'medium' | 'low';
   timeframe?: string;
   measurable_target?: string;
@@ -705,6 +712,14 @@ export interface AICarePlanInterventionItem {
   action: string;
   frequency?: string;
   rationale?: string;
+  /** Duration of the intervention (e.g. "3 days IV then step-down") */
+  duration?: string;
+  /** Monitoring instructions (e.g. "Temperature q6h") */
+  monitoring?: string;
+  /** When to start (e.g. "Start within 4 hours of admission") */
+  timing?: string;
+  /** Escalation criteria (e.g. "No improvement at 48h → consider broader coverage") */
+  escalation?: string;
 }
 
 /** Interventions grouped by category */
@@ -719,6 +734,8 @@ export interface AICarePlanFollowUp {
   timing?: string;
   appointment?: string;
   instructions?: string;
+  /** Recommended follow-up investigations (e.g. "Repeat CXR at 6 weeks") */
+  investigations?: string;
   red_flags?: string[];
 }
 
@@ -779,11 +796,28 @@ export interface AIClerkingStructureRequest {
   note_format?: 'soap' | 'sbar';
 }
 
+/** An extracted diagnosis from structured note parsing */
+export interface AIClerkingExtractedDiagnosis {
+  diagnosis: string;
+  icd10_code: string;
+  confidence: number;
+}
+
 /** Response from POST /api/ai/clerking/structure/ */
 export interface AIClerkingStructureResponse {
   structured_note: Record<string, string>;
   sections: string[];
   original_text: string;
+  /** Diagnoses extracted from the free text with ICD-10 codes */
+  extracted_diagnoses?: AIClerkingExtractedDiagnosis[];
+  /** Medications identified in the free text */
+  extracted_medications?: string[];
+  /** Suggested investigations based on the clinical presentation */
+  suggested_investigations?: string[];
+  /** How complete the structured note is (0.0-1.0) */
+  completeness_score?: number;
+  /** Sections that could not be populated from the input */
+  missing_sections?: string[];
   mode?: string;
   error?: string | null;
 }
@@ -941,13 +975,19 @@ export interface AICDSEvaluateRequest {
 /** A single CDS alert from TibaBot evaluation */
 export interface AICDSAlertItem {
   rule_id?: string;
+  /** Human-readable rule name (e.g. "Warfarin + Aspirin interaction") */
+  rule_name?: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
   /** drug-interaction, contraindication, protocol-adherence, lab-critical, dosing, formulary */
   category: string;
   title: string;
   message: string;
   recommendation?: string;
+  /** Clinical guideline reference (e.g. "KEML 2023, BNF Drug Interactions") */
+  reference?: string | null;
   evidence_level?: string;
+  /** Supporting evidence text snippets */
+  evidence_snippets?: string[];
 }
 
 /** Response from POST /api/ai/cds/evaluate/ */
@@ -1009,4 +1049,58 @@ export interface StoredICURiskResult extends StoredAIResultBase {
   prediction_type: string;
   risk_level: string;
   risk_score: number | null;
+}
+
+// =============================================================================
+// Investigation Suggestions
+// =============================================================================
+
+/** Request body for POST /api/ai/investigations/suggest/ */
+export interface AIInvestigationSuggestRequest {
+  chief_complaint?: string;
+  diagnoses?: string[];
+  symptoms?: string[];
+  existing_orders?: string[];
+  existing_results?: Record<string, unknown>;
+  patient_age?: number;
+  patient_sex?: 'M' | 'F';
+  is_pregnant?: boolean;
+  facility_level?: string;
+  region?: string;
+  include_fhir?: boolean;
+  max_suggestions?: number;
+  encounter_id?: number;
+}
+
+/** A single investigation suggestion from TibaBot */
+export interface AIInvestigationSuggestion {
+  name: string;
+  category: string;
+  priority: 'stat' | 'urgent' | 'routine';
+  rationale: string;
+  timing?: string;
+  loinc_code?: string;
+  loinc_display?: string;
+  source?: string;
+  condition_key?: string;
+  min_facility_level?: string;
+}
+
+/** Response from POST /api/ai/investigations/suggest/ */
+export interface AIInvestigationSuggestResponse {
+  suggestions: AIInvestigationSuggestion[];
+  fhir_service_requests?: Record<string, unknown>[] | null;
+  matched_conditions: string[];
+  cds_alerts_applied: number;
+  total_suggestions: number;
+  disclaimer: string;
+  mode?: string;
+  stored_id?: string;
+}
+
+/** Stored investigation suggestion result */
+export interface StoredInvestigationSuggestResult extends StoredAIResultBase {
+  encounter_id: number | null;
+  matched_conditions: string[];
+  suggestion_count: number;
 }
