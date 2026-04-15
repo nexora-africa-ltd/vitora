@@ -277,7 +277,16 @@ class EncounterViewSet(TenantScopedViewMixin, ModelHistoryMixin, viewsets.ModelV
 
     tenant_scope = "facility"  # Encounters are facility-scoped
 
-    queryset = Encounter.objects.select_related("patient").all()
+    queryset = Encounter.objects.select_related(
+        "patient",
+        "finalized_by",
+        "triage_bypassed_by",
+        "assigned_clinician",
+        "chief_complaint_edited_by",
+        "organization",
+        "facility",
+        "clinic_visit__session__clinic",
+    ).all()
     serializer_class = EncounterSerializer
     permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

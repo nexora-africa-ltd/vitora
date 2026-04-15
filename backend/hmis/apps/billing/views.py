@@ -103,7 +103,7 @@ class InvoiceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     queryset = (
         Invoice.objects.select_related("patient", "encounter", "created_by", "cancelled_by")
-        .prefetch_related("items")
+        .prefetch_related("items__service", "items__drug", "items__lab_order")
         .all()
     )
     serializer_class = InvoiceSerializer
