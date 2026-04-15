@@ -283,8 +283,8 @@ class ICD10SuggestView(AIFeatureGatedMixin, APIView):
                 status=status.HTTP_200_OK,
             )
 
-        # Normalize the response — TibaBot may return different shapes
-        suggestions = result.get("suggestions", [])
+        # Normalize the response — TibaBot returns "codes" key
+        suggestions = result.get("codes") or result.get("suggestions") or []
         if not isinstance(suggestions, list):
             suggestions = []
 

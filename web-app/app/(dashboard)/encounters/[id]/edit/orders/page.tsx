@@ -93,24 +93,26 @@ export default function EncounterEditOrdersPage() {
         </Alert>
       )}
 
-      {/* AI Investigation Suggestions */}
-      <InvestigationSuggestionsPanel
-        encounterId={encounterId}
-        chiefComplaint={session.chief_complaint || encounter?.chief_complaint || undefined}
-        diagnoses={session.diagnoses
-          .map(d => d.icd10_display || d.free_text_diagnosis)
-          .filter(Boolean)}
-        existingOrders={labOrders?.flatMap(order =>
-          order.items.map(item => item.test_name)
-        )}
-        patientAge={encounter?.patient_date_of_birth
-          ? calculateAge(encounter.patient_date_of_birth)
-          : undefined}
-        patientSex={
-          encounter?.patient_gender === 'F' ? 'F' :
-          encounter?.patient_gender === 'M' ? 'M' : undefined}
-        disabled={!isEditable}
-      />
+      {/* AI Investigation Suggestions — only show when diagnoses exist */}
+      {session.diagnoses.length > 0 && (
+        <InvestigationSuggestionsPanel
+          encounterId={encounterId}
+          chiefComplaint={session.chief_complaint || encounter?.chief_complaint || undefined}
+          diagnoses={session.diagnoses
+            .map(d => d.icd10_display || d.free_text_diagnosis)
+            .filter(Boolean)}
+          existingOrders={labOrders?.flatMap(order =>
+            order.items.map(item => item.test_name)
+          )}
+          patientAge={encounter?.patient_date_of_birth
+            ? calculateAge(encounter.patient_date_of_birth)
+            : undefined}
+          patientSex={
+            encounter?.patient_gender === 'F' ? 'F' :
+            encounter?.patient_gender === 'M' ? 'M' : undefined}
+          disabled={!isEditable}
+        />
+      )}
 
       {/* Orders Tabs */}
       <Tabs defaultValue="lab" className="space-y-4">

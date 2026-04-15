@@ -36,6 +36,11 @@ class ICD10SuggestionSerializer(serializers.Serializer):
         max_value=1.0,
         help_text="Confidence score (0.0 to 1.0).",
     )
+    is_billable = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Whether this code is specific enough for billing/SHA claims.",
+    )
 
 
 class ICD10SuggestResponseSerializer(serializers.Serializer):
