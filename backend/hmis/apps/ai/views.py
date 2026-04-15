@@ -32,6 +32,7 @@ from .models import (
     AICDSResult,
     AIDischargeResult,
     AIICURiskResult,
+    AIInvestigationSuggestResult,
     AILabInterpretResult,
     ChatMessage,
     ChatSession,
@@ -66,12 +67,14 @@ from .serializers import (
     ICD10SuggestResponseSerializer,
     ICUPredictRequestSerializer,
     ICUPredictResponseSerializer,
+    InvestigationSuggestRequestSerializer,
     LabInterpretRequestSerializer,
     LabInterpretResponseSerializer,
     StoredCarePlanSerializer,
     StoredCDSResultSerializer,
     StoredDischargeResultSerializer,
     StoredICURiskResultSerializer,
+    StoredInvestigationSuggestSerializer,
     StoredLabInterpretSerializer,
 )
 
@@ -2125,6 +2128,117 @@ class CDSEvaluateView(AIFeatureGatedMixin, APIView):
 
 # =============================================================================
 # Stored AI result retrieval views
+# =============================================================================
+
+
+# =============================================================================
+# Phase 7 — Investigation Suggestions
+# =============================================================================
+
+
+class InvestigationSuggestView(AIFeatureGatedMixin, APIView):
+    """
+    Suggest investigations for a clinical encounter.
+
+    POST /api/ai/investigations/suggest/
+
+    Returns structured investigation suggestions with LOINC codes and
+    optional FHIR R4 ServiceRequest resources. Advisory only — clinician
+    must explicitly accept each suggestion.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_INVESTIGATIONS"
+
+    def post(self, request: Request) -> Response:
+        serializer = InvestigationSuggestRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Sanitize text fields
+        if data.get("chief_complaint"):
+            data["chief_complaint"] = sanitize_clinical_text(data["chief_complaint"])
+
+        # Enrich with facility context
+        facility_ctx = build_facility_context(request)
+        if not data.get("facility_level") and facility_ctx.get("keph_level"):
+            keph = facility_ctx["keph_level"]
+            # Map KEPH L1-L6 to H1-H5 if needed
+            if keph and keph.startswith("L"):
+                data["facility_level"] = f"H{keph[1:]}"
+
+        # Strip encounter_id before forwarding to TibaBot
+        encounter_id = data.pop("encounter_id", None)
+
+        AuditLog.log(
+            action="ai_investigation_suggest",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "diagnoses": data.get("diagnoses", [])[:5],
+                "symptom_count": len(data.get("symptoms", [])),
+                "include_fhir": data.get("include_fhir", False),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.suggest_investigations(data)
+            result["mode"] = "tibabot"
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for investigation suggestions")
+            return Response(
+                {"error": "TibaBot AI service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for investigation suggestions: %s", e)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # Persist result
+        try:
+            stored = AIInvestigationSuggestResult.objects.create(
+                created_by=request.user,
+                encounter_id=encounter_id,
+                matched_conditions=result.get("matched_conditions", []),
+                suggestion_count=result.get("total_suggestions", 0),
+                request_data={k: v for k, v in data.items() if k != "encounter_id"},
+                result_data=result,
+                service_mode=result.get("mode", "tibabot"),
+            )
+            result["stored_id"] = str(stored.id)
+        except Exception:
+            logger.exception("Failed to persist investigation suggestion result")
+
+        return Response(result)
+
+
+class StoredInvestigationSuggestListView(APIView):
+    """
+    GET /api/ai/results/investigation-suggestions/?encounter_id=X
+
+    Returns saved investigation suggestion results.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        encounter_id = request.query_params.get("encounter_id")
+        if not encounter_id:
+            return Response([])
+        qs = AIInvestigationSuggestResult.objects.select_related("created_by").filter(
+            encounter_id=encounter_id,
+        )[:10]
+        return Response(StoredInvestigationSuggestSerializer(qs, many=True).data)
+
+
+# =============================================================================
+# Stored AI Results
 # =============================================================================
 
 

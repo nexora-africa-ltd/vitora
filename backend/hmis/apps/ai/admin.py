@@ -9,6 +9,7 @@ from .models import (
     AICDSResult,
     AIDischargeResult,
     AIICURiskResult,
+    AIInvestigationSuggestResult,
     AILabInterpretResult,
     ChatMessage,
     ChatSession,
@@ -108,3 +109,15 @@ class AIICURiskResultAdmin(AIResultBaseAdmin):
         "created_at",
     )
     raw_id_fields = ("created_by", "admission")
+
+
+@admin.register(AIInvestigationSuggestResult)
+class AIInvestigationSuggestResultAdmin(AIResultBaseAdmin):
+    list_display = (
+        "id",
+        "suggestion_count",
+        "service_mode",
+        "created_by",
+        "created_at",
+    )
+    raw_id_fields = ("created_by", "encounter")

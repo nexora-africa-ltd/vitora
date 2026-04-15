@@ -52,6 +52,7 @@ import { EncounterReferralsContent } from '@/components/encounters/encounter-ref
 import { EncounterProcedureOrders } from '@/components/encounters/encounter-procedure-orders';
 import { EncounterChiefComplaintCard } from '@/components/encounters/encounter-chief-complaint-card';
 import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
+import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import Link from 'next/link';
@@ -114,9 +115,9 @@ const ENCOUNTER_QUICK_ACTIONS: AIQuickAction[] = [
   {
     id: 'encounter-workup',
     label: 'Recommended workup',
-    query:
-      'Based on this patient\'s presentation, what investigations and workup would you recommend? Include labs, imaging, and point-of-care tests.',
-    userMessage: '\uD83D\uDD2C Requesting recommended workup...',
+    query: '',
+    userMessage: '\uD83D\uDD2C Suggesting investigations...',
+    panelAction: 'suggest-investigations',
   },
 ];
 
@@ -177,6 +178,7 @@ export default function EncounterDetailPage() {
   // Track which panel was triggered by the AI widget
   const [autoTriggerCDS, setAutoTriggerCDS] = useState(false);
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
+  const [autoTriggerInvestigations, setAutoTriggerInvestigations] = useState(false);
 
   useEffect(() => {
     if (!activePanelAction || !clearPanelAction) return;
@@ -185,6 +187,9 @@ export default function EncounterDetailPage() {
       clearPanelAction();
     } else if (activePanelAction === 'care-plan') {
       setAutoTriggerCarePlan(true);
+      clearPanelAction();
+    } else if (activePanelAction === 'suggest-investigations') {
+      setAutoTriggerInvestigations(true);
       clearPanelAction();
     }
   }, [activePanelAction, clearPanelAction]);
@@ -577,7 +582,25 @@ export default function EncounterDetailPage() {
         </TabsContent>
 
         {/* Orders — Lab, Imaging, Prescriptions, Procedures */}
-        <TabsContent value="orders">
+        <TabsContent value="orders" className="space-y-4">
+          {/* AI Investigation Suggestions — advisory, clinician must accept */}
+          <InvestigationSuggestionsPanel
+            encounterId={encounterId}
+            chiefComplaint={encounter.chief_complaint || undefined}
+            diagnoses={diagnosisFormData.map(d =>
+              d.icd10_display || d.free_text_diagnosis
+            ).filter(Boolean)}
+            symptoms={encounter.chief_complaint
+              ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+            existingOrders={labOrders?.flatMap(order =>
+              order.items.map(item => item.test_name)
+            )}
+            patientAge={calculateAge(encounter.patient_date_of_birth)}
+            patientSex={encounter.patient_gender === 'F' ? 'F' : encounter.patient_gender === 'M' ? 'M' : undefined}
+            isPregnant={false}
+            autoTrigger={autoTriggerInvestigations}
+            onAutoTriggerConsumed={() => setAutoTriggerInvestigations(false)}
+          />
           <Accordion type="multiple" defaultValue={['lab', 'imaging', 'prescriptions', 'procedures']}>
             <AccordionItem value="lab">
               <AccordionTrigger className="hover:no-underline">

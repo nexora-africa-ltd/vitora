@@ -218,12 +218,16 @@ export const AILabFlagSchema = z.object({
   value: z.number(),
   unit: z.string(),
   status: z.string(),
-  reference_range: z.object({
-    low: z.number().optional(),
-    high: z.number().optional(),
-    unit: z.string().optional(),
-  }).nullable().optional(),
+  reference_range: z.union([
+    z.string(),
+    z.object({
+      low: z.number().optional(),
+      high: z.number().optional(),
+      unit: z.string().optional(),
+    }),
+  ]).nullable().optional(),
   deviation_percent: z.number().nullable().optional(),
+  delta_from_normal_pct: z.number().nullable().optional(),
   message: z.string().optional(),
 }).passthrough();
 
@@ -292,7 +296,9 @@ export const AIDischargeConditionsResponseSchema = z.object({
 
 /** Schema for a care plan goal */
 export const AICarePlanGoalSchema = z.object({
+  id: z.string().optional(),
   description: z.string(),
+  target: z.string().optional(),
   priority: z.enum(['high', 'medium', 'low']),
   timeframe: z.string().optional(),
   measurable_target: z.string().optional(),
@@ -303,6 +309,10 @@ export const AICarePlanInterventionItemSchema = z.object({
   action: z.string(),
   frequency: z.string().optional(),
   rationale: z.string().optional(),
+  duration: z.string().optional(),
+  monitoring: z.string().optional(),
+  timing: z.string().optional(),
+  escalation: z.string().optional(),
 }).passthrough();
 
 /** Schema for a care plan intervention category */
@@ -316,6 +326,7 @@ export const AICarePlanFollowUpSchema = z.object({
   timing: z.string().nullish().transform(v => v ?? undefined),
   appointment: z.string().nullish().transform(v => v ?? undefined),
   instructions: z.string().nullish().transform(v => v ?? undefined),
+  investigations: z.string().nullish().transform(v => v ?? undefined),
   red_flags: z.array(z.string()).nullish().transform(v => v ?? undefined),
 }).passthrough();
 
@@ -366,11 +377,23 @@ export const AIClerkingAutocompleteResponseSchema = z.object({
   error: z.string().nullable().optional(),
 }).passthrough();
 
+/** Schema for an extracted diagnosis from structured note parsing */
+export const AIClerkingExtractedDiagnosisSchema = z.object({
+  diagnosis: z.string(),
+  icd10_code: z.string(),
+  confidence: z.number().min(0).max(1),
+});
+
 /** Schema for POST /api/ai/clerking/structure/ response */
 export const AIClerkingStructureResponseSchema = z.object({
   structured_note: z.record(z.string()),
   sections: z.array(z.string()),
   original_text: z.string(),
+  extracted_diagnoses: z.array(AIClerkingExtractedDiagnosisSchema).optional(),
+  extracted_medications: z.array(z.string()).optional(),
+  suggested_investigations: z.array(z.string()).optional(),
+  completeness_score: z.number().min(0).max(1).optional(),
+  missing_sections: z.array(z.string()).optional(),
   mode: z.string().optional(),
   error: z.string().nullable().optional(),
 }).passthrough();
@@ -425,12 +448,15 @@ export const AIClinicalDocumentResponseSchema = z.object({
 /** Schema for a single CDS alert from TibaBot */
 export const AICDSAlertItemSchema = z.object({
   rule_id: z.string().optional(),
+  rule_name: z.string().optional(),
   severity: z.enum(['critical', 'high', 'medium', 'low']),
   category: z.string(),
   title: z.string(),
   message: z.string(),
   recommendation: z.string().optional(),
+  reference: z.string().nullable().optional(),
   evidence_level: z.string().optional(),
+  evidence_snippets: z.array(z.string()).optional(),
 }).passthrough();
 
 /** Schema for POST /api/ai/cds/evaluate/ response */
@@ -486,4 +512,40 @@ export const StoredICURiskResultSchema = StoredAIResultBaseSchema.extend({
   prediction_type: z.string(),
   risk_level: z.string(),
   risk_score: z.number().nullable(),
+});
+
+// =============================================================================
+// Investigation Suggestions
+// =============================================================================
+
+/** Schema for a single investigation suggestion */
+export const AIInvestigationSuggestionSchema = z.object({
+  name: z.string(),
+  category: z.string(),
+  priority: z.enum(['stat', 'urgent', 'routine']),
+  rationale: z.string(),
+  timing: z.string().optional(),
+  loinc_code: z.string().optional(),
+  loinc_display: z.string().optional(),
+  source: z.string().optional(),
+  condition_key: z.string().optional(),
+  min_facility_level: z.string().optional(),
+}).passthrough();
+
+/** Schema for POST /api/ai/investigations/suggest/ response */
+export const AIInvestigationSuggestResponseSchema = z.object({
+  suggestions: z.array(AIInvestigationSuggestionSchema),
+  fhir_service_requests: z.array(z.record(z.unknown())).nullable().optional(),
+  matched_conditions: z.array(z.string()),
+  cds_alerts_applied: z.number(),
+  total_suggestions: z.number(),
+  disclaimer: z.string(),
+  mode: z.string().optional(),
+  stored_id: z.string().optional(),
+}).passthrough();
+
+export const StoredInvestigationSuggestResultSchema = StoredAIResultBaseSchema.extend({
+  encounter_id: z.number().nullable(),
+  matched_conditions: z.array(z.string()),
+  suggestion_count: z.number(),
 });

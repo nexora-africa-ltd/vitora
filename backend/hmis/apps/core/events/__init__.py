@@ -17,6 +17,7 @@ from hmis.apps.core.events.base import DomainEvent
 from hmis.apps.core.events.bus import EventBus, get_event_bus
 from hmis.apps.core.events.helpers import publish_event
 from hmis.apps.core.events.types import (
+    AIEvents,
     BillingEvents,
     ClinicalEvents,
     CoreEvents,
@@ -35,6 +36,7 @@ __all__ = [
     "EventBus",
     "get_event_bus",
     "publish_event",
+    "AIEvents",
     "BillingEvents",
     "ClinicalEvents",
     "CoreEvents",

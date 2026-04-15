@@ -27,12 +27,14 @@ from .views import (
     ICD10SuggestView,
     ICULabEnrichmentView,
     ICUPredictView,
+    InvestigationSuggestView,
     LabInterpretView,
     StoredCarePlanDeleteView,
     StoredCarePlanListView,
     StoredCDSResultListView,
     StoredDischargeResultListView,
     StoredICURiskResultListView,
+    StoredInvestigationSuggestListView,
     StoredLabInterpretListView,
 )
 
@@ -122,6 +124,12 @@ urlpatterns = [
     ),
     # Phase 5 — Enhanced CDS
     path("cds/evaluate/", CDSEvaluateView.as_view(), name="cds-evaluate"),
+    # Phase 7 — Investigation Suggestions
+    path(
+        "investigations/suggest/",
+        InvestigationSuggestView.as_view(),
+        name="investigations-suggest",
+    ),
     # Stored AI result retrieval
     path("results/care-plans/", StoredCarePlanListView.as_view(), name="results-care-plans"),
     path(
@@ -137,4 +145,9 @@ urlpatterns = [
     ),
     path("results/discharge/", StoredDischargeResultListView.as_view(), name="results-discharge"),
     path("results/icu-risk/", StoredICURiskResultListView.as_view(), name="results-icu-risk"),
+    path(
+        "results/investigation-suggestions/",
+        StoredInvestigationSuggestListView.as_view(),
+        name="results-investigation-suggestions",
+    ),
 ]

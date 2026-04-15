@@ -33,6 +33,8 @@ import {
   StoredLabInterpretResultSchema,
   StoredDischargeResultSchema,
   StoredICURiskResultSchema,
+  AIInvestigationSuggestResponseSchema,
+  StoredInvestigationSuggestResultSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -76,6 +78,9 @@ import type {
   StoredLabInterpretResult,
   StoredDischargeResult,
   StoredICURiskResult,
+  AIInvestigationSuggestRequest,
+  AIInvestigationSuggestResponse,
+  StoredInvestigationSuggestResult,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -530,6 +535,34 @@ export const aiApi = {
     const response = await apiClient.get('/api/ai/results/icu-risk/', { params });
     return parseResponse(StoredICURiskResultSchema.array(), response.data, {
       context: 'aiApi.getStoredICURiskResults',
+    });
+  },
+
+  // ===========================================================================
+  // Investigation Suggestions
+  // ===========================================================================
+
+  /**
+   * Suggest investigations for a clinical encounter.
+   *
+   * Returns structured investigation suggestions with LOINC codes and
+   * optional FHIR R4 ServiceRequest resources. Advisory only — clinician
+   * must explicitly accept each suggestion.
+   *
+   * @param data - Diagnoses, symptoms, existing orders, patient demographics
+   * @returns Investigation suggestions grouped by priority
+   */
+  suggestInvestigations: async (data: AIInvestigationSuggestRequest): Promise<AIInvestigationSuggestResponse> => {
+    const response = await apiClient.post('/api/ai/investigations/suggest/', data);
+    return parseResponse(AIInvestigationSuggestResponseSchema, response.data, {
+      context: 'aiApi.suggestInvestigations',
+    });
+  },
+
+  getStoredInvestigationSuggestions: async (params: { encounter_id: number }): Promise<StoredInvestigationSuggestResult[]> => {
+    const response = await apiClient.get('/api/ai/results/investigation-suggestions/', { params });
+    return parseResponse(StoredInvestigationSuggestResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredInvestigationSuggestions',
     });
   },
 };
