@@ -17,7 +17,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
+import { LabOrderDetail } from '@/components/laboratory/lab-order-detail';
 import { formatDate } from '@/lib/utils/format';
 import { EncounterLabResultsView } from './encounter-lab-results-view';
 import type { PatientDemographics } from './encounter-lab-results-view';
@@ -56,6 +59,7 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
   const router = useRouter();
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
   const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
+  const [peekOrderNumber, setPeekOrderNumber] = useState<string | null>(null);
 
   // Handle navigation to new lab order - saves pending changes first
   const handleNewLabOrder = useCallback(async () => {
@@ -169,7 +173,7 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
                   <h4 className="text-sm font-medium text-muted-foreground">Pending ({pendingOrders.length})</h4>
                   <div className="space-y-2">
                     {pendingOrders.map((order) => (
-                      <LabOrderCard key={order.order_number} order={order} />
+                      <LabOrderCard key={order.order_number} order={order} onPeek={setPeekOrderNumber} />
                     ))}
                   </div>
                 </div>
@@ -181,7 +185,7 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
                   <h4 className="text-sm font-medium text-muted-foreground">Completed ({completedOrders.length})</h4>
                   <div className="space-y-2">
                     {completedOrders.map((order) => (
-                      <LabOrderCard key={order.order_number} order={order} showResults />
+                      <LabOrderCard key={order.order_number} order={order} showResults onPeek={setPeekOrderNumber} />
                     ))}
                   </div>
                 </div>
@@ -213,6 +217,20 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
           </Button>
         </CardFooter>
       )}
+
+      {/* Peek Panel Sheet */}
+      <Sheet open={!!peekOrderNumber} onOpenChange={(open) => { if (!open) setPeekOrderNumber(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Lab Order {peekOrderNumber}</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              {peekOrderNumber && <LabOrderDetail orderNumber={peekOrderNumber} />}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 }
@@ -243,6 +261,7 @@ export function EncounterLabOrdersContent({
   const router = useRouter();
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
   const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
+  const [peekOrderNumber, setPeekOrderNumber] = useState<string | null>(null);
 
   const handleNewLabOrder = useCallback(async () => {
     if (onBeforeNavigate) {
@@ -324,7 +343,7 @@ export function EncounterLabOrdersContent({
               <h4 className="text-sm font-medium text-muted-foreground">Pending ({pendingOrders.length})</h4>
               <div className="space-y-2">
                 {pendingOrders.map((order) => (
-                  <LabOrderCard key={order.order_number} order={order} />
+                  <LabOrderCard key={order.order_number} order={order} onPeek={setPeekOrderNumber} />
                 ))}
               </div>
             </div>
@@ -334,64 +353,86 @@ export function EncounterLabOrdersContent({
               <h4 className="text-sm font-medium text-muted-foreground">Completed ({completedOrders.length})</h4>
               <div className="space-y-2">
                 {completedOrders.map((order) => (
-                  <LabOrderCard key={order.order_number} order={order} showResults />
+                  <LabOrderCard key={order.order_number} order={order} showResults onPeek={setPeekOrderNumber} />
                 ))}
               </div>
             </div>
           )}
         </div>
       )}
+
+      {/* Peek Panel Sheet */}
+      <Sheet open={!!peekOrderNumber} onOpenChange={(open) => { if (!open) setPeekOrderNumber(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Lab Order {peekOrderNumber}</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              {peekOrderNumber && <LabOrderDetail orderNumber={peekOrderNumber} />}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
 
-function LabOrderCard({ order, showResults = false }: { order: LabOrder; showResults?: boolean }) {
+function LabOrderCard({ order, showResults = false, onPeek }: { order: LabOrder; showResults?: boolean; onPeek?: (orderNumber: string) => void }) {
   const statusConfig = STATUS_CONFIG[order.status];
   const priorityConfig = PRIORITY_CONFIG[order.priority];
   const StatusIcon = statusConfig.icon;
 
   const testNames = order.items?.map(item => item.test_name).join(', ') || 'Unknown tests';
 
-  return (
-    <Link href={`/laboratory/orders/${order.order_number}`}>
-      <div className="p-3 rounded-md border hover:bg-muted/50 transition-colors">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm truncate">{order.order_number}</span>
-              <Badge className={statusConfig.color} variant="secondary">
-                <StatusIcon className="h-3 w-3 mr-1" />
-                {statusConfig.label}
+  const content = (
+    <div className="p-3 rounded-md border hover:bg-muted/50 transition-colors cursor-pointer">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm truncate">{order.order_number}</span>
+            <Badge className={statusConfig.color} variant="secondary">
+              <StatusIcon className="h-3 w-3 mr-1" />
+              {statusConfig.label}
+            </Badge>
+            {order.priority !== 'ROUTINE' && (
+              <Badge className={priorityConfig.color} variant="secondary">
+                {priorityConfig.label}
               </Badge>
-              {order.priority !== 'ROUTINE' && (
-                <Badge className={priorityConfig.color} variant="secondary">
-                  {priorityConfig.label}
-                </Badge>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1 truncate">{testNames}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Ordered {formatDate(order.created_at)}
-              {order.ordered_by_name && ` by ${order.ordered_by_name}`}
-            </p>
+            )}
           </div>
-          <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+          <p className="text-sm text-muted-foreground mt-1 truncate">{testNames}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Ordered {formatDate(order.created_at)}
+            {order.ordered_by_name && ` by ${order.ordered_by_name}`}
+          </p>
         </div>
-
-        {/* Show results summary for completed orders */}
-        {showResults && order.items && order.items.length > 0 && (
-          <div className="mt-2 pt-2 border-t">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <FileText className="h-3 w-3" />
-              <span>
-                {order.items.filter(i => i.result).length} of {order.items.length} results available
-              </span>
-            </div>
-          </div>
-        )}
+        <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
       </div>
-    </Link>
+
+      {/* Show results summary for completed orders */}
+      {showResults && order.items && order.items.length > 0 && (
+        <div className="mt-2 pt-2 border-t">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <FileText className="h-3 w-3" />
+            <span>
+              {order.items.filter(i => i.result).length} of {order.items.length} results available
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
   );
+
+  if (onPeek) {
+    return (
+      <div role="button" tabIndex={0} onClick={() => onPeek(order.order_number)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onPeek(order.order_number); }}>
+        {content}
+      </div>
+    );
+  }
+
+  return <Link href={`/laboratory/orders/${order.order_number}`}>{content}</Link>;
 }
 
 export default EncounterLabOrders;

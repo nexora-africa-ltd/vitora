@@ -530,7 +530,7 @@ export const AIInvestigationSuggestionSchema = z.object({
   loinc_display: z.string().nullable().optional(),
   source: z.string().optional(),
   condition_key: z.string().optional(),
-  min_facility_level: z.string().optional(),
+  min_facility_level: z.string().nullable().optional(),
 }).passthrough();
 
 /** Schema for POST /api/ai/investigations/suggest/ response */

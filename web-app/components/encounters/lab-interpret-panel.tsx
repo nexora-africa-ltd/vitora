@@ -13,6 +13,8 @@
 'use client';
 
 import * as React from 'react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   AlertTriangle,
   Beaker,
@@ -346,8 +348,10 @@ export function LabInterpretPanel({
 
             {/* Interpretation Summary */}
             {displayResult.interpretation_summary && (
-              <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-2.5">
-                {displayResult.interpretation_summary}
+              <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-2.5 tibabot-markdown">
+                <Markdown remarkPlugins={[remarkGfm]}>
+                  {displayResult.interpretation_summary}
+                </Markdown>
               </div>
             )}
 

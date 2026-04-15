@@ -106,6 +106,21 @@ export const laboratoryApi = {
   },
 
   /**
+   * Resolve AI suggestion names/LOINC codes to test catalog entries via fuzzy matching.
+   */
+  async resolveTests(tests: { name: string; loinc_code?: string | null }[]): Promise<{
+    resolved: Array<{
+      query_name: string;
+      query_loinc: string;
+      match: TestCatalogListItem | null;
+      score: number;
+    }>;
+  }> {
+    const response = await apiClient.post('/api/lab/tests/resolve/', { tests });
+    return response.data;
+  },
+
+  /**
    * Create a new test catalog entry.
    */
   async createTest(data: TestCatalogCreateData): Promise<TestCatalog> {

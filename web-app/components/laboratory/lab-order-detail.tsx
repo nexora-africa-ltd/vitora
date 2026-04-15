@@ -331,6 +331,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                     <AlertDialogCancel>Keep Order</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleCancel}
+                      disabled={!cancelReason.trim()}
                       className="bg-destructive text-destructive-foreground"
                     >
                       Cancel Order

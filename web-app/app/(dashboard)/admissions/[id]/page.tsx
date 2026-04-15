@@ -74,7 +74,7 @@ import { DeliveryTab } from '@/components/mch/delivery-tab';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
-import type { AIQuickAction, AIInvestigationSuggestion } from '@/lib/types/ai';
+import type { AIQuickAction } from '@/lib/types/ai';
 
 const OVERRIDE_REASON_OPTIONS: { value: OverrideReason; label: string }[] = [
   { value: 'PATIENT_REQUEST', label: 'Patient Request' },
@@ -200,19 +200,6 @@ export default function AdmissionDetailPage() {
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
   const [autoTriggerInvestigations, setAutoTriggerInvestigations] = useState(false);
   const [isApplyingAIToKardex, setIsApplyingAIToKardex] = useState(false);
-
-  // Navigate to lab order form pre-filled with AI suggestion data
-  const handleAcceptInvestigation = (suggestion: AIInvestigationSuggestion) => {
-    const encId = admission?.ipd_encounter ?? admission?.source_encounter;
-    const urlParams = new URLSearchParams();
-    if (encId) urlParams.set('encounter', String(encId));
-    if (admission?.patient) urlParams.set('patient', String(admission.patient));
-    if (admissionId) urlParams.set('admission', String(admissionId));
-    if (suggestion.priority) urlParams.set('priority', suggestion.priority.toUpperCase());
-    if (suggestion.rationale) urlParams.set('clinical_notes', suggestion.rationale);
-    if (suggestion.name) urlParams.set('test_search', suggestion.name);
-    router.push(`/laboratory/orders/new?${urlParams.toString()}`);
-  };
   const [appliedAIToKardex, setAppliedAIToKardex] = useState(false);
   const addCarePlanEntry = useAddCarePlanEntry();
   const [expectedDischargeDialogOpen, setExpectedDischargeDialogOpen] = useState(false);
@@ -1065,6 +1052,7 @@ export default function AdmissionDetailPage() {
           {admission.admission_status === 'ACTIVE' && (
             <InvestigationSuggestionsPanel
               encounterId={admission.ipd_encounter ?? admission.source_encounter ?? undefined}
+              patientId={admission.patient ?? undefined}
               chiefComplaint={
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined
               }
@@ -1078,7 +1066,6 @@ export default function AdmissionDetailPage() {
               }
               autoTrigger={autoTriggerInvestigations}
               onAutoTriggerConsumed={() => setAutoTriggerInvestigations(false)}
-              onAcceptSuggestion={handleAcceptInvestigation}
             />
           )}
         </TabsContent>

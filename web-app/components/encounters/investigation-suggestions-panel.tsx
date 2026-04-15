@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Zap,
   TestTubes,
+  ShoppingCart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,8 @@ import {
   useAIEnabled,
   useStoredInvestigationSuggestions,
 } from '@/lib/hooks/use-ai';
+import { useResolveTests, useCreateLabOrder, useSubmitLabOrder } from '@/lib/hooks/use-laboratory';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type {
   AIInvestigationSuggestRequest,
@@ -48,8 +51,10 @@ import type {
 // =============================================================================
 
 export interface InvestigationSuggestionsPanelProps {
-  /** Encounter ID for persistence */
+  /** Encounter ID for persistence and order creation */
   encounterId?: number;
+  /** Patient ID for order creation */
+  patientId?: number;
   /** Chief complaint from the encounter */
   chiefComplaint?: string;
   /** Working/confirmed diagnoses */
@@ -72,7 +77,7 @@ export interface InvestigationSuggestionsPanelProps {
   autoTrigger?: boolean;
   /** Callback when autoTrigger is consumed */
   onAutoTriggerConsumed?: () => void;
-  /** Called when clinician accepts a suggestion to pre-fill an order */
+  /** @deprecated Use inline order creation instead */
   onAcceptSuggestion?: (suggestion: AIInvestigationSuggestion) => void;
 }
 
@@ -107,6 +112,7 @@ const PRIORITY_CONFIG = {
 
 export function InvestigationSuggestionsPanel({
   encounterId,
+  patientId,
   chiefComplaint,
   diagnoses,
   symptoms,
@@ -122,11 +128,19 @@ export function InvestigationSuggestionsPanel({
 }: InvestigationSuggestionsPanelProps) {
   const isAIEnabled = useAIEnabled();
   const mutation = useAIInvestigationSuggest();
+  const resolveTests = useResolveTests();
+  const createOrder = useCreateLabOrder();
+  const submitOrder = useSubmitLabOrder();
+  const queryClient = useQueryClient();
   const { data: storedResults } = useStoredInvestigationSuggestions(encounterId);
   const [result, setResult] = React.useState<AIInvestigationSuggestResponse | null>(null);
   const [dismissedNames, setDismissedNames] = React.useState<Set<string>>(new Set());
-  const [acceptedNames, setAcceptedNames] = React.useState<Set<string>>(new Set());
+  const [acceptedSuggestions, setAcceptedSuggestions] = React.useState<Map<string, AIInvestigationSuggestion>>(new Map());
+  const [isCreatingOrder, setIsCreatingOrder] = React.useState(false);
   const autoTriggered = React.useRef(false);
+
+  const acceptedNames = React.useMemo(() => new Set(acceptedSuggestions.keys()), [acceptedSuggestions]);
+  const acceptedCount = acceptedSuggestions.size;
 
   // Load last stored result on mount
   React.useEffect(() => {
@@ -165,7 +179,7 @@ export function InvestigationSuggestionsPanel({
 
     // Reset dismissed/accepted on new generation
     setDismissedNames(new Set());
-    setAcceptedNames(new Set());
+    setAcceptedSuggestions(new Map());
 
     mutation.mutate(payload, {
       onSuccess: (data) => {
@@ -181,15 +195,92 @@ export function InvestigationSuggestionsPanel({
   }
 
   function handleAccept(suggestion: AIInvestigationSuggestion) {
-    setAcceptedNames((prev) => new Set(prev).add(suggestion.name));
+    setAcceptedSuggestions((prev) => {
+      const next = new Map(prev);
+      next.set(suggestion.name, suggestion);
+      return next;
+    });
     onAcceptSuggestion?.(suggestion);
-    if (!onAcceptSuggestion) {
-      toast.success(`"${suggestion.name}" accepted`);
-    }
+  }
+
+  function handleUnaccept(suggestion: AIInvestigationSuggestion) {
+    setAcceptedSuggestions((prev) => {
+      const next = new Map(prev);
+      next.delete(suggestion.name);
+      return next;
+    });
   }
 
   function handleDismiss(suggestion: AIInvestigationSuggestion) {
     setDismissedNames((prev) => new Set(prev).add(suggestion.name));
+  }
+
+  async function handleCreateOrder() {
+    if (!encounterId || !patientId || acceptedCount === 0) return;
+    setIsCreatingOrder(true);
+
+    try {
+      const suggestions = Array.from(acceptedSuggestions.values());
+
+      // Resolve suggestion names to test catalog entries
+      const { resolved } = await resolveTests.mutateAsync(
+        suggestions.map((s) => ({ name: s.name, loinc_code: s.loinc_code }))
+      );
+
+      const matched = resolved.filter((r) => r.match);
+      const unmatched = resolved.filter((r) => !r.match);
+
+      if (matched.length === 0) {
+        toast.error('No matching tests found in catalog. Add tests manually.');
+        return;
+      }
+
+      // Determine highest priority among accepted suggestions
+      const priorityRank = { stat: 0, urgent: 1, routine: 2 };
+      const highestPriority = suggestions.reduce((best, s) => {
+        const rank = priorityRank[s.priority] ?? 2;
+        return rank < (priorityRank[best as keyof typeof priorityRank] ?? 2) ? s.priority : best;
+      }, 'routine' as string);
+
+      // Build clinical notes from rationales
+      const clinicalNotes = suggestions
+        .map((s) => `${s.name}: ${s.rationale}`)
+        .join('\n');
+
+      // Create a single order with all matched tests
+      const order = await createOrder.mutateAsync({
+        patient: patientId,
+        encounter: encounterId,
+        priority: highestPriority.toUpperCase() as 'ROUTINE' | 'URGENT' | 'STAT',
+        clinical_notes: clinicalNotes,
+        items: matched.map((r) => ({
+          test_code: r.match!.code,
+        })),
+      });
+
+      // Auto-submit the order
+      if (order?.order_number) {
+        try {
+          await submitOrder.mutateAsync(order.order_number);
+        } catch {
+          // Order created but not submitted — still useful
+        }
+      }
+
+      // Invalidate lab orders cache so the list refreshes
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['encounter-lab-orders'] });
+
+      const matchMsg = `Lab order created with ${matched.length} test${matched.length !== 1 ? 's' : ''}`;
+      const unmatchMsg = unmatched.length > 0
+        ? `. ${unmatched.length} not found: ${unmatched.map((u) => u.query_name).join(', ')}`
+        : '';
+      toast.success(matchMsg + unmatchMsg);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create lab order');
+    } finally {
+      setIsCreatingOrder(false);
+    }
   }
 
   // Group suggestions by priority
@@ -304,6 +395,7 @@ export function InvestigationSuggestionsPanel({
                         suggestion={s}
                         isAccepted={acceptedNames.has(s.name)}
                         onAccept={() => handleAccept(s)}
+                        onUnaccept={() => handleUnaccept(s)}
                         onDismiss={() => handleDismiss(s)}
                       />
                     ))}
@@ -324,6 +416,31 @@ export function InvestigationSuggestionsPanel({
               <p className="text-sm text-muted-foreground text-center py-2">
                 No additional investigations suggested for this clinical context.
               </p>
+            )}
+
+            {/* Create Lab Order — appears when tests are selected */}
+            {acceptedCount > 0 && encounterId && patientId && (
+              <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 p-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <ShoppingCart className="h-4 w-4 text-primary" />
+                  <span>
+                    {acceptedCount} test{acceptedCount !== 1 ? 's' : ''} selected
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleCreateOrder}
+                  disabled={isCreatingOrder || disabled}
+                  className="gap-1.5"
+                >
+                  {isCreatingOrder ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FlaskConical className="h-4 w-4" />
+                  )}
+                  Create Lab Order
+                </Button>
+              </div>
             )}
 
             {/* Disclaimer + feedback */}
@@ -350,10 +467,11 @@ interface SuggestionCardProps {
   suggestion: AIInvestigationSuggestion;
   isAccepted: boolean;
   onAccept: () => void;
+  onUnaccept: () => void;
   onDismiss: () => void;
 }
 
-function SuggestionCard({ suggestion, isAccepted, onAccept, onDismiss }: SuggestionCardProps) {
+function SuggestionCard({ suggestion, isAccepted, onAccept, onUnaccept, onDismiss }: SuggestionCardProps) {
   return (
     <div
       className={cn(
@@ -398,34 +516,36 @@ function SuggestionCard({ suggestion, isAccepted, onAccept, onDismiss }: Suggest
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {isAccepted ? (
-            <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20 gap-1">
-              <CheckCircle2 className="h-3 w-3" />
-              Accepted
-            </Badge>
-          ) : (
-            <>
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAccept}>
-                      <Plus className="h-4 w-4 text-green-600" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Add to lab orders</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDismiss}>
-                      <XCircle className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Dismiss</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={cn('h-7 w-7', isAccepted && 'text-green-600')}
+                  onClick={isAccepted ? onUnaccept : onAccept}
+                >
+                  {isAccepted ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <Plus className="h-4 w-4 text-green-600" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isAccepted ? 'Remove from order' : 'Add to order'}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {!isAccepted && (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDismiss}>
+                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Dismiss</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
       </div>
