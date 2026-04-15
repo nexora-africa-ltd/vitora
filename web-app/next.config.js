@@ -78,17 +78,6 @@ const nextConfig = {
         ],
       },
       {
-        // Analytics page embeds cross-origin Metabase iframes that set
-        // cookies, which COEP: credentialless blocks. Exempt this route.
-        source: '/analytics',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
-          },
-        ],
-      },
-      {
         // All other HTML pages should revalidate + enable cross-origin
         // isolation for PowerSync (wa-sqlite SharedArrayBuffer).
         source: '/:path*',
@@ -109,6 +98,35 @@ const nextConfig = {
             // 'credentialless' is less restrictive than 'require-corp'
             // and still enables SharedArrayBuffer in modern browsers.
             // It allows loading cross-origin images/fonts without CORS.
+          },
+        ],
+      },
+      {
+        // Analytics page embeds cross-origin Metabase iframes that set
+        // cookies, which COEP: credentialless blocks. Exempt this route
+        // by placing it AFTER the /:path* catch-all so it overrides COEP.
+        source: '/analytics',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'unsafe-none',
+          },
+        ],
+      },
+      {
+        source: '/analytics/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'unsafe-none',
           },
         ],
       },
