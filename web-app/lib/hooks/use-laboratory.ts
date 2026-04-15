@@ -61,6 +61,16 @@ export function useTestSearch(query: string) {
   });
 }
 
+/**
+ * Hook for resolving AI suggestion names to test catalog entries.
+ */
+export function useResolveTests() {
+  return useMutation({
+    mutationFn: (tests: { name: string; loinc_code?: string | null }[]) =>
+      laboratoryApi.resolveTests(tests),
+  });
+}
+
 // ============ Lab Order Hooks — Dual-mode: PowerSync + API fallback ============
 
 type LabOrderJoinedRow = LabOrderRow & { id: string; patient_first_name?: string; patient_last_name?: string; patient_mrn?: string };

@@ -30,7 +30,6 @@ import { useQuery } from '@tanstack/react-query';
 import { proceduresApi } from '@/lib/api/procedures';
 import { calculateAge } from '@/lib/utils/format';
 import { AlertTriangle } from 'lucide-react';
-import type { AIInvestigationSuggestion } from '@/lib/types/ai';
 
 export default function EncounterEditOrdersPage() {
   const params = useParams();
@@ -71,24 +70,6 @@ export default function EncounterEditOrdersPage() {
     router.push(`/encounters/${encounterId}/edit/referrals`);
   }, [encounterId, markSectionComplete, router]);
 
-  // Navigate to lab order form pre-filled with AI suggestion data
-  const handleAcceptInvestigation = useCallback((suggestion: AIInvestigationSuggestion) => {
-    const urlParams = new URLSearchParams({
-      encounter: String(encounterId),
-      patient: String(encounter?.patient ?? ''),
-    });
-    if (suggestion.priority) {
-      urlParams.set('priority', suggestion.priority.toUpperCase());
-    }
-    if (suggestion.rationale) {
-      urlParams.set('clinical_notes', suggestion.rationale);
-    }
-    if (suggestion.name) {
-      urlParams.set('test_search', suggestion.name);
-    }
-    router.push(`/laboratory/orders/new?${urlParams.toString()}`);
-  }, [encounterId, encounter?.patient, router]);
-
   if (isLoading || !session) {
     return null;
   }
@@ -116,6 +97,7 @@ export default function EncounterEditOrdersPage() {
       {session.diagnoses.length > 0 && (
         <InvestigationSuggestionsPanel
           encounterId={encounterId}
+          patientId={encounter?.patient}
           chiefComplaint={session.chief_complaint || encounter?.chief_complaint || undefined}
           diagnoses={session.diagnoses
             .map(d => d.icd10_display || d.free_text_diagnosis)
@@ -130,7 +112,6 @@ export default function EncounterEditOrdersPage() {
             encounter?.patient_gender === 'F' ? 'F' :
             encounter?.patient_gender === 'M' ? 'M' : undefined}
           disabled={!isEditable}
-          onAcceptSuggestion={handleAcceptInvestigation}
         />
       )}
 

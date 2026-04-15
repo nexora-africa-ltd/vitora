@@ -4,6 +4,7 @@ Views for laboratory API endpoints.
 
 import logging
 from datetime import date
+from difflib import SequenceMatcher
 
 from django.db import models
 from django_filters import rest_framework as filters
@@ -147,6 +148,91 @@ class TestCatalogViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save()
+
+    @action(detail=False, methods=["post"], url_path="resolve")
+    def resolve(self, request):
+        """Resolve a list of test names/LOINC codes to catalog entries using fuzzy matching.
+
+        Accepts: {"tests": [{"name": "Complete Blood Count", "loinc_code": "26604-2"}, ...]}
+        Returns: {"resolved": [{"query_name": "...", "match": {...} | null, "score": 0.85}, ...]}
+        """
+        tests = request.data.get("tests", [])
+        if not isinstance(tests, list) or len(tests) == 0:
+            return Response(
+                {"error": "Provide a non-empty 'tests' array."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(tests) > 20:
+            return Response(
+                {"error": "Maximum 20 tests per request."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        catalog = list(
+            TestCatalog.objects.filter(is_active=True).values(
+                "id",
+                "code",
+                "name",
+                "short_name",
+                "loinc_code",
+                "category",
+                "specimen_type",
+                "cost",
+                "sha_claimable",
+            )
+        )
+
+        resolved = []
+        for item in tests:
+            query_name = (item.get("name") or "").strip()
+            query_loinc = (item.get("loinc_code") or "").strip()
+
+            best_match = None
+            best_score = 0.0
+
+            # Try exact LOINC match first (highest priority)
+            if query_loinc:
+                for entry in catalog:
+                    if entry["loinc_code"] and entry["loinc_code"].lower() == query_loinc.lower():
+                        best_match = entry
+                        best_score = 1.0
+                        break
+
+            # Fuzzy name matching
+            if not best_match and query_name:
+                query_lower = query_name.lower()
+                for entry in catalog:
+                    # Exact name match
+                    if entry["name"].lower() == query_lower:
+                        best_match = entry
+                        best_score = 1.0
+                        break
+                    # Short name exact match
+                    if entry["short_name"] and entry["short_name"].lower() == query_lower:
+                        best_match = entry
+                        best_score = 0.95
+                        continue
+                    # Fuzzy similarity
+                    score = max(
+                        SequenceMatcher(None, query_lower, entry["name"].lower()).ratio(),
+                        SequenceMatcher(
+                            None, query_lower, (entry["short_name"] or "").lower()
+                        ).ratio(),
+                    )
+                    if score > best_score:
+                        best_score = score
+                        best_match = entry
+
+            resolved.append(
+                {
+                    "query_name": query_name,
+                    "query_loinc": query_loinc,
+                    "match": best_match if best_score >= 0.4 else None,
+                    "score": round(best_score, 3),
+                }
+            )
+
+        return Response({"resolved": resolved})
 
 
 class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
