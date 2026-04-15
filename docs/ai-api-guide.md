@@ -149,6 +149,12 @@ Rate limit headers returned on `429`:
 | `/clerking/autocomplete` | POST | **Yes** | Context-aware medical autocomplete |
 | `/clerking/structure` | POST | **Yes** | Convert free-text to structured note |
 
+### Investigation Suggestions
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/clinical/investigations/suggest` | POST | **Yes** | Suggest investigations for a clinical encounter (FHIR-ready) |
+
 ### Practitioner Validation
 
 | Endpoint | Method | Auth | Description |
@@ -2361,9 +2367,161 @@ X-API-Key: your-api-key
 
 ---
 
+### 18. Investigation Suggestions
+
+Suggests laboratory, imaging, and point-of-care investigations based on diagnoses, symptoms, and clinical context. Pulls from 64 Kenya MOH care plan templates and CDS protocol adherence rules. Returns structured suggestions with LOINC codes and optional draft FHIR R4 `ServiceRequest` resources for HMIS integration.
+
+> **Feature flag:** `TIBABOT_ENABLE_INVESTIGATIONS` (default: `true`)
+
+#### Suggest Investigations
+
+```http
+POST /clinical/investigations/suggest
+Content-Type: application/json
+X-API-Key: your-api-key
+```
+
+**Request:**
+```json
+{
+  "chief_complaint": "Fever and chills for 3 days",
+  "diagnoses": ["malaria"],
+  "symptoms": ["fever", "chills", "headache"],
+  "existing_orders": ["Malaria RDT"],
+  "existing_results": {"malaria_rdt": "positive"},
+  "patient_age": 30,
+  "patient_sex": "M",
+  "is_pregnant": false,
+  "facility_level": "H3",
+  "region": "lake_endemic",
+  "include_fhir": true,
+  "max_suggestions": 10
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `chief_complaint` | string (≤1000) | No | `null` | Chief complaint or reason for visit |
+| `diagnoses` | string[] | No | `[]` | Working/confirmed diagnoses (free text or ICD-10 descriptions) |
+| `symptoms` | string[] | No | `[]` | Current symptoms |
+| `existing_orders` | string[] | No | `[]` | Investigations already ordered (excluded from suggestions) |
+| `existing_results` | dict[str, str] | No | `{}` | Lab results already available (test → value) |
+| `patient_age` | int (0-120) | No | `null` | Patient age in years |
+| `patient_sex` | string | No | `null` | `"M"` or `"F"` |
+| `is_pregnant` | bool | No | `false` | Whether patient is pregnant |
+| `facility_level` | string | No | `null` | Kenya facility level (`"H1"`–`"H5"`) — filters out investigations above the facility's capability |
+| `region` | string | No | `null` | Geographic region for protocol rules (e.g. `"lake_endemic"`, `"coast_endemic"`) |
+| `include_fhir` | bool | No | `false` | Include draft FHIR R4 `ServiceRequest` resources in response |
+| `max_suggestions` | int (1-50) | No | `15` | Maximum number of suggestions to return |
+
+**Response:**
+```json
+{
+  "suggestions": [
+    {
+      "name": "FBC, blood glucose, renal function, LFTs",
+      "category": "laboratory",
+      "priority": "stat",
+      "rationale": "Assess severity and organ involvement",
+      "timing": "On admission",
+      "loinc_code": "58410-2",
+      "loinc_display": "CBC panel - Blood by Automated count",
+      "source": "Kenya Malaria Treatment Guidelines 2022",
+      "condition_key": "malaria",
+      "min_facility_level": "H2"
+    },
+    {
+      "name": "Blood glucose level",
+      "category": "laboratory",
+      "priority": "stat",
+      "rationale": "Hypoglycaemia is a feature of severe malaria and a side effect of quinine/artesunate",
+      "timing": "On admission, q4-6h in severe malaria",
+      "loinc_code": "2339-0",
+      "loinc_display": "Glucose [Mass/volume] in Blood",
+      "source": "Kenya Malaria Treatment Guidelines 2022",
+      "condition_key": "malaria",
+      "min_facility_level": "H2"
+    }
+  ],
+  "fhir_service_requests": [
+    {
+      "resourceType": "ServiceRequest",
+      "status": "draft",
+      "intent": "proposal",
+      "priority": "stat",
+      "code": {
+        "text": "FBC, blood glucose, renal function, LFTs",
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "58410-2",
+            "display": "CBC panel - Blood by Automated count"
+          }
+        ]
+      },
+      "subject": {"display": "30y/M"},
+      "occurrenceString": "On admission",
+      "note": [{"text": "Assess severity and organ involvement"}],
+      "supportingInfo": [{"display": "Kenya Malaria Treatment Guidelines 2022"}]
+    }
+  ],
+  "matched_conditions": ["malaria"],
+  "cds_alerts_applied": 0,
+  "total_suggestions": 2,
+  "disclaimer": "Investigation suggestions are advisory only. Clinical judgment and local protocols should guide ordering decisions."
+}
+```
+
+| Response Field | Type | Description |
+|----------------|------|-------------|
+| `suggestions` | SuggestedInvestigation[] | Ordered by priority (stat → urgent → routine) |
+| `fhir_service_requests` | dict[] \| null | Draft FHIR R4 ServiceRequest resources (when `include_fhir=true`) |
+| `matched_conditions` | string[] | Care plan template condition keys that matched |
+| `cds_alerts_applied` | int | Number of CDS protocol rules that contributed suggestions |
+| `total_suggestions` | int | Total number of suggestions returned |
+| `disclaimer` | string | Medical disclaimer |
+
+**SuggestedInvestigation fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Human-readable investigation name (e.g. `"FBC"`, `"Chest X-ray PA"`) |
+| `category` | enum | `laboratory`, `imaging`, `procedure`, `point_of_care`, `microbiology`, `pathology` |
+| `priority` | enum | `stat`, `urgent`, `routine` |
+| `rationale` | string | Clinical rationale from Kenya MOH guidelines |
+| `timing` | string \| null | When to perform (e.g. `"On admission"`, `"Day 3"`) |
+| `loinc_code` | string \| null | LOINC code for HMIS interoperability |
+| `loinc_display` | string \| null | LOINC display name |
+| `source` | string \| null | Guideline source reference |
+| `condition_key` | string \| null | Matched care plan template condition |
+| `min_facility_level` | string \| null | Minimum Kenya facility level required |
+
+#### HMIS Integration Pattern (Vitora)
+
+The recommended integration pattern for Vitora or any FHIR-compliant HMIS:
+
+1. **Encounter opened** → Vitora calls `POST /clinical/investigations/suggest` with `include_fhir=true`
+2. **Suggestions displayed** → Vitora renders suggestions as "pre-orders" in the encounter UI
+3. **Clinician accepts/rejects** → Vitora creates actual `ServiceRequest` resources in its FHIR store
+4. **TibaBot is read-only / advisory** — it never writes orders directly
+
+```
+Vitora Encounter ──▶ POST /clinical/investigations/suggest
+                     { diagnoses, symptoms, existing_orders, facility_level }
+                ◀── { suggestions[ ], fhir_service_requests[ ] }
+                     │
+                     ▼
+              Clinician reviews in encounter UI
+                     │
+                Accept ──▶ Vitora creates ServiceRequest in FHIR store
+                Reject ──▶ No action
+```
+
+---
+
 ## Integrations
 
-### 18. WhatsApp Webhooks
+### 19. WhatsApp Webhooks
 
 WhatsApp integration supporting both Meta WhatsApp Cloud API and Twilio webhook formats. Includes per-phone-number rate limiting, HMAC signature verification, and delivery status tracking.
 
@@ -2952,6 +3110,18 @@ curl -X POST https://tibabot.vitora.nexora.africa/clerking/structure \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your-api-key" \
   -d '{"free_text": "45M with cough and fever for 3 days. PMH: DM2. Assessment: CAP.", "patient_age": 45, "patient_sex": "male"}'
+
+# Investigation suggestions
+curl -X POST https://tibabot.vitora.nexora.africa/clinical/investigations/suggest \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{"diagnoses": ["malaria"], "symptoms": ["fever", "chills"], "facility_level": "H3", "region": "lake_endemic", "include_fhir": true}'
+
+# Investigation suggestions with existing orders excluded
+curl -X POST https://tibabot.vitora.nexora.africa/clinical/investigations/suggest \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{"diagnoses": ["pneumonia"], "existing_orders": ["Chest X-ray", "FBC"], "facility_level": "H3", "include_fhir": false}'
 
 # Health checks
 curl https://tibabot.vitora.nexora.africa/health
