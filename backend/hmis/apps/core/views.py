@@ -387,7 +387,7 @@ class CountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet)
 class SubCountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
     """ViewSet for listing and retrieving sub-counties."""
 
-    queryset = SubCounty.objects.all()
+    queryset = SubCounty.objects.select_related("county").all()
     serializer_class = SubCountySerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -408,7 +408,7 @@ class SubCountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewS
 class WardViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
     """ViewSet for listing and retrieving wards."""
 
-    queryset = Ward.objects.all()
+    queryset = Ward.objects.select_related("sub_county").all()
     serializer_class = WardSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]

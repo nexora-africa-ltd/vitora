@@ -157,7 +157,16 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     tenant_scope = "facility"  # Lab orders are facility-scoped
 
-    queryset = LabOrder.objects.all().select_related("patient", "encounter", "ordered_by")
+    queryset = (
+        LabOrder.objects.all()
+        .select_related("patient", "encounter", "ordered_by")
+        .prefetch_related(
+            "items__test",
+            "items__result__entered_by",
+            "items__result__verified_by",
+            "items__result__validations__validated_by",
+        )
+    )
     permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ["patient", "encounter", "status", "priority", "order_type"]

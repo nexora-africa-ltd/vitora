@@ -79,7 +79,14 @@ class PatientViewSet(
         GET /api/patients/{id}/history-count/ - Get version count
     """
 
-    queryset = Patient.objects.all()
+    queryset = Patient.objects.select_related(
+        "county",
+        "sub_county",
+        "ward",
+        "registered_by",
+        "organization",
+        "registered_at_facility",
+    ).all()
     serializer_class = PatientSerializer
     permission_classes = [IsAuthenticated, SensitiveAccessPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

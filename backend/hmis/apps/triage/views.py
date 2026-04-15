@@ -129,7 +129,7 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     tenant_scope = "facility"  # Triage is facility-scoped
 
     queryset = TriageAssessment.objects.all().select_related(
-        "encounter__patient", "triaged_by", "assigned_clinician"
+        "encounter__patient", "triaged_by", "assigned_clinician", "assigned_clinic"
     )
     permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
