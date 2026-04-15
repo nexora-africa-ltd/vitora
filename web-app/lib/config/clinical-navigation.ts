@@ -1,16 +1,36 @@
 import type { ActionKey } from '@/lib/permissions/actions';
 import type { ModuleKey } from '@/lib/permissions/constants';
 import type { FacilityModules } from '@/lib/auth/context';
-import type { NavItem } from '@/lib/config/navigation';
+import type { NavItem, NavItemType } from '@/lib/config/navigation';
 import {
   Activity,
+  AlertTriangle,
+  ArrowLeftRight,
+  BedDouble,
+  BrainCircuit,
+  Building2,
+  CalendarCheck,
+  CheckSquare,
   ClipboardList,
   Clock3,
   FlaskConical,
   ListOrdered,
+  Microscope,
+  Monitor,
+  Pill,
+  ScanLine,
+  Siren,
+  SquareDashedTopSolid,
   Stethoscope,
+  Syringe,
   CheckCircle2,
+  Users,
+  FileText,
+  Shield,
+  TestTubes,
+  Image as ImageIcon,
 } from 'lucide-react';
+import { ENABLE_AI } from '@/lib/utils/constants';
 
 export interface ClinicalNavContext {
   canAccessModule: (module: ModuleKey) => boolean;
@@ -107,6 +127,14 @@ export const clinicalWorkflowHubNavItem: NavItem = {
   moduleKey: 'encounters' as ModuleKey,
 };
 
+export const myShiftsNavItem: NavItem = {
+  label: 'My Shifts',
+  href: '/scheduling/my-shifts',
+  icon: CalendarCheck,
+  moduleKey: 'scheduling' as ModuleKey,
+  actionKey: 'scheduling.view_appointments' as ActionKey,
+};
+
 export function resolveClinicalSidebarItems(ctx: ClinicalNavContext): NavItem[] {
   const workflowItems = resolveClinicalWorkflowItems(ctx).map<NavItem>((item) => ({
     label: item.label,
@@ -117,5 +145,71 @@ export function resolveClinicalSidebarItems(ctx: ClinicalNavContext): NavItem[] 
     facilityModule: item.facilityModule,
   }));
 
-  return [clinicalWorkflowHubNavItem, ...workflowItems];
+  return [clinicalWorkflowHubNavItem, myShiftsNavItem, ...workflowItems];
 }
+
+/**
+ * Utility items shown below the workflow buckets in clinical mode.
+ * Gives clinicians quick access to modules they frequently need mid-consultation
+ * without switching back to standard navigation.
+ */
+export function resolveClinicalUtilityItems(ctx: ClinicalNavContext): NavItemType[] {
+  const items: NavItemType[] = [];
+
+  // --- Patients ---
+  if (ctx.canAccessModule('patients' as ModuleKey)) {
+    items.push({
+      label: 'Patients',
+      href: '/patients',
+      icon: Users,
+      moduleKey: 'patients' as ModuleKey,
+    });
+  }
+
+  // --- Emergency ---
+  if (ctx.canAccessModule('emergency' as ModuleKey) && ctx.hasModule('emergency' as keyof FacilityModules)) {
+    items.push({
+      label: 'Emergency',
+      href: '/emergency',
+      icon: Siren,
+      moduleKey: 'emergency' as ModuleKey,
+      facilityModule: 'emergency' as keyof FacilityModules,
+    });
+  }
+
+  // --- Inpatient ---
+  if (ctx.canAccessModule('inpatient' as ModuleKey) && ctx.hasModule('inpatient' as keyof FacilityModules)) {
+    const inpatientChildren: NavItem[] = [
+      { label: 'Bed Board', href: '/inpatient/bed-board', icon: BedDouble, actionKey: 'inpatient.view_ward' as ActionKey },
+      { label: 'Wards', href: '/wards', icon: Building2, actionKey: 'inpatient.view_ward' as ActionKey },
+      { label: 'Admissions', href: '/admissions', icon: ClipboardList, actionKey: 'inpatient.view_admissions' as ActionKey },
+      { label: 'Kardex', href: '/inpatient/kardex', icon: ClipboardList, actionKey: 'inpatient.view_kardex' as ActionKey },
+      { label: 'Rounds', href: '/inpatient/rounds', icon: Stethoscope, actionKey: 'inpatient.make_rounds' as ActionKey },
+      { label: 'Alerts', href: '/inpatient/alerts', icon: AlertTriangle, actionKey: 'inpatient.view_alerts' as ActionKey },
+    ].filter((c) => !c.actionKey || ctx.canPerformAction(c.actionKey));
+    if (inpatientChildren.length > 0) {
+      items.push({
+        label: 'Inpatient',
+        icon: BedDouble,
+        moduleKey: 'inpatient' as ModuleKey,
+        facilityModule: 'inpatient' as keyof FacilityModules,
+        children: inpatientChildren,
+      });
+    }
+  }
+
+  // --- Diagnostics (Lab + Imaging unified) ---
+  const diagnosticsChildren: NavItem[] = [];
+  if (ctx.canAccessModule('laboratory' as ModuleKey) && ctx.hasModule('laboratory' as keyof FacilityModules)) {
+    const labItems: NavItem[] = [
+      { label: 'Lab Orders', href: '/laboratory/orders', icon: SquareDashedTopSolid, moduleKey: 'laboratory' as ModuleKey, actionKey: 'laboratory.view_orders' as ActionKey },
+      { label: 'Lab Validations', href: '/laboratory/validations', icon: CheckSquare, moduleKey: 'laboratory' as ModuleKey, actionKey: 'laboratory.verify_results' as ActionKey },
+      { label: 'Test Catalog', href: '/laboratory/tests', icon: TestTubes, moduleKey: 'laboratory' as ModuleKey, actionKey: 'laboratory.view_dashboard' as ActionKey },
+      { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText, moduleKey: 'laboratory' as ModuleKey, actionKey: 'laboratory.view_reports' as ActionKey },
+    ].filter((c) => !c.actionKey || ctx.canPerformAction(c.actionKey));
+    diagnosticsChildren.push(...labItems);
+  }
+  if (ctx.canAccessModule('imaging' as ModuleKey) && ctx.hasModule('imaging' as keyof FacilityModules)) {
+    const imagingItems: NavItem[] = [
+      { label: 'Imaging Worklist', href: '/imaging/worklist', icon: ListOrdered, moduleKey: 'imaging' as ModuleKey, actionKey: 'imaging.view_orders' as ActionKey },
+      { label

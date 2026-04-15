@@ -494,7 +494,7 @@ export function AIChatPanel({
               <button
                 key={action.id}
                 type="button"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border border-primary/20 text-primary bg-primary/5 hover:bg-primary/10 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border border-teal-500/20 text-teal-700 bg-teal-500/5 hover:bg-teal-500/10 dark:text-teal-300 dark:border-teal-400/20 dark:bg-teal-400/5 dark:hover:bg-teal-400/10 transition-colors disabled:opacity-50"
                 onClick={() => onQuickAction?.(action)}
                 disabled={isSending}
               >

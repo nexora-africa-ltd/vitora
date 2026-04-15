@@ -680,7 +680,7 @@ export function Sidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const logout = useLogout();
-  const filteredNavItems = useNavigationItems();
+  const { items: filteredNavItems, utilityItems } = useNavigationItems();
   const searchParamsString = searchParams.toString();
   const badgeCounts = useSidebarBadges();
 
@@ -858,6 +858,42 @@ export function Sidebar({
                       badgeCounts={badgeCounts}
                     />
                   )
+                )}
+
+                {utilityItems.length > 0 && (
+                  <>
+                    <div className="my-2 border-t border-border/40" />
+                    {utilityItems.map((item) =>
+                      hasChildren(item) ? (
+                        <NavGroup
+                          key={item.label}
+                          item={item}
+                          collapsed={effectiveCollapsed}
+                          pathname={pathname}
+                          isOpen={openMenus.includes(item.label)}
+                          onToggle={() =>
+                            setOpenMenus((prev) =>
+                              prev.includes(item.label)
+                                ? prev.filter((l) => l !== item.label)
+                                : [...prev, item.label]
+                            )
+                          }
+                          onMobileClose={onMobileClose}
+                          badgeCounts={badgeCounts}
+                        />
+                      ) : (
+                        <NavLink
+                          key={item.href}
+                          item={item}
+                          collapsed={effectiveCollapsed}
+                          pathname={pathname}
+                          searchParamsString={searchParamsString}
+                          onMobileClose={onMobileClose}
+                          badgeCounts={badgeCounts}
+                        />
+                      )
+                    )}
+                  </>
                 )}
               </div>
             </ScrollArea>
