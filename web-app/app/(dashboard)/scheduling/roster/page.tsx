@@ -341,9 +341,17 @@ export default function WeeklyRosterPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const newShifts: ShiftCreateData[] = [];
+      const deleteIds: number[] = [];
 
       for (const [key, shiftType] of draft.entries()) {
-        if (shiftType === null) continue; // Removals handled separately in future
+        if (shiftType === null) {
+          // Removal: find the existing saved shift and queue its deletion
+          const existing = existingShifts.get(key);
+          if (existing) {
+            deleteIds.push(existing.id);
+          }
+          continue;
+        }
         const [resourceId, date] = [Number(key.split('-')[0]), key.substring(key.indexOf('-') + 1)];
         const config = SHIFT_MAP[shiftType];
         if (!config) continue;
@@ -358,23 +366,33 @@ export default function WeeklyRosterPage() {
         });
       }
 
-      if (newShifts.length === 0) {
-        return { created: 0, skipped: 0, errors: 0 };
+      // Delete removed shifts first
+      const deleteResults = await Promise.allSettled(
+        deleteIds.map((id) => shiftsApi.delete(id)),
+      );
+      const deleted = deleteResults.filter((r) => r.status === 'fulfilled').length;
+      const deleteFailed = deleteResults.filter((r) => r.status === 'rejected').length;
+
+      // Then create new shifts
+      let createResult = { created: 0, skipped: 0, errors: 0 };
+      if (newShifts.length > 0) {
+        createResult = await shiftsApi.bulkCreate({ shifts: newShifts });
       }
 
-      return shiftsApi.bulkCreate({ shifts: newShifts });
+      return { ...createResult, deleted, deleteFailed };
     },
     onSuccess: (result) => {
       setDraft(new Map());
       queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
 
-      if (result.created > 0) {
-        toast.success(`Saved ${result.created} shift(s)`, {
-          description: result.skipped > 0 ? `${result.skipped} duplicate(s) skipped` : undefined,
-        });
-      } else if (result.skipped > 0) {
-        toast.info(`${result.skipped} shift(s) already exist — nothing to save`);
+      const parts: string[] = [];
+      if (result.created > 0) parts.push(`${result.created} created`);
+      if (result.deleted > 0) parts.push(`${result.deleted} removed`);
+      if (result.skipped > 0) parts.push(`${result.skipped} skipped`);
+
+      if (parts.length > 0) {
+        toast.success(`Roster saved: ${parts.join(', ')}`);
       } else {
         toast.info('No changes to save');
       }
@@ -382,12 +400,15 @@ export default function WeeklyRosterPage() {
       if (result.errors > 0) {
         toast.error(`${result.errors} shift(s) had errors`);
       }
+      if (result.deleteFailed > 0) {
+        toast.error(`${result.deleteFailed} shift(s) could not be removed (may be active/completed)`);
+      }
     },
     onError: () => toast.error('Failed to save roster'),
   });
 
   const clearRosterMutation = useMutation({
-    mutationFn: () => shiftsApi.bulkDelete(weekDates[0]!, weekDates[6]!),
+    mutationFn: () => shiftsApi.bulkDelete(weekDates[0]!, weekDates[6]!, true),
     onSuccess: (result) => {
       setDraft(new Map());
       queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
@@ -395,7 +416,7 @@ export default function WeeklyRosterPage() {
       if (result.deleted > 0) {
         toast.success(`Cleared ${result.deleted} shift(s) from this week`);
       } else {
-        toast.info('No scheduled shifts to clear');
+        toast.info('No shifts to clear');
       }
     },
     onError: () => toast.error('Failed to clear roster'),
