@@ -1167,7 +1167,10 @@ def sample_checkins_today(db, sample_county, sample_sub_county, test_user, sampl
     from hmis.apps.patients.models import Patient
 
     checkins = []
-    now = timezone.now()
+    # Anchor to noon local time so all 5 check-ins fall on "today"
+    # regardless of what hour the test suite runs.
+    local_now = timezone.localtime(timezone.now())
+    today_noon = local_now.replace(hour=12, minute=0, second=0, microsecond=0)
 
     for i in range(5):
         patient = Patient.objects.create(
@@ -1191,7 +1194,7 @@ def sample_checkins_today(db, sample_county, sample_sub_county, test_user, sampl
             destination_type="TRIAGE" if i % 2 == 0 else "CLINIC",
             destination_clinic=sample_clinic if i % 2 != 0 else None,
             checked_in_by=test_user,
-            checked_in_at=now - timedelta(minutes=i * 15),
+            checked_in_at=today_noon - timedelta(minutes=i * 15),
             visit_type="NEW" if i == 0 else "RETURN",
         )
 

@@ -9,7 +9,7 @@ Tests:
 - Domain events for new statuses
 """
 
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from unittest.mock import patch
 
 import pytest  # type: ignore
@@ -38,16 +38,25 @@ def my_resource(db, test_staff_profile, sample_facility):
 
 
 @pytest.fixture
-def scheduled_shift(db, my_resource, sample_facility):
-    """Create a SCHEDULED shift for today 3 hours ago."""
+def fake_midday():
+    """Patch timezone.now() to 14:00 local time today to avoid midnight boundaries."""
+    eat_tz = timezone.get_current_timezone()
+    fake_now = timezone.make_aware(datetime.combine(date.today(), time(14, 0)), eat_tz)
+    with patch("django.utils.timezone.now", return_value=fake_now):
+        yield fake_now
+
+
+@pytest.fixture
+def scheduled_shift(db, my_resource, sample_facility, fake_midday):
+    """Create a SCHEDULED shift for today 3 hours ago (uses mocked time)."""
     from hmis.apps.scheduling.models import Shift
 
-    now = timezone.now()
-    start = (now - timedelta(hours=3)).time().replace(second=0, microsecond=0)
-    end = (now + timedelta(hours=5)).time().replace(second=0, microsecond=0)
+    local_now = timezone.localtime(fake_midday)
+    start = (local_now - timedelta(hours=3)).time().replace(second=0, microsecond=0)
+    end = (local_now + timedelta(hours=5)).time().replace(second=0, microsecond=0)
     return Shift.objects.create(
         staff_resource=my_resource,
-        shift_date=date.today(),
+        shift_date=local_now.date(),
         start_time=start,
         end_time=end,
         shift_type="DAY",
@@ -244,121 +253,137 @@ class TestCeleryTasks:
         from hmis.apps.scheduling.models import Shift
         from hmis.apps.scheduling.tasks import mark_absent_shifts
 
-        # Create a shift that started 2 hours ago (past 1hr cutoff)
-        now = timezone.now()
-        shift_start = (now - timedelta(hours=2)).time().replace(second=0, microsecond=0)
-        shift_end = (now + timedelta(hours=6)).time().replace(second=0, microsecond=0)
-        shift = Shift.objects.create(
-            staff_resource=my_resource,
-            shift_date=date.today(),
-            start_time=shift_start,
-            end_time=shift_end,
-            shift_type="DAY",
-            status="SCHEDULED",
-            facility=sample_facility,
-            organization=sample_facility.organization,
-        )
+        # Use a fixed midday time to avoid midnight boundary issues
+        eat_tz = timezone.get_current_timezone()
+        fake_now = timezone.make_aware(datetime.combine(date.today(), time(14, 0)), eat_tz)
+        with patch("django.utils.timezone.now", return_value=fake_now):
+            local_now = timezone.localtime(fake_now)
+            shift_start = (local_now - timedelta(hours=2)).time().replace(second=0, microsecond=0)
+            shift_end = (local_now + timedelta(hours=6)).time().replace(second=0, microsecond=0)
+            shift = Shift.objects.create(
+                staff_resource=my_resource,
+                shift_date=local_now.date(),
+                start_time=shift_start,
+                end_time=shift_end,
+                shift_type="DAY",
+                status="SCHEDULED",
+                facility=sample_facility,
+                organization=sample_facility.organization,
+            )
 
-        result = mark_absent_shifts()
-        shift.refresh_from_db()
-        assert shift.status == "ABSENT"
-        assert result == 1
+            result = mark_absent_shifts()
+            shift.refresh_from_db()
+            assert shift.status == "ABSENT"
+            assert result == 1
 
     def test_mark_absent_ignores_active_shifts(self, db, my_resource, sample_facility):
         """Should not touch ACTIVE shifts."""
         from hmis.apps.scheduling.models import Shift
         from hmis.apps.scheduling.tasks import mark_absent_shifts
 
-        now = timezone.now()
-        shift = Shift.objects.create(
-            staff_resource=my_resource,
-            shift_date=date.today(),
-            start_time=(now - timedelta(hours=2)).time().replace(second=0, microsecond=0),
-            end_time=(now + timedelta(hours=6)).time().replace(second=0, microsecond=0),
-            shift_type="DAY",
-            status="ACTIVE",
-            started_at=now - timedelta(hours=1),
-            facility=sample_facility,
-            organization=sample_facility.organization,
-        )
+        eat_tz = timezone.get_current_timezone()
+        fake_now = timezone.make_aware(datetime.combine(date.today(), time(14, 0)), eat_tz)
+        with patch("django.utils.timezone.now", return_value=fake_now):
+            local_now = timezone.localtime(fake_now)
+            shift = Shift.objects.create(
+                staff_resource=my_resource,
+                shift_date=local_now.date(),
+                start_time=(local_now - timedelta(hours=2)).time().replace(second=0, microsecond=0),
+                end_time=(local_now + timedelta(hours=6)).time().replace(second=0, microsecond=0),
+                shift_type="DAY",
+                status="ACTIVE",
+                started_at=fake_now - timedelta(hours=1),
+                facility=sample_facility,
+                organization=sample_facility.organization,
+            )
 
-        result = mark_absent_shifts()
-        shift.refresh_from_db()
-        assert shift.status == "ACTIVE"
-        assert result == 0
+            result = mark_absent_shifts()
+            shift.refresh_from_db()
+            assert shift.status == "ACTIVE"
+            assert result == 0
 
     def test_mark_absent_ignores_off_days(self, db, my_resource, sample_facility):
         """Should not mark OFF/LEAVE shifts as absent."""
         from hmis.apps.scheduling.models import Shift
         from hmis.apps.scheduling.tasks import mark_absent_shifts
 
-        now = timezone.now()
-        Shift.objects.create(
-            staff_resource=my_resource,
-            shift_date=date.today(),
-            start_time=(now - timedelta(hours=2)).time().replace(second=0, microsecond=0),
-            end_time=(now + timedelta(hours=6)).time().replace(second=0, microsecond=0),
-            shift_type="LEAVE",
-            status="SCHEDULED",
-            facility=sample_facility,
-            organization=sample_facility.organization,
-        )
+        eat_tz = timezone.get_current_timezone()
+        fake_now = timezone.make_aware(datetime.combine(date.today(), time(14, 0)), eat_tz)
+        with patch("django.utils.timezone.now", return_value=fake_now):
+            local_now = timezone.localtime(fake_now)
+            Shift.objects.create(
+                staff_resource=my_resource,
+                shift_date=local_now.date(),
+                start_time=(local_now - timedelta(hours=2)).time().replace(second=0, microsecond=0),
+                end_time=(local_now + timedelta(hours=6)).time().replace(second=0, microsecond=0),
+                shift_type="LEAVE",
+                status="SCHEDULED",
+                facility=sample_facility,
+                organization=sample_facility.organization,
+            )
 
-        result = mark_absent_shifts()
-        assert result == 0
+            result = mark_absent_shifts()
+            assert result == 0
 
     def test_auto_clock_out_stale(self, db, my_resource, sample_facility):
         """Should auto-complete shifts 2+ hours past end time."""
         from hmis.apps.scheduling.models import Shift
         from hmis.apps.scheduling.tasks import auto_clock_out_stale_shifts
 
-        now = timezone.now()
-        # Shift ended 3 hours ago
-        shift_start = (now - timedelta(hours=11)).time().replace(second=0, microsecond=0)
-        shift_end = (now - timedelta(hours=3)).time().replace(second=0, microsecond=0)
-        shift = Shift.objects.create(
-            staff_resource=my_resource,
-            shift_date=date.today(),
-            start_time=shift_start,
-            end_time=shift_end,
-            shift_type="DAY",
-            status="ACTIVE",
-            started_at=now - timedelta(hours=11),
-            facility=sample_facility,
-            organization=sample_facility.organization,
-        )
+        # Use a fixed midday time to avoid midnight boundary issues
+        eat_tz = timezone.get_current_timezone()
+        fake_now = timezone.make_aware(datetime.combine(date.today(), time(14, 0)), eat_tz)
+        with patch("django.utils.timezone.now", return_value=fake_now):
+            local_now = timezone.localtime(fake_now)
+            # Shift ended 3 hours ago
+            shift_start = (local_now - timedelta(hours=11)).time().replace(second=0, microsecond=0)
+            shift_end = (local_now - timedelta(hours=3)).time().replace(second=0, microsecond=0)
+            shift = Shift.objects.create(
+                staff_resource=my_resource,
+                shift_date=local_now.date(),
+                start_time=shift_start,
+                end_time=shift_end,
+                shift_type="DAY",
+                status="ACTIVE",
+                started_at=fake_now - timedelta(hours=11),
+                facility=sample_facility,
+                organization=sample_facility.organization,
+            )
 
-        result = auto_clock_out_stale_shifts()
-        shift.refresh_from_db()
-        assert shift.status == "COMPLETED"
-        assert shift.auto_clocked_out is True
-        assert result == 1
+            result = auto_clock_out_stale_shifts()
+            shift.refresh_from_db()
+            assert shift.status == "COMPLETED"
+            assert shift.auto_clocked_out is True
+            assert result == 1
 
     def test_auto_clock_out_ignores_recent(self, db, my_resource, sample_facility):
         """Should not auto-complete shifts still within 2hr grace."""
         from hmis.apps.scheduling.models import Shift
         from hmis.apps.scheduling.tasks import auto_clock_out_stale_shifts
 
-        now = timezone.localtime(timezone.now())
-        # Shift ends 3 hours from now (well within grace period)
-        shift_start = (now - timedelta(hours=5)).time().replace(second=0, microsecond=0)
-        shift_end = (now + timedelta(hours=3)).time().replace(second=0, microsecond=0)
-        shift = Shift.objects.create(
-            staff_resource=my_resource,
-            shift_date=date.today(),
-            start_time=shift_start,
-            end_time=shift_end,
-            shift_type="DAY",
-            status="ACTIVE",
-            started_at=timezone.now() - timedelta(hours=5),
-            facility=sample_facility,
-            organization=sample_facility.organization,
-        )
+        eat_tz = timezone.get_current_timezone()
+        fake_now = timezone.make_aware(datetime.combine(date.today(), time(14, 0)), eat_tz)
+        with patch("django.utils.timezone.now", return_value=fake_now):
+            local_now = timezone.localtime(fake_now)
+            # Shift ends 3 hours from now (well within grace period)
+            shift_start = (local_now - timedelta(hours=5)).time().replace(second=0, microsecond=0)
+            shift_end = (local_now + timedelta(hours=3)).time().replace(second=0, microsecond=0)
+            shift = Shift.objects.create(
+                staff_resource=my_resource,
+                shift_date=local_now.date(),
+                start_time=shift_start,
+                end_time=shift_end,
+                shift_type="DAY",
+                status="ACTIVE",
+                started_at=fake_now - timedelta(hours=5),
+                facility=sample_facility,
+                organization=sample_facility.organization,
+            )
 
-        result = auto_clock_out_stale_shifts()
-        shift.refresh_from_db()
-        assert shift.status == "ACTIVE"
-        assert result == 0
+            result = auto_clock_out_stale_shifts()
+            shift.refresh_from_db()
+            assert shift.status == "ACTIVE"
+            assert result == 0
 
 
 # =============================================================================
