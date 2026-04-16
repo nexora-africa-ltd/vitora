@@ -231,7 +231,16 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   // Message actions
   const addMessage = useCallback((message: AIChatMessage) => {
-    setMessages((prev) => [...prev, message]);
+    setMessages((prev) => {
+      // Deduplicate: if a message with the same ID already exists, replace it
+      const idx = prev.findIndex((m) => m.id === message.id);
+      if (idx !== -1) {
+        const updated = [...prev];
+        updated[idx] = message;
+        return updated;
+      }
+      return [...prev, message];
+    });
   }, []);
 
   const updateStreamingMessage = useCallback(

@@ -137,6 +137,7 @@ export default function AIPage() {
     activeSessionId,
     setActiveSessionId,
     addMessage,
+    updateStreamingMessage,
     clearMessages,
     patientContext,
     encounterContext,
@@ -184,22 +185,16 @@ export default function AIPage() {
           setActiveSessionId(response.session_id);
         }
 
-        addMessage({
-          ...response.message,
-          id: assistantMsgId,
-          isStreaming: false,
-        });
+        updateStreamingMessage(assistantMsgId, response.message.content, true, response.model);
       } catch {
-        addMessage({
-          id: assistantMsgId,
-          role: 'assistant',
-          content: "Sorry, I couldn't process your request. Please try again.",
-          timestamp: new Date().toISOString(),
-          isStreaming: false,
-        });
+        updateStreamingMessage(
+          assistantMsgId,
+          "Sorry, I couldn't process your request. Please try again.",
+          true,
+        );
       }
     },
-    [activeSessionId, addMessage, chatMutation, setActiveSessionId]
+    [activeSessionId, addMessage, updateStreamingMessage, chatMutation, setActiveSessionId]
   );
 
   // Handle Clinical Assist
@@ -229,23 +224,15 @@ export default function AIPage() {
         verbosity,
       });
 
-      addMessage({
-        id: assistantMsgId,
-        role: 'assistant',
-        content: response.response,
-        timestamp: new Date().toISOString(),
-        isStreaming: false,
-      });
+      updateStreamingMessage(assistantMsgId, response.response, true);
     } catch {
-      addMessage({
-        id: assistantMsgId,
-        role: 'assistant',
-        content: "Sorry, I couldn't analyze this patient's data. Please try again.",
-        timestamp: new Date().toISOString(),
-        isStreaming: false,
-      });
+      updateStreamingMessage(
+        assistantMsgId,
+        "Sorry, I couldn't analyze this patient's data. Please try again.",
+        true,
+      );
     }
-  }, [addMessage, assistMutation, patientContext, encounterContext]);
+  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext]);
 
   // Session management
   const handleSelectSession = useCallback(
