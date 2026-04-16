@@ -38,7 +38,7 @@ export type TransferStatus =
 
 export type WardTransactionType = 'CONSUME' | 'REPLENISH' | 'RETURN' | 'ADJUSTMENT';
 
-export type StockCountType = 'FULL' | 'PARTIAL' | 'SPOT';
+export type StockCountType = 'FULL' | 'CYCLE' | 'SPOT';
 
 export type StockCountStatus =
   | 'DRAFT'

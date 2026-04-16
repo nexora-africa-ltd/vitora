@@ -30,6 +30,7 @@ import {
   PaginatedWardStockTransactionSchema,
   StockCountListSchema,
   StockCountDetailSchema,
+  StockCountItemSchema,
   PaginatedStockCountSchema,
   ETIMSConfigSchema,
   ETIMSInvoiceSchema,
@@ -72,6 +73,7 @@ import type {
   WardStockTransactionListParams,
   StockCount,
   StockCountDetail,
+  StockCountItem,
   StockCountCreateData,
   StockCountListParams,
   StockCountItemUpdateData,
@@ -480,11 +482,9 @@ export const inventoryApi = {
     });
   },
 
-  async generateStockCountItems(id: number): Promise<StockCountDetail> {
+  async generateStockCountItems(id: number): Promise<{ created: number; total: number }> {
     const response = await apiClient.post(`${BASE}/stock-counts/${id}/generate_items/`);
-    return parseResponse(StockCountDetailSchema, response.data, {
-      context: 'inventoryApi.generateStockCountItems',
-    });
+    return response.data as { created: number; total: number };
   },
 
   async startStockCount(id: number): Promise<StockCountDetail> {
@@ -519,13 +519,12 @@ export const inventoryApi = {
     countId: number,
     itemId: number,
     data: StockCountItemUpdateData
-  ): Promise<StockCountDetail> {
+  ): Promise<StockCountItem> {
     const response = await apiClient.patch(
-      `${BASE}/stock-counts/${countId}/item_detail/`,
-      data,
-      { params: { item_id: itemId } }
+      `${BASE}/stock-counts/${countId}/items/${itemId}/`,
+      data
     );
-    return parseResponse(StockCountDetailSchema, response.data, {
+    return parseResponse(StockCountItemSchema, response.data, {
       context: 'inventoryApi.updateStockCountItem',
     });
   },
