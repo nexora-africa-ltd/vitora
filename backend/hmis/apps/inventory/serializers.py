@@ -11,7 +11,10 @@ from hmis.apps.inventory.models import (
     GRNItem,
     PurchaseOrder,
     PurchaseOrderItem,
+    StockTransfer,
+    StoreLocation,
     Supplier,
+    TransferItem,
 )
 
 # ---------------------------------------------------------------------------
@@ -420,3 +423,270 @@ class GoodsReceiptNoteCreateSerializer(serializers.ModelSerializer):
         for item_data in items_data:
             GRNItem.objects.create(grn=grn, **item_data)
         return grn
+
+
+# ===========================================================================
+# Phase 2: Multi-Store Stock Transfers
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Store Location
+# ---------------------------------------------------------------------------
+
+
+class StoreLocationSerializer(serializers.ModelSerializer):
+    """Read serializer for StoreLocation."""
+
+    managed_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StoreLocation
+        fields = [
+            "id",
+            "code",
+            "name",
+            "location_type",
+            "is_active",
+            "managed_by",
+            "managed_by_name",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_managed_by_name(self, obj):
+        if obj.managed_by:
+            return (
+                f"{obj.managed_by.first_name} {obj.managed_by.last_name}".strip()
+                or obj.managed_by.username
+            )
+        return ""
+
+
+class StoreLocationCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for StoreLocation creation."""
+
+    class Meta:
+        model = StoreLocation
+        fields = [
+            "code",
+            "name",
+            "location_type",
+            "is_active",
+            "managed_by",
+            "notes",
+        ]
+
+
+# ---------------------------------------------------------------------------
+# Transfer Item (nested)
+# ---------------------------------------------------------------------------
+
+
+class TransferItemSerializer(serializers.ModelSerializer):
+    """Read serializer for TransferItem."""
+
+    drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+    source_batch_number = serializers.CharField(source="source_batch.batch_number", read_only=True)
+    destination_batch_id = serializers.IntegerField(
+        source="destination_batch.id", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = TransferItem
+        fields = [
+            "id",
+            "drug",
+            "drug_name",
+            "source_batch",
+            "source_batch_number",
+            "quantity_requested",
+            "quantity_dispatched",
+            "quantity_received",
+            "destination_batch_id",
+            "notes",
+        ]
+        read_only_fields = [
+            "id",
+            "quantity_dispatched",
+            "quantity_received",
+            "destination_batch_id",
+        ]
+
+
+class TransferItemCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for TransferItem (nested create)."""
+
+    class Meta:
+        model = TransferItem
+        fields = ["drug", "source_batch", "quantity_requested", "notes"]
+
+
+# ---------------------------------------------------------------------------
+# Stock Transfer
+# ---------------------------------------------------------------------------
+
+
+def _user_display_name(user):
+    """Return display name for a user."""
+    if user:
+        return f"{user.first_name} {user.last_name}".strip() or user.username
+    return ""
+
+
+class StockTransferListSerializer(serializers.ModelSerializer):
+    """Compact list serializer for stock transfers."""
+
+    source_facility_name = serializers.CharField(source="source_facility.name", read_only=True)
+    destination_facility_name = serializers.CharField(
+        source="destination_facility.name", read_only=True
+    )
+    total_items = serializers.IntegerField(read_only=True)
+    requested_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StockTransfer
+        fields = [
+            "id",
+            "transfer_number",
+            "source_facility",
+            "source_facility_name",
+            "source_store",
+            "destination_facility",
+            "destination_facility_name",
+            "destination_store",
+            "status",
+            "request_date",
+            "total_items",
+            "requested_by",
+            "requested_by_name",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_requested_by_name(self, obj):
+        return _user_display_name(obj.requested_by)
+
+
+class StockTransferDetailSerializer(serializers.ModelSerializer):
+    """Full detail serializer for a single stock transfer."""
+
+    source_facility_name = serializers.CharField(source="source_facility.name", read_only=True)
+    destination_facility_name = serializers.CharField(
+        source="destination_facility.name", read_only=True
+    )
+    source_store_name = serializers.CharField(
+        source="source_store.name", read_only=True, allow_null=True
+    )
+    destination_store_name = serializers.CharField(
+        source="destination_store.name", read_only=True, allow_null=True
+    )
+    total_items = serializers.IntegerField(read_only=True)
+    items = TransferItemSerializer(many=True, read_only=True)
+    requested_by_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+    dispatched_by_name = serializers.SerializerMethodField()
+    received_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StockTransfer
+        fields = [
+            "id",
+            "transfer_number",
+            "source_facility",
+            "source_facility_name",
+            "source_store",
+            "source_store_name",
+            "destination_facility",
+            "destination_facility_name",
+            "destination_store",
+            "destination_store_name",
+            "status",
+            "request_date",
+            "notes",
+            "cancellation_reason",
+            "total_items",
+            "items",
+            "requested_by",
+            "requested_by_name",
+            "approved_by",
+            "approved_by_name",
+            "approved_at",
+            "dispatched_by",
+            "dispatched_by_name",
+            "dispatched_at",
+            "received_by",
+            "received_by_name",
+            "received_at",
+            "cancelled_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_requested_by_name(self, obj):
+        return _user_display_name(obj.requested_by)
+
+    def get_approved_by_name(self, obj):
+        return _user_display_name(obj.approved_by)
+
+    def get_dispatched_by_name(self, obj):
+        return _user_display_name(obj.dispatched_by)
+
+    def get_received_by_name(self, obj):
+        return _user_display_name(obj.received_by)
+
+
+class StockTransferCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for stock transfer creation with nested items."""
+
+    items = TransferItemCreateSerializer(many=True)
+
+    class Meta:
+        model = StockTransfer
+        fields = [
+            "source_facility",
+            "source_store",
+            "destination_facility",
+            "destination_store",
+            "request_date",
+            "notes",
+            "items",
+        ]
+
+    def validate(self, data):
+        if data["source_facility"] == data["destination_facility"]:
+            # Same facility — stores must differ
+            src_store = data.get("source_store")
+            dst_store = data.get("destination_store")
+            if src_store and dst_store and src_store == dst_store:
+                raise serializers.ValidationError(
+                    "Source and destination stores cannot be the same."
+                )
+        return data
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError("At least one item is required.")
+        return value
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("items")
+        transfer = StockTransfer.objects.create(**validated_data)
+        for item_data in items_data:
+            TransferItem.objects.create(transfer=transfer, **item_data)
+        return transfer
+
+
+class TransferApproveSerializer(serializers.Serializer):
+    """Action serializer for approving a transfer."""
+
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class TransferCancelSerializer(serializers.Serializer):
+    """Action serializer for cancelling a transfer."""
+
+    reason = serializers.CharField(required=False, allow_blank=True, default="")

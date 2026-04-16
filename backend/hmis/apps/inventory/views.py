@@ -15,8 +15,20 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
-from hmis.apps.inventory.filters import GoodsReceiptNoteFilter, PurchaseOrderFilter, SupplierFilter
-from hmis.apps.inventory.models import GoodsReceiptNote, PurchaseOrder, Supplier
+from hmis.apps.inventory.filters import (
+    GoodsReceiptNoteFilter,
+    PurchaseOrderFilter,
+    StockTransferFilter,
+    StoreLocationFilter,
+    SupplierFilter,
+)
+from hmis.apps.inventory.models import (
+    GoodsReceiptNote,
+    PurchaseOrder,
+    StockTransfer,
+    StoreLocation,
+    Supplier,
+)
 from hmis.apps.inventory.serializers import (
     GoodsReceiptNoteCreateSerializer,
     GoodsReceiptNoteDetailSerializer,
@@ -27,8 +39,16 @@ from hmis.apps.inventory.serializers import (
     PurchaseOrderDetailSerializer,
     PurchaseOrderItemSerializer,
     PurchaseOrderListSerializer,
+    StockTransferCreateSerializer,
+    StockTransferDetailSerializer,
+    StockTransferListSerializer,
+    StoreLocationCreateSerializer,
+    StoreLocationSerializer,
     SupplierCreateSerializer,
     SupplierSerializer,
+    TransferApproveSerializer,
+    TransferCancelSerializer,
+    TransferItemSerializer,
 )
 
 # ---------------------------------------------------------------------------
@@ -197,4 +217,140 @@ class GoodsReceiptNoteViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets
             )
         grns = self.get_queryset().filter(purchase_order_id=po_id)
         serializer = GoodsReceiptNoteListSerializer(grns, many=True)
+        return Response(serializer.data)
+
+
+# ===========================================================================
+# Phase 2: Multi-Store Stock Transfers
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Store Location
+# ---------------------------------------------------------------------------
+
+
+class StoreLocationViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    """CRUD for store locations within a facility. Facility-scoped."""
+
+    queryset = StoreLocation.objects.select_related("managed_by")
+    permission_classes = [IsAuthenticated]
+    filterset_class = StoreLocationFilter
+    search_fields = ["name", "code"]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return StoreLocationCreateSerializer
+        return StoreLocationSerializer
+
+
+# ---------------------------------------------------------------------------
+# Stock Transfer
+# ---------------------------------------------------------------------------
+
+
+class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    """CRUD + state transitions for stock transfers. Organization-scoped."""
+
+    queryset = StockTransfer.objects.select_related(
+        "source_facility",
+        "destination_facility",
+        "source_store",
+        "destination_store",
+        "requested_by",
+        "approved_by",
+        "dispatched_by",
+        "received_by",
+    ).prefetch_related("items__drug", "items__source_batch", "items__destination_batch")
+    permission_classes = [IsAuthenticated]
+    filterset_class = StockTransferFilter
+    tenant_scope = "organization"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return StockTransferCreateSerializer
+        if self.action == "list":
+            return StockTransferListSerializer
+        if self.action == "approve":
+            return TransferApproveSerializer
+        if self.action == "cancel":
+            return TransferCancelSerializer
+        return StockTransferDetailSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(
+            requested_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
+
+    @action(detail=True, methods=["post"])
+    def submit(self, request, pk=None):
+        """DRAFT → REQUESTED."""
+        transfer = self.get_object()
+        try:
+            transfer.submit()
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(StockTransferDetailSerializer(transfer).data)
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """REQUESTED → APPROVED."""
+        transfer = self.get_object()
+        serializer = TransferApproveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            transfer.approve(user=request.user)
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        if serializer.validated_data.get("notes"):
+            transfer.notes = (transfer.notes + "\n" + serializer.validated_data["notes"]).strip()
+            transfer.save(update_fields=["notes", "updated_at"])
+        return Response(StockTransferDetailSerializer(transfer).data)
+
+    @action(detail=True, methods=["post"])
+    def dispatch_transfer(self, request, pk=None):
+        """APPROVED → IN_TRANSIT. Deducts source stock."""
+        transfer = self.get_object()
+        try:
+            transfer.dispatch(user=request.user)
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(StockTransferDetailSerializer(transfer).data)
+
+    @action(detail=True, methods=["post"])
+    def receive(self, request, pk=None):
+        """IN_TRANSIT → RECEIVED. Creates stock at destination."""
+        transfer = self.get_object()
+        try:
+            transfer.receive(user=request.user)
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        # Re-fetch with full relations to include destination_batch
+        transfer = self.get_queryset().get(pk=transfer.pk)
+        return Response(StockTransferDetailSerializer(transfer).data)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Any non-terminal → CANCELLED."""
+        transfer = self.get_object()
+        serializer = TransferCancelSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            transfer.cancel(
+                user=request.user,
+                reason=serializer.validated_data.get("reason", ""),
+            )
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(StockTransferDetailSerializer(transfer).data)
+
+    @action(detail=True, methods=["get"])
+    def items(self, request, pk=None):
+        """List items for a specific transfer."""
+        transfer = self.get_object()
+        serializer = TransferItemSerializer(
+            transfer.items.select_related("drug", "source_batch"), many=True
+        )
         return Response(serializer.data)

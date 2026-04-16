@@ -159,6 +159,14 @@ class InventoryEvents:
     GRN_CONFIRMED = "inventory.grn.confirmed"
     GRN_CANCELLED = "inventory.grn.cancelled"
 
+    # Phase 2: Multi-store transfers
+    TRANSFER_CREATED = "inventory.transfer.created"
+    TRANSFER_REQUESTED = "inventory.transfer.requested"
+    TRANSFER_APPROVED = "inventory.transfer.approved"
+    TRANSFER_DISPATCHED = "inventory.transfer.dispatched"
+    TRANSFER_RECEIVED = "inventory.transfer.received"
+    TRANSFER_CANCELLED = "inventory.transfer.cancelled"
+
 
 class ImagingEvents:
     """Imaging domain event types."""

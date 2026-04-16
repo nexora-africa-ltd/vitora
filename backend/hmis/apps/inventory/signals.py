@@ -5,6 +5,7 @@ Publishes events for:
 - Supplier creation
 - Purchase order state transitions
 - GRN confirmation
+- Stock transfer state transitions
 """
 
 import logging
@@ -14,7 +15,15 @@ from django.dispatch import receiver
 
 from hmis.apps.core.events import InventoryEvents, publish_event
 
-from .models import GoodsReceiptNote, GRNStatus, PurchaseOrder, PurchaseOrderStatus, Supplier
+from .models import (
+    GoodsReceiptNote,
+    GRNStatus,
+    PurchaseOrder,
+    PurchaseOrderStatus,
+    StockTransfer,
+    Supplier,
+    TransferStatus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,3 +83,28 @@ def publish_grn_event(sender, instance, created, **kwargs):
         publish_event(InventoryEvents.GRN_CONFIRMED, "GoodsReceiptNote", instance.pk, payload)
     elif instance.status == GRNStatus.CANCELLED:
         publish_event(InventoryEvents.GRN_CANCELLED, "GoodsReceiptNote", instance.pk, payload)
+
+
+@receiver(post_save, sender=StockTransfer)
+def publish_stock_transfer_event(sender, instance, created, **kwargs):
+    """Publish events for stock transfer state transitions."""
+    payload = {
+        "transfer_number": instance.transfer_number,
+        "status": instance.status,
+        "source_facility_id": instance.source_facility_id,
+        "destination_facility_id": instance.destination_facility_id,
+        "organization_id": instance.organization_id,
+    }
+    if created:
+        publish_event(InventoryEvents.TRANSFER_CREATED, "StockTransfer", instance.pk, payload)
+    else:
+        status_event_map = {
+            TransferStatus.REQUESTED: InventoryEvents.TRANSFER_REQUESTED,
+            TransferStatus.APPROVED: InventoryEvents.TRANSFER_APPROVED,
+            TransferStatus.IN_TRANSIT: InventoryEvents.TRANSFER_DISPATCHED,
+            TransferStatus.RECEIVED: InventoryEvents.TRANSFER_RECEIVED,
+            TransferStatus.CANCELLED: InventoryEvents.TRANSFER_CANCELLED,
+        }
+        event_type = status_event_map.get(instance.status)
+        if event_type:
+            publish_event(event_type, "StockTransfer", instance.pk, payload)
