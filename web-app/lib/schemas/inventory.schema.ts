@@ -55,7 +55,7 @@ export const WardTransactionTypeSchema = z.enum([
   'ADJUSTMENT',
 ]);
 
-export const StockCountTypeSchema = z.enum(['FULL', 'PARTIAL', 'SPOT']);
+export const StockCountTypeSchema = z.enum(['FULL', 'CYCLE', 'SPOT']);
 
 export const StockCountStatusSchema = z.enum([
   'DRAFT',
