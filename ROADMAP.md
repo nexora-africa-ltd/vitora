@@ -1,6 +1,6 @@
 # Vitora HMIS - Comprehensive Development Roadmap
 
-**Version**: 3.0
+**Version**: 3.1
 **Last Updated**: April 16, 2026
 **Target Completion**: Q4 2027
 **Methodology**: Test-Driven Development (TDD) with Agile Sprints
@@ -15,9 +15,9 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - **Phase 0 (Sprints 0.1-0.7)**: All completed ✅
 - **Phase 1 (Sprint 1.x)**: All core clinical modules COMPLETE ✅
 - **Phase 2 (Sprint 2.x)**: In progress — surveillance, MCH, imaging, allied health, procedures, analytics, MOH reporting mostly complete 🚧
-- **Backend**: 32 Django apps, ~230+ models, 294 migrations
-- **Backend Tests**: 388 test files, 8,129 test functions
-- **Web App**: Next.js 16 (React 19) with 310 pages, 457 components, 47 API clients, 43 Zod schemas
+- **Backend**: 33 Django apps, ~250+ models, 301 migrations
+- **Backend Tests**: 405 test files, 8,421 test functions
+- **Web App**: Next.js 16 (React 19) with 339 pages, 458 components, 49 API clients, 45 Zod schemas
 - **Mobile App**: React Native 0.81 (Expo 54) with 40 screens, offline sync, biometric auth
 - **Desktop App**: Offline-first Electron with JWT auth, patient registration, encounters
 - **Security**: Fernet encryption, MFA/TOTP, PKI digital signatures, audit hash chain, DPIA completed
@@ -35,15 +35,15 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 
 | Dimension | Value |
 |-----------|-------|
-| Backend Django apps | **32** |
-| Total data models | **~230+** |
-| Database migrations | **294** |
-| Backend test files | **388** |
-| Backend test functions | **8,129** |
-| Web-app pages | **310** |
-| Web-app components | **457** |
-| API client modules | **47** |
-| Zod schema files | **43** |
+| Backend Django apps | **33** |
+| Total data models | **~250+** |
+| Database migrations | **301** |
+| Backend test files | **405** |
+| Backend test functions | **8,421** |
+| Web-app pages | **339** |
+| Web-app components | **458** |
+| API client modules | **49** |
+| Zod schema files | **45** |
 | Mobile app screens | **40** |
 | CI/CD workflows | **5** |
 
@@ -51,7 +51,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - ✅ DHA Authentication, Eligibility, Claims, Client Registry, Search, Terminology
 - ✅ ICD-11, LOINC, ICHI, SHA Interventions, Drug Products, Active Components
 
-**📦 Implemented Modules (32 Django apps)**:
+**📦 Implemented Modules (33 Django apps)**:
 - ✅ Core (locations, RBAC, audit, sync, organizations, facilities, feature flags, notifications)
 - ✅ Patients (registration, allergies, emergency contacts, death records)
 - ✅ Encounters (consultations, diagnoses, treatment plans, medications, ICD-10)
@@ -78,6 +78,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - ✅ KenHDD (Kenya Health Data Dictionary validation)
 - ✅ Quality (quality improvement measures, quarterly/annual reports)
 - ✅ Clinical Templates (templates, sections, snapshots)
+- ✅ Inventory (suppliers, purchase orders, goods receipt, store locations, transfers, ward stock, stock counts, forecasting, reorder, eTIMS integration)
 
 **🤖 AI / TibaBot Integration**:
 - ✅ Clinical chat (multi-turn conversational AI for clinicians)
@@ -101,6 +102,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - ✅ FHIR R4 API endpoints (resource serving with profiles)
 - ✅ SNOMED CT integration (concept model + 108 common concepts seeded)
 - ✅ Feature Flags, Idempotency Keys, Active Shift Enforcement
+- ✅ KMS encryption for M-Pesa API credentials (write-only, never exposed in GET responses)
 
 **📊 Platform Infrastructure**:
 - ✅ PowerSync offline-first sync (configured, API-only mode in staging)
@@ -120,6 +122,7 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - ✅ AI assistant, CDS, referrals, procedures
 - ✅ Allied health, quality, check-in, notifications
 - ✅ Settings, profile, finance, transactions, workflow
+- ✅ Inventory (29 pages: suppliers, POs, goods receipt, store locations, transfers, ward stock, stock counts, eTIMS, forecasting/reorder, dashboard)
 - ✅ Public displays (queue, triage)
 
 **📱 Mobile App (40 screens)**:
@@ -371,6 +374,19 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - ✅ Real-time queue display
 - ✅ Frontend: emergency dashboard, bed board, queue
 
+#### Inventory / Supply Chain ✅ COMPLETE
+- ✅ Supplier management (CRUD, contact details, tax PINs, status tracking)
+- ✅ Purchase orders with line items (DRAFT → SUBMITTED → APPROVED → RECEIVED → CANCELLED)
+- ✅ Goods receipt notes with batch/lot tracking and quality checks
+- ✅ Store locations (main stores, sub-stores, pharmacy, ward stock points)
+- ✅ Inter-store transfers with approval workflow (PENDING → APPROVED → SHIPPED → RECEIVED)
+- ✅ Ward stock management (par levels, replenishment requests)
+- ✅ Stock counts / physical inventory (FULL, PARTIAL, CYCLE, SPOT) with variance analysis
+- ✅ KRA eTIMS integration (invoice submission, status tracking, retry logic)
+- ✅ Consumption-based demand forecasting (moving average, exponential smoothing, seasonal)
+- ✅ Reorder point calculation with safety stock and lead time
+- ✅ 31 models, 292 tests, 29 frontend pages, 74 API methods
+
 #### Additional Phase 2 Completions ✅
 - ✅ Check-in module (check-in workflow with state history)
 - ✅ Referrals (inter-facility clinical referral management)
@@ -390,11 +406,11 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 | Invoice PDF generation (WeasyPrint) | 📋 Pending | Templates designed, not yet wired |
 | Private insurance module | 📋 Pending | Beyond SHA — private insurance pre-auth, claims |
 | Payment reconciliation (bank/M-Pesa) | 📋 Pending | Statement import and matching |
-| KRA eTIMS integration | 📋 Pending | Electronic tax invoicing (legal requirement) |
+| KRA eTIMS integration | ✅ Complete | Electronic tax invoicing via inventory eTIMS module |
 | PowerSync activation in production | 📋 Pending | Infrastructure fully wired, disabled in staging |
 | Kenya pilot deployments | 📋 Pending | 2 sites planned (1 rural, 1 urban) |
 | FHIR conformance testing (Inferno) | 📋 Pending | Test suite configured, not yet run |
-| Advanced inventory (suppliers, POs) | 📋 Pending | Procurement workflow |
+| Advanced inventory (suppliers, POs) | ✅ Complete | 31 models, 29 pages, full procurement + forecasting |
 
 ### Phase 2 Risks & Mitigations
 | Risk | Impact | Probability | Mitigation |
@@ -430,9 +446,9 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 #### Sprint 3.4-3.6: Advanced Billing & Compliance (Weeks 7-12)
 - [ ] Private insurance module (pre-auth, claims, providers)
 - [ ] Payment reconciliation (bank + M-Pesa statements)
-- [ ] KRA eTIMS integration (electronic tax invoicing)
+- [x] KRA eTIMS integration (electronic tax invoicing) — completed in Phase 2
 - [ ] SHA claims batch optimization
-- [ ] Advanced inventory (suppliers, purchase orders)
+- [x] Advanced inventory (suppliers, purchase orders) — completed in Phase 2
 
 #### Sprint 3.7-3.9: BI & Reporting Expansion (Weeks 13-18)
 - [ ] Custom report builder UI
@@ -669,12 +685,13 @@ By Q4 2027, Vitora HMIS will be considered successful if:
 ---
 
 **Document Control**
-- **Version**: 3.0
+- **Version**: 3.1
 - **Author**: Engineering Lead
 - **Review Cycle**: Monthly
 - **Next Review**: May 16, 2026
 
 **Changelog**
+- 2026-04-16: v3.1 — Added Inventory module (33rd app): 31 models, 29 frontend pages, eTIMS integration, demand forecasting. M-Pesa credentials KMS-encrypted. Updated stats: 301 migrations, 8,421 tests, 339 web pages.
 - 2026-04-16: v3.0 — Major rewrite reflecting actual state: 32 apps, 294 migrations, 8,129 tests, 310 web pages, 40 mobile screens. Phase 0+1 complete. Phase 2 mostly complete. Azure Container Apps + Vercel deployment. Streamlined future phases.
 - 2026-03-21: v2.1 — Added undocumented features (AI/TibaBot, MFA, PKI, emergency access, FHIR, SNOMED, WebSockets)
 - 2026-03-21: v2.0 — Phase 1 complete, Phase 2 in progress
