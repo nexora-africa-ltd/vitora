@@ -1042,6 +1042,7 @@ class FacilityAdmin(admin.ModelAdmin):
                     "has_maternity",
                     "has_mortuary",
                     "has_blood_bank",
+                    "has_inventory",
                 ),
                 "description": "Toggle the clinical service modules available "
                 "at this facility. These flags drive the sidebar navigation in "
