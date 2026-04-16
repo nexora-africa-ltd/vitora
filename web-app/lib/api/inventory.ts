@@ -567,9 +567,9 @@ export const inventoryApi = {
     });
   },
 
-  async testETIMSConnection(id: number): Promise<{ status: string; message: string }> {
+  async testETIMSConnection(id: number): Promise<{ success: boolean; message: string }> {
     const response = await apiClient.post(`${BASE}/etims-config/${id}/test_connection/`);
-    return response.data;
+    return response.data as { success: boolean; message: string };
   },
 
   // ==========================================================================
@@ -599,18 +599,14 @@ export const inventoryApi = {
     });
   },
 
-  async submitETIMSInvoice(id: number): Promise<ETIMSInvoice> {
+  async submitETIMSInvoice(id: number): Promise<{ message: string }> {
     const response = await apiClient.post(`${BASE}/etims-invoices/${id}/submit/`);
-    return parseResponse(ETIMSInvoiceSchema, response.data, {
-      context: 'inventoryApi.submitETIMSInvoice',
-    });
+    return response.data as { message: string };
   },
 
-  async retryETIMSInvoice(id: number): Promise<ETIMSInvoice> {
+  async retryETIMSInvoice(id: number): Promise<{ message: string }> {
     const response = await apiClient.post(`${BASE}/etims-invoices/${id}/retry/`);
-    return parseResponse(ETIMSInvoiceSchema, response.data, {
-      context: 'inventoryApi.retryETIMSInvoice',
-    });
+    return response.data as { message: string };
   },
 
   async cancelETIMSInvoice(id: number): Promise<ETIMSInvoice> {
