@@ -147,6 +147,19 @@ class SchedulingEvents:
     SHIFT_BREAK_RESUMED = "scheduling.shift.break_resumed"
 
 
+class InventoryEvents:
+    """Inventory / procurement domain event types."""
+
+    SUPPLIER_CREATED = "inventory.supplier.created"
+    PO_CREATED = "inventory.purchase_order.created"
+    PO_SUBMITTED = "inventory.purchase_order.submitted"
+    PO_APPROVED = "inventory.purchase_order.approved"
+    PO_CANCELLED = "inventory.purchase_order.cancelled"
+    GRN_CREATED = "inventory.grn.created"
+    GRN_CONFIRMED = "inventory.grn.confirmed"
+    GRN_CANCELLED = "inventory.grn.cancelled"
+
+
 class ImagingEvents:
     """Imaging domain event types."""
 
