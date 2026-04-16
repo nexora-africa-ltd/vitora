@@ -30,7 +30,7 @@ def mark_absent_shifts(self):
     from hmis.apps.scheduling.models import Shift
 
     now = timezone.now()
-    today = now.date()
+    today = timezone.localdate()
     cutoff = now - timedelta(hours=1)
 
     non_working_types = {
