@@ -17,6 +17,7 @@ export interface FacilityModules {
   maternity: boolean;
   mortuary: boolean;
   blood_bank: boolean;
+  inventory: boolean;
 }
 
 // User's facility info included in auth response

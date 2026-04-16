@@ -13,6 +13,7 @@ export const FacilityModulesSchema = z.object({
   maternity: z.boolean(),
   mortuary: z.boolean(),
   blood_bank: z.boolean(),
+  inventory: z.boolean(),
 });
 
 export const FacilityListItemSchema = z.object({

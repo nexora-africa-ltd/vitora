@@ -232,6 +232,20 @@ export const ACTION_PERMISSIONS = {
   // aggregation endpoint needed first. See ai-api-guide.md for available endpoints.
   'ai.view_insights': ['DOCTOR', 'CLINICAL_OFFICER', 'ADMIN'],
 
+  // === Inventory Module ===
+  'inventory.view_dashboard': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.view_suppliers': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.view_purchase_orders': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.view_goods_receipts': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.view_store_locations': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.view_transfers': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.view_ward_stock': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER', 'NURSE'],
+  'inventory.view_stock_counts': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.view_etims': ['ADMIN', 'ORG-ADMIN', 'BILLING_CLERK', 'BILLING_SUPERVISOR'],
+  'inventory.view_forecasts': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.manage_procurement': ['ADMIN', 'ORG-ADMIN', 'PHARMACIST', 'STORE_KEEPER'],
+  'inventory.approve_po': ['ADMIN', 'ORG-ADMIN'],
+
   // === Admin Module ===
   'admin.view_overview': ['ADMIN', 'ORG-ADMIN', 'HR_OFFICER'],
   'admin.manage_departments': ['ADMIN', 'ORG-ADMIN'],
