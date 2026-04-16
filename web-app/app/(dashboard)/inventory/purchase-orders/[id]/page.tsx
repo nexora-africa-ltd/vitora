@@ -31,6 +31,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/shared/page-header';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import type { PurchaseOrderStatus } from '@/lib/types/inventory';
@@ -69,6 +70,7 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
   const poId = parseInt(resolvedParams.id);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canPerformAction } = usePermissions();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
@@ -134,7 +136,7 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
   }
 
   const canSubmit = po.status === 'DRAFT';
-  const canApprove = po.status === 'SUBMITTED';
+  const canApprove = po.status === 'SUBMITTED' && canPerformAction('inventory.approve_po' as never);
   const canCancel = ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(po.status);
   const canCreateGRN = po.status === 'APPROVED' || po.status === 'PARTIALLY_RECEIVED';
 

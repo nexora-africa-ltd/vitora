@@ -698,6 +698,9 @@ class StockTransfer(OrganizationScopedModel, TimeStampedModel):
 
     class Meta:
         ordering = ["-request_date", "-created_at"]
+        permissions = [
+            ("approve_stock_transfer", "Can approve stock transfers"),
+        ]
 
     def __str__(self):
         return f"{self.transfer_number} ({self.source_facility} → {self.destination_facility})"
@@ -1118,6 +1121,9 @@ class StockCount(FacilityScopedModel, TimeStampedModel):
 
     class Meta:
         ordering = ["-created_at"]
+        permissions = [
+            ("approve_stock_count", "Can approve stock counts"),
+        ]
 
     def __str__(self):
         return f"{self.count_number} ({self.get_count_type_display()})"
@@ -1370,6 +1376,9 @@ class ETIMSConfig(FacilityScopedModel, TimeStampedModel):
                 fields=["facility"],
                 name="unique_etims_config_per_facility",
             ),
+        ]
+        permissions = [
+            ("manage_etims", "Can manage eTIMS configuration"),
         ]
 
     def __str__(self):

@@ -8,6 +8,21 @@ from decimal import Decimal
 import pytest  # type: ignore
 
 
+@pytest.fixture(autouse=True)
+def _grant_inventory_approve_permissions(test_user):
+    """Grant approve/manage permissions to test_user for all inventory tests."""
+    from django.contrib.auth.models import Permission
+
+    codenames = [
+        "approve_purchase_order",
+        "approve_stock_transfer",
+        "approve_stock_count",
+        "manage_etims",
+    ]
+    perms = Permission.objects.filter(codename__in=codenames)
+    test_user.user_permissions.add(*perms)
+
+
 @pytest.fixture
 def sample_drug(db):
     """Create a sample drug for inventory testing."""
