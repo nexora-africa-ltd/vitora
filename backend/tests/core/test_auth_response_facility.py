@@ -296,6 +296,7 @@ class TestBuildUserInfo:
             "maternity",
             "mortuary",
             "blood_bank",
+            "inventory",
         }
         assert set(modules.keys()) == expected_modules
 

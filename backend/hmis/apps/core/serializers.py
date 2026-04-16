@@ -881,6 +881,7 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
             "has_maternity",
             "has_mortuary",
             "has_blood_bank",
+            "has_inventory",
             # Status & timestamps
             "is_active",
             "created_at",
@@ -951,6 +952,7 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_maternity",
             "has_mortuary",
             "has_blood_bank",
+            "has_inventory",
             # Status
             "is_active",
         ]
@@ -997,6 +999,7 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
             "has_maternity",
             "has_mortuary",
             "has_blood_bank",
+            "has_inventory",
         ]
         any_module_set = any(f in self.initial_data for f in module_fields)
 

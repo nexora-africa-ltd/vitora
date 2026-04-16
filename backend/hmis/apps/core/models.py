@@ -2678,6 +2678,10 @@ class Facility(TimeStampedModel):
         default=False,
         help_text="Blood bank / transfusion services.",
     )
+    has_inventory = models.BooleanField(
+        default=False,
+        help_text="Inventory / supply chain management module.",
+    )
 
     # ------------------------------------------------------------------
     # Status
@@ -2719,6 +2723,7 @@ class Facility(TimeStampedModel):
                 "has_maternity",
                 "has_mortuary",
                 "has_blood_bank",
+                "has_inventory",
             ]
             # Only apply defaults if no module was explicitly set beyond the
             # model-level defaults (outpatient=True, pharmacy=True, rest=False).
@@ -2761,6 +2766,7 @@ class Facility(TimeStampedModel):
             "maternity": self.has_maternity,
             "mortuary": self.has_mortuary,
             "blood_bank": self.has_blood_bank,
+            "inventory": self.has_inventory,
         }
 
     @property
@@ -2821,6 +2827,7 @@ class Facility(TimeStampedModel):
             "maternity": False,
             "mortuary": False,
             "blood_bank": False,
+            "inventory": False,
         }
 
         level_overrides: dict[str, dict[str, bool]] = {
@@ -2841,6 +2848,7 @@ class Facility(TimeStampedModel):
                 "imaging": True,
                 "theatre": True,
                 "maternity": True,
+                "inventory": True,
             },
             "5": {
                 "outpatient": True,
@@ -2853,6 +2861,7 @@ class Facility(TimeStampedModel):
                 "icu": True,
                 "maternity": True,
                 "dialysis": True,
+                "inventory": True,
             },
             "6": {
                 "outpatient": True,
@@ -2867,6 +2876,7 @@ class Facility(TimeStampedModel):
                 "dialysis": True,
                 "blood_bank": True,
                 "mortuary": True,
+                "inventory": True,
             },
         }
 

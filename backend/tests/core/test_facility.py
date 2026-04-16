@@ -135,7 +135,7 @@ class TestFacilityModel:
         """The ``modules`` property should return all 12 module flags."""
         modules = sample_facility.modules
         assert isinstance(modules, dict)
-        assert len(modules) == 12
+        assert len(modules) == 13
         assert modules["outpatient"] is True
         assert modules["inpatient"] is True
         assert modules["mortuary"] is False
