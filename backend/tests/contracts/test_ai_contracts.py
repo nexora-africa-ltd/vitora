@@ -835,6 +835,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "code",
                 "confidence",
                 "description",
+                "is_billable",
             }
         ),
     ),
