@@ -64,11 +64,12 @@ export default function NewStockTransferPage() {
   >({});
 
   // Fetch org facilities for source/destination
-  const { data: facilities = [] } = useQuery({
-    queryKey: ['org-facilities', organization?.id],
+  const { data: facilitiesData } = useQuery({
+    queryKey: ['org-facilities-list', organization?.id],
     queryFn: () => organizationsApi.listFacilities(organization!.id),
     enabled: !!organization?.id,
   });
+  const facilities = facilitiesData ?? [];
 
   // Fetch store locations for source/destination stores
   const { data: storesData } = useQuery({
