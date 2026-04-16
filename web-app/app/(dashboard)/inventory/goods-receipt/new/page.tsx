@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Form,
   FormControl,
@@ -163,7 +163,7 @@ export default function NewGoodsReceiptPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-5xl">
+    <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto">
       <PageHeader
         title="New Goods Receipt"
         helpContent="Record a delivery of goods. Link to a purchase order or create a standalone receipt. Enter batch numbers and expiry dates for each item."
@@ -182,16 +182,14 @@ export default function NewGoodsReceiptPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Supplier *</FormLabel>
-                      <Select onValueChange={field.onChange} value={String(field.value || '')}>
-                        <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {suppliers.map((s) => (
-                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        options={suppliers.map((s) => ({ value: String(s.id), label: s.name, sublabel: s.code }))}
+                        value={String(field.value || '')}
+                        onValueChange={field.onChange}
+                        placeholder="Select supplier"
+                        searchPlaceholder="Search suppliers..."
+                        emptyMessage="No suppliers found."
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -294,18 +292,15 @@ export default function NewGoodsReceiptPage() {
                         render={({ field: drugField }) => (
                           <FormItem>
                             <FormLabel className="text-xs">Drug *</FormLabel>
-                            <Select onValueChange={drugField.onChange} value={String(drugField.value || '')}>
-                              <FormControl>
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder="Select drug" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {drugs.map((d) => (
-                                  <SelectItem key={d.id} value={String(d.id)}>{d.generic_name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <SearchableSelect
+                              options={drugs.map((d) => ({ value: String(d.id), label: d.generic_name, sublabel: d.code }))}
+                              value={String(drugField.value || '')}
+                              onValueChange={drugField.onChange}
+                              placeholder="Select drug"
+                              searchPlaceholder="Search drugs..."
+                              emptyMessage="No drugs found."
+                              className="h-9"
+                            />
                             <FormMessage className="text-xs" />
                           </FormItem>
                         )}

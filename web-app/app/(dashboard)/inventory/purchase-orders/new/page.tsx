@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Form,
   FormControl,
@@ -110,7 +110,7 @@ export default function NewPurchaseOrderPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-4xl">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
       <PageHeader title="New Purchase Order" helpContent="Create a purchase order for a supplier. Add line items with drugs, quantities, and prices." />
 
       <Form {...form}>
@@ -126,16 +126,14 @@ export default function NewPurchaseOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Supplier *</FormLabel>
-                      <Select onValueChange={field.onChange} value={String(field.value || '')}>
-                        <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {suppliers.map((s) => (
-                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        options={suppliers.map((s) => ({ value: String(s.id), label: s.name, sublabel: s.code }))}
+                        value={String(field.value || '')}
+                        onValueChange={field.onChange}
+                        placeholder="Select supplier"
+                        searchPlaceholder="Search suppliers..."
+                        emptyMessage="No suppliers found."
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -220,23 +218,15 @@ export default function NewPurchaseOrderPage() {
                               name={`items.${index}.drug`}
                               render={({ field: drugField }) => (
                                 <FormItem className="space-y-0">
-                                  <Select
-                                    onValueChange={drugField.onChange}
+                                  <SearchableSelect
+                                    options={drugs.map((d) => ({ value: String(d.id), label: d.generic_name, sublabel: d.code }))}
                                     value={String(drugField.value || '')}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="Select drug" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {drugs.map((d) => (
-                                        <SelectItem key={d.id} value={String(d.id)}>
-                                          {d.generic_name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                    onValueChange={drugField.onChange}
+                                    placeholder="Select drug"
+                                    searchPlaceholder="Search drugs..."
+                                    emptyMessage="No drugs found."
+                                    className="h-8 text-xs"
+                                  />
                                   <FormMessage className="text-xs" />
                                 </FormItem>
                               )}
