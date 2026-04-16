@@ -1481,15 +1481,19 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         Bulk-delete shifts by date range.
 
         Deletes all SCHEDULED shifts within [from_date, to_date] for
-        the current facility.  Active / completed shifts are preserved.
+        the current facility.  Pass include_all=true to also delete
+        ACTIVE, ON_BREAK, and COMPLETED shifts.  CANCELLED shifts are
+        always excluded.
 
         Request body:
-            { "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD" }
+            { "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD",
+              "include_all": false }
         """
         from datetime import date as date_type
 
         from_date_str = request.data.get("from_date")
         to_date_str = request.data.get("to_date")
+        include_all = request.data.get("include_all", False)
 
         if not from_date_str or not to_date_str:
             return Response(
@@ -1509,8 +1513,9 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         qs = self.get_queryset().filter(
             shift_date__gte=from_date,
             shift_date__lte=to_date,
-            status="SCHEDULED",
         )
+        qs = qs.exclude(status="CANCELLED") if include_all else qs.filter(status="SCHEDULED")
+
         count = qs.count()
         qs.delete()
 

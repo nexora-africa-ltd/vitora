@@ -380,11 +380,12 @@ export const shiftsApi = {
     return response.data;
   },
 
-  /** Bulk-delete SCHEDULED shifts in a date range. */
-  bulkDelete: async (fromDate: string, toDate: string): Promise<{ deleted: number }> => {
+  /** Bulk-delete shifts in a date range. Pass includeAll to also remove active/completed shifts. */
+  bulkDelete: async (fromDate: string, toDate: string, includeAll = false): Promise<{ deleted: number }> => {
     const response = await apiClient.post(`${BASE_URL}/shifts/bulk-delete/`, {
       from_date: fromDate,
       to_date: toDate,
+      include_all: includeAll,
     });
     return response.data;
   },
