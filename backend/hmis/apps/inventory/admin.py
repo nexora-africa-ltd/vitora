@@ -8,10 +8,14 @@ from .models import (
     GRNItem,
     PurchaseOrder,
     PurchaseOrderItem,
+    StockCount,
+    StockCountItem,
     StockTransfer,
     StoreLocation,
     Supplier,
     TransferItem,
+    WardStock,
+    WardStockTransaction,
 )
 
 
@@ -195,6 +199,107 @@ class StockTransferAdmin(admin.ModelAdmin):
             "APPROVED": "#10b981",
             "IN_TRANSIT": "#f59e0b",
             "RECEIVED": "#059669",
+            "CANCELLED": "#ef4444",
+        }
+        color = colors.get(obj.status, "#6b7280")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+
+# ===========================================================================
+# Phase 3: Ward / Satellite Stock
+# ===========================================================================
+
+
+class WardStockTransactionInline(admin.TabularInline):
+    model = WardStockTransaction
+    extra = 0
+    raw_id_fields = ("batch", "patient", "performed_by")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(WardStock)
+class WardStockAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "store_location",
+        "drug",
+        "ward",
+        "quantity_available",
+        "par_level",
+        "max_level",
+        "is_below_par",
+        "facility",
+        "updated_at",
+    )
+    list_filter = ("facility", "store_location", "ward")
+    search_fields = ("drug__brand_name", "drug__generic_name")
+    raw_id_fields = ("store_location", "drug", "ward", "facility", "organization")
+    inlines = [WardStockTransactionInline]
+
+
+@admin.register(WardStockTransaction)
+class WardStockTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "ward_stock",
+        "transaction_type",
+        "quantity",
+        "performed_by",
+        "created_at",
+    )
+    list_filter = ("transaction_type",)
+    search_fields = ("ward_stock__drug__brand_name",)
+    raw_id_fields = ("ward_stock", "batch", "patient", "performed_by")
+
+
+# ===========================================================================
+# Phase 4: Stock Reconciliation & Cycle Counting
+# ===========================================================================
+
+
+class StockCountItemInline(admin.TabularInline):
+    model = StockCountItem
+    extra = 0
+    raw_id_fields = ("drug", "batch", "counted_by")
+    readonly_fields = ("system_quantity", "counted_at")
+
+
+@admin.register(StockCount)
+class StockCountAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "count_number",
+        "count_type",
+        "colored_status",
+        "store_location",
+        "started_by",
+        "approved_by",
+        "facility",
+        "created_at",
+    )
+    list_filter = ("status", "count_type", "facility")
+    search_fields = ("count_number",)
+    raw_id_fields = (
+        "store_location",
+        "started_by",
+        "approved_by",
+        "facility",
+        "organization",
+    )
+    date_hierarchy = "created_at"
+    inlines = [StockCountItemInline]
+
+    @admin.display(description="Status")
+    def colored_status(self, obj):
+        colors = {
+            "DRAFT": "#6b7280",
+            "IN_PROGRESS": "#3b82f6",
+            "COMPLETED": "#f59e0b",
+            "APPROVED": "#10b981",
             "CANCELLED": "#ef4444",
         }
         color = colors.get(obj.status, "#6b7280")

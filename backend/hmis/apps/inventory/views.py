@@ -9,6 +9,7 @@ Follows project conventions:
 """
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -18,16 +19,23 @@ from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.inventory.filters import (
     GoodsReceiptNoteFilter,
     PurchaseOrderFilter,
+    StockCountFilter,
     StockTransferFilter,
     StoreLocationFilter,
     SupplierFilter,
+    WardStockFilter,
+    WardStockTransactionFilter,
 )
 from hmis.apps.inventory.models import (
     GoodsReceiptNote,
     PurchaseOrder,
+    StockCount,
     StockTransfer,
     StoreLocation,
     Supplier,
+    WardStock,
+    WardStockTransaction,
+    WardTransactionType,
 )
 from hmis.apps.inventory.serializers import (
     GoodsReceiptNoteCreateSerializer,
@@ -39,6 +47,11 @@ from hmis.apps.inventory.serializers import (
     PurchaseOrderDetailSerializer,
     PurchaseOrderItemSerializer,
     PurchaseOrderListSerializer,
+    StockCountCreateSerializer,
+    StockCountDetailSerializer,
+    StockCountItemSerializer,
+    StockCountItemUpdateSerializer,
+    StockCountListSerializer,
     StockTransferCreateSerializer,
     StockTransferDetailSerializer,
     StockTransferListSerializer,
@@ -49,6 +62,12 @@ from hmis.apps.inventory.serializers import (
     TransferApproveSerializer,
     TransferCancelSerializer,
     TransferItemSerializer,
+    WardConsumeSerializer,
+    WardReplenishSerializer,
+    WardReturnSerializer,
+    WardStockCreateSerializer,
+    WardStockSerializer,
+    WardStockTransactionSerializer,
 )
 
 # ---------------------------------------------------------------------------
@@ -339,7 +358,6 @@ class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
         serializer.is_valid(raise_exception=True)
         try:
             transfer.cancel(
-                user=request.user,
                 reason=serializer.validated_data.get("reason", ""),
             )
         except DjangoValidationError as e:
@@ -354,3 +372,209 @@ class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
             transfer.items.select_related("drug", "source_batch"), many=True
         )
         return Response(serializer.data)
+
+
+# ===========================================================================
+# Phase 3: Ward / Satellite Stock
+# ===========================================================================
+
+
+class WardStockViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    """CRUD + consume/replenish/return for ward stock levels. Facility-scoped."""
+
+    queryset = WardStock.objects.select_related("store_location", "drug", "ward")
+    permission_classes = [IsAuthenticated]
+    filterset_class = WardStockFilter
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return WardStockCreateSerializer
+        if self.action == "consume":
+            return WardConsumeSerializer
+        if self.action == "replenish":
+            return WardReplenishSerializer
+        if self.action == "return_to_store":
+            return WardReturnSerializer
+        return WardStockSerializer
+
+    @action(detail=True, methods=["post"])
+    def consume(self, request, pk=None):
+        """Consume stock at the ward (e.g. patient use)."""
+        ws = self.get_object()
+        serializer = WardConsumeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        qty = serializer.validated_data["quantity"]
+        if qty > ws.quantity_available:
+            return Response(
+                {
+                    "error": f"Insufficient stock: available={ws.quantity_available}, requested={qty}"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        WardStockTransaction.objects.create(
+            ward_stock=ws,
+            transaction_type=WardTransactionType.CONSUME,
+            quantity=-qty,
+            batch_id=serializer.validated_data.get("batch"),
+            patient_id=serializer.validated_data.get("patient"),
+            performed_by=request.user,
+            notes=serializer.validated_data.get("notes", ""),
+        )
+        ws.refresh_from_db()
+        return Response(WardStockSerializer(ws).data)
+
+    @action(detail=True, methods=["post"])
+    def replenish(self, request, pk=None):
+        """Replenish ward stock (from main store)."""
+        ws = self.get_object()
+        serializer = WardReplenishSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        qty = serializer.validated_data["quantity"]
+        WardStockTransaction.objects.create(
+            ward_stock=ws,
+            transaction_type=WardTransactionType.REPLENISH,
+            quantity=qty,
+            batch_id=serializer.validated_data.get("batch"),
+            performed_by=request.user,
+            notes=serializer.validated_data.get("notes", ""),
+        )
+        ws.refresh_from_db()
+        return Response(WardStockSerializer(ws).data)
+
+    @action(detail=True, methods=["post"])
+    def return_to_store(self, request, pk=None):
+        """Return stock from ward back to main store."""
+        ws = self.get_object()
+        serializer = WardReturnSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        qty = serializer.validated_data["quantity"]
+        if qty > ws.quantity_available:
+            return Response(
+                {"error": f"Cannot return more than available: {ws.quantity_available}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        WardStockTransaction.objects.create(
+            ward_stock=ws,
+            transaction_type=WardTransactionType.RETURN,
+            quantity=-qty,
+            performed_by=request.user,
+            notes=serializer.validated_data.get("notes", ""),
+        )
+        ws.refresh_from_db()
+        return Response(WardStockSerializer(ws).data)
+
+
+class WardStockTransactionViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only transaction history for ward stock."""
+
+    queryset = WardStockTransaction.objects.select_related(
+        "ward_stock__drug",
+        "ward_stock__store_location",
+        "performed_by",
+        "patient",
+    )
+    serializer_class = WardStockTransactionSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_class = WardStockTransactionFilter
+
+
+# ===========================================================================
+# Phase 4: Stock Reconciliation & Cycle Counting
+# ===========================================================================
+
+
+class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    """CRUD + lifecycle actions for stock counts. Facility-scoped."""
+
+    queryset = StockCount.objects.select_related(
+        "store_location", "started_by", "approved_by"
+    ).prefetch_related("items__drug", "items__batch")
+    permission_classes = [IsAuthenticated]
+    filterset_class = StockCountFilter
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return StockCountCreateSerializer
+        if self.action == "list":
+            return StockCountListSerializer
+        return StockCountDetailSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(
+            started_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
+
+    @action(detail=True, methods=["post"])
+    def generate_items(self, request, pk=None):
+        """Auto-populate count items from current stock batches."""
+        count = self.get_object()
+        try:
+            created = count.generate_items()
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"created": created, "total": count.items.count()},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"])
+    def start(self, request, pk=None):
+        """DRAFT → IN_PROGRESS."""
+        count = self.get_object()
+        try:
+            count.start()
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(StockCountDetailSerializer(count).data)
+
+    @action(detail=True, methods=["post"])
+    def complete(self, request, pk=None):
+        """IN_PROGRESS → COMPLETED."""
+        count = self.get_object()
+        try:
+            count.complete()
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(StockCountDetailSerializer(count).data)
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """COMPLETED → APPROVED. Creates StockAdjustment records for variances."""
+        count = self.get_object()
+        try:
+            count.approve(user=request.user)
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        # Re-fetch with relations
+        count = self.get_queryset().get(pk=count.pk)
+        return Response(StockCountDetailSerializer(count).data)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Any non-terminal → CANCELLED."""
+        count = self.get_object()
+        try:
+            count.cancel()
+        except DjangoValidationError as e:
+            return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(StockCountDetailSerializer(count).data)
+
+    @action(detail=True, methods=["get", "patch"], url_path="items/(?P<item_pk>[^/.]+)")
+    def item_detail(self, request, pk=None, item_pk=None):
+        """Get or update a specific count item (record physical count)."""
+        count = self.get_object()
+        try:
+            item = count.items.get(pk=item_pk)
+        except StockCount.items.rel.related_model.DoesNotExist:
+            return Response({"error": "Item not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "PATCH":
+            serializer = StockCountItemUpdateSerializer(item, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(counted_by=request.user, counted_at=timezone.now())
+            item.refresh_from_db()
+
+        return Response(StockCountItemSerializer(item).data)

@@ -167,6 +167,15 @@ class InventoryEvents:
     TRANSFER_RECEIVED = "inventory.transfer.received"
     TRANSFER_CANCELLED = "inventory.transfer.cancelled"
 
+    # Phase 3: Ward / Satellite stock
+    WARD_STOCK_LOW = "inventory.ward_stock.low"
+    WARD_STOCK_CONSUMED = "inventory.ward_stock.consumed"
+    WARD_STOCK_REPLENISHED = "inventory.ward_stock.replenished"
+
+    # Phase 4: Stock reconciliation
+    STOCK_COUNT_COMPLETED = "inventory.stock_count.completed"
+    STOCK_COUNT_APPROVED = "inventory.stock_count.approved"
+
 
 class ImagingEvents:
     """Imaging domain event types."""

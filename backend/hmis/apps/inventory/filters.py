@@ -6,9 +6,12 @@ from django.db import models
 from hmis.apps.inventory.models import (
     GoodsReceiptNote,
     PurchaseOrder,
+    StockCount,
     StockTransfer,
     StoreLocation,
     Supplier,
+    WardStock,
+    WardStockTransaction,
 )
 
 
@@ -80,3 +83,49 @@ class StockTransferFilter(django_filters.FilterSet):
     class Meta:
         model = StockTransfer
         fields = ["status", "source_facility", "destination_facility"]
+
+
+# ===========================================================================
+# Phase 3: Ward / Satellite Stock
+# ===========================================================================
+
+
+class WardStockFilter(django_filters.FilterSet):
+    store_location = django_filters.NumberFilter()
+    drug = django_filters.NumberFilter()
+    ward = django_filters.NumberFilter()
+    below_par = django_filters.BooleanFilter(method="filter_below_par")
+
+    class Meta:
+        model = WardStock
+        fields = ["store_location", "drug", "ward"]
+
+    def filter_below_par(self, queryset, _name, value):
+        if value:
+            return queryset.filter(quantity_available__lte=models.F("par_level"))
+        return queryset
+
+
+class WardStockTransactionFilter(django_filters.FilterSet):
+    ward_stock = django_filters.NumberFilter()
+    transaction_type = django_filters.CharFilter()
+    performed_by = django_filters.NumberFilter()
+
+    class Meta:
+        model = WardStockTransaction
+        fields = ["ward_stock", "transaction_type", "performed_by"]
+
+
+# ===========================================================================
+# Phase 4: Stock Reconciliation & Cycle Counting
+# ===========================================================================
+
+
+class StockCountFilter(django_filters.FilterSet):
+    status = django_filters.CharFilter()
+    count_type = django_filters.CharFilter()
+    store_location = django_filters.NumberFilter()
+
+    class Meta:
+        model = StockCount
+        fields = ["status", "count_type", "store_location"]
