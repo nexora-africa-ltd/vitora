@@ -656,9 +656,17 @@ export const inventoryApi = {
     });
   },
 
-  async generateForecast(data: DemandForecastGenerateData): Promise<{ count: number }> {
+  async generateForecast(
+    data: DemandForecastGenerateData
+  ): Promise<DemandForecast | { message: string; count: number }> {
     const response = await apiClient.post(`${BASE}/forecasts/generate/`, data);
-    return response.data;
+    // Single drug → DemandForecast, all drugs → { message, count }
+    if (data.drug_id) {
+      return parseResponse(DemandForecastSchema, response.data, {
+        context: 'inventoryApi.generateForecast',
+      });
+    }
+    return response.data as { message: string; count: number };
   },
 
   // ==========================================================================
@@ -681,13 +689,13 @@ export const inventoryApi = {
     });
   },
 
-  async convertReorderToPO(id: number): Promise<ReorderSuggestion> {
+  async convertReorderToPO(
+    id: number
+  ): Promise<{ message: string; purchase_order_id: number; po_number: string }> {
     const response = await apiClient.post(
       `${BASE}/reorder-suggestions/${id}/convert_to_po/`
     );
-    return parseResponse(ReorderSuggestionSchema, response.data, {
-      context: 'inventoryApi.convertReorderToPO',
-    });
+    return response.data as { message: string; purchase_order_id: number; po_number: string };
   },
 
   async dismissReorderSuggestion(id: number): Promise<ReorderSuggestion> {
