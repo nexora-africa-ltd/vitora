@@ -573,7 +573,12 @@ class CreditNoteSerializer(serializers.ModelSerializer):
 
 
 class FacilityBillingConfigSerializer(serializers.ModelSerializer):
-    """Serializer for FacilityBillingConfig model."""
+    """Serializer for FacilityBillingConfig model.
+
+    M-Pesa API secrets (consumer_key, consumer_secret, passkey) are
+    intentionally EXCLUDED — they are KMS-encrypted and never returned
+    in API responses.
+    """
 
     facility_name = serializers.CharField(source="facility.name", read_only=True)
     facility_mfl_code = serializers.CharField(source="facility.mfl_code", read_only=True)
@@ -622,10 +627,7 @@ class FacilityBillingConfigSerializer(serializers.ModelSerializer):
             "bank_name",
             "bank_account_number",
             "bank_branch",
-            # M-Pesa API credentials
-            "mpesa_consumer_key",
-            "mpesa_consumer_secret",
-            "mpesa_passkey",
+            # M-Pesa (non-secret only — secrets are write-only)
             "mpesa_shortcode",
             "mpesa_callback_url",
             "mpesa_environment",
@@ -638,7 +640,22 @@ class FacilityBillingConfigSerializer(serializers.ModelSerializer):
 
 
 class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating FacilityBillingConfig."""
+    """Serializer for creating/updating FacilityBillingConfig.
+
+    M-Pesa secrets are accepted as write-only fields and stored via
+    KMS-encrypted property setters on the model.
+    """
+
+    # Write-only secret fields — accepted on POST/PATCH, never returned
+    mpesa_consumer_key = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, default=""
+    )
+    mpesa_consumer_secret = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, default=""
+    )
+    mpesa_passkey = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, default=""
+    )
 
     class Meta:
         from hmis.apps.billing.models import FacilityBillingConfig
@@ -665,7 +682,7 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
             "bank_name",
             "bank_account_number",
             "bank_branch",
-            # M-Pesa API credentials
+            # M-Pesa API credentials (write-only — goes through KMS)
             "mpesa_consumer_key",
             "mpesa_consumer_secret",
             "mpesa_passkey",
@@ -673,6 +690,42 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
             "mpesa_callback_url",
             "mpesa_environment",
         ]
+
+    def create(self, validated_data):
+        # Pop secrets and set via KMS property setters
+        secrets = {
+            k: validated_data.pop(k, "")
+            for k in ("mpesa_consumer_key", "mpesa_consumer_secret", "mpesa_passkey")
+        }
+        instance = super().create(validated_data)
+        for attr, value in secrets.items():
+            if value:
+                setattr(instance, attr, value)
+        if any(secrets.values()):
+            instance.save(
+                update_fields=[
+                    "mpesa_consumer_key_encrypted",
+                    "mpesa_consumer_secret_encrypted",
+                    "mpesa_passkey_encrypted",
+                ]
+            )
+        return instance
+
+    def update(self, instance, validated_data):
+        # Pop secrets and set via KMS property setters
+        secrets = {
+            k: validated_data.pop(k, "")
+            for k in ("mpesa_consumer_key", "mpesa_consumer_secret", "mpesa_passkey")
+        }
+        instance = super().update(instance, validated_data)
+        changed = []
+        for attr, value in secrets.items():
+            if value:
+                setattr(instance, attr, value)
+                changed.append(f"{attr}_encrypted")
+        if changed:
+            instance.save(update_fields=changed)
+        return instance
 
 
 class SHAContractSummarySerializer(serializers.Serializer):

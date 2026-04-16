@@ -3017,23 +3017,20 @@ class FacilityBillingConfig(models.Model):
         SANDBOX = "sandbox", "Sandbox"
         PRODUCTION = "production", "Production"
 
-    mpesa_consumer_key = models.CharField(
-        max_length=200,
+    mpesa_consumer_key_encrypted = models.TextField(
         blank=True,
         default="",
-        help_text="Daraja API consumer key for this facility.",
+        help_text="Daraja API consumer key (KMS-encrypted).",
     )
-    mpesa_consumer_secret = models.CharField(
-        max_length=200,
+    mpesa_consumer_secret_encrypted = models.TextField(
         blank=True,
         default="",
-        help_text="Daraja API consumer secret for this facility.",
+        help_text="Daraja API consumer secret (KMS-encrypted).",
     )
-    mpesa_passkey = models.CharField(
-        max_length=200,
+    mpesa_passkey_encrypted = models.TextField(
         blank=True,
         default="",
-        help_text="Lipa Na M-Pesa Online passkey for this facility.",
+        help_text="Lipa Na M-Pesa Online passkey (KMS-encrypted).",
     )
     mpesa_shortcode = models.CharField(
         max_length=20,
@@ -3067,6 +3064,61 @@ class FacilityBillingConfig(models.Model):
 
     def __str__(self):
         return f"Billing Config – {self.facility.name}"
+
+    # ------------------------------------------------------------------
+    # KMS-encrypted M-Pesa credential properties
+    # ------------------------------------------------------------------
+
+    @property
+    def mpesa_consumer_key(self) -> str:
+        if not self.mpesa_consumer_key_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        return get_kms_provider().decrypt_string(self.mpesa_consumer_key_encrypted)
+
+    @mpesa_consumer_key.setter
+    def mpesa_consumer_key(self, value: str) -> None:
+        if not value:
+            self.mpesa_consumer_key_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.mpesa_consumer_key_encrypted = get_kms_provider().encrypt_string(value)
+
+    @property
+    def mpesa_consumer_secret(self) -> str:
+        if not self.mpesa_consumer_secret_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        return get_kms_provider().decrypt_string(self.mpesa_consumer_secret_encrypted)
+
+    @mpesa_consumer_secret.setter
+    def mpesa_consumer_secret(self, value: str) -> None:
+        if not value:
+            self.mpesa_consumer_secret_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.mpesa_consumer_secret_encrypted = get_kms_provider().encrypt_string(value)
+
+    @property
+    def mpesa_passkey(self) -> str:
+        if not self.mpesa_passkey_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        return get_kms_provider().decrypt_string(self.mpesa_passkey_encrypted)
+
+    @mpesa_passkey.setter
+    def mpesa_passkey(self, value: str) -> None:
+        if not value:
+            self.mpesa_passkey_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.mpesa_passkey_encrypted = get_kms_provider().encrypt_string(value)
 
     @property
     def has_mpesa_credentials(self) -> bool:
