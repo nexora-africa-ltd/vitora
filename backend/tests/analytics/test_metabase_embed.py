@@ -99,7 +99,7 @@ class TestMetabaseEmbedView:
 
         token_str = response.data["embed_url"].split("/embed/dashboard/")[1].split("#")[0]
         decoded = jwt.decode(token_str, "test-secret-key-for-metabase", algorithms=["HS256"])
-        assert decoded["params"]["facility_id"] == sample_facility.id
+        assert decoded["params"]["facility_id"] == [sample_facility.id]
 
     @override_settings(
         METABASE_EMBEDDING_SECRET="secret",
