@@ -4,6 +4,7 @@ import django_filters
 from django.db import models
 
 from hmis.apps.inventory.models import (
+    ETIMSInvoice,
     GoodsReceiptNote,
     PurchaseOrder,
     StockCount,
@@ -129,3 +130,19 @@ class StockCountFilter(django_filters.FilterSet):
     class Meta:
         model = StockCount
         fields = ["status", "count_type", "store_location"]
+
+
+# ===========================================================================
+# Phase 5: KRA eTIMS
+# ===========================================================================
+
+
+class ETIMSInvoiceFilter(django_filters.FilterSet):
+    status = django_filters.CharFilter()
+    invoice = django_filters.NumberFilter()
+    created_after = django_filters.DateFilter(field_name="created_at", lookup_expr="date__gte")
+    created_before = django_filters.DateFilter(field_name="created_at", lookup_expr="date__lte")
+
+    class Meta:
+        model = ETIMSInvoice
+        fields = ["status", "invoice"]

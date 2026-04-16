@@ -7,6 +7,9 @@ Separate Create/Read serializers per model following project conventions.
 from rest_framework import serializers
 
 from hmis.apps.inventory.models import (
+    ETIMSConfig,
+    ETIMSInvoice,
+    ETIMSItem,
     GoodsReceiptNote,
     GRNItem,
     PurchaseOrder,
@@ -985,3 +988,138 @@ class StockCountCreateSerializer(serializers.ModelSerializer):
             "store_location",
             "notes",
         ]
+
+
+# ===========================================================================
+# Phase 5: KRA eTIMS Integration
+# ===========================================================================
+
+
+class ETIMSConfigSerializer(serializers.ModelSerializer):
+    """Read serializer for eTIMS configuration."""
+
+    class Meta:
+        model = ETIMSConfig
+        fields = [
+            "id",
+            "bhf_id",
+            "dvc_srl_no",
+            "tin",
+            "api_base_url",
+            "is_active",
+            "last_sync_at",
+            "environment",
+            "facility",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "facility", "created_at", "updated_at", "last_sync_at"]
+
+
+class ETIMSConfigCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for eTIMS configuration. Accepts plaintext api_key."""
+
+    api_key = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    class Meta:
+        model = ETIMSConfig
+        fields = [
+            "bhf_id",
+            "dvc_srl_no",
+            "tin",
+            "api_base_url",
+            "api_key",
+            "is_active",
+            "environment",
+        ]
+
+    def create(self, validated_data):
+        api_key = validated_data.pop("api_key", "")
+        instance = super().create(validated_data)
+        if api_key:
+            instance.api_key = api_key
+            instance.save(update_fields=["api_key_encrypted"])
+        return instance
+
+    def update(self, instance, validated_data):
+        api_key = validated_data.pop("api_key", None)
+        instance = super().update(instance, validated_data)
+        if api_key is not None:
+            instance.api_key = api_key
+            instance.save(update_fields=["api_key_encrypted"])
+        return instance
+
+
+class ETIMSItemSerializer(serializers.ModelSerializer):
+    """Serializer for eTIMS invoice line items."""
+
+    class Meta:
+        model = ETIMSItem
+        fields = [
+            "id",
+            "item_code",
+            "item_name",
+            "quantity",
+            "unit_price",
+            "tax_amount",
+            "total",
+        ]
+        read_only_fields = ["id"]
+
+
+class ETIMSInvoiceSerializer(serializers.ModelSerializer):
+    """Read serializer for eTIMS invoice submissions."""
+
+    items = ETIMSItemSerializer(many=True, read_only=True)
+    invoice_number = serializers.CharField(source="invoice.invoice_number", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    invoice_total = serializers.DecimalField(
+        source="invoice.total_amount", max_digits=12, decimal_places=2, read_only=True
+    )
+
+    class Meta:
+        model = ETIMSInvoice
+        fields = [
+            "id",
+            "invoice",
+            "invoice_number",
+            "patient_name",
+            "invoice_total",
+            "dispensing",
+            "etims_receipt_number",
+            "etims_internal_data",
+            "status",
+            "submitted_at",
+            "confirmed_at",
+            "error_message",
+            "retry_count",
+            "facility",
+            "created_at",
+            "updated_at",
+            "items",
+        ]
+        read_only_fields = [
+            "id",
+            "etims_receipt_number",
+            "etims_internal_data",
+            "status",
+            "submitted_at",
+            "confirmed_at",
+            "error_message",
+            "retry_count",
+            "facility",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj):
+        patient = obj.invoice.patient
+        return f"{patient.first_name} {patient.last_name}"
+
+
+class ETIMSInvoiceCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for creating an eTIMS invoice submission."""
+
+    class Meta:
+        model = ETIMSInvoice
+        fields = ["invoice", "dispensing"]

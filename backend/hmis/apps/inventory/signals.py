@@ -16,6 +16,8 @@ from django.dispatch import receiver
 from hmis.apps.core.events import InventoryEvents, publish_event
 
 from .models import (
+    ETIMSInvoice,
+    ETIMSInvoiceStatus,
     GoodsReceiptNote,
     GRNStatus,
     PurchaseOrder,
@@ -168,3 +170,33 @@ def publish_stock_count_event(sender, instance, created, **kwargs):
     elif instance.status == StockCountStatus.APPROVED:
         payload["approved_by_id"] = instance.approved_by_id
         publish_event(InventoryEvents.STOCK_COUNT_APPROVED, "StockCount", instance.pk, payload)
+
+
+# ===========================================================================
+# Phase 5: KRA eTIMS
+# ===========================================================================
+
+
+@receiver(post_save, sender=ETIMSInvoice)
+def publish_etims_invoice_event(sender, instance, created, **kwargs):
+    """Publish events for eTIMS invoice status transitions."""
+    if created:
+        return
+    payload = {
+        "invoice_id": instance.invoice_id,
+        "status": instance.status,
+        "facility_id": instance.facility_id,
+        "retry_count": instance.retry_count,
+    }
+    status_event_map = {
+        ETIMSInvoiceStatus.SUBMITTED: InventoryEvents.ETIMS_SUBMITTED,
+        ETIMSInvoiceStatus.CONFIRMED: InventoryEvents.ETIMS_CONFIRMED,
+        ETIMSInvoiceStatus.FAILED: InventoryEvents.ETIMS_FAILED,
+    }
+    event_type = status_event_map.get(instance.status)
+    if event_type:
+        if instance.etims_receipt_number:
+            payload["receipt_number"] = instance.etims_receipt_number
+        if instance.error_message:
+            payload["error_message"] = instance.error_message
+        publish_event(event_type, "ETIMSInvoice", instance.pk, payload)

@@ -176,6 +176,11 @@ class InventoryEvents:
     STOCK_COUNT_COMPLETED = "inventory.stock_count.completed"
     STOCK_COUNT_APPROVED = "inventory.stock_count.approved"
 
+    # Phase 5: KRA eTIMS
+    ETIMS_SUBMITTED = "inventory.etims.submitted"
+    ETIMS_CONFIRMED = "inventory.etims.confirmed"
+    ETIMS_FAILED = "inventory.etims.failed"
+
 
 class ImagingEvents:
     """Imaging domain event types."""
