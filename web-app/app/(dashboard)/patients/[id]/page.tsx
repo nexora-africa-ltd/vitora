@@ -781,14 +781,14 @@ function PatientLabResultsSection({
               onClick={() => router.push(`/laboratory/orders/${order.order_number}`)}
             >
               <div className="min-w-0">
-                <p className="flex items-center gap-2 truncate text-sm font-medium">
+                <div className="flex items-center gap-2 truncate text-sm font-medium">
                   {order.order_number}
                   {hasCritical && (
                     <Badge variant="destructive" className="text-xs">
                       Critical
                     </Badge>
                   )}
-                </p>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {formatDate(order.ordered_at)} • {order.items?.length || 0} test(s)
                 </p>
