@@ -863,3 +863,446 @@ class TransferItem(TimeStampedModel):
 
     def __str__(self):
         return f"{self.drug.generic_name} x{self.quantity_requested}"
+
+
+# ===========================================================================
+# Phase 3: Ward / Satellite Stock Management
+# ===========================================================================
+
+
+class WardStock(FacilityScopedModel, TimeStampedModel):
+    """
+    Tracks stock levels at a ward or satellite store.
+
+    Each row represents one drug at one store location. Par-level and max-level
+    drive automatic replenishment alerts.
+    """
+
+    store_location = models.ForeignKey(
+        StoreLocation,
+        on_delete=models.CASCADE,
+        related_name="ward_stocks",
+    )
+    drug = models.ForeignKey(
+        "pharmacy.Drug",
+        on_delete=models.PROTECT,
+        related_name="ward_stocks",
+    )
+    ward = models.ForeignKey(
+        "inpatient.Ward",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ward_stocks",
+        help_text="Optional link to inpatient ward.",
+    )
+
+    quantity_available = models.PositiveIntegerField(default=0)
+    par_level = models.PositiveIntegerField(
+        default=10,
+        help_text="Minimum stock level — triggers replenishment alert.",
+    )
+    max_level = models.PositiveIntegerField(
+        default=100,
+        help_text="Maximum stock level for this location.",
+    )
+
+    last_replenished_at = models.DateTimeField(null=True, blank=True)
+    last_counted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["store_location", "drug"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["store_location", "drug"],
+                name="unique_ward_stock_per_drug_location",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.drug.generic_name} @ {self.store_location.name}"
+
+    @property
+    def is_below_par(self):
+        """True if quantity is at or below par level."""
+        return self.quantity_available <= self.par_level
+
+    @property
+    def is_above_max(self):
+        """True if quantity exceeds max level."""
+        return self.quantity_available > self.max_level
+
+    @property
+    def reorder_quantity(self):
+        """Suggested quantity to bring stock up to max level."""
+        if self.quantity_available >= self.max_level:
+            return 0
+        return self.max_level - self.quantity_available
+
+
+# ---------------------------------------------------------------------------
+# Ward Stock Transaction
+# ---------------------------------------------------------------------------
+
+
+class WardTransactionType(models.TextChoices):
+    REPLENISH = "REPLENISH", "Replenish"
+    CONSUME = "CONSUME", "Consume"
+    RETURN = "RETURN", "Return to Store"
+    ADJUSTMENT = "ADJUSTMENT", "Adjustment"
+    COUNT_CORRECTION = "COUNT_CORRECTION", "Count Correction"
+
+
+class WardStockTransaction(TimeStampedModel):
+    """
+    Ledger of stock movements at a ward/satellite store.
+
+    Positive quantity = stock in (replenish, return, positive adjustment).
+    Negative quantity = stock out (consume, negative adjustment).
+    """
+
+    ward_stock = models.ForeignKey(
+        WardStock,
+        on_delete=models.CASCADE,
+        related_name="transactions",
+    )
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=WardTransactionType.choices,
+    )
+    quantity = models.IntegerField(
+        help_text="Positive = in, negative = out.",
+    )
+
+    # Optional source/context
+    batch = models.ForeignKey(
+        "pharmacy.StockBatch",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ward_transactions",
+    )
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ward_stock_consumptions",
+        help_text="Patient consuming the item (for CONSUME type).",
+    )
+
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="ward_stock_transactions",
+    )
+    performed_at = models.DateTimeField(default=timezone.now)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-performed_at"]
+
+    def __str__(self):
+        return f"{self.get_transaction_type_display()} {self.quantity:+d} — {self.ward_stock}"
+
+    def save(self, *args, **kwargs):
+        """Update WardStock.quantity_available on create."""
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new:
+            ws = self.ward_stock
+            ws.quantity_available = max(0, ws.quantity_available + self.quantity)
+            update_fields = ["quantity_available", "updated_at"]
+            if self.transaction_type == WardTransactionType.REPLENISH:
+                ws.last_replenished_at = self.performed_at
+                update_fields.append("last_replenished_at")
+            elif self.transaction_type == WardTransactionType.COUNT_CORRECTION:
+                ws.last_counted_at = self.performed_at
+                update_fields.append("last_counted_at")
+            ws.save(update_fields=update_fields)
+
+
+# ===========================================================================
+# Phase 4: Stock Reconciliation & Cycle Counting
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Auto-number generator
+# ---------------------------------------------------------------------------
+
+
+def generate_stock_count_number():
+    """Generate a unique Stock Count number: SC-YYYYMMDD-XXXX."""
+    today = datetime.now().strftime("%Y%m%d")
+    prefix = f"SC-{today}-"
+    StockCount = apps.get_model("inventory", "StockCount")
+    latest = (
+        StockCount.objects.filter(count_number__startswith=prefix).order_by("-count_number").first()
+    )
+    sequence = int(latest.count_number.split("-")[-1]) + 1 if latest else 1
+    return f"{prefix}{sequence:04d}"
+
+
+# ---------------------------------------------------------------------------
+# Stock Count
+# ---------------------------------------------------------------------------
+
+
+class StockCountType(models.TextChoices):
+    FULL = "FULL", "Full Count"
+    CYCLE = "CYCLE", "Cycle Count"
+    SPOT = "SPOT", "Spot Check"
+
+
+class StockCountStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    IN_PROGRESS = "IN_PROGRESS", "In Progress"
+    COMPLETED = "COMPLETED", "Completed"
+    APPROVED = "APPROVED", "Approved"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class StockCount(FacilityScopedModel, TimeStampedModel):
+    """
+    Physical stock count / cycle count session.
+
+    Workflow: DRAFT → IN_PROGRESS → COMPLETED → APPROVED
+                ↘───────────↘──────────→ CANCELLED
+    """
+
+    count_number = models.CharField(
+        max_length=30,
+        unique=True,
+        editable=False,
+        default=generate_stock_count_number,
+    )
+    count_type = models.CharField(
+        max_length=10,
+        choices=StockCountType.choices,
+        default=StockCountType.CYCLE,
+    )
+    store_location = models.ForeignKey(
+        StoreLocation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_counts",
+        help_text="Null = facility main store.",
+    )
+    status = models.CharField(
+        max_length=15,
+        choices=StockCountStatus.choices,
+        default=StockCountStatus.DRAFT,
+    )
+
+    # Users
+    started_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="stock_counts_started",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_counts_approved",
+    )
+
+    # Dates
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.count_number} ({self.get_count_type_display()})"
+
+    # -- Computed properties --------------------------------------------------
+
+    @property
+    def total_items_counted(self):
+        return self.items.exclude(counted_quantity__isnull=True).count()
+
+    @property
+    def total_discrepancies(self):
+        """Count of items where counted_quantity != system_quantity."""
+        counted = self.items.exclude(counted_quantity__isnull=True)
+        return counted.exclude(counted_quantity=models.F("system_quantity")).count()
+
+    # -- State-transition methods ---------------------------------------------
+
+    def start(self):
+        """DRAFT → IN_PROGRESS."""
+        if self.status != StockCountStatus.DRAFT:
+            raise ValidationError("Only DRAFT stock counts can be started.")
+        if not self.items.exists():
+            raise ValidationError("Cannot start a stock count with no items.")
+        self.status = StockCountStatus.IN_PROGRESS
+        self.started_at = timezone.now()
+        self.save(update_fields=["status", "started_at", "updated_at"])
+
+    def complete(self):
+        """IN_PROGRESS → COMPLETED."""
+        if self.status != StockCountStatus.IN_PROGRESS:
+            raise ValidationError("Only IN_PROGRESS stock counts can be completed.")
+        # All items must have been counted
+        uncounted = self.items.filter(counted_quantity__isnull=True).count()
+        if uncounted > 0:
+            raise ValidationError(f"{uncounted} item(s) have not been counted yet.")
+        self.status = StockCountStatus.COMPLETED
+        self.completed_at = timezone.now()
+        self.save(update_fields=["status", "completed_at", "updated_at"])
+
+    def approve(self, user):
+        """
+        COMPLETED → APPROVED.
+
+        Creates StockAdjustment(COUNT_CORRECTION) for each item with a variance.
+        """
+        if self.status != StockCountStatus.COMPLETED:
+            raise ValidationError("Only COMPLETED stock counts can be approved.")
+
+        StockAdjustment = apps.get_model("pharmacy", "StockAdjustment")
+
+        for item in self.items.select_related("batch").exclude(
+            counted_quantity=models.F("system_quantity")
+        ):
+            variance = item.counted_quantity - item.system_quantity
+            StockAdjustment.objects.create(
+                batch=item.batch,
+                adjustment_type="COUNT_CORRECTION",
+                quantity=variance,
+                reason=(
+                    f"Stock count {self.count_number}: "
+                    f"system={item.system_quantity}, counted={item.counted_quantity}. "
+                    f"{item.variance_reason}"
+                ),
+                reference_number=self.count_number,
+                adjusted_by=user,
+            )
+
+        self.status = StockCountStatus.APPROVED
+        self.approved_by = user
+        self.approved_at = timezone.now()
+        self.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+
+    def cancel(self):
+        """Any non-terminal → CANCELLED."""
+        terminal = {StockCountStatus.APPROVED, StockCountStatus.CANCELLED}
+        if self.status in terminal:
+            raise ValidationError("Cannot cancel an approved or already-cancelled count.")
+        self.status = StockCountStatus.CANCELLED
+        self.save(update_fields=["status", "updated_at"])
+
+    def generate_items(self):
+        """
+        Auto-populate StockCountItems from current StockBatches.
+
+        Only for DRAFT counts. Snapshots system_quantity from each batch.
+        """
+        if self.status != StockCountStatus.DRAFT:
+            raise ValidationError("Items can only be generated for DRAFT counts.")
+
+        StockBatch = apps.get_model("pharmacy", "StockBatch")
+
+        # Get batches at the facility (optionally filtered by store)
+        batches = StockBatch.objects.filter(
+            facility=self.facility,
+            status="AVAILABLE",
+            quantity_available__gt=0,
+        )
+
+        created = 0
+        for batch in batches.select_related("drug"):
+            _, is_new = StockCountItem.objects.get_or_create(
+                stock_count=self,
+                batch=batch,
+                defaults={
+                    "drug": batch.drug,
+                    "system_quantity": batch.quantity_available,
+                },
+            )
+            if is_new:
+                created += 1
+        return created
+
+
+# ---------------------------------------------------------------------------
+# Stock Count Item
+# ---------------------------------------------------------------------------
+
+
+class StockCountItem(TimeStampedModel):
+    """Individual line item in a stock count — one per batch."""
+
+    stock_count = models.ForeignKey(
+        StockCount,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    drug = models.ForeignKey(
+        "pharmacy.Drug",
+        on_delete=models.PROTECT,
+        related_name="stock_count_items",
+    )
+    batch = models.ForeignKey(
+        "pharmacy.StockBatch",
+        on_delete=models.PROTECT,
+        related_name="stock_count_items",
+    )
+
+    # Snapshot at count start
+    system_quantity = models.PositiveIntegerField(
+        help_text="System quantity at time of count generation.",
+    )
+
+    # Physical count result
+    counted_quantity = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Actual physical count. Null until counted.",
+    )
+    variance_reason = models.TextField(
+        blank=True,
+        help_text="Required explanation when counted ≠ system.",
+    )
+
+    # Who counted
+    counted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_items_counted",
+    )
+    counted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["drug__generic_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["stock_count", "batch"],
+                name="unique_count_item_per_batch",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.drug.generic_name} batch {self.batch.batch_number}"
+
+    @property
+    def variance(self):
+        """Difference between counted and system quantity."""
+        if self.counted_quantity is None:
+            return None
+        return self.counted_quantity - self.system_quantity
+
+    @property
+    def has_discrepancy(self):
+        if self.counted_quantity is None:
+            return False
+        return self.counted_quantity != self.system_quantity

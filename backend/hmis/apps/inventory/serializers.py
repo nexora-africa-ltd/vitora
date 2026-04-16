@@ -11,10 +11,14 @@ from hmis.apps.inventory.models import (
     GRNItem,
     PurchaseOrder,
     PurchaseOrderItem,
+    StockCount,
+    StockCountItem,
     StockTransfer,
     StoreLocation,
     Supplier,
     TransferItem,
+    WardStock,
+    WardStockTransaction,
 )
 
 # ---------------------------------------------------------------------------
@@ -690,3 +694,294 @@ class TransferCancelSerializer(serializers.Serializer):
     """Action serializer for cancelling a transfer."""
 
     reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+# ===========================================================================
+# Phase 3: Ward / Satellite Stock
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Ward Stock Transaction (nested read)
+# ---------------------------------------------------------------------------
+
+
+class WardStockTransactionSerializer(serializers.ModelSerializer):
+    """Read serializer for ward stock transactions."""
+
+    drug_name = serializers.CharField(source="ward_stock.drug.generic_name", read_only=True)
+    performed_by_name = serializers.SerializerMethodField()
+    patient_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WardStockTransaction
+        fields = [
+            "id",
+            "ward_stock",
+            "transaction_type",
+            "quantity",
+            "batch",
+            "patient",
+            "patient_name",
+            "drug_name",
+            "performed_by",
+            "performed_by_name",
+            "performed_at",
+            "notes",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_performed_by_name(self, obj):
+        return _user_display_name(obj.performed_by)
+
+    def get_patient_name(self, obj):
+        if obj.patient:
+            return f"{obj.patient.first_name} {obj.patient.last_name}"
+        return ""
+
+
+# ---------------------------------------------------------------------------
+# Ward Stock
+# ---------------------------------------------------------------------------
+
+
+class WardStockSerializer(serializers.ModelSerializer):
+    """Read serializer for WardStock."""
+
+    drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+    store_location_name = serializers.CharField(source="store_location.name", read_only=True)
+    is_below_par = serializers.BooleanField(read_only=True)
+    is_above_max = serializers.BooleanField(read_only=True)
+    reorder_quantity = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = WardStock
+        fields = [
+            "id",
+            "store_location",
+            "store_location_name",
+            "drug",
+            "drug_name",
+            "ward",
+            "quantity_available",
+            "par_level",
+            "max_level",
+            "is_below_par",
+            "is_above_max",
+            "reorder_quantity",
+            "last_replenished_at",
+            "last_counted_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "quantity_available",
+            "last_replenished_at",
+            "last_counted_at",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class WardStockCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for WardStock creation."""
+
+    class Meta:
+        model = WardStock
+        fields = [
+            "store_location",
+            "drug",
+            "ward",
+            "quantity_available",
+            "par_level",
+            "max_level",
+        ]
+
+
+class WardConsumeSerializer(serializers.Serializer):
+    """Action serializer for consuming ward stock."""
+
+    quantity = serializers.IntegerField(min_value=1)
+    patient = serializers.IntegerField(required=False, allow_null=True)
+    batch = serializers.IntegerField(required=False, allow_null=True)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class WardReplenishSerializer(serializers.Serializer):
+    """Action serializer for replenishing ward stock."""
+
+    quantity = serializers.IntegerField(min_value=1)
+    batch = serializers.IntegerField(required=False, allow_null=True)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class WardReturnSerializer(serializers.Serializer):
+    """Action serializer for returning stock from ward to main store."""
+
+    quantity = serializers.IntegerField(min_value=1)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+# ===========================================================================
+# Phase 4: Stock Reconciliation & Cycle Counting
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Stock Count Item (nested)
+# ---------------------------------------------------------------------------
+
+
+class StockCountItemSerializer(serializers.ModelSerializer):
+    """Read serializer for StockCountItem."""
+
+    drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+    batch_number = serializers.CharField(source="batch.batch_number", read_only=True)
+    variance = serializers.IntegerField(read_only=True, allow_null=True)
+    has_discrepancy = serializers.BooleanField(read_only=True)
+    counted_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StockCountItem
+        fields = [
+            "id",
+            "drug",
+            "drug_name",
+            "batch",
+            "batch_number",
+            "system_quantity",
+            "counted_quantity",
+            "variance",
+            "has_discrepancy",
+            "variance_reason",
+            "counted_by",
+            "counted_by_name",
+            "counted_at",
+        ]
+        read_only_fields = [
+            "id",
+            "drug",
+            "batch",
+            "system_quantity",
+        ]
+
+    def get_counted_by_name(self, obj):
+        return _user_display_name(obj.counted_by)
+
+
+class StockCountItemUpdateSerializer(serializers.ModelSerializer):
+    """Write serializer for recording a physical count on a count item."""
+
+    class Meta:
+        model = StockCountItem
+        fields = ["counted_quantity", "variance_reason"]
+
+    def validate(self, data):
+        counted = data.get("counted_quantity")
+        reason = data.get("variance_reason", "")
+        if (
+            counted is not None
+            and self.instance
+            and counted != self.instance.system_quantity
+            and not reason.strip()
+        ):
+            raise serializers.ValidationError(
+                {"variance_reason": "Explanation is required when count differs from system."}
+            )
+        return data
+
+
+# ---------------------------------------------------------------------------
+# Stock Count
+# ---------------------------------------------------------------------------
+
+
+class StockCountListSerializer(serializers.ModelSerializer):
+    """Compact list serializer for stock counts."""
+
+    total_items_counted = serializers.IntegerField(read_only=True)
+    total_discrepancies = serializers.IntegerField(read_only=True)
+    started_by_name = serializers.SerializerMethodField()
+    store_location_name = serializers.CharField(
+        source="store_location.name", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = StockCount
+        fields = [
+            "id",
+            "count_number",
+            "count_type",
+            "store_location",
+            "store_location_name",
+            "status",
+            "started_by",
+            "started_by_name",
+            "started_at",
+            "completed_at",
+            "total_items_counted",
+            "total_discrepancies",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_started_by_name(self, obj):
+        return _user_display_name(obj.started_by)
+
+
+class StockCountDetailSerializer(serializers.ModelSerializer):
+    """Full detail serializer for a stock count."""
+
+    total_items_counted = serializers.IntegerField(read_only=True)
+    total_discrepancies = serializers.IntegerField(read_only=True)
+    items = StockCountItemSerializer(many=True, read_only=True)
+    started_by_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+    store_location_name = serializers.CharField(
+        source="store_location.name", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = StockCount
+        fields = [
+            "id",
+            "count_number",
+            "count_type",
+            "store_location",
+            "store_location_name",
+            "status",
+            "notes",
+            "items",
+            "started_by",
+            "started_by_name",
+            "started_at",
+            "completed_at",
+            "approved_by",
+            "approved_by_name",
+            "approved_at",
+            "total_items_counted",
+            "total_discrepancies",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_started_by_name(self, obj):
+        return _user_display_name(obj.started_by)
+
+    def get_approved_by_name(self, obj):
+        return _user_display_name(obj.approved_by)
+
+
+class StockCountCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for stock count creation."""
+
+    class Meta:
+        model = StockCount
+        fields = [
+            "count_type",
+            "store_location",
+            "notes",
+        ]

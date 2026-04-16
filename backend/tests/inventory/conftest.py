@@ -407,3 +407,83 @@ def transfer_data(
             },
         ],
     }
+
+
+# ===========================================================================
+# Phase 3: Ward / Satellite Stock
+# ===========================================================================
+
+
+@pytest.fixture
+def ward_stock(db, ward_store, sample_drug, sample_facility, sample_organization):
+    """Create a ward stock record with some quantity."""
+    from hmis.apps.inventory.models import WardStock
+
+    return WardStock.objects.create(
+        store_location=ward_store,
+        drug=sample_drug,
+        quantity_available=50,
+        par_level=20,
+        max_level=100,
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def ward_stock_with_low_qty(db, ward_store, second_drug, sample_facility, sample_organization):
+    """Create a ward stock record with quantity below par level."""
+    from hmis.apps.inventory.models import WardStock
+
+    return WardStock.objects.create(
+        store_location=ward_store,
+        drug=second_drug,
+        quantity_available=5,
+        par_level=20,
+        max_level=100,
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+# ===========================================================================
+# Phase 4: Stock Reconciliation & Cycle Counting
+# ===========================================================================
+
+
+@pytest.fixture
+def stock_count(db, main_store, sample_facility, sample_organization, test_user):
+    """Create a draft stock count."""
+    from hmis.apps.inventory.models import StockCount
+
+    return StockCount.objects.create(
+        count_type="CYCLE",
+        store_location=main_store,
+        started_by=test_user,
+        notes="Monthly cycle count",
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def stock_count_with_items(stock_count, source_stock_batch, sample_drug):
+    """A stock count with a pre-populated item."""
+    from hmis.apps.inventory.models import StockCountItem
+
+    StockCountItem.objects.create(
+        stock_count=stock_count,
+        drug=sample_drug,
+        batch=source_stock_batch,
+        system_quantity=source_stock_batch.quantity_available,
+    )
+    return stock_count
+
+
+@pytest.fixture
+def stock_count_with_counted_items(stock_count_with_items):
+    """A stock count with items that have been counted (ready for complete())."""
+    for item in stock_count_with_items.items.all():
+        item.counted_quantity = item.system_quantity
+        item.save()
+    return stock_count_with_items
