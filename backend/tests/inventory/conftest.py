@@ -562,3 +562,90 @@ def etims_invoice_failed(etims_invoice):
     """An ETIMSInvoice in FAILED status."""
     etims_invoice.mark_failed("Temporary KRA error")
     return etims_invoice
+
+
+# ===========================================================================
+# Phase 6: Demand Forecasting Fixtures
+# ===========================================================================
+
+
+@pytest.fixture
+def consumption_record(db, sample_drug, sample_facility, sample_organization):
+    """A single ConsumptionRecord for the current month."""
+    from hmis.apps.inventory.models import ConsumptionRecord
+
+    return ConsumptionRecord.objects.create(
+        drug=sample_drug,
+        period_start=date.today().replace(day=1) - timedelta(days=30),
+        period_end=date.today().replace(day=1) - timedelta(days=1),
+        quantity_dispensed=Decimal("120.00"),
+        quantity_transferred=Decimal("10.00"),
+        quantity_adjusted=Decimal("5.00"),
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def multiple_consumption_records(db, sample_drug, sample_facility, sample_organization):
+    """Several ConsumptionRecords spanning 4 months for forecast testing."""
+    from hmis.apps.inventory.models import ConsumptionRecord
+
+    records = []
+    # Use fixed non-overlapping date ranges to avoid unique constraint issues
+    base_year = 2025
+    for i, month in enumerate([6, 7, 8, 9], start=1):
+        ps = date(base_year, month, 1)
+        pe = date(base_year, month, 28)
+        records.append(
+            ConsumptionRecord.objects.create(
+                drug=sample_drug,
+                period_start=ps,
+                period_end=pe,
+                quantity_dispensed=Decimal(str(100 + i * 10)),
+                quantity_transferred=Decimal("5.00"),
+                quantity_adjusted=Decimal("2.00"),
+                facility=sample_facility,
+                organization=sample_organization,
+            )
+        )
+    return records
+
+
+@pytest.fixture
+def demand_forecast(db, sample_drug, sample_facility, sample_organization, test_user):
+    """A DemandForecast record."""
+    from hmis.apps.inventory.models import DemandForecast
+
+    return DemandForecast.objects.create(
+        drug=sample_drug,
+        forecast_date=date.today(),
+        period_months=3,
+        predicted_demand=Decimal("360.00"),
+        confidence_lower=Decimal("280.00"),
+        confidence_upper=Decimal("440.00"),
+        method="MOVING_AVERAGE",
+        reorder_point=Decimal("50.00"),
+        suggested_order_quantity=Decimal("300.00"),
+        generated_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def reorder_suggestion(db, sample_drug, sample_supplier, sample_facility, sample_organization):
+    """A ReorderSuggestion in PENDING status."""
+    from hmis.apps.inventory.models import ReorderSuggestion
+
+    return ReorderSuggestion.objects.create(
+        drug=sample_drug,
+        supplier=sample_supplier,
+        current_stock=Decimal("20.00"),
+        reorder_point=Decimal("50.00"),
+        suggested_quantity=Decimal("300.00"),
+        urgency="HIGH",
+        status="PENDING",
+        facility=sample_facility,
+        organization=sample_organization,
+    )

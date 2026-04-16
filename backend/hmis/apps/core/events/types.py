@@ -181,6 +181,10 @@ class InventoryEvents:
     ETIMS_CONFIRMED = "inventory.etims.confirmed"
     ETIMS_FAILED = "inventory.etims.failed"
 
+    # Phase 6: Demand Forecasting
+    REORDER_SUGGESTION_CREATED = "inventory.reorder_suggestion.created"
+    REORDER_CONVERTED_TO_PO = "inventory.reorder_suggestion.converted_to_po"
+
 
 class ImagingEvents:
     """Imaging domain event types."""

@@ -4,10 +4,13 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from hmis.apps.inventory.views import (
+    ConsumptionRecordViewSet,
+    DemandForecastViewSet,
     ETIMSConfigViewSet,
     ETIMSInvoiceViewSet,
     GoodsReceiptNoteViewSet,
     PurchaseOrderViewSet,
+    ReorderSuggestionViewSet,
     StockCountViewSet,
     StockTransferViewSet,
     StoreLocationViewSet,
@@ -27,6 +30,9 @@ router.register(r"ward-transactions", WardStockTransactionViewSet, basename="war
 router.register(r"stock-counts", StockCountViewSet, basename="stockcount")
 router.register(r"etims-config", ETIMSConfigViewSet, basename="etimsconfig")
 router.register(r"etims-invoices", ETIMSInvoiceViewSet, basename="etimsinvoice")
+router.register(r"consumption", ConsumptionRecordViewSet, basename="consumptionrecord")
+router.register(r"forecasts", DemandForecastViewSet, basename="demandforecast")
+router.register(r"reorder-suggestions", ReorderSuggestionViewSet, basename="reordersuggestion")
 
 app_name = "inventory"
 

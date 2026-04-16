@@ -17,9 +17,12 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.inventory.filters import (
+    ConsumptionRecordFilter,
+    DemandForecastFilter,
     ETIMSInvoiceFilter,
     GoodsReceiptNoteFilter,
     PurchaseOrderFilter,
+    ReorderSuggestionFilter,
     StockCountFilter,
     StockTransferFilter,
     StoreLocationFilter,
@@ -28,10 +31,13 @@ from hmis.apps.inventory.filters import (
     WardStockTransactionFilter,
 )
 from hmis.apps.inventory.models import (
+    ConsumptionRecord,
+    DemandForecast,
     ETIMSConfig,
     ETIMSInvoice,
     GoodsReceiptNote,
     PurchaseOrder,
+    ReorderSuggestion,
     StockCount,
     StockTransfer,
     StoreLocation,
@@ -687,3 +693,154 @@ class ETIMSInvoiceViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mod
             )
         etims_inv.mark_cancelled()
         return Response(ETIMSInvoiceSerializer(etims_inv).data)
+
+
+# ===========================================================================
+# Phase 6: Predictive Analytics / Demand Forecasting
+# ===========================================================================
+
+
+class ConsumptionRecordViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
+    """Read-only access to aggregated consumption records."""
+
+    queryset = ConsumptionRecord.objects.select_related("drug")
+    permission_classes = [IsAuthenticated]
+    filterset_class = ConsumptionRecordFilter
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        from hmis.apps.inventory.serializers import ConsumptionRecordSerializer
+
+        return ConsumptionRecordSerializer
+
+
+class DemandForecastViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
+    """Read-only access to demand forecasts + on-demand generation."""
+
+    queryset = DemandForecast.objects.select_related("drug")
+    permission_classes = [IsAuthenticated]
+    filterset_class = DemandForecastFilter
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        from hmis.apps.inventory.serializers import (
+            DemandForecastGenerateSerializer,
+            DemandForecastSerializer,
+        )
+
+        if self.action == "generate":
+            return DemandForecastGenerateSerializer
+        return DemandForecastSerializer
+
+    @action(detail=False, methods=["post"])
+    def generate(self, request):
+        """Trigger forecast generation for a drug or all drugs."""
+        from hmis.apps.inventory.serializers import DemandForecastGenerateSerializer
+        from hmis.apps.inventory.services.forecasting import DemandForecaster
+
+        serializer = DemandForecastGenerateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        forecaster = DemandForecaster(facility_id=facility.pk)
+        drug_id = data.get("drug_id")
+        if drug_id:
+            forecast = forecaster.forecast(
+                drug_id=drug_id,
+                period_months=data["period_months"],
+                method=data["method"],
+                user=request.user,
+            )
+            from hmis.apps.inventory.serializers import DemandForecastSerializer
+
+            return Response(
+                DemandForecastSerializer(forecast).data,
+                status=status.HTTP_201_CREATED,
+            )
+        else:
+            count = forecaster.forecast_all(
+                period_months=data["period_months"],
+                method=data["method"],
+                user=request.user,
+            )
+            return Response(
+                {"message": f"Generated {count} forecast(s).", "count": count},
+                status=status.HTTP_201_CREATED,
+            )
+
+
+class ReorderSuggestionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
+    """Read-only access to reorder suggestions + convert/dismiss actions."""
+
+    queryset = ReorderSuggestion.objects.select_related("drug", "supplier")
+    permission_classes = [IsAuthenticated]
+    filterset_class = ReorderSuggestionFilter
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        from hmis.apps.inventory.serializers import ReorderSuggestionSerializer
+
+        return ReorderSuggestionSerializer
+
+    @action(detail=True, methods=["post"])
+    def convert_to_po(self, request, pk=None):
+        """Convert this suggestion into a Purchase Order."""
+        from hmis.apps.inventory.models import PurchaseOrder, PurchaseOrderItem
+
+        suggestion = self.get_object()
+        if suggestion.status != "PENDING":
+            return Response(
+                {"error": "Only PENDING suggestions can be converted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not suggestion.supplier:
+            return Response(
+                {"error": "No supplier associated with this suggestion."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        po = PurchaseOrder.objects.create(
+            supplier=suggestion.supplier,
+            ordered_by=request.user,
+            notes=f"Auto-generated from reorder suggestion #{suggestion.pk}",
+            facility=suggestion.facility,
+            organization=suggestion.organization,
+        )
+        PurchaseOrderItem.objects.create(
+            purchase_order=po,
+            drug=suggestion.drug,
+            quantity_ordered=int(suggestion.suggested_quantity),
+            unit_cost=suggestion.drug.reference_price or 0,
+        )
+        suggestion.mark_converted(po)
+
+        return Response(
+            {
+                "message": f"Created PO {po.po_number}",
+                "purchase_order_id": po.pk,
+                "po_number": po.po_number,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"])
+    def dismiss(self, request, pk=None):
+        """Dismiss a PENDING suggestion."""
+        suggestion = self.get_object()
+        if suggestion.status != "PENDING":
+            return Response(
+                {"error": "Only PENDING suggestions can be dismissed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        suggestion.dismiss()
+        from hmis.apps.inventory.serializers import ReorderSuggestionSerializer
+
+        return Response(ReorderSuggestionSerializer(suggestion).data)

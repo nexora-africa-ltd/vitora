@@ -22,6 +22,8 @@ from .models import (
     GRNStatus,
     PurchaseOrder,
     PurchaseOrderStatus,
+    ReorderStatus,
+    ReorderSuggestion,
     StockCount,
     StockCountStatus,
     StockTransfer,
@@ -200,3 +202,35 @@ def publish_etims_invoice_event(sender, instance, created, **kwargs):
         if instance.error_message:
             payload["error_message"] = instance.error_message
         publish_event(event_type, "ETIMSInvoice", instance.pk, payload)
+
+
+# ===========================================================================
+# Phase 6: Demand Forecasting
+# ===========================================================================
+
+
+@receiver(post_save, sender=ReorderSuggestion)
+def publish_reorder_suggestion_event(sender, instance, created, **kwargs):
+    """Publish events for reorder suggestion lifecycle."""
+    payload = {
+        "drug_id": instance.drug_id,
+        "urgency": instance.urgency,
+        "status": instance.status,
+        "suggested_quantity": str(instance.suggested_quantity),
+        "facility_id": instance.facility_id,
+    }
+    if created:
+        publish_event(
+            InventoryEvents.REORDER_SUGGESTION_CREATED,
+            "ReorderSuggestion",
+            instance.pk,
+            payload,
+        )
+    elif instance.status == ReorderStatus.CONVERTED_TO_PO:
+        payload["purchase_order_id"] = instance.purchase_order_id
+        publish_event(
+            InventoryEvents.REORDER_CONVERTED_TO_PO,
+            "ReorderSuggestion",
+            instance.pk,
+            payload,
+        )
