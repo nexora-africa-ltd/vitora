@@ -4,9 +4,12 @@ import django_filters
 from django.db import models
 
 from hmis.apps.inventory.models import (
+    ConsumptionRecord,
+    DemandForecast,
     ETIMSInvoice,
     GoodsReceiptNote,
     PurchaseOrder,
+    ReorderSuggestion,
     StockCount,
     StockTransfer,
     StoreLocation,
@@ -146,3 +149,40 @@ class ETIMSInvoiceFilter(django_filters.FilterSet):
     class Meta:
         model = ETIMSInvoice
         fields = ["status", "invoice"]
+
+
+# ===========================================================================
+# Phase 6: Demand Forecasting
+# ===========================================================================
+
+
+class ConsumptionRecordFilter(django_filters.FilterSet):
+    drug = django_filters.NumberFilter()
+    period_after = django_filters.DateFilter(field_name="period_start", lookup_expr="gte")
+    period_before = django_filters.DateFilter(field_name="period_end", lookup_expr="lte")
+
+    class Meta:
+        model = ConsumptionRecord
+        fields = ["drug"]
+
+
+class DemandForecastFilter(django_filters.FilterSet):
+    drug = django_filters.NumberFilter()
+    method = django_filters.CharFilter()
+    forecast_after = django_filters.DateFilter(field_name="forecast_date", lookup_expr="gte")
+    forecast_before = django_filters.DateFilter(field_name="forecast_date", lookup_expr="lte")
+
+    class Meta:
+        model = DemandForecast
+        fields = ["drug", "method"]
+
+
+class ReorderSuggestionFilter(django_filters.FilterSet):
+    drug = django_filters.NumberFilter()
+    urgency = django_filters.CharFilter()
+    status = django_filters.CharFilter()
+    supplier = django_filters.NumberFilter()
+
+    class Meta:
+        model = ReorderSuggestion
+        fields = ["drug", "urgency", "status", "supplier"]

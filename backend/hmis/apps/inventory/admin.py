@@ -4,6 +4,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
+    ConsumptionRecord,
+    DemandForecast,
     ETIMSConfig,
     ETIMSInvoice,
     ETIMSItem,
@@ -11,6 +13,7 @@ from .models import (
     GRNItem,
     PurchaseOrder,
     PurchaseOrderItem,
+    ReorderSuggestion,
     StockCount,
     StockCountItem,
     StockTransfer,
@@ -368,6 +371,90 @@ class ETIMSInvoiceAdmin(admin.ModelAdmin):
             "CONFIRMED": "#10b981",
             "FAILED": "#ef4444",
             "CANCELLED": "#f59e0b",
+        }
+        color = colors.get(obj.status, "#6b7280")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+
+# ===========================================================================
+# Phase 6: Demand Forecasting Admin
+# ===========================================================================
+
+
+@admin.register(ConsumptionRecord)
+class ConsumptionRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        "drug",
+        "period_start",
+        "period_end",
+        "quantity_dispensed",
+        "quantity_adjusted",
+        "facility",
+    )
+    list_filter = ("facility", "drug")
+    search_fields = ("drug__generic_name",)
+    raw_id_fields = ("drug", "facility", "organization")
+    date_hierarchy = "period_start"
+
+
+@admin.register(DemandForecast)
+class DemandForecastAdmin(admin.ModelAdmin):
+    list_display = (
+        "drug",
+        "forecast_date",
+        "period_months",
+        "predicted_demand",
+        "method",
+        "reorder_point",
+        "facility",
+    )
+    list_filter = ("method", "facility")
+    search_fields = ("drug__generic_name",)
+    raw_id_fields = ("drug", "facility", "organization", "generated_by")
+    date_hierarchy = "forecast_date"
+
+
+@admin.register(ReorderSuggestion)
+class ReorderSuggestionAdmin(admin.ModelAdmin):
+    list_display = (
+        "drug",
+        "colored_urgency",
+        "colored_status",
+        "current_stock",
+        "reorder_point",
+        "suggested_quantity",
+        "supplier",
+        "facility",
+    )
+    list_filter = ("urgency", "status", "facility")
+    search_fields = ("drug__generic_name", "supplier__name")
+    raw_id_fields = ("drug", "supplier", "purchase_order", "facility", "organization")
+
+    @admin.display(description="Urgency")
+    def colored_urgency(self, obj):
+        colors = {
+            "CRITICAL": "#ef4444",
+            "HIGH": "#f97316",
+            "MEDIUM": "#eab308",
+            "LOW": "#10b981",
+        }
+        color = colors.get(obj.urgency, "#6b7280")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_urgency_display(),
+        )
+
+    @admin.display(description="Status")
+    def colored_status(self, obj):
+        colors = {
+            "PENDING": "#6b7280",
+            "CONVERTED_TO_PO": "#10b981",
+            "DISMISSED": "#f59e0b",
         }
         color = colors.get(obj.status, "#6b7280")
         return format_html(

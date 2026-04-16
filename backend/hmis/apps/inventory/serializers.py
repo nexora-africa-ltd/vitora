@@ -7,6 +7,8 @@ Separate Create/Read serializers per model following project conventions.
 from rest_framework import serializers
 
 from hmis.apps.inventory.models import (
+    ConsumptionRecord,
+    DemandForecast,
     ETIMSConfig,
     ETIMSInvoice,
     ETIMSItem,
@@ -14,6 +16,7 @@ from hmis.apps.inventory.models import (
     GRNItem,
     PurchaseOrder,
     PurchaseOrderItem,
+    ReorderSuggestion,
     StockCount,
     StockCountItem,
     StockTransfer,
@@ -1123,3 +1126,99 @@ class ETIMSInvoiceCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ETIMSInvoice
         fields = ["invoice", "dispensing"]
+
+
+# ===========================================================================
+# Phase 6: Predictive Analytics / Demand Forecasting
+# ===========================================================================
+
+
+class ConsumptionRecordSerializer(serializers.ModelSerializer):
+    """Read serializer for consumption records."""
+
+    drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+    total_consumption = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    average_daily_consumption = serializers.DecimalField(
+        max_digits=12, decimal_places=4, read_only=True
+    )
+
+    class Meta:
+        model = ConsumptionRecord
+        fields = [
+            "id",
+            "drug",
+            "drug_name",
+            "period_start",
+            "period_end",
+            "quantity_dispensed",
+            "quantity_transferred",
+            "quantity_adjusted",
+            "total_consumption",
+            "average_daily_consumption",
+            "facility",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class DemandForecastSerializer(serializers.ModelSerializer):
+    """Read serializer for demand forecasts."""
+
+    drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+
+    class Meta:
+        model = DemandForecast
+        fields = [
+            "id",
+            "drug",
+            "drug_name",
+            "forecast_date",
+            "period_months",
+            "predicted_demand",
+            "confidence_lower",
+            "confidence_upper",
+            "method",
+            "reorder_point",
+            "suggested_order_quantity",
+            "generated_by",
+            "facility",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class DemandForecastGenerateSerializer(serializers.Serializer):
+    """Input serializer for the generate forecast action."""
+
+    drug_id = serializers.IntegerField(required=False, help_text="Drug ID (omit for all drugs).")
+    period_months = serializers.IntegerField(default=3, min_value=1, max_value=24)
+    method = serializers.ChoiceField(
+        choices=["MOVING_AVERAGE", "EXPONENTIAL_SMOOTHING"],
+        default="MOVING_AVERAGE",
+    )
+
+
+class ReorderSuggestionSerializer(serializers.ModelSerializer):
+    """Read serializer for reorder suggestions."""
+
+    drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+    supplier_name = serializers.CharField(source="supplier.name", read_only=True, default=None)
+
+    class Meta:
+        model = ReorderSuggestion
+        fields = [
+            "id",
+            "drug",
+            "drug_name",
+            "supplier",
+            "supplier_name",
+            "current_stock",
+            "reorder_point",
+            "suggested_quantity",
+            "urgency",
+            "status",
+            "purchase_order",
+            "facility",
+            "created_at",
+        ]
+        read_only_fields = fields
