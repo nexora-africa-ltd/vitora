@@ -73,7 +73,7 @@ export default function NewSupplierPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-3xl">
+    <div className="space-y-4 sm:space-y-6 max-w-3xl mx-auto">
       <PageHeader title="Add Supplier" helpContent="Create a new supplier record. Suppliers are shared across all facilities in the organization." />
 
       <Form {...form}>
