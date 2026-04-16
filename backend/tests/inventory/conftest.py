@@ -229,3 +229,181 @@ def grn_data(sample_supplier, approved_purchase_order, sample_drug):
             },
         ],
     }
+
+
+# ===========================================================================
+# Phase 2: Multi-Store Stock Transfers
+# ===========================================================================
+
+
+@pytest.fixture
+def second_facility(db, sample_organization, sample_county, sample_sub_county):
+    """Create a second facility for cross-facility transfer tests."""
+    from hmis.apps.core.models import Facility
+
+    return Facility.objects.create(
+        organization=sample_organization,
+        name="Branch Health Centre",
+        mfl_code="88888",
+        level="2",
+        county=sample_county,
+        sub_county=sample_sub_county,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def main_store(db, sample_facility, sample_organization):
+    """Create a main store location at the sample facility."""
+    from hmis.apps.inventory.models import StoreLocation
+
+    return StoreLocation.objects.create(
+        code="STORE-MAIN",
+        name="Main Pharmacy Store",
+        location_type="MAIN_STORE",
+        is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def ward_store(db, sample_facility, sample_organization):
+    """Create a ward store location at the sample facility."""
+    from hmis.apps.inventory.models import StoreLocation
+
+    return StoreLocation.objects.create(
+        code="STORE-WARD-A",
+        name="Ward A Store",
+        location_type="WARD_STORE",
+        is_active=True,
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def destination_store(db, second_facility, sample_organization):
+    """Create a store at the second facility."""
+    from hmis.apps.inventory.models import StoreLocation
+
+    return StoreLocation.objects.create(
+        code="STORE-MAIN",
+        name="Branch Main Store",
+        location_type="MAIN_STORE",
+        is_active=True,
+        facility=second_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def source_stock_batch(db, sample_drug, sample_facility, sample_organization, test_user):
+    """Create a stock batch at the source facility for transfer testing."""
+    from hmis.apps.pharmacy.models import StockBatch
+
+    return StockBatch.objects.create(
+        drug=sample_drug,
+        batch_number="SRC-BATCH-001",
+        quantity_received=1000,
+        quantity_available=1000,
+        expiry_date=date.today() + timedelta(days=365),
+        manufacture_date=date.today() - timedelta(days=30),
+        received_date=date.today(),
+        cost_price=Decimal("4.50"),
+        selling_price=Decimal("8.00"),
+        supplier="KEMSA",
+        received_by=test_user,
+        location="Shelf A-1",
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_transfer(
+    db,
+    sample_facility,
+    second_facility,
+    sample_organization,
+    test_user,
+    sample_drug,
+    source_stock_batch,
+    main_store,
+    destination_store,
+):
+    """Create a sample stock transfer with one item."""
+    from hmis.apps.inventory.models import StockTransfer, TransferItem
+
+    transfer = StockTransfer.objects.create(
+        source_facility=sample_facility,
+        destination_facility=second_facility,
+        source_store=main_store,
+        destination_store=destination_store,
+        requested_by=test_user,
+        request_date=date.today(),
+        notes="Monthly supply replenishment",
+        organization=sample_organization,
+    )
+    TransferItem.objects.create(
+        transfer=transfer,
+        drug=sample_drug,
+        source_batch=source_stock_batch,
+        quantity_requested=200,
+    )
+    return transfer
+
+
+@pytest.fixture
+def submitted_transfer(sample_transfer):
+    """A transfer in REQUESTED status."""
+    sample_transfer.submit()
+    return sample_transfer
+
+
+@pytest.fixture
+def approved_transfer(submitted_transfer, test_user):
+    """A transfer in APPROVED status."""
+    submitted_transfer.approve(test_user)
+    return submitted_transfer
+
+
+@pytest.fixture
+def dispatched_transfer(approved_transfer, test_user):
+    """A transfer in IN_TRANSIT status (stock deducted from source)."""
+    approved_transfer.dispatch(test_user)
+    return approved_transfer
+
+
+@pytest.fixture
+def store_location_data():
+    """Valid store location creation payload."""
+    return {
+        "code": "STORE-NEW",
+        "name": "New Satellite Pharmacy",
+        "location_type": "SATELLITE_PHARMACY",
+        "is_active": True,
+        "notes": "Located in wing B",
+    }
+
+
+@pytest.fixture
+def transfer_data(
+    sample_facility, second_facility, main_store, destination_store, sample_drug, source_stock_batch
+):
+    """Valid stock transfer creation payload with nested items."""
+    return {
+        "source_facility": sample_facility.id,
+        "destination_facility": second_facility.id,
+        "source_store": main_store.id,
+        "destination_store": destination_store.id,
+        "request_date": str(date.today()),
+        "notes": "Test transfer",
+        "items": [
+            {
+                "drug": sample_drug.id,
+                "source_batch": source_stock_batch.id,
+                "quantity_requested": 100,
+            },
+        ],
+    }
