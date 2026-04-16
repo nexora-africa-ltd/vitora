@@ -16,6 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.permissions import RequiresActiveShiftPermission
 from hmis.apps.inventory.filters import (
     ConsumptionRecordFilter,
     DemandForecastFilter,
@@ -122,7 +123,7 @@ class PurchaseOrderViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
     queryset = PurchaseOrder.objects.select_related(
         "supplier", "ordered_by", "approved_by"
     ).prefetch_related("items__drug")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filterset_class = PurchaseOrderFilter
     tenant_scope = "facility"
 
@@ -153,9 +154,18 @@ class PurchaseOrderViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
         return Response(PurchaseOrderDetailSerializer(po).data)
 
-    @action(detail=True, methods=["post"])
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsAuthenticated, RequiresActiveShiftPermission],
+    )
     def approve(self, request, pk=None):
-        """SUBMITTED → APPROVED."""
+        """SUBMITTED → APPROVED. Requires ``inventory.approve_purchase_order``."""
+        if not request.user.has_perm("inventory.approve_purchase_order"):
+            return Response(
+                {"error": "You do not have permission to approve purchase orders."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         po = self.get_object()
         serializer = POApproveSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -199,7 +209,7 @@ class GoodsReceiptNoteViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets
     queryset = GoodsReceiptNote.objects.select_related(
         "supplier", "purchase_order", "received_by", "confirmed_by"
     ).prefetch_related("items__drug", "items__po_item", "items__stock_batch")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filterset_class = GoodsReceiptNoteFilter
     tenant_scope = "facility"
 
@@ -295,7 +305,7 @@ class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
         "dispatched_by",
         "received_by",
     ).prefetch_related("items__drug", "items__source_batch", "items__destination_batch")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filterset_class = StockTransferFilter
     tenant_scope = "organization"
 
@@ -326,9 +336,18 @@ class StockTransferViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mo
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
         return Response(StockTransferDetailSerializer(transfer).data)
 
-    @action(detail=True, methods=["post"])
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsAuthenticated, RequiresActiveShiftPermission],
+    )
     def approve(self, request, pk=None):
-        """REQUESTED → APPROVED."""
+        """REQUESTED → APPROVED. Requires ``inventory.approve_stock_transfer``."""
+        if not request.user.has_perm("inventory.approve_stock_transfer"):
+            return Response(
+                {"error": "You do not have permission to approve stock transfers."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         transfer = self.get_object()
         serializer = TransferApproveSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -396,7 +415,7 @@ class WardStockViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
     """CRUD + consume/replenish/return for ward stock levels. Facility-scoped."""
 
     queryset = WardStock.objects.select_related("store_location", "drug", "ward")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filterset_class = WardStockFilter
     tenant_scope = "facility"
 
@@ -478,18 +497,21 @@ class WardStockViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelV
         return Response(WardStockSerializer(ws).data)
 
 
-class WardStockTransactionViewSet(viewsets.ReadOnlyModelViewSet):
-    """Read-only transaction history for ward stock."""
+class WardStockTransactionViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
+    """Read-only transaction history for ward stock. Facility-scoped."""
 
     queryset = WardStockTransaction.objects.select_related(
         "ward_stock__drug",
         "ward_stock__store_location",
+        "ward_stock__facility",
         "performed_by",
         "patient",
     )
     serializer_class = WardStockTransactionSerializer
     permission_classes = [IsAuthenticated]
     filterset_class = WardStockTransactionFilter
+    tenant_scope = "facility"
+    tenant_facility_field = "ward_stock__facility"
 
 
 # ===========================================================================
@@ -503,7 +525,7 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
     queryset = StockCount.objects.select_related(
         "store_location", "started_by", "approved_by"
     ).prefetch_related("items__drug", "items__batch")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
     filterset_class = StockCountFilter
     tenant_scope = "facility"
 
@@ -553,9 +575,18 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
             return Response({"error": e.message}, status=status.HTTP_400_BAD_REQUEST)
         return Response(StockCountDetailSerializer(count).data)
 
-    @action(detail=True, methods=["post"])
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsAuthenticated, RequiresActiveShiftPermission],
+    )
     def approve(self, request, pk=None):
-        """COMPLETED → APPROVED. Creates StockAdjustment records for variances."""
+        """COMPLETED → APPROVED. Requires ``inventory.approve_stock_count``."""
+        if not request.user.has_perm("inventory.approve_stock_count"):
+            return Response(
+                {"error": "You do not have permission to approve stock counts."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         count = self.get_object()
         try:
             count.approve(user=request.user)
@@ -599,11 +630,38 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
 
 
 class ETIMSConfigViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
-    """CRUD for eTIMS configuration. Singleton per facility. Admin only."""
+    """CRUD for eTIMS configuration. Singleton per facility.
+
+    Write operations require ``inventory.manage_etims`` permission.
+    """
 
     queryset = ETIMSConfig.objects.all()
     permission_classes = [IsAuthenticated]
     tenant_scope = "facility"
+
+    def check_write_permission(self, request):
+        if request.method not in ("GET", "HEAD", "OPTIONS") and not (
+            request.user.is_superuser or request.user.has_perm("inventory.manage_etims")
+        ):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have permission to manage eTIMS configuration.")
+
+    def create(self, request, *args, **kwargs):
+        self.check_write_permission(request)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self.check_write_permission(request)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self.check_write_permission(request)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self.check_write_permission(request)
+        return super().destroy(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):

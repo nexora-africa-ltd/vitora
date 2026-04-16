@@ -90,7 +90,14 @@ export const MODULE_PERMISSIONS = {
   cds: 'cds.view_cdsrule',
   analytics: null, // All authenticated users can view analytics
   moh_reporting: null, // All authenticated users can view MOH reports
-  inventory: 'inventory.view_supplier',
+  inventory: [
+    'inventory.view_supplier',
+    'inventory.view_purchaseorder',
+    'inventory.view_storelocation',
+    'inventory.view_stocktransfer',
+    'inventory.view_wardstock',
+    'inventory.view_stockcount',
+  ],
   ai: null, // Feature-flag gated, not permission gated
   admin: 'core.view_staffprofile',
 } as const;

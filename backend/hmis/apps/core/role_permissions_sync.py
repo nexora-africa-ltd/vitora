@@ -142,6 +142,24 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "Schedule": ("scheduling", "schedule"),
     "Shift": ("scheduling", "shift"),
     "CheckIn": ("checkin", "checkin"),
+    # inventory
+    "Supplier": ("inventory", "supplier"),
+    "PurchaseOrder": ("inventory", "purchaseorder"),
+    "PurchaseOrderItem": ("inventory", "purchaseorderitem"),
+    "GoodsReceiptNote": ("inventory", "goodsreceiptnote"),
+    "GRNItem": ("inventory", "grnitem"),
+    "StoreLocation": ("inventory", "storelocation"),
+    "StockTransfer": ("inventory", "stocktransfer"),
+    "TransferItem": ("inventory", "transferitem"),
+    "WardStock": ("inventory", "wardstock"),
+    "WardStockTransaction": ("inventory", "wardstocktransaction"),
+    "StockCount": ("inventory", "stockcount"),
+    "StockCountItem": ("inventory", "stockcountitem"),
+    "ETIMSConfig": ("inventory", "etimsconfig"),
+    "ETIMSInvoice": ("inventory", "etimsinvoice"),
+    "ConsumptionRecord": ("inventory", "consumptionrecord"),
+    "DemandForecast": ("inventory", "demandforecast"),
+    "ReorderSuggestion": ("inventory", "reordersuggestion"),
     # ai
     "AICareplanResult": ("ai", "aicareplanresult"),
     "AICDSResult": ("ai", "aicdsresult"),
@@ -198,6 +216,10 @@ CUSTOM_ACTIONS: set[str] = {
     "escalate_ihr_to_national",
     "notify_ihr_to_who",
     "manage_schedules",
+    "approve_purchase_order",
+    "approve_stock_transfer",
+    "approve_stock_count",
+    "manage_etims",
 }
 
 # Actions following {action}_{model} pattern (e.g. view_sensitive_patient)

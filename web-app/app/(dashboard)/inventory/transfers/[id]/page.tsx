@@ -39,6 +39,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { TransferStatus, StockTransferDetail } from '@/lib/types/inventory';
 
 const statusLabels: Record<TransferStatus, string> = {
@@ -203,7 +204,8 @@ export default function StockTransferDetailPage({
   }
 
   const canSubmit = transfer.status === 'DRAFT';
-  const canApprove = transfer.status === 'REQUESTED';
+  const { canPerformAction } = usePermissions();
+  const canApprove = transfer.status === 'REQUESTED' && canPerformAction('inventory.approve_transfer' as never);
   const canDispatch = transfer.status === 'APPROVED';
   const canReceive = transfer.status === 'IN_TRANSIT';
   const canCancel = !['RECEIVED', 'CANCELLED'].includes(transfer.status);

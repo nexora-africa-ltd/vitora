@@ -43,6 +43,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { inventoryApi } from '@/lib/api/inventory';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useToast } from '@/lib/hooks/use-toast';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import type { StockCountStatus, StockCountDetail, StockCountItem } from '@/lib/types/inventory';
 
 const statusLabels: Record<StockCountStatus, string> = {
@@ -265,7 +266,9 @@ export default function StockCountDetailPage({
 
   const isDraft = count.status === 'DRAFT';
   const isInProgress = count.status === 'IN_PROGRESS';
+  const { canPerformAction } = usePermissions();
   const isCompleted = count.status === 'COMPLETED';
+  const canApproveCount = isCompleted && canPerformAction('inventory.approve_stock_count' as never);
   const canCancel = !['APPROVED', 'CANCELLED'].includes(count.status);
   const hasItems = (count.items?.length || 0) > 0;
   const anyPending =
@@ -346,7 +349,7 @@ export default function StockCountDetailPage({
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            {isCompleted && (
+            {canApproveCount && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" disabled={anyPending}>

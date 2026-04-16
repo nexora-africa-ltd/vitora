@@ -355,6 +355,10 @@ KNOWN_CUSTOM_ACTIONS = {
     "escalate_ihr_to_national",
     "notify_ihr_to_who",
     "manage_schedules",
+    "approve_purchase_order",
+    "approve_stock_transfer",
+    "approve_stock_count",
+    "manage_etims",
 }
 
 ALL_VALID_ACTIONS = STANDARD_ACTIONS | KNOWN_CUSTOM_ACTIONS
@@ -446,7 +450,7 @@ class TestExpandedPermissionMatrices:
 
         admin = Role.objects.get(code="ADMIN")
         # Only AuditLog and CDSAlert should lack create/update/delete
-        read_only_resources = {"AuditLog", "CDSAlert", "SurveillanceAlert"}
+        read_only_resources = {"AuditLog", "CDSAlert", "SurveillanceAlert", "WardStockTransaction"}
 
         for resource, actions in admin.permissions_matrix.items():
             assert actions.get("read") is True, f"ADMIN missing read on {resource}"
@@ -749,3 +753,73 @@ class TestExpandedPermissionMatrices:
         assert "StockAdjustment" in store_keeper.permissions_matrix
         # StockReceive was phantom — should not exist anymore
         assert "StockReceive" not in store_keeper.permissions_matrix
+
+    def test_store_keeper_has_inventory_resources(self):
+        """STORE_KEEPER should have all inventory module resources."""
+        from hmis.apps.core.models import Role
+
+        store_keeper = Role.objects.get(code="STORE_KEEPER")
+        for resource in (
+            "Supplier",
+            "PurchaseOrder",
+            "GoodsReceiptNote",
+            "StoreLocation",
+            "StockTransfer",
+            "WardStock",
+            "StockCount",
+        ):
+            assert resource in store_keeper.permissions_matrix, f"STORE_KEEPER missing {resource}"
+            assert store_keeper.permissions_matrix[resource]["read"] is True
+
+    # ── Inventory RBAC ───────────────────────────────────────────────────
+
+    def test_admin_has_inventory_approve_permissions(self):
+        """ADMIN should have all inventory approval custom permissions."""
+        from hmis.apps.core.models import Role
+
+        admin = Role.objects.get(code="ADMIN")
+        assert admin.permissions_matrix["PurchaseOrder"]["approve_purchase_order"] is True
+        assert admin.permissions_matrix["StockTransfer"]["approve_stock_transfer"] is True
+        assert admin.permissions_matrix["StockCount"]["approve_stock_count"] is True
+        assert admin.permissions_matrix["ETIMSConfig"]["manage_etims"] is True
+
+    def test_org_admin_has_inventory_approve_permissions(self):
+        """ORG-ADMIN should have inventory approval custom permissions."""
+        from hmis.apps.core.models import Role
+
+        if not Role.objects.filter(code="ORG-ADMIN").exists():
+            fixture_path = (
+                Path(__file__).resolve().parent.parent.parent
+                / "hmis"
+                / "apps"
+                / "core"
+                / "fixtures"
+                / "roles.json"
+            )
+            call_command("loaddata", str(fixture_path), verbosity=0)
+
+        org_admin = Role.objects.get(code="ORG-ADMIN")
+        assert org_admin.permissions_matrix["PurchaseOrder"]["approve_purchase_order"] is True
+        assert org_admin.permissions_matrix["StockTransfer"]["approve_stock_transfer"] is True
+        assert org_admin.permissions_matrix["StockCount"]["approve_stock_count"] is True
+        assert org_admin.permissions_matrix["ETIMSConfig"]["manage_etims"] is True
+
+    def test_pharmacist_has_inventory_resources(self):
+        """PHARMACIST should have inventory read/create access."""
+        from hmis.apps.core.models import Role
+
+        pharmacist = Role.objects.get(code="PHARMACIST")
+        for resource in ("PurchaseOrder", "GoodsReceiptNote", "StockTransfer", "StockCount"):
+            assert resource in pharmacist.permissions_matrix, f"PHARMACIST missing {resource}"
+            assert pharmacist.permissions_matrix[resource]["create"] is True
+            assert pharmacist.permissions_matrix[resource]["read"] is True
+
+    def test_billing_supervisor_has_etims(self):
+        """BILLING_SUPERVISOR should have eTIMS config and invoice access."""
+        from hmis.apps.core.models import Role
+
+        bs = Role.objects.get(code="BILLING_SUPERVISOR")
+        assert "ETIMSConfig" in bs.permissions_matrix
+        assert bs.permissions_matrix["ETIMSConfig"]["manage_etims"] is True
+        assert "ETIMSInvoice" in bs.permissions_matrix
+        assert bs.permissions_matrix["ETIMSInvoice"]["read"] is True

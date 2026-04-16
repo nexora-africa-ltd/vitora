@@ -223,6 +223,112 @@
           "update": true,
           "delete": true
         },
+        "Supplier": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "PurchaseOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "approve_purchase_order": true
+        },
+        "PurchaseOrderItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "GoodsReceiptNote": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "GRNItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "StoreLocation": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "StockTransfer": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "approve_stock_transfer": true
+        },
+        "TransferItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "WardStock": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "WardStockTransaction": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "StockCount": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "approve_stock_count": true
+        },
+        "StockCountItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ETIMSConfig": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_etims": true
+        },
+        "ETIMSInvoice": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ConsumptionRecord": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "DemandForecast": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ReorderSuggestion": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
         "Admission": {
           "create": true,
           "read": true,
@@ -1785,6 +1891,96 @@
           "read": true,
           "update": true,
           "delete": false
+        },
+        "Supplier": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "PurchaseOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "PurchaseOrderItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "GoodsReceiptNote": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "GRNItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "StoreLocation": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "StockTransfer": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "TransferItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "WardStock": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "WardStockTransaction": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "StockCount": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "StockCountItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ConsumptionRecord": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "DemandForecast": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "ReorderSuggestion": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 4,
@@ -2849,6 +3045,78 @@
           "read": true,
           "update": true,
           "delete": false
+        },
+        "Supplier": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "PurchaseOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "PurchaseOrderItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "GoodsReceiptNote": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "GRNItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "StoreLocation": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "StockTransfer": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "TransferItem": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "WardStock": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "WardStockTransaction": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "StockCount": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "StockCountItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 5,
@@ -3184,6 +3452,19 @@
           "read": true,
           "update": true,
           "delete": false
+        },
+        "ETIMSConfig": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_etims": true
+        },
+        "ETIMSInvoice": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 3,
@@ -3231,6 +3512,96 @@
           "delete": false
         },
         "StockAlert": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Supplier": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "PurchaseOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "PurchaseOrderItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "GoodsReceiptNote": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "GRNItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "StoreLocation": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "StockTransfer": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "TransferItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "WardStock": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "WardStockTransaction": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "StockCount": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "StockCountItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ConsumptionRecord": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "DemandForecast": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "ReorderSuggestion": {
           "create": false,
           "read": true,
           "update": true,
@@ -3508,6 +3879,112 @@
           "update": true,
           "delete": false,
           "manage_schedules": true
+        },
+        "Supplier": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "PurchaseOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "approve_purchase_order": true
+        },
+        "PurchaseOrderItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "GoodsReceiptNote": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "GRNItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "StoreLocation": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "StockTransfer": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "approve_stock_transfer": true
+        },
+        "TransferItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "WardStock": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "WardStockTransaction": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "StockCount": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "approve_stock_count": true
+        },
+        "StockCountItem": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ETIMSConfig": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_etims": true
+        },
+        "ETIMSInvoice": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ConsumptionRecord": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "DemandForecast": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "ReorderSuggestion": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false
         }
       },
       "hierarchy_level": 0,
