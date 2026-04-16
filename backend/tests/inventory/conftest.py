@@ -487,3 +487,78 @@ def stock_count_with_counted_items(stock_count_with_items):
         item.counted_quantity = item.system_quantity
         item.save()
     return stock_count_with_items
+
+
+# ===========================================================================
+# Phase 5: KRA eTIMS Integration Fixtures
+# ===========================================================================
+
+
+@pytest.fixture
+def etims_config(db, sample_facility, sample_organization):
+    """Create a sample eTIMS configuration for testing."""
+    from hmis.apps.inventory.models import ETIMSConfig, ETIMSEnvironment
+
+    return ETIMSConfig.objects.create(
+        bhf_id="00",
+        dvc_srl_no="DEVTEST001",
+        tin="P000111222A",
+        api_base_url="https://etims-api-sbx.kra.go.ke/etims-api",
+        api_key_encrypted="",  # empty for tests (mock client doesn't need it)
+        is_active=True,
+        environment=ETIMSEnvironment.SANDBOX,
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def billing_invoice(db, sample_patient, sample_facility, sample_organization, test_user):
+    """Create a billing Invoice with items for eTIMS testing."""
+    from hmis.apps.billing.models import Invoice, InvoiceItem
+
+    invoice = Invoice.objects.create(
+        patient=sample_patient,
+        invoice_date=date.today(),
+        due_date=date.today() + timedelta(days=30),
+        status=Invoice.Status.PENDING,
+        payment_type=Invoice.PaymentType.CASH,
+        created_by=test_user,
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+    InvoiceItem.objects.create(
+        invoice=invoice,
+        description="Consultation Fee",
+        quantity=1,
+        unit_price=Decimal("1500.00"),
+        line_total=Decimal("1500.00"),
+    )
+    InvoiceItem.objects.create(
+        invoice=invoice,
+        description="Amoxicillin 500mg x 21",
+        quantity=21,
+        unit_price=Decimal("10.00"),
+        line_total=Decimal("210.00"),
+    )
+    invoice.calculate_totals()
+    return invoice
+
+
+@pytest.fixture
+def etims_invoice(db, etims_config, billing_invoice, sample_facility, sample_organization):
+    """Create an ETIMSInvoice in PENDING status for testing."""
+    from hmis.apps.inventory.models import ETIMSInvoice
+
+    return ETIMSInvoice.objects.create(
+        invoice=billing_invoice,
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def etims_invoice_failed(etims_invoice):
+    """An ETIMSInvoice in FAILED status."""
+    etims_invoice.mark_failed("Temporary KRA error")
+    return etims_invoice

@@ -4,6 +4,9 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
+    ETIMSConfig,
+    ETIMSInvoice,
+    ETIMSItem,
     GoodsReceiptNote,
     GRNItem,
     PurchaseOrder,
@@ -301,6 +304,70 @@ class StockCountAdmin(admin.ModelAdmin):
             "COMPLETED": "#f59e0b",
             "APPROVED": "#10b981",
             "CANCELLED": "#ef4444",
+        }
+        color = colors.get(obj.status, "#6b7280")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+
+# ===========================================================================
+# Phase 5: KRA eTIMS Integration
+# ===========================================================================
+
+
+@admin.register(ETIMSConfig)
+class ETIMSConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "tin",
+        "bhf_id",
+        "environment",
+        "is_active",
+        "last_sync_at",
+        "facility",
+        "created_at",
+    )
+    list_filter = ("environment", "is_active", "facility")
+    search_fields = ("tin", "bhf_id")
+    raw_id_fields = ("facility", "organization")
+
+
+class ETIMSItemInline(admin.TabularInline):
+    model = ETIMSItem
+    extra = 0
+    readonly_fields = ("item_code", "item_name", "quantity", "unit_price", "tax_amount", "total")
+
+
+@admin.register(ETIMSInvoice)
+class ETIMSInvoiceAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "invoice",
+        "colored_status",
+        "etims_receipt_number",
+        "retry_count",
+        "submitted_at",
+        "confirmed_at",
+        "facility",
+        "created_at",
+    )
+    list_filter = ("status", "facility")
+    search_fields = ("etims_receipt_number", "invoice__invoice_number")
+    raw_id_fields = ("invoice", "dispensing", "facility", "organization")
+    date_hierarchy = "created_at"
+    inlines = [ETIMSItemInline]
+
+    @admin.display(description="Status")
+    def colored_status(self, obj):
+        colors = {
+            "PENDING": "#6b7280",
+            "SUBMITTED": "#3b82f6",
+            "CONFIRMED": "#10b981",
+            "FAILED": "#ef4444",
+            "CANCELLED": "#f59e0b",
         }
         color = colors.get(obj.status, "#6b7280")
         return format_html(

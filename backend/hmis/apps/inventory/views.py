@@ -10,13 +10,14 @@ Follows project conventions:
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.inventory.filters import (
+    ETIMSInvoiceFilter,
     GoodsReceiptNoteFilter,
     PurchaseOrderFilter,
     StockCountFilter,
@@ -27,6 +28,8 @@ from hmis.apps.inventory.filters import (
     WardStockTransactionFilter,
 )
 from hmis.apps.inventory.models import (
+    ETIMSConfig,
+    ETIMSInvoice,
     GoodsReceiptNote,
     PurchaseOrder,
     StockCount,
@@ -38,6 +41,10 @@ from hmis.apps.inventory.models import (
     WardTransactionType,
 )
 from hmis.apps.inventory.serializers import (
+    ETIMSConfigCreateSerializer,
+    ETIMSConfigSerializer,
+    ETIMSInvoiceCreateSerializer,
+    ETIMSInvoiceSerializer,
     GoodsReceiptNoteCreateSerializer,
     GoodsReceiptNoteDetailSerializer,
     GoodsReceiptNoteListSerializer,
@@ -578,3 +585,105 @@ class StockCountViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Model
             item.refresh_from_db()
 
         return Response(StockCountItemSerializer(item).data)
+
+
+# ===========================================================================
+# Phase 5: KRA eTIMS Integration
+# ===========================================================================
+
+
+class ETIMSConfigViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    """CRUD for eTIMS configuration. Singleton per facility. Admin only."""
+
+    queryset = ETIMSConfig.objects.all()
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return ETIMSConfigCreateSerializer
+        return ETIMSConfigSerializer
+
+    def perform_create(self, serializer):
+        kwargs = self.get_tenant_save_kwargs()
+        facility = kwargs.get("facility")
+        if facility and ETIMSConfig.objects.filter(facility=facility).exists():
+            raise serializers.ValidationError(
+                {"detail": "An eTIMS configuration already exists for this facility."}
+            )
+        serializer.save(**kwargs)
+
+    @action(detail=True, methods=["post"])
+    def test_connection(self, request, pk=None):
+        """Test the eTIMS API connection for this configuration."""
+        config = self.get_object()
+        from hmis.apps.inventory.services.etims import get_etims_client
+
+        client = get_etims_client(config)
+        result = client.test_connection()
+        return Response(
+            {
+                "success": result.success,
+                "message": result.message,
+            },
+            status=status.HTTP_200_OK if result.success else status.HTTP_502_BAD_GATEWAY,
+        )
+
+
+class ETIMSInvoiceViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    """CRUD + lifecycle actions for eTIMS invoice submissions."""
+
+    queryset = ETIMSInvoice.objects.select_related(
+        "invoice__patient", "dispensing"
+    ).prefetch_related("items")
+    permission_classes = [IsAuthenticated]
+    filterset_class = ETIMSInvoiceFilter
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return ETIMSInvoiceCreateSerializer
+        return ETIMSInvoiceSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    @action(detail=True, methods=["post"])
+    def submit(self, request, pk=None):
+        """Submit this eTIMS invoice to KRA (async via Celery)."""
+        etims_inv = self.get_object()
+        if etims_inv.status not in ("PENDING", "FAILED"):
+            return Response(
+                {"error": f"Cannot submit invoice in {etims_inv.status} status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        from hmis.apps.inventory.tasks import submit_etims_invoice_task
+
+        submit_etims_invoice_task.delay(etims_inv.pk)
+        return Response({"message": "Submission queued."}, status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=True, methods=["post"])
+    def retry(self, request, pk=None):
+        """Retry a FAILED eTIMS invoice submission."""
+        etims_inv = self.get_object()
+        if etims_inv.status != "FAILED":
+            return Response(
+                {"error": "Only FAILED invoices can be retried."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        from hmis.apps.inventory.tasks import submit_etims_invoice_task
+
+        submit_etims_invoice_task.delay(etims_inv.pk)
+        return Response({"message": "Retry queued."}, status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Cancel a PENDING or FAILED eTIMS invoice."""
+        etims_inv = self.get_object()
+        if etims_inv.status not in ("PENDING", "FAILED"):
+            return Response(
+                {"error": f"Cannot cancel invoice in {etims_inv.status} status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        etims_inv.mark_cancelled()
+        return Response(ETIMSInvoiceSerializer(etims_inv).data)

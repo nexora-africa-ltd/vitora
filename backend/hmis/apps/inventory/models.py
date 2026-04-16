@@ -1306,3 +1306,201 @@ class StockCountItem(TimeStampedModel):
         if self.counted_quantity is None:
             return False
         return self.counted_quantity != self.system_quantity
+
+
+# ===========================================================================
+# Phase 5: KRA eTIMS Integration
+# ===========================================================================
+
+
+class ETIMSEnvironment(models.TextChoices):
+    SANDBOX = "SANDBOX", "Sandbox"
+    PRODUCTION = "PRODUCTION", "Production"
+
+
+class ETIMSInvoiceStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    SUBMITTED = "SUBMITTED", "Submitted"
+    CONFIRMED = "CONFIRMED", "Confirmed"
+    FAILED = "FAILED", "Failed"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class ETIMSConfig(FacilityScopedModel, TimeStampedModel):
+    """
+    KRA eTIMS configuration per facility (singleton per facility).
+
+    Stores KRA branch credentials and connection settings.
+    The api_key is stored encrypted via the KMS provider.
+    """
+
+    bhf_id = models.CharField(
+        max_length=3,
+        help_text="Branch (BHF) ID assigned by KRA, e.g. '00'.",
+    )
+    dvc_srl_no = models.CharField(
+        max_length=50,
+        help_text="Device serial number from KRA.",
+    )
+    tin = models.CharField(
+        max_length=15,
+        help_text="Tax Identification Number (TIN).",
+    )
+    api_base_url = models.URLField(
+        help_text="eTIMS API base URL (sandbox or production).",
+    )
+    api_key_encrypted = models.TextField(
+        blank=True,
+        help_text="Encrypted eTIMS communication key (set via property).",
+    )
+    is_active = models.BooleanField(default=False)
+    last_sync_at = models.DateTimeField(null=True, blank=True)
+    environment = models.CharField(
+        max_length=12,
+        choices=ETIMSEnvironment.choices,
+        default=ETIMSEnvironment.SANDBOX,
+    )
+
+    class Meta:
+        verbose_name = "eTIMS Configuration"
+        verbose_name_plural = "eTIMS Configurations"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility"],
+                name="unique_etims_config_per_facility",
+            ),
+        ]
+
+    def __str__(self):
+        return f"eTIMS Config – TIN {self.tin} ({self.environment})"
+
+    @property
+    def api_key(self):
+        """Decrypt and return the API key."""
+        if not self.api_key_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        return get_kms_provider().decrypt_string(self.api_key_encrypted)
+
+    @api_key.setter
+    def api_key(self, value):
+        """Encrypt and store the API key."""
+        if not value:
+            self.api_key_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.api_key_encrypted = get_kms_provider().encrypt_string(value)
+
+
+class ETIMSInvoice(FacilityScopedModel, TimeStampedModel):
+    """
+    Tracks submission of a billing invoice to KRA eTIMS.
+
+    Each billing Invoice that requires eTIMS reporting gets one ETIMSInvoice
+    record that tracks its submission lifecycle:
+    PENDING → SUBMITTED → CONFIRMED (or FAILED with retries).
+    """
+
+    invoice = models.ForeignKey(
+        "billing.Invoice",
+        on_delete=models.PROTECT,
+        related_name="etims_submissions",
+    )
+    dispensing = models.ForeignKey(
+        "pharmacy.Dispensing",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="etims_submissions",
+        help_text="Optional: dispensing that triggered this submission.",
+    )
+    etims_receipt_number = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Receipt number returned by KRA on confirmation.",
+    )
+    etims_internal_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Raw response data from KRA for audit trail.",
+    )
+    status = models.CharField(
+        max_length=12,
+        choices=ETIMSInvoiceStatus.choices,
+        default=ETIMSInvoiceStatus.PENDING,
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+    retry_count = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"eTIMS {self.invoice.invoice_number} – {self.get_status_display()}"
+
+    def mark_submitted(self, response_data=None):
+        """PENDING → SUBMITTED."""
+        self.status = ETIMSInvoiceStatus.SUBMITTED
+        self.submitted_at = timezone.now()
+        if response_data:
+            self.etims_internal_data = response_data
+        self.save(update_fields=["status", "submitted_at", "etims_internal_data", "updated_at"])
+
+    def mark_confirmed(self, receipt_number, response_data=None):
+        """SUBMITTED → CONFIRMED."""
+        self.status = ETIMSInvoiceStatus.CONFIRMED
+        self.confirmed_at = timezone.now()
+        self.etims_receipt_number = receipt_number
+        if response_data:
+            self.etims_internal_data = response_data
+        self.save(
+            update_fields=[
+                "status",
+                "confirmed_at",
+                "etims_receipt_number",
+                "etims_internal_data",
+                "updated_at",
+            ]
+        )
+
+    def mark_failed(self, error_message):
+        """Mark as FAILED with error details."""
+        self.status = ETIMSInvoiceStatus.FAILED
+        self.error_message = error_message
+        self.retry_count += 1
+        self.save(update_fields=["status", "error_message", "retry_count", "updated_at"])
+
+    def mark_cancelled(self):
+        """Mark as CANCELLED (manual user action)."""
+        self.status = ETIMSInvoiceStatus.CANCELLED
+        self.save(update_fields=["status", "updated_at"])
+
+
+class ETIMSItem(TimeStampedModel):
+    """Individual line item in an eTIMS invoice submission."""
+
+    etims_invoice = models.ForeignKey(
+        ETIMSInvoice,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    item_code = models.CharField(
+        max_length=50,
+        help_text="HS code or KRA item classification code.",
+    )
+    item_name = models.CharField(max_length=255)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.item_name} x{self.quantity}"
