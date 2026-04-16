@@ -286,6 +286,94 @@ def check_key_rotation():
 
 ---
 
+## Encrypted Fields Inventory
+
+All fields that store secrets at rest using KMS encryption. Each field follows
+the **`_encrypted` suffix + property getter/setter** pattern.
+
+### Pattern
+
+```python
+class MyModel(models.Model):
+    api_key_encrypted = models.TextField(blank=True, default="")
+
+    @property
+    def api_key(self) -> str:
+        if not self.api_key_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+        return get_kms_provider().decrypt_string(self.api_key_encrypted)
+
+    @api_key.setter
+    def api_key(self, value: str) -> None:
+        if not value:
+            self.api_key_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+        self.api_key_encrypted = get_kms_provider().encrypt_string(value)
+```
+
+**Key rules:**
+- The DB column is always `*_encrypted` (`TextField`, never `CharField`)
+- The property name is the **logical name** (no suffix) — all code reads/writes via the property
+- Lazy-import `get_kms_provider` inside the getter/setter to avoid circular imports
+- The read serializer **MUST exclude** the secret — only expose a boolean `has_*` flag
+- The write serializer accepts the logical name as `write_only=True` and routes through the setter
+
+### Field Reference
+
+| App | Model | DB Column | Property | Serializer Exposure | Added |
+|-----|-------|-----------|----------|--------------------|----|
+| `inventory` | `ETIMSConfig` | `api_key_encrypted` | `api_key` | Write-only | Feb 2026 |
+| `inventory` | `ETIMSConfig` | `api_secret_encrypted` | `api_secret` | Write-only | Feb 2026 |
+| `billing` | `FacilityBillingConfig` | `mpesa_consumer_key_encrypted` | `mpesa_consumer_key` | Write-only (`has_mpesa_credentials` bool) | Apr 2026 |
+| `billing` | `FacilityBillingConfig` | `mpesa_consumer_secret_encrypted` | `mpesa_consumer_secret` | Write-only (`has_mpesa_credentials` bool) | Apr 2026 |
+| `billing` | `FacilityBillingConfig` | `mpesa_passkey_encrypted` | `mpesa_passkey` | Write-only (`has_mpesa_credentials` bool) | Apr 2026 |
+
+### Fernet-Encrypted Fields (Legacy — pre-KMS)
+
+These fields use Django Fernet field-level encryption (`ENCRYPTION_KEY` env var)
+rather than the KMS abstraction. They predate the KMS module and may be migrated
+to KMS in a future sprint.
+
+| App | Model | Field | Notes |
+|-----|-------|-------|-------|
+| `patients` | `Patient` | `national_id` | Kenya national ID |
+| `patients` | `Patient` | `phone_number` | Patient phone number |
+
+### How to Encrypt a New Field
+
+1. **Model** — Add a `TextField` with `_encrypted` suffix. Add property getter/setter
+   that calls `get_kms_provider().encrypt_string()` / `decrypt_string()`.
+
+2. **Migration** — If renaming an existing plaintext column:
+   - `RenameField` (preserves data)
+   - `AlterField` (CharField → TextField)
+   - `RunPython` to encrypt existing plaintext rows in-place
+
+3. **Read serializer** — **Remove** the secret field from `Meta.fields`. Add a
+   computed boolean (e.g. `has_*_credentials`) so the frontend knows if a value
+   is saved without ever returning the secret.
+
+4. **Write serializer** — Declare the logical field name as an explicit
+   `CharField(write_only=True, required=False, allow_blank=True)`. In
+   `create()` / `update()`, pop the value and set via the model property setter.
+
+5. **Frontend schema** — Remove the field from the Zod read schema. Keep it in
+   the write/create TypeScript interface. Update form inputs to show a
+   masked placeholder (`"••••••••  (saved — leave blank to keep)"`) when the
+   boolean flag is true, and only include the field in the PATCH payload when
+   the user provides a new value.
+
+6. **Contract tests** — Remove the field from the read serializer's expected
+   field set. Keep it in the write serializer's field set.
+
+7. **Service layer** — Code that reads the secret via
+   `instance.mpesa_consumer_key` (the property) needs **no changes** — the
+   property transparently decrypts.
+
+---
+
 ## Security Considerations
 
 ### Key Storage
@@ -395,6 +483,11 @@ hmis/apps/core/management/commands/
 ---
 
 ## Changelog
+
+### v1.1 (April 16, 2026)
+- Added encrypted fields inventory
+- Documented M-Pesa credential encryption (migration 0027)
+- Added "How to encrypt a new field" guide
 
 ### v1.0 (February 25, 2026)
 - Initial implementation

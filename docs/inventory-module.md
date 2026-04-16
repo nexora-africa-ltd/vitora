@@ -1,8 +1,9 @@
 # Inventory Module — Single Source of Truth
 
 > **Last Updated**: April 16, 2026
-> **Module Path**: `backend/hmis/apps/inventory/`
-> **Total LOC**: ~5,700 (models 1735 + serializers 1224 + views 846 + services 808 + admin 464 + signals 236 + filters 188 + tasks 147 + urls 41)
+> **Module Path**: `backend/hmis/apps/inventory/` + `web-app/app/(dashboard)/inventory/`
+> **Backend LOC**: ~5,700 (models 1735 + serializers 1224 + views 846 + services 808 + admin 464 + signals 236 + filters 188 + tasks 147 + urls 41)
+> **Frontend Pages**: 29 Next.js pages across 10 sub-modules
 > **Tests**: 292 across 17 test files in `tests/inventory/`
 > **Migrations**: 5 (0001–0005)
 
@@ -26,6 +27,7 @@
 14. [Test Coverage](#14-test-coverage)
 15. [Key Workflows](#15-key-workflows)
 16. [Integration Points](#16-integration-points)
+17. [Frontend Implementation](#17-frontend-implementation)
 
 ---
 
@@ -1128,6 +1130,68 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 ```
+
+---
+
+## 17. Frontend Implementation
+
+### Stack
+
+- **Framework**: Next.js 15 (App Router, `use client` pages)
+- **State/Data**: React Query (`useQuery`, `useMutation`, `useQueryClient`)
+- **Validation**: Zod schemas with `parseResponse()` for API responses
+- **UI**: Shadcn UI (Card, Badge, Button, Dialog, AlertDialog, Select, Input, Form, Table, Skeleton, Alert, Progress)
+- **Components**: `PageHeader`, `PullToRefresh`, `ResponsiveTable`, `HelpPopover`, `SearchableSelect`
+- **Types**: `web-app/lib/types/inventory.ts` — 13 enum types, 18 model interfaces, input/list params
+- **Schemas**: `web-app/lib/schemas/inventory.schema.ts` — all Zod schemas
+- **API Client**: `web-app/lib/api/inventory.ts` — ~60 methods across 13 ViewSets
+- **Navigation**: `web-app/lib/config/navigation.ts` — Inventory nav group with 10 children
+
+### Page Inventory (29 pages)
+
+| Route | Page | Features |
+|-------|------|----------|
+| `/inventory` | Overview | Navigation grid to all sub-modules |
+| `/inventory/suppliers` | List | Stats, search, type/active filters, `ResponsiveTable`, pagination |
+| `/inventory/suppliers/[id]` | Detail | Edit form, toggle active |
+| `/inventory/suppliers/new` | Create | Form with all supplier fields |
+| `/inventory/purchase-orders` | List | Stats (Total, Draft, Submitted, Approved), status filter, sortable table |
+| `/inventory/purchase-orders/[id]` | Detail | Status stepper, line items table, Submit/Approve/Cancel actions via AlertDialog |
+| `/inventory/purchase-orders/new` | Create | Supplier select, dynamic line items (useFieldArray), drug search |
+| `/inventory/goods-receipt` | List | Stats, status filter, sortable table |
+| `/inventory/goods-receipt/[id]` | Detail | Linked PO info, line items with batch/expiry, Confirm/Cancel actions |
+| `/inventory/goods-receipt/new` | Create | PO select (auto-populates items), batch/expiry/cost per item |
+| `/inventory/store-locations` | List | Type filter, active filter, sortable table |
+| `/inventory/store-locations/[id]` | Detail | Edit form |
+| `/inventory/store-locations/new` | Create | Form with code, name, type, manager |
+| `/inventory/transfers` | List | Stats, status filter, source/dest facility names |
+| `/inventory/transfers/[id]` | Detail | Status stepper (6 states), items table, Submit/Approve/Dispatch/Receive/Cancel actions |
+| `/inventory/transfers/new` | Create | Source/dest facility select, drug+batch+qty line items |
+| `/inventory/ward-stock` | List | Stats (total, below par highlighted red, above max), store filter, color-coded quantities |
+| `/inventory/ward-stock/[id]` | Detail | Progress bar (stock vs par/max), Consume/Replenish/Return dialogs with validation, transaction history |
+| `/inventory/stock-counts` | List | Stats, status/type filters, discrepancy highlighting |
+| `/inventory/stock-counts/[id]` | Detail | Status stepper, 4 variance cards, inline qty editing per row (IN_PROGRESS), Generate/Start/Complete/Approve/Cancel actions |
+| `/inventory/stock-counts/new` | Create | Count type selector, optional store location, notes |
+| `/inventory/etims` | Landing | Cards linking to Config and Invoices |
+| `/inventory/etims/config` | Config | Singleton form (TIN, BHF ID, device serial, API URL/key, environment), Test Connection, active toggle |
+| `/inventory/etims/invoices` | List | Stats (Total, Pending, Confirmed, Failed), status filter, sortable table |
+| `/inventory/etims/invoices/[id]` | Detail | Summary bar, Submit/Retry/Cancel actions, line items table, error display, expandable raw eTIMS data |
+| `/inventory/forecasting` | Landing | Cards linking to Forecasts, Reorder, Consumption |
+| `/inventory/forecasting/forecasts` | List | Stats, method filter, Generate Forecast dialog (method + period), confidence ranges |
+| `/inventory/forecasting/reorder` | List | Stats (Total, Critical, High, Pending), urgency/status filters, Convert to PO + Dismiss actions |
+| `/inventory/forecasting/consumption` | List | Date range filters, sortable table (dispensed, transferred, adjusted, total, avg daily) |
+
+### API Client Fixes Applied
+
+| Method | Issue | Fix |
+|--------|-------|-----|
+| `submitETIMSInvoice` | Parsed response as `ETIMSInvoice` | Returns `{ message: string }` (backend sends 202) |
+| `retryETIMSInvoice` | Parsed response as `ETIMSInvoice` | Returns `{ message: string }` (backend sends 202) |
+| `testETIMSConnection` | Return type `{ status, message }` | Returns `{ success: boolean, message: string }` |
+| `generateForecast` | Always returned `{ count }` | Dual return: `DemandForecast` (single drug) or `{ message, count }` (all drugs) |
+| `convertReorderToPO` | Parsed as `ReorderSuggestion` | Returns `{ message, purchase_order_id, po_number }` |
+| `generateStockCountItems` | Returned `StockCountDetail` | Returns `{ created: number, total: number }` |
+| `updateStockCountItem` | Wrong URL pattern | Fixed to `stock-counts/{countId}/items/{itemId}/` |
 
 ---
 

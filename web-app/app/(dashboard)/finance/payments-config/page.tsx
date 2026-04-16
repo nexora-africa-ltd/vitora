@@ -114,9 +114,10 @@ function configToForm(cfg: FacilityBillingConfig): FormState {
     bank_name: cfg.bank_name ?? '',
     bank_account_number: cfg.bank_account_number ?? '',
     bank_branch: cfg.bank_branch ?? '',
-    mpesa_consumer_key: cfg.mpesa_consumer_key ?? '',
-    mpesa_consumer_secret: cfg.mpesa_consumer_secret ?? '',
-    mpesa_passkey: cfg.mpesa_passkey ?? '',
+    // Secrets are write-only — never returned by GET, always empty in form
+    mpesa_consumer_key: '',
+    mpesa_consumer_secret: '',
+    mpesa_passkey: '',
     mpesa_shortcode: cfg.mpesa_shortcode ?? '',
     mpesa_callback_url: cfg.mpesa_callback_url ?? '',
     mpesa_environment: cfg.mpesa_environment ?? 'sandbox',
@@ -124,7 +125,7 @@ function configToForm(cfg: FacilityBillingConfig): FormState {
 }
 
 function formToPayload(form: FormState): FacilityBillingConfigUpdateData {
-  return {
+  const payload: FacilityBillingConfigUpdateData = {
     default_payment_type: form.default_payment_type,
     default_due_days: form.default_due_days,
     auto_finalize_on_checkout: form.auto_finalize_on_checkout,
@@ -134,13 +135,15 @@ function formToPayload(form: FormState): FacilityBillingConfigUpdateData {
     bank_name: form.bank_name,
     bank_account_number: form.bank_account_number,
     bank_branch: form.bank_branch,
-    mpesa_consumer_key: form.mpesa_consumer_key,
-    mpesa_consumer_secret: form.mpesa_consumer_secret,
-    mpesa_passkey: form.mpesa_passkey,
     mpesa_shortcode: form.mpesa_shortcode,
     mpesa_callback_url: form.mpesa_callback_url,
     mpesa_environment: form.mpesa_environment,
   };
+  // Only send secrets when user has entered new values
+  if (form.mpesa_consumer_key) payload.mpesa_consumer_key = form.mpesa_consumer_key;
+  if (form.mpesa_consumer_secret) payload.mpesa_consumer_secret = form.mpesa_consumer_secret;
+  if (form.mpesa_passkey) payload.mpesa_passkey = form.mpesa_passkey;
+  return payload;
 }
 
 // ---------------------------------------------------------------------------
@@ -148,16 +151,17 @@ function formToPayload(form: FormState): FacilityBillingConfigUpdateData {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns true when the minimum required M-Pesa credentials are filled.
+ * Returns true when the minimum required M-Pesa credentials are filled
+ * (either in the form or already saved on the server).
  *
  * Sandbox only requires consumer_key + consumer_secret (Safaricom provides
  * a shared shortcode 174379 and a public test passkey).
  * Production requires all four.
  */
-function hasMpesaCredsInForm(f: FormState): boolean {
-  const hasCore = !!(f.mpesa_consumer_key && f.mpesa_consumer_secret);
+function hasMpesaCredsInForm(f: FormState, savedOnServer = false): boolean {
+  const hasCore = !!(f.mpesa_consumer_key && f.mpesa_consumer_secret) || savedOnServer;
   if (f.mpesa_environment === 'production') {
-    return hasCore && !!f.mpesa_shortcode && !!f.mpesa_passkey;
+    return hasCore && !!(f.mpesa_shortcode || savedOnServer) && !!(f.mpesa_passkey || savedOnServer);
   }
   return hasCore;
 }
@@ -167,7 +171,7 @@ function hasBankDetailsInForm(f: FormState): boolean {
   return !!(f.bank_name && f.bank_account_number);
 }
 
-function validate(form: FormState): FormErrors {
+function validate(form: FormState, credsSavedOnServer = false): FormErrors {
   const errors: FormErrors = {};
 
   // --- General tab ---
@@ -176,22 +180,32 @@ function validate(form: FormState): FormErrors {
   if (form.tax_rate === '' || isNaN(Number(form.tax_rate))) errors.tax_rate = 'Must be a valid number';
 
   // --- M-Pesa credentials ---
-  // Core fields are always required when configuring M-Pesa
-  const coreFields: (keyof FormState)[] = ['mpesa_consumer_key', 'mpesa_consumer_secret'];
-  // Shortcode + passkey are only required in production (sandbox uses shared defaults)
-  const prodOnlyFields: (keyof FormState)[] = ['mpesa_shortcode', 'mpesa_passkey'];
+  // When credentials are already saved on the server, blank form fields mean
+  // "keep existing" — so we only validate when the user is filling in NEW creds.
+  const secretFields: (keyof FormState)[] = ['mpesa_consumer_key', 'mpesa_consumer_secret'];
+  const prodOnlySecretFields: (keyof FormState)[] = ['mpesa_passkey'];
+  const nonSecretFields: (keyof FormState)[] = ['mpesa_shortcode'];
   const isProduction = form.mpesa_environment === 'production';
-  const requiredMpesaFields = isProduction ? [...coreFields, ...prodOnlyFields] : coreFields;
-  const allMpesaFields = [...coreFields, ...prodOnlyFields];
 
+  const allMpesaFields = [...secretFields, ...prodOnlySecretFields, ...nonSecretFields];
   const filledAny = allMpesaFields.some((k) => !!form[k]);
-  if (filledAny) {
-    for (const k of requiredMpesaFields) {
+
+  if (filledAny && !credsSavedOnServer) {
+    // New setup: require core fields
+    const requiredFields = isProduction
+      ? [...secretFields, ...prodOnlySecretFields, ...nonSecretFields]
+      : secretFields;
+    for (const k of requiredFields) {
       if (!form[k]) {
-        errors[k] = isProduction && prodOnlyFields.includes(k)
+        errors[k] = isProduction && [...prodOnlySecretFields, ...nonSecretFields].includes(k)
           ? 'Required for production environment'
           : 'Required when configuring M-Pesa credentials';
       }
+    }
+  } else if (filledAny && credsSavedOnServer) {
+    // Updating: only validate non-secret fields that are required in production
+    if (isProduction && !form.mpesa_shortcode) {
+      errors.mpesa_shortcode = 'Required for production environment';
     }
   }
 
@@ -270,7 +284,9 @@ export default function PaymentsConfigPage() {
     return JSON.stringify(form) !== JSON.stringify(configToForm(configQuery.data));
   }, [form, configQuery.data]);
 
-  const errors = useMemo<FormErrors>(() => (form ? validate(form) : {}), [form]);
+  const hasMpesaCreds = configQuery.data?.has_mpesa_credentials ?? false;
+
+  const errors = useMemo<FormErrors>(() => (form ? validate(form, hasMpesaCreds) : {}), [form, hasMpesaCreds]);
   const hasErrors = Object.keys(errors).length > 0;
 
   // Which tabs have errors?
@@ -279,7 +295,7 @@ export default function PaymentsConfigPage() {
   const bankTabHasErrors = !!(errors.bank_name || errors.bank_account_number);
 
   // Payment method gating
-  const mpesaConfigured = form ? hasMpesaCredsInForm(form) : false;
+  const mpesaConfigured = form ? hasMpesaCredsInForm(form, hasMpesaCreds) : false;
   const bankConfigured = form ? hasBankDetailsInForm(form) : false;
 
   // -------------------------------------------------------------------------
@@ -417,8 +433,6 @@ export default function PaymentsConfigPage() {
   // -------------------------------------------------------------------------
   // Render: main form
   // -------------------------------------------------------------------------
-
-  const hasMpesaCreds = configQuery.data.has_mpesa_credentials ?? false;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -743,7 +757,7 @@ export default function PaymentsConfigPage() {
                     type={showSecrets ? 'text' : 'password'}
                     value={form.mpesa_consumer_key}
                     onChange={(e) => updateField('mpesa_consumer_key', e.target.value)}
-                    placeholder="Daraja consumer key"
+                    placeholder={hasMpesaCreds ? '••••••••  (saved — leave blank to keep)' : 'Daraja consumer key'}
                     autoComplete="off"
                     disabled={isPending}
                     className={touched && errors.mpesa_consumer_key ? 'border-destructive' : ''}
@@ -758,7 +772,7 @@ export default function PaymentsConfigPage() {
                     type={showSecrets ? 'text' : 'password'}
                     value={form.mpesa_consumer_secret}
                     onChange={(e) => updateField('mpesa_consumer_secret', e.target.value)}
-                    placeholder="Daraja consumer secret"
+                    placeholder={hasMpesaCreds ? '••••••••  (saved — leave blank to keep)' : 'Daraja consumer secret'}
                     autoComplete="off"
                     disabled={isPending}
                     className={touched && errors.mpesa_consumer_secret ? 'border-destructive' : ''}
@@ -775,7 +789,13 @@ export default function PaymentsConfigPage() {
                     type={showSecrets ? 'text' : 'password'}
                     value={form.mpesa_passkey}
                     onChange={(e) => updateField('mpesa_passkey', e.target.value)}
-                    placeholder={form.mpesa_environment === 'sandbox' ? 'Optional in sandbox (uses shared test passkey)' : 'STK Push passkey'}
+                    placeholder={
+                      hasMpesaCreds
+                        ? '••••••••  (saved — leave blank to keep)'
+                        : form.mpesa_environment === 'sandbox'
+                          ? 'Optional in sandbox (uses shared test passkey)'
+                          : 'STK Push passkey'
+                    }
                     autoComplete="off"
                     disabled={isPending}
                     className={touched && errors.mpesa_passkey ? 'border-destructive' : ''}

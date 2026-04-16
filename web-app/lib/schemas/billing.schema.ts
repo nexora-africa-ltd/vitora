@@ -621,10 +621,7 @@ export const FacilityBillingConfigSchema = z.object({
   bank_name: z.string(),
   bank_account_number: z.string(),
   bank_branch: z.string(),
-  // M-Pesa API credentials (per-facility multi-tenant)
-  mpesa_consumer_key: z.string().optional().default(''),
-  mpesa_consumer_secret: z.string().optional().default(''),
-  mpesa_passkey: z.string().optional().default(''),
+  // M-Pesa (non-secret fields only — secrets are write-only)
   mpesa_shortcode: z.string().optional().default(''),
   mpesa_callback_url: z.string().optional().default(''),
   mpesa_environment: z.string().optional().default('sandbox'),
