@@ -261,6 +261,8 @@ urlpatterns = [
     ),
     # Pharmacy API
     path("api/pharmacy/", include("hmis.apps.pharmacy.urls", namespace="pharmacy")),
+    # Inventory API (procurement, transfers, stock counts)
+    path("api/inventory/", include("hmis.apps.inventory.urls", namespace="inventory")),
     # MCH API
     path("api/mch/", include("hmis.apps.mch.urls", namespace="mch")),
     # Immunizations API (facility-wide: KEPI + adult + campaigns)
