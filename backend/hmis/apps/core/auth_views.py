@@ -566,13 +566,14 @@ def org_signup(request):
         )
 
         # 3. Create admin user
+        # is_staff=False: org admins use web-app admin, not Django /admin/
         user = User.objects.create_user(
             username=data["admin_email"].split("@")[0],
             email=data["admin_email"],
             password=data["admin_password"],
             first_name=data["admin_first_name"],
             last_name=data["admin_last_name"],
-            is_staff=True,
+            is_staff=False,
             is_active=True,
         )
 

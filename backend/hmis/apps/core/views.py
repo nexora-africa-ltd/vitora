@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .mixins import TenantScopedViewMixin
+from .mixins import TenantScopedViewMixin, resolve_request_tenant
 from .models import (
     AuditLog,
     CertificateAuthority,
@@ -707,7 +707,8 @@ class RoleViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Role CRUD operations.
 
-    List/retrieve accessible to authenticated users.
+    List/retrieve shows system-wide roles (organization=null) plus roles
+    belonging to the user's organization/facility. Superusers see all.
     Create/update/delete restricted to admins.
     """
 
@@ -718,6 +719,30 @@ class RoleViewSet(viewsets.ModelViewSet):
     search_fields = ["name", "code", "license_body"]
     ordering_fields = ["name", "code", "hierarchy_level", "created_at"]
     ordering = ["hierarchy_level", "name"]
+
+    def get_queryset(self):
+        """Return system-wide roles + roles scoped to the user's org/facility."""
+        if getattr(self, "swagger_fake_view", False):
+            return Role.objects.none()
+
+        resolve_request_tenant(self.request)
+        user = self.request.user
+
+        if user.is_superuser:
+            return Role.objects.all()
+
+        from django.db.models import Q
+
+        org = getattr(self.request, "organization", None)
+        facility = getattr(self.request, "facility", None)
+
+        q = Q(organization__isnull=True)  # system-wide defaults
+        if org:
+            q |= Q(organization=org)
+        if facility:
+            q |= Q(facility=facility)
+
+        return Role.objects.filter(q).distinct()
 
     def get_permissions(self):
         """Set permissions based on action."""
