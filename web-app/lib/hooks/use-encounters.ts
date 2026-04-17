@@ -173,6 +173,10 @@ export function useCreateEncounter() {
   return useOfflineMutation<Partial<Encounter>, Encounter>({
     table: 'encounters_encounter',
     operation: 'create',
+    // Encounter creation MUST go through the API directly because:
+    // 1. Callers immediately use result.id for diagnoses, admissions, redirects, and triage check-in
+    // 2. The backend generates consultation_status, triage_status, and assigns facility scoping
+    forceApi: true,
     buildLocalData: (data) => ({
       id: generateId(),
       patient_id: data.patient ? String(data.patient) : null,

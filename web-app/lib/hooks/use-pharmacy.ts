@@ -373,6 +373,10 @@ export function useCreatePrescription() {
   return useOfflineMutation<PrescriptionCreateData, Prescription>({
     table: 'pharmacy_prescription',
     operation: 'create',
+    // Prescription creation MUST go through the API directly because:
+    // 1. The backend generates prescription_number
+    // 2. Prescription items are sent as nested data and need server-side processing
+    forceApi: true,
     buildLocalData: (data) => ({
       id: generateId(),
       prescription_number: '', // Assigned by backend after sync
