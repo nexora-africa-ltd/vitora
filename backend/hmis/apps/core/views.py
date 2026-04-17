@@ -17,7 +17,7 @@ from drf_spectacular.utils import (
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -376,7 +376,7 @@ class CountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet)
 
     queryset = County.objects.all()
     serializer_class = CountySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ["name", "code"]
@@ -389,7 +389,7 @@ class SubCountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewS
 
     queryset = SubCounty.objects.select_related("county").all()
     serializer_class = SubCountySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ["name"]

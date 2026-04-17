@@ -14,6 +14,12 @@
           Hi {{ admin_name }}, great news — <strong>{{ org_name }}</strong> has been
           approved and is now active on Vitora HMIS.
         </p>
+        {% if facility_name %}
+        <p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6">
+          Your facility <strong>{{ facility_name }}</strong>{% if facility_mfl_code %} (MFL {{ facility_mfl_code }}){% endif %}
+          is ready to go.
+        </p>
+        {% endif %}
         <table cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr><td>
           <a href="{{ login_url }}" style="display:inline-block;padding:12px 28px;background:#0f766e;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600">
             Log In to Vitora HMIS
@@ -23,7 +29,7 @@
           <p style="margin:0;color:#166534;font-size:14px;line-height:1.6">
             <strong>Getting started:</strong><br>
             1. Log in with the credentials you created during signup<br>
-            2. Set up your facilities and departments<br>
+            2. Configure departments and clinics for your facility<br>
             3. Invite your staff members
           </p>
         </div>

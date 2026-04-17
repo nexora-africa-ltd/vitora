@@ -1415,15 +1415,38 @@ class OrgSignupSerializer(serializers.Serializer):
     """
     Self-service organization signup.
 
-    Creates Organization + Admin User + StaffProfile atomically.
+    Creates Organization + Admin User + StaffProfile + initial Facility atomically.
     """
 
+    # Organization
     org_name = serializers.CharField(max_length=200)
+
+    # Admin user
     admin_email = serializers.EmailField()
     admin_first_name = serializers.CharField(max_length=150)
     admin_last_name = serializers.CharField(max_length=150)
     admin_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
     confirm_password = serializers.CharField(max_length=128, write_only=True)
+
+    # Initial facility (required — used for MFL verification)
+    facility_name = serializers.CharField(max_length=200)
+    facility_mfl_code = serializers.CharField(max_length=20)
+    facility_county = serializers.PrimaryKeyRelatedField(
+        queryset=County.objects.all(),
+    )
+    facility_sub_county = serializers.PrimaryKeyRelatedField(
+        queryset=SubCounty.objects.all(),
+    )
+    facility_level = serializers.ChoiceField(
+        choices=Facility.FacilityLevel.choices,
+        required=False,
+        default=Facility.FacilityLevel.LEVEL_3,
+    )
+    facility_ownership = serializers.ChoiceField(
+        choices=Facility.OwnershipType.choices,
+        required=False,
+        default=Facility.OwnershipType.PRIVATE,
+    )
 
     def validate_org_name(self, value):
         """Ensure org name is unique."""
@@ -1441,9 +1464,22 @@ class OrgSignupSerializer(serializers.Serializer):
             raise serializers.ValidationError("A user with this email already exists.")
         return normalized
 
+    def validate_facility_mfl_code(self, value):
+        """Ensure MFL code isn't already registered."""
+        if Facility.objects.filter(mfl_code=value).exists():
+            raise serializers.ValidationError("A facility with this MFL code already exists.")
+        return value
+
     def validate(self, data):
         if data["admin_password"] != data["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        # Validate county → sub-county cascade
+        county = data.get("facility_county")
+        sub_county = data.get("facility_sub_county")
+        if county and sub_county and sub_county.county_id != county.pk:
+            raise serializers.ValidationError(
+                {"facility_sub_county": "Sub-county does not belong to the selected county."}
+            )
         return data
 
 

@@ -96,6 +96,8 @@ export const OrgSignupResponseSchema = z.object({
   message: z.string(),
   org_name: z.string(),
   admin_email: z.string(),
+  facility_name: z.string(),
+  facility_mfl_code: z.string(),
   username: z.string(),
 });
 

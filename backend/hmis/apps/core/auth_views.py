@@ -525,7 +525,7 @@ def org_signup(request):
     """
     Self-service organization signup.
 
-    Creates Organization + Admin User + StaffProfile atomically.
+    Creates Organization + Admin User + StaffProfile + initial Facility atomically.
     Sends a verification email that must be confirmed before the org is active.
     """
     serializer = OrgSignupSerializer(data=request.data)
@@ -553,7 +553,19 @@ def org_signup(request):
             subscription_tier=Organization.SubscriptionTier.FREE,
         )
 
-        # 2. Create admin user
+        # 2. Create initial facility
+        facility = Facility.objects.create(
+            organization=org,
+            name=data["facility_name"],
+            mfl_code=data["facility_mfl_code"],
+            level=data.get("facility_level", Facility.FacilityLevel.LEVEL_3),
+            ownership=data.get("facility_ownership", Facility.OwnershipType.PRIVATE),
+            county=data["facility_county"],
+            sub_county=data["facility_sub_county"],
+            is_active=False,  # activated when org is activated
+        )
+
+        # 3. Create admin user
         user = User.objects.create_user(
             username=data["admin_email"].split("@")[0],
             email=data["admin_email"],
@@ -564,7 +576,7 @@ def org_signup(request):
             is_active=True,
         )
 
-        # 3. Bootstrap department & role, then create StaffProfile
+        # 4. Bootstrap department & role, then create StaffProfile
         dept, role = _get_or_create_admin_defaults(org)
         StaffProfile.objects.create(
             user=user,
@@ -572,17 +584,18 @@ def org_signup(request):
             organization=org,
             primary_department=dept,
             primary_role=role,
+            primary_facility=facility,
             date_joined=date.today(),
             must_change_password=False,
         )
 
-        # 4. Create verification token
+        # 5. Create verification token
         token = EmailVerificationToken.objects.create(
             user=user,
             organization=org,
         )
 
-    # 5. Send verification email (outside transaction)
+    # 6. Send verification email (outside transaction)
     admin_name = f"{data['admin_first_name']} {data['admin_last_name']}"
     send_org_verification_email(
         to_email=data["admin_email"],
@@ -598,7 +611,12 @@ def org_signup(request):
         resource_id=org.id,
         ip_address=_get_client_ip(request),
         user_agent=request.META.get("HTTP_USER_AGENT", ""),
-        details={"org_name": data["org_name"], "admin_email": data["admin_email"]},
+        details={
+            "org_name": data["org_name"],
+            "admin_email": data["admin_email"],
+            "facility_name": data["facility_name"],
+            "facility_mfl_code": data["facility_mfl_code"],
+        },
     )
 
     # Publish domain event for org signup
@@ -613,6 +631,8 @@ def org_signup(request):
             "admin_email": data["admin_email"],
             "admin_name": admin_name,
             "slug": org.slug,
+            "facility_name": data["facility_name"],
+            "facility_mfl_code": data["facility_mfl_code"],
         },
         user_id=user.id,
         organization_id=org.id,
@@ -626,6 +646,8 @@ def org_signup(request):
             ),
             "org_name": data["org_name"],
             "admin_email": data["admin_email"],
+            "facility_name": data["facility_name"],
+            "facility_mfl_code": data["facility_mfl_code"],
             "username": user.username,
         },
         status=status.HTTP_201_CREATED,
@@ -688,10 +710,15 @@ def verify_email(request):
         send_org_pending_review_email,
     )
 
+    # Look up the initial facility for the admin notification.
+    initial_facility = token.organization.facilities.first()
+
     send_admin_signup_notification(
         org_name=token.organization.name,
         admin_email=token.user.email,
         admin_name=token.user.get_full_name() or token.user.username,
+        facility_name=initial_facility.name if initial_facility else "",
+        facility_mfl_code=initial_facility.mfl_code if initial_facility else "",
     )
 
     # Let the user know their org is under review.
@@ -699,6 +726,8 @@ def verify_email(request):
         to_email=token.user.email,
         org_name=token.organization.name,
         admin_name=token.user.get_full_name() or token.user.username,
+        facility_name=initial_facility.name if initial_facility else "",
+        facility_mfl_code=initial_facility.mfl_code if initial_facility else "",
     )
 
     # Publish domain event for email verification

@@ -14,7 +14,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from hmis.apps.core.events.types import OrganizationEvents
-from hmis.apps.core.models import EmailVerificationToken, Organization
+from hmis.apps.core.models import County, EmailVerificationToken, Organization, SubCounty
 
 User = get_user_model()
 
@@ -31,7 +31,19 @@ def anon_client(db):
 
 
 @pytest.fixture
-def signup_data():
+def sample_county(db):
+    """Create a sample county for signup."""
+    return County.objects.create(code=99, name="Test County")
+
+
+@pytest.fixture
+def sample_sub_county(sample_county):
+    """Create a sample sub-county for signup."""
+    return SubCounty.objects.create(county=sample_county, name="Test Sub-County")
+
+
+@pytest.fixture
+def signup_data(sample_county, sample_sub_county):
     """Valid org signup payload."""
     return {
         "org_name": "Event Test Clinic",
@@ -40,6 +52,10 @@ def signup_data():
         "admin_last_name": "Mwangi",
         "admin_password": "StrongPass123!",
         "confirm_password": "StrongPass123!",
+        "facility_name": "Event Test Facility",
+        "facility_mfl_code": "EVT-001",
+        "facility_county": sample_county.id,
+        "facility_sub_county": sample_sub_county.id,
     }
 
 
@@ -169,6 +185,8 @@ class TestEmailVerificationEvent:
             to_email="pending@evt.com",
             org_name="Pending Review Org",
             admin_name="Grace Wanjiku",
+            facility_name="",
+            facility_mfl_code="",
         )
 
 
@@ -297,6 +315,8 @@ class TestOrgActivationEvents:
             to_email="orgadmin@test.co.ke",
             org_name="Email Org",
             admin_name="Mary Akinyi",
+            facility_name="",
+            facility_mfl_code="",
         )
 
     def test_deactivation_does_not_send_activation_email(self, mocker):

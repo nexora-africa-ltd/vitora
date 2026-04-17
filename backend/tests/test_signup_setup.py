@@ -54,7 +54,7 @@ def sample_sub_county(sample_county):
 
 
 @pytest.fixture
-def signup_data():
+def signup_data(sample_county, sample_sub_county):
     """Valid org signup payload."""
     return {
         "org_name": "Afya Health Clinic",
@@ -63,6 +63,10 @@ def signup_data():
         "admin_last_name": "Wanjiku",
         "admin_password": "StrongPass123!",
         "confirm_password": "StrongPass123!",
+        "facility_name": "Afya Main Branch",
+        "facility_mfl_code": "12345",
+        "facility_county": sample_county.id,
+        "facility_sub_county": sample_sub_county.id,
     }
 
 
@@ -151,6 +155,12 @@ class TestOrgSignup:
         assert not org.is_active
         assert not org.is_verified
 
+        # Verify facility created (inactive, linked to org)
+        facility = Facility.objects.get(mfl_code="12345")
+        assert facility.organization == org
+        assert facility.name == "Afya Main Branch"
+        assert not facility.is_active
+
         # Verify user created
         user = User.objects.get(email="admin@afyahealth.co.ke")
         assert user.first_name == "Jane"
@@ -160,6 +170,7 @@ class TestOrgSignup:
         # Verify StaffProfile
         profile = StaffProfile.objects.get(user=user)
         assert profile.organization == org
+        assert profile.primary_facility == facility
         assert not profile.must_change_password
 
         # Verify token created
@@ -191,6 +202,31 @@ class TestOrgSignup:
         org = Organization.objects.get(name="Afya Health Clinic")
         assert org.slug != "afya-health-clinic"
         assert org.slug.startswith("afya-health-clinic")
+
+    def test_signup_duplicate_mfl_code_rejected(self, anon_client, signup_data, sample_county):
+        Facility.objects.create(
+            name="Existing Facility",
+            mfl_code="12345",
+            county=sample_county,
+            sub_county=signup_data["facility_sub_county"]
+            and SubCounty.objects.get(pk=signup_data["facility_sub_county"]),
+        )
+        response = anon_client.post("/api/core/auth/signup/", signup_data, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "facility_mfl_code" in response.data
+
+    def test_signup_mismatched_county_sub_county_rejected(self, anon_client, signup_data, db):
+        other_county = County.objects.create(code=98, name="Other County")
+        signup_data["facility_county"] = other_county.id
+        # facility_sub_county still belongs to original county
+        response = anon_client.post("/api/core/auth/signup/", signup_data, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_signup_missing_facility_fields_rejected(self, anon_client, signup_data):
+        del signup_data["facility_name"]
+        del signup_data["facility_mfl_code"]
+        response = anon_client.post("/api/core/auth/signup/", signup_data, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 # ============================================================================

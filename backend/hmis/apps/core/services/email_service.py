@@ -232,6 +232,8 @@ def send_admin_signup_notification(
     org_name: str,
     admin_email: str,
     admin_name: str,
+    facility_name: str = "",
+    facility_mfl_code: str = "",
 ) -> bool:
     """Notify Nexora platform administrators that an organization has verified its email.
 
@@ -245,6 +247,18 @@ def send_admin_signup_notification(
     )
     frontend_url = _get_frontend_url()
 
+    facility_rows = ""
+    if facility_name:
+        facility_rows += (
+            f"<tr><td style='padding:4px 12px;font-weight:bold;'>Facility</td>"
+            f"<td style='padding:4px 12px;'>{facility_name}</td></tr>"
+        )
+    if facility_mfl_code:
+        facility_rows += (
+            f"<tr><td style='padding:4px 12px;font-weight:bold;'>MFL Code</td>"
+            f"<td style='padding:4px 12px;'>{facility_mfl_code}</td></tr>"
+        )
+
     html_body = (
         f"<h2>New Organization Signup — Email Verified</h2>"
         f"<p>A new organization has completed email verification and is awaiting activation.</p>"
@@ -255,6 +269,7 @@ def send_admin_signup_notification(
         f"<td style='padding:4px 12px;'>{admin_name}</td></tr>"
         f"<tr><td style='padding:4px 12px;font-weight:bold;'>Admin Email</td>"
         f"<td style='padding:4px 12px;'>{admin_email}</td></tr>"
+        f"{facility_rows}"
         f"</table>"
         f"<p>To activate this organization, log in to the "
         f"<a href='{frontend_url}/admin/'>Django Admin</a> and set "
@@ -278,6 +293,8 @@ def send_org_pending_review_email(
     to_email: str,
     org_name: str,
     admin_name: str,
+    facility_name: str = "",
+    facility_mfl_code: str = "",
 ) -> bool:
     """Notify the user that their email is verified and the org is pending admin review."""
     html_body = render_to_string(
@@ -285,6 +302,8 @@ def send_org_pending_review_email(
         {
             "org_name": org_name,
             "admin_name": admin_name,
+            "facility_name": facility_name,
+            "facility_mfl_code": facility_mfl_code,
             "support_email": getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@vitora.health"),
         },
     )
@@ -301,6 +320,8 @@ def send_org_activated_email(
     to_email: str,
     org_name: str,
     admin_name: str,
+    facility_name: str = "",
+    facility_mfl_code: str = "",
 ) -> bool:
     """Notify the user that their organization has been activated and they can log in."""
     frontend_url = _get_frontend_url()
@@ -311,6 +332,8 @@ def send_org_activated_email(
         {
             "org_name": org_name,
             "admin_name": admin_name,
+            "facility_name": facility_name,
+            "facility_mfl_code": facility_mfl_code,
             "login_url": login_url,
             "support_email": getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@vitora.health"),
         },
