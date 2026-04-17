@@ -164,7 +164,7 @@ class TestOrgSignup:
         # Verify user created
         user = User.objects.get(email="admin@afyahealth.co.ke")
         assert user.first_name == "Jane"
-        assert user.is_staff
+        assert not user.is_staff  # org admins use web-app, not Django /admin/
         assert user.is_active
 
         # Verify StaffProfile
