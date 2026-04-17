@@ -124,6 +124,7 @@ jobs:
             METABASE_API_URL=${{ vars.METABASE_API_URL || 'http://vitora-metabase' }}
             METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret
             METABASE_API_KEY=secretref:metabase-api-key
+            RESEND_API_KEY=secretref:resend-api-key
             POWERSYNC_URL=${{ vars.POWERSYNC_URL || 'https://69d7e1b30e377e689729cf08.powersync.journeyapps.com' }}
             POWERSYNC_JWT_KID=vitora-hmis-1
             POWERSYNC_JWT_AUDIENCE=${{ vars.POWERSYNC_JWT_AUDIENCE || 'https://69d7e1b30e377e689729cf08.powersync.journeyapps.com' }}

@@ -55,6 +55,7 @@ declare -A SECRETS=(
   ["tibabot-api-key"]="${TIBABOT_API_KEY:-}"
   ["metabase-embedding-secret"]="${METABASE_EMBEDDING_SECRET:-}"
   ["metabase-api-key"]="${METABASE_API_KEY:-}"
+  ["resend-api-key"]="${RESEND_API_KEY:-}"
 )
 
 SECRET_ARGS=()
@@ -152,6 +153,7 @@ az containerapp update \
     "METABASE_API_URL=${METABASE_API_URL:-http://vitora-metabase}" \
     "METABASE_EMBEDDING_SECRET=secretref:metabase-embedding-secret" \
     "METABASE_API_KEY=secretref:metabase-api-key" \
+    "RESEND_API_KEY=secretref:resend-api-key" \
     "POWERSYNC_URL=${POWERSYNC_URL:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
     "POWERSYNC_JWT_KID=${POWERSYNC_JWT_KID:-vitora-hmis-1}" \
     "POWERSYNC_JWT_AUDIENCE=${POWERSYNC_JWT_AUDIENCE:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
