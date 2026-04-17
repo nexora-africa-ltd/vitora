@@ -14,6 +14,7 @@ import {
   PowerSyncBackendConnector,
   UpdateType,
 } from '@powersync/web';
+import { AxiosError } from 'axios';
 import { tokenStorage } from '@/lib/auth/storage';
 import { apiClient } from '@/lib/api/client';
 
@@ -136,18 +137,23 @@ export class VitoraPowerSyncConnector implements PowerSyncBackendConnector {
       const table = transaction.crud[0]?.table ?? 'unknown';
       const message = error instanceof Error ? error.message : 'Upload failed';
 
-      // If it's a permanent error (4xx), discard the entry to avoid infinite retries
-      if (error instanceof Error && 'status' in error) {
-        const status = (error as { status: number }).status;
-        if (status >= 400 && status < 500 && status !== 401 && status !== 429) {
-          console.error(
-            `[PowerSync] Permanent error uploading ${table}:`,
-            error
-          );
-          emitSyncEvent({ type: 'upload_error', table, message, permanent: true });
-          await transaction.complete();
-          return;
-        }
+      // If it's a permanent error (4xx), discard the entry to avoid infinite retries.
+      // Axios errors carry the HTTP status on error.response.status, not error.status.
+      const httpStatus =
+        error instanceof AxiosError
+          ? error.response?.status
+          : error instanceof Error && 'status' in error
+            ? (error as { status: number }).status
+            : undefined;
+
+      if (httpStatus && httpStatus >= 400 && httpStatus < 500 && httpStatus !== 401 && httpStatus !== 429) {
+        console.error(
+          `[PowerSync] Permanent ${httpStatus} error uploading ${table}:`,
+          error
+        );
+        emitSyncEvent({ type: 'upload_error', table, message, permanent: true });
+        await transaction.complete();
+        return;
       }
       emitSyncEvent({ type: 'upload_error', table, message, permanent: false });
       throw error; // Retryable — let PowerSync handle backoff
