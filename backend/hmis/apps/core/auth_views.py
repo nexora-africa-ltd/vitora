@@ -601,6 +601,23 @@ def org_signup(request):
         details={"org_name": data["org_name"], "admin_email": data["admin_email"]},
     )
 
+    # Publish domain event for org signup
+    from hmis.apps.core.events import OrganizationEvents, publish_event
+
+    publish_event(
+        event_type=OrganizationEvents.ORG_SIGNUP,
+        aggregate_type="Organization",
+        aggregate_id=org.id,
+        payload={
+            "org_name": data["org_name"],
+            "admin_email": data["admin_email"],
+            "admin_name": admin_name,
+            "slug": org.slug,
+        },
+        user_id=user.id,
+        organization_id=org.id,
+    )
+
     return Response(
         {
             "message": (
@@ -672,6 +689,23 @@ def verify_email(request):
         org_name=token.organization.name,
         admin_email=token.user.email,
         admin_name=token.user.get_full_name() or token.user.username,
+    )
+
+    # Publish domain event for email verification
+    from hmis.apps.core.events import OrganizationEvents, publish_event
+
+    publish_event(
+        event_type=OrganizationEvents.ORG_EMAIL_VERIFIED,
+        aggregate_type="Organization",
+        aggregate_id=token.organization.id,
+        payload={
+            "org_name": token.organization.name,
+            "admin_email": token.user.email,
+            "admin_name": token.user.get_full_name() or token.user.username,
+            "slug": token.organization.slug,
+        },
+        user_id=token.user.id,
+        organization_id=token.organization.id,
     )
 
     return Response(
