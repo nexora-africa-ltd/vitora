@@ -29,7 +29,7 @@ from hmis.apps.scheduling.models import Appointment, Resource, Schedule
 
 
 @pytest.fixture
-def imaging_room_resource(db):
+def imaging_room_resource(db, sample_facility):
     """Create an imaging room resource (X-Ray Room 1)."""
     return Resource.objects.create(
         name="X-Ray Room 1",
@@ -37,6 +37,7 @@ def imaging_room_resource(db):
         code="IMG-XRAY-01",
         is_active=True,
         capacity=1,
+        facility=sample_facility,
         metadata={
             "department": "radiology",
             "modalities": ["XR"],
@@ -46,7 +47,7 @@ def imaging_room_resource(db):
 
 
 @pytest.fixture
-def ct_scanner_resource(db):
+def ct_scanner_resource(db, sample_facility):
     """Create a CT scanner asset resource."""
     return Resource.objects.create(
         name="CT Scanner 1",
@@ -54,6 +55,7 @@ def ct_scanner_resource(db):
         code="IMG-CT-01",
         is_active=True,
         capacity=1,
+        facility=sample_facility,
         metadata={
             "department": "radiology",
             "modalities": ["CT"],
@@ -63,7 +65,7 @@ def ct_scanner_resource(db):
 
 
 @pytest.fixture
-def mri_scanner_resource(db):
+def mri_scanner_resource(db, sample_facility):
     """Create an MRI scanner asset resource."""
     return Resource.objects.create(
         name="MRI Scanner 1",
@@ -71,6 +73,7 @@ def mri_scanner_resource(db):
         code="IMG-MRI-01",
         is_active=True,
         capacity=1,
+        facility=sample_facility,
         metadata={
             "department": "radiology",
             "modalities": ["MRI"],

@@ -384,7 +384,9 @@ class TestAutoAssignmentAPI:
     """Tests for the auto-assignment action endpoint."""
 
     @pytest.fixture
-    def assignment_setup(self, db, sample_county, sample_sub_county, sample_organization):
+    def assignment_setup(
+        self, db, sample_county, sample_sub_county, sample_organization, sample_facility
+    ):
         """Set up resources and rule for auto-assignment."""
         from hmis.apps.patients.models import Patient
         from hmis.apps.scheduling.models import AssignmentRule, Resource
@@ -406,6 +408,7 @@ class TestAutoAssignmentAPI:
                     name=f"Dr. Auto {i}",
                     resource_type="PERSON",
                     code=f"DOC-AUTO-{i:03d}",
+                    facility=sample_facility,
                     metadata={
                         "status": "on_duty",
                         "current_load": load,
@@ -478,7 +481,9 @@ class TestAutoAssignmentAPI:
         assert "decision" in response.data
         assert response.data["decision"]["decision_outcome"] == "ASSIGNED"
 
-    def test_auto_assign_handles_no_match(self, authenticated_client, assignment_setup, db):
+    def test_auto_assign_handles_no_match(
+        self, authenticated_client, assignment_setup, sample_facility, db
+    ):
         """Should return unassigned when no candidates match."""
         from hmis.apps.scheduling.models import Resource
 
@@ -487,6 +492,7 @@ class TestAutoAssignmentAPI:
             name="Dr. OffDuty",
             resource_type="PERSON",
             code="DOC-OFF-API",
+            facility=sample_facility,
             metadata={"status": "off_duty"},
         )
 
@@ -514,7 +520,9 @@ class TestManualOverrideAPI:
     """Tests for the manual override action endpoint."""
 
     @pytest.fixture
-    def override_setup(self, db, sample_county, sample_sub_county, sample_organization):
+    def override_setup(
+        self, db, sample_county, sample_sub_county, sample_organization, sample_facility
+    ):
         """Set up for manual override testing."""
         from hmis.apps.patients.models import Patient
         from hmis.apps.scheduling.models import Appointment, Resource
@@ -533,11 +541,13 @@ class TestManualOverrideAPI:
             name="Dr. Original",
             resource_type="PERSON",
             code="DOC-OVR-ORIG",
+            facility=sample_facility,
         )
         new = Resource.objects.create(
             name="Dr. New",
             resource_type="PERSON",
             code="DOC-OVR-NEW",
+            facility=sample_facility,
         )
 
         scheduled_start = timezone.now() + timedelta(hours=3)

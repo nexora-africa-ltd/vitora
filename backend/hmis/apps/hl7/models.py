@@ -31,6 +31,23 @@ class HL7Message(models.Model):
     reliable delivery.
     """
 
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="hl7_messages",
+        null=True,
+        blank=True,
+        help_text="Facility this message belongs to.",
+    )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="hl7_messages",
+        null=True,
+        blank=True,
+        help_text="Organization (auto-set from facility).",
+    )
+
     message_type = models.CharField(
         max_length=20,
         help_text="HL7 message type (e.g., 'ADT^A01', 'ORM^O01', 'ORU^R01')",
@@ -130,6 +147,11 @@ class HL7Message(models.Model):
 
     def __str__(self) -> str:
         return f"{self.message_type} [{self.status}] {self.message_control_id}"
+
+    def save(self, *args, **kwargs):
+        if self.facility and not self.organization_id:
+            self.organization = self.facility.organization
+        super().save(*args, **kwargs)
 
     @property
     def is_retryable(self) -> bool:

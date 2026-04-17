@@ -2,11 +2,15 @@ import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   FacilityDetailSchema,
+  FacilityListItemSchema,
   PaginatedFacilityListSchema,
 } from '@/lib/schemas/facility.schema';
+import { z } from 'zod';
 import type { UserFacility } from '@/lib/auth/context';
 import type { PaginatedResponse } from '@/lib/types';
 import type { FacilityCreateData, FacilityDetail, FacilityListItem, FacilityUpdateData } from '@/lib/types/facility';
+
+const MyFacilitiesSchema = z.array(FacilityListItemSchema);
 
 export const facilitiesApi = {
   async list(params?: Record<string, string | number | boolean | undefined>): Promise<PaginatedResponse<FacilityListItem>> {
@@ -15,6 +19,14 @@ export const facilitiesApi = {
     });
     return parseResponse(PaginatedFacilityListSchema, response.data, {
       context: 'facilitiesApi.list',
+    });
+  },
+
+  /** Facilities the current user is assigned to (primary + secondary). */
+  async myFacilities(): Promise<FacilityListItem[]> {
+    const response = await apiClient.get<FacilityListItem[]>('/api/facilities/my-facilities/');
+    return parseResponse(MyFacilitiesSchema, response.data, {
+      context: 'facilitiesApi.myFacilities',
     });
   },
 

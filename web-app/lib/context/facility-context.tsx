@@ -7,7 +7,7 @@ import { facilitiesApi } from '@/lib/api/facilities';
 import { setActiveFacilityId } from '@/lib/api/client';
 import type { FacilityDetail } from '@/lib/types/facility';
 
-const FACILITY_OVERRIDE_STORAGE_KEY = 'vitora_dev_facility_override';
+const FACILITY_OVERRIDE_STORAGE_KEY = 'vitora_facility_override';
 
 interface FacilityContextValue {
   facility: UserFacility | null;
@@ -33,14 +33,11 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const [facilityOverride, setFacilityOverrideState] = useState<UserFacility | null>(null);
 
-  // Allow facility override in development OR for superusers in production
-  const canOverride = process.env.NODE_ENV === 'development' || !!user?.is_superuser;
-
   const assignedFacility = useMemo(() => user?.facility ?? null, [user]);
 
   useEffect(() => {
-    if (!canOverride) {
-      // Clear any lingering override when user is not allowed
+    if (!user) {
+      // Clear any lingering override when not logged in
       setFacilityOverrideState(null);
       return;
     }
@@ -55,13 +52,9 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
     } catch {
       localStorage.removeItem(FACILITY_OVERRIDE_STORAGE_KEY);
     }
-  }, [canOverride]);
+  }, [user]);
 
   const setFacilityOverride = useCallback((facility: UserFacility | null) => {
-    if (!canOverride) {
-      return;
-    }
-
     setFacilityOverrideState(facility);
 
     if (facility) {
@@ -70,19 +63,19 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
     }
 
     localStorage.removeItem(FACILITY_OVERRIDE_STORAGE_KEY);
-  }, [canOverride]);
+  }, []);
 
   const clearFacilityOverride = useCallback(() => {
     setFacilityOverride(null);
   }, [setFacilityOverride]);
 
   const facility = useMemo(() => {
-    if (canOverride && facilityOverride) {
+    if (facilityOverride) {
       return facilityOverride;
     }
 
     return assignedFacility;
-  }, [assignedFacility, facilityOverride, canOverride]);
+  }, [assignedFacility, facilityOverride]);
 
   // Fetch full facility detail (location, SHA info, etc.) via React Query
   const facilityId = facility?.id ?? null;
@@ -132,14 +125,14 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
       organization,
       assignedFacility,
       facilityOverride,
-      isUsingFacilityOverride: canOverride && facilityOverride !== null,
+      isUsingFacilityOverride: facilityOverride !== null,
       isLoading,
       hasModule,
       switchFacility,
       setFacilityOverride,
       clearFacilityOverride,
     }),
-    [facility, facilityDetail, organization, assignedFacility, facilityOverride, canOverride, isLoading, hasModule, switchFacility, setFacilityOverride, clearFacilityOverride],
+    [facility, facilityDetail, organization, assignedFacility, facilityOverride, isLoading, hasModule, switchFacility, setFacilityOverride, clearFacilityOverride],
   );
 
   return (

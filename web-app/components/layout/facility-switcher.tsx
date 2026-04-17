@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Building2, Check, ChevronsUpDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -34,18 +34,13 @@ export function FacilitySwitcher() {
   const { facility, switchFacility, organization } = useFacility();
   const [open, setOpen] = useState(false);
 
-  // Fetch all facilities in the user's organization
-  const { data: facilitiesData } = useQuery({
-    queryKey: ['org-facilities', organization?.id],
-    queryFn: () => facilitiesApi.list({ page_size: 100, is_active: true }),
-    enabled: organization?.id != null,
+  // Fetch facilities the user is assigned to (primary + secondary)
+  const { data: facilities = [] } = useQuery({
+    queryKey: ['my-facilities'],
+    queryFn: () => facilitiesApi.myFacilities(),
+    enabled: !!facility,
     staleTime: 5 * 60 * 1000,
   });
-
-  const facilities = useMemo(
-    () => facilitiesData?.results ?? [],
-    [facilitiesData],
-  );
 
   const handleSelect = useCallback(
     async (facilityId: number) => {

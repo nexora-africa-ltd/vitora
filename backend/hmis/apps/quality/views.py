@@ -22,6 +22,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.mixins import NestedTenantScopeMixin
+
 from .models import AnnualReport, QualityMeasure, QualityMeasureResult, QuarterlyReport
 from .serializers import (
     AnnualReportSerializer,
@@ -54,7 +56,7 @@ from .services.reporting import (
     list=extend_schema(summary="List quarterly reports"),
     retrieve=extend_schema(summary="Retrieve a quarterly report"),
 )
-class QuarterlyReportViewSet(viewsets.ModelViewSet):
+class QuarterlyReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for quarterly reports.
 
     Supports listing, retrieval, and regeneration of quarterly reports.
@@ -66,13 +68,9 @@ class QuarterlyReportViewSet(viewsets.ModelViewSet):
     filterset_fields = ["clinic", "year", "quarter", "dhis2_submitted"]
     ordering_fields = ["year", "quarter", "total_visits", "created_at"]
     ordering = ["-year", "-quarter"]
-
-    def get_queryset(self):
-        qs = QuarterlyReport.objects.select_related("clinic", "generated_by").all()
-        facility = getattr(self.request, "facility", None)
-        if facility:
-            qs = qs.filter(clinic__facility=facility)
-        return qs
+    queryset = QuarterlyReport.objects.select_related("clinic", "generated_by").all()
+    tenant_facility_chain = "clinic__facility"
+    tenant_org_chain = "clinic__organization"
 
     @extend_schema(
         summary="Generate quarterly report for a clinic",
@@ -151,7 +149,7 @@ class QuarterlyReportViewSet(viewsets.ModelViewSet):
     list=extend_schema(summary="List annual reports"),
     retrieve=extend_schema(summary="Retrieve an annual report"),
 )
-class AnnualReportViewSet(viewsets.ModelViewSet):
+class AnnualReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for annual reports."""
 
     serializer_class = AnnualReportSerializer
@@ -160,13 +158,9 @@ class AnnualReportViewSet(viewsets.ModelViewSet):
     filterset_fields = ["clinic", "year", "dhis2_submitted"]
     ordering_fields = ["year", "total_visits", "created_at"]
     ordering = ["-year"]
-
-    def get_queryset(self):
-        qs = AnnualReport.objects.select_related("clinic", "generated_by").all()
-        facility = getattr(self.request, "facility", None)
-        if facility:
-            qs = qs.filter(clinic__facility=facility)
-        return qs
+    queryset = AnnualReport.objects.select_related("clinic", "generated_by").all()
+    tenant_facility_chain = "clinic__facility"
+    tenant_org_chain = "clinic__organization"
 
     @extend_schema(
         summary="Generate annual report for a clinic",
@@ -320,20 +314,20 @@ class QualityMeasureViewSet(viewsets.ModelViewSet):
     retrieve=extend_schema(summary="Retrieve a quality measure result"),
     create=extend_schema(summary="Create a quality measure result"),
 )
-class QualityMeasureResultViewSet(viewsets.ModelViewSet):
+class QualityMeasureResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for quality measure results."""
 
+    queryset = QualityMeasureResult.objects.select_related(
+        "measure", "clinic", "calculated_by"
+    ).all()
     serializer_class = QualityMeasureResultSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["measure", "clinic", "year", "period_type", "meets_target"]
     ordering_fields = ["year", "period", "percentage", "created_at"]
     ordering = ["-year", "-period"]
-
-    def get_queryset(self):
-        return QualityMeasureResult.objects.select_related(
-            "measure", "clinic", "calculated_by"
-        ).all()
+    tenant_facility_chain = "clinic__facility"
+    tenant_org_chain = "clinic__organization"
 
     def perform_create(self, serializer):
         serializer.save(calculated_by=self.request.user)

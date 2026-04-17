@@ -175,6 +175,51 @@ class ConcurrencyControlMixin:
 # ============================================================================
 
 
+def resolve_request_tenant(request):
+    """
+    Ensure ``request.facility`` and ``request.organization`` are set.
+
+    Standalone helper so views that don't inherit a tenant mixin can
+    still resolve the tenant from the request (e.g. ImagingResourceViewSet,
+    AssignmentViewSet).
+
+    The ``TenantMiddleware`` normally does this during WSGI, but in DRF
+    test clients that use ``force_authenticate`` the user is not yet
+    available when middleware runs.
+    """
+    if getattr(request, "facility", None) or getattr(request, "organization", None):
+        return  # Already resolved by middleware
+
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return
+
+    from hmis.apps.core.models import Facility
+
+    facility_id = request.META.get("HTTP_X_FACILITY_ID")
+    if facility_id:
+        try:
+            facility = Facility.objects.select_related("organization").get(
+                pk=int(facility_id), is_active=True
+            )
+            request.facility = facility
+            request.organization = facility.organization
+            return
+        except (Facility.DoesNotExist, ValueError, TypeError):
+            pass
+
+    profile = getattr(user, "staff_profile", None)
+    if profile and profile.primary_facility_id:
+        try:
+            facility = Facility.objects.select_related("organization").get(
+                pk=profile.primary_facility_id, is_active=True
+            )
+            request.facility = facility
+            request.organization = facility.organization
+        except Facility.DoesNotExist:
+            pass
+
+
 class OrganizationScopedModel(models.Model):
     """
     Abstract base for models scoped to an Organization (tenant).
@@ -296,39 +341,8 @@ class NestedTenantScopeMixin:
     tenant_org_chain: str = ""  # e.g., "encounter__organization"
 
     def _resolve_tenant_context(self):
-        """Resolve tenant from request (same logic as TenantScopedViewMixin)."""
-        request = self.request
-        if getattr(request, "facility", None) or getattr(request, "organization", None):
-            return
-
-        user = getattr(request, "user", None)
-        if not user or not getattr(user, "is_authenticated", False):
-            return
-
-        from hmis.apps.core.models import Facility
-
-        facility_id = request.META.get("HTTP_X_FACILITY_ID")
-        if facility_id:
-            try:
-                facility = Facility.objects.select_related("organization").get(
-                    pk=int(facility_id), is_active=True
-                )
-                request.facility = facility
-                request.organization = facility.organization
-                return
-            except (Facility.DoesNotExist, ValueError, TypeError):
-                pass
-
-        profile = getattr(user, "staff_profile", None)
-        if profile and profile.primary_facility_id:
-            try:
-                facility = Facility.objects.select_related("organization").get(
-                    pk=profile.primary_facility_id, is_active=True
-                )
-                request.facility = facility
-                request.organization = facility.organization
-            except Facility.DoesNotExist:
-                pass
+        """Resolve tenant from request."""
+        resolve_request_tenant(self.request)
 
     def get_queryset(self):
         """Filter queryset through the parent FK chain to the tenant."""
@@ -376,46 +390,9 @@ class TenantScopedViewMixin:
         """
         Ensure ``request.facility`` and ``request.organization`` are set.
 
-        The ``TenantMiddleware`` normally sets these during the WSGI
-        pipeline.  However, in DRF test clients that use
-        ``force_authenticate`` the user is not available until the view
-        layer, so the middleware sees ``AnonymousUser``.  This helper
-        re-resolves lazily when the attributes are still ``None``.
+        Delegates to the standalone ``resolve_request_tenant()`` helper.
         """
-        request = self.request
-        if getattr(request, "facility", None) or getattr(request, "organization", None):
-            return  # Already resolved by middleware
-
-        user = getattr(request, "user", None)
-        if not user or not getattr(user, "is_authenticated", False):
-            return
-
-        from hmis.apps.core.models import Facility
-
-        # 1. Try X-Facility-Id header
-        facility_id = request.META.get("HTTP_X_FACILITY_ID")
-        if facility_id:
-            try:
-                facility = Facility.objects.select_related("organization").get(
-                    pk=int(facility_id), is_active=True
-                )
-                request.facility = facility
-                request.organization = facility.organization
-                return
-            except (Facility.DoesNotExist, ValueError, TypeError):
-                pass
-
-        # 2. Fallback to primary facility
-        profile = getattr(user, "staff_profile", None)
-        if profile and profile.primary_facility_id:
-            try:
-                facility = Facility.objects.select_related("organization").get(
-                    pk=profile.primary_facility_id, is_active=True
-                )
-                request.facility = facility
-                request.organization = facility.organization
-            except Facility.DoesNotExist:
-                pass
+        resolve_request_tenant(self.request)
 
     def get_queryset(self):
         """Filter queryset by the active tenant scope.

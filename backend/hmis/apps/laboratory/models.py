@@ -1671,6 +1671,23 @@ class Instrument(models.Model):
     - Analytics: Machine performance, QC tracking
     """
 
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="instruments",
+        null=True,
+        blank=True,
+        help_text="Facility where this instrument is located.",
+    )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="instruments",
+        null=True,
+        blank=True,
+        help_text="Organization (auto-set from facility).",
+    )
+
     class InterfaceType(models.TextChoices):
         HL7_MLLP = "HL7_MLLP", "HL7 v2 over MLLP"
         ASTM = "ASTM", "ASTM/LIS2-A2"
@@ -1725,6 +1742,11 @@ class Instrument(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        if self.facility and not self.organization_id:
+            self.organization = self.facility.organization
+        super().save(*args, **kwargs)
 
 
 class AnalyzerRun(models.Model):

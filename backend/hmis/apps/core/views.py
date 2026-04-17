@@ -1845,6 +1845,35 @@ class FacilityViewSet(viewsets.ModelViewSet):
         modules = Facility.default_modules_for_level(level)
         return Response({"level": level, "modules": modules})
 
+    @extend_schema(
+        summary="List facilities accessible to the current user",
+        responses={200: FacilityListSerializer(many=True)},
+    )
+    @action(detail=False, methods=["get"], url_path="my-facilities")
+    def my_facilities(self, request):
+        """
+        Return facilities the current user is assigned to.
+
+        Returns primary facility + secondary facilities from StaffProfile.
+        Superusers get all org facilities (same as the list endpoint).
+        """
+        if request.user.is_superuser:
+            facilities = self.filter_queryset(self.get_queryset()).filter(is_active=True)
+        else:
+            profile = getattr(request.user, "staff_profile", None)
+            if not profile:
+                return Response([])
+            facility_ids = set()
+            if profile.primary_facility_id:
+                facility_ids.add(profile.primary_facility_id)
+            facility_ids.update(profile.secondary_facilities.values_list("pk", flat=True))
+            facilities = Facility.objects.filter(
+                pk__in=facility_ids, is_active=True
+            ).select_related("county", "sub_county", "ward", "organization")
+
+        serializer = FacilityListSerializer(facilities, many=True)
+        return Response(serializer.data)
+
 
 # =============================================================================
 # PKI & Digital Signature ViewSets (DHA Gap #32 — Sprint 3.C)
