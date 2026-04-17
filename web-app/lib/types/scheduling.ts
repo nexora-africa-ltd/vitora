@@ -283,6 +283,8 @@ export interface Shift extends Omit<ShiftListItem, 'department'> {
   total_break_minutes: number;
   clock_in_method: string;
   auto_clocked_out: boolean;
+  is_emergency: boolean;
+  emergency_reason: string;
   actual_hours: number | null;
   late_minutes: number;
   overtime_minutes: number;
@@ -387,6 +389,15 @@ export interface MyTodayResponse {
 export interface ClockInPayload {
   room_id?: number | null;
   clinic_id?: number | null;
+}
+
+export interface EmergencyClockInPayload {
+  reason: string;
+  shift_type?: ShiftType;
+  duration_hours?: number;
+  room_id?: number | null;
+  clinic_id?: number | null;
+  method?: string;
 }
 
 export interface ClockInResponse extends Shift {

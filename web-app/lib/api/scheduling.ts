@@ -61,6 +61,7 @@ import type {
   ClockInPayload,
   ClockInResponse,
   ClockOutResponse,
+  EmergencyClockInPayload,
   AttendanceTrendWeek,
   AttendanceTrendsParams,
   QRTokenResponse,
@@ -483,6 +484,14 @@ export const attendanceApi = {
     const response = await apiClient.post(`${BASE_URL}/shifts/${shiftId}/start/`, payload ?? {});
     return parseResponse(ClockInResponseSchema, response.data, {
       context: 'attendanceApi.clockIn',
+    });
+  },
+
+  /** Emergency clock-in: create an ad-hoc shift and immediately clock in. */
+  emergencyClockIn: async (payload: EmergencyClockInPayload): Promise<ClockInResponse> => {
+    const response = await apiClient.post(`${BASE_URL}/shifts/emergency-clock-in/`, payload);
+    return parseResponse(ClockInResponseSchema, response.data, {
+      context: 'attendanceApi.emergencyClockIn',
     });
   },
 

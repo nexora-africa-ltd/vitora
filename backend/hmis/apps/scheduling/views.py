@@ -1115,7 +1115,7 @@ class ManageSchedulesWritePermission(permissions.BasePermission):
 
     WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
     # Personal clock-in/out actions that should NOT be gated
-    PERSONAL_ACTIONS = {"start", "complete", "take_break", "resume", "cancel"}
+    PERSONAL_ACTIONS = {"start", "complete", "take_break", "resume", "cancel", "emergency_clock_in"}
 
     def has_permission(self, request, view):
         if request.method not in self.WRITE_METHODS:
@@ -1172,6 +1172,10 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             return ShiftCreateSerializer
         if self.action == "list":
             return ShiftListSerializer
+        if self.action == "emergency_clock_in":
+            from hmis.apps.scheduling.serializers import EmergencyClockInSerializer
+
+            return EmergencyClockInSerializer
         return ShiftSerializer
 
     def perform_create(self, serializer):
@@ -1595,6 +1599,141 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         serializer = StaffWorkloadSerializer(workload, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["post"], url_path="emergency-clock-in")
+    def emergency_clock_in(self, request):
+        """
+        Emergency clock-in: create an ad-hoc shift and immediately start it.
+
+        For staff who need to work but have no scheduled shift (e.g. called in
+        for an emergency, covering for absent colleague). Requires a mandatory
+        reason that is logged in the audit trail.
+
+        Request body:
+        {
+            "reason": "Called in for emergency surgery cover",
+            "shift_type": "DAY",           // optional, default DAY
+            "duration_hours": 8.0,         // optional, default 8
+            "room_id": 123,                // optional
+            "clinic_id": 456,              // optional
+            "method": "MANUAL"             // optional
+        }
+        """
+        from hmis.apps.scheduling.serializers import EmergencyClockInSerializer
+
+        resource = self._get_my_resource(request)
+        if not resource:
+            return Response(
+                {
+                    "error": "No scheduling resource found for your profile in this facility.",
+                    "code": "no_resource",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Prevent duplicate: block if user already has an active shift today
+        from datetime import date as date_type
+
+        today = date_type.today()
+        existing_active = Shift.objects.filter(
+            staff_resource=resource,
+            shift_date=today,
+            status__in=["ACTIVE", "ON_BREAK"],
+        ).exists()
+        if existing_active:
+            return Response(
+                {
+                    "error": "You already have an active shift today. Clock out first.",
+                    "code": "already_active",
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        facility = getattr(request, "facility", None)
+        serializer = EmergencyClockInSerializer(
+            data=request.data, context={"facility": facility, "request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        now = timezone.now()
+        duration_hours = data.get("duration_hours", 8.0)
+        start_time = now.time().replace(microsecond=0)
+        end_dt = now + timedelta(hours=duration_hours)
+        end_time = end_dt.time().replace(microsecond=0)
+
+        # Resolve room/clinic
+        room = None
+        clinic = None
+        if data.get("room_id"):
+            room = Resource.objects.get(pk=data["room_id"])
+        if data.get("clinic_id"):
+            from hmis.apps.clinics.models import Clinic as ClinicModel
+
+            clinic = ClinicModel.objects.get(pk=data["clinic_id"])
+        else:
+            # Auto-resolve clinic from ClinicStaff
+            from hmis.apps.clinics.models import ClinicStaff
+
+            staff_user = resource.staff_profile.user if resource.staff_profile else None
+            if staff_user:
+                primary_assignment = (
+                    ClinicStaff.objects.filter(user=staff_user, is_primary=True, is_active=True)
+                    .select_related("clinic")
+                    .first()
+                )
+                if primary_assignment and primary_assignment.clinic.status == "ACTIVE":
+                    clinic = primary_assignment.clinic
+
+        # Create the ad-hoc shift
+        shift = Shift.objects.create(
+            staff_resource=resource,
+            shift_date=today,
+            start_time=start_time,
+            end_time=end_time,
+            shift_type=data.get("shift_type", "DAY"),
+            status="SCHEDULED",
+            is_emergency=True,
+            emergency_reason=data["reason"],
+            created_by=request.user,
+            facility=facility,
+            organization=getattr(facility, "organization", None),
+        )
+
+        # Immediately clock in
+        method = data.get("method", "MANUAL")
+        shift.start_shift(room=room, clinic=clinic, method=method)
+
+        # Auto-open clinic session if needed
+        session_auto_opened = False
+        if clinic:
+            session, created = clinic.get_or_create_session(shift.shift_date)
+            if session.status == "SCHEDULED":
+                session.open_session(request.user)
+                session_auto_opened = True
+
+        # Audit log
+        AuditLog.log(
+            action="emergency_clock_in",
+            user=request.user,
+            resource_type="Shift",
+            resource_id=shift.id,
+            ip_address=self._get_client_ip(),
+            details={
+                "reason": data["reason"],
+                "staff_resource": resource.name,
+                "shift_date": str(today),
+                "shift_type": shift.shift_type,
+                "duration_hours": duration_hours,
+                "room_id": room.id if room else None,
+                "clinic_id": clinic.id if clinic else None,
+            },
+        )
+
+        result_serializer = ShiftSerializer(shift)
+        response_data = result_serializer.data
+        response_data["session_auto_opened"] = session_auto_opened
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     # ---- Personal / Clock-In Endpoints ----
 

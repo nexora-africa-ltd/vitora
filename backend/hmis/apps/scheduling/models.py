@@ -1694,6 +1694,15 @@ class Shift(FacilityScopedModel, TimeStampedModel):
         default="",
         help_text="Reason for cancellation",
     )
+    is_emergency = models.BooleanField(
+        default=False,
+        help_text="True if this shift was created via emergency clock-in (ad-hoc)",
+    )
+    emergency_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason provided for emergency clock-in",
+    )
 
     class Meta(TimeStampedModel.Meta):
         """Meta options for Shift model."""

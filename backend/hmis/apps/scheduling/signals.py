@@ -188,7 +188,10 @@ _SHIFT_STATUS_EVENT_MAP = {
 def publish_shift_event(sender, instance, created, **kwargs):
     """Publish domain event when a shift is created or changes status."""
     if created:
-        event_type = SchedulingEvents.SHIFT_CREATED
+        if instance.is_emergency:
+            event_type = SchedulingEvents.SHIFT_EMERGENCY_CREATED
+        else:
+            event_type = SchedulingEvents.SHIFT_CREATED
     else:
         event_type = _SHIFT_STATUS_EVENT_MAP.get(instance.status)
         if not event_type:

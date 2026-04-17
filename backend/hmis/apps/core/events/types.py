@@ -145,6 +145,7 @@ class SchedulingEvents:
     SHIFT_AUTO_COMPLETED = "scheduling.shift.auto_completed"
     SHIFT_BREAK_STARTED = "scheduling.shift.break_started"
     SHIFT_BREAK_RESUMED = "scheduling.shift.break_resumed"
+    SHIFT_EMERGENCY_CREATED = "scheduling.shift.emergency_created"
 
 
 class InventoryEvents:
