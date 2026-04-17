@@ -95,6 +95,9 @@ class TestEmailVerificationEvent:
         token = EmailVerificationToken.objects.create(user=user, organization=org)
 
         mock_publish = mocker.patch("hmis.apps.core.events.publish_event")
+        mock_pending = mocker.patch(
+            "hmis.apps.core.services.email_service.send_org_pending_review_email"
+        )
 
         response = anon_client.post(
             "/api/core/auth/verify-email/",
@@ -121,6 +124,7 @@ class TestEmailVerificationEvent:
         token = EmailVerificationToken.objects.create(user=user, organization=org)
 
         mock_publish = mocker.patch("hmis.apps.core.events.publish_event")
+        mocker.patch("hmis.apps.core.services.email_service.send_org_pending_review_email")
 
         anon_client.post(
             "/api/core/auth/verify-email/",
@@ -131,6 +135,41 @@ class TestEmailVerificationEvent:
         payload = mock_publish.call_args.kwargs["payload"]
         assert payload["admin_email"] == "detail@evt.com"
         assert "Bob" in payload["admin_name"]
+
+    def test_verify_sends_pending_review_email_to_user(self, anon_client, mocker):
+        """After email verification, user receives a pending-review notification."""
+        user = User.objects.create_user(
+            username="pendinguser",
+            email="pending@evt.com",
+            password="pass123",
+            first_name="Grace",
+            last_name="Wanjiku",
+        )
+        org = Organization.objects.create(
+            name="Pending Review Org",
+            slug="pending-review-org",
+            is_active=False,
+            is_verified=False,
+        )
+        token = EmailVerificationToken.objects.create(user=user, organization=org)
+
+        mocker.patch("hmis.apps.core.events.publish_event")
+        mock_pending = mocker.patch(
+            "hmis.apps.core.services.email_service.send_org_pending_review_email"
+        )
+
+        response = anon_client.post(
+            "/api/core/auth/verify-email/",
+            {"token": str(token.token)},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        mock_pending.assert_called_once_with(
+            to_email="pending@evt.com",
+            org_name="Pending Review Org",
+            admin_name="Grace Wanjiku",
+        )
 
 
 # ============================================================================
@@ -144,6 +183,7 @@ class TestOrgActivationEvents:
 
     def test_activation_publishes_org_activated_event(self, mocker):
         mock_publish = mocker.patch("hmis.apps.core.signals.publish_event")
+        mocker.patch("hmis.apps.core.services.email_service.send_org_activated_email")
 
         org = Organization.objects.create(
             name="Activate Org",
@@ -166,6 +206,7 @@ class TestOrgActivationEvents:
 
     def test_deactivation_publishes_org_deactivated_event(self, mocker):
         mock_publish = mocker.patch("hmis.apps.core.signals.publish_event")
+        mocker.patch("hmis.apps.core.services.email_service.send_org_activated_email")
 
         org = Organization.objects.create(
             name="Deactivate Org",
@@ -212,3 +253,66 @@ class TestOrgActivationEvents:
 
         # The signal should NOT publish for creation (signup event handles that)
         mock_publish.assert_not_called()
+
+    def test_activation_sends_email_to_org_admin(self, mocker):
+        """Activating an org sends an activation email to the org's admin user."""
+        mocker.patch("hmis.apps.core.signals.publish_event")
+        mock_email = mocker.patch("hmis.apps.core.services.email_service.send_org_activated_email")
+
+        org = Organization.objects.create(
+            name="Email Org",
+            slug="email-org",
+            is_active=False,
+            is_verified=True,
+        )
+        user = User.objects.create_user(
+            username="orgadmin",
+            email="orgadmin@test.co.ke",
+            password="pass123",
+            first_name="Mary",
+            last_name="Akinyi",
+        )
+        from datetime import date
+
+        from hmis.apps.core.models import Department, Role, StaffProfile
+
+        dept = Department.objects.create(name="Admin Dept", code="ADMINEML")
+        role, _ = Role.objects.get_or_create(
+            code="ORG-ADMIN", defaults={"name": "Org Admin", "is_active": True}
+        )
+        StaffProfile.objects.create(
+            user=user,
+            employee_id="ADMIN-0099",
+            organization=org,
+            primary_department=dept,
+            primary_role=role,
+            date_joined=date.today(),
+        )
+
+        # Activate the org
+        org.is_active = True
+        org.save(update_fields=["is_active"])
+
+        mock_email.assert_called_once_with(
+            to_email="orgadmin@test.co.ke",
+            org_name="Email Org",
+            admin_name="Mary Akinyi",
+        )
+
+    def test_deactivation_does_not_send_activation_email(self, mocker):
+        """Deactivating an org should NOT send an activation email."""
+        mocker.patch("hmis.apps.core.signals.publish_event")
+        mock_email = mocker.patch("hmis.apps.core.services.email_service.send_org_activated_email")
+
+        org = Organization.objects.create(
+            name="Deact Email Org",
+            slug="deact-email-org",
+            is_active=True,
+            is_verified=True,
+        )
+        mock_email.reset_mock()
+
+        org.is_active = False
+        org.save(update_fields=["is_active"])
+
+        mock_email.assert_not_called()

@@ -266,3 +266,58 @@ def send_admin_signup_notification(
         html_body=html_body,
         to_email=admin_notify_email,
     )
+
+
+# ============================================================================
+# User-Facing Signup Lifecycle Emails
+# ============================================================================
+
+
+def send_org_pending_review_email(
+    *,
+    to_email: str,
+    org_name: str,
+    admin_name: str,
+) -> bool:
+    """Notify the user that their email is verified and the org is pending admin review."""
+    html_body = render_to_string(
+        "emails/org_pending_review.html",
+        {
+            "org_name": org_name,
+            "admin_name": admin_name,
+            "support_email": getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@vitora.health"),
+        },
+    )
+
+    return _send(
+        subject=f"Email verified — {org_name} is under review",
+        html_body=html_body,
+        to_email=to_email,
+    )
+
+
+def send_org_activated_email(
+    *,
+    to_email: str,
+    org_name: str,
+    admin_name: str,
+) -> bool:
+    """Notify the user that their organization has been activated and they can log in."""
+    frontend_url = _get_frontend_url()
+    login_url = f"{frontend_url}/login"
+
+    html_body = render_to_string(
+        "emails/org_activated.html",
+        {
+            "org_name": org_name,
+            "admin_name": admin_name,
+            "login_url": login_url,
+            "support_email": getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@vitora.health"),
+        },
+    )
+
+    return _send(
+        subject=f"{org_name} is now active on Vitora HMIS — Log in now!",
+        html_body=html_body,
+        to_email=to_email,
+    )
