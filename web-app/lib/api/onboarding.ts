@@ -165,6 +165,8 @@ export const orgSignupApi = {
       if (error.org_name) throw new Error(Array.isArray(error.org_name) ? error.org_name[0] : error.org_name);
       if (error.admin_email) throw new Error(Array.isArray(error.admin_email) ? error.admin_email[0] : error.admin_email);
       if (error.confirm_password) throw new Error(Array.isArray(error.confirm_password) ? error.confirm_password[0] : error.confirm_password);
+      if (error.facility_mfl_code) throw new Error(Array.isArray(error.facility_mfl_code) ? error.facility_mfl_code[0] : error.facility_mfl_code);
+      if (error.facility_sub_county) throw new Error(Array.isArray(error.facility_sub_county) ? error.facility_sub_county[0] : error.facility_sub_county);
       throw new Error(error.error || error.detail || 'Signup failed');
     }
     const result = await response.json();

@@ -134,12 +134,20 @@ export interface OrgSignupData {
   admin_last_name: string;
   admin_password: string;
   confirm_password: string;
+  facility_name: string;
+  facility_mfl_code: string;
+  facility_county: number;
+  facility_sub_county: number;
+  facility_level?: string;
+  facility_ownership?: string;
 }
 
 export interface OrgSignupResponse {
   message: string;
   org_name: string;
   admin_email: string;
+  facility_name: string;
+  facility_mfl_code: string;
   username: string;
 }
 

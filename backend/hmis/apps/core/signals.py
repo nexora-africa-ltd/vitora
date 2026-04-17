@@ -464,10 +464,13 @@ def publish_org_activation_event(sender, instance, created, **kwargs):
         try:
             admin_profile = instance.staff_profiles.select_related("user").order_by("id").first()
             if admin_profile and admin_profile.user.email:
+                first_facility = instance.facilities.first()
                 send_org_activated_email(
                     to_email=admin_profile.user.email,
                     org_name=instance.name,
                     admin_name=admin_profile.user.get_full_name() or admin_profile.user.username,
+                    facility_name=first_facility.name if first_facility else "",
+                    facility_mfl_code=first_facility.mfl_code if first_facility else "",
                 )
         except Exception:
             logger.exception("Failed to send org-activated email for org %s", instance.pk)
