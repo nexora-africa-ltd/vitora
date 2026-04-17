@@ -230,6 +230,11 @@ export function useCreatePatient() {
   return useOfflineMutation<{ data: PatientCreateData; idempotencyKey?: string }, Patient>({
     table: 'patients_patient',
     operation: 'create',
+    // Patient creation MUST go through the API directly because:
+    // 1. PII fields (national_id, phone_number) are excluded from the PowerSync schema (DPA compliance)
+    // 2. The backend generates the MRN which is needed for the success screen
+    // 3. The response must include the full patient object with id and mrn
+    forceApi: true,
     buildLocalData: ({ data }) => ({
       id: generateId(),
       mrn: '', // Placeholder — real MRN assigned by backend after sync
@@ -276,6 +281,9 @@ export function useUpdatePatient() {
   return useOfflineMutation<{ id: number; data: PatientUpdateData }, Patient>({
     table: 'patients_patient',
     operation: 'update',
+    // Patient updates MUST go through the API directly because
+    // PII fields (national_id, phone_number) are excluded from PowerSync schema.
+    forceApi: true,
     getId: (input) => input.id,
     buildLocalData: ({ data }) => {
       const fields: Record<string, string | number | null> = {};
