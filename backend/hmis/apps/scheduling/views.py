@@ -26,7 +26,12 @@ from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import (
+    NestedTenantScopeMixin,
+    ReadOnCreateMixin,
+    TenantScopedViewMixin,
+    resolve_request_tenant,
+)
 from hmis.apps.core.models import AuditLog
 from hmis.apps.scheduling.models import (
     Appointment,
@@ -967,6 +972,8 @@ class AssignmentViewSet(viewsets.ViewSet):
         from hmis.apps.scheduling.serializers import AutoAssignRequestSerializer
         from hmis.apps.scheduling.services.assignment import AssignmentService
 
+        resolve_request_tenant(request)
+
         serializer = AutoAssignRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -984,10 +991,19 @@ class AssignmentViewSet(viewsets.ViewSet):
 
         # Get candidate resources
         candidate_ids = data.get("candidate_ids", [])
+        facility = getattr(request, "facility", None)
         if candidate_ids:
-            candidates = list(Resource.objects.filter(id__in=candidate_ids, is_active=True))
+            candidates_qs = Resource.objects.filter(id__in=candidate_ids, is_active=True)
         else:
-            candidates = list(Resource.objects.filter(is_active=True, resource_type="PERSON"))
+            candidates_qs = Resource.objects.filter(is_active=True, resource_type="PERSON")
+        if facility:
+            candidates_qs = candidates_qs.filter(facility=facility)
+        elif not getattr(request.user, "is_superuser", False):
+            return Response(
+                {"error": "No facility context for resource scoping"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        candidates = list(candidates_qs)
 
         if not candidates:
             return Response(
@@ -1069,13 +1085,24 @@ class AssignmentViewSet(viewsets.ViewSet):
         )
         from hmis.apps.scheduling.services.assignment import AssignmentService
 
+        resolve_request_tenant(request)
+
         serializer = ManualOverrideRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
         # Get new resource
         try:
-            new_resource = Resource.objects.get(id=data["new_resource_id"])
+            resource_qs = Resource.objects.all()
+            facility = getattr(request, "facility", None)
+            if facility:
+                resource_qs = resource_qs.filter(facility=facility)
+            elif not getattr(request.user, "is_superuser", False):
+                return Response(
+                    {"error": "No facility context for resource scoping"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            new_resource = resource_qs.get(id=data["new_resource_id"])
         except Resource.DoesNotExist:
             return Response(
                 {"error": "Resource not found"},

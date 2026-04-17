@@ -21,7 +21,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 from hmis.apps.scheduling.models import Resource
 
@@ -85,8 +85,26 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return Resource.objects.none()
 
+        # Resolve tenant context (handles DRF test clients)
+        resolve_request_tenant(self.request)
+
+        # Scope by facility
+        facility = getattr(self.request, "facility", None)
         modality = self.request.query_params.get("modality", None)
-        return ImagingSchedulingService.get_imaging_resources(modality)
+
+        # Build queryset directly instead of using service (which returns list)
+        qs = Resource.objects.filter(is_active=True, metadata__department="radiology")
+        if facility:
+            qs = qs.filter(facility=facility)
+        elif not getattr(self.request.user, "is_superuser", False):
+            return Resource.objects.none()
+
+        if modality:
+            # Python-side modality filter (SQLite compat)
+            ids = [r.id for r in qs if modality in r.metadata.get("modalities", [])]
+            qs = qs.filter(id__in=ids)
+
+        return qs
 
     def list(self, request, *args, **kwargs):
         """List imaging resources with pagination."""

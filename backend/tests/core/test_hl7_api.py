@@ -32,7 +32,7 @@ def admin_client(admin_user, sample_organization, sample_facility):  # type: ign
 
 
 @pytest.fixture
-def sample_hl7_messages(db):  # type: ignore[no-untyped-def]
+def sample_hl7_messages(db, sample_facility):  # type: ignore[no-untyped-def]
     """Create sample HL7 messages for testing."""
     messages = []
     messages.append(
@@ -44,6 +44,7 @@ def sample_hl7_messages(db):  # type: ignore[no-untyped-def]
             status=HL7MessageStatus.ACKNOWLEDGED,
             sent_at=timezone.now(),
             acknowledged_at=timezone.now(),
+            facility=sample_facility,
         )
     )
     messages.append(
@@ -55,6 +56,7 @@ def sample_hl7_messages(db):  # type: ignore[no-untyped-def]
             status=HL7MessageStatus.FAILED,
             retry_count=2,
             last_error="Connection refused",
+            facility=sample_facility,
         )
     )
     messages.append(
@@ -64,6 +66,7 @@ def sample_hl7_messages(db):  # type: ignore[no-untyped-def]
             raw_message="MSH|^~\\&|LIS|LAB|...",
             message_control_id="MSG-003",
             status=HL7MessageStatus.PENDING,
+            facility=sample_facility,
         )
     )
     return messages

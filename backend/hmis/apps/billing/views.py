@@ -435,14 +435,8 @@ class PaymentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         return Response(PaymentSerializer(payment).data)
 
 
-class PaymentPointViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing payment points (cashier/till/bank accounts).
-
-    TODO: Model lacks facility/organization FK — needs migration for proper tenant scoping.
-    PaymentPoints are physically tied to facilities but the model has no
-    facility/organization foreign key. A migration should be added to scope
-    payment points per facility or organization.
-    """
+class PaymentPointViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """ViewSet for managing payment points (cashier/till/bank accounts)."""
 
     queryset = PaymentPoint.objects.select_related("created_by").all()
     serializer_class = PaymentPointSerializer
@@ -452,6 +446,7 @@ class PaymentPointViewSet(viewsets.ModelViewSet):
     search_fields = ["name", "code", "till_number", "paybill_number", "bank_account_number"]
     ordering_fields = ["name", "method", "created_at"]
     ordering = ["method", "name"]
+    tenant_scope = "facility"
 
 
 class CreditNoteViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):

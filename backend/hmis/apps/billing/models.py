@@ -1142,6 +1142,23 @@ class PaymentPoint(models.Model):
 
     id = models.BigAutoField(primary_key=True)
 
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="payment_points",
+        null=True,
+        blank=True,
+        help_text="Facility this payment point belongs to.",
+    )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="payment_points",
+        null=True,
+        blank=True,
+        help_text="Organization (auto-set from facility).",
+    )
+
     name = models.CharField(max_length=120)
     code = models.CharField(
         max_length=50,
@@ -1194,6 +1211,11 @@ class PaymentPoint(models.Model):
 
     def __str__(self) -> str:
         return f"{self.code} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        if self.facility and not self.organization_id:
+            self.organization = self.facility.organization
+        super().save(*args, **kwargs)
 
     def clean(self):
         if self.method == Payment.Method.MPESA and not (self.till_number or self.paybill_number):

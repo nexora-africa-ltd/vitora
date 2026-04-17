@@ -6,6 +6,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
+
 from .models import HL7Message, HL7MessageStatus
 from .serializers import HL7MessageListSerializer, HL7MessageSerializer
 
@@ -32,7 +34,7 @@ class HL7MessageFilter(filters.FilterSet):
         ]
 
 
-class HL7MessageViewSet(viewsets.ReadOnlyModelViewSet):
+class HL7MessageViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewSet):
     """
     Read-only ViewSet for HL7 message monitoring.
 
@@ -46,6 +48,7 @@ class HL7MessageViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ["message_control_id", "resource_type", "message_type"]
     ordering_fields = ["created_at", "status", "message_type", "retry_count"]
     ordering = ["-created_at"]
+    tenant_scope = "facility"
 
     def get_serializer_class(self):  # type: ignore[override]
         if self.action == "list":

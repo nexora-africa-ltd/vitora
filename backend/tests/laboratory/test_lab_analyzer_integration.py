@@ -316,10 +316,10 @@ class TestInstrumentAPI:
         response = api_client.get("/api/lab/instruments/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_list_instruments(self, authenticated_client):
+    def test_list_instruments(self, authenticated_client, sample_facility):
         """Should list all instruments."""
-        Instrument.objects.create(code="LIST-001", name="Analyzer 1")
-        Instrument.objects.create(code="LIST-002", name="Analyzer 2")
+        Instrument.objects.create(code="LIST-001", name="Analyzer 1", facility=sample_facility)
+        Instrument.objects.create(code="LIST-002", name="Analyzer 2", facility=sample_facility)
 
         response = authenticated_client.get("/api/lab/instruments/")
         assert response.status_code == status.HTTP_200_OK
@@ -336,21 +336,23 @@ class TestInstrumentAPI:
         assert response.data["code"] == "API-INST-001"
         assert response.data["name"] == "API Created Analyzer"
 
-    def test_retrieve_instrument(self, authenticated_client):
+    def test_retrieve_instrument(self, authenticated_client, sample_facility):
         """Should retrieve single instrument."""
         instrument = Instrument.objects.create(
             code="GET-001",
             name="Retrievable Analyzer",
+            facility=sample_facility,
         )
         response = authenticated_client.get(f"/api/lab/instruments/{instrument.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["code"] == "GET-001"
 
-    def test_update_instrument(self, authenticated_client):
+    def test_update_instrument(self, authenticated_client, sample_facility):
         """Should update instrument."""
         instrument = Instrument.objects.create(
             code="UPD-001",
             name="Original Name",
+            facility=sample_facility,
         )
         response = authenticated_client.patch(
             f"/api/lab/instruments/{instrument.id}/",
@@ -360,21 +362,33 @@ class TestInstrumentAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["name"] == "Updated Name"
 
-    def test_filter_instruments_by_active(self, authenticated_client):
+    def test_filter_instruments_by_active(self, authenticated_client, sample_facility):
         """Should filter instruments by active status."""
-        Instrument.objects.create(code="ACTIVE-001", name="Active", is_active=True)
-        Instrument.objects.create(code="INACTIVE-001", name="Inactive", is_active=False)
+        Instrument.objects.create(
+            code="ACTIVE-001", name="Active", is_active=True, facility=sample_facility
+        )
+        Instrument.objects.create(
+            code="INACTIVE-001", name="Inactive", is_active=False, facility=sample_facility
+        )
 
         response = authenticated_client.get("/api/lab/instruments/?is_active=true")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["code"] == "ACTIVE-001"
 
-    def test_filter_instruments_by_interface_type(self, authenticated_client):
+    def test_filter_instruments_by_interface_type(self, authenticated_client, sample_facility):
         """Should filter instruments by interface type."""
-        Instrument.objects.create(code="HL7-001", name="HL7 Instrument", interface_type="HL7_MLLP")
         Instrument.objects.create(
-            code="MANUAL-001", name="Manual Instrument", interface_type="MANUAL"
+            code="HL7-001",
+            name="HL7 Instrument",
+            interface_type="HL7_MLLP",
+            facility=sample_facility,
+        )
+        Instrument.objects.create(
+            code="MANUAL-001",
+            name="Manual Instrument",
+            interface_type="MANUAL",
+            facility=sample_facility,
         )
 
         response = authenticated_client.get("/api/lab/instruments/?interface_type=HL7_MLLP")
@@ -382,10 +396,14 @@ class TestInstrumentAPI:
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["code"] == "HL7-001"
 
-    def test_search_instruments(self, authenticated_client):
+    def test_search_instruments(self, authenticated_client, sample_facility):
         """Should search instruments by code or name."""
-        Instrument.objects.create(code="HAEM-001", name="Hematology Analyzer")
-        Instrument.objects.create(code="CHEM-001", name="Chemistry Analyzer")
+        Instrument.objects.create(
+            code="HAEM-001", name="Hematology Analyzer", facility=sample_facility
+        )
+        Instrument.objects.create(
+            code="CHEM-001", name="Chemistry Analyzer", facility=sample_facility
+        )
 
         response = authenticated_client.get("/api/lab/instruments/?search=HAEM")
         assert response.status_code == status.HTTP_200_OK

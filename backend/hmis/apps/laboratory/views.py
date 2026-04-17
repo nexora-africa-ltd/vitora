@@ -745,12 +745,14 @@ class LabResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class LabAttachmentViewSet(viewsets.GenericViewSet):
+class LabAttachmentViewSet(NestedTenantScopeMixin, viewsets.GenericViewSet):
     """Delete lab attachments."""
 
     queryset = LabResultAttachment.objects.all().select_related("lab_order", "uploaded_by")
     serializer_class = LabResultAttachmentSerializer
     permission_classes = [IsAuthenticated]
+    tenant_facility_chain = "lab_order__facility"
+    tenant_org_chain = "lab_order__organization"
 
     @extend_schema(responses={204: None})
     def destroy(self, request, pk=None):
@@ -762,52 +764,70 @@ class LabAttachmentViewSet(viewsets.GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class PatientLabOrderViewSet(viewsets.ReadOnlyModelViewSet):
+class PatientLabOrderViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for listing lab orders by patient.
     Used for nested route: /api/patients/{id}/lab-orders/
     """
 
+    queryset = LabOrder.objects.all()
     serializer_class = LabOrderSerializer
     permission_classes = [IsAuthenticated]
+    tenant_facility_chain = "facility"
+    tenant_org_chain = "organization"
 
     def get_queryset(self):
         patient_pk = self.kwargs.get("patient_pk")
-        return LabOrder.objects.filter(patient_id=patient_pk).select_related(
-            "patient", "encounter", "ordered_by"
+        return (
+            super()
+            .get_queryset()
+            .filter(patient_id=patient_pk)
+            .select_related("patient", "encounter", "ordered_by")
         )
 
 
-class EncounterLabOrderViewSet(viewsets.ReadOnlyModelViewSet):
+class EncounterLabOrderViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for listing lab orders by encounter.
     Used for nested route: /api/encounters/{id}/lab-orders/
     """
 
+    queryset = LabOrder.objects.all()
     serializer_class = LabOrderSerializer
     permission_classes = [IsAuthenticated]
+    tenant_facility_chain = "facility"
+    tenant_org_chain = "organization"
 
     def get_queryset(self):
         encounter_pk = self.kwargs.get("encounter_pk")
-        return LabOrder.objects.filter(encounter_id=encounter_pk).select_related(
-            "patient", "encounter", "ordered_by"
+        return (
+            super()
+            .get_queryset()
+            .filter(encounter_id=encounter_pk)
+            .select_related("patient", "encounter", "ordered_by")
         )
 
 
-class PatientLabResultViewSet(viewsets.ReadOnlyModelViewSet):
+class PatientLabResultViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for listing lab results by patient.
     Used for nested route: /api/patients/{id}/lab-results/
     """
 
+    queryset = LabResult.objects.all()
     serializer_class = LabResultSerializer
     permission_classes = [IsAuthenticated]
+    tenant_facility_chain = "order_item__lab_order__facility"
+    tenant_org_chain = "order_item__lab_order__organization"
 
     def get_queryset(self):
         patient_pk = self.kwargs.get("patient_pk")
-        return LabResult.objects.filter(
-            order_item__lab_order__patient_id=patient_pk
-        ).select_related("order_item__test", "entered_by")
+        return (
+            super()
+            .get_queryset()
+            .filter(order_item__lab_order__patient_id=patient_pk)
+            .select_related("order_item__test", "entered_by")
+        )
 
 
 class LOINCCodeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1198,21 +1218,17 @@ class InstrumentFilter(filters.FilterSet):
         return queryset.filter(models.Q(code__icontains=value) | models.Q(name__icontains=value))
 
 
-class InstrumentViewSet(viewsets.ModelViewSet):
+class InstrumentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for laboratory instruments.
 
     Provides CRUD operations for managing lab analyzers and instruments.
-
-    TODO: Model lacks facility FK — needs migration for proper tenant scoping.
-    Instruments are physically located at facilities but the model has no
-    facility/organization foreign key. A migration should be added to scope
-    instruments per facility.
     """
 
     queryset = Instrument.objects.all()
     permission_classes = [IsAuthenticated]
     filterset_class = InstrumentFilter
+    tenant_scope = "facility"
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -1569,7 +1585,7 @@ class SpecimenFilter(filters.FilterSet):
         }
 
 
-class SpecimenViewSet(viewsets.ReadOnlyModelViewSet):
+class SpecimenViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for specimens — read-only.
 
@@ -1594,6 +1610,8 @@ class SpecimenViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = SpecimenFilter
     lookup_field = "barcode"
+    tenant_facility_chain = "lab_order__facility"
+    tenant_org_chain = "lab_order__organization"
 
     def get_queryset(self):
         queryset = super().get_queryset()
