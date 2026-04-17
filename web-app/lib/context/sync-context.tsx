@@ -145,9 +145,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       // Step 2: Connect to PowerSync Cloud for streaming sync.
       // If this fails (bad JWT, cloud unreachable), the db is still usable
       // but hasSynced stays false → useOfflineQuery falls back to API.
-      const token = tokenStorage.getAccessToken();
-      if (!token) {
-        // No auth token yet — db is ready for local use.
+      // Note: With cookie auth, tokens are in httpOnly cookies (not in JS).
+      // Use isAuthenticated() (checks localStorage user profile) instead of
+      // getAccessToken() which always returns null with cookie auth.
+      if (!tokenStorage.isAuthenticated()) {
+        // No authenticated user yet — db is ready for local use.
         // PowerSync will connect once the user logs in.
         return;
       }
