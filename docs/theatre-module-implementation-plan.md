@@ -2,8 +2,8 @@
 
 > **Project**: Vitora HMIS
 > **Module**: Theatre/Operating Room Management
-> **Version**: 1.0
-> **Last Updated**: February 6, 2026
+> **Version**: 1.1
+> **Last Updated**: April 17, 2026
 > **Estimated Duration**: 10-14 weeks
 > **Original Roadmap**: Phase 2, Sprint 2.3-2.4 (Oct-Dec 2026)
 
@@ -58,23 +58,44 @@ The Theatre module handles **major surgeries** requiring dedicated operating roo
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| Backend theatre app | ❌ Does not exist | Needs creation |
-| Frontend theatre pages | ⏸️ Placeholders only | 5 placeholder pages exist |
+| Backend theatre app | ❌ Does not exist | Needs creation under `hmis/apps/theatre/` |
+| Frontend theatre pages | ⏸️ Placeholders only | 6 files (5 pages + feature-flag layout) |
+| Feature flag | ✅ `ENABLE_THEATRE` | Wired in `constants.ts`, `navigation.ts`, `layout.tsx`; defaults `true` in non-production |
 | Roadmap placement | Sprint 2.3-2.4 | Phase 2 (Oct-Dec 2026) |
-| Inpatient module | ✅ Complete | Ward/Bed/Admission models ready |
-| Procedures module | 📋 Planned | Design complete, not implemented |
-| Staff/RBAC module | ✅ Complete | Roles and permissions ready |
+| Inpatient module | ✅ Complete | Ward, Bed, Admission, Discharge, Transfer, WardRound |
+| Procedures module | ✅ **Complete** | 8 models (ProcedureCatalog, ProcedureOrder, ProcedureConsent, ProcedureLog, ProcedureConsumable, ProcedureKit, ProcedureKitItem, ProcedureOutcome) at `/api/procedures/` |
+| Billing module | ✅ Complete | Invoice, InvoiceItem, Service, Payment, Receipt |
+| Laboratory module | ✅ Complete | LabOrder, LabOrderItem, LabResult at `/api/lab/` |
+| Pharmacy module | ✅ Complete | Drug, StockBatch, Prescription, Dispensing at `/api/pharmacy/` |
+| Staff/RBAC module | ✅ Complete | Role model exists; **no theatre-specific roles seeded yet** |
+| Core mixins | ✅ Available | `FacilityScopedModel`, `TenantScopedViewMixin`, `ReadOnCreateMixin` |
+| Domain events infra | ✅ Available | `publish_event()`, `EventBus`, `EventStore`; 14 event classes, 97 constants — **no TheatreEvents yet** |
+| Dashboard theatre section | ✅ Stub | Returns zeros for `scheduled_today`, `in_progress`, `completed_today` |
+| `Facility.has_theatre` | ✅ Exists | Boolean capability flag on Facility model |
 
 ### Existing Frontend Placeholders
 
 ```
 web-app/app/(dashboard)/theatre/
+├── layout.tsx            # Feature-flag gate (ENABLE_THEATRE) ✅
 ├── page.tsx              # Dashboard placeholder ✅
 ├── cases/page.tsx        # Surgery cases placeholder ✅
 ├── checklists/page.tsx   # Checklists placeholder ✅
 ├── schedule/page.tsx     # Scheduling placeholder ✅
 └── reports/page.tsx      # Reports placeholder ✅
 ```
+
+### Key Integration Point: Procedures Module
+
+The `procedures` app is **fully implemented** and explicitly reserves `Category.SURGICAL` for the theatre module:
+
+```python
+# ProcedureCatalog.Category (procedures/models.py)
+# NOTE: Category "SURGICAL" is reserved for the future theatre module.
+# This module covers minor/outpatient procedures only.
+```
+
+The theatre module **reuses** ProcedureCatalog (with `SURGICAL` category) rather than creating a duplicate `SurgicalProcedure` model. It also reuses `ProcedureConsent` for surgical consent tracking. See [Data Models](#data-models) for details.
 
 ---
 
@@ -241,12 +262,13 @@ web-app/app/(dashboard)/theatre/
 ```
 backend/hmis/apps/theatre/
 ├── __init__.py
-├── admin.py                  # Django admin registrations
-├── apps.py                   # App configuration
-├── models.py                 # Core models
-├── serializers.py            # DRF serializers
+├── admin.py                  # Django admin (facility in list_display, list_filter, raw_id_fields)
+├── apps.py                   # App configuration (ready() imports signals)
+├── models.py                 # Core models (all inherit FacilityScopedModel)
+├── serializers.py            # DRF serializers (split Create/Read per convention)
+├── signals.py                # Domain event publishing via publish_event()
 ├── urls.py                   # API routes
-├── views.py                  # ViewSets
+├── views.py                  # ViewSets (TenantScopedViewMixin + ReadOnCreateMixin)
 ├── validators.py             # Business rule validators
 ├── permissions.py            # Theatre-specific permissions
 ├── services/
@@ -335,30 +357,30 @@ web-app/
 ### 1. OperatingTheatre
 
 ```python
-class OperatingTheatre(TimeStampedModel):
+class OperatingTheatre(FacilityScopedModel, TimeStampedModel):
     """
     Operating room/theatre setup.
 
     Represents a physical operating theatre with equipment and capabilities.
+    Inherits facility + organization FKs from FacilityScopedModel.
     """
 
-    THEATRE_TYPE_CHOICES = [
-        ('GENERAL', 'General Surgery'),
-        ('ORTHO', 'Orthopedic'),
-        ('CARDIAC', 'Cardiac Surgery'),
-        ('NEURO', 'Neurosurgery'),
-        ('EYE', 'Ophthalmology'),
-        ('ENT', 'ENT Surgery'),
-        ('OBSTETRIC', 'Obstetric/Gynecology'),
-        ('PEDIATRIC', 'Pediatric Surgery'),
-        ('EMERGENCY', 'Emergency/Trauma'),
-        ('MINOR', 'Minor Procedures'),
-    ]
+    class TheatreType(models.TextChoices):
+        GENERAL = 'GENERAL', 'General Surgery'
+        ORTHO = 'ORTHO', 'Orthopedic'
+        CARDIAC = 'CARDIAC', 'Cardiac Surgery'
+        NEURO = 'NEURO', 'Neurosurgery'
+        EYE = 'EYE', 'Ophthalmology'
+        ENT = 'ENT', 'ENT Surgery'
+        OBSTETRIC = 'OBSTETRIC', 'Obstetric/Gynecology'
+        PEDIATRIC = 'PEDIATRIC', 'Pediatric Surgery'
+        EMERGENCY = 'EMERGENCY', 'Emergency/Trauma'
+        MINOR = 'MINOR', 'Minor Procedures'
 
     # Identity
-    code = models.CharField(max_length=20, unique=True)  # e.g., "OT-01"
+    code = models.CharField(max_length=20)  # e.g., "OT-01" (unique per facility)
     name = models.CharField(max_length=100)  # e.g., "Operating Theatre 1"
-    theatre_type = models.CharField(max_length=20, choices=THEATRE_TYPE_CHOICES)
+    theatre_type = models.CharField(max_length=20, choices=TheatreType.choices)
     location = models.CharField(max_length=100, blank=True)  # Floor/building
 
     # Capabilities
@@ -375,120 +397,94 @@ class OperatingTheatre(TimeStampedModel):
     # Status
     is_active = models.BooleanField(default=True)
     maintenance_notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ['facility', 'code']
 ```
 
-### 2. SurgicalProcedure (Catalog)
+### 2. ProcedureCatalog Extension (Reuse Existing)
+
+> **No new model.** The `procedures.ProcedureCatalog` already provides ICHI/CPT coding,
+> consent requirements, anesthesia flags, duration, staffing, and billing integration.
+> Category `"SURGICAL"` is explicitly reserved for the theatre module.
+
+**Migration: add `SURGICAL` to `ProcedureCatalog.Category`:**
 
 ```python
-class SurgicalProcedure(TimeStampedModel):
-    """
-    Catalog of surgical procedures that can be performed.
-
-    Links to ICHI/CPT coding and defines typical duration, team, and requirements.
-    """
-
-    SPECIALTY_CHOICES = [
-        ('GEN_SURGERY', 'General Surgery'),
-        ('ORTHO', 'Orthopedics'),
-        ('OB_GYN', 'Obstetrics & Gynecology'),
-        ('UROLOGY', 'Urology'),
-        ('ENT', 'ENT'),
-        ('OPHTH', 'Ophthalmology'),
-        ('NEURO', 'Neurosurgery'),
-        ('CARDIO', 'Cardiothoracic'),
-        ('PLASTIC', 'Plastic Surgery'),
-        ('PEDIATRIC', 'Pediatric Surgery'),
-        ('VASCULAR', 'Vascular Surgery'),
-        ('OTHER', 'Other'),
-    ]
-
-    COMPLEXITY_CHOICES = [
-        ('MINOR', 'Minor'),
-        ('INTERMEDIATE', 'Intermediate'),
-        ('MAJOR', 'Major'),
-        ('COMPLEX', 'Complex'),
-    ]
-
-    # Identity
-    code = models.CharField(max_length=50, unique=True)
-    name = models.CharField(max_length=200)
-    specialty = models.CharField(max_length=30, choices=SPECIALTY_CHOICES)
-    complexity = models.CharField(max_length=20, choices=COMPLEXITY_CHOICES)
-
-    # Coding
-    ichi_code = models.CharField(max_length=20, blank=True)  # ICHI code
-    cpt_code = models.CharField(max_length=20, blank=True)   # CPT code
-    sha_intervention_code = models.CharField(max_length=50, blank=True)  # Kenya SHA
-
-    # Typical duration
-    estimated_duration_minutes = models.IntegerField()
-    setup_time_minutes = models.IntegerField(default=15)
-    cleanup_time_minutes = models.IntegerField(default=15)
-
-    # Requirements
-    requires_general_anesthesia = models.BooleanField(default=True)
-    requires_icu_bed = models.BooleanField(default=False)
-    typical_blood_requirement = models.CharField(max_length=50, blank=True)
-    special_equipment = models.TextField(blank=True)
-
-    # Pricing
-    surgeon_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    theatre_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    anesthesia_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    sha_claimable = models.BooleanField(default=True)
-
-    # Status
-    is_active = models.BooleanField(default=True)
+# In procedures/models.py — add to Category TextChoices:
+SURGICAL = "SURGICAL", "Surgical Procedure"
 ```
+
+**Add theatre-specific fields to ProcedureCatalog** (migration):
+
+```python
+# New fields on ProcedureCatalog
+complexity = models.CharField(
+    max_length=20,
+    choices=[('MINOR', 'Minor'), ('INTERMEDIATE', 'Intermediate'),
+             ('MAJOR', 'Major'), ('COMPLEX', 'Complex')],
+    blank=True, default='',
+    help_text="Surgical complexity (only for SURGICAL category)",
+)
+sha_intervention_code = models.CharField(max_length=50, blank=True, default='')  # Kenya SHA
+requires_icu_bed = models.BooleanField(default=False)
+typical_blood_requirement = models.CharField(max_length=50, blank=True, default='')
+special_equipment = models.TextField(blank=True, default='')
+setup_time_minutes = models.PositiveIntegerField(default=15)
+cleanup_time_minutes = models.PositiveIntegerField(default=15)
+surgeon_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+theatre_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+anesthesia_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+```
+
+> **Rationale:** One catalog, one search, one admin interface.
+> The seed command for surgical procedures filters `category=SURGICAL`.
 
 ### 3. SurgeryCase
 
 ```python
-class SurgeryCase(TimeStampedModel):
+class SurgeryCase(FacilityScopedModel, TimeStampedModel):
     """
     A surgical case from booking to discharge.
 
     Tracks the entire perioperative journey for a patient.
+    Inherits facility + organization FKs from FacilityScopedModel.
     """
 
-    CASE_STATUS_CHOICES = [
-        ('REQUESTED', 'Requested'),
-        ('SCHEDULED', 'Scheduled'),
-        ('PRE_OP', 'Pre-Operative'),
-        ('IN_THEATRE', 'In Theatre'),
-        ('IN_SURGERY', 'Surgery In Progress'),
-        ('IN_PACU', 'In Recovery (PACU)'),
-        ('DISCHARGED', 'Discharged'),
-        ('POSTPONED', 'Postponed'),
-        ('CANCELLED', 'Cancelled'),
-    ]
+    class CaseStatus(models.TextChoices):
+        REQUESTED = 'REQUESTED', 'Requested'
+        SCHEDULED = 'SCHEDULED', 'Scheduled'
+        PRE_OP = 'PRE_OP', 'Pre-Operative'
+        IN_THEATRE = 'IN_THEATRE', 'In Theatre'
+        IN_SURGERY = 'IN_SURGERY', 'Surgery In Progress'
+        IN_PACU = 'IN_PACU', 'In Recovery (PACU)'
+        DISCHARGED = 'DISCHARGED', 'Discharged'
+        POSTPONED = 'POSTPONED', 'Postponed'
+        CANCELLED = 'CANCELLED', 'Cancelled'
 
-    PRIORITY_CHOICES = [
-        ('ELECTIVE', 'Elective'),
-        ('URGENT', 'Urgent'),
-        ('EMERGENCY', 'Emergency'),
-    ]
+    class Priority(models.TextChoices):
+        ELECTIVE = 'ELECTIVE', 'Elective'
+        URGENT = 'URGENT', 'Urgent'
+        EMERGENCY = 'EMERGENCY', 'Emergency'
 
-    ASA_CHOICES = [
-        ('I', 'ASA I - Healthy'),
-        ('II', 'ASA II - Mild systemic disease'),
-        ('III', 'ASA III - Severe systemic disease'),
-        ('IV', 'ASA IV - Life-threatening disease'),
-        ('V', 'ASA V - Moribund'),
-        ('VI', 'ASA VI - Brain dead donor'),
-    ]
+    class ASAClass(models.TextChoices):
+        I = 'I', 'ASA I - Healthy'
+        II = 'II', 'ASA II - Mild systemic disease'
+        III = 'III', 'ASA III - Severe systemic disease'
+        IV = 'IV', 'ASA IV - Life-threatening disease'
+        V = 'V', 'ASA V - Moribund'
+        VI = 'VI', 'ASA VI - Brain dead donor'
 
-    ANESTHESIA_TYPE_CHOICES = [
-        ('GENERAL', 'General Anesthesia'),
-        ('SPINAL', 'Spinal Anesthesia'),
-        ('EPIDURAL', 'Epidural Anesthesia'),
-        ('REGIONAL', 'Regional Block'),
-        ('LOCAL', 'Local Anesthesia'),
-        ('SEDATION', 'Sedation'),
-        ('COMBINED', 'Combined'),
-    ]
+    class AnesthesiaType(models.TextChoices):
+        GENERAL = 'GENERAL', 'General Anesthesia'
+        SPINAL = 'SPINAL', 'Spinal Anesthesia'
+        EPIDURAL = 'EPIDURAL', 'Epidural Anesthesia'
+        REGIONAL = 'REGIONAL', 'Regional Block'
+        LOCAL = 'LOCAL', 'Local Anesthesia'
+        SEDATION = 'SEDATION', 'Sedation'
+        COMBINED = 'COMBINED', 'Combined'
 
-    # Valid status transitions
+    # Valid status transitions (model owns workflow logic)
     STATUS_TRANSITIONS = {
         'REQUESTED': ['SCHEDULED', 'CANCELLED'],
         'SCHEDULED': ['PRE_OP', 'POSTPONED', 'CANCELLED'],
@@ -509,9 +505,9 @@ class SurgeryCase(TimeStampedModel):
     encounter = models.ForeignKey('encounters.Encounter', on_delete=models.PROTECT, null=True)
     admission = models.ForeignKey('inpatient.Admission', on_delete=models.SET_NULL, null=True, blank=True)
 
-    # Procedure
-    primary_procedure = models.ForeignKey(SurgicalProcedure, on_delete=models.PROTECT)
-    additional_procedures = models.ManyToManyField(SurgicalProcedure, related_name='secondary_cases', blank=True)
+    # Procedure — FK to existing ProcedureCatalog (category=SURGICAL)
+    primary_procedure = models.ForeignKey('procedures.ProcedureCatalog', on_delete=models.PROTECT)
+    additional_procedures = models.ManyToManyField('procedures.ProcedureCatalog', related_name='secondary_cases', blank=True)
     procedure_notes = models.TextField(blank=True)  # Pre-op notes about the procedure
 
     # Scheduling
@@ -519,16 +515,16 @@ class SurgeryCase(TimeStampedModel):
     scheduled_date = models.DateField()
     scheduled_start_time = models.TimeField()
     estimated_duration_minutes = models.IntegerField()
-    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='ELECTIVE')
+    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.ELECTIVE)
 
     # Clinical
     diagnosis = models.TextField()
     laterality = models.CharField(max_length=20, blank=True)  # Left/Right/Bilateral/N/A
-    asa_class = models.CharField(max_length=5, choices=ASA_CHOICES, blank=True)
-    anesthesia_type = models.CharField(max_length=20, choices=ANESTHESIA_TYPE_CHOICES, blank=True)
+    asa_class = models.CharField(max_length=5, choices=ASAClass.choices, blank=True)
+    anesthesia_type = models.CharField(max_length=20, choices=AnesthesiaType.choices, blank=True)
 
     # Status
-    status = models.CharField(max_length=20, choices=CASE_STATUS_CHOICES, default='REQUESTED')
+    status = models.CharField(max_length=20, choices=CaseStatus.choices, default=CaseStatus.REQUESTED)
     status_changed_at = models.DateTimeField(auto_now=True)
     status_changed_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='case_status_changes')
 
@@ -543,6 +539,21 @@ class SurgeryCase(TimeStampedModel):
     # Billing
     total_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     is_billable = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        # Auto-resolve facility/org from encounter or patient if not already set
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        super().save(*args, **kwargs)
+
+    # Status transition methods (model owns workflow — views stay thin)
+    def transition_to(self, new_status, user=None):
+        """Validate and apply a status transition."""
+        allowed = self.STATUS_TRANSITIONS.get(self.status, [])
+        if new_status not in allowed:
+            raise ValueError(f"Cannot transition from {self.status} to {new_status}")
+        self.status = new_status
+        self.status_changed_by = user
+        self.save(update_fields=['status', 'status_changed_at', 'status_changed_by'])
 ```
 
 ### 4. SurgicalTeam
@@ -846,10 +857,17 @@ class OperativeNote(TimeStampedModel):
 
 ### 9. TheatreConsumable
 
+> **Note:** The existing `procedures.ProcedureConsumable` already tracks items used
+> (quantity, lot number, cost, `pharmacy.Drug` FK). `TheatreConsumable` extends this
+> pattern with implant-specific fields for the surgical context.
+
 ```python
-class TheatreConsumable(TimeStampedModel):
+class TheatreConsumable(FacilityScopedModel, TimeStampedModel):
     """
     Tracks consumables and implants used in surgery.
+
+    References pharmacy.Drug for the item catalog and pharmacy.StockBatch
+    for stock deduction.
     """
 
     surgery_case = models.ForeignKey(SurgeryCase, on_delete=models.CASCADE, related_name='consumables')
@@ -955,13 +973,15 @@ class PACUVitalReading(TimeStampedModel):
 | PATCH | `/api/theatre/operating-theatres/{id}/` | Update theatre |
 | GET | `/api/theatre/operating-theatres/{id}/availability/` | Get theatre slots |
 
-### Surgical Procedures (Catalog)
+### Surgical Procedures (Existing ProcedureCatalog)
+
+> **No new endpoints.** Use existing `/api/procedures/catalog/` filtered by `category=SURGICAL`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/theatre/procedures/` | List surgical procedures |
-| GET | `/api/theatre/procedures/{id}/` | Get procedure details |
-| POST | `/api/theatre/procedures/` | Create procedure (admin) |
+| GET | `/api/procedures/catalog/?category=SURGICAL` | List surgical procedures (existing) |
+| GET | `/api/procedures/catalog/{id}/` | Get procedure details (existing) |
+| POST | `/api/procedures/catalog/` | Create procedure (existing, admin) |
 
 ### Surgery Cases
 
@@ -1056,15 +1076,16 @@ class PACUVitalReading(TimeStampedModel):
 
 | # | Task | Priority | TDD Tests |
 |---|------|----------|-----------|
-| A.1.1 | Create Django theatre app | High | - |
-| A.1.2 | Implement OperatingTheatre model | High | 12 tests |
-| A.1.3 | Implement SurgicalProcedure catalog | High | 15 tests |
-| A.1.4 | Implement SurgeryCase model | High | 25 tests |
+| A.1.1 | Create Django theatre app (`hmis/apps/theatre/`) | High | - |
+| A.1.2 | Implement OperatingTheatre model (FacilityScopedModel) | High | 12 tests |
+| A.1.3 | Extend ProcedureCatalog: add `SURGICAL` category + theatre fields (migration) | High | 10 tests |
+| A.1.4 | Implement SurgeryCase model (FacilityScopedModel, status state machine) | High | 25 tests |
 | A.1.5 | Implement SurgicalTeamMember model | High | 15 tests |
-| A.1.6 | Create case number generator | Medium | 5 tests |
-| A.1.7 | Implement status transition logic | High | 20 tests |
-| A.1.8 | RBAC permissions setup | High | 15 tests |
-| A.1.9 | Django admin registrations | Low | - |
+| A.1.6 | Create case number generator (SURG-YYYYMMDD-XXXX) | Medium | 5 tests |
+| A.1.7 | Implement status transition methods on SurgeryCase model | High | 20 tests |
+| A.1.8 | Define TheatreEvents in `core/events/types.py` + wire signals | High | 10 tests |
+| A.1.9 | RBAC permissions setup + seed theatre-specific roles | High | 15 tests |
+| A.1.10 | Django admin registrations (facility in list_display/list_filter/raw_id_fields) | Low | - |
 
 #### Dependencies
 
@@ -1075,14 +1096,19 @@ class PACUVitalReading(TimeStampedModel):
 │                                                                 │
 │  EXTERNAL DEPENDENCIES (all exist ✅):                          │
 │  ├── patients.Patient model                                     │
-│  ├── encounters.Encounter model                                 │
+│  ├── encounters.Encounter model (HistoryMixin)                  │
 │  ├── inpatient.Admission model                                  │
+│  ├── procedures.ProcedureCatalog (SURGICAL category reserved)   │
 │  ├── auth.User model                                            │
-│  └── core.TimeStampedModel                                      │
+│  ├── core.TimeStampedModel                                      │
+│  ├── core.mixins.FacilityScopedModel                            │
+│  ├── core.mixins.resolve_tenant_from_related                    │
+│  ├── core.events.publish_event + EventBus + EventStore          │
+│  └── core.models.Role (seed theatre roles here)                 │
 │                                                                 │
 │  INTERNAL DEPENDENCIES:                                         │
 │  ├── A.1.2 OperatingTheatre ──▶ A.1.4 SurgeryCase              │
-│  ├── A.1.3 SurgicalProcedure ──▶ A.1.4 SurgeryCase             │
+│  ├── A.1.3 ProcedureCatalog extension ──▶ A.1.4 SurgeryCase    │
 │  └── A.1.4 SurgeryCase ──▶ A.1.5 SurgicalTeamMember            │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -1094,16 +1120,17 @@ class PACUVitalReading(TimeStampedModel):
 
 | # | Task | Priority | TDD Tests |
 |---|------|----------|-----------|
-| A.2.1 | Implement serializers | High | 25 tests |
-| A.2.2 | Implement ViewSets (CRUD) | High | 35 tests |
+| A.2.1 | Implement serializers (split Create/Read, use get_serializer_class) | High | 25 tests |
+| A.2.2 | Implement ViewSets (TenantScopedViewMixin + ReadOnCreateMixin) | High | 35 tests |
 | A.2.3 | Theatre slot management service | High | 15 tests |
 | A.2.4 | Conflict detection | High | 12 tests |
-| A.2.5 | Seed surgical procedure catalog | Medium | 5 tests |
-| A.2.6 | Frontend: Schedule calendar page | High | - |
-| A.2.7 | Frontend: Surgery booking form | High | - |
-| A.2.8 | Frontend: Daily theatre list | High | - |
-| A.2.9 | Frontend: Live theatre board | High | - |
-| A.2.10 | Add audit logging | High | 8 tests |
+| A.2.5 | Seed surgical procedure catalog (ProcedureCatalog category=SURGICAL) | Medium | 5 tests |
+| A.2.6 | Frontend: TypeScript types, Zod schemas, API client | High | - |
+| A.2.7 | Frontend: Schedule calendar page | High | - |
+| A.2.8 | Frontend: Surgery booking form | High | - |
+| A.2.9 | Frontend: Daily theatre list | High | - |
+| A.2.10 | Frontend: Live theatre board | High | - |
+| A.2.11 | Add audit logging + contract tests | High | 12 tests |
 
 #### Dependencies
 
@@ -1131,21 +1158,30 @@ class PACUVitalReading(TimeStampedModel):
 #### Acceptance Criteria / Exit Checklist - Phase A
 
 - [ ] **Models**
-  - [ ] OperatingTheatre with all fields
-  - [ ] SurgicalProcedure catalog with ICHI/SHA codes
-  - [ ] SurgeryCase with status state machine
+  - [ ] OperatingTheatre with FacilityScopedModel + all fields
+  - [ ] ProcedureCatalog extended with `SURGICAL` category + theatre fields
+  - [ ] SurgeryCase with FacilityScopedModel + status state machine + transition methods
   - [ ] SurgicalTeamMember with role tracking
-  - [ ] All models registered in Django admin
+  - [ ] All models registered in Django admin (facility in list_display/list_filter/raw_id_fields)
   - [ ] Migrations created and applied
 
 - [ ] **API**
-  - [ ] Full CRUD for theatre setup
+  - [ ] Full CRUD for theatre setup (TenantScopedViewMixin, ReadOnCreateMixin)
   - [ ] Surgery booking workflow (request → schedule)
   - [ ] Team assignment endpoints
-  - [ ] Status transition actions
+  - [ ] Status transition actions (thin views calling model methods)
   - [ ] Conflict detection working
+  - [ ] All responses validated with Zod schemas (parseResponse)
+
+- [ ] **Domain Events**
+  - [ ] TheatreEvents class defined in `core/events/types.py`
+  - [ ] Signals wired in `theatre/signals.py` for status transitions
+  - [ ] `apps.py` `ready()` imports signals
+  - [ ] Event tests verify publish_event calls
+  - [ ] `docs/domain-events.md` SSOT updated
 
 - [ ] **Frontend**
+  - [ ] `lib/types/theatre.ts` + `lib/schemas/theatre.schema.ts` + `lib/api/theatre.ts`
   - [ ] Theatre calendar view
   - [ ] Surgery booking form
   - [ ] Daily theatre list view
@@ -1209,7 +1245,7 @@ class PACUVitalReading(TimeStampedModel):
 │                                                                 │
 │  EXTERNAL DEPENDENCIES:                                         │
 │  ├── laboratory.LabOrder for pre-op labs (exists ✅)            │
-│  └── Consent tracking (from Procedures module or inline)        │
+│  └── procedures.ProcedureConsent for consent (exists ✅)        │
 │                                                                 │
 │  INTERNAL DEPENDENCIES:                                         │
 │  ├── B.1.1 WHOChecklist ──linked to── SurgeryCase              │
@@ -1295,7 +1331,7 @@ class PACUVitalReading(TimeStampedModel):
 │                                                                 │
 │  EXTERNAL DEPENDENCIES:                                         │
 │  ├── pharmacy.Drug for consumables catalog (exists ✅)          │
-│  └── pharmacy.Stock for stock deduction (exists ✅)             │
+│  └── pharmacy.StockBatch for stock deduction (exists ✅)        │
 │                                                                 │
 │  INTERNAL DEPENDENCIES:                                         │
 │  ├── C.1.* WHO checklists ──depends on── C.2.2 Counts          │
@@ -1454,12 +1490,13 @@ class PACUVitalReading(TimeStampedModel):
 | Category | Target Coverage | Estimated Tests |
 |----------|----------------|-----------------|
 | Models | 100% | 120+ |
-| Serializers | 100% | 60+ |
+| Serializers (+ contract tests) | 100% | 70+ |
 | Views/API | 100% | 100+ |
 | Services (scheduling, analytics) | 90%+ | 60+ |
+| Domain Events (signal wiring) | 100% | 20+ |
 | Frontend Components | 80%+ | 80+ |
 | E2E Flows | Critical paths | 25+ |
-| **Total** | **≥80%** | **450+** |
+| **Total** | **≥80%** | **475+** |
 
 ### Test Scenarios
 
@@ -1467,8 +1504,12 @@ class PACUVitalReading(TimeStampedModel):
 - **WHO Checklist**: All three phases, incomplete prevention
 - **Status Flow**: Valid/invalid transitions, edge cases
 - **Anesthesia**: Pre-op → intra-op → PACU handover
-- **Consumables**: Stock deduction, implant tracking
+- **Consumables**: StockBatch deduction, implant tracking
+- **Domain Events**: All status transitions publish correct event types
+- **Tenant Scoping**: Facility isolation, cross-tenant data leak prevention
+- **Contract Tests**: Serializer snapshot tests per `docs/contract-testing-recommendations.md`
 - **Analytics**: Utilization calculations, date ranges
+- **Fixture pattern**: All test fixtures include `sample_facility` / `sample_organization` per Gotcha #11
 
 ---
 
@@ -1589,3 +1630,4 @@ class PACUVitalReading(TimeStampedModel):
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-06 | Engineering Team | Initial plan |
+| 1.1 | 2026-04-17 | Engineering Team | Aligned with repo: reuse ProcedureCatalog (SURGICAL category) instead of separate SurgicalProcedure; add FacilityScopedModel to all models; add TheatreEvents domain events; fix pharmacy.Stock → StockBatch; reuse ProcedureConsent; add ReadOnCreateMixin/TenantScopedViewMixin; document ENABLE_THEATRE feature flag; add contract tests to strategy; update current state analysis to reflect completed procedures, billing, lab, pharmacy modules |
