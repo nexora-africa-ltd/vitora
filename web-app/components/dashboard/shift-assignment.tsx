@@ -25,7 +25,8 @@ import { toast } from 'sonner';
 import { attendanceApi } from '@/lib/api/scheduling';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { ClockInDialog } from './clock-in-dialog';
-import type { AttendanceStatus, Shift, ClockInPayload } from '@/lib/types/scheduling';
+import { EmergencyClockInDialog } from './emergency-clock-in-dialog';
+import type { AttendanceStatus, Shift, ClockInPayload, EmergencyClockInPayload } from '@/lib/types/scheduling';
 
 // =============================================================================
 // Helpers
@@ -191,6 +192,7 @@ export function ShiftGreetingLine({ greetingLabel, nameWithTitle, attendanceStat
 export function TodayAssignmentCard() {
   const queryClient = useQueryClient();
   const [clockInDialogOpen, setClockInDialogOpen] = useState(false);
+  const [emergencyDialogOpen, setEmergencyDialogOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-shift-today'],
@@ -252,6 +254,25 @@ export function TodayAssignmentCard() {
     onError: () => toast.error('Failed to resume shift'),
   });
 
+  const emergencyClockInMutation = useMutation({
+    mutationFn: (payload: EmergencyClockInPayload) => attendanceApi.emergencyClockIn(payload),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
+      queryClient.invalidateQueries({ queryKey: ['my-shift-upcoming'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
+      setEmergencyDialogOpen(false);
+      const messages: string[] = ['Emergency clock-in successful'];
+      if (response.session_auto_opened) {
+        messages.push('Clinic session opened');
+      }
+      toast.success(messages.join('. '));
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error));
+    },
+  });
+
   if (isLoading) {
     return (
       <Card>
@@ -267,22 +288,42 @@ export function TodayAssignmentCard() {
 
   if (status === 'NO_SHIFT') {
     return (
+      <>
       <Card className="border-dashed">
         <CardContent className="flex items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3 text-muted-foreground">
             <CalendarOff className="h-5 w-5 shrink-0" />
             <div>
               <p className="text-sm font-medium">No shift scheduled today</p>
-              <p className="text-xs">Check the roster for upcoming shifts.</p>
+              <p className="text-xs">Check the roster or use emergency clock-in if needed.</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/scheduling/my-shifts">
-              My Shifts <ArrowRight className="h-3 w-3 ml-1" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+              onClick={() => setEmergencyDialogOpen(true)}
+            >
+              <AlertCircle className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Emergency </span>Clock-In
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/scheduling/my-shifts">
+                My Shifts <ArrowRight className="h-3 w-3 ml-1" />
+              </Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
+
+      <EmergencyClockInDialog
+        open={emergencyDialogOpen}
+        onOpenChange={setEmergencyDialogOpen}
+        onConfirm={(payload) => emergencyClockInMutation.mutate(payload)}
+        isPending={emergencyClockInMutation.isPending}
+      />
+      </>
     );
   }
 
@@ -290,7 +331,7 @@ export function TodayAssignmentCard() {
 
   const progress = (status === 'CLOCKED_IN' || status === 'ON_BREAK') ? getShiftProgress(shift) : null;
   const timeInfo = (status === 'UPCOMING' || status === 'SHOULD_CLOCK_IN') ? getTimeUntilShift(shift) : null;
-  const isPending = clockInMutation.isPending || clockOutMutation.isPending || takeBreakMutation.isPending || resumeMutation.isPending;
+  const isPending = clockInMutation.isPending || clockOutMutation.isPending || takeBreakMutation.isPending || resumeMutation.isPending || emergencyClockInMutation.isPending;
 
   return (
     <>
@@ -326,6 +367,9 @@ export function TodayAssignmentCard() {
                 </span>
                 {shift.department && (
                   <Badge variant="outline" className="text-xs">{shift.department}</Badge>
+                )}
+                {shift.is_emergency && (
+                  <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">Emergency</Badge>
                 )}
               </div>
 

@@ -218,6 +218,8 @@ export const ShiftSchema = ShiftListItemSchema.extend({
   total_break_minutes: z.number(),
   clock_in_method: z.string(),
   auto_clocked_out: z.boolean(),
+  is_emergency: z.boolean(),
+  emergency_reason: z.string(),
   actual_hours: z.number().nullable(),
   late_minutes: z.number(),
   overtime_minutes: z.number(),

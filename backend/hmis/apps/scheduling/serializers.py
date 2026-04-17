@@ -862,6 +862,8 @@ class ShiftSerializer(serializers.ModelSerializer):
             "total_break_minutes",
             "clock_in_method",
             "auto_clocked_out",
+            "is_emergency",
+            "emergency_reason",
             "created_by",
             "created_by_name",
             "cancelled_by",
@@ -892,6 +894,8 @@ class ShiftSerializer(serializers.ModelSerializer):
             "total_break_minutes",
             "clock_in_method",
             "auto_clocked_out",
+            "is_emergency",
+            "emergency_reason",
             "created_by",
             "created_by_name",
             "cancelled_by",
@@ -1093,6 +1097,73 @@ class ShiftStartSerializer(serializers.Serializer):
             raise serializers.ValidationError("Clinic is not active.")
         shift = self.context.get("shift")
         if shift and clinic.facility_id != shift.facility_id:
+            raise serializers.ValidationError("Clinic must belong to the same facility.")
+        return value
+
+
+class EmergencyClockInSerializer(serializers.Serializer):
+    """Serializer for emergency clock-in (creates ad-hoc shift + immediately clocks in)."""
+
+    reason = serializers.CharField(
+        max_length=500,
+        help_text="Reason for emergency clock-in (mandatory).",
+    )
+    shift_type = serializers.ChoiceField(
+        choices=[
+            ("DAY", "Day Shift"),
+            ("NIGHT", "Night Shift"),
+            ("MORNING", "Morning Shift"),
+            ("AFTERNOON", "Afternoon Shift"),
+            ("ON_CALL", "On-Call"),
+            ("OVERTIME", "Overtime"),
+        ],
+        default="DAY",
+        required=False,
+    )
+    duration_hours = serializers.FloatField(
+        default=8.0,
+        min_value=1.0,
+        max_value=24.0,
+        required=False,
+        help_text="Planned shift duration in hours (default 8).",
+    )
+    room_id = serializers.IntegerField(required=False, allow_null=True)
+    clinic_id = serializers.IntegerField(required=False, allow_null=True)
+    method = serializers.ChoiceField(
+        choices=["MANUAL", "QR_CODE"],
+        required=False,
+        default="MANUAL",
+    )
+
+    def validate_room_id(self, value):
+        """Validate room is a PLACE resource in the same facility."""
+        if value is None:
+            return value
+        try:
+            resource = Resource.objects.get(pk=value)
+        except Resource.DoesNotExist:
+            raise serializers.ValidationError("Room not found.")
+        if resource.resource_type != "PLACE":
+            raise serializers.ValidationError("Resource must be of type PLACE.")
+        facility = self.context.get("facility")
+        if facility and resource.facility_id != facility.id:
+            raise serializers.ValidationError("Room must belong to the same facility.")
+        return value
+
+    def validate_clinic_id(self, value):
+        """Validate clinic is active and in the same facility."""
+        if value is None:
+            return value
+        from hmis.apps.clinics.models import Clinic
+
+        try:
+            clinic = Clinic.objects.get(pk=value)
+        except Clinic.DoesNotExist:
+            raise serializers.ValidationError("Clinic not found.")
+        if clinic.status != "ACTIVE":
+            raise serializers.ValidationError("Clinic is not active.")
+        facility = self.context.get("facility")
+        if facility and clinic.facility_id != facility.id:
             raise serializers.ValidationError("Clinic must belong to the same facility.")
         return value
 
