@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
@@ -601,8 +601,11 @@ class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(result)
 
 
-class ANCVisitViewSet(viewsets.ModelViewSet):
+class ANCVisitViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for ANC visits."""
+
+    tenant_facility_chain = "registration__facility"
+    tenant_org_chain = "registration__organization"
 
     queryset = ANCVisit.objects.select_related("registration", "clinic_visit", "conducted_by")
     permission_classes = [IsAuthenticated]
@@ -650,8 +653,11 @@ class ANCVisitViewSet(viewsets.ModelViewSet):
         )
 
 
-class CommunityScreeningViewSet(viewsets.ModelViewSet):
+class CommunityScreeningViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for CHW community screening records."""
+
+    tenant_facility_chain = ""
+    tenant_org_chain = "patient__organization"
 
     queryset = CommunityScreening.objects.select_related("patient", "captured_by")
     permission_classes = [IsAuthenticated]
@@ -708,8 +714,11 @@ class CommunityScreeningViewSet(viewsets.ModelViewSet):
         )
 
 
-class DeliveryViewSet(viewsets.ModelViewSet):
+class DeliveryViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for delivery records."""
+
+    tenant_facility_chain = "registration__facility"
+    tenant_org_chain = "registration__organization"
 
     queryset = Delivery.objects.select_related(
         "registration",
@@ -945,8 +954,11 @@ class DeliveryViewSet(viewsets.ModelViewSet):
         )
 
 
-class LabourPartographViewSet(viewsets.ModelViewSet):
+class LabourPartographViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for labour partographs."""
+
+    tenant_facility_chain = "registration__facility"
+    tenant_org_chain = "registration__organization"
 
     queryset = LabourPartograph.objects.select_related(
         "registration",
@@ -991,8 +1003,11 @@ class LabourPartographViewSet(viewsets.ModelViewSet):
         serializer.instance = refreshed
 
 
-class LabourPartographObservationViewSet(viewsets.ModelViewSet):
+class LabourPartographObservationViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for labour partograph observations."""
+
+    tenant_facility_chain = "partograph__registration__facility"
+    tenant_org_chain = "partograph__registration__organization"
 
     queryset = LabourPartographObservation.objects.select_related(
         "partograph",
@@ -1026,8 +1041,11 @@ class LabourPartographObservationViewSet(viewsets.ModelViewSet):
         )
 
 
-class PNCVisitViewSet(viewsets.ModelViewSet):
+class PNCVisitViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for PNC visits."""
+
+    tenant_facility_chain = "registration__facility"
+    tenant_org_chain = "registration__organization"
 
     queryset = PNCVisit.objects.select_related(
         "registration",
@@ -1079,8 +1097,11 @@ class PNCVisitViewSet(viewsets.ModelViewSet):
         )
 
 
-class GrowthMeasurementViewSet(viewsets.ModelViewSet):
+class GrowthMeasurementViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for growth measurements."""
+
+    tenant_facility_chain = "encounter__facility"
+    tenant_org_chain = "encounter__organization"
 
     queryset = GrowthMeasurement.objects.select_related("patient", "measured_by")
     permission_classes = [IsAuthenticated]
@@ -1246,11 +1267,14 @@ class VaccineViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ["standard_age_days", "code"]
 
 
-class ImmunizationRecordViewSet(viewsets.ModelViewSet):
+class ImmunizationRecordViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for immunization records.
 
     Delegates to the unified immunizations app ImmunizationRecord model.
     """
+
+    tenant_facility_chain = ""
+    tenant_org_chain = "patient__organization"
 
     queryset = ImmunizationsImmunizationRecord.objects.select_related(
         "patient", "vaccine", "administered_by"
@@ -1376,8 +1400,11 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
         )
 
 
-class VitaminASupplementViewSet(viewsets.ModelViewSet):
+class VitaminASupplementViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for Vitamin A supplements."""
+
+    tenant_facility_chain = ""
+    tenant_org_chain = "patient__organization"
 
     queryset = VitaminASupplement.objects.select_related("patient", "administered_by")
     permission_classes = [IsAuthenticated]
@@ -1399,11 +1426,14 @@ class VitaminASupplementViewSet(viewsets.ModelViewSet):
         )
 
 
-class AEFIViewSet(viewsets.ModelViewSet):
+class AEFIViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for AEFI reporting.
 
     Delegates to the unified immunizations app AEFI model.
     """
+
+    tenant_facility_chain = ""
+    tenant_org_chain = "immunization_record__patient__organization"
 
     queryset = ImmunizationsAEFI.objects.select_related("immunization_record", "investigated_by")
     permission_classes = [IsAuthenticated]
@@ -1432,8 +1462,11 @@ class AEFIViewSet(viewsets.ModelViewSet):
         )
 
 
-class HEIFollowUpViewSet(viewsets.ModelViewSet):
+class HEIFollowUpViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for HEI follow-up records."""
+
+    tenant_facility_chain = "mch_registration__facility"
+    tenant_org_chain = "mch_registration__organization"
 
     queryset = HEIFollowUp.objects.select_related("infant", "mch_registration", "enrolled_by")
     permission_classes = [IsAuthenticated]
@@ -1553,8 +1586,11 @@ class HEIFollowUpViewSet(viewsets.ModelViewSet):
         )
 
 
-class HEIPCRTestViewSet(viewsets.ModelViewSet):
+class HEIPCRTestViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for HEI PCR tests."""
+
+    tenant_facility_chain = "hei_followup__mch_registration__facility"
+    tenant_org_chain = "hei_followup__mch_registration__organization"
 
     queryset = HEIPCRTest.objects.select_related("hei_followup")
     permission_classes = [IsAuthenticated]

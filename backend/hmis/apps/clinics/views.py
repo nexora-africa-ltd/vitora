@@ -19,7 +19,7 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 
 from .models import (
     Clinic,
@@ -628,7 +628,7 @@ class ClinicVisitViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 # =============================================================================
 
 
-class ClinicStaffViewSet(viewsets.ModelViewSet):
+class ClinicStaffViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for ClinicStaff operations nested under clinic.
 
@@ -638,13 +638,17 @@ class ClinicStaffViewSet(viewsets.ModelViewSet):
     - DELETE /api/clinics/{clinic_pk}/staff/{pk}/ - Remove staff
     """
 
+    tenant_facility_chain = "clinic__facility"
+    tenant_org_chain = "clinic__organization"
+
+    queryset = ClinicStaff.objects.select_related("user", "clinic").all()
     serializer_class = ClinicStaffSerializer
     permission_classes = [permissions.IsAuthenticated, CanManageClinicStaff]
 
     def get_queryset(self):
-        """Filter staff by clinic."""
+        """Filter staff by clinic, scoped by facility."""
         clinic_pk = self.kwargs.get("clinic_pk")
-        return ClinicStaff.objects.filter(clinic_id=clinic_pk).select_related("user", "clinic")
+        return super().get_queryset().filter(clinic_id=clinic_pk)
 
     def perform_create(self, serializer):
         """Create staff assignment for the clinic."""
@@ -658,7 +662,7 @@ class ClinicStaffViewSet(viewsets.ModelViewSet):
 # =============================================================================
 
 
-class ClinicScheduleViewSet(viewsets.ModelViewSet):
+class ClinicScheduleViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for ClinicSchedule operations nested under clinic.
 
@@ -669,13 +673,17 @@ class ClinicScheduleViewSet(viewsets.ModelViewSet):
     - DELETE /api/clinics/{clinic_pk}/schedule/{pk}/ - Delete schedule
     """
 
+    tenant_facility_chain = "clinic__facility"
+    tenant_org_chain = "clinic__organization"
+
+    queryset = ClinicSchedule.objects.select_related("clinic").all()
     serializer_class = ClinicScheduleSerializer
     permission_classes = [permissions.IsAuthenticated, CanManageClinicSchedule]
 
     def get_queryset(self):
-        """Filter schedules by clinic."""
+        """Filter schedules by clinic, scoped by facility."""
         clinic_pk = self.kwargs.get("clinic_pk")
-        return ClinicSchedule.objects.filter(clinic_id=clinic_pk).select_related("clinic")
+        return super().get_queryset().filter(clinic_id=clinic_pk)
 
     def perform_create(self, serializer):
         """Create schedule for the clinic."""
@@ -689,7 +697,7 @@ class ClinicScheduleViewSet(viewsets.ModelViewSet):
 # =============================================================================
 
 
-class ClinicEnrollmentViewSet(viewsets.ModelViewSet):
+class ClinicEnrollmentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for ClinicEnrollment CRUD and query operations.
 
@@ -702,6 +710,9 @@ class ClinicEnrollmentViewSet(viewsets.ModelViewSet):
     - GET /api/clinic-enrollments/defaulters/ - Get defaulters
     - POST /api/clinic-enrollments/{id}/record-visit/ - Record visit
     """
+
+    tenant_facility_chain = "clinic__facility"
+    tenant_org_chain = "clinic__organization"
 
     queryset = ClinicEnrollment.objects.select_related("clinic", "patient", "enrolled_by").all()
     permission_classes = [permissions.IsAuthenticated]
@@ -789,7 +800,7 @@ class ClinicEnrollmentViewSet(viewsets.ModelViewSet):
 # =============================================================================
 
 
-class ClinicRoomViewSet(viewsets.ModelViewSet):
+class ClinicRoomViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for ClinicRoom operations nested under clinic.
 
@@ -799,12 +810,16 @@ class ClinicRoomViewSet(viewsets.ModelViewSet):
     - DELETE /api/clinics/{clinic_pk}/rooms/{pk}/   - Unlink room from clinic
     """
 
+    tenant_facility_chain = "clinic__facility"
+    tenant_org_chain = "clinic__organization"
+
+    queryset = ClinicRoom.objects.select_related("room").all()
     serializer_class = ClinicRoomSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Filter rooms to the parent clinic."""
-        return ClinicRoom.objects.filter(clinic_id=self.kwargs["clinic_pk"]).select_related("room")
+        """Filter rooms to the parent clinic, scoped by facility."""
+        return super().get_queryset().filter(clinic_id=self.kwargs["clinic_pk"])
 
     def get_serializer_class(self):
         """Get appropriate serializer class."""

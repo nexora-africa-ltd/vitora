@@ -13,7 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.nutrition.models import DietPlan, NutritionConsultation
 from hmis.apps.nutrition.serializers import (
@@ -375,7 +375,7 @@ class DietPlanFilter(django_filters.FilterSet):
             ).exclude(models.Q(end_date__gte=today) | models.Q(end_date__isnull=True))
 
 
-class DietPlanViewSet(viewsets.ModelViewSet):
+class DietPlanViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing diet plans.
 
@@ -383,6 +383,9 @@ class DietPlanViewSet(viewsets.ModelViewSet):
     - Activating plans
     - Discontinuing plans
     """
+
+    tenant_facility_chain = "consultation__facility"
+    tenant_org_chain = "consultation__organization"
 
     queryset = DietPlan.objects.select_related(
         "patient",

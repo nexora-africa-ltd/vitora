@@ -28,6 +28,7 @@ from rest_framework.response import Response
 from hmis.apps.billing.filters import CreditNoteFilter, InvoiceFilter, PaymentFilter
 from hmis.apps.billing.models import (
     CreditNote,
+    FacilityBillingConfig,
     Invoice,
     InvoiceItem,
     Payment,
@@ -435,7 +436,13 @@ class PaymentViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 
 
 class PaymentPointViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing payment points (cashier/till/bank accounts)."""
+    """ViewSet for managing payment points (cashier/till/bank accounts).
+
+    TODO: Model lacks facility/organization FK — needs migration for proper tenant scoping.
+    PaymentPoints are physically tied to facilities but the model has no
+    facility/organization foreign key. A migration should be added to scope
+    payment points per facility or organization.
+    """
 
     queryset = PaymentPoint.objects.select_related("created_by").all()
     serializer_class = PaymentPointSerializer
@@ -1225,7 +1232,7 @@ class ReportViewSet(viewsets.ViewSet):
 # ============================================================================
 
 
-class FacilityBillingConfigViewSet(viewsets.ModelViewSet):
+class FacilityBillingConfigViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for per-facility billing configuration.
 
@@ -1238,22 +1245,13 @@ class FacilityBillingConfigViewSet(viewsets.ModelViewSet):
     - Create/update/delete: requires billing admin permissions
     """
 
+    tenant_facility_chain = ""
+    tenant_org_chain = "facility__organization"
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["facility", "sha_accreditation_status", "default_payment_type"]
     search_fields = ["facility__name", "facility__mfl_code", "sha_contract_number"]
-
-    def get_queryset(self):
-        from hmis.apps.billing.models import FacilityBillingConfig
-
-        qs = FacilityBillingConfig.objects.select_related("facility").all()
-
-        # Organization-level scoping
-        org = getattr(self.request, "organization", None)
-        if org:
-            qs = qs.filter(facility__organization=org)
-
-        return qs
+    queryset = FacilityBillingConfig.objects.select_related("facility").all()
 
     def get_serializer_class(self):
         from hmis.apps.billing.serializers import (

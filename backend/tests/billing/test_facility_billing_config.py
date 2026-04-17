@@ -26,13 +26,9 @@ from hmis.apps.core.models import County, Facility, Organization, SubCounty
 
 
 @pytest.fixture
-def org(db):
-    """Organization for testing."""
-    return Organization.objects.create(
-        name="Test Health Group",
-        slug="test-health-group",
-        contact_email="admin@test.co.ke",
-    )
+def org(db, sample_organization):
+    """Re-use the sample_organization from conftest so authenticated_client can see data."""
+    return sample_organization
 
 
 @pytest.fixture

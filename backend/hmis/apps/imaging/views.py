@@ -670,7 +670,7 @@ class ImagingOrderViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
 # ============================================================================
 
 
-class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
+class DICOMStudyViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for DICOM studies.
 
@@ -694,6 +694,8 @@ class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     lookup_field = "study_instance_uid"
     lookup_value_regex = r"[\d.]+"  # DICOM UIDs contain digits and dots
+    tenant_facility_chain = "imaging_order__encounter__facility"
+    tenant_org_chain = "imaging_order__encounter__organization"
 
     def get_serializer_class(self):
         if self.action == "retrieve":

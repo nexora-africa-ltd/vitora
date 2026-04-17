@@ -1276,7 +1276,12 @@ class TestClinicEnrollmentSerializerComputedFields:
         assert response.data["clinic_specific_summary"]["type"] == "CCC"
 
     def test_anc_enrollment_serializer_fields(
-        self, authenticated_client, sample_patient, clinic_doctor_user
+        self,
+        authenticated_client,
+        sample_patient,
+        clinic_doctor_user,
+        sample_facility,
+        sample_organization,
     ):
         """ANC enrollment serializer should include ANC computed fields."""
         from hmis.apps.clinics.models import Clinic, ClinicEnrollment
@@ -1285,6 +1290,8 @@ class TestClinicEnrollmentSerializerComputedFields:
             name="ANC Test Clinic",
             clinic_type="ANC",
             code="ANC-TEST-SER",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         lmp_date = date.today() - timedelta(days=140)  # 20 weeks
@@ -1314,7 +1321,12 @@ class TestClinicEnrollmentSerializerComputedFields:
         assert response.data["clinic_specific_summary"]["type"] == "ANC"
 
     def test_diabetic_enrollment_serializer_fields(
-        self, authenticated_client, sample_patient, clinic_doctor_user
+        self,
+        authenticated_client,
+        sample_patient,
+        clinic_doctor_user,
+        sample_facility,
+        sample_organization,
     ):
         """Diabetic enrollment serializer should include diabetic computed fields."""
 
@@ -1324,6 +1336,8 @@ class TestClinicEnrollmentSerializerComputedFields:
             name="Diabetic Test Clinic",
             clinic_type="DIABETIC",
             code="DM-TEST-SER",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         enrollment = ClinicEnrollment.objects.create(
@@ -1373,7 +1387,12 @@ class TestClinicEnrollmentSerializerComputedFields:
         assert response.data["days_overdue"] == 65
 
     def test_create_anc_enrollment_auto_calculates_edd(
-        self, authenticated_client, sample_patient, clinic_doctor_user
+        self,
+        authenticated_client,
+        sample_patient,
+        clinic_doctor_user,
+        sample_facility,
+        sample_organization,
     ):
         """Creating ANC enrollment with LMP should auto-calculate EDD."""
         from hmis.apps.clinics.models import Clinic
@@ -1382,6 +1401,8 @@ class TestClinicEnrollmentSerializerComputedFields:
             name="ANC Auto EDD Test",
             clinic_type="ANC",
             code="ANC-AUTO-EDD",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         lmp_date = date.today() - timedelta(days=100)

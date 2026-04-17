@@ -74,7 +74,7 @@ def facility_data(facility_county, facility_sub_county):
 
 
 @pytest.fixture
-def sample_facility(db, facility_county, facility_sub_county, facility_ward):
+def sample_facility(db, facility_county, facility_sub_county, facility_ward, sample_organization):
     """Create and return a persisted Facility instance for read / update tests."""
     from hmis.apps.core.models import Facility
 
@@ -86,6 +86,7 @@ def sample_facility(db, facility_county, facility_sub_county, facility_ward):
         county=facility_county,
         sub_county=facility_sub_county,
         ward=facility_ward,
+        organization=sample_organization,
         sha_contracted=True,
         sha_facility_code="SHA-99999",
         has_outpatient=True,

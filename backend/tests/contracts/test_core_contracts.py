@@ -422,6 +422,12 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "admin_password",
                 "confirm_password",
                 "org_name",
+                "facility_name",
+                "facility_mfl_code",
+                "facility_county",
+                "facility_sub_county",
+                "facility_level",
+                "facility_ownership",
             }
         ),
     ),

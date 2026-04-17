@@ -6,7 +6,7 @@ Sprint 1.5-1.6 Track E: Triage Module MVP - Phase 5
 
 import logging
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
@@ -701,12 +701,15 @@ class VitalThresholdsViewSet(viewsets.ModelViewSet):
         return Response(TriageVitalThresholdSerializer(thresholds, many=True).data)
 
 
-class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
+class TriageQueueViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for triage queue.
 
     Provides queue display and management actions.
     """
+
+    tenant_facility_chain = "triage_assessment__facility"
+    tenant_org_chain = "triage_assessment__organization"
 
     queryset = TriageQueue.objects.all().select_related(
         "triage_assessment__encounter__patient", "triage_assessment__triaged_by", "called_by"
@@ -723,12 +726,10 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
         return permissions
 
     def get_queryset(self):
-        """Return active queue entries sorted by priority."""
-        # Start with base queryset
-        queryset = TriageQueue.objects.exclude(
-            status__in=["COMPLETED", "LEFT_WITHOUT_BEING_SEEN"]
-        ).select_related(
-            "triage_assessment__encounter__patient", "triage_assessment__triaged_by", "called_by"
+        """Return active queue entries sorted by priority, scoped by facility."""
+        # Start from tenant-scoped base queryset
+        queryset = (
+            super().get_queryset().exclude(status__in=["COMPLETED", "LEFT_WITHOUT_BEING_SEEN"])
         )
 
         # Filter by area if provided
@@ -1367,12 +1368,40 @@ class ERBedViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     ordering = ["zone", "bed_number"]
 
     def get_queryset(self):
-        """Return ER beds with related patient/assessment data."""
-        return ERBed.objects.select_related(
+        """Return ER beds with related patient/assessment data.
+
+        NOTE: ERBed has no direct facility FK (model design gap).
+        Occupied beds are scoped via current_triage_assessment__facility.
+        Unoccupied beds (AVAILABLE, CLEANING, OUT_OF_SERVICE) cannot be
+        scoped by facility and are included for all users with facility context.
+        """
+        qs = ERBed.objects.select_related(
             "current_patient",
             "current_triage_assessment",
             "status_changed_by",
         ).all()
+
+        user = self.request.user
+        if user.is_superuser:
+            return qs
+
+        # Resolve facility context
+        facility = getattr(self.request, "facility", None)
+        if not facility:
+            profile = getattr(user, "staff_profile", None)
+            if profile and profile.primary_facility_id:
+                facility_id = profile.primary_facility_id
+            else:
+                return qs.none()
+        else:
+            facility_id = facility.pk
+
+        # Include beds occupied by patients at this facility,
+        # plus unoccupied beds (no triage assessment to scope by)
+        return qs.filter(
+            Q(current_triage_assessment__facility_id=facility_id)
+            | Q(current_triage_assessment__isnull=True)
+        )
 
     def get_serializer_class(self):
         """Return appropriate serializer for each action."""
@@ -1680,12 +1709,15 @@ def _broadcast_escalation(escalation: Escalation) -> None:
         logger.exception("Failed to broadcast escalation event")
 
 
-class WaitTimeBreachViewSet(viewsets.ReadOnlyModelViewSet):
+class WaitTimeBreachViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for wait time breach alerts.
 
     Read-only listing with acknowledge and resolve actions.
     """
+
+    tenant_facility_chain = "triage_assessment__facility"
+    tenant_org_chain = "triage_assessment__organization"
 
     queryset = WaitTimeBreach.objects.all().select_related(
         "queue_entry", "triage_assessment", "patient", "acknowledged_by"
@@ -1757,12 +1789,15 @@ class WaitTimeBreachViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
 
-class EscalationViewSet(viewsets.ReadOnlyModelViewSet):
+class EscalationViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for escalation records.
 
     Read-only listing with resolve and dismiss actions.
     """
+
+    tenant_facility_chain = "triage_assessment__facility"
+    tenant_org_chain = "triage_assessment__organization"
 
     queryset = Escalation.objects.all().select_related(
         "queue_entry",

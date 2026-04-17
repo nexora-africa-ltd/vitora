@@ -73,11 +73,12 @@ def gbv_referral(
 
 
 @pytest.fixture
-def sw_case(db, sample_patient, test_user):
+def sw_case(db, sample_patient, test_user, sw_referral):
     """Create a sample social work case."""
     return SocialWorkCase.objects.create(
         patient=sample_patient,
         assigned_worker=test_user,
+        referral=sw_referral,
         case_type="FINANCIAL",
         title="Financial assistance case",
         presenting_problem="Patient unable to afford medication",
@@ -89,11 +90,12 @@ def sw_case(db, sample_patient, test_user):
 
 
 @pytest.fixture
-def gbv_case(db, sample_patient, test_user):
+def gbv_case(db, sample_patient, test_user, gbv_referral):
     """Create a GBV (sensitive) case."""
     return SocialWorkCase.objects.create(
         patient=sample_patient,
         assigned_worker=test_user,
+        referral=gbv_referral,
         case_type="GBV",
         title="GBV support case",
         presenting_problem="Domestic violence situation",

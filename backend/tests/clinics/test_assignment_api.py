@@ -165,7 +165,7 @@ class TestAssignmentDecisionAPI:
     """Tests for AssignmentDecision API endpoints (read-only)."""
 
     @pytest.fixture
-    def sample_decision(self, db, test_user, sample_patient):
+    def sample_decision(self, db, test_user, sample_patient, sample_facility):
         """Create a sample decision for testing."""
         from hmis.apps.scheduling.models import AssignmentDecision, AssignmentRule, Resource
 
@@ -173,12 +173,16 @@ class TestAssignmentDecisionAPI:
             name="Dr. Decision Test",
             resource_type="PERSON",
             code="DOC-DEC-001",
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
         rule = AssignmentRule.objects.create(
             name="Decision Test Rule",
             rule_code="decision_test_rule",
             applies_to="APPOINTMENT",
             rule_definition={"version": "1.0"},
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
 
         return AssignmentDecision.objects.create(
@@ -240,7 +244,7 @@ class TestAssignmentOverrideAPI:
     """Tests for AssignmentOverride API endpoints."""
 
     @pytest.fixture
-    def sample_resources(self, db):
+    def sample_resources(self, db, sample_facility):
         """Create sample resources."""
         from hmis.apps.scheduling.models import Resource
 
@@ -249,11 +253,15 @@ class TestAssignmentOverrideAPI:
                 name="Original Doctor",
                 resource_type="PERSON",
                 code="DOC-ORIG-001",
+                facility=sample_facility,
+                organization=sample_facility.organization,
             ),
             "new": Resource.objects.create(
                 name="New Doctor",
                 resource_type="PERSON",
                 code="DOC-NEW-001",
+                facility=sample_facility,
+                organization=sample_facility.organization,
             ),
         }
 
@@ -311,10 +319,13 @@ class TestAssignmentOverrideAPI:
         assert len(response.data["results"]) >= 1
 
     def test_approve_override(
-        self, authenticated_client, sample_resources, test_user, another_user
+        self, authenticated_client, sample_resources, test_user, another_user, sample_facility
     ):
         """Should approve a pending override."""
         from hmis.apps.scheduling.models import AssignmentOverride
+        from tests.conftest import ensure_staff_profile
+
+        ensure_staff_profile(another_user, sample_facility.organization, sample_facility)
 
         override = AssignmentOverride.objects.create(
             target_type="Appointment",
@@ -338,9 +349,14 @@ class TestAssignmentOverrideAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["approval_status"] == "APPROVED"
 
-    def test_reject_override(self, authenticated_client, sample_resources, test_user, another_user):
+    def test_reject_override(
+        self, authenticated_client, sample_resources, test_user, another_user, sample_facility
+    ):
         """Should reject a pending override."""
         from hmis.apps.scheduling.models import AssignmentOverride
+        from tests.conftest import ensure_staff_profile
+
+        ensure_staff_profile(another_user, sample_facility.organization, sample_facility)
 
         override = AssignmentOverride.objects.create(
             target_type="Appointment",

@@ -88,6 +88,8 @@ def admission_with_critical_violation(
         daily_rate=Decimal("500.00"),
         is_active=True,
         isolation_capable=False,
+        facility=sample_facility,
+        organization=sample_facility.organization,
     )
 
     # Use the first auto-generated bed and mark it as OCCUPIED
@@ -117,6 +119,8 @@ def admission_with_critical_violation(
         ward=non_iso_ward,
         bed=bed,
         payer_type="CASH",
+        facility=sample_facility,
+        organization=sample_facility.organization,
         constraint_override=True,
         constraint_override_reason="Emergency - no isolation beds available",
         constraint_violations=[
@@ -163,6 +167,8 @@ def admission_with_warning_violation(
         daily_rate=Decimal("500.00"),
         is_active=True,
         gender_restriction="MALE_ONLY",
+        facility=sample_facility,
+        organization=sample_organization,
     )
 
     bed = Bed.objects.create(ward=male_ward, bed_number="MB-001", status="AVAILABLE")
@@ -189,6 +195,8 @@ def admission_with_warning_violation(
         ward=male_ward,
         bed=bed,
         payer_type="CASH",
+        facility=sample_facility,
+        organization=sample_organization,
         constraint_override=True,
         constraint_override_reason="No female beds available",
         constraint_violations=[

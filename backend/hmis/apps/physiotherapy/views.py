@@ -13,7 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.physiotherapy.models import (
     PhysiotherapyOrder,
@@ -411,7 +411,7 @@ class PhysiotherapySessionFilter(django_filters.FilterSet):
         fields = ["order", "therapist", "status", "is_billed"]
 
 
-class PhysiotherapySessionViewSet(viewsets.ModelViewSet):
+class PhysiotherapySessionViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing physiotherapy sessions.
 
@@ -420,6 +420,9 @@ class PhysiotherapySessionViewSet(viewsets.ModelViewSet):
     - Completing a session
     - Viewing today's schedule
     """
+
+    tenant_facility_chain = "order__facility"
+    tenant_org_chain = "order__organization"
 
     queryset = PhysiotherapySession.objects.select_related(
         "order",

@@ -19,6 +19,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import NestedTenantScopeMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.patients.models import Patient
@@ -445,7 +446,7 @@ class PatientCheckinView(views.APIView):
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 
-class TodayCheckinsViewSet(viewsets.ReadOnlyModelViewSet):
+class TodayCheckinsViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     API endpoint for today's check-ins.
 
@@ -455,6 +456,15 @@ class TodayCheckinsViewSet(viewsets.ReadOnlyModelViewSet):
     Supports filtering by destination and status.
     """
 
+    # NOTE: CheckIn.encounter is nullable; check-ins without an encounter
+    # will be excluded by the facility JOIN filter. In practice, the check-in
+    # process always creates an encounter, so this is a safe constraint.
+    tenant_facility_chain = "encounter__facility"
+    tenant_org_chain = "encounter__organization"
+
+    queryset = CheckIn.objects.select_related(
+        "patient", "destination_clinic", "checked_in_by", "encounter"
+    ).all()
     permission_classes = [IsAuthenticated]
     serializer_class = TodayCheckinSerializer
     pagination_class = CheckinPagination
@@ -464,8 +474,11 @@ class TodayCheckinsViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ["-checked_in_at"]
 
     def get_queryset(self):
-        """Get today's check-ins with optional filtering."""
-        queryset = CheckIn.get_today_checkins()
+        """Get today's check-ins, scoped by facility, with optional filtering."""
+        from django.utils import timezone
+
+        today = timezone.localdate()
+        queryset = super().get_queryset().filter(checked_in_at__date=today)
 
         # Filter by destination clinic
         destination_clinic = self.request.query_params.get("destination_clinic")
