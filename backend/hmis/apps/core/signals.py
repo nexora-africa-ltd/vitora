@@ -5,11 +5,15 @@ These signals handle automatic audit logging when certain events occur.
 Publishes domain events for cross-cutting observability.
 """
 
+import logging
+
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import ClinicalEvents, CoreEvents, OrganizationEvents, publish_event
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(user_logged_in)
@@ -452,3 +456,18 @@ def publish_org_activation_event(sender, instance, created, **kwargs):
         },
         organization_id=instance.id,
     )
+
+    # Notify the org admin that their organization is now active.
+    if instance.is_active:
+        from hmis.apps.core.services.email_service import send_org_activated_email
+
+        try:
+            admin_profile = instance.staff_profiles.select_related("user").order_by("id").first()
+            if admin_profile and admin_profile.user.email:
+                send_org_activated_email(
+                    to_email=admin_profile.user.email,
+                    org_name=instance.name,
+                    admin_name=admin_profile.user.get_full_name() or admin_profile.user.username,
+                )
+        except Exception:
+            logger.exception("Failed to send org-activated email for org %s", instance.pk)
