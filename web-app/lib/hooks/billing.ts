@@ -236,6 +236,10 @@ export function useCreateInvoice() {
   return useOfflineMutation<InvoiceCreateData, Invoice>({
     table: 'billing_invoice',
     operation: 'create',
+    // Invoice creation MUST go through the API directly because:
+    // 1. The backend generates invoice_number
+    // 2. The caller redirects to the invoice detail page using the returned id
+    forceApi: true,
     buildLocalData: (data) => ({
       id: generateId(),
       invoice_number: '', // Assigned by backend after sync

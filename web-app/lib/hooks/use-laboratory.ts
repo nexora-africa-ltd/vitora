@@ -197,6 +197,10 @@ export function useCreateLabOrder() {
   return useOfflineMutation<LabOrderCreateData, LabOrder>({
     table: 'laboratory_laborder',
     operation: 'create',
+    // Lab order creation MUST go through the API directly because:
+    // 1. The backend generates order_number which is used as the primary identifier in URLs
+    // 2. onSuccess accesses result.patient, result.encounter, result.admission for cache invalidation
+    forceApi: true,
     buildLocalData: (data) => ({
       id: generateId(),
       order_number: '', // Assigned by backend after sync

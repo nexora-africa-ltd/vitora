@@ -331,6 +331,10 @@ export function useCreateTriageAssessment() {
   return useOfflineMutation<TriageAssessmentCreateData, TriageAssessment>({
     table: 'triage_triageassessment',
     operation: 'create',
+    // Triage creation MUST go through the API directly because:
+    // 1. Callers immediately use result.id for completeAssessment and routing
+    // 2. The backend runs auto-calculation logic for triage category
+    forceApi: true,
     buildLocalData: (data) => ({
       id: generateId(),
       encounter_id: String(data.encounter),
@@ -410,14 +414,16 @@ export function useUpdateTriageAssessment() {
     mutationFn: ({ id, data }) => {
       return apiClient.patch<TriageAssessment>(`/api/triage/assessments/${id}/`, data).then(r => r.data);
     },
-    onSuccess: (result) => {
+    onSuccess: (result, input) => {
       const data = result as TriageAssessment | null;
       if (data && data.id) {
         queryClient.invalidateQueries({ queryKey: triageKeys.assessment(data.id) });
       }
       queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
-      if (data && data.encounter) {
-        queryClient.invalidateQueries({ queryKey: ['encounters', data.encounter] });
+      // Use result.encounter if available, otherwise fall back to input for local writes
+      const encounterId = data?.encounter ?? input.id;
+      if (encounterId) {
+        queryClient.invalidateQueries({ queryKey: ['encounters', encounterId] });
       }
     },
   });
