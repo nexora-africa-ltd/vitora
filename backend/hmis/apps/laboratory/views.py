@@ -1203,6 +1203,11 @@ class InstrumentViewSet(viewsets.ModelViewSet):
     ViewSet for laboratory instruments.
 
     Provides CRUD operations for managing lab analyzers and instruments.
+
+    TODO: Model lacks facility FK — needs migration for proper tenant scoping.
+    Instruments are physically located at facilities but the model has no
+    facility/organization foreign key. A migration should be added to scope
+    instruments per facility.
     """
 
     queryset = Instrument.objects.all()
@@ -1237,7 +1242,7 @@ class AnalyzerRunFilter(filters.FilterSet):
         }
 
 
-class AnalyzerRunViewSet(viewsets.ModelViewSet):
+class AnalyzerRunViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for analyzer runs.
 
@@ -1248,6 +1253,8 @@ class AnalyzerRunViewSet(viewsets.ModelViewSet):
     queryset = AnalyzerRun.objects.select_related("specimen", "instrument", "operator").all()
     permission_classes = [IsAuthenticated]
     filterset_class = AnalyzerRunFilter
+    tenant_facility_chain = "specimen__lab_order__facility"
+    tenant_org_chain = "specimen__lab_order__organization"
 
     def get_serializer_class(self):
         if self.action in ["create"]:
@@ -1303,7 +1310,7 @@ class DiagnosticReportFilter(filters.FilterSet):
         }
 
 
-class DiagnosticReportViewSet(viewsets.ModelViewSet):
+class DiagnosticReportViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for diagnostic reports (Phase L4).
 
@@ -1319,6 +1326,8 @@ class DiagnosticReportViewSet(viewsets.ModelViewSet):
     ).all()
     permission_classes = [IsAuthenticated]
     filterset_class = DiagnosticReportFilter
+    tenant_facility_chain = "lab_order__facility"
+    tenant_org_chain = "lab_order__organization"
 
     def get_serializer_class(self):
         if self.action == "create":

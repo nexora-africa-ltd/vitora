@@ -695,6 +695,49 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
 
     permission_classes = [IsAuthenticated]
 
+    def _resolve_tenant_context(self):
+        """Resolve facility/org from request (same logic as NestedTenantScopeMixin)."""
+        request = self.request
+        if getattr(request, "facility", None) or getattr(request, "organization", None):
+            return
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return
+        from hmis.apps.core.models import Facility
+
+        facility_id = request.META.get("HTTP_X_FACILITY_ID")
+        if facility_id:
+            try:
+                facility = Facility.objects.select_related("organization").get(
+                    pk=int(facility_id), is_active=True
+                )
+                request.facility = facility
+                request.organization = facility.organization
+                return
+            except (Facility.DoesNotExist, ValueError, TypeError):
+                pass
+        profile = getattr(user, "staff_profile", None)
+        if profile and profile.primary_facility_id:
+            try:
+                facility = Facility.objects.select_related("organization").get(
+                    pk=profile.primary_facility_id, is_active=True
+                )
+                request.facility = facility
+                request.organization = facility.organization
+            except Facility.DoesNotExist:
+                pass
+
+    def _tenant_admission_filter(self) -> dict:
+        """Return filter kwargs to scope Admission queries to the current tenant."""
+        self._resolve_tenant_context()
+        facility = getattr(self.request, "facility", None)
+        org = getattr(self.request, "organization", None)
+        if facility:
+            return {"facility": facility}
+        if org:
+            return {"organization": org}
+        return {}
+
     @extend_schema(
         summary="List supervisor critical violation alerts",
         description=(
@@ -749,6 +792,7 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
         # Get admissions with CRITICAL violations
         admissions_qs = (
             Admission.objects.filter(
+                **self._tenant_admission_filter(),
                 constraint_violations__isnull=False,
                 constraint_override=True,
             )
@@ -865,7 +909,7 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
             )
 
         try:
-            admission = Admission.objects.get(id=admission_id)
+            admission = Admission.objects.get(**self._tenant_admission_filter(), id=admission_id)
         except Admission.DoesNotExist:
             return Response(
                 {"detail": "Admission not found."},
@@ -963,10 +1007,14 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
         since_date = timezone.now() - timedelta(days=days)
 
         # Total admissions in period
-        total_admissions = Admission.objects.filter(created_at__gte=since_date).count()
+        tenant_filter = self._tenant_admission_filter()
+        total_admissions = Admission.objects.filter(
+            **tenant_filter, created_at__gte=since_date
+        ).count()
 
         # Admissions with constraint overrides
         override_qs = Admission.objects.filter(
+            **tenant_filter,
             created_at__gte=since_date,
             constraint_override=True,
         ).select_related("ward")
@@ -2048,7 +2096,7 @@ class DischargeViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         )
 
 
-class TransferViewSet(viewsets.ModelViewSet):
+class TransferViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for Transfer model.
 
@@ -2063,6 +2111,8 @@ class TransferViewSet(viewsets.ModelViewSet):
     - POST /api/inpatient/transfers/ - Create transfer
     """
 
+    tenant_facility_chain = "admission__facility"
+    tenant_org_chain = "admission__organization"
     queryset = Transfer.objects.select_related("admission", "admission__mch_registration")
     serializer_class = TransferSerializer
     permission_classes = [IsAuthenticated]
@@ -2097,7 +2147,7 @@ class TransferViewSet(viewsets.ModelViewSet):
         )
 
 
-class WardRoundViewSet(viewsets.ModelViewSet):
+class WardRoundViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for WardRound model.
 
@@ -2113,6 +2163,8 @@ class WardRoundViewSet(viewsets.ModelViewSet):
     - PATCH /api/inpatient/ward-rounds/{id}/ - Update ward round
     """
 
+    tenant_facility_chain = "admission__facility"
+    tenant_org_chain = "admission__organization"
     queryset = WardRound.objects.all()
     serializer_class = WardRoundSerializer
     permission_classes = [IsAuthenticated]
@@ -2153,7 +2205,7 @@ class WardRoundViewSet(viewsets.ModelViewSet):
         )
 
 
-class ReviewRequestViewSet(viewsets.ModelViewSet):
+class ReviewRequestViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for ReviewRequest model.
 
@@ -2169,6 +2221,8 @@ class ReviewRequestViewSet(viewsets.ModelViewSet):
     - POST /api/inpatient/review-requests/{id}/cancel/ - Cancel request
     """
 
+    tenant_facility_chain = "admission__facility"
+    tenant_org_chain = "admission__organization"
     queryset = ReviewRequest.objects.all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -2335,7 +2389,7 @@ class ReviewRequestViewSet(viewsets.ModelViewSet):
         return Response(ReviewRequestSerializer(review_request).data)
 
 
-class NursingKardexViewSet(viewsets.ModelViewSet):
+class NursingKardexViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for NursingKardex model.
 
@@ -2352,6 +2406,8 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
     - POST /api/inpatient/kardex/{id}/add-handover-note/ - Add handover note
     """
 
+    tenant_facility_chain = "admission__facility"
+    tenant_org_chain = "admission__organization"
     queryset = NursingKardex.objects.all()
     serializer_class = NursingKardexSerializer
     permission_classes = [IsAuthenticated]
@@ -2665,7 +2721,7 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
         return Response(result_serializer.data)
 
 
-class ShiftHandoverViewSet(viewsets.ModelViewSet):
+class ShiftHandoverViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for ShiftHandover model.
 
@@ -2682,6 +2738,8 @@ class ShiftHandoverViewSet(viewsets.ModelViewSet):
     - POST /api/inpatient/shift-handovers/{id}/auto-populate/ - Auto-populate counts
     """
 
+    tenant_facility_chain = "ward__facility"
+    tenant_org_chain = "ward__organization"
     queryset = ShiftHandover.objects.all()
     serializer_class = ShiftHandoverSerializer
     permission_classes = [IsAuthenticated]
@@ -2764,7 +2822,7 @@ class ShiftHandoverViewSet(viewsets.ModelViewSet):
 # =============================================================================
 
 
-class TemperatureReadingViewSet(viewsets.ModelViewSet):
+class TemperatureReadingViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for temperature chart readings.
 
@@ -2772,6 +2830,8 @@ class TemperatureReadingViewSet(viewsets.ModelViewSet):
     Supports filtering by admission.
     """
 
+    tenant_facility_chain = "admission__facility"
+    tenant_org_chain = "admission__organization"
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission"]
@@ -2812,9 +2872,11 @@ class TemperatureReadingViewSet(viewsets.ModelViewSet):
         )
 
 
-class FluidBalanceSheetViewSet(viewsets.ModelViewSet):
+class FluidBalanceSheetViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for daily fluid balance sheets."""
 
+    tenant_facility_chain = "admission__facility"
+    tenant_org_chain = "admission__organization"
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission", "chart_date"]
@@ -2854,9 +2916,11 @@ class FluidBalanceSheetViewSet(viewsets.ModelViewSet):
         )
 
 
-class FluidBalanceEntryViewSet(viewsets.ModelViewSet):
+class FluidBalanceEntryViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """ViewSet for categorized fluid balance entries."""
 
+    tenant_facility_chain = "fluid_balance_sheet__admission__facility"
+    tenant_org_chain = "fluid_balance_sheet__admission__organization"
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["fluid_balance_sheet", "entry_type"]
@@ -2900,7 +2964,7 @@ class FluidBalanceEntryViewSet(viewsets.ModelViewSet):
         )
 
 
-class BloodTransfusionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+class BloodTransfusionViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for blood transfusion observation charts.
 
@@ -2908,6 +2972,8 @@ class BloodTransfusionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     Supports filtering by admission.
     """
 
+    tenant_facility_chain = "admission__facility"
+    tenant_org_chain = "admission__organization"
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission", "status"]
@@ -3030,7 +3096,7 @@ class BloodTransfusionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
         return Response(BloodTransfusionSerializer(transfusion).data)
 
 
-class BPMonitoringViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+class BPMonitoringViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for blood pressure monitoring readings.
 
@@ -3038,6 +3104,8 @@ class BPMonitoringViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     Supports filtering by admission.
     """
 
+    tenant_facility_chain = "admission__facility"
+    tenant_org_chain = "admission__organization"
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission"]
@@ -3070,7 +3138,7 @@ class BPMonitoringViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
         )
 
 
-class MedicationAdministrationViewSet(viewsets.ModelViewSet):
+class MedicationAdministrationViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for Medication Administration Record (MAR) entries.
 
@@ -3078,6 +3146,8 @@ class MedicationAdministrationViewSet(viewsets.ModelViewSet):
     prescription items. Supports filtering by admission and status.
     """
 
+    tenant_facility_chain = "admission__facility"
+    tenant_org_chain = "admission__organization"
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["admission", "status", "prescription_item"]
@@ -3166,7 +3236,9 @@ class MedicationAdministrationViewSet(viewsets.ModelViewSet):
         return Response(MedicationAdministrationSerializer(refreshed).data)
 
 
-class AdverseTransfusionReactionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+class AdverseTransfusionReactionViewSet(
+    TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet
+):
     """
     ViewSet for Adverse Transfusion Reaction (ATR) reports.
 
@@ -3174,6 +3246,7 @@ class AdverseTransfusionReactionViewSet(ReadOnCreateMixin, viewsets.ModelViewSet
     Supports CRUD, lab investigation updates, PPB submission, and acknowledgment.
     """
 
+    tenant_scope = "facility"
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["status", "transfusion", "transfusion__admission"]

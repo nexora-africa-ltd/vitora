@@ -829,7 +829,7 @@ class AssignmentDecisionFilter(filters.FilterSet):
         fields = ["assignment_type", "target_type", "target_id", "decision_outcome"]
 
 
-class AssignmentDecisionViewSet(viewsets.ReadOnlyModelViewSet):
+class AssignmentDecisionViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for viewing assignment decisions (read-only).
 
@@ -842,6 +842,8 @@ class AssignmentDecisionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AssignmentDecisionSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = AssignmentDecisionFilter
+    tenant_facility_chain = "assigned_resource__facility"
+    tenant_org_chain = "assigned_resource__organization"
 
 
 class AssignmentOverrideFilter(filters.FilterSet):
@@ -859,7 +861,7 @@ class AssignmentOverrideFilter(filters.FilterSet):
         fields = ["target_type", "target_id", "override_reason", "approval_status"]
 
 
-class AssignmentOverrideViewSet(viewsets.ModelViewSet):
+class AssignmentOverrideViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing assignment overrides.
 
@@ -872,6 +874,8 @@ class AssignmentOverrideViewSet(viewsets.ModelViewSet):
     serializer_class = AssignmentOverrideSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = AssignmentOverrideFilter
+    tenant_facility_chain = "new_resource__facility"
+    tenant_org_chain = "new_resource__organization"
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):

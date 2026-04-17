@@ -19,7 +19,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.social_work.models import (
     CaseNote,
@@ -405,7 +405,7 @@ class SocialWorkCaseFilter(django_filters.FilterSet):
         return queryset
 
 
-class SocialWorkCaseViewSet(viewsets.ModelViewSet):
+class SocialWorkCaseViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing social work cases.
 
@@ -416,6 +416,9 @@ class SocialWorkCaseViewSet(viewsets.ModelViewSet):
 
     Sensitive cases (GBV, abuse) require special permission.
     """
+
+    tenant_facility_chain = "referral__facility"
+    tenant_org_chain = "referral__organization"
 
     queryset = SocialWorkCase.objects.select_related(
         "patient",
@@ -672,12 +675,15 @@ class CaseNoteFilter(django_filters.FilterSet):
         fields = ["case", "note_type", "author", "follow_up_required"]
 
 
-class CaseNoteViewSet(viewsets.ModelViewSet):
+class CaseNoteViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing case notes.
 
     Provides CRUD operations for progress notes on social work cases.
     """
+
+    tenant_facility_chain = "case__referral__facility"
+    tenant_org_chain = "case__referral__organization"
 
     queryset = CaseNote.objects.select_related("case", "author")
     permission_classes = [IsAuthenticated]
@@ -759,12 +765,15 @@ class SocialWorkInterventionFilter(django_filters.FilterSet):
         fields = ["case", "intervention_type", "status", "provided_by"]
 
 
-class SocialWorkInterventionViewSet(viewsets.ModelViewSet):
+class SocialWorkInterventionViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing social work interventions.
 
     Provides CRUD operations plus custom action for completing interventions.
     """
+
+    tenant_facility_chain = "case__referral__facility"
+    tenant_org_chain = "case__referral__organization"
 
     queryset = SocialWorkIntervention.objects.select_related("case", "provided_by")
     permission_classes = [IsAuthenticated]

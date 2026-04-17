@@ -15,7 +15,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.counselling.models import CounsellingReferral, CounsellingSession, CounsellingType
 from hmis.apps.counselling.serializers import (
@@ -536,7 +536,7 @@ class CounsellingSessionFilter(django_filters.FilterSet):
         ]
 
 
-class CounsellingSessionViewSet(viewsets.ModelViewSet):
+class CounsellingSessionViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing counselling sessions.
 
@@ -547,6 +547,9 @@ class CounsellingSessionViewSet(viewsets.ModelViewSet):
     - Recording no-shows
     - Rescheduling sessions
     """
+
+    tenant_facility_chain = "referral__facility"
+    tenant_org_chain = "referral__organization"
 
     queryset = CounsellingSession.objects.select_related(
         "referral",

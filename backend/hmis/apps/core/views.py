@@ -1592,9 +1592,9 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Organization (tenant) CRUD operations.
 
-    * All authenticated users can list and retrieve organizations.
-    * Only admin users can create, update, or delete organizations.
-    * The ``facilities`` action lists facilities belonging to an org.
+    * Non-superusers can only see their own organization.
+    * Superusers can list and manage all organizations.
+    * Only admin/superuser can create, update, or delete organizations.
     """
 
     queryset = Organization.objects.select_related("county", "sub_county").all()
@@ -1608,6 +1608,17 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         if self.action in ("create", "update", "partial_update", "destroy"):
             return [IsAdminUser()]
         return [IsAuthenticated()]
+
+    def get_queryset(self):
+        """Scope to the user's own organization unless superuser."""
+        qs = super().get_queryset()
+        user = self.request.user
+        if user.is_superuser:
+            return qs
+        profile = getattr(user, "staff_profile", None)
+        if profile and profile.organization_id:
+            return qs.filter(pk=profile.organization_id)
+        return qs.none()
 
     def get_serializer_class(self):
         """Return the appropriate serializer for the action."""
@@ -1691,7 +1702,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Optionally filter the queryset based on query parameters.
+        Scope facilities to the user's organization unless superuser.
 
         Supports filtering by:
         * ``level`` – KEPH facility level.
@@ -1703,6 +1714,14 @@ class FacilityViewSet(viewsets.ModelViewSet):
         """
         qs = super().get_queryset()
 
+        # --- Tenant scoping ---
+        user = self.request.user
+        if not user.is_superuser:
+            profile = getattr(user, "staff_profile", None)
+            if profile and profile.organization_id:
+                qs = qs.filter(organization_id=profile.organization_id)
+            else:
+                return qs.none()
         # Simple exact-match filters
         for param in ["level", "ownership", "county", "is_active", "sha_contracted"]:
             value = self.request.query_params.get(param)

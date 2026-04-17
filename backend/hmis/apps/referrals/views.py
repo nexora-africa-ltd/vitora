@@ -14,6 +14,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import NestedTenantScopeMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.referrals.models import ClinicalReferral
 from hmis.apps.referrals.serializers import (
@@ -55,7 +56,7 @@ class ClinicalReferralFilter(django_filters.FilterSet):
         ]
 
 
-class ClinicalReferralViewSet(viewsets.ModelViewSet):
+class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing clinical referrals.
 
@@ -66,6 +67,9 @@ class ClinicalReferralViewSet(viewsets.ModelViewSet):
     - Listing referrals by encounter
     - Pending referrals queue
     """
+
+    tenant_facility_chain = "encounter__facility"
+    tenant_org_chain = "encounter__organization"
 
     queryset = ClinicalReferral.objects.select_related(
         "patient",

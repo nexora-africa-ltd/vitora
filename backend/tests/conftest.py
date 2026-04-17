@@ -1156,7 +1156,15 @@ def sample_patient_checked_in_today(db, sample_county, sample_sub_county, test_u
 
 
 @pytest.fixture
-def sample_checkins_today(db, sample_county, sample_sub_county, test_user, sample_clinic):
+def sample_checkins_today(
+    db,
+    sample_county,
+    sample_sub_county,
+    test_user,
+    sample_clinic,
+    sample_facility,
+    sample_organization,
+):
     """Create multiple check-ins for today."""
     from datetime import timedelta
 
@@ -1186,6 +1194,8 @@ def sample_checkins_today(db, sample_county, sample_sub_county, test_user, sampl
             patient=patient,
             encounter_type="OPD",
             chief_complaint=f"Complaint {i}",
+            facility=sample_facility,
+            organization=sample_organization,
         )
 
         checkin = CheckIn.objects.create(

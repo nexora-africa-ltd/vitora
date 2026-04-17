@@ -22,6 +22,19 @@ from rest_framework import status
 User = get_user_model()
 
 
+@pytest.fixture
+def sample_nutrition_consultation(db, sample_patient, test_user, sample_facility):
+    """NutritionConsultation linked to sample_facility for tenant-scoped tests."""
+    from hmis.apps.nutrition.models import NutritionConsultation
+
+    return NutritionConsultation.objects.create(
+        patient=sample_patient,
+        dietitian=test_user,
+        referral_reason="GENERAL",
+        facility=sample_facility,
+    )
+
+
 # ============================================================================
 # NutritionConsultation Model Tests (10 tests)
 # ============================================================================
@@ -474,12 +487,15 @@ class TestDietPlanAPI:
         assert response.data["plan_number"].startswith("DIET-")
         assert response.data["name"] == "Test Diet Plan"
 
-    def test_activate_diet_plan(self, authenticated_client, sample_patient, test_user):
+    def test_activate_diet_plan(
+        self, authenticated_client, sample_patient, test_user, sample_nutrition_consultation
+    ):
         """Should activate a diet plan."""
         from hmis.apps.nutrition.models import DietPlan
 
         plan = DietPlan.objects.create(
             patient=sample_patient,
+            consultation=sample_nutrition_consultation,
             name="Draft Plan",
             plan_type="WEIGHT_LOSS",
             status="DRAFT",
@@ -490,12 +506,15 @@ class TestDietPlanAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "ACTIVE"
 
-    def test_discontinue_diet_plan(self, authenticated_client, sample_patient, test_user):
+    def test_discontinue_diet_plan(
+        self, authenticated_client, sample_patient, test_user, sample_nutrition_consultation
+    ):
         """Should discontinue a diet plan with reason."""
         from hmis.apps.nutrition.models import DietPlan
 
         plan = DietPlan.objects.create(
             patient=sample_patient,
+            consultation=sample_nutrition_consultation,
             name="Active Plan",
             plan_type="RENAL",
             status="ACTIVE",
@@ -510,12 +529,15 @@ class TestDietPlanAPI:
         assert response.data["status"] == "DISCONTINUED"
         assert "Patient requested" in response.data["discontinuation_reason"]
 
-    def test_discontinue_requires_reason(self, authenticated_client, sample_patient, test_user):
+    def test_discontinue_requires_reason(
+        self, authenticated_client, sample_patient, test_user, sample_nutrition_consultation
+    ):
         """Should require reason when discontinuing."""
         from hmis.apps.nutrition.models import DietPlan
 
         plan = DietPlan.objects.create(
             patient=sample_patient,
+            consultation=sample_nutrition_consultation,
             name="Active Plan",
             plan_type="CARDIAC",
             status="ACTIVE",
