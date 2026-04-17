@@ -9,7 +9,7 @@ from django.contrib.auth.signals import user_logged_in, user_logged_out, user_lo
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-from hmis.apps.core.events import ClinicalEvents, CoreEvents, publish_event
+from hmis.apps.core.events import ClinicalEvents, CoreEvents, OrganizationEvents, publish_event
 
 
 @receiver(user_logged_in)
@@ -405,3 +405,50 @@ def auto_supervisor_role(sender, instance, created, **kwargs):
     supervisor_role = Role.objects.filter(code="SUPERVISOR", is_active=True).first()
     if supervisor_role and supervisor_profile.primary_role_id != supervisor_role.pk:
         supervisor_profile.secondary_roles.add(supervisor_role)
+
+
+# ---------------------------------------------------------------------------
+# Organization lifecycle events (activation / deactivation)
+# ---------------------------------------------------------------------------
+
+
+@receiver(pre_save, sender="core.Organization")
+def stash_org_active_flag(sender, instance, **kwargs):
+    """Stash the old is_active value so post_save can detect activation changes."""
+    if instance.pk:
+        try:
+            old = sender.objects.only("is_active").get(pk=instance.pk)
+            instance._old_is_active = old.is_active
+        except sender.DoesNotExist:
+            instance._old_is_active = None
+    else:
+        instance._old_is_active = None
+
+
+@receiver(post_save, sender="core.Organization")
+def publish_org_activation_event(sender, instance, created, **kwargs):
+    """Publish ACTIVATED / DEACTIVATED event when Organization.is_active changes."""
+    if created:
+        return  # signup event is published explicitly in auth_views
+
+    old_active = getattr(instance, "_old_is_active", None)
+    if old_active is None or old_active == instance.is_active:
+        return  # no change
+
+    event_type = (
+        OrganizationEvents.ORG_ACTIVATED
+        if instance.is_active
+        else OrganizationEvents.ORG_DEACTIVATED
+    )
+    publish_event(
+        event_type=event_type,
+        aggregate_type="Organization",
+        aggregate_id=instance.id,
+        payload={
+            "org_name": instance.name,
+            "slug": instance.slug,
+            "is_active": instance.is_active,
+            "is_verified": instance.is_verified,
+        },
+        organization_id=instance.id,
+    )

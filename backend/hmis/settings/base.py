@@ -657,6 +657,7 @@ LOINC_DATA_PATH = "data/loinc_common.csv"
 
 # Email configuration
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@vitora.digital")
+ADMIN_NOTIFICATION_EMAIL = os.getenv("ADMIN_NOTIFICATION_EMAIL", "admin@vitora.digital")
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For development
 
 # Resend API key — when set, email_service.py uses the Resend SDK

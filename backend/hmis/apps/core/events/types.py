@@ -107,6 +107,15 @@ class CoreEvents:
     PATIENT_UPDATED = "core.patient.updated"
 
 
+class OrganizationEvents:
+    """Organization lifecycle domain event types."""
+
+    ORG_SIGNUP = "core.organization.signup"
+    ORG_EMAIL_VERIFIED = "core.organization.email_verified"
+    ORG_ACTIVATED = "core.organization.activated"
+    ORG_DEACTIVATED = "core.organization.deactivated"
+
+
 class AIEvents:
     """AI/TibaBot domain event types."""
 
