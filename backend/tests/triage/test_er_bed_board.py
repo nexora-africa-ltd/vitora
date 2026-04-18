@@ -18,17 +18,18 @@ from hmis.apps.triage.models import ERBed, TriageAssessment
 
 
 @pytest.fixture
-def er_bed(db):
+def er_bed(db, sample_facility):
     """Create a single available ER bed."""
     return ERBed.objects.create(
         zone="ER_RESUS",
         bed_number="R-01",
         status="AVAILABLE",
+        facility=sample_facility,
     )
 
 
 @pytest.fixture
-def er_beds(db):
+def er_beds(db, sample_facility):
     """Create a set of ER beds across zones."""
     beds = []
     zone_configs = [
@@ -38,7 +39,14 @@ def er_beds(db):
     ]
     for zone, numbers in zone_configs:
         for num in numbers:
-            beds.append(ERBed.objects.create(zone=zone, bed_number=num, status="AVAILABLE"))
+            beds.append(
+                ERBed.objects.create(
+                    zone=zone,
+                    bed_number=num,
+                    status="AVAILABLE",
+                    facility=sample_facility,
+                )
+            )
     return beds
 
 
@@ -88,11 +96,15 @@ class TestERBedModel:
         assert "R-01" in str(er_bed)
 
     def test_unique_together_zone_bed_number(self, er_bed):
-        """Should enforce uniqueness of zone + bed_number."""
+        """Should enforce uniqueness of facility + zone + bed_number."""
         from django.db import IntegrityError
 
         with pytest.raises(IntegrityError):
-            ERBed.objects.create(zone="ER_RESUS", bed_number="R-01")
+            ERBed.objects.create(
+                zone="ER_RESUS",
+                bed_number="R-01",
+                facility=er_bed.facility,
+            )
 
     def test_assign_patient(self, er_bed, sample_patient, test_user):
         """Should assign a patient and transition to OCCUPIED."""

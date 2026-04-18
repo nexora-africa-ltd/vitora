@@ -15,6 +15,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from hmis.apps.core.mixins import FacilityScopedModel
+
 if TYPE_CHECKING:
     from hmis.apps.clinics.models import ClinicVisit
 
@@ -1302,7 +1304,7 @@ class TriageQueue(models.Model):
         self.save(update_fields=["status", "notes"])
 
 
-class ERBed(models.Model):
+class ERBed(FacilityScopedModel):
     """
     Emergency Room bed/bay.
 
@@ -1382,7 +1384,7 @@ class ERBed(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ["zone", "bed_number"]
+        unique_together = ["facility", "zone", "bed_number"]
         ordering = ["zone", "bed_number"]
         verbose_name = "ER Bed"
         verbose_name_plural = "ER Beds"

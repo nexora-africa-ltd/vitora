@@ -1279,6 +1279,28 @@ class ERBedCreateSerializer(serializers.ModelSerializer):
         model = ERBed
         fields = ["zone", "bed_number", "status", "notes"]
 
+    def validate(self, attrs):
+        # facility is set by TenantScopedViewMixin in perform_create(),
+        # so we must check uniqueness manually here.
+        request = self.context.get("request")
+        if request:
+            from hmis.apps.core.mixins import resolve_request_tenant
+
+            resolve_request_tenant(request)
+            facility = getattr(request, "facility", None)
+            if (
+                facility
+                and ERBed.objects.filter(
+                    facility=facility,
+                    zone=attrs.get("zone"),
+                    bed_number=attrs.get("bed_number"),
+                ).exists()
+            ):
+                raise serializers.ValidationError(
+                    "A bed with this zone and bed number already exists at this facility."
+                )
+        return attrs
+
 
 class ERBedAssignPatientSerializer(serializers.Serializer):
     """Serializer for assigning a patient to an ER bed."""

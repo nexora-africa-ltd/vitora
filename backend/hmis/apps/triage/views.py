@@ -496,7 +496,7 @@ class WaitingQueueViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         self._resolve_tenant_context()
         from datetime import date as date_cls
 
-        from django.db.models import Count, Q
+        from django.db.models import Count
 
         from hmis.apps.scheduling.models import Resource, Shift
 
@@ -1353,7 +1353,7 @@ class VolumeReportView(APIView):
 # =============================================================================
 
 
-class ERBedViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
+class ERBedViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
     """
     ER Bed management for the bed board.
 
@@ -1361,46 +1361,21 @@ class ERBedViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
     assigning/releasing patients and updating bed status.
     """
 
+    queryset = ERBed.objects.all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["zone", "status"]
     ordering_fields = ["zone", "bed_number", "status_changed_at"]
     ordering = ["zone", "bed_number"]
+    tenant_scope = "facility"
 
     def get_queryset(self):
-        """Return ER beds with related patient/assessment data.
-
-        NOTE: ERBed has no direct facility FK (model design gap).
-        Occupied beds are scoped via current_triage_assessment__facility.
-        Unoccupied beds (AVAILABLE, CLEANING, OUT_OF_SERVICE) cannot be
-        scoped by facility and are included for all users with facility context.
-        """
-        qs = ERBed.objects.select_related(
+        """Return ER beds scoped to the current facility."""
+        qs = super().get_queryset()
+        return qs.select_related(
             "current_patient",
             "current_triage_assessment",
             "status_changed_by",
-        ).all()
-
-        user = self.request.user
-        if user.is_superuser:
-            return qs
-
-        # Resolve facility context
-        facility = getattr(self.request, "facility", None)
-        if not facility:
-            profile = getattr(user, "staff_profile", None)
-            if profile and profile.primary_facility_id:
-                facility_id = profile.primary_facility_id
-            else:
-                return qs.none()
-        else:
-            facility_id = facility.pk
-
-        # Include beds occupied by patients at this facility,
-        # plus unoccupied beds (no triage assessment to scope by)
-        return qs.filter(
-            Q(current_triage_assessment__facility_id=facility_id)
-            | Q(current_triage_assessment__isnull=True)
         )
 
     def get_serializer_class(self):
@@ -1420,8 +1395,11 @@ class ERBedViewSet(ReadOnCreateMixin, viewsets.ModelViewSet):
         return ERBedSerializer
 
     def perform_create(self, serializer):
-        """Set status_changed_by on creation."""
-        serializer.save(status_changed_by=self.request.user)
+        """Set status_changed_by and tenant context on creation."""
+        serializer.save(
+            status_changed_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
 
     @extend_schema(
         request=ERBedAssignPatientSerializer,
