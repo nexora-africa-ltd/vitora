@@ -16,9 +16,24 @@ export function getApiBaseUrl(): string {
 let _activeFacilityId: number | null = null;
 let _activeOrganizationId: number | null = null;
 
+// Simple event emitter for facility changes (consumed by SyncProvider to
+// reconnect PowerSync with credentials scoped to the new facility).
+type FacilityChangeListener = (facilityId: number | null) => void;
+const _facilityChangeListeners = new Set<FacilityChangeListener>();
+
+/** Subscribe to facility ID changes. Returns an unsubscribe function. */
+export function onFacilityChange(listener: FacilityChangeListener): () => void {
+  _facilityChangeListeners.add(listener);
+  return () => { _facilityChangeListeners.delete(listener); };
+}
+
 /** Called by FacilityProvider when the active facility changes. */
 export function setActiveFacilityId(id: number | null): void {
+  const prev = _activeFacilityId;
   _activeFacilityId = id;
+  if (id !== prev) {
+    _facilityChangeListeners.forEach(fn => fn(id));
+  }
 }
 
 /** Get the current active facility ID (for external use). */
