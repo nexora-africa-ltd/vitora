@@ -119,6 +119,32 @@ class CookieLoginView(APIView):
         # from the authenticated user for the frontend to store in localStorage.
         user_data = {k: v for k, v in data.items() if k not in ("access", "refresh")}
         user_data["user"] = _build_user_info(serializer.user)
+
+        # Include memberships at top level for frontend org-switching
+        from hmis.apps.core.models import OrgMembership
+
+        memberships = []
+        if hasattr(serializer.user, "staff_profile"):
+            try:
+                profile = serializer.user.staff_profile
+                for m in profile.memberships.filter(
+                    status=OrgMembership.MembershipStatus.ACTIVE
+                ).select_related("organization", "role", "department"):
+                    memberships.append(
+                        {
+                            "id": m.pk,
+                            "organization_id": m.organization_id,
+                            "organization_name": m.organization.name,
+                            "role_code": m.role.code,
+                            "role_name": m.role.name,
+                            "is_primary": m.is_primary,
+                            "facilities": list(m.facilities.values("id", "name", "mfl_code")),
+                        }
+                    )
+            except Exception:
+                logger.exception("Failed to build memberships for user %s", serializer.user.pk)
+        user_data["memberships"] = memberships
+
         response = Response(user_data, status=status.HTTP_200_OK)
 
         return _set_auth_cookies(response, data["access"], data["refresh"])
