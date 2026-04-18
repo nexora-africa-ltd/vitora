@@ -12,6 +12,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { useAuth, type FacilityModules } from '@/lib/auth/context';
 import { useFacility } from '@/lib/context/facility-context';
@@ -131,6 +132,116 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
   };
 }
 
+/**
+ * Shown when no facility is in the session context.
+ * Fetches available facilities and lets the user select one, or links to create a new one.
+ */
+function NoFacilityState() {
+  const { switchFacility } = useFacility();
+  const { isSuperuser } = usePermissions();
+
+  const facilitiesQuery = useQuery({
+    queryKey: ['my-facilities-onboarding'],
+    queryFn: () => facilitiesApi.myFacilities(),
+  });
+
+  // Also try the full list for admins (myFacilities only returns assigned ones)
+  const allFacilitiesQuery = useQuery({
+    queryKey: ['all-facilities-onboarding'],
+    queryFn: () => facilitiesApi.list({ page_size: 50 }),
+    enabled: isSuperuser || (facilitiesQuery.isSuccess && facilitiesQuery.data.length === 0),
+  });
+
+  const availableFacilities = facilitiesQuery.data?.length
+    ? facilitiesQuery.data
+    : allFacilitiesQuery.data?.results ?? [];
+
+  const isLoading = facilitiesQuery.isLoading || (availableFacilities.length === 0 && allFacilitiesQuery.isLoading);
+
+  const handleSelect = (fac: typeof availableFacilities[number]) => {
+    switchFacility({
+      id: fac.id,
+      name: fac.name,
+      mfl_code: fac.mfl_code,
+      level: fac.level,
+      sha_contracted: fac.sha_contracted,
+      modules: {
+        outpatient: true,
+        inpatient: false,
+        emergency: false,
+        pharmacy: false,
+        laboratory: false,
+        imaging: false,
+        theatre: false,
+        dialysis: false,
+        icu: false,
+        maternity: false,
+        mortuary: false,
+        blood_bank: false,
+        inventory: false,
+      },
+    });
+    // Page will re-render with the selected facility
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-muted-foreground" />
+          Select a Facility
+        </CardTitle>
+        <CardDescription>
+          Choose a facility to configure its modules and settings.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading && (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {!isLoading && availableFacilities.length > 0 && (
+          <div className="space-y-2">
+            {availableFacilities.map((fac) => (
+              <button
+                key={fac.id}
+                onClick={() => handleSelect(fac)}
+                className="flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-accent"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium truncate">{fac.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    MFL: {fac.mfl_code} &middot; Level {fac.level}
+                    {fac.county_name ? ` · ${fac.county_name}` : ''}
+                  </p>
+                </div>
+                <Badge variant="outline" className="ml-3 shrink-0">
+                  Select
+                </Badge>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && availableFacilities.length === 0 && (
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <Building2 className="mx-auto h-8 w-8 text-muted-foreground/50" />
+            <p className="mt-2 text-sm font-medium">No facilities found</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Create a facility first, then come back to configure its modules.
+            </p>
+            <Button asChild size="sm" className="mt-4">
+              <Link href="/admin/facilities/new">Create Facility</Link>
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function FacilitySettingsTab() {
   const queryClient = useQueryClient();
   const { updateUserFacility } = useAuth();
@@ -248,19 +359,7 @@ export function FacilitySettingsTab() {
   const isInheritedLogo = !facilityQuery.data?.logo && !!logoPreview;
 
   if (!facility) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Facility Information</CardTitle>
-          <CardDescription>No facility is currently available in your session context.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Assign a facility to the user or use the development debug panel to switch facility context for testing.
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return <NoFacilityState />;
   }
 
   if (facilityQuery.isLoading || !form) {
