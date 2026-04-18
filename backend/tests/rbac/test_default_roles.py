@@ -359,6 +359,30 @@ KNOWN_CUSTOM_ACTIONS = {
     "approve_stock_transfer",
     "approve_stock_count",
     "manage_etims",
+    # immunizations
+    "submit_to_authorities",
+    "follow_up",
+    "issue",
+    "resolve",
+    "accept",
+    "decline",
+    "complete",
+    "cancel",
+    "record",
+    "add_observation",
+    "mark_reaction",
+    "complete_transfusion",
+    "submit_to_ppb",
+    # quality / analytics / moh_reporting
+    "regenerate",
+    "export_sdmx",
+    "import_csv",
+    "export_csv",
+    "submit_to_dhis2",
+    # emergency access
+    "approve_emergency_access",
+    "revoke_emergency_access",
+    "view_emergency_dashboard",
 }
 
 ALL_VALID_ACTIONS = STANDARD_ACTIONS | KNOWN_CUSTOM_ACTIONS
@@ -450,7 +474,18 @@ class TestExpandedPermissionMatrices:
 
         admin = Role.objects.get(code="ADMIN")
         # Only AuditLog and CDSAlert should lack create/update/delete
-        read_only_resources = {"AuditLog", "CDSAlert", "SurveillanceAlert", "WardStockTransaction"}
+        read_only_resources = {
+            "AuditLog",
+            "CDSAlert",
+            "SurveillanceAlert",
+            "WardStockTransaction",
+            "VaccineDefinition",
+            # Analytics read-only ViewSets
+            "FacilityDailySummary",
+            "DepartmentMonthlySummary",
+            "DiagnosisTrend",
+            "PatientDemographicSnapshot",
+        }
 
         for resource, actions in admin.permissions_matrix.items():
             assert actions.get("read") is True, f"ADMIN missing read on {resource}"
