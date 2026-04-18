@@ -24,6 +24,7 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.mixins import FacilityScopedModel
 
 
 def generate_prescription_number():
@@ -241,7 +242,7 @@ class DrugCategory(models.Model):
         return f"{self.code} - {self.name}"
 
 
-class StockBatch(models.Model):
+class StockBatch(FacilityScopedModel):
     """Individual batch of drug stock."""
 
     STOCK_STATUS = [
@@ -254,24 +255,6 @@ class StockBatch(models.Model):
     ]
 
     drug = models.ForeignKey(Drug, on_delete=models.PROTECT, related_name="batches")
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="stock_batches",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="stock_batches",
-        null=True,
-        blank=True,
-        help_text="Facility holding this stock.",
-    )
 
     # Batch identification
     batch_number = models.CharField(max_length=50)
@@ -394,7 +377,7 @@ class StockBatch(models.Model):
         return self.quantity_available * self.cost_price
 
 
-class StockAlert(models.Model):
+class StockAlert(FacilityScopedModel):
     """Stock-related alerts and notifications."""
 
     ALERT_TYPES = [
@@ -415,24 +398,6 @@ class StockAlert(models.Model):
 
     drug = models.ForeignKey(Drug, on_delete=models.CASCADE, related_name="alerts")
     batch = models.ForeignKey(StockBatch, on_delete=models.CASCADE, null=True, blank=True)
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="stock_alerts",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="stock_alerts",
-        null=True,
-        blank=True,
-        help_text="Facility where alert was raised.",
-    )
 
     alert_type = models.CharField(max_length=20, choices=ALERT_TYPES)
     severity = models.CharField(max_length=10, choices=ALERT_SEVERITY)
@@ -587,7 +552,7 @@ class StockAlert(models.Model):
         return alerts
 
 
-class Prescription(HistoryMixin, models.Model):
+class Prescription(HistoryMixin, FacilityScopedModel):
     """Prescription for a patient encounter."""
 
     PRESCRIPTION_STATUS = [
@@ -608,24 +573,6 @@ class Prescription(HistoryMixin, models.Model):
         unique=True,
         editable=False,
         help_text="Prescription Number (auto-generated, format: RX-YYYYMMDD-XXXX)",
-    )
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="prescriptions",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="prescriptions",
-        null=True,
-        blank=True,
-        help_text="Facility where this prescription was issued.",
     )
 
     # Links
@@ -827,26 +774,8 @@ class PrescriptionItem(models.Model):
         return self.quantity - self.quantity_dispensed
 
 
-class Dispensing(models.Model):
+class Dispensing(FacilityScopedModel):
     """Drug dispensing record."""
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="dispensings",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="dispensings",
-        null=True,
-        blank=True,
-        help_text="Facility where dispensing occurred.",
-    )
 
     prescription_item = models.ForeignKey(
         PrescriptionItem,
