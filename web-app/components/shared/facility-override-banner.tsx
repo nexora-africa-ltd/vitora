@@ -13,14 +13,26 @@ import { useFacility } from '@/lib/context/facility-context';
  */
 export function FacilityBanner() {
   const [mounted, setMounted] = useState(false);
-  const { facility, isUsingFacilityOverride } = useFacility();
+  const { facility, isUsingFacilityOverride, isLoading } = useFacility();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted || !facility) {
+  if (!mounted || isLoading) {
     return null;
+  }
+
+  // No facility assigned — warn the user
+  if (!facility) {
+    return (
+      <SystemBanner
+        text="No facility assigned — some modules are hidden. Contact your administrator."
+        color="bg-amber-600"
+        size="xs"
+        show={true}
+      />
+    );
   }
 
   const isOverride = isUsingFacilityOverride;
