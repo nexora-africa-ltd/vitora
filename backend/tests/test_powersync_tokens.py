@@ -96,3 +96,125 @@ class TestPowerSyncTokenClaims:
             assert decoded["organization_id"] == sample_organization.id
             assert decoded["iss"] == "vitora-hmis"
             assert decoded["aud"] == "powersync"
+
+
+class TestPowerSyncCredentialsMultiOrg:
+    """Verify the /api/powersync/credentials/ endpoint respects X-Facility-Id."""
+
+    CREDENTIALS_URL = "/api/powersync/credentials/"
+
+    @pytest.fixture()
+    def enable_powersync(self, settings):
+        """Enable PowerSync URL so the credentials endpoint doesn't return 503."""
+        settings.POWERSYNC_URL = "https://test.powersync.example.com"
+        settings.POWERSYNC_JWT_KID = "test-kid"
+        settings.POWERSYNC_JWT_AUDIENCE = "https://test.powersync.example.com"
+
+    @pytest.fixture()
+    def second_org(self, db):
+        from hmis.apps.core.models import Organization
+
+        return Organization.objects.create(
+            name="Second Hospital Group",
+            slug="second-hospital-group",
+            contact_email="admin@second.co.ke",
+            is_active=True,
+            is_verified=True,
+        )
+
+    @pytest.fixture()
+    def second_facility(self, db, second_org, sample_county, sample_sub_county):
+        from hmis.apps.core.models import Facility
+
+        return Facility.objects.create(
+            organization=second_org,
+            name="Second Health Centre",
+            mfl_code="88888",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+
+    def _decode_token(self, response):
+        """Decode the JWT from a successful credentials response."""
+        import jwt
+        from django.conf import settings as django_settings
+
+        assert response.status_code == 200
+        token = response.data["token"]
+        return jwt.decode(
+            token,
+            django_settings.SECRET_KEY,
+            algorithms=["HS256"],
+            audience="https://test.powersync.example.com",
+            issuer="vitora-hmis",
+        )
+
+    def test_default_uses_primary_facility(
+        self,
+        authenticated_client,
+        test_staff_profile,
+        sample_facility,
+        sample_organization,
+        enable_powersync,
+    ):
+        """Without X-Facility-Id header, JWT uses the user's primary facility."""
+        response = authenticated_client.get(self.CREDENTIALS_URL)
+        decoded = self._decode_token(response)
+        assert decoded["facility_id"] == sample_facility.id
+        assert decoded["organization_id"] == sample_organization.id
+
+    def test_x_facility_id_overrides_primary(
+        self,
+        api_client,
+        test_user,
+        test_staff_profile,
+        second_facility,
+        second_org,
+        sample_role,
+        enable_powersync,
+    ):
+        """X-Facility-Id header should override the user's primary facility."""
+        from hmis.apps.core.models import OrgMembership
+
+        # Grant access via OrgMembership (required by TenantMiddleware)
+        membership = OrgMembership.objects.create(
+            staff_profile=test_staff_profile,
+            organization=second_org,
+            role=sample_role,
+            status=OrgMembership.MembershipStatus.ACTIVE,
+        )
+        membership.facilities.add(second_facility)
+
+        # force_authenticate sets DRF-layer auth (for IsAuthenticated),
+        # force_login sets Django session (for TenantMiddleware to see the user).
+        api_client.force_authenticate(user=test_user)
+        api_client.force_login(test_user)
+
+        response = api_client.get(
+            self.CREDENTIALS_URL,
+            HTTP_X_FACILITY_ID=str(second_facility.id),
+        )
+        decoded = self._decode_token(response)
+        assert decoded["facility_id"] == second_facility.id
+        assert decoded["organization_id"] == second_org.id
+
+    def test_invalid_facility_id_falls_back_to_profile(
+        self,
+        authenticated_client,
+        test_staff_profile,
+        sample_facility,
+        sample_organization,
+        enable_powersync,
+    ):
+        """Invalid X-Facility-Id falls back to the profile's primary facility."""
+        response = authenticated_client.get(
+            self.CREDENTIALS_URL,
+            HTTP_X_FACILITY_ID="999999",
+        )
+        decoded = self._decode_token(response)
+        # TenantMiddleware sets request.facility=None for invalid IDs,
+        # so the view falls back to the profile
+        assert decoded["facility_id"] == sample_facility.id
+        assert decoded["organization_id"] == sample_organization.id

@@ -109,18 +109,25 @@ class PowerSyncCredentialsView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        # Resolve tenant context from the user's StaffProfile
+        # Resolve tenant context.
+        # Prefer the active facility from TenantMiddleware (set via
+        # X-Facility-Id header) so that org/facility switches are
+        # reflected in the PowerSync JWT.  Fall back to the user's
+        # primary facility from StaffProfile.
         facility_id = None
         organization_id = None
-        profile = getattr(request.user, "staff_profile", None)
-        if profile:
-            try:
-                profile = request.user.staff_profile
-            except Exception:
-                profile = None
-        if profile:
-            facility_id = profile.primary_facility_id
-            organization_id = profile.organization_id
+
+        active_facility = getattr(request, "facility", None)
+        if active_facility:
+            facility_id = active_facility.pk
+            active_org = getattr(request, "organization", None)
+            organization_id = active_org.pk if active_org else None
+        else:
+            # Fallback: use profile's primary facility/org
+            profile = getattr(request.user, "staff_profile", None)
+            if profile:
+                facility_id = profile.primary_facility_id
+                organization_id = profile.organization_id
 
         now = int(time.time())
         payload = {

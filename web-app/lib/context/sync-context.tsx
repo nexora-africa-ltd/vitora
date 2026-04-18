@@ -16,6 +16,7 @@ import { PowerSyncDatabase } from '@powersync/web';
 import { powersyncSchema } from '@/lib/powersync/schema';
 import { VitoraPowerSyncConnector, onSyncUploadEvent } from '@/lib/powersync/connector';
 import { tokenStorage } from '@/lib/auth/storage';
+import { onFacilityChange } from '@/lib/api/client';
 
 export interface SyncStatus {
   /** Timestamp of last successful sync */
@@ -186,6 +187,40 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       // Don't disconnect the singleton — it persists across layout re-mounts
     };
   }, []);
+
+  // Reconnect PowerSync when the active facility changes so that
+  // fetchCredentials() returns a JWT scoped to the new facility/org.
+  // FacilityProvider calls setActiveFacilityId() which fires the event.
+  useEffect(() => {
+    if (!db) return;
+
+    const unsubscribe = onFacilityChange(() => {
+      if (!connectedRef.current) return;
+
+      // Reconnect with a fresh connector so fetchCredentials() picks up
+      // the new X-Facility-Id header.
+      (async () => {
+        try {
+          await db.disconnect();
+          connectedRef.current = false;
+          setHasSynced(false);
+          setPsHealth(prev => ({ ...prev, connected: false, hasSynced: false }));
+          await db.connect(new VitoraPowerSyncConnector());
+          connectedRef.current = true;
+        } catch (error) {
+          console.error('[PowerSync] Reconnect on facility switch failed:', error);
+          setPsHealth(prev => ({ ...prev, connected: false }));
+          setStatus(prev => ({
+            ...prev,
+            isSyncing: false,
+            lastError: error instanceof Error ? error.message : 'Reconnect failed',
+          }));
+        }
+      })();
+    });
+
+    return unsubscribe;
+  }, [db]);
 
   // Track sync status changes from the PowerSync database
   useEffect(() => {
