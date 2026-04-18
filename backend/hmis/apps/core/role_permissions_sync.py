@@ -26,6 +26,7 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "AuditLog": ("core", "auditlog"),
     "Facility": ("core", "facility"),
     "Organization": ("core", "organization"),
+    "EmergencyAccess": ("core", "emergencyaccess"),
     # patients
     "Patient": ("patients", "patient"),
     "Allergy": ("patients", "allergy"),
@@ -74,6 +75,16 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "ShiftHandover": ("inpatient", "shifthandover"),
     "InpatientWard": ("inpatient", "ward"),
     "Bed": ("inpatient", "bed"),
+    "AdmissionRecommendation": ("inpatient", "admissionrecommendation"),
+    "ReviewRequest": ("inpatient", "reviewrequest"),
+    "TemperatureReading": ("inpatient", "temperaturereading"),
+    "FluidBalanceSheet": ("inpatient", "fluidbalancesheet"),
+    "FluidBalanceEntry": ("inpatient", "fluidbalanceentry"),
+    "BloodTransfusionObservation": ("inpatient", "bloodtransfusionobservation"),
+    "BPMonitoringReading": ("inpatient", "bpmonitoringreading"),
+    "MedicationAdministration": ("inpatient", "medicationadministration"),
+    "AdverseTransfusionReaction": ("inpatient", "adversetransfusionreaction"),
+    "DischargeTemplate": ("inpatient", "dischargetemplate"),
     # clinics
     "Clinic": ("clinics", "clinic"),
     "ClinicVisit": ("clinics", "clinicvisit"),
@@ -96,6 +107,7 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "ProcedureConsent": ("procedures", "procedureconsent"),
     "ProcedureLog": ("procedures", "procedurelog"),
     "ProcedureOutcome": ("procedures", "procedureoutcome"),
+    "ProcedureCatalog": ("procedures", "procedurecatalog"),
     # referrals
     "ClinicalReferral": ("referrals", "clinicalreferral"),
     # mch
@@ -107,6 +119,14 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "ImmunizationRecord": ("mch", "immunizationrecord"),
     "HEIFollowUp": ("mch", "heifollowup"),
     "GrowthMeasurement": ("mch", "growthmeasurement"),
+    # immunizations
+    "VaccineDefinition": ("immunizations", "vaccinedefinition"),
+    "VaccineCampaign": ("immunizations", "vaccinecampaign"),
+    "AEFI": ("immunizations", "aefi"),
+    "VaccineStock": ("immunizations", "vaccinestock"),
+    "ColdChainEquipment": ("immunizations", "coldchainequipment"),
+    "TemperatureLog": ("immunizations", "temperaturelog"),
+    "VaccineIncident": ("immunizations", "vaccineincident"),
     # cds
     "CDSAlert": ("cds", "cdsalert"),
     "CDSRule": ("cds", "cdsrule"),
@@ -162,12 +182,27 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "ReorderSuggestion": ("inventory", "reordersuggestion"),
     # ai
     "AICareplanResult": ("ai", "aicareplanresult"),
+    "AICarePlanResult": ("ai", "aicareplanresult"),
     "AICDSResult": ("ai", "aicdsresult"),
     "AIDischargeResult": ("ai", "aidischargeresult"),
     "AIICURiskResult": ("ai", "aiicuriskresult"),
     "AILabInterpretResult": ("ai", "ailabinterpretresult"),
     "ChatSession": ("ai", "chatsession"),
     "ChatMessage": ("ai", "chatmessage"),
+    # quality
+    "QuarterlyReport": ("quality", "quarterlyreport"),
+    "AnnualReport": ("quality", "annualreport"),
+    "QualityMeasure": ("quality", "qualitymeasure"),
+    "QualityMeasureResult": ("quality", "qualitymeasureresult"),
+    # analytics
+    "FacilityDailySummary": ("analytics", "facilitydailysummary"),
+    "DepartmentMonthlySummary": ("analytics", "departmentmonthlysummary"),
+    "DiagnosisTrend": ("analytics", "diagnosistrend"),
+    "PatientDemographicSnapshot": ("analytics", "patientdemographicsnapshot"),
+    # moh_reporting
+    "MOH705Report": ("moh_reporting", "moh705report"),
+    "MOH711Report": ("moh_reporting", "moh711report"),
+    "MOH717Report": ("moh_reporting", "moh717report"),
 }
 
 # Standard CRUD action mapping
@@ -220,6 +255,30 @@ CUSTOM_ACTIONS: set[str] = {
     "approve_stock_transfer",
     "approve_stock_count",
     "manage_etims",
+    # immunizations
+    "submit_to_authorities",
+    "follow_up",
+    "issue",
+    "resolve",
+    "accept",
+    "decline",
+    "complete",
+    "cancel",
+    "record",
+    "add_observation",
+    "mark_reaction",
+    "complete_transfusion",
+    "submit_to_ppb",
+    # quality / analytics / moh_reporting
+    "regenerate",
+    "export_sdmx",
+    "import_csv",
+    "export_csv",
+    "submit_to_dhis2",
+    # emergency access
+    "approve_emergency_access",
+    "revoke_emergency_access",
+    "view_emergency_dashboard",
 }
 
 # Actions following {action}_{model} pattern (e.g. view_sensitive_patient)
