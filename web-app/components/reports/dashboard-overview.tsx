@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { RefreshCw, Download, Printer, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,6 +37,7 @@ export function DashboardOverview() {
   });
 
   const { data: metrics, isLoading, refetch, isFetching } = useDashboardMetrics(dateFilter);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const handlePresetChange = (preset: string) => {
     setDateFilter({
@@ -47,7 +48,15 @@ export function DashboardOverview() {
   };
 
   const handlePrint = () => {
-    window.print();
+    // Add print-report class to scope print styles, then print
+    const el = printRef.current;
+    if (el) {
+      el.classList.add('print-report');
+      window.print();
+      el.classList.remove('print-report');
+    } else {
+      window.print();
+    }
   };
 
   const handleExport = () => {
@@ -66,8 +75,17 @@ export function DashboardOverview() {
     return <DashboardSkeleton />;
   }
 
+  const selectedPresetLabel = datePresets.find((p) => p.value === dateFilter.preset)?.label ?? dateFilter.preset;
+
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div ref={printRef} className="space-y-4 sm:space-y-6">
+      {/* Print-only header (hidden on screen) */}
+      <div className="print-report-header hidden">
+        <h1>Facility Report — {selectedPresetLabel}</h1>
+        <div className="print-meta">
+          <div>Printed: {new Date().toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        </div>
+      </div>
       {/* Header with filters and actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <div className="flex items-center gap-2">
@@ -108,14 +126,14 @@ export function DashboardOverview() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 print-kpi-grid">
         {metrics?.kpis.map((kpi) => (
           <KPICard key={kpi.id} {...kpi} />
         ))}
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 print-chart-grid">
         <ChartCard
           title="Patient Volume"
           description="Daily registrations and encounters"

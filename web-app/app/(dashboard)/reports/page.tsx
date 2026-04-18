@@ -57,7 +57,7 @@ export default function ReportsPage() {
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {moduleReports.map((report) => (
             <Link key={report.href} href={report.href}>
-              <Card variant="interactive" className="h-full relative overflow-hidden">
+              <Card variant="interactive" className="h-full min-h-[8rem] relative overflow-hidden">
                 <div
                   className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
                   aria-hidden="true"

@@ -80,7 +80,7 @@ export function KPICard({
       <Link href={href}>
         <Card
           variant="interactive"
-          className={cn('relative overflow-hidden', variantStyles[variant], className)}
+          className={cn('relative overflow-hidden min-h-[9rem]', variantStyles[variant], className)}
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
           {cardContent}
@@ -90,7 +90,7 @@ export function KPICard({
   }
 
   return (
-    <Card className={cn('relative overflow-hidden', variantStyles[variant], className)}>
+    <Card className={cn('relative overflow-hidden min-h-[7rem]', variantStyles[variant], className)}>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
       {cardContent}
     </Card>
