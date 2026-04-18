@@ -656,12 +656,12 @@ class TestEncounterFacilityScoping:
             organization=sample_org,
             facility=second_facility,
         )
-        assert sample_facility.encounters.count() == 1
-        assert sample_facility.encounters.first() == enc1
-        assert second_facility.encounters.count() == 1
-        assert second_facility.encounters.first() == enc2
+        assert sample_facility.encounters_encounter_set.count() == 1
+        assert sample_facility.encounters_encounter_set.first() == enc1
+        assert second_facility.encounters_encounter_set.count() == 1
+        assert second_facility.encounters_encounter_set.first() == enc2
         # But org sees all
-        assert sample_org.encounters.count() == 2
+        assert sample_org.encounters_encounter_set.count() == 2
 
 
 class TestAllergyOrganizationScoping:

@@ -20,6 +20,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
 
 # =============================================================================
@@ -27,7 +28,7 @@ from hmis.apps.core.models import TimeStampedModel
 # =============================================================================
 
 
-class Clinic(TimeStampedModel):
+class Clinic(FacilityScopedModel, TimeStampedModel):
     """
     Represents a clinical service delivery point.
 
@@ -87,22 +88,6 @@ class Clinic(TimeStampedModel):
     # =========================================================================
     # Core Fields
     # =========================================================================
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="clinics",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="clinics",
-        null=True,
-        blank=True,
-        help_text="Facility where this clinic operates.",
-    )
     name = models.CharField(
         max_length=100,
         help_text="Display name of the clinic (e.g., 'CCC Clinic')",
@@ -520,7 +505,7 @@ class ClinicStaff(TimeStampedModel):
 # =============================================================================
 
 
-class ClinicSession(TimeStampedModel):
+class ClinicSession(FacilityScopedModel, TimeStampedModel):
     """
     Represents a single day's operation of a clinic.
 
@@ -537,22 +522,6 @@ class ClinicSession(TimeStampedModel):
         ("CANCELLED", "Cancelled"),
     ]
 
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="clinic_sessions",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="clinic_sessions",
-        null=True,
-        blank=True,
-        help_text="Facility where this session runs.",
-    )
     clinic = models.ForeignKey(
         Clinic,
         on_delete=models.CASCADE,
@@ -620,14 +589,6 @@ class ClinicSession(TimeStampedModel):
                 clinic = self.clinic
                 if clinic.facility_id:
                     self.facility_id = clinic.facility_id
-                if clinic.organization_id:
-                    self.organization_id = clinic.organization_id
-            except Exception:
-                pass
-        if self.facility_id and not self.organization_id:
-            try:
-                if self.facility and self.facility.organization_id:
-                    self.organization_id = self.facility.organization_id
             except Exception:
                 pass
         super().save(*args, **kwargs)
@@ -660,7 +621,7 @@ class ClinicSession(TimeStampedModel):
 # =============================================================================
 
 
-class ClinicVisit(TimeStampedModel):
+class ClinicVisit(FacilityScopedModel, TimeStampedModel):
     """
     Represents a patient's visit to a specific clinic.
 
@@ -719,22 +680,6 @@ class ClinicVisit(TimeStampedModel):
     # =========================================================================
     # Core Fields
     # =========================================================================
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="clinic_visits",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="clinic_visits",
-        null=True,
-        blank=True,
-        help_text="Facility where this visit occurred.",
-    )
     session = models.ForeignKey(
         ClinicSession,
         on_delete=models.CASCADE,
@@ -959,14 +904,6 @@ class ClinicVisit(TimeStampedModel):
                 session = self.session
                 if session.facility_id:
                     self.facility_id = session.facility_id
-                if session.organization_id:
-                    self.organization_id = session.organization_id
-            except Exception:
-                pass
-        if self.facility_id and not self.organization_id:
-            try:
-                if self.facility and self.facility.organization_id:
-                    self.organization_id = self.facility.organization_id
             except Exception:
                 pass
 

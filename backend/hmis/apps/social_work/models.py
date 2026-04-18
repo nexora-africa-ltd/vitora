@@ -23,6 +23,7 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.mixins import FacilityScopedModel
 
 
 def generate_sw_referral_number():
@@ -93,7 +94,7 @@ def generate_case_number():
     return f"{prefix}{sequence:04d}"
 
 
-class SocialWorkReferral(HistoryMixin, models.Model):
+class SocialWorkReferral(HistoryMixin, FacilityScopedModel):
     """
     Social Work referral from a clinical encounter.
 
@@ -162,24 +163,6 @@ class SocialWorkReferral(HistoryMixin, models.Model):
 
     # Identity - format: SW-YYYYMMDD-XXXX
     referral_number = models.CharField(max_length=30, unique=True, editable=False)
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="social_work_referrals",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="social_work_referrals",
-        null=True,
-        blank=True,
-        help_text="Facility where referral was created.",
-    )
 
     # Relationships
     patient = models.ForeignKey(

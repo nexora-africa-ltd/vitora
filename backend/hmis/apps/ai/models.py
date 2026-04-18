@@ -14,12 +14,14 @@ import uuid
 from django.conf import settings
 from django.db import models
 
+from hmis.apps.core.mixins import FacilityScopedModel
+
 # =============================================================================
 # Chat persistence (Phase 2)
 # =============================================================================
 
 
-class ChatSession(models.Model):
+class ChatSession(FacilityScopedModel):
     """
     A multi-turn clinical chat session owned by a single user.
 
@@ -32,24 +34,6 @@ class ChatSession(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="ai_chat_sessions",
-    )
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="ai_chat_sessions",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="ai_chat_sessions",
-        null=True,
-        blank=True,
-        help_text="Facility context for this chat session.",
     )
 
     title = models.CharField(
@@ -112,7 +96,7 @@ class ChatMessage(models.Model):
 # =============================================================================
 
 
-class AIResultBase(models.Model):
+class AIResultBase(FacilityScopedModel):
     """
     Abstract base for persisted AI panel results.
 
@@ -127,24 +111,6 @@ class AIResultBase(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         related_name="%(class)s_results",
-    )
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="%(class)s_results_org",
-        null=True,
-        blank=True,
-        help_text="Owning organization.",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="%(class)s_results_fac",
-        null=True,
-        blank=True,
-        help_text="Facility context.",
     )
 
     request_data = models.JSONField(

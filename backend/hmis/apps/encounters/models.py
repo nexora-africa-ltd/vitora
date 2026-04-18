@@ -16,6 +16,7 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.mixins import FacilityScopedModel
 
 # ICD-10 code format validator
 icd10_code_validator = RegexValidator(
@@ -111,7 +112,7 @@ class ICD10Code(models.Model):
         super().save(*args, **kwargs)
 
 
-class Encounter(HistoryMixin, models.Model):
+class Encounter(HistoryMixin, FacilityScopedModel):
     """
     Encounter model representing a patient encounter/visit.
 
@@ -227,22 +228,6 @@ class Encounter(HistoryMixin, models.Model):
     ]
 
     # Required fields
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="encounters",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="encounters",
-        null=True,
-        blank=True,
-        help_text="Facility where this encounter took place.",
-    )
     patient = models.ForeignKey(
         "patients.Patient",
         on_delete=models.CASCADE,
@@ -761,14 +746,6 @@ class Encounter(HistoryMixin, models.Model):
                     self.facility_id = patient.registered_at_facility_id
             except Exception:
                 pass  # patient not loaded yet (raw FK only)
-
-        # Auto-set organization from facility (mirrors FacilityScopedModel)
-        if self.facility_id and not self.organization_id:
-            try:
-                if self.facility and self.facility.organization_id:
-                    self.organization_id = self.facility.organization_id
-            except Exception:
-                pass
 
         # Auto-set triage_requirement based on encounter_type
         if self.encounter_type:

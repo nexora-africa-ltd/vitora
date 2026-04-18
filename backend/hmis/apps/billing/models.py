@@ -110,7 +110,7 @@ class Service(models.Model):
         return self.is_active
 
 
-class Invoice(models.Model):
+class Invoice(FacilityScopedModel):
     """Patient invoice for services rendered."""
 
     class Status(models.TextChoices):
@@ -137,24 +137,6 @@ class Invoice(models.Model):
 
     # Invoice identification
     invoice_number = models.CharField(max_length=50, unique=True, editable=False)
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="invoices",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="invoices",
-        null=True,
-        blank=True,
-        help_text="Facility where invoice was generated.",
-    )
 
     # Patient and encounter linkage
     patient = models.ForeignKey(
