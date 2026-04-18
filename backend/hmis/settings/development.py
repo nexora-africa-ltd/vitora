@@ -97,6 +97,9 @@ LOGGING["loggers"]["django"]["level"] = "DEBUG"  # noqa: F405
 # MFA enforcement — disabled in development for convenience
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
 
+# Onboarding enforcement — disabled in development for convenience
+ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() == "true"
+
 # ---------------------------------------------------------------------------
 # Cookie auth — cross-site fix for development
 # The frontend (localhost:3009) and backend (127.0.0.1:9088) are different

@@ -125,3 +125,28 @@ export const SetupInitializeResponseSchema = z.object({
   facility_name: z.string(),
   username: z.string(),
 });
+
+// =============================================================================
+// ORGANIZATION ONBOARDING CHECKLIST SCHEMAS
+// =============================================================================
+
+export const OnboardingStepSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  description: z.string(),
+  done: z.boolean(),
+  required: z.boolean(),
+});
+
+export const OnboardingStatusResponseSchema = z.object({
+  complete: z.boolean(),
+  all_required_done: z.boolean(),
+  completed_at: z.string().nullable(),
+  steps: z.array(OnboardingStepSchema),
+});
+
+export const OnboardingCompleteResponseSchema = z.object({
+  complete: z.boolean(),
+  completed_at: z.string(),
+  steps: z.array(OnboardingStepSchema),
+});

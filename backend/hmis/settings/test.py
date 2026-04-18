@@ -22,6 +22,9 @@ TESTING = True
 # MFA enforcement — disabled in tests by default
 MFA_ENFORCEMENT = os.getenv("MFA_ENFORCEMENT", "false").lower() == "true"
 
+# Onboarding enforcement — disabled in tests by default
+ONBOARDING_ENFORCEMENT = os.getenv("ONBOARDING_ENFORCEMENT", "false").lower() == "true"
+
 # Active-shift enforcement — disabled in tests by default
 ACTIVE_SHIFT_ENFORCEMENT = os.getenv("ACTIVE_SHIFT_ENFORCEMENT", "false").lower() == "true"
 

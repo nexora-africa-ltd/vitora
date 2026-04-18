@@ -102,6 +102,13 @@ Only after the web app implementation is complete should we shift focus to offli
 - ✅ ClinicRoom M2M: rooms can be linked to multiple clinics; `room_or_linked_clinic` filter for schedule scoping
 - ✅ Resource detail page: 24h timeline, off-day filtering, linked clinics display
 - ✅ Public queue display API (no auth): `/api/clinics/{id}/public-queue/`
+- ✅ Organization self-service signup with email verification
+- ✅ Staff invitation system (create, resend, revoke, accept)
+- ✅ Setup wizard for first-run initialization
+- ✅ Organization onboarding checklist (configure modules, create clinic, invite staff)
+- ✅ Onboarding enforcement middleware (blocks admin roles after 7-day grace period)
+- ✅ Onboarding banner in dashboard + post-login redirect for admin roles
+- ✅ Password reset flow (request + confirm) and authenticated change-password
 
 ---
 
@@ -498,6 +505,33 @@ POST   /api/token/           # Login: {username, password} → {access, refresh}
                               # username field accepts username OR email
 POST   /api/token/refresh/   # Refresh: {refresh} → {access}
 POST   /api/token/verify/    # Verify: {token} → 200 OK or 401
+```
+
+### Auth & Onboarding (Cookie-based)
+```
+POST   /api/auth/login/                         # Cookie login: sets httpOnly access+refresh cookies
+POST   /api/auth/refresh/                        # Cookie refresh: rotates httpOnly cookies
+POST   /api/auth/logout/                         # Cookie logout: clears httpOnly cookies
+POST   /api/core/auth/signup/                    # Org self-service signup (public)
+POST   /api/core/auth/verify-email/              # Email verification token (public)
+POST   /api/core/auth/password-reset/request/    # Request password reset (public)
+POST   /api/core/auth/password-reset/confirm/    # Confirm password reset (public)
+POST   /api/core/auth/change-password/           # Change password (authenticated)
+GET    /api/core/setup/check/                    # Check if setup wizard needed (public)
+POST   /api/core/setup/initialize/               # First-run initialization (public)
+GET    /api/core/onboarding/status/              # Onboarding checklist (authenticated)
+POST   /api/core/onboarding/status/              # Mark onboarding complete (authenticated)
+```
+
+### Invitations (Admin)
+```
+GET    /api/invitations/                         # List invitations (paginated)
+POST   /api/invitations/                         # Create invitation
+GET    /api/invitations/{id}/                    # Get invitation detail
+POST   /api/invitations/{id}/resend/             # Resend invitation email
+POST   /api/invitations/{id}/revoke/             # Revoke invitation
+GET    /api/invitations/{token}/                 # Public invitation lookup (no auth)
+POST   /api/invitations/accept/                  # Accept invitation (public)
 ```
 
 ### Patients
@@ -1258,6 +1292,42 @@ MFA_GRACE_PERIOD_HOURS = 72         # Configurable, 0 = immediate
 # StaffProfile.mfa_grace_deadline   # DateTimeField, set once, never extended
 ```
 
+### Organization Onboarding Enforcement
+
+```python
+# After org signup, admin users must complete an onboarding checklist:
+#   1. Configure facility modules (enable >1 module beyond defaults)
+#   2. Create first clinic
+#   3. Invite at least one team member
+# See: hmis/apps/core/middleware.OnboardingEnforcementMiddleware
+
+# Enforcement flow:
+# 1. Org created → onboarding_completed_at is NULL
+# 2. Login response includes: onboarding_complete=False
+# 3. Frontend redirects admin roles (ADMIN, ORG-ADMIN, OWNER) to /onboarding
+# 4. During grace period (7 days from org creation): full API access + dismissible banner
+# 5. After grace period: API returns 403 {code: "onboarding_required"}
+#    Exempt paths: /api/token/, /api/auth/, /api/core/onboarding/, /api/staff/me/,
+#                  /api/core/facilities/, /api/core/departments/, /api/core/roles/,
+#                  /api/core/invitations/, /api/clinics/, /api/locations/, /admin/, /api/mfa/
+# 6. POST /api/core/onboarding/status/ marks onboarding complete (sets onboarding_completed_at)
+# 7. Frontend does window.location.href = '/dashboard' (hard refresh) to clear cached state
+
+# Settings:
+ONBOARDING_ENFORCEMENT = True              # Master toggle (False in dev/test)
+ONBOARDING_GRACE_PERIOD_DAYS = 7           # Configurable
+
+# Model field:
+# Organization.onboarding_completed_at     # DateTimeField, NULL until complete
+# Organization.onboarding_complete         # Property: returns onboarding_completed_at is not None
+
+# Frontend components:
+# - /onboarding page: standalone checklist with progress bar, step cards, completion button
+# - OnboardingBanner: dismissible banner in dashboard layout (session-scoped dismissal)
+# - API client interceptor: 403 {code: "onboarding_required"} → redirect to /onboarding
+# - Login page: post-login redirect to /onboarding for admin roles with incomplete onboarding
+```
+
 ### Audit Log Actions
 
 ```python
@@ -1421,6 +1491,7 @@ export const patientsApi = {
 | SHA | `lib/schemas/sha.schema.ts` | 📋 Placeholder |
 | Core | `lib/schemas/core.schema.ts` | 📋 Placeholder |
 | AI | `lib/schemas/ai.schema.ts` | ✅ Implemented |
+| Onboarding | `lib/schemas/onboarding.schema.ts` | ✅ Implemented |
 
 ### When Adding New API Endpoints
 
@@ -1909,6 +1980,6 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: April 12, 2026
+**Last Updated**: April 18, 2026
 **Maintainer**: Engineering Lead
-**Version**: 3.1 (Environment variable sync mandatory across deploy surfaces)
+**Version**: 3.2 (Organization onboarding enforcement + checklist)

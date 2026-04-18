@@ -128,6 +128,20 @@ export default function LoginPage() {
         }
       }
 
+      // Check if org onboarding is incomplete for admin users
+      try {
+        const storedUser = JSON.parse(localStorage.getItem('vitora_user') || '{}');
+        if (storedUser.onboarding_complete === false) {
+          const adminRoles = ['ADMIN', 'ORG-ADMIN', 'OWNER'];
+          if (adminRoles.includes(storedUser.role || '')) {
+            router.push('/onboarding');
+            return;
+          }
+        }
+      } catch {
+        // If parse fails, proceed to dashboard
+      }
+
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');

@@ -910,3 +910,77 @@ def setup_initialize(request):
         },
         status=status.HTTP_201_CREATED,
     )
+
+
+# ============================================================================
+# Onboarding Checklist
+# ============================================================================
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def onboarding_status(request):
+    """
+    GET:  Return onboarding checklist for the user's organization.
+    POST: Mark onboarding as complete (only if all required steps are done).
+
+    Returns 404 if user has no organization.
+    """
+    profile = getattr(request.user, "staff_profile", None)
+    if not profile or not profile.organization:
+        return Response(
+            {"detail": "No organization assigned."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    org = profile.organization
+
+    if request.method == "GET":
+        steps = org.get_onboarding_checklist()
+        all_required_done = all(s["done"] for s in steps if s["required"])
+        return Response(
+            {
+                "complete": org.onboarding_complete,
+                "all_required_done": all_required_done,
+                "completed_at": org.onboarding_completed_at.isoformat()
+                if org.onboarding_completed_at
+                else None,
+                "steps": steps,
+            }
+        )
+
+    # POST — mark complete
+    if org.onboarding_complete:
+        return Response({"detail": "Onboarding already completed."})
+
+    steps = org.get_onboarding_checklist()
+    all_required_done = all(s["done"] for s in steps if s["required"])
+    if not all_required_done:
+        incomplete = [s["label"] for s in steps if s["required"] and not s["done"]]
+        return Response(
+            {"detail": f"Required steps not complete: {', '.join(incomplete)}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    from django.utils import timezone
+
+    org.onboarding_completed_at = timezone.now()
+    org.save(update_fields=["onboarding_completed_at"])
+
+    AuditLog.log(
+        action="onboarding_completed",
+        user=request.user,
+        resource_type="Organization",
+        resource_id=org.id,
+        ip_address=_get_client_ip(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        details={"org_name": org.name},
+    )
+
+    return Response(
+        {
+            "complete": True,
+            "completed_at": org.onboarding_completed_at.isoformat(),
+            "steps": steps,
+        }
+    )
