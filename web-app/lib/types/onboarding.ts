@@ -7,7 +7,7 @@
 // Invitation Types
 // =============================================================================
 
-export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED' | 'DECLINED';
 
 export interface StaffInvitation {
   id: number;
@@ -34,6 +34,8 @@ export interface StaffInvitation {
   send_count: number;
   is_expired: boolean;
   is_usable: boolean;
+  is_cross_org: boolean;
+  existing_user: number | null;
   created_at: string;
 }
 
@@ -58,6 +60,7 @@ export interface InvitationPublicInfo {
   job_title: string;
   is_expired: boolean;
   is_usable: boolean;
+  is_cross_org: boolean;
   expires_at: string;
 }
 

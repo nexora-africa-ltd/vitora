@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { clearAllDrafts } from '@/lib/hooks/use-draft-save';
+import type { OrgMembership } from '@/lib/types/membership';
 
 // Facility modules matching backend Facility.modules property
 export interface FacilityModules {
@@ -46,6 +47,7 @@ export interface User {
   phone_number?: string | null;  // From staff profile
   facility?: UserFacility | null;  // Primary facility with module capabilities
   onboarding_complete?: boolean;  // Whether org has completed onboarding
+  memberships?: OrgMembership[];  // All active org memberships for multi-org users
 }
 
 // Auth tokens
@@ -137,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? userInfo.facility as UserFacility
           : null,
         onboarding_complete: typeof userInfo.onboarding_complete === 'boolean' ? userInfo.onboarding_complete : undefined,
+        memberships: Array.isArray(userInfo.memberships) ? userInfo.memberships as OrgMembership[] : undefined,
       };
 
       localStorage.setItem(USER_KEY, JSON.stringify(syncedUser));
@@ -332,6 +335,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role_category: data.user.role_category ?? undefined,
         phone_number: data.user.phone_number ?? undefined,
         facility: data.user.facility ?? null,
+        memberships: Array.isArray(data.user.memberships) ? data.user.memberships : undefined,
       };
 
       // Store user profile (non-sensitive)

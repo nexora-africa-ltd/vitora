@@ -7,7 +7,7 @@ import { z } from 'zod';
 // ENUMS
 // =============================================================================
 
-export const InvitationStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED']);
+export const InvitationStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED', 'DECLINED']);
 
 // =============================================================================
 // INVITATION SCHEMAS
@@ -38,6 +38,8 @@ export const StaffInvitationSchema = z.object({
   send_count: z.number(),
   is_expired: z.boolean(),
   is_usable: z.boolean(),
+  is_cross_org: z.boolean(),
+  existing_user: z.number().nullable(),
   created_at: z.string(),
 });
 
@@ -56,6 +58,7 @@ export const InvitationPublicSchema = z.object({
   job_title: z.string(),
   is_expired: z.boolean(),
   is_usable: z.boolean(),
+  is_cross_org: z.boolean(),
   expires_at: z.string(),
 });
 
