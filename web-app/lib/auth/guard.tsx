@@ -92,7 +92,7 @@ const ROUTE_ACCESS_MAP: [string, RouteAccessRequirement][] = [
   ['/triage', { moduleKey: 'triage', facilityModule: 'outpatient' }],
   ['/emergency', { moduleKey: 'emergency', facilityModule: 'emergency' }],
   ['/surveillance', { moduleKey: 'surveillance' }],
-  ['/clinics', { moduleKey: 'clinics', facilityModule: 'outpatient' }],
+  ['/clinics', { moduleKey: 'clinics' }],
   ['/theatre', { moduleKey: 'theatre', facilityModule: 'theatre' }],
   ['/mch', { moduleKey: 'mch', facilityModule: 'maternity' }],
   ['/ai', { actionKey: 'ai.use_chat' }],
