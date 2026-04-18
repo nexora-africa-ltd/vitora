@@ -37,9 +37,8 @@ export function usePowerSyncQuery<T extends Record<string, unknown> = Record<str
   const [error, setError] = useState<Error | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Stable reference for params to avoid infinite loops
-  const paramsRef = useRef(params);
-  paramsRef.current = params;
+  // Serialize params for use as a stable dependency
+  const paramsKey = JSON.stringify(params);
 
   const refresh = useCallback(() => {
     setRefreshKey(k => k + 1);
@@ -59,7 +58,7 @@ export function usePowerSyncQuery<T extends Record<string, unknown> = Record<str
     async function runQuery() {
       try {
         setIsLoading(true);
-        const result = await db!.getAll<T>(sql, paramsRef.current);
+        const result = await db!.getAll<T>(sql, params);
         if (!disposed) {
           setData(result);
           setError(null);
@@ -92,7 +91,7 @@ export function usePowerSyncQuery<T extends Record<string, unknown> = Record<str
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, sql, refreshKey]);
+  }, [db, sql, paramsKey, refreshKey]);
 
   return { data, isLoading, error, refresh };
 }
