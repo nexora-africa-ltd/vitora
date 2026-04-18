@@ -102,7 +102,7 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
     return (module: keyof FacilityModules): boolean => {
       // Superusers bypass facility module checks
       if (user?.is_superuser) return true;
-      if (!facility) return true; // No facility assigned = no filtering
+      if (!facility) return false; // No facility assigned = hide facility-gated modules
       return facility.modules[module] ?? false;
     };
   }, [user, facility]);
