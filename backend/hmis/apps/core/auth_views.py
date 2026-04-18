@@ -29,6 +29,8 @@ from .models import (
     EmailVerificationToken,
     Facility,
     Organization,
+    OrgJoinRequest,
+    OrgMembership,
     PasswordResetToken,
     Role,
     StaffInvitation,
@@ -36,9 +38,14 @@ from .models import (
 )
 from .serializers import (
     ChangePasswordSerializer,
+    CrossOrgAcceptSerializer,
     EmailVerifySerializer,
     InvitationAcceptSerializer,
     InvitationPublicSerializer,
+    OrgJoinRequestApproveSerializer,
+    OrgJoinRequestCreateSerializer,
+    OrgJoinRequestRejectSerializer,
+    OrgJoinRequestSerializer,
     OrgSignupSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -319,6 +326,18 @@ def invitation_accept(request):
         if secondary_departments:
             staff_profile.secondary_departments.set(secondary_departments)
 
+        # Create primary OrgMembership
+        membership = OrgMembership.objects.create(
+            staff_profile=staff_profile,
+            organization=invitation.organization,
+            role=invitation.role if invitation.role else staff_profile.primary_role,
+            department=invitation.department,
+            is_primary=True,
+            invited_by=invitation.invited_by,
+        )
+        if invitation.facility:
+            membership.facilities.add(invitation.facility)
+
         # Mark invitation as accepted
         invitation.mark_accepted(user)
 
@@ -342,6 +361,260 @@ def invitation_accept(request):
         },
         status=status.HTTP_201_CREATED,
     )
+
+
+# ============================================================================
+# Cross-Org Invitation Accept (Authenticated)
+# ============================================================================
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def accept_cross_org(request):
+    """
+    Authenticated endpoint for existing users to accept a cross-org invitation.
+
+    Creates an OrgMembership (is_primary=False) without creating a new User/StaffProfile.
+    """
+    serializer = CrossOrgAcceptSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    token = serializer.validated_data["token"]
+
+    try:
+        invitation = StaffInvitation.objects.select_related(
+            "organization", "role", "department", "facility", "existing_user"
+        ).get(token=token)
+    except StaffInvitation.DoesNotExist:
+        return Response(
+            {"error": "Invitation not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if not invitation.is_usable:
+        error_msg = (
+            "Invitation has expired." if invitation.is_expired else "Invitation is no longer valid."
+        )
+        return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Verify this invitation is for the authenticated user
+    if invitation.existing_user_id != request.user.pk:
+        return Response(
+            {"error": "This invitation is not for you."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Block if already a member
+    profile = request.user.staff_profile
+    if OrgMembership.objects.filter(
+        staff_profile=profile,
+        organization=invitation.organization,
+        status=OrgMembership.MembershipStatus.ACTIVE,
+    ).exists():
+        return Response(
+            {"error": "You are already a member of this organization."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    with transaction.atomic():
+        membership = OrgMembership.objects.create(
+            staff_profile=profile,
+            organization=invitation.organization,
+            role=invitation.role if invitation.role else profile.primary_role,
+            department=invitation.department,
+            is_primary=False,
+            invited_by=invitation.invited_by,
+        )
+        if invitation.facility:
+            membership.facilities.add(invitation.facility)
+        invitation.mark_accepted(request.user)
+
+    AuditLog.log(
+        action="cross_org_invitation_accepted",
+        user=request.user,
+        resource_type="StaffInvitation",
+        resource_id=invitation.id,
+        ip_address=_get_client_ip(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        details={"organization": invitation.organization.name},
+    )
+
+    return Response(
+        {"message": f"You have joined {invitation.organization.name}."},
+        status=status.HTTP_201_CREATED,
+    )
+
+
+# ============================================================================
+# Cross-Org Invitation Decline (Authenticated)
+# ============================================================================
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def decline_invitation(request, pk):
+    """
+    Authenticated endpoint for existing users to decline a cross-org invitation.
+
+    Sets invitation status to DECLINED.
+    """
+    try:
+        invitation = StaffInvitation.objects.get(pk=pk)
+    except StaffInvitation.DoesNotExist:
+        return Response(
+            {"error": "Invitation not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Verify this invitation is for the authenticated user
+    if invitation.existing_user_id != request.user.pk:
+        return Response(
+            {"error": "This invitation is not for you."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    invitation.status = StaffInvitation.InvitationStatus.DECLINED
+    invitation.save(update_fields=["status", "updated_at"])
+
+    return Response({"message": "Invitation declined."}, status=status.HTTP_200_OK)
+
+
+# ============================================================================
+# Organization Join Request ViewSet
+# ============================================================================
+
+
+class OrgJoinRequestViewSet(viewsets.ModelViewSet):
+    """
+    Join requests for organizations.
+
+    Regular users: see their own requests, create new ones, cancel pending ones.
+    Admin users: see requests targeting their org, approve or reject.
+    """
+
+    serializer_class = OrgJoinRequestSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff and hasattr(user, "staff_profile") and user.staff_profile.organization:
+            # Admins see requests targeting their org
+            return OrgJoinRequest.objects.filter(
+                organization=user.staff_profile.organization,
+            ).select_related("user", "organization", "requested_role", "reviewed_by")
+        # Regular users see their own requests
+        return OrgJoinRequest.objects.filter(
+            user=user,
+        ).select_related("user", "organization", "requested_role", "reviewed_by")
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return OrgJoinRequestCreateSerializer
+        if self.action == "approve":
+            return OrgJoinRequestApproveSerializer
+        if self.action == "reject":
+            return OrgJoinRequestRejectSerializer
+        return OrgJoinRequestSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Create a join request."""
+        serializer = OrgJoinRequestCreateSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        join_request = OrgJoinRequest.objects.create(
+            user=request.user,
+            organization=data["organization"],
+            requested_role=data.get("requested_role"),
+            message=data.get("message", ""),
+        )
+
+        return Response(
+            OrgJoinRequestSerializer(join_request).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def approve(self, request, pk=None):
+        """Approve a join request → creates OrgMembership."""
+        join_request = self.get_object()
+        if join_request.status != OrgJoinRequest.RequestStatus.PENDING:
+            return Response(
+                {"error": "Only pending requests can be approved."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = OrgJoinRequestApproveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        requester_profile = join_request.user.staff_profile
+
+        with transaction.atomic():
+            membership = OrgMembership.objects.create(
+                staff_profile=requester_profile,
+                organization=join_request.organization,
+                role=data["role"],
+                department=data.get("department"),
+                is_primary=False,
+                invited_by=request.user,
+            )
+            facilities = data.get("facilities", [])
+            if facilities:
+                membership.facilities.set(facilities)
+
+            join_request.status = OrgJoinRequest.RequestStatus.APPROVED
+            join_request.reviewed_by = request.user
+            join_request.reviewed_at = timezone.now()
+            join_request.review_notes = data.get("review_notes", "")
+            join_request.save(
+                update_fields=["status", "reviewed_by", "reviewed_at", "review_notes", "updated_at"]
+            )
+
+        return Response(OrgJoinRequestSerializer(join_request).data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def reject(self, request, pk=None):
+        """Reject a join request."""
+        join_request = self.get_object()
+        if join_request.status != OrgJoinRequest.RequestStatus.PENDING:
+            return Response(
+                {"error": "Only pending requests can be rejected."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = OrgJoinRequestRejectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        join_request.status = OrgJoinRequest.RequestStatus.REJECTED
+        join_request.reviewed_by = request.user
+        join_request.reviewed_at = timezone.now()
+        join_request.review_notes = serializer.validated_data.get("review_notes", "")
+        join_request.save(
+            update_fields=["status", "reviewed_by", "reviewed_at", "review_notes", "updated_at"]
+        )
+
+        return Response(OrgJoinRequestSerializer(join_request).data)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Cancel own pending request."""
+        join_request = self.get_object()
+        if join_request.user_id != request.user.pk:
+            return Response(
+                {"error": "You can only cancel your own requests."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if join_request.status != OrgJoinRequest.RequestStatus.PENDING:
+            return Response(
+                {"error": "Only pending requests can be cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        join_request.status = OrgJoinRequest.RequestStatus.CANCELLED
+        join_request.save(update_fields=["status", "updated_at"])
+
+        return Response(OrgJoinRequestSerializer(join_request).data)
 
 
 # ============================================================================

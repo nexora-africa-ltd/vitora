@@ -3322,6 +3322,7 @@ class StaffInvitation(models.Model):
         ACCEPTED = "ACCEPTED", "Accepted"
         EXPIRED = "EXPIRED", "Expired"
         REVOKED = "REVOKED", "Revoked"
+        DECLINED = "DECLINED", "Declined"
 
     # Invitation identity
     token = models.UUIDField(
@@ -3424,6 +3425,20 @@ class StaffInvitation(models.Model):
     # Email tracking
     last_sent_at = models.DateTimeField(null=True, blank=True)
     send_count = models.PositiveIntegerField(default=0)
+
+    # Cross-org invitation fields
+    is_cross_org = models.BooleanField(
+        default=False,
+        help_text="True when inviting an existing user to a different org.",
+    )
+    existing_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cross_org_invitations",
+        help_text="Reference to existing user being invited cross-org.",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -3738,6 +3753,86 @@ class OrgMembership(TimeStampedModel):
     def facility_ids(self) -> list[int]:
         """Return list of facility PKs for this membership."""
         return list(self.facilities.values_list("pk", flat=True))
+
+
+class OrgJoinRequest(TimeStampedModel):
+    """
+    Self-service request for a user to join an organization.
+
+    Users can request to join orgs they are not yet members of.
+    Org admins can approve (creating an OrgMembership) or reject.
+    Only one PENDING request per user-org pair is allowed.
+    """
+
+    class RequestStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        APPROVED = "APPROVED", "Approved"
+        REJECTED = "REJECTED", "Rejected"
+        CANCELLED = "CANCELLED", "Cancelled"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="join_requests",
+        help_text="User requesting to join.",
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="join_requests",
+        help_text="Organization the user wants to join.",
+    )
+    requested_role = models.ForeignKey(
+        Role,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="join_requests",
+        help_text="Role the user is requesting (optional suggestion).",
+    )
+    message = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason the user wants to join.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=RequestStatus.choices,
+        default=RequestStatus.PENDING,
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_join_requests",
+        help_text="Admin who approved or rejected.",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Admin notes on approval/rejection.",
+    )
+
+    class Meta:
+        verbose_name = "Organization Join Request"
+        verbose_name_plural = "Organization Join Requests"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "organization"],
+                condition=models.Q(status="PENDING"),
+                name="unique_pending_join_request",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "status"]),
+            models.Index(fields=["organization", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user.get_full_name() or self.user.username} → {self.organization.name} ({self.status})"
 
 
 # Import MFA models so Django discovers them for syncdb (--no-migrations mode)
