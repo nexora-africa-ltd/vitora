@@ -18,6 +18,7 @@ import { RevenueBreakdownChart } from '@/components/widgets/revenue-chart';
 import { RecentActivity } from '@/components/widgets/recent-activity';
 import { DonutChart, createChartConfig, formatChartValue, ChartEmptyState } from '@/components/charts';
 import { useDashboardMetrics } from '@/lib/hooks/use-dashboard-metrics';
+import { useFacility } from '@/lib/context/facility-context';
 import type { DateRangeFilter } from '@/lib/types/dashboard';
 
 const datePresets: { value: DateRangeFilter['preset']; label: string }[] = [
@@ -37,6 +38,7 @@ export function DashboardOverview() {
   });
 
   const { data: metrics, isLoading, refetch, isFetching } = useDashboardMetrics(dateFilter);
+  const { facility } = useFacility();
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePresetChange = (preset: string) => {
@@ -81,7 +83,10 @@ export function DashboardOverview() {
     <div ref={printRef} className="space-y-4 sm:space-y-6">
       {/* Print-only header (hidden on screen) */}
       <div className="print-report-header hidden">
-        <h1>Facility Report — {selectedPresetLabel}</h1>
+        <div>
+          <h1>{facility?.name ?? 'Facility'} Report</h1>
+          <p style={{ fontSize: '10pt', color: '#555', marginTop: '2pt' }}>{selectedPresetLabel}</p>
+        </div>
         <div className="print-meta">
           <div>Printed: {new Date().toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>

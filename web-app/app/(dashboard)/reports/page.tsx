@@ -40,16 +40,18 @@ const moduleReports = [
 export default function ReportsPage() {
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
-      <PageHeader
-        title="Reports & Analytics"
-        helpContent="Monitor facility performance with real-time KPIs, charts, and module-specific analytics dashboards."
-      />
+      <div className="print-hide-on-print">
+        <PageHeader
+          title="Reports & Analytics"
+          helpContent="Monitor facility performance with real-time KPIs, charts, and module-specific analytics dashboards."
+        />
+      </div>
 
       {/* Dashboard Overview */}
       <DashboardOverview />
 
-      {/* Module-Specific Reports */}
-      <section>
+      {/* Module-Specific Reports — hidden in print (link cards have no value on paper) */}
+      <section className="print-hide-section">
         <div className="flex items-center gap-2 mb-4">
           <h2 className="text-lg sm:text-xl font-semibold">Module Analytics</h2>
           <HelpPopover content="Quick links to detailed analytics for each clinical and administrative module." />
