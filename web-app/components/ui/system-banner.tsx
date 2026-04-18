@@ -186,7 +186,7 @@ export default function SystemBanner({
     >
       <span
         className={`
-          absolute -bottom-4 text-white font-bold rounded shadow-md
+          absolute -bottom-4 text-white font-bold rounded shadow-md max-w-[90vw] truncate
           ${sizeClasses[size]}
           ${fixedBgClass}
         `}

@@ -126,6 +126,7 @@ export interface AdministerVaccineData {
 export interface ImmunizationRecordListParams {
   page?: number;
   page_size?: number;
+  search?: string;
   patient?: number;
   vaccine?: number;
   status?: ImmunizationStatus;

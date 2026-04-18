@@ -6,6 +6,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Building2,
   Bell,
@@ -24,7 +25,9 @@ import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('security');
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'security';
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   return (
     <div className="space-y-4 sm:space-y-6">

@@ -1,8 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import SystemBanner from '@/components/ui/system-banner';
 import { useFacility } from '@/lib/context/facility-context';
+import { useAuth } from '@/lib/auth/context';
+
+/** Routes where facility banner should not render */
+const HIDDEN_PATHS = ['/login', '/signup', '/onboarding', '/setup'];
 
 /**
  * Facility Banner
@@ -10,16 +15,20 @@ import { useFacility } from '@/lib/context/facility-context';
  * Displays a persistent banner showing the facility the user is operating in.
  * - Normal (assigned facility): subtle teal banner with facility name
  * - Override (dev/superuser): purple warning banner to prevent mistakes
+ * Hidden on login, signup, onboarding, and setup pages.
  */
 export function FacilityBanner() {
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
   const { facility, isUsingFacilityOverride, isLoading } = useFacility();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted || isLoading) {
+  // Hide on public/auth pages or when not authenticated
+  if (!mounted || isLoading || !isAuthenticated || HIDDEN_PATHS.some((p) => pathname.startsWith(p))) {
     return null;
   }
 

@@ -80,8 +80,20 @@ class ImmunizationRecordViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     )
     permission_classes = [IsAuthenticated]
     tenant_scope = "facility"
-    filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [
+        django_filters.rest_framework.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
     filterset_class = ImmunizationRecordFilter
+    search_fields = [
+        "patient__first_name",
+        "patient__last_name",
+        "patient__mrn",
+        "vaccine__name",
+        "vaccine__code",
+        "batch_number",
+    ]
     ordering_fields = ["scheduled_date", "created_at", "status"]
     ordering = ["scheduled_date"]
 

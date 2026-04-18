@@ -28,7 +28,7 @@ const STEP_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 };
 
 const STEP_LINKS: Record<string, string> = {
-  facility_modules: '/admin/facilities',
+  facility_modules: '/settings?tab=facility',
   first_clinic: '/clinics',
   invite_staff: '/admin/staff',
 };
