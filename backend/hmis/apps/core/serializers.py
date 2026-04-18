@@ -1225,13 +1225,18 @@ class StaffInvitationCreateSerializer(serializers.Serializer):
     )
 
     def validate_email(self, value):
-        """Ensure email isn't already registered or has a pending invitation."""
+        """Validate email: allow cross-org invitations for existing users."""
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
         normalized = value.lower()
-        if User.objects.filter(email__iexact=normalized).exists():
-            raise serializers.ValidationError("A user with this email already exists.")
+
+        # Store existing user ref for use in validate() — not an error anymore
+        try:
+            self._existing_user = User.objects.get(email__iexact=normalized)
+        except User.DoesNotExist:
+            self._existing_user = None
+
         # Check for pending (non-expired) invitation
         from hmis.apps.core.models import StaffInvitation
 
@@ -1245,6 +1250,30 @@ class StaffInvitationCreateSerializer(serializers.Serializer):
                     "A pending invitation for this email already exists. Revoke it first or resend."
                 )
         return normalized
+
+    def validate(self, data):
+        """Cross-org: block if existing user is already a member of the target org."""
+        data = super().validate(data)
+        existing_user = getattr(self, "_existing_user", None)
+        if existing_user is not None:
+            org = data.get("organization")
+            if org and hasattr(existing_user, "staff_profile"):
+                from hmis.apps.core.models import OrgMembership
+
+                if OrgMembership.objects.filter(
+                    staff_profile=existing_user.staff_profile,
+                    organization=org,
+                    status=OrgMembership.MembershipStatus.ACTIVE,
+                ).exists():
+                    raise serializers.ValidationError(
+                        {"email": "This user is already a member of the target organization."}
+                    )
+            data["is_cross_org"] = True
+            data["existing_user"] = existing_user
+        else:
+            data["is_cross_org"] = False
+            data["existing_user"] = None
+        return data
 
     def validate_employee_id(self, value):
         """Validate employee_id is unique if provided."""
@@ -1291,6 +1320,8 @@ class StaffInvitationSerializer(serializers.ModelSerializer):
             "send_count",
             "is_expired",
             "is_usable",
+            "is_cross_org",
+            "existing_user",
             "created_at",
         ]
         read_only_fields = fields
@@ -1396,6 +1427,7 @@ class InvitationPublicSerializer(serializers.ModelSerializer):
             "job_title",
             "is_expired",
             "is_usable",
+            "is_cross_org",
             "expires_at",
         ]
         read_only_fields = fields
@@ -1405,6 +1437,143 @@ class InvitationPublicSerializer(serializers.ModelSerializer):
 
     def get_department_name(self, obj) -> str:
         return obj.department.name if obj.department else ""
+
+
+# ============================================================================
+# Cross-Org Accept Serializer
+# ============================================================================
+
+
+class CrossOrgAcceptSerializer(serializers.Serializer):
+    """Serializer for existing users accepting a cross-org invitation."""
+
+    token = serializers.UUIDField()
+
+
+# ============================================================================
+# Organization Join Request Serializers
+# ============================================================================
+
+
+class OrgJoinRequestSerializer(serializers.ModelSerializer):
+    """Read serializer for join requests."""
+
+    user_name = serializers.SerializerMethodField()
+    user_email = serializers.SerializerMethodField()
+    organization_name = serializers.CharField(source="organization.name", read_only=True)
+    requested_role_name = serializers.SerializerMethodField()
+    reviewed_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        from hmis.apps.core.models import OrgJoinRequest
+
+        model = OrgJoinRequest
+        fields = [
+            "id",
+            "user",
+            "user_name",
+            "user_email",
+            "organization",
+            "organization_name",
+            "requested_role",
+            "requested_role_name",
+            "message",
+            "status",
+            "reviewed_by",
+            "reviewed_by_name",
+            "reviewed_at",
+            "review_notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_user_name(self, obj) -> str:
+        return obj.user.get_full_name() or obj.user.username
+
+    def get_user_email(self, obj) -> str:
+        return obj.user.email
+
+    def get_requested_role_name(self, obj) -> str:
+        return obj.requested_role.name if obj.requested_role else ""
+
+    def get_reviewed_by_name(self, obj) -> str:
+        if obj.reviewed_by:
+            return obj.reviewed_by.get_full_name() or obj.reviewed_by.username
+        return ""
+
+
+class OrgJoinRequestCreateSerializer(serializers.Serializer):
+    """Create a join request."""
+
+    organization = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.filter(is_active=True),
+    )
+    requested_role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    message = serializers.CharField(max_length=1000, required=False, allow_blank=True, default="")
+
+    def validate(self, data):
+        user = self.context["request"].user
+        org = data["organization"]
+
+        # Block if already a member
+        from hmis.apps.core.models import OrgMembership
+
+        if (
+            hasattr(user, "staff_profile")
+            and OrgMembership.objects.filter(
+                staff_profile=user.staff_profile,
+                organization=org,
+                status=OrgMembership.MembershipStatus.ACTIVE,
+            ).exists()
+        ):
+            raise serializers.ValidationError("You are already a member of this organization.")
+
+        # Block if duplicate pending
+        from hmis.apps.core.models import OrgJoinRequest
+
+        if OrgJoinRequest.objects.filter(
+            user=user,
+            organization=org,
+            status=OrgJoinRequest.RequestStatus.PENDING,
+        ).exists():
+            raise serializers.ValidationError(
+                "You already have a pending request for this organization."
+            )
+        return data
+
+
+class OrgJoinRequestApproveSerializer(serializers.Serializer):
+    """Serializer for approving a join request (admin assigns role/dept/facilities)."""
+
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.filter(is_active=True),
+    )
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    facilities = serializers.PrimaryKeyRelatedField(
+        queryset=Facility.objects.filter(is_active=True),
+        many=True,
+        required=False,
+    )
+    review_notes = serializers.CharField(
+        max_length=1000, required=False, allow_blank=True, default=""
+    )
+
+
+class OrgJoinRequestRejectSerializer(serializers.Serializer):
+    """Serializer for rejecting a join request."""
+
+    review_notes = serializers.CharField(
+        max_length=1000, required=False, allow_blank=True, default=""
+    )
 
 
 # ============================================================================

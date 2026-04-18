@@ -269,8 +269,38 @@ class TestInvitationCreate:
         response = admin_client.post("/api/core/invitations/", invitation_data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_existing_user_email_rejected(self, admin_client, invitation_data, regular_user):
-        """Cannot invite an email that already has a user account."""
+    def test_existing_user_email_creates_cross_org(
+        self, admin_client, invitation_data, regular_user
+    ):
+        """Inviting an existing user email creates a cross-org invitation."""
+        invitation_data["email"] = regular_user.email
+        response = admin_client.post("/api/core/invitations/", invitation_data)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["is_cross_org"] is True
+        assert response.data["existing_user"] == regular_user.pk
+
+    def test_existing_user_already_member_rejected(
+        self,
+        admin_client,
+        invitation_data,
+        regular_user,
+        test_org,
+        sample_organization,
+        sample_facility,
+    ):
+        """Cannot invite an existing user who is already a member of the target org."""
+        from hmis.apps.core.models import OrgMembership, Role
+
+        role, _ = Role.objects.get_or_create(
+            code="TST_AO", defaults={"name": "Test AO", "is_active": True}
+        )
+        profile = ensure_staff_profile(regular_user, sample_organization, sample_facility)
+        OrgMembership.objects.create(
+            staff_profile=profile,
+            organization=test_org,
+            role=role,
+            is_primary=False,
+        )
         invitation_data["email"] = regular_user.email
         response = admin_client.post("/api/core/invitations/", invitation_data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST

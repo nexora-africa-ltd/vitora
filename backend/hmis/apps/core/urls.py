@@ -6,8 +6,11 @@ from django.urls import include, path
 from rest_framework import routers
 
 from .auth_views import (
+    OrgJoinRequestViewSet,
     StaffInvitationViewSet,
+    accept_cross_org,
     change_password,
+    decline_invitation,
     invitation_accept,
     invitation_lookup,
     onboarding_status,
@@ -53,6 +56,7 @@ router.register(r"facilities", FacilityViewSet, basename="facility")
 router.register(r"certificates", CertificateViewSet, basename="certificate")
 router.register(r"signatures", DocumentSignatureViewSet, basename="documentsignature")
 router.register(r"invitations", StaffInvitationViewSet, basename="staffinvitation")
+router.register(r"join-requests", OrgJoinRequestViewSet, basename="orgjoinrequest")
 
 urlpatterns = [
     # Dashboard statistics
@@ -79,6 +83,8 @@ urlpatterns = [
     # --- Auth / Onboarding (public endpoints) ---
     path("invitations/<uuid:token>/", invitation_lookup, name="invitation-lookup"),
     path("invitations/accept/", invitation_accept, name="invitation-accept"),
+    path("invitations/accept-cross-org/", accept_cross_org, name="invitation-accept-cross-org"),
+    path("invitations/<int:pk>/decline/", decline_invitation, name="invitation-decline"),
     path("auth/password-reset/request/", password_reset_request, name="password-reset-request"),
     path("auth/password-reset/confirm/", password_reset_confirm, name="password-reset-confirm"),
     path("auth/change-password/", change_password, name="change-password"),
