@@ -1710,6 +1710,33 @@ class StaffProfile(models.Model):
         """
         return self.supervisees.all()
 
+    # ------------------------------------------------------------------
+    # OrgMembership compat properties (Phase 1 multi-org)
+    # ------------------------------------------------------------------
+
+    @property
+    def active_memberships(self):
+        """Return queryset of ACTIVE OrgMembership records."""
+        return self.memberships.filter(status="ACTIVE")
+
+    @property
+    def primary_membership(self):
+        """Return the primary OrgMembership, or None."""
+        return self.active_memberships.filter(is_primary=True).first()
+
+    def get_membership_for_org(self, org_id: int):
+        """Return the ACTIVE OrgMembership for a specific org, or None."""
+        return self.active_memberships.filter(organization_id=org_id).first()
+
+    def has_permission_for_org(self, action: str, resource: str, org_id: int) -> bool:
+        """Check permission using the org-specific role from OrgMembership."""
+        membership = self.get_membership_for_org(org_id)
+        if not membership:
+            return False
+        all_perms = membership.role.get_all_permissions()
+        resource_perms = all_perms.get(resource, {})
+        return resource_perms.get(action, False)
+
 
 class Notification(models.Model):
     """
@@ -3586,6 +3613,131 @@ class EmailVerificationToken(models.Model):
         self.used = True
         self.used_at = timezone.now()
         self.save(update_fields=["used", "used_at"])
+
+
+# ---------------------------------------------------------------------------
+# OrgMembership — multi-org support with per-org roles
+# ---------------------------------------------------------------------------
+
+
+class OrgMembership(TimeStampedModel):
+    """
+    Join table linking a StaffProfile to an Organization with per-org role,
+    department, and facility assignments.
+
+    Replaces the flat ``StaffProfile.secondary_organizations`` M2M which
+    cannot carry per-org metadata (role, department, facilities).
+
+    A user has exactly one ``is_primary=True`` membership (their home org)
+    and zero or more secondary memberships (locum, consultant, etc.).
+    """
+
+    class MembershipStatus(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        SUSPENDED = "SUSPENDED", "Suspended"
+        REVOKED = "REVOKED", "Revoked"
+
+    staff_profile = models.ForeignKey(
+        "StaffProfile",
+        on_delete=models.CASCADE,
+        related_name="memberships",
+        help_text="Staff member this membership belongs to.",
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="memberships",
+        help_text="Organization the staff member belongs to.",
+    )
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.PROTECT,
+        related_name="org_memberships",
+        help_text="Role within this organization.",
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="org_memberships",
+        help_text="Department within this organization (optional).",
+    )
+    facilities = models.ManyToManyField(
+        "Facility",
+        blank=True,
+        related_name="org_memberships",
+        help_text="Facilities the member can access within this organization.",
+    )
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="Whether this is the staff member's primary (home) organization.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=MembershipStatus.choices,
+        default=MembershipStatus.ACTIVE,
+        help_text="Current membership status.",
+    )
+    joined_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the member joined this organization.",
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="org_invitations_sent",
+        help_text="User who invited this member (if applicable).",
+    )
+
+    class Meta:
+        verbose_name = "Organization Membership"
+        verbose_name_plural = "Organization Memberships"
+        ordering = ["-is_primary", "-joined_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["staff_profile", "organization"],
+                name="unique_staff_org_membership",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["staff_profile", "status"]),
+            models.Index(fields=["organization", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.staff_profile.get_full_name()} @ {self.organization.name}"
+
+    def clean(self):
+        """Validate that assigned facilities belong to the membership's org."""
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        if not self.pk:
+            return  # Can't check M2M before save
+        bad = list(
+            self.facilities.exclude(organization=self.organization).values_list("name", flat=True)
+        )
+        if bad:
+            raise DjangoValidationError(
+                {
+                    "facilities": (
+                        f"These facilities do not belong to {self.organization.name}: "
+                        f"{', '.join(bad)}"
+                    )
+                }
+            )
+
+    @property
+    def is_active(self) -> bool:
+        """Whether this membership is currently active."""
+        return self.status == self.MembershipStatus.ACTIVE
+
+    @property
+    def facility_ids(self) -> list[int]:
+        """Return list of facility PKs for this membership."""
+        return list(self.facilities.values_list("pk", flat=True))
 
 
 # Import MFA models so Django discovers them for syncdb (--no-migrations mode)

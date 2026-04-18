@@ -18,6 +18,7 @@ from .models import (
     FrontendEvent,
     Notification,
     Organization,
+    OrgMembership,
     Role,
     StaffInvitation,
     StaffProfile,
@@ -1558,4 +1559,82 @@ class SetupWizardSerializer(serializers.Serializer):
     def validate(self, data):
         if data["admin_password"] != data["confirm_password"]:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        return data
+
+
+# ---------------------------------------------------------------------------
+# OrgMembership serializers (Phase 1 multi-org)
+# ---------------------------------------------------------------------------
+
+
+class OrgMembershipSerializer(serializers.ModelSerializer):
+    """Read serializer for OrgMembership — includes nested org/role/dept names."""
+
+    organization_name = serializers.CharField(source="organization.name", read_only=True)
+    role_code = serializers.CharField(source="role.code", read_only=True)
+    role_name = serializers.CharField(source="role.name", read_only=True)
+    department_name = serializers.CharField(source="department.name", read_only=True, default=None)
+    facility_ids = serializers.SerializerMethodField()
+    facilities_detail = serializers.SerializerMethodField()
+    staff_name = serializers.CharField(source="staff_profile.get_full_name", read_only=True)
+
+    class Meta:
+        model = OrgMembership
+        fields = [
+            "id",
+            "staff_profile",
+            "staff_name",
+            "organization",
+            "organization_name",
+            "role",
+            "role_code",
+            "role_name",
+            "department",
+            "department_name",
+            "facilities_detail",
+            "facility_ids",
+            "is_primary",
+            "status",
+            "joined_at",
+            "invited_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_facility_ids(self, obj) -> list[int]:
+        return list(obj.facilities.values_list("pk", flat=True))
+
+    def get_facilities_detail(self, obj) -> list[dict]:
+        return list(obj.facilities.values("id", "name", "mfl_code"))
+
+
+class OrgMembershipCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for OrgMembership."""
+
+    class Meta:
+        model = OrgMembership
+        fields = [
+            "organization",
+            "role",
+            "department",
+            "facilities",
+            "is_primary",
+            "status",
+        ]
+
+    def validate(self, data):
+        """Validate facilities belong to the target org."""
+        org = data.get("organization")
+        facilities = data.get("facilities", [])
+        if org and facilities:
+            bad = [f.name for f in facilities if f.organization_id != org.pk]
+            if bad:
+                raise serializers.ValidationError(
+                    {
+                        "facilities": (
+                            f"These facilities do not belong to {org.name}: {', '.join(bad)}"
+                        )
+                    }
+                )
         return data

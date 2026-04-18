@@ -26,6 +26,7 @@ from .models import (
     NetworkStatus,
     Notification,
     Organization,
+    OrgMembership,
     PasswordResetToken,
     Role,
     SNOMEDConcept,
@@ -377,9 +378,21 @@ class RoleAdmin(admin.ModelAdmin):
         sync_role_group_permissions(obj)
 
 
+class OrgMembershipInline(admin.TabularInline):
+    """Inline for OrgMembership on StaffProfileAdmin."""
+
+    model = OrgMembership
+    extra = 0
+    fields = ["organization", "role", "department", "is_primary", "status", "joined_at"]
+    readonly_fields = ["joined_at"]
+    raw_id_fields = ["organization", "role", "department"]
+
+
 @admin.register(StaffProfile)
 class StaffProfileAdmin(admin.ModelAdmin):
     """Admin configuration for StaffProfile model."""
+
+    inlines = [OrgMembershipInline]
 
     list_display = [
         "employee_id",
@@ -1443,3 +1456,30 @@ class IdempotencyKeyAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(OrgMembership)
+class OrgMembershipAdmin(admin.ModelAdmin):
+    """Admin configuration for OrgMembership model."""
+
+    list_display = [
+        "staff_profile",
+        "organization",
+        "role",
+        "department",
+        "is_primary",
+        "status",
+        "joined_at",
+    ]
+    list_filter = ["organization", "role", "status", "is_primary"]
+    search_fields = [
+        "staff_profile__user__username",
+        "staff_profile__user__first_name",
+        "staff_profile__user__last_name",
+        "staff_profile__employee_id",
+        "organization__name",
+    ]
+    raw_id_fields = ["staff_profile", "organization", "role", "department", "invited_by"]
+    filter_horizontal = ["facilities"]
+    readonly_fields = ["joined_at", "created_at", "updated_at"]
+    ordering = ["-joined_at"]
