@@ -22,6 +22,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.mixins import resolve_request_tenant
 from hmis.apps.core.models import AuditLog
 
 from .client import TibaBotError, TibaBotUnavailableError, get_tibabot_client
@@ -107,6 +108,19 @@ def _get_client_ip(request: Request) -> str:
     if x_forwarded_for:
         return x_forwarded_for.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "")
+
+
+def _get_tenant_kwargs(request: Request) -> dict:
+    """Resolve facility/organization from request for FacilityScopedModel creates."""
+    resolve_request_tenant(request)
+    kwargs: dict = {}
+    facility = getattr(request, "facility", None)
+    org = getattr(request, "organization", None)
+    if facility:
+        kwargs["facility"] = facility
+    if org:
+        kwargs["organization"] = org
+    return kwargs
 
 
 def _resolve_verbosity(request: Request, body_value: str | None) -> str:
@@ -438,7 +452,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
                 )
 
         # Resolve or create session
-        session = self._resolve_session(request.user, data)
+        session = self._resolve_session(request, data)
         data["session_id"] = str(session.id)
 
         # Persist user message
@@ -521,15 +535,16 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _resolve_session(user, data: dict) -> ChatSession:
+    def _resolve_session(request: Request, data: dict) -> ChatSession:
         """Get existing session or create a new one."""
+        user = request.user
         session_id = data.get("session_id")
         if session_id:
             try:
                 return ChatSession.objects.get(id=session_id, user=user)
             except (ChatSession.DoesNotExist, ValueError):
                 pass  # fall through to create
-        return ChatSession.objects.create(user=user)
+        return ChatSession.objects.create(user=user, **_get_tenant_kwargs(request))
 
     @staticmethod
     def _build_response(
@@ -676,7 +691,11 @@ class ClinicalChatSessionListView(AIFeatureGatedMixin, APIView):
     permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def get(self, request: Request) -> Response:
-        sessions = ChatSession.objects.filter(user=request.user)
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        qs = ChatSession.objects.filter(user=request.user)
+        if facility:
+            qs = qs.filter(facility=facility)
         sessions_data = [
             {
                 "id": str(s.id),
@@ -685,7 +704,7 @@ class ClinicalChatSessionListView(AIFeatureGatedMixin, APIView):
                 "updated_at": s.updated_at.isoformat(),
                 "message_count": s.message_count,
             }
-            for s in sessions
+            for s in qs
         ]
         return Response({"sessions": sessions_data})
 
@@ -1302,6 +1321,7 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
                 request_data={"patient_data": patient_data},
                 result_data=response_data,
                 service_mode="tibabot",
+                **_get_tenant_kwargs(request),
             )
             response_data["stored_id"] = str(stored.id)
         except Exception:
@@ -1560,6 +1580,7 @@ class LabInterpretView(AIFeatureGatedMixin, APIView):
                 },
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
+                **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
         except Exception:
@@ -1674,6 +1695,7 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
                 request_data={k: v for k, v in data.items() if k != "admission_id"},
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
+                **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
         except Exception:
@@ -1797,6 +1819,7 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
                 },
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
+                **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
         except Exception:
@@ -2124,6 +2147,7 @@ class CDSEvaluateView(AIFeatureGatedMixin, APIView):
                 request_data={k: v for k, v in data.items() if k != "encounter_id"},
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
+                **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
         except Exception:
@@ -2219,6 +2243,7 @@ class InvestigationSuggestView(AIFeatureGatedMixin, APIView):
                 request_data={k: v for k, v in data.items() if k != "encounter_id"},
                 result_data=result,
                 service_mode=result.get("mode", "tibabot"),
+                **_get_tenant_kwargs(request),
             )
             result["stored_id"] = str(stored.id)
         except Exception:
@@ -2227,7 +2252,7 @@ class InvestigationSuggestView(AIFeatureGatedMixin, APIView):
         return Response(result)
 
 
-class StoredInvestigationSuggestListView(APIView):
+class StoredInvestigationSuggestListView(AIFeatureGatedMixin, APIView):
     """
     GET /api/ai/results/investigation-suggestions/?encounter_id=X
 
@@ -2240,10 +2265,14 @@ class StoredInvestigationSuggestListView(APIView):
         encounter_id = request.query_params.get("encounter_id")
         if not encounter_id:
             return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
         qs = AIInvestigationSuggestResult.objects.select_related("created_by").filter(
             encounter_id=encounter_id,
-        )[:10]
-        return Response(StoredInvestigationSuggestSerializer(qs, many=True).data)
+        )
+        if facility:
+            qs = qs.filter(facility=facility)
+        return Response(StoredInvestigationSuggestSerializer(qs[:10], many=True).data)
 
 
 # =============================================================================
@@ -2251,7 +2280,7 @@ class StoredInvestigationSuggestListView(APIView):
 # =============================================================================
 
 
-class StoredCarePlanListView(APIView):
+class StoredCarePlanListView(AIFeatureGatedMixin, APIView):
     """
     GET /api/ai/results/care-plans/?encounter_id=X or ?admission_id=X
 
@@ -2270,11 +2299,15 @@ class StoredCarePlanListView(APIView):
             qs = qs.filter(admission_id=admission_id)
         else:
             return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility:
+            qs = qs.filter(facility=facility)
         results = qs[:10]
         return Response(StoredCarePlanSerializer(results, many=True).data)
 
 
-class StoredCarePlanDeleteView(APIView):
+class StoredCarePlanDeleteView(AIFeatureGatedMixin, APIView):
     """
     DELETE /api/ai/results/care-plans/<uuid:pk>/
 
@@ -2300,7 +2333,7 @@ class StoredCarePlanDeleteView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class StoredCDSResultListView(APIView):
+class StoredCDSResultListView(AIFeatureGatedMixin, APIView):
     """
     GET /api/ai/results/cds/?encounter_id=X
 
@@ -2313,13 +2346,17 @@ class StoredCDSResultListView(APIView):
         encounter_id = request.query_params.get("encounter_id")
         if not encounter_id:
             return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
         qs = AICDSResult.objects.select_related("created_by").filter(
             encounter_id=encounter_id,
-        )[:10]
-        return Response(StoredCDSResultSerializer(qs, many=True).data)
+        )
+        if facility:
+            qs = qs.filter(facility=facility)
+        return Response(StoredCDSResultSerializer(qs[:10], many=True).data)
 
 
-class StoredLabInterpretListView(APIView):
+class StoredLabInterpretListView(AIFeatureGatedMixin, APIView):
     """
     GET /api/ai/results/lab-interpretations/?lab_result_id=X or ?encounter_id=X
 
@@ -2338,10 +2375,14 @@ class StoredLabInterpretListView(APIView):
             qs = qs.filter(encounter_id=encounter_id)
         else:
             return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if facility:
+            qs = qs.filter(facility=facility)
         return Response(StoredLabInterpretSerializer(qs[:10], many=True).data)
 
 
-class StoredDischargeResultListView(APIView):
+class StoredDischargeResultListView(AIFeatureGatedMixin, APIView):
     """
     GET /api/ai/results/discharge/?admission_id=X
 
@@ -2354,13 +2395,17 @@ class StoredDischargeResultListView(APIView):
         admission_id = request.query_params.get("admission_id")
         if not admission_id:
             return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
         qs = AIDischargeResult.objects.select_related("created_by").filter(
             admission_id=admission_id,
-        )[:10]
-        return Response(StoredDischargeResultSerializer(qs, many=True).data)
+        )
+        if facility:
+            qs = qs.filter(facility=facility)
+        return Response(StoredDischargeResultSerializer(qs[:10], many=True).data)
 
 
-class StoredICURiskResultListView(APIView):
+class StoredICURiskResultListView(AIFeatureGatedMixin, APIView):
     """
     GET /api/ai/results/icu-risk/?admission_id=X
 
@@ -2373,7 +2418,11 @@ class StoredICURiskResultListView(APIView):
         admission_id = request.query_params.get("admission_id")
         if not admission_id:
             return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
         qs = AIICURiskResult.objects.select_related("created_by").filter(
             admission_id=admission_id,
-        )[:10]
-        return Response(StoredICURiskResultSerializer(qs, many=True).data)
+        )
+        if facility:
+            qs = qs.filter(facility=facility)
+        return Response(StoredICURiskResultSerializer(qs[:10], many=True).data)

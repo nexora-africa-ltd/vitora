@@ -21,6 +21,7 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.mixins import FacilityScopedModel
 
 
 def generate_nutrition_consultation_number():
@@ -89,7 +90,7 @@ def generate_diet_plan_number():
     return f"{prefix}{sequence:04d}"
 
 
-class NutritionConsultation(HistoryMixin, models.Model):
+class NutritionConsultation(HistoryMixin, FacilityScopedModel):
     """
     Nutrition consultation/assessment model.
 
@@ -174,24 +175,6 @@ class NutritionConsultation(HistoryMixin, models.Model):
         unique=True,
         editable=False,
         help_text="Auto-generated consultation number",
-    )
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="nutrition_consultations",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="nutrition_consultations",
-        null=True,
-        blank=True,
-        help_text="Facility where consultation occurred.",
     )
 
     # Patient & Encounter

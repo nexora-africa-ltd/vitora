@@ -61,7 +61,7 @@ MATERNITY_CONTINUITY_STATUS_CHOICES = [
 ]
 
 
-class Ward(TimeStampedModel):
+class Ward(FacilityScopedModel, TimeStampedModel):
     """
     Hospital ward for inpatient care.
 
@@ -125,22 +125,6 @@ class Ward(TimeStampedModel):
         "PEDIATRIC": {},  # age defaults handled separately via WARD_TYPE_AGE_DEFAULTS
     }
 
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="wards",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="wards",
-        null=True,
-        blank=True,
-        help_text="Facility where this ward is located.",
-    )
     name = models.CharField(
         max_length=100,
         unique=True,
@@ -681,7 +665,7 @@ class AdmissionRecommendation(TimeStampedModel):
         return timezone.now() > self.expires_at
 
 
-class Admission(TimeStampedModel):
+class Admission(FacilityScopedModel, TimeStampedModel):
     """
     Inpatient admission record.
 
@@ -724,24 +708,6 @@ class Admission(TimeStampedModel):
         ("SHA", "SHA Insurance"),
         ("CORPORATE", "Corporate"),
     ]
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="admissions",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="admissions",
-        null=True,
-        blank=True,
-        help_text="Facility where patient is admitted.",
-    )
 
     # Patient and encounter linkage
     patient = models.ForeignKey(

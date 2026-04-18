@@ -21,6 +21,7 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.mixins import FacilityScopedModel
 
 
 def generate_ot_order_number():
@@ -153,7 +154,7 @@ class OTTreatmentType(models.Model):
         return f"{self.code} - {self.name}"
 
 
-class OccupationalTherapyOrder(HistoryMixin, models.Model):
+class OccupationalTherapyOrder(HistoryMixin, FacilityScopedModel):
     """
     Occupational Therapy referral order from clinical encounter.
 
@@ -222,24 +223,6 @@ class OccupationalTherapyOrder(HistoryMixin, models.Model):
 
     # Identity - format: OT-YYYYMMDD-XXXX
     order_number = models.CharField(max_length=30, unique=True, editable=False)
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="ot_orders",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="ot_orders",
-        null=True,
-        blank=True,
-        help_text="Facility where order was created.",
-    )
 
     # Relationships
     patient = models.ForeignKey(

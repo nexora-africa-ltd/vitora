@@ -60,9 +60,16 @@ def authenticated_client(api_client, test_user, sample_organization, sample_faci
 # =============================================================================
 
 
-def _create_session(user, title="Test Chat", num_messages=2):
+def _create_session(user, title="Test Chat", num_messages=2, facility=None):
     """Create a ChatSession with messages for testing."""
-    session = ChatSession.objects.create(user=user, title=title)
+    kwargs = {"user": user, "title": title}
+    if facility is None:
+        profile = getattr(user, "staff_profile", None)
+        if profile and profile.primary_facility_id:
+            kwargs["facility"] = profile.primary_facility
+    else:
+        kwargs["facility"] = facility
+    session = ChatSession.objects.create(**kwargs)
     for i in range(num_messages):
         role = "user" if i % 2 == 0 else "assistant"
         ChatMessage.objects.create(

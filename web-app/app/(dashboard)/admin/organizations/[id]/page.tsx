@@ -277,9 +277,20 @@ export default function OrganizationDetailPage() {
                 {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
             ) : facilities.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-6 sm:px-0 py-4">
-                No facilities registered for this organization.
-              </p>
+              <div className="flex flex-col items-center gap-3 px-6 sm:px-0 py-8 text-center">
+                <Building2 className="h-10 w-10 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">
+                  No facilities registered for this organization.
+                </p>
+                {isSuperuser && (
+                  <Button asChild size="sm">
+                    <Link href={`/admin/organizations/${orgId}/facilities/new`}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add First Facility
+                    </Link>
+                  </Button>
+                )}
+              </div>
             ) : (
               <ResponsiveTable
                 data={facilities}
@@ -300,8 +311,15 @@ export default function OrganizationDetailPage() {
                             </Badge>
                           )}
                         </span>
-                        <span className="block text-xs text-muted-foreground">{f.mfl_code}</span>
                       </div>
+                    ),
+                  },
+                  {
+                    key: 'mfl_code',
+                    header: 'MFL Code',
+                    sortable: true,
+                    cell: (f) => (
+                      <span className="font-mono text-xs">{f.mfl_code}</span>
                     ),
                   },
                   {

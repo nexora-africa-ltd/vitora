@@ -30,6 +30,7 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
 
 # =============================================================================
@@ -98,7 +99,7 @@ def generate_hei_number():
 # =============================================================================
 
 
-class MCHRegistration(HistoryMixin, TimeStampedModel):
+class MCHRegistration(HistoryMixin, FacilityScopedModel, TimeStampedModel):
     """
     Pregnancy registration / MCH card.
 
@@ -135,24 +136,6 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
         editable=False,
         default=generate_mch_number,
         help_text="Auto-generated MCH registration number (MCH-YYYYMMDD-XXXX)",
-    )
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="mch_registrations",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="mch_registrations",
-        null=True,
-        blank=True,
-        help_text="Facility where registration was created.",
     )
 
     # Mother

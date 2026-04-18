@@ -519,7 +519,7 @@ class TriageVitalThreshold(models.Model):
         return "normal"
 
 
-class TriageAssessment(models.Model):
+class TriageAssessment(FacilityScopedModel):
     """
     Triage assessment linked to an encounter.
     Captures initial patient assessment and KETA priority categorization.
@@ -617,22 +617,6 @@ class TriageAssessment(models.Model):
     }
 
     # Core Relationship
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="triage_assessments",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="triage_assessments",
-        null=True,
-        blank=True,
-        help_text="Facility where triage was performed.",
-    )
     encounter = models.OneToOneField(
         "encounters.Encounter", on_delete=models.CASCADE, related_name="triage_assessment"
     )
@@ -936,13 +920,6 @@ class TriageAssessment(models.Model):
                 enc = self.encounter
                 if enc.facility_id:
                     self.facility_id = enc.facility_id
-            except Exception:
-                pass
-        if self.facility_id and not self.organization_id:
-            try:
-                fac = self.facility
-                if fac and fac.organization_id:
-                    self.organization_id = fac.organization_id
             except Exception:
                 pass
         # Last resort: inherit from patient

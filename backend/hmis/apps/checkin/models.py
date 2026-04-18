@@ -12,10 +12,11 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
 
 
-class CheckIn(TimeStampedModel):
+class CheckIn(FacilityScopedModel, TimeStampedModel):
     """
     Represents a patient check-in event.
 

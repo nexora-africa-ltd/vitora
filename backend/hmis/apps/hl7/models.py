@@ -7,6 +7,8 @@ with status tracking, retry support, and audit.
 
 from django.db import models
 
+from hmis.apps.core.mixins import FacilityScopedModel
+
 
 class HL7MessageDirection(models.TextChoices):
     OUTBOUND = "OUT", "Outbound"
@@ -22,7 +24,7 @@ class HL7MessageStatus(models.TextChoices):
     DEAD_LETTER = "DEAD", "Dead Letter"
 
 
-class HL7Message(models.Model):
+class HL7Message(FacilityScopedModel):
     """
     Persistent record of HL7 v2 messages.
 
@@ -30,23 +32,6 @@ class HL7Message(models.Model):
     counts, and error tracking. Used by the HL7 message queue for
     reliable delivery.
     """
-
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="hl7_messages",
-        null=True,
-        blank=True,
-        help_text="Facility this message belongs to.",
-    )
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="hl7_messages",
-        null=True,
-        blank=True,
-        help_text="Organization (auto-set from facility).",
-    )
 
     message_type = models.CharField(
         max_length=20,
@@ -149,8 +134,6 @@ class HL7Message(models.Model):
         return f"{self.message_type} [{self.status}] {self.message_control_id}"
 
     def save(self, *args, **kwargs):
-        if self.facility and not self.organization_id:
-            self.organization = self.facility.organization
         super().save(*args, **kwargs)
 
     @property

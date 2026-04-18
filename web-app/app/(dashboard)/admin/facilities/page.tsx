@@ -2,16 +2,19 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Hospital, Search, MapPin, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
+import { Hospital, Search, MapPin, ShieldCheck, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { facilitiesApi } from '@/lib/api/facilities';
 import type { FacilityListItem } from '@/lib/types/facility';
 
@@ -27,6 +30,7 @@ const levelLabels: Record<string, string> = {
 export default function FacilitiesPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { isSuperuser } = usePermissions();
   const [search, setSearch] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -45,6 +49,16 @@ export default function FacilitiesPage() {
         <PageHeader
           title="Facilities"
           helpContent="Manage healthcare facilities. Each facility has an MFL code, level, and can be linked to an organization."
+          actions={
+            isSuperuser ? (
+              <Button asChild size="sm">
+                <Link href="/admin/facilities/new">
+                  <Plus className="h-4 w-4 mr-1" />
+                  New Facility
+                </Link>
+              </Button>
+            ) : undefined
+          }
         />
 
         {/* Stats */}
@@ -94,10 +108,15 @@ export default function FacilitiesPage() {
                 header: 'Facility',
                 sortable: true,
                 cell: (f) => (
-                  <div>
-                    <p className="font-medium">{f.name}</p>
-                    <p className="text-xs text-muted-foreground">{f.mfl_code}</p>
-                  </div>
+                  <p className="font-medium">{f.name}</p>
+                ),
+              },
+              {
+                key: 'mfl_code',
+                header: 'MFL Code',
+                sortable: true,
+                cell: (f) => (
+                  <span className="font-mono text-xs">{f.mfl_code}</span>
                 ),
               },
               {

@@ -2,10 +2,11 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
 
 
-class ProcedureCatalog(TimeStampedModel):
+class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
     """
     Master catalog of procedures that can be performed.
 
@@ -176,24 +177,6 @@ class ProcedureCatalog(TimeStampedModel):
         default=True, help_text="Whether procedure is currently offered"
     )
 
-    # Multi-tenancy
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="procedure_catalog_entries",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="procedure_catalog_entries",
-        null=True,
-        blank=True,
-        help_text="Facility offering this procedure.",
-    )
-
     class Meta:
         ordering = ["category", "name"]
         verbose_name = "Procedure Catalog Entry"
@@ -260,7 +243,7 @@ class ProcedureKitItem(models.Model):
         return f"{self.kit.name} - {self.drug.generic_name} x{self.quantity}"
 
 
-class ProcedureOrder(TimeStampedModel):
+class ProcedureOrder(FacilityScopedModel, TimeStampedModel):
     """
     Order/request for a procedure to be performed.
 
@@ -396,24 +379,6 @@ class ProcedureOrder(TimeStampedModel):
     )
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(blank=True, default="")
-
-    # Multi-tenancy
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="procedure_orders",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="procedure_orders",
-        null=True,
-        blank=True,
-        help_text="Facility where procedure was ordered.",
-    )
 
     class Meta:
         ordering = ["-ordered_at"]
@@ -602,7 +567,7 @@ class ProcedureOrder(TimeStampedModel):
         return False
 
 
-class ProcedureConsent(TimeStampedModel):
+class ProcedureConsent(FacilityScopedModel, TimeStampedModel):
     """
     Consent record for a procedure.
 
@@ -697,22 +662,6 @@ class ProcedureConsent(TimeStampedModel):
     )
     declined_at = models.DateTimeField(null=True, blank=True)
 
-    # Multi-tenancy
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="procedure_consents",
-        null=True,
-        blank=True,
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="procedure_consents",
-        null=True,
-        blank=True,
-    )
-
     class Meta:
         ordering = ["-created_at"]
         verbose_name = "Procedure Consent"
@@ -763,7 +712,7 @@ class ProcedureConsent(TimeStampedModel):
         self.save(update_fields=["status", "decline_reason", "declined_at", "updated_at"])
 
 
-class ProcedureLog(TimeStampedModel):
+class ProcedureLog(FacilityScopedModel, TimeStampedModel):
     """
     Record of a performed procedure.
 
@@ -851,22 +800,6 @@ class ProcedureLog(TimeStampedModel):
 
     # Documentation
     notes = models.TextField(blank=True, default="")
-
-    # Multi-tenancy
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="procedure_logs",
-        null=True,
-        blank=True,
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="procedure_logs",
-        null=True,
-        blank=True,
-    )
 
     class Meta:
         ordering = ["-started_at"]
@@ -1000,7 +933,7 @@ class ProcedureConsumable(models.Model):
             self.batch.save(update_fields=["quantity_available"])
 
 
-class ProcedureOutcome(TimeStampedModel):
+class ProcedureOutcome(FacilityScopedModel, TimeStampedModel):
     """
     Outcome tracking for a procedure.
 
@@ -1035,22 +968,6 @@ class ProcedureOutcome(TimeStampedModel):
 
     # Photos/images (stored as references)
     images = models.JSONField(null=True, blank=True, help_text="List of image file references")
-
-    # Multi-tenancy
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="procedure_outcomes",
-        null=True,
-        blank=True,
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="procedure_outcomes",
-        null=True,
-        blank=True,
-    )
 
     class Meta:
         ordering = ["-assessment_date"]

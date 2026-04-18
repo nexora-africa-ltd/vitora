@@ -15,6 +15,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from hmis.apps.core.mixins import FacilityScopedModel
+
 if TYPE_CHECKING:
     pass
 
@@ -145,7 +147,7 @@ class NotifiableDisease(models.Model):
         return self.category == NotifiableCategory.IMMEDIATE
 
 
-class NotifiableCase(models.Model):
+class NotifiableCase(FacilityScopedModel):
     """
     Recorded instance of a notifiable disease case.
 
@@ -162,24 +164,6 @@ class NotifiableCase(models.Model):
         notified_at: When county was notified
         county: Patient's county for notification routing
     """
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="notifiable_cases",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="notifiable_cases",
-        null=True,
-        blank=True,
-        help_text="Facility where case was detected.",
-    )
 
     disease = models.ForeignKey(
         NotifiableDisease,
@@ -397,7 +381,7 @@ class NotifiableCase(models.Model):
         self.save(update_fields=["notification_status", "notified_at", "notified_by", "updated_at"])
 
 
-class SurveillanceAlert(models.Model):
+class SurveillanceAlert(FacilityScopedModel):
     """
     Real-time alert for notifiable disease cases.
 
@@ -412,24 +396,6 @@ class SurveillanceAlert(models.Model):
         sent_via_sms: Whether SMS was sent
         sent_via_email: Whether email was sent
     """
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="surveillance_alerts",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from case).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="surveillance_alerts",
-        null=True,
-        blank=True,
-        help_text="Facility where alert originated.",
-    )
 
     class AlertType(models.TextChoices):
         NEW_CASE = "NEW_CASE", "New Case Detected"
@@ -491,7 +457,6 @@ class SurveillanceAlert(models.Model):
                 case = self.case
                 if case.facility_id:
                     self.facility_id = case.facility_id
-                    self.organization_id = case.organization_id
             except Exception:
                 pass
         super().save(*args, **kwargs)
@@ -1018,7 +983,7 @@ class IHRNotificationStatus(models.TextChoices):
     REJECTED = "REJECTED", "Rejected"
 
 
-class IHRNotification(models.Model):
+class IHRNotification(FacilityScopedModel):
     """
     International Health Regulations (2005) notification record.
 
@@ -1037,24 +1002,6 @@ class IHRNotification(models.Model):
         status: Notification workflow status
         annex2_criteria: JSON storing Annex 2 decision instrument answers
     """
-
-    # Tenant scoping
-    organization = models.ForeignKey(
-        "core.Organization",
-        on_delete=models.CASCADE,
-        related_name="ihr_notifications",
-        null=True,
-        blank=True,
-        help_text="Owning organization (auto-set from facility).",
-    )
-    facility = models.ForeignKey(
-        "core.Facility",
-        on_delete=models.CASCADE,
-        related_name="ihr_notifications",
-        null=True,
-        blank=True,
-        help_text="Facility where event was detected.",
-    )
 
     # Source reference
     disease = models.ForeignKey(
