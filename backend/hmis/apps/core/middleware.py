@@ -121,7 +121,7 @@ class TenantMiddleware:
         return None
 
     def _user_has_facility_access(self, user, facility):
-        """Check whether user is assigned to the given facility."""
+        """Check whether user is assigned to the given facility via OrgMembership."""
         if user.is_superuser:
             return True
 
@@ -129,10 +129,16 @@ class TenantMiddleware:
         if not profile:
             return False
 
-        if profile.primary_facility_id == facility.pk:
-            return True
+        # Check via OrgMembership: user needs an ACTIVE membership for the
+        # facility's org, AND that membership must include this facility.
+        from hmis.apps.core.models import OrgMembership
 
-        return profile.secondary_facilities.filter(pk=facility.pk).exists()
+        return OrgMembership.objects.filter(
+            staff_profile=profile,
+            organization=facility.organization,
+            status=OrgMembership.MembershipStatus.ACTIVE,
+            facilities=facility,
+        ).exists()
 
 
 class AuditLogMiddleware:

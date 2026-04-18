@@ -160,7 +160,37 @@ def _build_user_info(user) -> dict:
         "permissions": list(user.get_all_permissions()),
         "facility": facility_data,
         "onboarding_complete": onboarding_complete,
+        "memberships": _build_memberships(user),
     }
+
+
+def _build_memberships(user) -> list[dict]:
+    """Build the memberships list for auth responses."""
+    from hmis.apps.core.models import OrgMembership
+
+    memberships = []
+    if not hasattr(user, "staff_profile"):
+        return memberships
+    try:
+        profile = user.staff_profile
+    except StaffProfile.DoesNotExist:
+        return memberships
+
+    for m in profile.memberships.filter(
+        status=OrgMembership.MembershipStatus.ACTIVE
+    ).select_related("organization", "role", "department"):
+        memberships.append(
+            {
+                "id": m.pk,
+                "organization_id": m.organization_id,
+                "organization_name": m.organization.name,
+                "role_code": m.role.code,
+                "role_name": m.role.name,
+                "is_primary": m.is_primary,
+                "facilities": list(m.facilities.values("id", "name", "mfl_code")),
+            }
+        )
+    return memberships
 
 
 def _query_param_truthy(value: str | None) -> bool:
@@ -1890,7 +1920,7 @@ class FacilityViewSet(viewsets.ModelViewSet):
         """
         Return facilities the current user is assigned to.
 
-        Returns primary facility + secondary facilities from StaffProfile.
+        Derives facilities from active OrgMembership records.
         Superusers get all org facilities (same as the list endpoint).
         """
         if request.user.is_superuser:
@@ -1899,10 +1929,14 @@ class FacilityViewSet(viewsets.ModelViewSet):
             profile = getattr(request.user, "staff_profile", None)
             if not profile:
                 return Response([])
+            from hmis.apps.core.models import OrgMembership
+
+            # Collect facility IDs from all ACTIVE memberships
             facility_ids = set()
-            if profile.primary_facility_id:
-                facility_ids.add(profile.primary_facility_id)
-            facility_ids.update(profile.secondary_facilities.values_list("pk", flat=True))
+            for membership in profile.memberships.filter(
+                status=OrgMembership.MembershipStatus.ACTIVE
+            ):
+                facility_ids.update(membership.facilities.values_list("pk", flat=True))
             facilities = Facility.objects.filter(
                 pk__in=facility_ids, is_active=True
             ).select_related("county", "sub_county", "ward", "organization")

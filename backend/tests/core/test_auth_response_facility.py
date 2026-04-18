@@ -275,6 +275,8 @@ class TestBuildUserInfo:
             "phone_number",
             "permissions",
             "facility",
+            "onboarding_complete",
+            "memberships",
         }
         assert set(info.keys()) == expected_keys
 
