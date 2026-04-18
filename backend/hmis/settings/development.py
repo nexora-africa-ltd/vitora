@@ -41,6 +41,7 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
     "x-idempotency-key",  # Sprint 1.7: Idempotent API operations
     "x-facility-id",  # Multi-facility: facility context header
+    "x-organization-id",  # Multi-org: organization context header
     "ngrok-skip-browser-warning",
 ]
 
