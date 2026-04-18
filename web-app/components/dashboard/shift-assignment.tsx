@@ -290,7 +290,7 @@ export function TodayAssignmentCard() {
     return (
       <>
       <Card className="border-dashed">
-        <CardContent className="flex items-center justify-between gap-3 p-4">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 text-muted-foreground">
             <CalendarOff className="h-5 w-5 shrink-0" />
             <div>
@@ -310,7 +310,9 @@ export function TodayAssignmentCard() {
             </Button>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/scheduling/my-shifts">
-                My Shifts <ArrowRight className="h-3 w-3 ml-1" />
+                <span className="hidden sm:inline">My Shifts</span>
+                <span className="sm:hidden">Shifts</span>
+                <ArrowRight className="h-3 w-3 ml-1" />
               </Link>
             </Button>
           </div>
@@ -425,7 +427,7 @@ export function TodayAssignmentCard() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {(status === 'UPCOMING' || status === 'SHOULD_CLOCK_IN') && (
               <Button
                 size="sm"
@@ -482,7 +484,9 @@ export function TodayAssignmentCard() {
             )}
             <Button variant="ghost" size="sm" asChild>
               <Link href="/scheduling/my-shifts">
-                My Shifts <ArrowRight className="h-3 w-3 ml-1" />
+                <span className="hidden sm:inline">My Shifts</span>
+                <span className="sm:hidden">Shifts</span>
+                <ArrowRight className="h-3 w-3 ml-1" />
               </Link>
             </Button>
           </div>

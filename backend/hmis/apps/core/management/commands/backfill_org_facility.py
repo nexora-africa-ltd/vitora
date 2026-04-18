@@ -61,21 +61,44 @@ class Command(BaseCommand):
             # Clinical
             ("encounters", "Encounter", "organization", "facility"),
             ("triage", "TriageAssessment", "organization", "facility"),
+            ("triage", "ERBed", "organization", "facility"),
             ("clinics", "Clinic", "organization", "facility"),
             ("clinics", "ClinicSession", "organization", "facility"),
             ("clinics", "ClinicVisit", "organization", "facility"),
+            # Scheduling
+            ("scheduling", "Resource", "organization", "facility"),
+            ("scheduling", "Shift", "organization", "facility"),
+            ("scheduling", "Appointment", "organization", "facility"),
+            ("scheduling", "AssignmentRule", "organization", "facility"),
+            ("scheduling", "SchedulingSettings", "organization", "facility"),
+            ("scheduling", "StaffConstraint", "organization", "facility"),
             # Pharmacy & stock
             ("pharmacy", "Prescription", "organization", "facility"),
             ("pharmacy", "StockBatch", "organization", "facility"),
             ("pharmacy", "StockAlert", "organization", "facility"),
             ("pharmacy", "Dispensing", "organization", "facility"),
+            # Inventory
+            ("inventory", "PurchaseOrder", "organization", "facility"),
+            ("inventory", "GoodsReceiptNote", "organization", "facility"),
+            ("inventory", "StoreLocation", "organization", "facility"),
+            ("inventory", "WardStock", "organization", "facility"),
+            ("inventory", "StockCount", "organization", "facility"),
+            ("inventory", "ETIMSConfig", "organization", "facility"),
+            ("inventory", "ETIMSInvoice", "organization", "facility"),
+            ("inventory", "ConsumptionRecord", "organization", "facility"),
+            ("inventory", "DemandForecast", "organization", "facility"),
+            ("inventory", "ReorderSuggestion", "organization", "facility"),
             # Laboratory
             ("laboratory", "LabOrder", "organization", "facility"),
+            ("laboratory", "Instrument", "organization", "facility"),
             # Inpatient
             ("inpatient", "Admission", "organization", "facility"),
             ("inpatient", "Ward", "organization", "facility"),
+            ("inpatient", "AdverseTransfusionReaction", "organization", "facility"),
+            ("inpatient", "DischargeTemplate", "organization", "facility"),
             # Billing
             ("billing", "Invoice", "organization", "facility"),
+            ("billing", "PaymentPoint", "organization", "facility"),
             # Surveillance
             ("surveillance", "NotifiableCase", "organization", "facility"),
             ("surveillance", "SurveillanceAlert", "organization", "facility"),
@@ -95,6 +118,7 @@ class Command(BaseCommand):
             ("ai", "AILabInterpretResult", "organization", "facility"),
             ("ai", "AIDischargeResult", "organization", "facility"),
             ("ai", "AIICURiskResult", "organization", "facility"),
+            ("ai", "AIInvestigationSuggestResult", "organization", "facility"),
             ("cds", "CDSAlert", "organization", "facility"),
             # Procedures
             ("procedures", "ProcedureCatalog", "organization", "facility"),
@@ -109,6 +133,17 @@ class Command(BaseCommand):
             ("immunizations", "VaccineStock", "organization", "facility"),
             ("immunizations", "ColdChainEquipment", "organization", "facility"),
             ("immunizations", "VaccineIncident", "organization", "facility"),
+            # Analytics & Reporting
+            ("analytics", "FacilityDailySummary", "organization", "facility"),
+            ("analytics", "DepartmentMonthlySummary", "organization", "facility"),
+            ("analytics", "DiagnosisTrend", "organization", "facility"),
+            ("analytics", "PatientDemographicSnapshot", "organization", "facility"),
+            ("moh_reporting", "MOH705Report", "organization", "facility"),
+            ("moh_reporting", "MOH711Report", "organization", "facility"),
+            ("moh_reporting", "MOH717Report", "organization", "facility"),
+            # Check-in & Integration
+            ("checkin", "CheckIn", "organization", "facility"),
+            ("hl7", "HL7Message", "organization", "facility"),
             # Core
             ("core", "AuditLog", "organization", "facility"),
             ("core", "SyncQueue", "organization", "facility"),
@@ -138,6 +173,53 @@ class Command(BaseCommand):
                     f"  {app_label}.{model_name}: org={count_org}, facility={count_fac}"
                 )
                 total_updated += max(count_org, count_fac)
+
+        # ── Org-only models (no facility FK) ─────────────────────────
+        MODELS_ORG_ONLY = [
+            ("inventory", "Supplier", "organization"),
+        ]
+
+        for app_label, model_name, org_field in MODELS_ORG_ONLY:
+            try:
+                Model = apps.get_model(app_label, model_name)
+            except LookupError:
+                continue
+
+            qs = Model.objects.filter(**{f"{org_field}__isnull": True})
+            count = qs.count()
+            if count and not dry_run:
+                qs.update(**{org_field: demo_org})
+            if count:
+                self.stdout.write(f"  {app_label}.{model_name}: org={count}")
+                total_updated += count
+
+        # ── StockTransfer: org + source_facility + destination_facility
+        try:
+            StockTransfer = apps.get_model("inventory", "StockTransfer")
+
+            qs_org = StockTransfer.objects.filter(organization__isnull=True)
+            count_org = qs_org.count()
+            if count_org and not dry_run:
+                qs_org.update(organization=demo_org)
+
+            qs_src = StockTransfer.objects.filter(source_facility__isnull=True)
+            count_src = qs_src.count()
+            if count_src and not dry_run:
+                qs_src.update(source_facility=hq_facility)
+
+            qs_dst = StockTransfer.objects.filter(destination_facility__isnull=True)
+            count_dst = qs_dst.count()
+            if count_dst and not dry_run:
+                qs_dst.update(destination_facility=hq_facility)
+
+            if count_org or count_src or count_dst:
+                self.stdout.write(
+                    f"  inventory.StockTransfer: org={count_org}, "
+                    f"source_facility={count_src}, destination_facility={count_dst}"
+                )
+                total_updated += max(count_org, count_src, count_dst)
+        except LookupError:
+            pass
 
         # ── Patient uses registered_at_facility (not facility) ────────
         try:

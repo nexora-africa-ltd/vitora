@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { APP_NAME } from '@/lib/utils/constants';
 
 const INSTALL_PROMPT_STORAGE_KEY = 'vitora_pwa_install_prompt_state';
 const FALLBACK_HINT_DELAY_MS = 1500;
+
+/** Routes where install banner should not render */
+const HIDDEN_PATHS = ['/login', '/signup', '/onboarding', '/setup'];
 
 type InstallPromptState = 'seen' | 'dismissed' | 'installed';
 type BannerMode = 'prompt' | 'hint';
@@ -75,6 +79,7 @@ export function InstallPromptBanner() {
   const [bannerMode, setBannerMode] = useState<BannerMode>('prompt');
   const [fallbackHint, setFallbackHint] = useState('');
   const hintTimerRef = useRef<number | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (typeof window === 'undefined' || isStandaloneMode()) {
@@ -166,7 +171,7 @@ export function InstallPromptBanner() {
     }
   };
 
-  if (!isVisible || (bannerMode === 'prompt' && !deferredPrompt)) {
+  if (!isVisible || (bannerMode === 'prompt' && !deferredPrompt) || HIDDEN_PATHS.some((p) => pathname.startsWith(p))) {
     return null;
   }
 

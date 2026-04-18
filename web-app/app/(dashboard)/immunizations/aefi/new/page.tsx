@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, Search, Check, ChevronsUpDown } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,22 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/lib/hooks/use-toast';
-import { aefiApi } from '@/lib/api/immunizations';
+import { aefiApi, immunizationRecordsApi } from '@/lib/api/immunizations';
 import type {
   AEFIEventType,
   AEFISeverity,
@@ -71,8 +85,22 @@ export default function AEFICreatePage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Form state
+  // Immunization record combobox state
   const [immunizationRecordId, setImmunizationRecordId] = useState('');
+  const [recordSearch, setRecordSearch] = useState('');
+  const [recordComboOpen, setRecordComboOpen] = useState(false);
+
+  const { data: recordsData, isLoading: recordsLoading } = useQuery({
+    queryKey: ['immunization-records-search', recordSearch],
+    queryFn: () => immunizationRecordsApi.list({ page_size: 20, ...(recordSearch ? { search: recordSearch } : {}) }),
+    enabled: recordComboOpen,
+    staleTime: 30_000,
+  });
+  const immunizationRecords = recordsData?.results ?? [];
+
+  const selectedRecord = immunizationRecords.find((r) => r.id.toString() === immunizationRecordId);
+
+  // Form state
   const [guardianName, setGuardianName] = useState('');
   const [vaccinationServiceType, setVaccinationServiceType] = useState<VaccinationServiceType | ''>('');
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]!);
@@ -152,13 +180,79 @@ export default function AEFICreatePage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Immunization Record ID <span className="text-destructive">*</span></Label>
-              <Input
-                type="number"
-                value={immunizationRecordId}
-                onChange={(e) => setImmunizationRecordId(e.target.value)}
-                placeholder="Enter the immunization record ID"
-              />
+              <Label>Immunization Record <span className="text-destructive">*</span></Label>
+              <Popover open={recordComboOpen} onOpenChange={setRecordComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={recordComboOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {selectedRecord
+                      ? `#${selectedRecord.id} — ${selectedRecord.vaccine_name} (${selectedRecord.vaccine_code})`
+                      : immunizationRecordId
+                        ? `Record #${immunizationRecordId}`
+                        : 'Search immunization records...'}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Search by patient name, vaccine, or ID..."
+                      value={recordSearch}
+                      onValueChange={setRecordSearch}
+                    />
+                    <CommandList>
+                      {recordsLoading ? (
+                        <div className="p-4 text-sm text-muted-foreground text-center">
+                          Searching...
+                        </div>
+                      ) : immunizationRecords.length === 0 ? (
+                        <CommandEmpty>
+                          {recordSearch ? 'No records found.' : 'Type to search immunization records...'}
+                        </CommandEmpty>
+                      ) : (
+                        <CommandGroup>
+                          {immunizationRecords.map((record) => (
+                            <CommandItem
+                              key={record.id}
+                              value={record.id.toString()}
+                              onSelect={() => {
+                                setImmunizationRecordId(record.id.toString());
+                                setRecordComboOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  immunizationRecordId === record.id.toString()
+                                    ? 'opacity-100'
+                                    : 'opacity-0',
+                                )}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm">#{record.id}</span>
+                                  <span className="text-sm">{record.vaccine_name}</span>
+                                  <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                    {record.status}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  Dose {record.dose_number} · {record.vaccine_code}
+                                  {record.scheduled_date && ` · Scheduled: ${record.scheduled_date}`}
+                                </p>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <p className="text-xs text-muted-foreground mt-1">
                 Patient details, vaccine info, and facility data are auto-populated from this record.
               </p>
