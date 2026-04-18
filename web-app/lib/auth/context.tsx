@@ -45,6 +45,7 @@ export interface User {
   role_category?: string;  // Role category (CLINICAL, ADMINISTRATIVE, etc.)
   phone_number?: string | null;  // From staff profile
   facility?: UserFacility | null;  // Primary facility with module capabilities
+  onboarding_complete?: boolean;  // Whether org has completed onboarding
 }
 
 // Auth tokens
@@ -135,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         facility: userInfo.facility && typeof userInfo.facility === 'object'
           ? userInfo.facility as UserFacility
           : null,
+        onboarding_complete: typeof userInfo.onboarding_complete === 'boolean' ? userInfo.onboarding_complete : undefined,
       };
 
       localStorage.setItem(USER_KEY, JSON.stringify(syncedUser));

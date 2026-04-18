@@ -15,10 +15,14 @@ import {
   EmailVerifyResponseSchema,
   SetupCheckResponseSchema,
   SetupInitializeResponseSchema,
+  OnboardingStatusResponseSchema,
+  OnboardingCompleteResponseSchema,
 } from '@/lib/schemas/onboarding.schema';
 import { API_BASE_URL } from '@/lib/utils/constants';
 import type { PaginatedResponse } from '@/lib/types';
 import type {
+  OnboardingStatusResponse,
+  OnboardingCompleteResponse,
   StaffInvitation,
   InvitationCreateData,
   InvitationPublicInfo,
@@ -218,5 +222,21 @@ export const setupApi = {
     }
     const result = await response.json();
     return parseResponse(SetupInitializeResponseSchema, result, { context: 'setupApi.initialize' });
+  },
+};
+
+// =============================================================================
+// Organization Onboarding Checklist API (Authenticated)
+// =============================================================================
+
+export const onboardingChecklistApi = {
+  getStatus: async (): Promise<OnboardingStatusResponse> => {
+    const response = await apiClient.get('/api/core/onboarding/status/');
+    return parseResponse(OnboardingStatusResponseSchema, response.data, { context: 'onboardingChecklistApi.getStatus' });
+  },
+
+  markComplete: async (): Promise<OnboardingCompleteResponse> => {
+    const response = await apiClient.post('/api/core/onboarding/status/');
+    return parseResponse(OnboardingCompleteResponseSchema, response.data, { context: 'onboardingChecklistApi.markComplete' });
   },
 };

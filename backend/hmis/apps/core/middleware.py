@@ -8,6 +8,9 @@ multi-tenant request scoping.
 """
 
 import logging
+from datetime import timedelta
+
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -265,3 +268,112 @@ class MFAGraceEnforcementMiddleware:
             )
 
         return self.get_response(request)
+
+
+class OnboardingEnforcementMiddleware:
+    """
+    Redirect org admins to complete onboarding after a grace period.
+
+    For the first ``ONBOARDING_GRACE_PERIOD_DAYS`` days after org creation,
+    API access is unrestricted (soft phase — frontend shows a banner).
+    After the grace period, non-superuser org-admin users whose organization
+    has not completed onboarding are blocked from most API endpoints.
+
+    Exempt paths (always accessible):
+    - ``/api/token/`` — authentication
+    - ``/api/core/onboarding/`` — the onboarding endpoints themselves
+    - ``/api/core/auth/`` — password change, etc.
+    - ``/api/staff/me/`` — user info sync
+    - ``/api/core/facilities/`` — needed to configure modules
+    - ``/api/core/departments/`` — needed during setup
+    - ``/api/core/roles/`` — needed during setup
+    - ``/api/core/invitations/`` — needed to invite staff
+    - ``/api/clinics/`` — needed to create first clinic
+    - ``/api/locations/`` — needed for location cascades
+    - ``/admin/`` — Django admin
+
+    Only enforced when ``ONBOARDING_ENFORCEMENT`` setting is ``True``.
+    """
+
+    EXEMPT_PREFIXES = (
+        "/api/token/",
+        "/api/auth/",
+        "/api/core/onboarding/",
+        "/api/core/auth/",
+        "/api/staff/me/",
+        "/api/core/facilities/",
+        "/api/core/departments/",
+        "/api/core/roles/",
+        "/api/core/invitations/",
+        "/api/clinics/",
+        "/api/locations/",
+        "/admin/",
+        "/api/mfa/",
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        import json
+
+        from django.conf import settings as django_settings
+        from django.http import HttpResponse
+
+        if not getattr(django_settings, "ONBOARDING_ENFORCEMENT", False):
+            return self.get_response(request)
+
+        # Only gate API routes
+        if not request.path.startswith("/api/"):
+            return self.get_response(request)
+
+        # Exempt paths
+        if any(request.path.startswith(p) for p in self.EXEMPT_PREFIXES):
+            return self.get_response(request)
+
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return self.get_response(request)
+
+        # Superusers are always exempt
+        if user.is_superuser:
+            return self.get_response(request)
+
+        # Only block org admins (ADMIN, ORG-ADMIN, OWNER roles)
+        profile = getattr(user, "staff_profile", None)
+        if not profile or not profile.organization:
+            return self.get_response(request)
+
+        org = profile.organization
+
+        # If onboarding is already complete, pass through
+        if org.onboarding_complete:
+            return self.get_response(request)
+
+        # Check grace period
+        grace_days = getattr(django_settings, "ONBOARDING_GRACE_PERIOD_DAYS", 7)
+        grace_deadline = org.created_at + timedelta(days=grace_days)
+
+        if timezone.now() <= grace_deadline:
+            # Still in grace period — allow access
+            return self.get_response(request)
+
+        # Only block admin roles after grace period
+        admin_codes = {"ADMIN", "ORG-ADMIN", "OWNER"}
+        role_code = profile.primary_role.code if profile.primary_role else None
+        if role_code not in admin_codes:
+            return self.get_response(request)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    "detail": (
+                        "Your organization setup is incomplete. "
+                        "Please complete the onboarding checklist to continue."
+                    ),
+                    "code": "onboarding_required",
+                }
+            ),
+            content_type="application/json",
+            status=403,
+        )

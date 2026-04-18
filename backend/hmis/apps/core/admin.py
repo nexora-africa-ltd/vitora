@@ -823,10 +823,11 @@ class OrganizationAdmin(admin.ModelAdmin):
         "subscription_tier",
         "is_verified",
         "is_active",
+        "onboarding_completed_at",
         "facility_count",
         "created_at",
     ]
-    list_filter = ["subscription_tier", "is_active", "is_verified"]
+    list_filter = ["subscription_tier", "is_active", "is_verified", "onboarding_completed_at"]
     search_fields = ["name", "slug", "contact_email"]
     prepopulated_fields = {"slug": ("name",)}
     ordering = ["name"]
@@ -891,7 +892,7 @@ class OrganizationAdmin(admin.ModelAdmin):
         (
             "Status",
             {
-                "fields": ("is_verified", "is_active"),
+                "fields": ("is_verified", "is_active", "onboarding_completed_at"),
             },
         ),
         (

@@ -10,6 +10,7 @@ from .auth_views import (
     change_password,
     invitation_accept,
     invitation_lookup,
+    onboarding_status,
     org_signup,
     password_reset_confirm,
     password_reset_request,
@@ -87,4 +88,6 @@ urlpatterns = [
     # --- Setup wizard (first-run, feature-flagged) ---
     path("setup/check/", setup_check, name="setup-check"),
     path("setup/initialize/", setup_initialize, name="setup-initialize"),
+    # --- Onboarding checklist (authenticated) ---
+    path("onboarding/status/", onboarding_status, name="onboarding-status"),
 ] + router.urls

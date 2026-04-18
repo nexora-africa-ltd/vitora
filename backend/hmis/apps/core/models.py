@@ -2425,6 +2425,20 @@ class Organization(TimeStampedModel):
     )
 
     # ------------------------------------------------------------------
+    # Onboarding
+    # ------------------------------------------------------------------
+
+    onboarding_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "When initial onboarding was completed. NULL means the org admin "
+            "has not finished setting up the organization (facility modules, "
+            "first clinic, inviting staff, etc.)."
+        ),
+    )
+
+    # ------------------------------------------------------------------
     # Meta & Methods
     # ------------------------------------------------------------------
 
@@ -2460,6 +2474,63 @@ class Organization(TimeStampedModel):
         if self.max_users is None:
             return True
         return self.staff_count < self.max_users
+
+    @property
+    def onboarding_complete(self) -> bool:
+        """Whether the organization has completed initial onboarding."""
+        return self.onboarding_completed_at is not None
+
+    def get_onboarding_checklist(self) -> list[dict]:
+        """
+        Return the onboarding checklist with completion status for each step.
+
+        Steps:
+        1. Facility modules configured (at least 1 non-default module enabled)
+        2. First clinic created
+        3. At least 1 staff invited or created (beyond the initial admin)
+        """
+        from hmis.apps.clinics.models import Clinic
+
+        # Check facility modules - at least one facility has modules beyond defaults
+        facilities = self.facilities.filter(is_active=True)
+        has_configured_modules = facilities.exists() and any(
+            sum(1 for v in fac.modules.values() if v) > 1 for fac in facilities
+        )
+
+        # Check if at least one clinic exists
+        has_clinic = Clinic.objects.filter(
+            facility__organization=self,
+            facility__is_active=True,
+        ).exists()
+
+        # Check if there's more than 1 staff member (the initial admin)
+        has_invited_staff = self.staff_count > 1
+
+        steps = [
+            {
+                "key": "facility_modules",
+                "label": "Configure facility modules",
+                "description": "Enable the clinical modules your facility offers (e.g. pharmacy, laboratory, inpatient).",
+                "done": has_configured_modules,
+                "required": True,
+            },
+            {
+                "key": "first_clinic",
+                "label": "Create your first clinic",
+                "description": "Set up an outpatient clinic for patient consultations.",
+                "done": has_clinic,
+                "required": True,
+            },
+            {
+                "key": "invite_staff",
+                "label": "Invite team members",
+                "description": "Add doctors, nurses, and other staff to the system.",
+                "done": has_invited_staff,
+                "required": True,
+            },
+        ]
+
+        return steps
 
 
 # ============================================================================

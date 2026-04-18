@@ -102,6 +102,7 @@ MIDDLEWARE = [
     "hmis.apps.core.middleware.TenantMiddleware",  # Resolves organization + facility from X-Facility-Id
     "hmis.apps.core.middleware.AdminAccessMiddleware",  # Restrict /admin/ to Nexora superusers
     "hmis.apps.core.middleware.MFAGraceEnforcementMiddleware",  # Block API after MFA grace period
+    "hmis.apps.core.middleware.OnboardingEnforcementMiddleware",  # Block API after onboarding grace period
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",  # Tracks request user for history
@@ -225,6 +226,13 @@ MFA_ENFORCEMENT = True
 # Grace period (hours) for new users to set up MFA before it becomes mandatory.
 # Set to 0 to require immediate MFA setup (no grace period).
 MFA_GRACE_PERIOD_HOURS = 72
+
+# Onboarding enforcement — when True, org admins whose organization has not
+# completed onboarding are blocked from most API endpoints after the grace period.
+ONBOARDING_ENFORCEMENT = True
+
+# Grace period (days) after org creation before onboarding is enforced.
+ONBOARDING_GRACE_PERIOD_DAYS = 7
 
 # Active-shift enforcement for clinical write actions.
 # When True, clinical endpoints (encounters, prescriptions, lab orders, etc.)

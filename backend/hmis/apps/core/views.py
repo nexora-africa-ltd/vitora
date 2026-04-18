@@ -135,6 +135,16 @@ def _build_user_info(user) -> dict:
     if user.is_superuser:
         role = "ADMIN"
 
+    # Resolve onboarding status from organization
+    onboarding_complete = True  # Default for users without org (superusers, etc.)
+    if hasattr(user, "staff_profile"):
+        try:
+            profile_org = user.staff_profile.organization
+            if profile_org:
+                onboarding_complete = profile_org.onboarding_complete
+        except StaffProfile.DoesNotExist:
+            pass
+
     return {
         "id": user.id,
         "username": user.username,
@@ -149,6 +159,7 @@ def _build_user_info(user) -> dict:
         "phone_number": phone_number,
         "permissions": list(user.get_all_permissions()),
         "facility": facility_data,
+        "onboarding_complete": onboarding_complete,
     }
 
 

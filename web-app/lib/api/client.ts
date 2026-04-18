@@ -87,6 +87,12 @@ apiClient.interceptors.response.use(
         }
         return Promise.reject(error);
       }
+      if (data && data.code === 'onboarding_required') {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/onboarding')) {
+          window.location.href = '/onboarding';
+        }
+        return Promise.reject(error);
+      }
     }
 
     // Handle 401 Unauthorized — try cookie-based refresh

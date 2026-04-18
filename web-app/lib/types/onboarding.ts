@@ -204,3 +204,28 @@ export interface SetupInitializeResponse {
   facility_name: string;
   username: string;
 }
+
+// =============================================================================
+// Organization Onboarding Checklist Types
+// =============================================================================
+
+export interface OnboardingStep {
+  key: string;
+  label: string;
+  description: string;
+  done: boolean;
+  required: boolean;
+}
+
+export interface OnboardingStatusResponse {
+  complete: boolean;
+  all_required_done: boolean;
+  completed_at: string | null;
+  steps: OnboardingStep[];
+}
+
+export interface OnboardingCompleteResponse {
+  complete: boolean;
+  completed_at: string;
+  steps: OnboardingStep[];
+}
