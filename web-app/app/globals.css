@@ -444,6 +444,10 @@
     print-color-adjust: exact;
   }
 
+  @page {
+    margin: 1cm;
+  }
+
   .no-print,
   .print\:hidden {
     display: none !important;
@@ -465,6 +469,16 @@
   [data-sidebar],
   [role="banner"],
   [role="navigation"] {
+    display: none !important;
+  }
+
+  /* Hide ALL fixed/floating overlays (FABs, chat widgets, bottom nav, peek panels) */
+  [class*="fixed"] {
+    display: none !important;
+  }
+
+  /* Hide help popover trigger icons (interactive-only, no value on paper) */
+  [aria-label="Help"] {
     display: none !important;
   }
 
@@ -536,6 +550,12 @@
     font-weight: 600;
   }
 
+  /* Hide trend indicator arrows (interactive-only, clutters print) */
+  .print-report [class*="TrendIndicator"],
+  .print-report .print-hide-trend {
+    display: none !important;
+  }
+
   /* Keep charts visible but remove interactivity */
   .print-report .recharts-tooltip-wrapper,
   .print-report .recharts-legend-wrapper button {
@@ -554,6 +574,16 @@
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12pt !important;
+  }
+
+  /* Hide module analytics link cards (not useful on paper) */
+  .print-hide-section {
+    display: none !important;
+  }
+
+  /* Hide page header when print header replaces it */
+  .print-hide-on-print {
+    display: none !important;
   }
 
   /* ---- MOH AEFI Reporting Form print layout ---- */

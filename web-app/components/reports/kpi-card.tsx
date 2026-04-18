@@ -57,13 +57,15 @@ export function KPICard({
         </div>
 
         {trend && change !== undefined && (
-          <TrendIndicator
-            value={0}
-            percentageChange={trend === 'up' ? change : trend === 'down' ? -change : 0}
-            direction={trend === 'stable' ? 'neutral' : trend}
-            invertColors={invertColors}
-            size="md"
-          />
+          <div className="print-hide-trend">
+            <TrendIndicator
+              value={0}
+              percentageChange={trend === 'up' ? change : trend === 'down' ? -change : 0}
+              direction={trend === 'stable' ? 'neutral' : trend}
+              invertColors={invertColors}
+              size="md"
+            />
+          </div>
         )}
       </div>
 
