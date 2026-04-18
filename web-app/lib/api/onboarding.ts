@@ -47,27 +47,27 @@ import type {
 
 export const invitationsApi = {
   list: async (params?: InvitationListParams): Promise<PaginatedResponse<StaffInvitation>> => {
-    const response = await apiClient.get('/api/invitations/', { params });
+    const response = await apiClient.get('/api/core/invitations/', { params });
     return parseResponse(PaginatedInvitationSchema, response.data, { context: 'invitationsApi.list' });
   },
 
   create: async (data: InvitationCreateData): Promise<StaffInvitation> => {
-    const response = await apiClient.post('/api/invitations/', data);
+    const response = await apiClient.post('/api/core/invitations/', data);
     return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.create' });
   },
 
   get: async (id: number): Promise<StaffInvitation> => {
-    const response = await apiClient.get(`/api/invitations/${id}/`);
+    const response = await apiClient.get(`/api/core/invitations/${id}/`);
     return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.get' });
   },
 
   resend: async (id: number): Promise<StaffInvitation> => {
-    const response = await apiClient.post(`/api/invitations/${id}/resend/`);
+    const response = await apiClient.post(`/api/core/invitations/${id}/resend/`);
     return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.resend' });
   },
 
   revoke: async (id: number): Promise<StaffInvitation> => {
-    const response = await apiClient.post(`/api/invitations/${id}/revoke/`);
+    const response = await apiClient.post(`/api/core/invitations/${id}/revoke/`);
     return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.revoke' });
   },
 };
@@ -78,7 +78,7 @@ export const invitationsApi = {
 
 export const invitationPublicApi = {
   lookup: async (token: string): Promise<InvitationPublicInfo> => {
-    const response = await fetch(`${API_BASE_URL}/api/invitations/${token}/`, {
+    const response = await fetch(`${API_BASE_URL}/api/core/invitations/${token}/`, {
       headers: { 'Content-Type': 'application/json' },
     });
     if (!response.ok) {
@@ -90,7 +90,7 @@ export const invitationPublicApi = {
   },
 
   accept: async (data: InvitationAcceptData): Promise<InvitationAcceptResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/invitations/accept/`, {
+    const response = await fetch(`${API_BASE_URL}/api/core/invitations/accept/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
