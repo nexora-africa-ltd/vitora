@@ -70,6 +70,18 @@ export const invitationsApi = {
     const response = await apiClient.post(`/api/core/invitations/${id}/revoke/`);
     return parseResponse(StaffInvitationSchema, response.data, { context: 'invitationsApi.revoke' });
   },
+
+  /** Accept a cross-org invitation (authenticated user) */
+  acceptCrossOrg: async (token: string): Promise<{ message: string }> => {
+    const response = await apiClient.post('/api/core/invitations/accept-cross-org/', { token });
+    return parseResponse(MessageResponseSchema, response.data, { context: 'invitationsApi.acceptCrossOrg' });
+  },
+
+  /** Decline a cross-org invitation (authenticated user) */
+  decline: async (id: number): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/api/core/invitations/${id}/decline/`);
+    return parseResponse(MessageResponseSchema, response.data, { context: 'invitationsApi.decline' });
+  },
 };
 
 // =============================================================================

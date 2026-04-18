@@ -11,9 +11,10 @@ export function getApiBaseUrl(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Facility scoping — set by FacilityProvider, read by request interceptor
+// Facility & Organization scoping — set by providers, read by request interceptor
 // ---------------------------------------------------------------------------
 let _activeFacilityId: number | null = null;
+let _activeOrganizationId: number | null = null;
 
 /** Called by FacilityProvider when the active facility changes. */
 export function setActiveFacilityId(id: number | null): void {
@@ -23,6 +24,16 @@ export function setActiveFacilityId(id: number | null): void {
 /** Get the current active facility ID (for external use). */
 export function getActiveFacilityId(): number | null {
   return _activeFacilityId;
+}
+
+/** Called by FacilityProvider when the active organization changes. */
+export function setActiveOrganizationId(id: number | null): void {
+  _activeOrganizationId = id;
+}
+
+/** Get the current active organization ID (for external use). */
+export function getActiveOrganizationId(): number | null {
+  return _activeOrganizationId;
 }
 
 // Create axios instance — uses httpOnly cookies for auth (withCredentials)
@@ -56,7 +67,7 @@ const processQueue = (error: Error | null) => {
 };
 
 /**
- * Request interceptor — attaches facility scoping header.
+ * Request interceptor — attaches facility & organization scoping headers.
  * Auth is handled automatically by httpOnly cookies (withCredentials).
  */
 apiClient.interceptors.request.use(
@@ -64,6 +75,10 @@ apiClient.interceptors.request.use(
     // Attach facility ID header for multi-facility data scoping
     if (_activeFacilityId != null) {
       config.headers['X-Facility-Id'] = String(_activeFacilityId);
+    }
+    // Attach organization ID header for multi-org data scoping
+    if (_activeOrganizationId != null) {
+      config.headers['X-Organization-Id'] = String(_activeOrganizationId);
     }
     return config;
   },

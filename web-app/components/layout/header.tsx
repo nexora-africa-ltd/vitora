@@ -30,6 +30,7 @@ import { useSyncStatus, formatLastSync } from '@/lib/context/sync-context';
 import { usePageRefresh, formatLastFetch, formatLastFetchShort } from '@/lib/context/page-refresh-context';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { FacilitySwitcher } from '@/components/layout/facility-switcher';
+import { OrgSwitcher } from '@/components/layout/org-switcher';
 import { NotificationPanel } from '@/components/notifications/notification-panel';
 import { clearCacheAndReload } from '@/lib/utils/version-check';
 import { useNavigationMode } from '@/lib/context/navigation-mode-context';
@@ -258,6 +259,9 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          {/* Organization switcher (multi-org users) */}
+          <OrgSwitcher />
 
           {/* Facility switcher (multi-branch) */}
           <FacilitySwitcher />

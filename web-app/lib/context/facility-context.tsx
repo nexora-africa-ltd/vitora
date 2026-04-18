@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, type FacilityModules, type UserFacility } from '@/lib/auth/context';
 import { facilitiesApi } from '@/lib/api/facilities';
-import { setActiveFacilityId } from '@/lib/api/client';
+import { setActiveFacilityId, setActiveOrganizationId } from '@/lib/api/client';
 import type { FacilityDetail } from '@/lib/types/facility';
 
 const FACILITY_OVERRIDE_STORAGE_KEY = 'vitora_facility_override';
@@ -112,6 +112,14 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
     if (!facilityDetail?.organization || !facilityDetail?.organization_name) return null;
     return { id: facilityDetail.organization, name: facilityDetail.organization_name };
   }, [facilityDetail]);
+
+  // Sync active organization ID to API client for X-Organization-Id header.
+  const orgId = organization?.id ?? null;
+  const prevOrgIdRef = useRef<number | null | undefined>(undefined);
+  if (prevOrgIdRef.current !== orgId) {
+    prevOrgIdRef.current = orgId;
+    setActiveOrganizationId(orgId);
+  }
 
   // switchFacility: convenience wrapper around setFacilityOverride for branch switching
   const switchFacility = useCallback((target: UserFacility) => {

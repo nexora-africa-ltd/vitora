@@ -18,6 +18,8 @@ import {
   Mail,
   Building2,
   Shield,
+  ArrowLeftRight,
+  Ban,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -57,6 +59,7 @@ const statusConfig: Record<InvitationStatus, { label: string; variant: 'default'
   ACCEPTED: { label: 'Accepted', variant: 'secondary', icon: CheckCircle2 },
   EXPIRED: { label: 'Expired', variant: 'outline', icon: AlertCircle },
   REVOKED: { label: 'Revoked', variant: 'destructive', icon: XCircle },
+  DECLINED: { label: 'Declined', variant: 'outline', icon: Ban },
 };
 
 function formatDate(dateStr: string | null): string {
@@ -228,6 +231,7 @@ export default function InvitationsPage() {
                   <SelectItem value="ACCEPTED">Accepted</SelectItem>
                   <SelectItem value="EXPIRED">Expired</SelectItem>
                   <SelectItem value="REVOKED">Revoked</SelectItem>
+                  <SelectItem value="DECLINED">Declined</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -244,7 +248,15 @@ export default function InvitationsPage() {
                   sortable: true,
                   cell: (item) => (
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{item.email}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium truncate">{item.email}</p>
+                        {item.is_cross_org && (
+                          <Badge variant="outline" className="gap-1 shrink-0 text-[10px] px-1.5 h-5 border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400">
+                            <ArrowLeftRight className="h-2.5 w-2.5" />
+                            Cross-org
+                          </Badge>
+                        )}
+                      </div>
                       {item.job_title && (
                         <p className="text-xs text-muted-foreground">{item.job_title}</p>
                       )}
@@ -341,7 +353,15 @@ export default function InvitationsPage() {
                   <Card className="p-3">
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{item.email}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-medium truncate">{item.email}</p>
+                          {item.is_cross_org && (
+                            <Badge variant="outline" className="gap-1 shrink-0 text-[10px] px-1.5 h-5 border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400">
+                              <ArrowLeftRight className="h-2.5 w-2.5" />
+                              Cross-org
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {item.organization_name}
                           {item.role_name && ` • ${item.role_name}`}
