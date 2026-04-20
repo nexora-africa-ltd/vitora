@@ -241,21 +241,20 @@ class SHAClaimAttachmentSerializer(serializers.ModelSerializer):
         ]
 
     def validate_file(self, value):
-        """Validate file size and type."""
-        max_size = 10 * 1024 * 1024  # 10MB
-        if value.size > max_size:
-            raise serializers.ValidationError("File size exceeds maximum of 10MB")
+        """Validate file size and type using magic-byte content sniffing."""
+        from hmis.apps.core.upload_validators import validate_upload
 
-        allowed_types = [
-            "application/pdf",
-            "image/jpeg",
-            "image/png",
-            "image/tiff",
-        ]
-        if value.content_type not in allowed_types:
-            raise serializers.ValidationError(
-                f"File type not allowed. Allowed: {', '.join(allowed_types)}"
-            )
+        validate_upload(
+            value,
+            allowed_extensions=["pdf", "jpg", "jpeg", "png", "tiff", "tif"],
+            allowed_mime_types=[
+                "application/pdf",
+                "image/jpeg",
+                "image/png",
+                "image/tiff",
+            ],
+            max_size_mb=10,
+        )
         return value
 
 

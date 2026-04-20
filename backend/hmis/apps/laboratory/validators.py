@@ -3,15 +3,26 @@ Validators for laboratory module.
 
 Includes validation for lab result attachments to ensure
 only safe file types and sizes are uploaded.
+
+Uses the shared ``validate_upload()`` utility from core for magic-byte
+content sniffing instead of trusting the client-supplied Content-Type.
 """
 
-from django.core.exceptions import ValidationError
+from hmis.apps.core.upload_validators import validate_upload
 
 # Allowed file extensions for lab result attachments
 ALLOWED_EXTENSIONS = ["pdf", "png", "jpg", "jpeg", "tiff", "tif"]
 
+# Allowed MIME types (verified via python-magic)
+ALLOWED_MIME_TYPES = [
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/tiff",
+]
+
 # Maximum file size: 10MB
-MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_FILE_SIZE_MB = 10
 
 
 def validate_lab_attachment(file):
@@ -21,7 +32,7 @@ def validate_lab_attachment(file):
     Checks:
     - File extension is in allowed list
     - File size is under maximum limit
-    - Content type is acceptable
+    - Magic-byte content type matches whitelist
 
     Args:
         file: UploadedFile instance
@@ -29,17 +40,9 @@ def validate_lab_attachment(file):
     Raises:
         ValidationError: If file fails validation
     """
-    # Check extension
-    ext = file.name.split(".")[-1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise ValidationError(f"File type not allowed. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
-
-    # Check size
-    if file.size > MAX_FILE_SIZE:
-        raise ValidationError(f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB")
-
-    # Check for malicious content (basic content type check)
-    allowed_content_types = ["application/pdf", "image/png", "image/jpeg", "image/tiff"]
-
-    if hasattr(file, "content_type") and file.content_type not in allowed_content_types:
-        raise ValidationError("Invalid file content type")
+    validate_upload(
+        file,
+        allowed_extensions=ALLOWED_EXTENSIONS,
+        allowed_mime_types=ALLOWED_MIME_TYPES,
+        max_size_mb=MAX_FILE_SIZE_MB,
+    )

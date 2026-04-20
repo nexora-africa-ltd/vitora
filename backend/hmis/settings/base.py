@@ -103,6 +103,7 @@ MIDDLEWARE = [
     "hmis.apps.core.middleware.AdminAccessMiddleware",  # Restrict /admin/ to Nexora superusers
     "hmis.apps.core.middleware.MFAGraceEnforcementMiddleware",  # Block API after MFA grace period
     "hmis.apps.core.middleware.OnboardingEnforcementMiddleware",  # Block API after onboarding grace period
+    "hmis.apps.core.middleware.MediaSecurityMiddleware",  # Force Content-Disposition: attachment on /media/
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",  # Tracks request user for history
@@ -176,6 +177,11 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # Media files
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Upload size limits (security hardening)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
+DATA_UPLOAD_MAX_NUMBER_FILES = 50
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

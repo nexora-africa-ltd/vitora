@@ -246,6 +246,12 @@ class QualityMeasureImportSerializer(serializers.Serializer):
         default="json",
     )
 
+    def validate_file(self, value):
+        from hmis.apps.core.upload_validators import validate_data_import
+
+        validate_data_import(value)
+        return value
+
 
 class QualityMeasureExportSerializer(serializers.Serializer):
     """Serializer for export format selection."""
