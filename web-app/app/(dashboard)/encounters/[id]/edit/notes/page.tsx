@@ -4,6 +4,11 @@
  * Third step in the encounter edit workflow.
  * Captures clinical notes: HPI, Physical Examination, Assessment, Clinical Templates.
  *
+ * UX: A single card with a mode toggle at the top:
+ *   - Free-text mode (default) — standard HPI/PE/Assessment textareas
+ *   - Template mode — structured clinical template form
+ * If the encounter already has a template applied, defaults to template mode.
+ *
  * Route: /encounters/[id]/edit/notes
  */
 'use client';
@@ -27,7 +32,10 @@ import { useAutoSave } from '@/lib/hooks/use-auto-save';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { EncounterFormData } from '@/lib/types/encounter-form';
 import type { ClinicalTemplate } from '@/lib/types/clinical-template';
-import { AlertTriangle, ClipboardList, LayoutTemplate } from 'lucide-react';
+import { AlertTriangle, ClipboardList, LayoutTemplate, FileText } from 'lucide-react';
+
+type NotesMode = 'freetext' | 'template';
+
 
 export default function EncounterEditNotesPage() {
   const params = useParams();
@@ -45,6 +53,11 @@ export default function EncounterEditNotesPage() {
   // Clinical template state
   const [selectedTemplate, setSelectedTemplate] = useState<ClinicalTemplate | null>(null);
 
+  // Mode toggle: freetext or template.
+  // Default to template mode if the encounter already has a template applied.
+  const hasExistingTemplate = !!(notes?.clinical_template);
+  const [mode, setMode] = useState<NotesMode>(hasExistingTemplate ? 'template' : 'freetext');
+
   // Fetch template if encounter has one
   const { data: existingTemplate } = useClinicalTemplate(notes?.clinical_template || 0);
 
@@ -56,6 +69,7 @@ export default function EncounterEditNotesPage() {
   useEffect(() => {
     if (existingTemplate) {
       setSelectedTemplate(existingTemplate);
+      setMode('template');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync once when template ID resolves
   }, [existingTemplateId]);
@@ -243,59 +257,80 @@ export default function EncounterEditNotesPage() {
         </Alert>
       )}
 
-      {/* Clinical Notes Form */}
+      {/* Clinical Notes — single card with mode toggle */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
-              History of Present Illness & Assessment
+              {mode === 'template' ? (
+                <LayoutTemplate className="h-5 w-5" />
+              ) : (
+                <ClipboardList className="h-5 w-5" />
+              )}
+              Clinical Notes
             </CardTitle>
-            {isEditable && (
-              <StructureNoteButton
-                freeText={
-                  [notes?.history_of_present_illness, notes?.physical_examination, notes?.assessment, notes?.notes]
-                    .filter(Boolean)
-                    .join('\n\n')
-                }
-                onAccept={(sections) => {
-                  if (sections.subjective) setNotes(encounterId, { history_of_present_illness: sections.subjective });
-                  if (sections.objective) setNotes(encounterId, { physical_examination: sections.objective });
-                  if (sections.assessment) setNotes(encounterId, { assessment: sections.assessment });
-                  if (sections.plan) setNotes(encounterId, { notes: sections.plan });
-                }}
-              />
-            )}
+            <div className="flex items-center gap-2">
+              {/* AI Structure button (free-text mode only) */}
+              {mode === 'freetext' && isEditable && (
+                <StructureNoteButton
+                  freeText={
+                    [notes?.history_of_present_illness, notes?.physical_examination, notes?.assessment, notes?.notes]
+                      .filter(Boolean)
+                      .join('\n\n')
+                  }
+                  onAccept={(sections) => {
+                    if (sections.subjective) setNotes(encounterId, { history_of_present_illness: sections.subjective });
+                    if (sections.objective) setNotes(encounterId, { physical_examination: sections.objective });
+                    if (sections.assessment) setNotes(encounterId, { assessment: sections.assessment });
+                    if (sections.plan) setNotes(encounterId, { notes: sections.plan });
+                  }}
+                />
+              )}
+              {/* Mode toggle */}
+              {isEditable && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  onClick={() => setMode(mode === 'freetext' ? 'template' : 'freetext')}
+                >
+                  {mode === 'freetext' ? (
+                    <>
+                      <LayoutTemplate className="h-4 w-4" />
+                      <span className="hidden sm:inline">Use template</span>
+                      <span className="sm:hidden">Template</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4" />
+                      <span className="hidden sm:inline">Use free-text</span>
+                      <span className="sm:hidden">Free-text</span>
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <ClinicalNotesFormContent
-            data={formData}
-            onChange={handleFieldChange}
-            disabled={!isEditable}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Clinical Template */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <LayoutTemplate className="h-5 w-5" />
-            Clinical Template (Optional)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ClinicalTemplateFormContent
-            encounterId={encounterId}
-            encounterType={session.encounter_type}
-            chiefComplaint={session.chief_complaint}
-            selectedTemplate={selectedTemplate}
-            templateData={notes?.clinical_template_data || null}
-            onTemplateSelect={handleTemplateSelect}
-            onTemplateDataChange={handleTemplateDataChange}
-            disabled={!isEditable}
-          />
+          {mode === 'freetext' ? (
+            <ClinicalNotesFormContent
+              data={formData}
+              onChange={handleFieldChange}
+              disabled={!isEditable}
+            />
+          ) : (
+            <ClinicalTemplateFormContent
+              encounterId={encounterId}
+              encounterType={session.encounter_type}
+              chiefComplaint={session.chief_complaint}
+              selectedTemplate={selectedTemplate}
+              templateData={notes?.clinical_template_data || null}
+              onTemplateSelect={handleTemplateSelect}
+              onTemplateDataChange={handleTemplateDataChange}
+              disabled={!isEditable}
+            />
+          )}
         </CardContent>
       </Card>
 
