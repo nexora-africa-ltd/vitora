@@ -5,12 +5,15 @@ Publishes domain events for surgery case status changes via publish_event().
 """
 
 import logging
+from datetime import date
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.core.events import TheatreEvents, publish_event
+from hmis.apps.scheduling.models import Resource, Schedule
 from hmis.apps.theatre.models import (
+    OperatingTheatre,
     PACURecord,
     SurgeryCase,
     SurgicalTeamMember,
@@ -30,15 +33,118 @@ _STATUS_EVENT_MAP: dict[str, str] = {
 }
 
 
+def _auto_create_theatre_resource(instance: OperatingTheatre) -> None:
+    if instance.scheduling_resource_id or not instance.facility_id:
+        return
+
+    code = f"THEATRE-{instance.code}"
+    if Resource.objects.filter(code=code, facility=instance.facility).exists():
+        code = f"THEATRE-{instance.pk}"
+
+    resource = Resource.objects.create(
+        name=instance.name,
+        resource_type="PLACE",
+        code=code,
+        is_active=instance.is_active,
+        capacity=1,
+        description=instance.maintenance_notes or instance.equipment_notes or instance.location,
+        facility=instance.facility,
+        organization=instance.organization,
+        metadata={
+            "synced_from": "operating_theatre",
+            "source_code": instance.code,
+            "theatre_type": instance.theatre_type,
+            "location": instance.location,
+        },
+    )
+    OperatingTheatre.objects.filter(pk=instance.pk).update(scheduling_resource=resource)
+    instance.scheduling_resource = resource
+    instance.scheduling_resource_id = resource.pk
+
+
+def _sync_theatre_resource(instance: OperatingTheatre) -> None:
+    if not instance.facility_id:
+        return
+
+    if not instance.scheduling_resource_id:
+        _auto_create_theatre_resource(instance)
+
+    resource = instance.scheduling_resource
+    if not resource:
+        return
+
+    metadata = dict(resource.metadata or {})
+    metadata.update(
+        {
+            "synced_from": "operating_theatre",
+            "source_code": instance.code,
+            "theatre_type": instance.theatre_type,
+            "location": instance.location,
+        }
+    )
+    resource.name = instance.name
+    resource.is_active = instance.is_active
+    resource.description = (
+        instance.maintenance_notes or instance.equipment_notes or instance.location
+    )
+    resource.metadata = metadata
+    resource.save(update_fields=["name", "is_active", "description", "metadata", "updated_at"])
+
+
+def _sync_theatre_schedules(instance: OperatingTheatre) -> None:
+    if not instance.scheduling_resource_id:
+        return
+
+    for day_of_week in range(7):
+        tag = f"operating_theatre:{instance.pk}:day:{day_of_week}"
+        schedule = Schedule.objects.filter(
+            resource=instance.scheduling_resource,
+            schedule_type="RECURRING",
+            day_of_week=day_of_week,
+            notes__contains=tag,
+        ).first()
+
+        defaults = {
+            "start_time": instance.operating_hours_start,
+            "end_time": instance.operating_hours_end,
+            "slot_duration_minutes": instance.slot_duration_minutes,
+            "buffer_minutes": 0,
+            "is_active": instance.is_active,
+            "notes": (f"{tag} — synced from operating theatre {instance.code}"),
+        }
+
+        if schedule:
+            for attr, value in defaults.items():
+                setattr(schedule, attr, value)
+            schedule.save(update_fields=[*defaults.keys(), "updated_at"])
+        else:
+            Schedule.objects.create(
+                resource=instance.scheduling_resource,
+                schedule_type="RECURRING",
+                day_of_week=day_of_week,
+                effective_from=date.today(),
+                **defaults,
+            )
+
+
+@receiver(post_save, sender=OperatingTheatre)
+def auto_create_theatre_resource(sender, instance, created, **kwargs):
+    if getattr(instance, "_skip_resource_sync", False):
+        return
+    try:
+        _sync_theatre_resource(instance)
+        _sync_theatre_schedules(instance)
+    except Exception:
+        logger.exception("Failed to sync scheduling bridge for OperatingTheatre %s", instance.pk)
+
+
 @receiver(post_save, sender=SurgeryCase)
 def publish_surgery_case_event(sender, instance, created, **kwargs):
     """Publish domain event when a surgery case is created or its status changes."""
     if created:
         event_type = TheatreEvents.CASE_CREATED
     else:
-        event_type = _STATUS_EVENT_MAP.get(
-            instance.status, TheatreEvents.CASE_STATUS_CHANGED
-        )
+        event_type = _STATUS_EVENT_MAP.get(instance.status, TheatreEvents.CASE_STATUS_CHANGED)
 
     publish_event(
         event_type=event_type,

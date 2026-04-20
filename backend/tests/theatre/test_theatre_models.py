@@ -21,7 +21,6 @@ from hmis.apps.theatre.models import (
     WHOSafetyChecklist,
 )
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 #  OperatingTheatre
 # ═══════════════════════════════════════════════════════════════════════════
@@ -62,6 +61,36 @@ class TestOperatingTheatre:
         assert theatre.operating_hours_start == time(8, 0)
         assert theatre.operating_hours_end == time(18, 0)
         assert theatre.slot_duration_minutes == 30
+
+    def test_auto_links_scheduling_resource(self, sample_theatre):
+        assert sample_theatre.scheduling_resource_id is not None
+        assert sample_theatre.scheduling_resource.resource_type == "PLACE"
+        assert sample_theatre.scheduling_resource.metadata["synced_from"] == "operating_theatre"
+
+    def test_auto_creates_recurring_schedules(self, sample_theatre):
+        schedules = sample_theatre.scheduling_resource.schedules.filter(
+            notes__contains=f"operating_theatre:{sample_theatre.pk}:day:"
+        )
+        assert schedules.count() == 7
+        assert all(
+            schedule.slot_duration_minutes == sample_theatre.slot_duration_minutes
+            for schedule in schedules
+        )
+
+    def test_updates_scheduling_resource_and_schedules_on_edit(self, sample_theatre):
+        sample_theatre.name = "Updated OT"
+        sample_theatre.operating_hours_start = time(7, 0)
+        sample_theatre.slot_duration_minutes = 45
+        sample_theatre.save()
+
+        sample_theatre.refresh_from_db()
+        sample_theatre.scheduling_resource.refresh_from_db()
+        monday_schedule = sample_theatre.scheduling_resource.schedules.get(
+            notes__contains=f"operating_theatre:{sample_theatre.pk}:day:0"
+        )
+        assert sample_theatre.scheduling_resource.name == "Updated OT"
+        assert monday_schedule.start_time == time(7, 0)
+        assert monday_schedule.slot_duration_minutes == 45
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -183,9 +212,7 @@ class TestSurgeryCaseTransitions:
         assert scheduled_surgery_case.status == "CANCELLED"
 
     def test_postpone_from_scheduled(self, scheduled_surgery_case, test_user):
-        scheduled_surgery_case.postpone(
-            user=test_user, postponed_to=date(2026, 5, 1)
-        )
+        scheduled_surgery_case.postpone(user=test_user, postponed_to=date(2026, 5, 1))
         assert scheduled_surgery_case.status == "POSTPONED"
         assert scheduled_surgery_case.postponed_to_date == date(2026, 5, 1)
 
@@ -275,42 +302,32 @@ class TestSurgicalTeamMember:
 @pytest.mark.django_db
 class TestWHOSafetyChecklist:
     def test_create_checklist(self, sample_surgery_case):
-        checklist = WHOSafetyChecklist.objects.create(
-            surgery_case=sample_surgery_case
-        )
+        checklist = WHOSafetyChecklist.objects.create(surgery_case=sample_surgery_case)
         assert not checklist.sign_in_complete
         assert not checklist.time_out_complete
         assert not checklist.sign_out_complete
 
     def test_complete_sign_in(self, sample_surgery_case, test_user):
-        checklist = WHOSafetyChecklist.objects.create(
-            surgery_case=sample_surgery_case
-        )
+        checklist = WHOSafetyChecklist.objects.create(surgery_case=sample_surgery_case)
         checklist.complete_sign_in(user=test_user)
         checklist.refresh_from_db()
         assert checklist.sign_in_complete
         assert checklist.sign_in_completed_by == test_user
 
     def test_complete_time_out(self, sample_surgery_case, test_user):
-        checklist = WHOSafetyChecklist.objects.create(
-            surgery_case=sample_surgery_case
-        )
+        checklist = WHOSafetyChecklist.objects.create(surgery_case=sample_surgery_case)
         checklist.complete_time_out(user=test_user)
         checklist.refresh_from_db()
         assert checklist.time_out_complete
 
     def test_complete_sign_out(self, sample_surgery_case, test_user):
-        checklist = WHOSafetyChecklist.objects.create(
-            surgery_case=sample_surgery_case
-        )
+        checklist = WHOSafetyChecklist.objects.create(surgery_case=sample_surgery_case)
         checklist.complete_sign_out(user=test_user)
         checklist.refresh_from_db()
         assert checklist.sign_out_complete
 
     def test_full_checklist_flow(self, sample_surgery_case, test_user):
-        checklist = WHOSafetyChecklist.objects.create(
-            surgery_case=sample_surgery_case
-        )
+        checklist = WHOSafetyChecklist.objects.create(surgery_case=sample_surgery_case)
         checklist.complete_sign_in(user=test_user)
         checklist.complete_time_out(user=test_user)
         checklist.complete_sign_out(user=test_user)

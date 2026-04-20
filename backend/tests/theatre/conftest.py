@@ -8,6 +8,39 @@ import pytest  # type: ignore
 
 
 @pytest.fixture
+def grant_theatre_settings_permission(db, test_user):
+    from django.contrib.auth.models import Permission
+
+    permission = Permission.objects.get(
+        content_type__app_label="theatre",
+        codename="manage_theatre_settings",
+    )
+    test_user.user_permissions.add(permission)
+    return permission
+
+
+@pytest.fixture(autouse=True)
+def grant_theatre_workflow_permissions(db, test_user):
+    from django.contrib.auth.models import Permission
+
+    permissions = Permission.objects.filter(
+        content_type__app_label="theatre",
+        codename__in=["manage_theatre", "document_surgery"],
+    )
+    test_user.user_permissions.add(*permissions)
+    return permissions
+
+
+@pytest.fixture
+def theatre_permissionless_client(api_client, another_user, sample_organization, sample_facility):
+    from tests.conftest import ensure_staff_profile
+
+    ensure_staff_profile(another_user, sample_organization, sample_facility)
+    api_client.force_authenticate(user=another_user)
+    return api_client
+
+
+@pytest.fixture
 def sample_procedure_catalog(db, sample_organization, sample_facility):
     """Create a SURGICAL ProcedureCatalog entry for theatre tests."""
     from hmis.apps.procedures.models import ProcedureCatalog
@@ -144,3 +177,48 @@ def in_pacu_surgery_case(in_surgery_case, test_user):
     """A SurgeryCase in IN_PACU status."""
     in_surgery_case.end_surgery(user=test_user)
     return in_surgery_case
+
+
+@pytest.fixture
+def scheduled_staff_resource(
+    db, test_user, test_staff_profile, sample_organization, sample_facility
+):
+    from hmis.apps.scheduling.models import Resource
+
+    return Resource.objects.create(
+        name=test_user.get_full_name() or test_user.username,
+        resource_type="PERSON",
+        code="STAFF-TEST-0001",
+        is_active=True,
+        staff_profile=test_staff_profile,
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def theatre_shift(
+    db,
+    sample_surgery_case,
+    sample_theatre,
+    scheduled_staff_resource,
+    sample_department,
+    test_user,
+    sample_organization,
+    sample_facility,
+):
+    from hmis.apps.scheduling.models import Shift
+
+    return Shift.objects.create(
+        staff_resource=scheduled_staff_resource,
+        shift_date=sample_surgery_case.scheduled_date,
+        start_time=time(8, 0),
+        end_time=time(17, 0),
+        shift_type="DAY",
+        status="SCHEDULED",
+        room=sample_theatre.scheduling_resource,
+        department=sample_department,
+        created_by=test_user,
+        organization=sample_organization,
+        facility=sample_facility,
+    )

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ClipboardCheck,
@@ -22,6 +22,7 @@ import {
   Scissors,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,19 +35,14 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { theatreApi } from '@/lib/api/theatre';
-import type { SurgeryCaseDetail, SurgicalTeamMember } from '@/lib/types/theatre';
-
-const STATUS_COLORS: Record<string, string> = {
-  REQUESTED: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  SCHEDULED: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  PRE_OP: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-  IN_THEATRE: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
-  IN_SURGERY: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  IN_PACU: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-  DISCHARGED: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  POSTPONED: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
-  CANCELLED: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
-};
+import type { CaseSchedulingContext, SurgeryCaseDetail, SurgicalTeamMember } from '@/lib/types/theatre';
+import { PreOpWorkspace } from '@/components/theatre/pre-op-workspace';
+import { IntraOpWorkspace } from '@/components/theatre/intra-op-workspace';
+import { PostOpWorkspace } from '@/components/theatre/post-op-workspace';
+import {
+  TheatreCasePriorityBadge,
+  TheatreCaseStatusBadge,
+} from '@/components/theatre/theatre-display';
 
 const STATUS_FLOW: Record<string, { label: string; action: string; icon: React.ElementType }> = {
   REQUESTED: { label: 'Schedule', action: 'schedule', icon: Clock },
@@ -60,25 +56,44 @@ const STATUS_FLOW: Record<string, { label: string; action: string; icon: React.E
 export default function CaseDetailPage() {
   const { caseNumber } = useParams<{ caseNumber: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [surgeryCase, setSurgeryCase] = useState<SurgeryCaseDetail | null>(null);
+  const [schedulingContext, setSchedulingContext] = useState<CaseSchedulingContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [cancelDialog, setCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
+  const requestedTab = searchParams.get('tab');
+  const derivedDefaultTab = requestedTab && ['overview', 'pre-op', 'intra-op', 'post-op'].includes(requestedTab)
+    ? requestedTab
+    : ['SCHEDULED', 'PRE_OP'].includes(surgeryCase?.status || '')
+      ? 'pre-op'
+      : ['IN_THEATRE', 'IN_SURGERY'].includes(surgeryCase?.status || '')
+        ? 'intra-op'
+        : surgeryCase?.status === 'IN_PACU'
+          ? 'post-op'
+          : 'overview';
+  const [activeTab, setActiveTab] = useState(derivedDefaultTab);
+
+  useEffect(() => {
+    setActiveTab(derivedDefaultTab);
+  }, [derivedDefaultTab]);
+
   const fetchCase = useCallback(async () => {
     if (!caseNumber) return;
     try {
       setLoading(true);
-      // Fetch by case number — API allows looking up by case_number via list + filter
-      const data = await theatreApi.listCases({ search: caseNumber });
-      const found = data.results.find(c => c.case_number === caseNumber);
-      if (found) {
-        const detail = await theatreApi.getCase(found.id);
-        setSurgeryCase(detail);
-      }
+      const [detail, context] = await Promise.all([
+        theatreApi.getCase(caseNumber),
+        theatreApi.getCaseSchedulingContext(caseNumber).catch(() => null),
+      ]);
+      setSurgeryCase(detail);
+      setSchedulingContext(context);
     } catch {
       // not found
+      setSurgeryCase(null);
+      setSchedulingContext(null);
     } finally {
       setLoading(false);
     }
@@ -93,22 +108,25 @@ export default function CaseDetailPage() {
       const id = surgeryCase.id;
       switch (action) {
         case 'schedule':
-          await theatreApi.scheduleCase(id, { scheduled_date: surgeryCase.scheduled_date, scheduled_start_time: surgeryCase.scheduled_start_time });
+          await theatreApi.scheduleCase(surgeryCase.case_number, {
+            scheduled_date: surgeryCase.scheduled_date,
+            scheduled_start_time: surgeryCase.scheduled_start_time,
+          });
           break;
         case 'startPreOp':
-          await theatreApi.startPreOp(id);
+          await theatreApi.startPreOp(surgeryCase.case_number);
           break;
         case 'enterTheatre':
-          await theatreApi.enterTheatre(id);
+          await theatreApi.enterTheatre(surgeryCase.case_number);
           break;
         case 'startSurgery':
-          await theatreApi.startSurgery(id);
+          await theatreApi.startSurgery(surgeryCase.case_number);
           break;
         case 'endSurgery':
-          await theatreApi.endSurgery(id);
+          await theatreApi.endSurgery(surgeryCase.case_number);
           break;
         case 'dischargeCase':
-          await theatreApi.dischargeCase(id);
+          await theatreApi.dischargeCase(surgeryCase.case_number);
           break;
       }
       await fetchCase();
@@ -123,7 +141,7 @@ export default function CaseDetailPage() {
     if (!surgeryCase) return;
     try {
       setActionLoading(true);
-      await theatreApi.cancelCase(surgeryCase.id, { reason: cancelReason });
+      await theatreApi.cancelCase(surgeryCase.case_number, { reason: cancelReason });
       setCancelDialog(false);
       setCancelReason('');
       await fetchCase();
@@ -154,6 +172,12 @@ export default function CaseDetailPage() {
   const nextStep = STATUS_FLOW[surgeryCase.status];
   const isTerminal = ['DISCHARGED', 'CANCELLED'].includes(surgeryCase.status);
   const canCancel = !['DISCHARGED', 'CANCELLED', 'IN_SURGERY'].includes(surgeryCase.status);
+  const coverageByMember = new Map(
+    (schedulingContext?.members || []).map((member: CaseSchedulingContext['members'][number]) => [
+      `${member.staff_member_id}:${member.role}`,
+      member,
+    ])
+  );
 
   return (
     <div className="space-y-6">
@@ -176,15 +200,8 @@ export default function CaseDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {surgeryCase.priority !== 'ELECTIVE' && (
-            <Badge className={`text-xs ${surgeryCase.priority === 'EMERGENCY' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'}`}>
-              {surgeryCase.priority === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
-              {surgeryCase.priority}
-            </Badge>
-          )}
-          <Badge className={`${STATUS_COLORS[surgeryCase.status] || ''} text-xs`}>
-            {surgeryCase.status.replace(/_/g, ' ')}
-          </Badge>
+          <TheatreCasePriorityBadge priority={surgeryCase.priority} hideElective />
+          <TheatreCaseStatusBadge status={surgeryCase.status} />
         </div>
       </div>
 
@@ -197,6 +214,15 @@ export default function CaseDetailPage() {
               {nextStep.label}
             </Button>
           )}
+          <Button variant="outline" asChild>
+            <Link href={`/theatre/cases/${surgeryCase.case_number}/pre-op`}>Pre-Op Workspace</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/theatre/cases/${surgeryCase.case_number}/intra-op`}>Intra-Op Workspace</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/theatre/cases/${surgeryCase.case_number}/post-op`}>Post-Op Workspace</Link>
+          </Button>
           {canCancel && (
             <Button variant="destructive" onClick={() => setCancelDialog(true)} disabled={actionLoading}>
               <Ban className="h-4 w-4 mr-2" />
@@ -206,79 +232,150 @@ export default function CaseDetailPage() {
         </div>
       )}
 
-      {/* Detail Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {/* Clinical Info */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="h-4 w-4" /> Clinical Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <DetailRow label="Diagnosis" value={surgeryCase.diagnosis || '—'} />
-            <DetailRow label="ASA Class" value={surgeryCase.asa_class || '—'} />
-            <DetailRow label="Anesthesia" value={surgeryCase.anesthesia_type || '—'} />
-            <DetailRow label="Laterality" value={surgeryCase.laterality} />
-            <DetailRow label="Requesting Doctor" value={surgeryCase.requesting_doctor_name} />
-            {surgeryCase.procedure_notes && (
-              <div>
-                <p className="text-muted-foreground">Notes</p>
-                <p className="whitespace-pre-wrap">{surgeryCase.procedure_notes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          setActiveTab(value);
+          const params = new URLSearchParams(searchParams.toString());
+          if (value === 'overview') {
+            params.delete('tab');
+          } else {
+            params.set('tab', value);
+          }
+          const query = params.toString();
+          router.replace(query ? `/theatre/cases/${surgeryCase.case_number}?${query}` : `/theatre/cases/${surgeryCase.case_number}`);
+        }}
+      >
+        <TabsList className="w-full justify-start overflow-x-auto rounded-lg border bg-muted/30 p-1">
+          <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
+          <TabsTrigger value="pre-op" className="text-sm">Pre-Op</TabsTrigger>
+          <TabsTrigger value="intra-op" className="text-sm">Intra-Op</TabsTrigger>
+          <TabsTrigger value="post-op" className="text-sm">Post-Op</TabsTrigger>
+        </TabsList>
 
-        {/* Billing */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" /> Billing
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <DetailRow label="Total Charges" value={`KES ${surgeryCase.total_charges}`} />
-            <DetailRow label="Billable" value={surgeryCase.is_billable ? 'Yes' : 'No'} />
-          </CardContent>
-        </Card>
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4" /> Scheduling Integration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <DetailRow
+                  label="Slot Source"
+                  value={schedulingContext?.slot_validation.source === 'scheduling_resource' ? 'Scheduling resource' : 'Theatre hours'}
+                />
+                <DetailRow
+                  label="Scheduling Resource"
+                  value={schedulingContext?.theatre.scheduling_resource_name || 'Not linked'}
+                />
+                <DetailRow
+                  label="Resource Schedule"
+                  value={schedulingContext?.theatre.has_resource_schedule ? 'Configured' : 'Not configured'}
+                />
+                <DetailRow
+                  label="Team Coverage"
+                  value={
+                    schedulingContext
+                      ? `${schedulingContext.team_summary.covered_members}/${schedulingContext.team_summary.total_members || 0}`
+                      : '—'
+                  }
+                />
+                {schedulingContext && !schedulingContext.slot_validation.available && (
+                  <div className="rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                    <p className="font-medium">Scheduling issue detected</p>
+                    <p className="mt-1 text-xs">{schedulingContext.slot_validation.reason}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-        {/* Team */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4" /> Surgical Team
-              <Badge variant="secondary" className="text-xs ml-auto">{surgeryCase.team_members.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {surgeryCase.team_members.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No team members assigned yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {surgeryCase.team_members.map(m => (
-                  <TeamMemberRow key={m.id} member={m} />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="h-4 w-4" /> Clinical Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <DetailRow label="Diagnosis" value={surgeryCase.diagnosis || '—'} />
+                <DetailRow label="ASA Class" value={surgeryCase.asa_class || '—'} />
+                <DetailRow label="Anesthesia" value={surgeryCase.anesthesia_type || '—'} />
+                <DetailRow label="Laterality" value={surgeryCase.laterality} />
+                <DetailRow label="Requesting Doctor" value={surgeryCase.requesting_doctor_name} />
+                {surgeryCase.procedure_notes && (
+                  <div>
+                    <p className="text-muted-foreground">Notes</p>
+                    <p className="whitespace-pre-wrap">{surgeryCase.procedure_notes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-        {/* Documentation Status */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardCheck className="h-4 w-4" /> Documentation
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <DocStatus label="WHO Checklist" done={surgeryCase.has_who_checklist} />
-            <DocStatus label="Anesthesia Record" done={surgeryCase.has_anesthesia_record} />
-            <DocStatus label="Operative Note" done={surgeryCase.has_operative_note} />
-            <DocStatus label="PACU Record" done={surgeryCase.has_pacu_record} />
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Billing
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <DetailRow label="Total Charges" value={`KES ${surgeryCase.total_charges}`} />
+                <DetailRow label="Billable" value={surgeryCase.is_billable ? 'Yes' : 'No'} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Surgical Team
+                  <Badge variant="secondary" className="text-xs ml-auto">{surgeryCase.team_members.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {surgeryCase.team_members.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No team members assigned yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {surgeryCase.team_members.map(m => (
+                      <TeamMemberRow
+                        key={m.id}
+                        member={m}
+                        coverage={coverageByMember.get(`${m.staff_member}:${m.role}`) ?? null}
+                      />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ClipboardCheck className="h-4 w-4" /> Documentation
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <DocStatus label="WHO Checklist" done={surgeryCase.has_who_checklist} />
+                <DocStatus label="Anesthesia Record" done={surgeryCase.has_anesthesia_record} />
+                <DocStatus label="Operative Note" done={surgeryCase.has_operative_note} />
+                <DocStatus label="PACU Record" done={surgeryCase.has_pacu_record} />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="pre-op" className="space-y-6">
+          <PreOpWorkspace surgeryCase={surgeryCase} onCaseRefresh={fetchCase} />
+        </TabsContent>
+
+        <TabsContent value="intra-op" className="space-y-6">
+          <IntraOpWorkspace surgeryCase={surgeryCase} onCaseRefresh={fetchCase} />
+        </TabsContent>
+
+        <TabsContent value="post-op" className="space-y-6">
+          <PostOpWorkspace surgeryCase={surgeryCase} onCaseRefresh={fetchCase} />
+        </TabsContent>
+      </Tabs>
 
       {/* Cancellation Details */}
       {surgeryCase.status === 'CANCELLED' && surgeryCase.cancellation_reason && (
@@ -333,13 +430,27 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TeamMemberRow({ member }: { member: SurgicalTeamMember }) {
+function TeamMemberRow({ member, coverage }: { member: SurgicalTeamMember; coverage: CaseSchedulingContext['members'][number] | null }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="truncate">{member.staff_name}</span>
-      <Badge variant="outline" className="text-xs shrink-0 ml-2">
-        {member.role.replace(/_/g, ' ')}
-      </Badge>
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <div className="min-w-0">
+        <p className="truncate">{member.staff_name}</p>
+        {coverage && (
+          <p className={`text-xs ${coverage.has_shift_coverage ? 'text-muted-foreground' : 'text-amber-700 dark:text-amber-300'}`}>
+            {coverage.message}
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {coverage && (
+          <Badge className={coverage.has_shift_coverage ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs' : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs'}>
+            {coverage.has_shift_coverage ? 'Covered' : 'Uncovered'}
+          </Badge>
+        )}
+        <Badge variant="outline" className="text-xs">
+          {member.role.replace(/_/g, ' ')}
+        </Badge>
+      </div>
     </div>
   );
 }

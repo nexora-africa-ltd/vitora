@@ -17,8 +17,10 @@ import { parseResponse } from '@/lib/schemas/validation';
 import {
   OperatingTheatreListSchema,
   OperatingTheatreDetailSchema,
+  TheatreAvailabilitySchema,
   SurgeryCaseListSchema,
   SurgeryCaseDetailSchema,
+  CaseSchedulingContextSchema,
   SurgicalTeamMemberSchema,
   WHOChecklistSchema,
   AnesthesiaRecordSchema,
@@ -33,8 +35,10 @@ import {
 import type {
   OperatingTheatreList,
   OperatingTheatreDetail,
+  TheatreAvailability,
   SurgeryCaseList,
   SurgeryCaseDetail,
+  CaseSchedulingContext,
   SurgicalTeamMember,
   WHOChecklist,
   AnesthesiaRecord,
@@ -95,11 +99,13 @@ export const theatreApi = {
     });
   },
 
-  async getTheatreAvailability(id: number, date: string): Promise<{ slots: string[] }> {
+  async getTheatreAvailability(id: number, date: string): Promise<TheatreAvailability> {
     const response = await apiClient.get(`/api/theatre/operating-theatres/${id}/availability/`, {
       params: { date },
     });
-    return response.data;
+    return parseResponse(TheatreAvailabilitySchema, response.data, {
+      context: 'theatreApi.getTheatreAvailability',
+    });
   },
 
   // =========================================================================
@@ -117,6 +123,13 @@ export const theatreApi = {
     const response = await apiClient.get(`/api/theatre/cases/${caseNumber}/`);
     return parseResponse(SurgeryCaseDetailSchema, response.data, {
       context: 'theatreApi.getCase',
+    });
+  },
+
+  async getCaseSchedulingContext(caseNumber: string): Promise<CaseSchedulingContext> {
+    const response = await apiClient.get(`/api/theatre/cases/${caseNumber}/scheduling-context/`);
+    return parseResponse(CaseSchedulingContextSchema, response.data, {
+      context: 'theatreApi.getCaseSchedulingContext',
     });
   },
 
@@ -215,7 +228,7 @@ export const theatreApi = {
   },
 
   async addTeamMember(caseNumber: string, data: TeamMemberCreateData): Promise<SurgicalTeamMember> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/team/`, data);
+    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/team/add/`, data);
     return parseResponse(SurgicalTeamMemberSchema, response.data, {
       context: 'theatreApi.addTeamMember',
     });
@@ -269,9 +282,19 @@ export const theatreApi = {
   },
 
   async createAnesthesiaRecord(caseNumber: string, data: AnesthesiaRecordCreateData): Promise<AnesthesiaRecord> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/anesthesia/`, data);
+    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/anesthesia/create/`, data);
     return parseResponse(AnesthesiaRecordSchema, response.data, {
       context: 'theatreApi.createAnesthesiaRecord',
+    });
+  },
+
+  async updateAnesthesiaRecord(
+    caseNumber: string,
+    data: Partial<AnesthesiaRecordCreateData>
+  ): Promise<AnesthesiaRecord> {
+    const response = await apiClient.patch(`/api/theatre/cases/${caseNumber}/anesthesia/update/`, data);
+    return parseResponse(AnesthesiaRecordSchema, response.data, {
+      context: 'theatreApi.updateAnesthesiaRecord',
     });
   },
 
@@ -279,6 +302,13 @@ export const theatreApi = {
     const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/anesthesia/vitals/`, data);
     return parseResponse(IntraOpVitalSchema, response.data, {
       context: 'theatreApi.addIntraOpVital',
+    });
+  },
+
+  async listIntraOpVitals(caseNumber: string): Promise<IntraOpVital[]> {
+    const response = await apiClient.get(`/api/theatre/cases/${caseNumber}/anesthesia/vitals/`);
+    return parseResponse(z.array(IntraOpVitalSchema), response.data, {
+      context: 'theatreApi.listIntraOpVitals',
     });
   },
 
@@ -294,9 +324,16 @@ export const theatreApi = {
   },
 
   async createOperativeNote(caseNumber: string, data: OperativeNoteCreateData): Promise<OperativeNote> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/operative-note/`, data);
+    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/operative-note/create/`, data);
     return parseResponse(OperativeNoteSchema, response.data, {
       context: 'theatreApi.createOperativeNote',
+    });
+  },
+
+  async updateOperativeNote(caseNumber: string, data: Partial<OperativeNoteCreateData>): Promise<OperativeNote> {
+    const response = await apiClient.patch(`/api/theatre/cases/${caseNumber}/operative-note/update/`, data);
+    return parseResponse(OperativeNoteSchema, response.data, {
+      context: 'theatreApi.updateOperativeNote',
     });
   },
 
@@ -319,7 +356,7 @@ export const theatreApi = {
   },
 
   async addConsumable(caseNumber: string, data: Record<string, unknown>): Promise<TheatreConsumable> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/consumables/`, data);
+    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/consumables/add/`, data);
     return parseResponse(TheatreConsumableSchema, response.data, {
       context: 'theatreApi.addConsumable',
     });
@@ -341,7 +378,7 @@ export const theatreApi = {
   },
 
   async createPACURecord(caseNumber: string, data: Record<string, unknown>): Promise<PACURecord> {
-    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/pacu/`, data);
+    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/pacu/create/`, data);
     return parseResponse(PACURecordSchema, response.data, {
       context: 'theatreApi.createPACURecord',
     });

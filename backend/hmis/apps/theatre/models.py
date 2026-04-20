@@ -59,12 +59,24 @@ class OperatingTheatre(FacilityScopedModel, TimeStampedModel):
     # Status
     is_active = models.BooleanField(default=True)
     maintenance_notes = models.TextField(blank=True, default="")
+    scheduling_resource = models.ForeignKey(
+        "scheduling.Resource",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="operating_theatres",
+        limit_choices_to={"resource_type": "PLACE"},
+        help_text="Linked scheduling PLACE resource for integrated theatre scheduling.",
+    )
 
     class Meta:
         unique_together = ["facility", "code"]
         ordering = ["code"]
         verbose_name = "Operating Theatre"
         verbose_name_plural = "Operating Theatres"
+        permissions = [
+            ("manage_theatre_settings", "Can configure theatre setup and operating rooms"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.code} – {self.name}"
@@ -98,12 +110,12 @@ class SurgeryCase(FacilityScopedModel, TimeStampedModel):
         EMERGENCY = "EMERGENCY", "Emergency"
 
     class ASAClass(models.TextChoices):
-        I = "I", "ASA I – Healthy"
-        II = "II", "ASA II – Mild systemic disease"
-        III = "III", "ASA III – Severe systemic disease"
-        IV = "IV", "ASA IV – Life-threatening disease"
-        V = "V", "ASA V – Moribund"
-        VI = "VI", "ASA VI – Brain dead donor"
+        CLASS_I = "I", "ASA I – Healthy"
+        CLASS_II = "II", "ASA II – Mild systemic disease"
+        CLASS_III = "III", "ASA III – Severe systemic disease"
+        CLASS_IV = "IV", "ASA IV – Life-threatening disease"
+        CLASS_V = "V", "ASA V – Moribund"
+        CLASS_VI = "VI", "ASA VI – Brain dead donor"
 
     class AnesthesiaType(models.TextChoices):
         GENERAL = "GENERAL", "General Anesthesia"
@@ -261,9 +273,7 @@ class SurgeryCase(FacilityScopedModel, TimeStampedModel):
     def save(self, *args, **kwargs):  # type: ignore[override]
         if not self.case_number:
             self.case_number = self._generate_case_number()
-        resolve_tenant_from_related(
-            self, encounter_field="encounter", patient_field="patient"
-        )
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
         super().save(*args, **kwargs)
 
     def _generate_case_number(self) -> str:
@@ -285,8 +295,7 @@ class SurgeryCase(FacilityScopedModel, TimeStampedModel):
         allowed = self.STATUS_TRANSITIONS.get(self.status, [])
         if new_status not in allowed:
             raise ValueError(
-                f"Cannot transition from {self.status} to {new_status}. "
-                f"Allowed: {allowed}"
+                f"Cannot transition from {self.status} to {new_status}. Allowed: {allowed}"
             )
         self.status = new_status
         self.status_changed_at = timezone.now()
@@ -671,9 +680,7 @@ class IntraOpVitalReading(TimeStampedModel):
     peak_pressure = models.IntegerField(null=True, blank=True, help_text="cmH2O")
 
     # Other
-    temperature = models.DecimalField(
-        max_digits=4, decimal_places=1, null=True, blank=True
-    )
+    temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
 
     notes = models.TextField(blank=True, default="")
 
@@ -833,9 +840,7 @@ class PACURecord(TimeStampedModel):
 
     # Initial assessment
     initial_aldrete_score = models.IntegerField(help_text="0-10 Aldrete score")
-    initial_pain_score = models.IntegerField(
-        null=True, blank=True, help_text="0-10 NRS pain score"
-    )
+    initial_pain_score = models.IntegerField(null=True, blank=True, help_text="0-10 NRS pain score")
 
     # Discharge
     discharge_time = models.DateTimeField(null=True, blank=True)
@@ -899,9 +904,7 @@ class PACUVitalReading(TimeStampedModel):
     heart_rate = models.IntegerField(null=True, blank=True)
     respiratory_rate = models.IntegerField(null=True, blank=True)
     spo2 = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    temperature = models.DecimalField(
-        max_digits=4, decimal_places=1, null=True, blank=True
-    )
+    temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
 
     # PACU-specific
     aldrete_score = models.IntegerField(null=True, blank=True)

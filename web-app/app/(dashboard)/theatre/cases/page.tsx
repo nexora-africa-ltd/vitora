@@ -3,13 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, ClipboardList, AlertTriangle } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,18 +20,10 @@ import {
 } from '@/components/ui/select';
 import { theatreApi } from '@/lib/api/theatre';
 import type { SurgeryCaseList, SurgeryCaseListParams } from '@/lib/types/theatre';
-
-const STATUS_COLORS: Record<string, string> = {
-  REQUESTED: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  SCHEDULED: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  PRE_OP: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-  IN_THEATRE: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
-  IN_SURGERY: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  IN_PACU: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-  DISCHARGED: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  POSTPONED: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
-  CANCELLED: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
-};
+import {
+  TheatreCasePriorityBadge,
+  TheatreCaseStatusBadge,
+} from '@/components/theatre/theatre-display';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
@@ -143,13 +134,8 @@ export default function TheatreCasesPage() {
           data={cases}
           keyExtractor={c => c.id}
           onRowClick={c => router.push(`/theatre/cases/${c.case_number}`)}
-          loading={loading}
-          emptyState={
-            <div className="text-center py-12">
-              <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">No cases found.</p>
-            </div>
-          }
+          isLoading={loading}
+          emptyMessage="No cases found."
           columns={[
             {
               key: 'case_number',
@@ -201,27 +187,13 @@ export default function TheatreCasesPage() {
               key: 'status',
               header: 'Status',
               sortable: true,
-              cell: c => (
-                <Badge className={`${STATUS_COLORS[c.status] || ''} text-xs shrink-0 w-fit`}>
-                  {c.status.replace(/_/g, ' ')}
-                </Badge>
-              ),
+              cell: c => <TheatreCaseStatusBadge status={c.status} />,
             },
             {
               key: 'priority',
               header: 'Priority',
               sortable: true,
-              cell: c =>
-                c.priority !== 'ELECTIVE' ? (
-                  <Badge
-                    className={`text-xs shrink-0 w-fit ${c.priority === 'EMERGENCY' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'}`}
-                  >
-                    {c.priority === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
-                    {c.priority}
-                  </Badge>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Elective</span>
-                ),
+              cell: c => <TheatreCasePriorityBadge priority={c.priority} />,
               hideOnMobile: true,
             },
           ]}
@@ -234,14 +206,8 @@ export default function TheatreCasesPage() {
                   <p className="text-xs text-muted-foreground">{c.case_number} &middot; {c.scheduled_date} {c.scheduled_start_time?.slice(0, 5) || ''}</p>
                 </div>
                 <div className="flex flex-col gap-1 items-end shrink-0">
-                  <Badge className={`${STATUS_COLORS[c.status] || ''} text-xs w-fit`}>
-                    {c.status.replace(/_/g, ' ')}
-                  </Badge>
-                  {c.priority !== 'ELECTIVE' && (
-                    <Badge className={`text-xs w-fit ${c.priority === 'EMERGENCY' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
-                      {c.priority}
-                    </Badge>
-                  )}
+                  <TheatreCaseStatusBadge status={c.status} />
+                  <TheatreCasePriorityBadge priority={c.priority} hideElective />
                 </div>
               </div>
             </Card>

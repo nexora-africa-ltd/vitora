@@ -1,15 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Check, ChevronsUpDown, Loader2, Search, Syringe } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { PatientSelector } from '@/components/encounters/patient-selector';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Form,
@@ -27,7 +39,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useDebounce } from '@/lib/hooks/use-debounce';
+import { proceduresApi } from '@/lib/api/procedures';
 import { theatreApi } from '@/lib/api/theatre';
+import { cn } from '@/lib/utils/cn';
+import { formatCurrency } from '@/lib/utils/format';
+import type { Patient } from '@/lib/types/patient';
+import type { ProcedureCatalogEntry } from '@/lib/types/procedure';
 import type { OperatingTheatreList } from '@/lib/types/theatre';
 
 // ============================================================================
@@ -60,6 +78,11 @@ export default function NewSurgeryCasePage() {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [theatres, setTheatres] = useState<OperatingTheatreList[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [procedureSearch, setProcedureSearch] = useState('');
+  const [procedureOpen, setProcedureOpen] = useState(false);
+  const [selectedProcedure, setSelectedProcedure] = useState<ProcedureCatalogEntry | null>(null);
+  const debouncedProcedureSearch = useDebounce(procedureSearch, 300);
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
@@ -77,6 +100,25 @@ export default function NewSurgeryCasePage() {
   useEffect(() => {
     theatreApi.listTheatres().then(data => setTheatres(data.results)).catch(() => {});
   }, []);
+
+  const selectedPatientId = form.watch('patient');
+
+  const { data: procedureResults, isLoading: isLoadingProcedures } = useQuery({
+    queryKey: ['theatre-booking-procedure-search', debouncedProcedureSearch],
+    queryFn: () =>
+      proceduresApi.listCatalog({
+        category: 'SURGICAL',
+        is_active: 'true',
+        page_size: '10',
+        ...(debouncedProcedureSearch ? { search: debouncedProcedureSearch } : {}),
+      }),
+    staleTime: 30000,
+  });
+
+  const procedures = useMemo(
+    () => (procedureResults?.results || []) as ProcedureCatalogEntry[],
+    [procedureResults]
+  );
 
   const onSubmit = async (data: BookingFormData) => {
     try {
@@ -113,37 +155,145 @@ export default function NewSurgeryCasePage() {
               <FormField
                 control={form.control}
                 name="patient"
-                render={({ field }) => (
+                  render={({ field, fieldState }) => (
                   <FormItem>
-                    <FormLabel>Patient ID</FormLabel>
+                      <FormLabel>Patient</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Enter patient ID"
-                        {...field}
-                        onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                        value={field.value ?? ''}
+                        <PatientSelector
+                          value={field.value ?? null}
+                          selectedPatient={selectedPatient}
+                          onChange={(patientId, patient) => {
+                            field.onChange(patientId ?? undefined);
+                            setSelectedPatient(patient);
+                          }}
+                          error={fieldState.error?.message}
                       />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
               <FormField
                 control={form.control}
                 name="primary_procedure"
-                render={({ field }) => (
+                  render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Procedure ID</FormLabel>
+                      <FormLabel>Procedure</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Enter procedure catalog ID"
-                        {...field}
-                        onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                        value={field.value ?? ''}
-                      />
+                        <Popover open={procedureOpen} onOpenChange={setProcedureOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={procedureOpen}
+                              className={cn(
+                                'w-full justify-between overflow-hidden px-3 font-normal',
+                                !selectedProcedure && 'text-muted-foreground'
+                              )}
+                            >
+                              {selectedProcedure ? (
+                                <span className="flex min-w-0 items-center gap-2 overflow-hidden text-left">
+                                  <Syringe className="h-4 w-4 shrink-0 text-primary" />
+                                  <span className="truncate">{selectedProcedure.name}</span>
+                                </span>
+                              ) : (
+                                'Search and select a surgical procedure'
+                              )}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                            <Command shouldFilter={false}>
+                              <CommandInput
+                                placeholder="Search by procedure name or code..."
+                                value={procedureSearch}
+                                onValueChange={setProcedureSearch}
+                              />
+                              <CommandList>
+                                {isLoadingProcedures ? (
+                                  <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading procedures...
+                                  </div>
+                                ) : (
+                                  <>
+                                    <CommandEmpty>No surgical procedures found.</CommandEmpty>
+                                    <CommandGroup heading={debouncedProcedureSearch ? 'Search Results' : 'Surgical Procedures'}>
+                                      {procedures.map((procedure) => (
+                                        <CommandItem
+                                          key={procedure.id}
+                                          value={`${procedure.code} ${procedure.name}`}
+                                          onSelect={() => {
+                                            field.onChange(procedure.id);
+                                            setSelectedProcedure(procedure);
+                                            setProcedureSearch('');
+                                            setProcedureOpen(false);
+                                            if (!form.getValues('estimated_duration_minutes')) {
+                                              form.setValue(
+                                                'estimated_duration_minutes',
+                                                procedure.typical_duration_minutes,
+                                                { shouldDirty: true }
+                                              );
+                                            }
+                                          }}
+                                          className="items-start gap-3 py-3"
+                                        >
+                                          <Check
+                                            className={cn(
+                                              'mt-0.5 h-4 w-4 shrink-0',
+                                              field.value === procedure.id ? 'opacity-100' : 'opacity-0'
+                                            )}
+                                          />
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <span className="font-medium">{procedure.name}</span>
+                                              <span className="font-mono text-xs text-muted-foreground">
+                                                {procedure.code}
+                                              </span>
+                                            </div>
+                                            <div className="mt-1 flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+                                              <Badge variant="outline" className="text-[10px]">
+                                                {procedure.category}
+                                              </Badge>
+                                              <span>{procedure.typical_duration_minutes} min</span>
+                                              {procedure.base_fee != null && (
+                                                <span>{formatCurrency(procedure.base_fee)}</span>
+                                              )}
+                                              {procedure.consent_required && (
+                                                <Badge variant="outline" className="text-[10px] text-amber-700">
+                                                  Consent required
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </>
+                                )}
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                     </FormControl>
+                      {selectedProcedure && (
+                        <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="outline" className="text-[10px]">{selectedProcedure.category}</Badge>
+                            <span className="text-muted-foreground">
+                              {selectedProcedure.typical_duration_minutes} min typical duration
+                            </span>
+                            {selectedProcedure.consent_required && (
+                              <Badge variant="outline" className="text-[10px] text-amber-700">
+                                Written consent required
+                              </Badge>
+                            )}
+                          </div>
+                          {selectedProcedure.description && (
+                            <p className="mt-2 text-xs text-muted-foreground">{selectedProcedure.description}</p>
+                          )}
+                        </div>
+                      )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -362,7 +512,7 @@ export default function NewSurgeryCasePage() {
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
+              <Button type="submit" disabled={submitting || !selectedPatientId || !selectedProcedure}>
               {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Book Surgery
             </Button>

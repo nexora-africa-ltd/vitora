@@ -131,6 +131,21 @@
           "update": true,
           "delete": true
         },
+        "SurgeryCase": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_theatre": true,
+          "document_surgery": true
+        },
+        "OperatingTheatre": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_theatre_settings": true
+        },
         "TriageAssessment": {
           "create": true,
           "read": true,
@@ -929,6 +944,14 @@
           "update": true,
           "delete": false
         },
+        "SurgeryCase": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_theatre": true,
+          "document_surgery": true
+        },
         "TriageAssessment": {
           "create": true,
           "read": true,
@@ -1414,6 +1437,14 @@
           "read": true,
           "update": true,
           "delete": false
+        },
+        "SurgeryCase": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_theatre": true,
+          "document_surgery": true
         },
         "TriageAssessment": {
           "create": false,
@@ -2166,6 +2197,14 @@
           "read": true,
           "update": true,
           "delete": false
+        },
+        "SurgeryCase": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_theatre": true,
+          "document_surgery": false
         },
         "TriageAssessment": {
           "create": true,
@@ -4751,6 +4790,13 @@
           "delete": false,
           "manage_clinic_staff": true,
           "manage_clinic_schedule": true
+        },
+        "OperatingTheatre": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_theatre_settings": true
         },
         "InpatientWard": {
           "create": true,

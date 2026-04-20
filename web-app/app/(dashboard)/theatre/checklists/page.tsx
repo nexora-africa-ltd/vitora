@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ClipboardCheck, ShieldCheck, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { TheatreCaseStatusBadge, TheatreMetricCard } from '@/components/theatre/theatre-display';
 import { theatreApi } from '@/lib/api/theatre';
 import type { SurgeryCaseList } from '@/lib/types/theatre';
 
@@ -20,21 +20,29 @@ export default function TheatreChecklistsPage() {
   const [cases, setCases] = useState<SurgeryCaseList[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
 
   const fetchCases = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch all active cases that may need checklist attention
-      const data = await theatreApi.listCases({ search: search || undefined });
+      const data = await theatreApi.listCases({ search: deferredSearch || undefined });
       setCases(data.results.filter(c => ACTIVE_STATUSES.includes(c.status)));
     } catch {
       setCases([]);
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [deferredSearch]);
 
   useEffect(() => { fetchCases(); }, [fetchCases]);
+
+  const statusSummary = useMemo(() => (
+    ACTIVE_STATUSES.map((status) => ({
+      status,
+      count: cases.filter((item) => item.status === status).length,
+    })).filter((item) => item.count > 0)
+  ), [cases]);
 
   return (
     <PullToRefresh onRefresh={() => { refresh(); return fetchCases(); }} isRefreshing={isRefreshing} className="min-h-full">
@@ -53,6 +61,27 @@ export default function TheatreChecklistsPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
+
+        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
+          <TheatreMetricCard label="Active cases" value={cases.length} />
+          <TheatreMetricCard label="Pre-op queue" value={cases.filter((item) => item.status === 'PRE_OP').length} />
+          <TheatreMetricCard label="In theatre" value={cases.filter((item) => item.status === 'IN_THEATRE').length} />
+          <TheatreMetricCard label="In surgery" value={cases.filter((item) => item.status === 'IN_SURGERY').length} />
+          <TheatreMetricCard label="In PACU" value={cases.filter((item) => item.status === 'IN_PACU').length} />
+        </div>
+
+        {statusSummary.length > 0 ? (
+          <Card>
+            <CardContent className="flex flex-wrap gap-2 p-4">
+              {statusSummary.map((item) => (
+                <div key={item.status} className="flex items-center gap-2 rounded-full border px-3 py-1.5">
+                  <TheatreCaseStatusBadge status={item.status} />
+                  <span className="text-sm font-medium text-muted-foreground">{item.count}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">Loading...</div>
@@ -79,15 +108,7 @@ export default function TheatreChecklistsPage() {
                       {c.patient_name} &middot; {c.case_number}
                     </p>
                   </div>
-                  <Badge
-                    className={`text-xs shrink-0 ${
-                      c.status === 'IN_SURGERY' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                      : c.status === 'IN_THEATRE' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300'
-                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-                    }`}
-                  >
-                    {c.status.replace(/_/g, ' ')}
-                  </Badge>
+                  <TheatreCaseStatusBadge status={c.status} />
                 </CardContent>
               </Card>
             ))}

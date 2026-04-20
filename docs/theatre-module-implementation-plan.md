@@ -2,7 +2,7 @@
 
 > **Project**: Vitora HMIS
 > **Module**: Theatre/Operating Room Management
-> **Version**: 1.2
+> **Version**: 1.3
 > **Last Updated**: April 20, 2026
 > **Estimated Duration**: 10-14 weeks
 > **Original Roadmap**: Phase 2, Sprint 2.3-2.4 (Oct-Dec 2026)
@@ -65,8 +65,8 @@ The Theatre module handles **major surgeries** requiring dedicated operating roo
 | Backend signals/events | ✅ **Complete** | 13 TheatreEvents constants, 3 signal receivers (status, team, checklist) |
 | Backend admin | ✅ **Complete** | 8 admin classes with colored badges, fieldsets, raw_id_fields |
 | Backend filters | ✅ **Complete** | `OperatingTheatreFilter`, `SurgeryCaseFilter` |
-| Backend permissions | ✅ **Complete** | `CanManageTheatre`, `CanDocumentSurgery` |
-| Backend services | ✅ **Complete** | `scheduling.py` — `get_available_slots()`, `detect_theatre_conflicts()`, `detect_surgeon_conflicts()` |
+| Backend permissions | ✅ **Complete** | `CanManageTheatreSettings`, `CanManageTheatre`, `CanDocumentSurgery`; setup CRUD and broader workflow writes now enforce backend RBAC |
+| Backend services | ✅ **Complete** | `scheduling.py` now bridges `OperatingTheatre` to scheduling `Resource` PLACE records, defines recurring theatre schedules on those resources, uses scheduling-backed slot validation, and validates team shift coverage via `Shift` |
 | Backend migrations | ✅ **Created** | `0001_initial.py` |
 | Backend tests | ✅ **85 passing** | 37 model tests, 43 API tests, 5 event tests |
 | ProcedureCatalog extension | ✅ **Complete** | `SURGICAL` category + 11 theatre-specific fields added |
@@ -74,9 +74,9 @@ The Theatre module handles **major surgeries** requiring dedicated operating roo
 | URL include | ✅ **Wired** | `api/theatre/` → `hmis.apps.theatre.urls` |
 | Core events export | ✅ **Wired** | `TheatreEvents` exported from `core/events/__init__.py` |
 | Dashboard stats | ✅ **Wired** | `_get_theatre_stats()` queries `SurgeryCase` model |
-| Frontend theatre pages | ⏸️ Placeholders only | 6 files (5 pages + feature-flag layout) |
-| Frontend types/schemas/API | ❌ Not started | `lib/types/theatre.ts`, `lib/schemas/theatre.schema.ts`, `lib/api/theatre.ts` needed |
-| Frontend components | ❌ Not started | `components/theatre/` directory needed |
+| Frontend theatre pages | ⚠️ Partial implementation | Dashboard, schedule, cases list, case detail, dedicated pre-op/intra-op/post-op workspace routes, anesthesia queue, and theatre setup/configuration are live; analytics remains scaffold-level |
+| Frontend types/schemas/API | ✅ Implemented | Theatre API client, runtime schemas, and types are in place and aligned to backend routes |
+| Frontend components | ✅ Implemented | Shared theatre component library now includes pre-op/intra-op/post-op workspaces, reusable case status and priority badges, theatre metric cards, and operating theatre admin table/form components used across dashboard, cases, schedule, detail, and setup views |
 | Feature flag | ✅ `ENABLE_THEATRE` | Wired in `constants.ts`, `navigation.ts`, `layout.tsx`; defaults `true` in non-production |
 | Roadmap placement | Sprint 2.3-2.4 | Phase 2 (Oct-Dec 2026) |
 | Inpatient module | ✅ Complete | Ward, Bed, Admission, Discharge, Transfer, WardRound |
@@ -84,7 +84,7 @@ The Theatre module handles **major surgeries** requiring dedicated operating roo
 | Billing module | ✅ Complete | Invoice, InvoiceItem, Service, Payment, Receipt |
 | Laboratory module | ✅ Complete | LabOrder, LabOrderItem, LabResult at `/api/lab/` |
 | Pharmacy module | ✅ Complete | Drug, StockBatch, Prescription, Dispensing at `/api/pharmacy/` |
-| Staff/RBAC module | ✅ Complete | Role model exists; **no theatre-specific roles seeded yet** |
+| Staff/RBAC module | ✅ Complete | Role model + group sync in place; default admin/clinical roles now carry theatre workflow permissions on `SurgeryCase` |
 | Core mixins | ✅ Available | `FacilityScopedModel`, `TenantScopedViewMixin`, `ReadOnCreateMixin` |
 | Domain events infra | ✅ Available | `publish_event()`, `EventBus`, `EventStore`; 15 event classes, 110 constants — **TheatreEvents wired** |
 | Dashboard theatre section | ✅ **Live** | Queries SurgeryCase for `scheduled_today`, `in_progress`, `completed_today` |
@@ -99,7 +99,7 @@ backend/hmis/apps/theatre/
 ├── apps.py               # TheatreConfig, ready() imports signals ✅
 ├── filters.py            # OperatingTheatreFilter, SurgeryCaseFilter ✅
 ├── models.py             # 10 models (all FacilityScopedModel or TimeStampedModel) ✅
-├── permissions.py        # CanManageTheatre, CanDocumentSurgery ✅
+├── permissions.py        # CanManageTheatreSettings, CanManageTheatre, CanDocumentSurgery ✅
 ├── serializers.py        # 23 serializers (split Create/Read) ✅
 ├── signals.py            # 3 receivers → publish_event() ✅
 ├── urls.py               # DRF router: operating-theatres, cases ✅
@@ -120,16 +120,17 @@ backend/tests/theatre/
 └── test_theatre_events.py   # 5 tests ✅
 ```
 
-### Existing Frontend Placeholders
+### Existing Frontend Surface
 
 ```
 web-app/app/(dashboard)/theatre/
-├── layout.tsx            # Feature-flag gate (ENABLE_THEATRE) ✅
-├── page.tsx              # Dashboard placeholder ✅
-├── cases/page.tsx        # Surgery cases placeholder ✅
-├── checklists/page.tsx   # Checklists placeholder ✅
-├── schedule/page.tsx     # Scheduling placeholder ✅
-└── reports/page.tsx      # Reports placeholder ✅
+├── layout.tsx                    # Feature-flag gate (ENABLE_THEATRE) ✅
+├── page.tsx                      # Theatre dashboard / daily board ✅
+├── cases/page.tsx                # Surgery cases list ✅
+├── cases/[caseNumber]/page.tsx   # Case detail + Phase B pre-op workspace ✅
+├── checklists/page.tsx           # Checklist route scaffold ✅
+├── schedule/page.tsx             # Scheduling view ✅
+└── reports/page.tsx              # Reports scaffold ✅
 ```
 
 ### Key Integration Point: Procedures Module
@@ -338,40 +339,41 @@ backend/tests/theatre/               # ✅ 85 TESTS PASSING
 ├── test_theatre_api.py       # 43 tests ✅
 └── test_theatre_events.py    # 5 tests ✅
 
-web-app/                             # ❌ FRONTEND NOT STARTED (placeholders only)
+web-app/                             # ⚠️ FRONTEND PARTIALLY IMPLEMENTED
 ├── app/(dashboard)/theatre/
-│   ├── page.tsx              # Dashboard (live theatre board) — placeholder ✅
+│   ├── page.tsx              # Dashboard / daily theatre board ✅
 │   ├── layout.tsx            # Feature-flag gate (ENABLE_THEATRE) ✅
 │   ├── schedule/
-│   │   ├── page.tsx          # Theatre calendar — placeholder ✅
+│   │   ├── page.tsx          # Theatre schedule view ✅
 │   │   └── [date]/page.tsx   # Daily theatre list — ❌ not created
 │   ├── cases/
-│   │   ├── page.tsx          # Surgery cases list — placeholder ✅
-│   │   ├── new/page.tsx      # Book new surgery — ❌ not created
+│   │   ├── page.tsx          # Surgery cases list ✅
+│   │   ├── new/page.tsx      # Book new surgery ✅
 │   │   └── [caseNumber]/
-│   │       ├── page.tsx      # Case details — ❌ not created
-│   │       ├── pre-op/page.tsx   # ❌ not created
-│   │       ├── intra-op/page.tsx # ❌ not created
-│   │       └── post-op/page.tsx  # ❌ not created
+│   │       ├── page.tsx          # Case details + tabbed overview ✅
+│   │       ├── pre-op/page.tsx   # Dedicated pre-op workspace ✅
+│   │       ├── intra-op/page.tsx # Dedicated intra-op workspace ✅
+│   │       └── post-op/page.tsx  # Dedicated post-op workspace ✅
 │   ├── checklists/
-│   │   └── page.tsx          # WHO checklist viewer — placeholder ✅
+│   │   └── page.tsx          # WHO checklist viewer scaffold ✅
 │   ├── anesthesia/
-│   │   ├── page.tsx          # Anesthesia records list — ❌ not created
+│   │   ├── page.tsx          # Anesthesia case queue / workspace launcher ✅
 │   │   └── [caseId]/page.tsx # Anesthesia record detail — ❌ not created
 │   └── reports/
-│       └── page.tsx          # Utilization reports — placeholder ✅
-├── components/theatre/       # ❌ not created
+│       └── page.tsx          # Utilization reports scaffold ✅
+├── components/theatre/       # ⚠️ partial
 │   ├── theatre-board.tsx
 │   ├── surgery-booking-form.tsx
+│   ├── pre-op-workspace.tsx  # ✅ implemented (consent, labs, WHO Sign-In, anesthesia)
 │   ├── who-checklist-dialog.tsx
 │   ├── anesthesia-record-form.tsx
 │   ├── operative-note-editor.tsx
 │   ├── pacu-monitoring-form.tsx
 │   └── case-status-badge.tsx
 └── lib/
-    ├── api/theatre.ts        # API client — ❌ not created
-    ├── types/theatre.ts      # TypeScript types — ❌ not created
-    └── schemas/theatre.schema.ts  # Zod validation — ❌ not created
+  ├── api/theatre.ts        # API client ✅
+  ├── types/theatre.ts      # TypeScript types ✅
+  └── schemas/theatre.schema.ts  # Zod validation ✅
 ```
 
 ---
@@ -1275,10 +1277,10 @@ class PACUVitalReading(TimeStampedModel):
 |---|------|----------|-----------|--------|
 | B.1.1 | Implement WHOSafetyChecklist model | High | 5 tests | ✅ Done (OneToOne with SurgeryCase, 3-phase completion methods) |
 | B.1.2 | WHO Sign-In API endpoint | High | 4 tests | ✅ Done (`who-checklist/sign-in/` action) |
-| B.1.3 | Pre-op consent integration | High | - | ❌ Not started (ProcedureConsent reuse) |
-| B.1.4 | Pre-op labs verification | Medium | - | ❌ Not started |
-| B.1.5 | Frontend: WHO Sign-In form | High | - | ❌ Not started |
-| B.1.6 | Frontend: Pre-op checklist UI | High | - | ❌ Not started |
+| B.1.3 | Pre-op consent integration | High | Focused Jest coverage | ✅ Done (reuses ProcedureOrder + ProcedureConsent in case detail pre-op workspace) |
+| B.1.4 | Pre-op labs verification | Medium | Focused Jest coverage | ✅ Done (encounter/patient lab orders surfaced with readiness gating) |
+| B.1.5 | Frontend: WHO Sign-In form | High | Focused Jest coverage | ✅ Done (case detail pre-op workspace) |
+| B.1.6 | Frontend: Pre-op checklist UI | High | Focused Jest coverage | ✅ Done (readiness card + case-level pre-op workspace) |
 
 **Sprint B.2: Anesthesia Pre-Op** (Week 2-3) — ✅ BACKEND COMPLETE
 
@@ -1290,8 +1292,8 @@ class PACUVitalReading(TimeStampedModel):
 | B.2.2 | Pre-op assessment API | High | 4 tests | ✅ Done (GET/POST/PATCH anesthesia endpoints) |
 | B.2.3 | ASA classification logic | Medium | - | ✅ Done (field on AnesthesiaRecord) |
 | B.2.4 | NPO verification | Medium | - | ✅ Done (npo_confirmed field) |
-| B.2.5 | Frontend: Anesthesia pre-op form | High | - | ❌ Not started |
-| B.2.6 | Jest unit tests | High | - | ❌ Not started |
+| B.2.5 | Frontend: Anesthesia pre-op form | High | Focused Jest coverage | ✅ Done (create/update assessment in case detail pre-op workspace) |
+| B.2.6 | Jest unit tests | High | 2 focused suites | ✅ Done (`theatreApi` route tests + readiness card tests) |
 
 #### Dependencies
 
@@ -1323,9 +1325,9 @@ class PACUVitalReading(TimeStampedModel):
   - [x] Validation for required fields (phase ordering enforced)
   - [x] Timestamp and user tracking
 
-- [ ] **Pre-Op Assessment** — Partial
-  - [ ] Lab results verification
-  - [ ] Consent confirmation (ProcedureConsent integration)
+- [x] **Pre-Op Assessment**
+  - [x] Lab results verification
+  - [x] Consent confirmation (ProcedureConsent integration)
   - [x] NPO status check
   - [ ] Pre-op vital signs
 
@@ -1333,18 +1335,19 @@ class PACUVitalReading(TimeStampedModel):
   - [x] Airway assessment (Mallampati)
   - [x] ASA classification
   - [x] Pre-medication documentation
-  - [ ] Anesthesia consent
+  - [x] Anesthesia consent
 
-- [ ] **Frontend** — ❌ Not started
-  - [ ] WHO Sign-In dialog/form
-  - [ ] Pre-op checklist dashboard
-  - [ ] Anesthesia assessment form
-  - [ ] "Ready for theatre" indicator
+- [x] **Frontend**
+  - [x] WHO Sign-In dialog/form
+  - [x] Pre-op checklist dashboard
+  - [x] Anesthesia assessment form
+  - [x] "Ready for theatre" indicator
 
-- [x] **Tests** (backend)
+- [x] **Tests**
   - [x] WHO checklist workflow tests (5 model + 4 API tests)
   - [x] Anesthesia record tests (4 API tests)
-  - [ ] 80+ additional tests — covered as part of 85-test suite
+  - [x] Focused frontend Jest coverage for Phase B workflow
+  - [x] 80+ additional backend tests — covered as part of 85-test suite
 
 ---
 
@@ -1361,8 +1364,8 @@ class PACUVitalReading(TimeStampedModel):
 | C.1.3 | Implement IntraOpVitalReading model | High | - | ✅ Done (BP, HR, SpO2, EtCO2, peak pressure, FiO2) |
 | C.1.4 | Timed vitals recording API | High | 1 test | ✅ Done (`anesthesia/vitals/` action) |
 | C.1.5 | Anesthesia intra-op updates | High | - | ✅ Done (PATCH anesthesia endpoint) |
-| C.1.6 | Frontend: WHO Time-Out/Sign-Out | High | - | ❌ Not started |
-| C.1.7 | Frontend: Anesthesia vitals graph | Medium | - | ❌ Not started |
+| C.1.6 | Frontend: WHO Time-Out/Sign-Out | High | - | ✅ Done (intra-op workspace + dedicated route) |
+| C.1.7 | Frontend: Anesthesia vitals graph | Medium | - | ✅ Done (intra-op trend chart) |
 
 **Sprint C.2: Operative Note & Consumables** (Week 2-3) — ✅ BACKEND COMPLETE
 
@@ -1375,8 +1378,8 @@ class PACUVitalReading(TimeStampedModel):
 | C.2.3 | Implement TheatreConsumable model | High | - | ✅ Done (FacilityScopedModel, FK to pharmacy.Drug) |
 | C.2.4 | Consumables/implant tracking API | High | - | ✅ Done (consumables CRUD on case) |
 | C.2.5 | Pharmacy stock deduction integration | Medium | - | ❌ Not started |
-| C.2.6 | Frontend: Operative note editor | High | - | ❌ Not started |
-| C.2.7 | Frontend: Consumables tracking UI | High | - | ❌ Not started |
+| C.2.6 | Frontend: Operative note editor | High | - | ✅ Done (draft/save/sign with full operative note fields) |
+| C.2.7 | Frontend: Consumables tracking UI | High | - | ✅ Done (search, add, list, remove) |
 
 #### Dependencies
 
@@ -1413,15 +1416,16 @@ class PACUVitalReading(TimeStampedModel):
   - [x] BP, HR, SpO2, EtCO2, FiO2, peak pressure tracking
   - [ ] Vitals graph visualization — **frontend not started**
 
-- [x] **Operative Note** (backend)
-  - [ ] Rich text editor for findings — **frontend not started**
+- [x] **Operative Note** (frontend + backend)
+- [x] Structured editor for findings, technique, frozen section, and post-op plan
   - [ ] Procedure templates
   - [x] Digital signature (`sign()` method + `signed_by` FK)
   - [ ] PDF generation
 
-- [x] **Consumables** (backend model + API)
+- [x] **Consumables** (frontend + backend)
   - [x] Item tracking with lot/expiry
   - [x] Implant serial numbers
+  - [x] Add/remove consumables from workspace log
   - [ ] Pharmacy stock deduction
   - [ ] Cost calculation
 

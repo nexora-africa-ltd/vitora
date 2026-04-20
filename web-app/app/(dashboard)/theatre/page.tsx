@@ -14,34 +14,21 @@ import {
   AlertTriangle,
   Timer,
   Scissors,
+  Settings,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { theatreApi } from '@/lib/api/theatre';
 import type { SurgeryCaseList } from '@/lib/types/theatre';
-import { CASE_STATUSES } from '@/lib/schemas/theatre.schema';
-
-const STATUS_COLORS: Record<string, string> = {
-  REQUESTED: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  SCHEDULED: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  PRE_OP: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-  IN_THEATRE: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
-  IN_SURGERY: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  IN_PACU: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-  DISCHARGED: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  POSTPONED: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
-  CANCELLED: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  ELECTIVE: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  URGENT: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
-  EMERGENCY: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
-};
+import {
+  TheatreCasePriorityBadge,
+  TheatreCaseStatusBadge,
+  TheatreMetricCard,
+} from '@/components/theatre/theatre-display';
 
 export default function TheatrePage() {
   const router = useRouter();
@@ -49,7 +36,7 @@ export default function TheatrePage() {
   const [todayCases, setTodayCases] = useState<SurgeryCaseList[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0] ?? '';
 
   const fetchToday = useCallback(async () => {
     try {
@@ -85,6 +72,14 @@ export default function TheatrePage() {
           helpContent="Live view of today's surgical cases. Track cases from scheduling through recovery."
           actions={
             <div className="flex gap-2">
+              <PermissionGate action="theatre.manage_settings">
+                <Button variant="outline" asChild>
+                  <Link href="/theatre/settings">
+                    <Settings className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Setup</span>
+                  </Link>
+                </Button>
+              </PermissionGate>
               <Button variant="outline" asChild>
                 <Link href="/theatre/schedule">
                   <Calendar className="h-4 w-4 mr-2" />
@@ -104,21 +99,10 @@ export default function TheatrePage() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {stats.map(s => (
-            <Card key={s.label} className="relative overflow-hidden">
-              <div
-                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-                aria-hidden="true"
-              />
-              <CardContent className="relative p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{s.label}</p>
-                    <p className="text-2xl font-bold">{s.value}</p>
-                  </div>
-                  <s.icon className={`h-8 w-8 ${s.color} opacity-80`} />
-                </div>
-              </CardContent>
-            </Card>
+            <div key={s.label} className="relative">
+              <TheatreMetricCard label={s.label} value={s.value} />
+              <s.icon className={`pointer-events-none absolute right-4 top-4 h-8 w-8 ${s.color} opacity-80`} />
+            </div>
           ))}
         </div>
 
@@ -174,17 +158,10 @@ export default function TheatrePage() {
                         <td className="px-4 py-3">{c.primary_procedure_name}</td>
                         <td className="px-4 py-3">{c.theatre_name}</td>
                         <td className="px-4 py-3">
-                          <Badge className={`${STATUS_COLORS[c.status] || ''} text-xs`}>
-                            {c.status.replace(/_/g, ' ')}
-                          </Badge>
+                          <TheatreCaseStatusBadge status={c.status} />
                         </td>
                         <td className="px-4 py-3">
-                          {c.priority !== 'ELECTIVE' && (
-                            <Badge className={`${PRIORITY_COLORS[c.priority] || ''} text-xs`}>
-                              {c.priority === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
-                              {c.priority}
-                            </Badge>
-                          )}
+                          <TheatreCasePriorityBadge priority={c.priority} hideElective />
                         </td>
                       </tr>
                     ))}
@@ -224,6 +201,17 @@ export default function TheatrePage() {
               </div>
             </Link>
           </Button>
+          <PermissionGate action="theatre.manage_settings">
+            <Button variant="outline" className="h-auto py-3 justify-start" asChild>
+              <Link href="/theatre/settings">
+                <Settings className="h-5 w-5 mr-3 text-muted-foreground" />
+                <div className="text-left">
+                  <div className="font-medium">Theatre Setup</div>
+                  <div className="text-xs text-muted-foreground">Configure ORs, hours, and capabilities</div>
+                </div>
+              </Link>
+            </Button>
+          </PermissionGate>
         </div>
       </div>
     </PullToRefresh>
