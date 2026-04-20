@@ -467,6 +467,15 @@ export const clinicsApi = {
     const response = await apiClient.get(`/api/clinics/${clinicId}/public-queue/`);
     return parseResponse(PublicQueueResponseSchema, response.data, { context: 'clinicsApi.publicQueue' });
   },
+
+  /**
+   * Seed default Kenyan healthcare clinics for the current facility.
+   * Skips clinics that already exist.
+   */
+  seedDefaults: async (): Promise<{ created: { code: string; name: string }[]; skipped: number; total: number }> => {
+    const response = await apiClient.post<{ created: { code: string; name: string }[]; skipped: number; total: number }>('/api/clinics/seed-defaults/');
+    return response.data;
+  },
 };
 
 export default clinicsApi;

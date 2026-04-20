@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
 import { onboardingChecklistApi } from '@/lib/api/onboarding';
+import { clinicsApi } from '@/lib/api/clinics';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VitoraLogo } from '@/components/ui/vitora-logo';
@@ -41,6 +42,7 @@ export default function OnboardingPage() {
   const [allRequiredDone, setAllRequiredDone] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -96,6 +98,23 @@ export default function OnboardingPage() {
 
   const handleSkipToDashboard = () => {
     router.push('/dashboard');
+  };
+
+  const handleSeedClinics = async () => {
+    setIsSeeding(true);
+    setError(null);
+    try {
+      const result = await clinicsApi.seedDefaults();
+      // Re-fetch onboarding status to update the step
+      await fetchStatus();
+      if (result.created.length > 0) {
+        // Step will now show as done after re-fetch
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create default clinics');
+    } finally {
+      setIsSeeding(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -206,7 +225,32 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Action */}
-                {!step.done && link && (
+                {!step.done && step.key === 'first_clinic' && (
+                  <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={isSeeding}
+                      onClick={handleSeedClinics}
+                    >
+                      {isSeeding ? (
+                        <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Stethoscope className="mr-1 h-3.5 w-3.5" />
+                      )}
+                      {isSeeding ? 'Creating…' : 'Seed defaults'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push('/clinics')}
+                    >
+                      Manual
+                      <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+                {!step.done && step.key !== 'first_clinic' && link && (
                   <Button
                     variant="outline"
                     size="sm"
