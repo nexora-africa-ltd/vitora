@@ -64,6 +64,9 @@ export function useEncounters(params?: EncounterListParams) {
     }),
     queryKey: ['encounters', params],
     queryFn: () => encountersApi.list(params),
+    queryOptions: {
+      networkMode: 'always',
+    },
     // Force API path: local SQL doesn't support encounter_date/ordering filters,
     // and the transform produces incomplete Encounter objects (missing alerts,
     // assigned_clinician, patient_age, vitals_summary, etc.).
@@ -91,6 +94,9 @@ export function useEncounter(id: number) {
     },
     queryKey: ['encounters', id],
     queryFn: () => encountersApi.get(id),
+    queryOptions: {
+      networkMode: 'always',
+    },
     // Always use API: local record is missing computed fields (alerts, BMI,
     // assigned_clinician, patient demographics, vitals_summary, etc.)
     forceApi: true,
@@ -127,6 +133,9 @@ export function useEncounterDiagnoses(encounterId: number) {
     transform: (rows) => rows.map(r => transformDiagnosisRow(r) as unknown as Diagnosis),
     queryKey: ['encounters', encounterId, 'diagnoses'],
     queryFn: () => encountersApi.getDiagnoses(encounterId),
+    queryOptions: {
+      networkMode: 'always',
+    },
     forceApi: true,
     enabled: encounterId > 0,
   });
@@ -167,6 +176,9 @@ export function useEncounterTreatmentPlan(encounterId: number) {
         if (axiosError.response?.status === 404) return null;
         throw err;
       }
+    },
+    queryOptions: {
+      networkMode: 'always',
     },
     forceApi: true,
     enabled: encounterId > 0,
@@ -450,6 +462,9 @@ export function useEncounterMedications(treatmentPlanId: number | undefined) {
       // Medications are typically embedded in the treatment plan response;
       // if a standalone endpoint exists, use it. Otherwise return empty.
       return [];
+    },
+    queryOptions: {
+      networkMode: 'always',
     },
     forceApi: true,
     enabled: !!treatmentPlanId && treatmentPlanId > 0,
