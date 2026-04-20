@@ -2,8 +2,8 @@
 
 > **Project**: Vitora HMIS
 > **Module**: Theatre/Operating Room Management
-> **Version**: 1.3
-> **Last Updated**: April 20, 2026
+> **Version**: 1.6
+> **Last Updated**: April 21, 2026
 > **Estimated Duration**: 10-14 weeks
 > **Original Roadmap**: Phase 2, Sprint 2.3-2.4 (Oct-Dec 2026)
 
@@ -74,7 +74,7 @@ The Theatre module handles **major surgeries** requiring dedicated operating roo
 | URL include | ✅ **Wired** | `api/theatre/` → `hmis.apps.theatre.urls` |
 | Core events export | ✅ **Wired** | `TheatreEvents` exported from `core/events/__init__.py` |
 | Dashboard stats | ✅ **Wired** | `_get_theatre_stats()` queries `SurgeryCase` model |
-| Frontend theatre pages | ⚠️ Partial implementation | Dashboard, schedule, cases list, case detail, dedicated pre-op/intra-op/post-op workspace routes, anesthesia queue, and theatre setup/configuration are live; analytics remains scaffold-level |
+| Frontend theatre pages | ✅ Implemented | Dashboard, schedule, cases list, case detail, dedicated pre-op/intra-op/post-op workspace routes, anesthesia queue, dedicated anesthesia case detail page, theatre setup/configuration, and backend-backed reports are live |
 | Frontend types/schemas/API | ✅ Implemented | Theatre API client, runtime schemas, and types are in place and aligned to backend routes |
 | Frontend components | ✅ Implemented | Shared theatre component library now includes pre-op/intra-op/post-op workspaces, reusable case status and priority badges, theatre metric cards, and operating theatre admin table/form components used across dashboard, cases, schedule, detail, and setup views |
 | Feature flag | ✅ `ENABLE_THEATRE` | Wired in `constants.ts`, `navigation.ts`, `layout.tsx`; defaults `true` in non-production |
@@ -323,9 +323,10 @@ backend/hmis/apps/theatre/           # ✅ IMPLEMENTED
 ├── services/
 │   ├── __init__.py
 │   ├── scheduling.py         # Slot management, conflict detection ✅
+│   ├── consumables.py        # FEFO stock deduction/restoration for theatre use ✅
+│   ├── reports.py            # Theatre summary analytics (utilization/turnaround/throughput) ✅
 │   ├── checklist.py          # WHO Safety Checklist logic ❌ Not created
 │   ├── anesthesia.py         # Anesthesia record handling ❌ Not created
-│   └── analytics.py          # Theatre metrics computation ❌ Not created
 ├── templates/
 │   └── theatre/              # PDF templates (consent, reports) ❌ Not created
 └── migrations/
@@ -357,10 +358,10 @@ web-app/                             # ⚠️ FRONTEND PARTIALLY IMPLEMENTED
 │   ├── checklists/
 │   │   └── page.tsx          # WHO checklist viewer scaffold ✅
 │   ├── anesthesia/
-│   │   ├── page.tsx          # Anesthesia case queue / workspace launcher ✅
-│   │   └── [caseId]/page.tsx # Anesthesia record detail — ❌ not created
+│   │   ├── page.tsx              # Anesthesia case queue / workspace launcher ✅
+│   │   └── [caseNumber]/page.tsx # Dedicated anesthesia case detail ✅
 │   └── reports/
-│       └── page.tsx          # Utilization reports scaffold ✅
+│       └── page.tsx          # Backend-backed utilization/turnaround/throughput reports ✅
 ├── components/theatre/       # ⚠️ partial
 │   ├── theatre-board.tsx
 │   ├── surgery-booking-form.tsx
@@ -1426,17 +1427,17 @@ class PACUVitalReading(TimeStampedModel):
   - [x] Item tracking with lot/expiry
   - [x] Implant serial numbers
   - [x] Add/remove consumables from workspace log
-  - [ ] Pharmacy stock deduction
-  - [ ] Cost calculation
+  - [x] Pharmacy stock deduction
+  - [x] Cost calculation
 
 - [ ] **Tests**
   - [x] Backend workflow tests (covered in 85-test suite)
-  - [ ] Consumable stock integration tests
+  - [x] Consumable stock integration tests
   - [ ] 120+ additional tests — current total is 85
 
 ---
 
-### Phase D: Post-Operative & Analytics (2-3 weeks) — ⏸️ BACKEND PACU COMPLETE, Analytics not started
+### Phase D: Post-Operative & Analytics (2-3 weeks) — ▶️ Analytics, stock costing, and anesthesia detail pages implemented
 
 **Sprint D.1: PACU Recovery** (Week 1-2) — ✅ BACKEND COMPLETE
 
@@ -1452,22 +1453,19 @@ class PACUVitalReading(TimeStampedModel):
 | D.1.6 | Frontend: PACU monitoring form | High | - | ❌ Not started |
 | D.1.7 | Frontend: Discharge workflow | High | - | ❌ Not started |
 
-**Sprint D.2: Analytics & Reports** (Week 2-3) — ❌ Not started
+**Sprint D.2: Analytics & Reports** (Week 2-3) — ✅ Core summary analytics implemented
 
 #### Tasks
 
 | # | Task | Priority | TDD Tests | Status |
 |---|------|----------|-----------|--------|
-| D.2.1 | Theatre utilization service | High | - | ❌ Not started |
-| D.2.2 | Turnaround time calculation | High | - | ❌ Not started |
-| D.2.3 | Throughput metrics | High | - | ❌ Not started |
-| D.2.4 | Surgeon/anesthesiologist workload | Medium | - | ❌ Not started |
-| D.2.5 | Frontend: Analytics dashboard | High | - | ❌ Not started (placeholder exists) |
-| D.2.6 | Frontend: Reports page | High | - | ❌ Not started (placeholder exists) |
+| D.2.1 | Theatre utilization service | High | - | ✅ Done (`reports.py` + `GET /api/theatre/cases/reports/summary/`) |
+| D.2.2 | Turnaround time calculation | High | - | ✅ Done (case-to-case turnaround using operative note/PACU anchors) |
+| D.2.3 | Throughput metrics | High | - | ✅ Done (per-day throughput + totals in summary API) |
+| D.2.4 | Surgeon/anesthesiologist workload | Medium | - | ✅ Done (summary API leaderboard by lead surgeon/requesting doctor fallback and anesthesiologist) |
+| D.2.5 | Frontend: Analytics dashboard | High | - | ⏸️ Partially covered by reports page snapshot cards |
+| D.2.6 | Frontend: Reports page | High | - | ✅ Done (wired to backend summary analytics endpoint with throughput, utilization, on-time starts, and clinician workload views) |
 | D.2.7 | Playwright E2E tests | High | - | ❌ Not started |
-| D.2.5 | Frontend: Analytics dashboard | High | - |
-| D.2.6 | Frontend: Reports page | High | - |
-| D.2.7 | Playwright E2E tests | High | 15+ tests |
 
 #### Dependencies
 
@@ -1504,22 +1502,23 @@ class PACUVitalReading(TimeStampedModel):
   - [x] Destination selection (Ward/ICU/Day case — PACUDischargeSerializer)
   - [ ] Handover documentation
 
-- [ ] **Analytics** — ❌ Not started
-  - [ ] Theatre utilization percentage
-  - [ ] Average turnaround time
-  - [ ] On-time starts percentage
-  - [ ] Case volume by procedure
-  - [ ] Surgeon workload reports
+- [x] **Analytics** — core reporting shipped
+  - [x] Theatre utilization percentage
+  - [x] Average turnaround time
+  - [x] On-time starts percentage
+  - [x] Throughput by day
+  - [x] Surgeon workload reports
 
-- [ ] **Billing Integration** — ❌ Not started
-  - [ ] Surgeon fees calculated
-  - [ ] Theatre fees calculated
-  - [ ] Consumable charges
-  - [ ] Total case cost
+- [x] **Billing Integration** — case-linked draft invoice sync shipped
+  - [x] Surgeon fees calculated
+  - [x] Theatre fees calculated
+  - [x] Anesthesia fees calculated
+  - [x] Consumable charges/cost capture from pharmacy stock batches
+  - [x] Total case cost synced to `SurgeryCase.total_charges`
 
 - [ ] **Tests**
   - [x] PACU backend tests (3 API tests)
-  - [ ] Analytics accuracy tests
+  - [x] Analytics accuracy tests
   - [ ] Full perioperative E2E tests
   - [ ] 80+ additional tests
 
@@ -1629,8 +1628,8 @@ class PACUVitalReading(TimeStampedModel):
 │  PROGRESS SNAPSHOT (April 20, 2026):                                        │
 │  • Backend: 85 tests passing across 10 models, 23 serializers, 2 ViewSets  │
 │  • Frontend: Placeholder pages only — types, schemas, API client needed     │
-│  • Remaining backend: Analytics service, billing integration,               │
-│    pharmacy stock deduction, role seeding, contract tests, domain-events.md │
+│  • Remaining backend: richer discharge validation, role seeding,            │
+│    contract tests, domain-events.md                                         │
 │  • Remaining frontend: ALL pages, components, forms, live board             │
 │  Total Duration: 10-14 weeks                                                │
 │  Total Backend Tests: 450+ (target)  |  85 (current)                        │
@@ -1703,5 +1702,7 @@ class PACUVitalReading(TimeStampedModel):
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.6 | 2026-04-21 | Engineering Team | Added on-time start analytics and surgeon/anesthesiologist workload reporting to the theatre summary API; expanded end-to-end theatre-to-billing API coverage |
+| 1.5 | 2026-04-21 | Engineering Team | Fixed theatre migration dependency; added case-linked invoice items for surgery cases and theatre consumables; synced surgeon/theatre/anesthesia/procedure/consumable charges into draft invoices; updated Phase D status |
 | 1.0 | 2026-02-06 | Engineering Team | Initial plan |
 | 1.1 | 2026-04-17 | Engineering Team | Aligned with repo: reuse ProcedureCatalog (SURGICAL category) instead of separate SurgicalProcedure; add FacilityScopedModel to all models; add TheatreEvents domain events; fix pharmacy.Stock → StockBatch; reuse ProcedureConsent; add ReadOnCreateMixin/TenantScopedViewMixin; document ENABLE_THEATRE feature flag; add contract tests to strategy; update current state analysis to reflect completed procedures, billing, lab, pharmacy modules |
