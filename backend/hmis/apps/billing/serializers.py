@@ -95,6 +95,9 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     service_name = serializers.CharField(source="service.name", read_only=True, allow_null=True)
     drug_name = serializers.CharField(source="drug.name", read_only=True, allow_null=True)
     lab_order_name = serializers.SerializerMethodField()
+    surgery_case_number = serializers.CharField(
+        source="surgery_case.case_number", read_only=True, allow_null=True
+    )
     # Alias discount_amount as discount_percentage for frontend compatibility
     discount_percentage = serializers.DecimalField(
         source="discount_amount", max_digits=10, decimal_places=2, read_only=True
@@ -111,6 +114,9 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
             "drug_name",
             "lab_order",
             "lab_order_name",
+            "surgery_case",
+            "surgery_case_number",
+            "theatre_consumable",
             "description",
             "quantity",
             "unit_price",
@@ -131,6 +137,7 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
             "invoice",
             "line_total",
             "discount_percentage",
+            "surgery_case_number",
             "is_converted",
             "converted_at",
             "converted_from_item",

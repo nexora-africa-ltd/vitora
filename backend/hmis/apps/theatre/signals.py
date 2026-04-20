@@ -17,6 +17,7 @@ from hmis.apps.theatre.models import (
     PACURecord,
     SurgeryCase,
     SurgicalTeamMember,
+    TheatreConsumable,
     WHOSafetyChecklist,
 )
 
@@ -161,6 +162,26 @@ def publish_surgery_case_event(sender, instance, created, **kwargs):
         facility_id=getattr(instance, "facility_id", None),
         organization_id=getattr(instance, "organization_id", None),
     )
+
+    if not created and instance.status == SurgeryCase.CaseStatus.DISCHARGED:
+        try:
+            from hmis.apps.billing.agent import BillingAgentService
+
+            BillingAgentService.sync_theatre_case_billing(instance)
+        except Exception:
+            logger.exception("Failed to sync billing for discharged surgery case %s", instance.pk)
+
+
+@receiver(post_save, sender=TheatreConsumable)
+def sync_theatre_consumable_billing(sender, instance, created, **kwargs):
+    if not instance.surgery_case_id:
+        return
+    try:
+        from hmis.apps.billing.agent import BillingAgentService
+
+        BillingAgentService.sync_theatre_case_billing(instance.surgery_case)
+    except Exception:
+        logger.exception("Failed to sync billing for theatre consumable %s", instance.pk)
 
 
 @receiver(post_save, sender=SurgicalTeamMember)

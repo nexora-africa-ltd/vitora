@@ -811,6 +811,35 @@ class TheatreConsumable(FacilityScopedModel, TimeStampedModel):
     def __str__(self) -> str:
         return f"{self.item} × {self.quantity_used}"
 
+    @property
+    def total_cost(self):
+        return self.unit_cost * self.quantity_used
+
+
+class TheatreConsumableAllocation(TimeStampedModel):
+    """Batch-level stock allocations used to fulfill a theatre consumable line."""
+
+    theatre_consumable = models.ForeignKey(
+        TheatreConsumable,
+        on_delete=models.CASCADE,
+        related_name="allocations",
+    )
+    batch = models.ForeignKey(
+        "pharmacy.StockBatch",
+        on_delete=models.PROTECT,
+        related_name="theatre_allocations",
+    )
+    quantity_used = models.PositiveIntegerField()
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ["created_at", "batch__expiry_date"]
+        verbose_name = "Theatre Consumable Allocation"
+        verbose_name_plural = "Theatre Consumable Allocations"
+
+    def __str__(self) -> str:
+        return f"{self.batch.batch_number} × {self.quantity_used}"
+
 
 # ---------------------------------------------------------------------------
 # 9. PACURecord

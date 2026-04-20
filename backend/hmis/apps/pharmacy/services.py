@@ -21,7 +21,7 @@ class FEFODispenser:
     """First Expiry First Out dispensing logic."""
 
     @staticmethod
-    def get_batches_for_dispensing(drug, quantity: int) -> list[tuple]:
+    def get_batches_for_dispensing(drug, quantity: int, facility=None) -> list[tuple]:
         """
         Get batches to dispense from, prioritizing earliest expiry.
 
@@ -48,6 +48,10 @@ class FEFODispenser:
             expiry_date__gt=timezone.now().date(),
             quantity_available__gt=0,
         ).order_by("expiry_date", "received_date")
+
+        if facility is not None:
+            facility_id = getattr(facility, "pk", facility)
+            available_batches = available_batches.filter(facility_id=facility_id)
 
         result = []
         remaining = quantity
@@ -85,7 +89,11 @@ class FEFODispenser:
         """
         from hmis.apps.pharmacy.models import Dispensing
 
-        batches = FEFODispenser.get_batches_for_dispensing(drug, quantity)
+        batches = FEFODispenser.get_batches_for_dispensing(
+            drug,
+            quantity,
+            facility=kwargs.get("facility") or kwargs.get("facility_id"),
+        )
         dispensings = []
 
         for batch, qty in batches:
