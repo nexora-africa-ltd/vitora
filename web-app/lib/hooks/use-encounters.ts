@@ -38,6 +38,10 @@ export function useEncounters(params?: EncounterListParams) {
     const pattern = `%${params.search}%`;
     sqlParams.push(pattern, pattern, pattern, pattern);
   }
+  if (params?.status) {
+    conditions.push('e.status = ?');
+    sqlParams.push(params.status);
+  }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 

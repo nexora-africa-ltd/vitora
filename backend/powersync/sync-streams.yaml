@@ -176,6 +176,7 @@ streams:
         height,
         notes,
         triage_requirement,
+        status,
         triage_status,
         consultation_status,
         created_by_id,

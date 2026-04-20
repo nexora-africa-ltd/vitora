@@ -142,6 +142,7 @@ const encounters = new Table(
     weight: column.real,
     height: column.real,
     notes: column.text,
+    status: column.text,
     triage_requirement: column.text,
     triage_status: column.text,
     consultation_status: column.text,
