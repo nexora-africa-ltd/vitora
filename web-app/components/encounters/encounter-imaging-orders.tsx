@@ -7,7 +7,6 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   Plus,
   ScanLine,
@@ -29,13 +28,17 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEncounterImagingOrders } from '@/lib/hooks/use-imaging';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatDateTime } from '@/lib/utils/format';
 import {
   OrderStatusBadge,
   PriorityBadge,
   ModalityBadge,
 } from '@/components/imaging';
+import { ImagingOrderForm } from '@/components/imaging/imaging-order-form';
 import type {
   ImagingOrder,
   ImagingOrderStatus,
@@ -47,8 +50,6 @@ interface EncounterImagingOrdersProps {
   patientId: number;
   patientName?: string;
   disabled?: boolean;
-  /** Called before navigating to create imaging order - use to save pending changes */
-  onBeforeNavigate?: () => Promise<void>;
 }
 
 export function EncounterImagingOrders({
@@ -56,25 +57,15 @@ export function EncounterImagingOrders({
   patientId,
   patientName,
   disabled = false,
-  onBeforeNavigate,
 }: EncounterImagingOrdersProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: orders, isLoading, error } = useEncounterImagingOrders(encounterId);
+  const [showOrderForm, setShowOrderForm] = useState(false);
 
-  // Handle navigation to new imaging order - saves pending changes first
-  const handleNewImagingOrder = useCallback(async () => {
-    if (onBeforeNavigate) {
-      await onBeforeNavigate();
-    }
-    const params = new URLSearchParams({
-      encounter: String(encounterId),
-      patient: String(patientId),
-    });
-    if (patientName) {
-      params.set('patientName', patientName);
-    }
-    router.push(`/imaging/orders/new?${params.toString()}`);
-  }, [onBeforeNavigate, router, encounterId, patientId, patientName]);
+  const handleOrderCreated = useCallback(() => {
+    setShowOrderForm(false);
+    queryClient.invalidateQueries({ queryKey: ['encounter-imaging-orders', encounterId] });
+  }, [queryClient, encounterId]);
 
   if (isLoading) {
     return (
@@ -135,7 +126,7 @@ export function EncounterImagingOrders({
           </CardTitle>
           <Button
             size="sm"
-            onClick={handleNewImagingOrder}
+            onClick={() => setShowOrderForm(true)}
             disabled={disabled}
           >
             <Plus className="h-4 w-4 mr-1" />
@@ -157,7 +148,7 @@ export function EncounterImagingOrders({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleNewImagingOrder}
+              onClick={() => setShowOrderForm(true)}
               disabled={disabled}
             >
               <Plus className="h-4 w-4 mr-1" />
@@ -204,6 +195,26 @@ export function EncounterImagingOrders({
           </Link>
         </CardFooter>
       )}
+
+      {/* New Imaging Order Sheet */}
+      <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Imaging Order</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <ImagingOrderForm
+                patientId={patientId}
+                patientName={patientName}
+                encounterId={encounterId}
+                onSuccess={handleOrderCreated}
+                onCancel={() => setShowOrderForm(false)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 }
@@ -270,24 +281,15 @@ export function EncounterImagingOrdersContent({
   patientId,
   patientName,
   disabled = false,
-  onBeforeNavigate,
 }: EncounterImagingOrdersProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: orders, isLoading, error } = useEncounterImagingOrders(encounterId);
+  const [showOrderForm, setShowOrderForm] = useState(false);
 
-  const handleNewImagingOrder = useCallback(async () => {
-    if (onBeforeNavigate) {
-      await onBeforeNavigate();
-    }
-    const params = new URLSearchParams({
-      encounter: String(encounterId),
-      patient: String(patientId),
-    });
-    if (patientName) {
-      params.set('patientName', patientName);
-    }
-    router.push(`/imaging/orders/new?${params.toString()}`);
-  }, [onBeforeNavigate, router, encounterId, patientId, patientName]);
+  const handleOrderCreated = useCallback(() => {
+    setShowOrderForm(false);
+    queryClient.invalidateQueries({ queryKey: ['encounter-imaging-orders', encounterId] });
+  }, [queryClient, encounterId]);
 
   if (isLoading) {
     return (
@@ -319,7 +321,7 @@ export function EncounterImagingOrdersContent({
       {/* Action button */}
       {!disabled && (
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={handleNewImagingOrder}>
+          <Button size="sm" onClick={() => setShowOrderForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Order Imaging
           </Button>
@@ -359,6 +361,26 @@ export function EncounterImagingOrdersContent({
           )}
         </div>
       )}
+
+      {/* New Imaging Order Sheet */}
+      <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Imaging Order</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <ImagingOrderForm
+                patientId={patientId}
+                patientName={patientName}
+                encounterId={encounterId}
+                onSuccess={handleOrderCreated}
+                onCancel={() => setShowOrderForm(false)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

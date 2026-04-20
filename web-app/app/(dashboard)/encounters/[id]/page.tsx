@@ -422,7 +422,7 @@ export default function EncounterDetailPage() {
           ...(encounter.height != null && { height: Number(encounter.height) }),
         }}
         labResults={labOrders?.flatMap(order =>
-          order.items
+          (order.items || [])
             .filter(item => item.result?.numeric_value != null && item.test_name)
             .map(item => ({
               test_name: item.test_name,
@@ -595,7 +595,7 @@ export default function EncounterDetailPage() {
               symptoms={encounter.chief_complaint
                 ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
               existingOrders={labOrders?.flatMap(order =>
-                order.items.map(item => item.test_name)
+                (order.items || []).map(item => item.test_name)
               )}
               patientAge={calculateAge(encounter.patient_date_of_birth)}
               patientSex={encounter.patient_gender === 'F' ? 'F' : encounter.patient_gender === 'M' ? 'M' : undefined}
@@ -620,6 +620,13 @@ export default function EncounterDetailPage() {
                   encounterId={encounterId}
                   patientId={encounter.patient}
                   disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+                  patientName={encounter.patient_name ?? undefined}
+                  patientMrn={encounter.patient_mrn ?? undefined}
+                  patientGender={encounter.patient_gender ?? undefined}
+                  patientDateOfBirth={encounter.patient_date_of_birth ?? undefined}
+                  encounterType={encounter.encounter_type ?? undefined}
+                  encounterDate={encounter.encounter_date ?? undefined}
+                  chiefComplaint={encounter.chief_complaint ?? undefined}
                   patientDemographics={{
                     patientAge: calculateAge(encounter.patient_date_of_birth),
                     patientSex: encounter.patient_gender === 'F' ? 'female' : 'male',
@@ -645,6 +652,7 @@ export default function EncounterDetailPage() {
                 <EncounterImagingOrders
                   encounterId={encounterId}
                   patientId={encounter.patient}
+                  patientName={encounter.patient_name ?? undefined}
                   disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
                 />
               </AccordionContent>
