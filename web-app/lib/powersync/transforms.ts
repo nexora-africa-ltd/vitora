@@ -229,6 +229,7 @@ export interface EncounterLocalRecord {
   weight?: number;
   height?: number;
   notes?: string;
+  status?: string;
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -258,6 +259,7 @@ export function transformEncounterRow(
     weight: row.weight as number | undefined,
     height: row.height as number | undefined,
     notes: (row.notes as string) || undefined,
+    status: (row.status as string) || undefined,
     created_by: toNumericId(row.created_by_id as string),
     created_at: (row.created_at as string) || '',
     updated_at: (row.updated_at as string) || '',
