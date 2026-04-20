@@ -42,7 +42,7 @@ export default function TheatreAnesthesiaPage() {
     <div className="space-y-6">
       <PageHeader
         title="Anesthesia Workspace"
-        helpContent="Review theatre cases that require anesthesia documentation and jump directly into the relevant case workspace."
+        helpContent="Review theatre cases that require anesthesia documentation, open a dedicated anesthesia case page, and then branch into the relevant pre-op, intra-op, or PACU workspace."
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -71,11 +71,6 @@ export default function TheatreAnesthesiaPage() {
           ) : (
             <div className="space-y-3">
               {cases.map((item) => {
-                const targetHref = item.status === 'IN_PACU'
-                  ? `/theatre/cases/${item.case_number}/post-op`
-                  : item.status === 'IN_THEATRE' || item.status === 'IN_SURGERY'
-                    ? `/theatre/cases/${item.case_number}/intra-op`
-                    : `/theatre/cases/${item.case_number}/pre-op`;
                 return (
                   <div key={item.id} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
@@ -85,8 +80,8 @@ export default function TheatreAnesthesiaPage() {
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" size="sm" className="w-fit">{item.status.replace(/_/g, ' ')}</Badge>
                       <Button asChild size="sm">
-                        <Link href={targetHref}>
-                          <FileHeart className="mr-2 h-4 w-4" />Open workspace
+                        <Link href={`/theatre/anesthesia/${item.case_number}`}>
+                          <FileHeart className="mr-2 h-4 w-4" />Open case
                         </Link>
                       </Button>
                     </div>

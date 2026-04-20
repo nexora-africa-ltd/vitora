@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Clock, Scissors, TrendingUp } from 'lucide-react';
+import { Activity, Clock3, Gauge, Stethoscope, TrendingUp, UserRound } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TheatreCaseStatusBadge, TheatreMetricCard } from '@/components/theatre/theatre-display';
 import { theatreApi } from '@/lib/api/theatre';
-import type { SurgeryCaseList } from '@/lib/types/theatre';
+import type { TheatreReportClinicianWorkload, TheatreReportSummary } from '@/lib/types/theatre';
 
 function isoDate(offsetDays = 0) {
   const current = new Date();
@@ -28,24 +28,81 @@ function isoDate(offsetDays = 0) {
   return current.toISOString().split('T')[0] ?? '';
 }
 
+function formatHours(minutes: number) {
+  return `${Math.round((minutes / 60) * 10) / 10}h`;
+}
+
+function WorkloadList({
+  title,
+  icon: Icon,
+  items,
+  emptyMessage,
+}: {
+  title: string;
+  icon: typeof UserRound;
+  items: TheatreReportClinicianWorkload[];
+  emptyMessage: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Icon className="h-4 w-4" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {items.length === 0 ? (
+          <div className="py-8 text-sm text-muted-foreground">{emptyMessage}</div>
+        ) : (
+          items.map((item) => (
+            <div key={item.clinician_id} className="rounded-lg border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{item.clinician_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.completed_case_count} completed of {item.case_count} case{item.case_count === 1 ? '' : 's'}
+                  </p>
+                </div>
+                <Badge variant="outline" size="sm" className="w-fit shrink-0">
+                  {formatHours(item.scheduled_minutes)} booked
+                </Badge>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md bg-muted/50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Actual time</p>
+                  <p className="text-sm font-medium">{formatHours(item.actual_minutes)}</p>
+                </div>
+                <div className="rounded-md bg-muted/50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Avg case</p>
+                  <p className="text-sm font-medium">{item.average_case_duration_minutes} min</p>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TheatreReportsPage() {
-  const [cases, setCases] = useState<SurgeryCaseList[]>([]);
+  const [report, setReport] = useState<TheatreReportSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [rangeDays, setRangeDays] = useState(30);
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    theatreApi.listCases({
-      page_size: 500,
-      scheduled_date_after: isoDate(-(rangeDays - 1)),
-      scheduled_date_before: isoDate(0),
+    theatreApi.getReportSummary({
+      date_from: isoDate(-(rangeDays - 1)),
+      date_to: isoDate(0),
     }).then((response) => {
       if (!mounted) return;
-      setCases(response.results);
+      setReport(response);
     }).catch(() => {
       if (!mounted) return;
-      setCases([]);
+      setReport(null);
     }).finally(() => {
       if (mounted) setLoading(false);
     });
@@ -54,65 +111,34 @@ export default function TheatreReportsPage() {
     };
   }, [rangeDays]);
 
-  const totals = useMemo(() => {
-    const completed = cases.filter((item) => item.status === 'DISCHARGED').length;
-    const urgent = cases.filter((item) => item.priority !== 'ELECTIVE').length;
-    const scheduledMinutes = cases.reduce((sum, item) => sum + (item.estimated_duration_minutes || 0), 0);
-    const active = cases.filter((item) => ['PRE_OP', 'IN_THEATRE', 'IN_SURGERY', 'IN_PACU'].includes(item.status)).length;
-    return {
-      total: cases.length,
-      completed,
-      urgent,
-      scheduledHours: Math.round((scheduledMinutes / 60) * 10) / 10,
-      active,
-      completionRate: cases.length > 0 ? Math.round((completed / cases.length) * 100) : 0,
-    };
-  }, [cases]);
-
-  const procedureVolume = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of cases) {
-      counts.set(item.primary_procedure_name, (counts.get(item.primary_procedure_name) || 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((left, right) => right.count - left.count)
-      .slice(0, 8);
-  }, [cases]);
-
-  const theatreLoad = useMemo(() => {
-    const counts = new Map<string, number>();
-    const minutes = new Map<string, number>();
-    for (const item of cases) {
-      counts.set(item.theatre_name, (counts.get(item.theatre_name) || 0) + 1);
-      minutes.set(item.theatre_name, (minutes.get(item.theatre_name) || 0) + (item.estimated_duration_minutes || 0));
-    }
-    return Array.from(counts.entries())
-      .map(([name, count]) => ({ name, count, hours: Math.round(((minutes.get(name) || 0) / 60) * 10) / 10 }))
-      .sort((left, right) => right.hours - left.hours);
-  }, [cases]);
-
-  const statusMix = useMemo(() => {
-    const statuses = ['SCHEDULED', 'PRE_OP', 'IN_THEATRE', 'IN_SURGERY', 'IN_PACU', 'DISCHARGED', 'POSTPONED', 'CANCELLED'];
-    return statuses
-      .map((status) => ({ name: status.replace(/_/g, ' '), value: cases.filter((item) => item.status === status).length }))
-      .filter((item) => item.value > 0);
-  }, [cases]);
-
-  const activeStatusCounts = useMemo(() => {
-    const activeStatuses = ['PRE_OP', 'IN_THEATRE', 'IN_SURGERY', 'IN_PACU'];
-    return activeStatuses
-      .map((status) => ({ status, count: cases.filter((item) => item.status === status).length }))
-      .filter((item) => item.count > 0);
-  }, [cases]);
+  const totals = report?.totals;
+  const onTimeStarts = report?.on_time_starts;
+  const throughputSeries = useMemo(() => report?.throughput_by_day ?? [], [report]);
+  const utilizationByTheatre = useMemo(() => report?.utilization_by_theatre ?? [], [report]);
+  const surgeonWorkload = useMemo(() => report?.surgeon_workload.slice(0, 5) ?? [], [report]);
+  const anesthesiologistWorkload = useMemo(
+    () => report?.anesthesiologist_workload.slice(0, 5) ?? [],
+    [report]
+  );
+  const statusMix = useMemo(
+    () => (report?.status_breakdown ?? []).map((item) => ({ name: item.status.replace(/_/g, ' '), value: item.count })),
+    [report]
+  );
+  const activeStatusCounts = useMemo(
+    () => (report?.status_breakdown ?? []).filter((item) => ['PRE_OP', 'IN_THEATRE', 'IN_SURGERY', 'IN_PACU'].includes(item.status)),
+    [report]
+  );
 
   const statusColors = ['#0ea5e9', '#eab308', '#f97316', '#ef4444', '#8b5cf6', '#22c55e', '#f59e0b', '#6b7280'];
+  const completionRate = totals && totals.case_count > 0
+    ? Math.round((totals.completed_case_count / totals.case_count) * 100)
+    : 0;
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       <PageHeader
         title="Theatre Reports"
-        helpContent="Operational theatre analytics built from live surgery case data. Use this to review case volume, theatre load, completion rate, and active workflow distribution."
+        helpContent="Operational theatre analytics built from the theatre reporting API. Review booked utilization, throughput, turnaround, on-time starts, and clinician workload over a selected reporting window."
         actions={
           <div className="flex gap-2">
             {[7, 30, 90].map((days) => (
@@ -126,10 +152,10 @@ export default function TheatreReportsPage() {
 
       <div className="grid gap-4 md:grid-cols-4">
         {[
-          { label: 'Cases', value: totals.total, icon: Scissors },
-          { label: 'Completed', value: totals.completed, icon: TrendingUp },
-          { label: 'Urgent / Emergency', value: totals.urgent, icon: Clock },
-          { label: 'Booked Hours', value: totals.scheduledHours, icon: BarChart3 },
+          { label: 'Cases', value: totals?.case_count ?? 0, icon: Activity },
+          { label: 'Booked Utilization %', value: totals?.utilization_percent ?? 0, icon: Gauge },
+          { label: 'On-Time Starts %', value: onTimeStarts?.percent ?? 0, icon: TrendingUp },
+          { label: 'Avg Turnaround Min', value: report?.turnaround.average_minutes ?? 0, icon: Clock3 },
         ].map((card) => (
           <div key={card.label} className="relative">
             <TheatreMetricCard label={card.label} value={card.value} />
@@ -140,20 +166,77 @@ export default function TheatreReportsPage() {
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Case Volume by Procedure</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base">On-Time Starts</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {loading ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">Loading report data...</div>
+            ) : !onTimeStarts ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">No on-time start data available for this range.</div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="text-sm font-medium">Measured starts</p>
+                    <p className="text-xs text-muted-foreground">
+                      Threshold: within {onTimeStarts.threshold_minutes} minutes of scheduled start
+                    </p>
+                  </div>
+                  <Badge variant={onTimeStarts.percent >= 80 ? 'success' : onTimeStarts.percent >= 60 ? 'warning' : 'destructive'} size="sm" className="w-fit">
+                    {onTimeStarts.percent}% on time
+                  </Badge>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Measured</p>
+                    <p className="mt-1 text-2xl font-semibold">{onTimeStarts.measured_case_count}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">On time</p>
+                    <p className="mt-1 text-2xl font-semibold text-emerald-600">{onTimeStarts.on_time_case_count}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Late starts</p>
+                    <p className="mt-1 text-2xl font-semibold text-amber-600">{onTimeStarts.late_case_count}</p>
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>On-time mix</span>
+                    <span>{onTimeStarts.on_time_case_count} / {Math.max(onTimeStarts.measured_case_count, 1)}</span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-muted">
+                    <div className="flex h-full">
+                      <div
+                        className="bg-emerald-500"
+                        style={{ width: `${onTimeStarts.measured_case_count > 0 ? (onTimeStarts.on_time_case_count / onTimeStarts.measured_case_count) * 100 : 0}%` }}
+                      />
+                      <div
+                        className="bg-amber-400"
+                        style={{ width: `${onTimeStarts.measured_case_count > 0 ? (onTimeStarts.late_case_count / onTimeStarts.measured_case_count) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Throughput by Day</CardTitle></CardHeader>
           <CardContent className="h-80">
             {loading ? (
               <div className="py-10 text-center text-sm text-muted-foreground">Loading report data...</div>
-            ) : procedureVolume.length === 0 ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">No procedure volume available for this range.</div>
+            ) : throughputSeries.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">No throughput data available for this range.</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={procedureVolume} layout="vertical" margin={{ left: 32 }}>
+                <BarChart data={throughputSeries} margin={{ left: 4, right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" width={160} />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#0ea5e9" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="case_count" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -182,29 +265,52 @@ export default function TheatreReportsPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
+        <WorkloadList
+          title="Lead Surgeon Workload"
+          icon={UserRound}
+          items={surgeonWorkload}
+          emptyMessage="No surgeon workload data available for this range."
+        />
+
+        <WorkloadList
+          title="Anesthesia Workload"
+          icon={Stethoscope}
+          items={anesthesiologistWorkload}
+          emptyMessage="No anesthesia workload data available for this range."
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Theatre Load</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {theatreLoad.length === 0 ? (
-              <div className="py-8 text-sm text-muted-foreground">No theatre load data available for this range.</div>
-            ) : theatreLoad.map((item) => (
-              <div key={item.name} className="flex items-center justify-between rounded-lg border p-3">
-                <div>
-                  <p className="font-medium">{item.name}</p>
-                  <p className="text-xs text-muted-foreground">{item.count} case{item.count === 1 ? '' : 's'}</p>
-                </div>
-                <Badge variant="info" size="sm" className="w-fit">{item.hours}h booked</Badge>
-              </div>
-            ))}
+          <CardHeader className="pb-3"><CardTitle className="text-base">Utilization by Theatre</CardTitle></CardHeader>
+          <CardContent className="h-80">
+            {loading ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">Loading report data...</div>
+            ) : utilizationByTheatre.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">No theatre utilization data available for this range.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={utilizationByTheatre} layout="vertical" margin={{ left: 40, right: 12 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" unit="%" />
+                  <YAxis type="category" dataKey="theatre_code" width={72} />
+                  <Tooltip />
+                  <Bar dataKey="utilization_percent" fill="#14b8a6" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-base">Operational Snapshot</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Completion rate</span><Badge variant={totals.completionRate >= 70 ? 'success' : 'warning'} size="sm" className="w-fit">{totals.completionRate}%</Badge></div>
-            <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Active workflow cases</span><Badge variant="outline" size="sm" className="w-fit">{totals.active}</Badge></div>
+            <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Completion rate</span><Badge variant={completionRate >= 70 ? 'success' : 'warning'} size="sm" className="w-fit">{completionRate}%</Badge></div>
+            <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Active workflow cases</span><Badge variant="outline" size="sm" className="w-fit">{totals?.active_case_count ?? 0}</Badge></div>
             <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Report window</span><Badge variant="outline" size="sm" className="w-fit">Last {rangeDays} days</Badge></div>
+            <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Average daily throughput</span><Badge variant="info" size="sm" className="w-fit">{totals?.average_daily_throughput ?? 0}</Badge></div>
+            <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Cases with turnaround measured</span><Badge variant="info" size="sm" className="w-fit">{report?.turnaround.cases_with_measurement_count ?? 0}</Badge></div>
+            <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Booked vs available hours</span><Badge variant="outline" size="sm" className="w-fit">{Math.round(((totals?.scheduled_minutes ?? 0) / 60) * 10) / 10} / {Math.round(((totals?.available_minutes ?? 0) / 60) * 10) / 10}h</Badge></div>
             {activeStatusCounts.length > 0 ? (
               <div className="rounded-lg border p-3">
                 <p className="mb-3 text-sm font-medium">Live workflow distribution</p>
@@ -218,9 +324,11 @@ export default function TheatreReportsPage() {
                 </div>
               </div>
             ) : null}
-            <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-              These analytics use live surgery case data already in the theatre module. Exact turnaround and on-time-start metrics still need dedicated backend timestamps before they can be calculated reliably.
-            </div>
+            {utilizationByTheatre[0] ? (
+              <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                Highest booked theatre: <span className="font-medium text-foreground">{utilizationByTheatre[0].theatre_name}</span> at <span className="font-medium text-foreground">{utilizationByTheatre[0].utilization_percent}%</span> booked utilization.
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
