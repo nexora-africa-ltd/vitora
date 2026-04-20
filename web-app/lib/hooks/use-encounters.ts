@@ -64,6 +64,10 @@ export function useEncounters(params?: EncounterListParams) {
     }),
     queryKey: ['encounters', params],
     queryFn: () => encountersApi.list(params),
+    // Force API path: local SQL doesn't support encounter_date/ordering filters,
+    // and the transform produces incomplete Encounter objects (missing alerts,
+    // assigned_clinician, patient_age, vitals_summary, etc.).
+    forceApi: true,
   });
 }
 
@@ -87,7 +91,9 @@ export function useEncounter(id: number) {
     },
     queryKey: ['encounters', id],
     queryFn: () => encountersApi.get(id),
-    forceApi: !id,
+    // Always use API: local record is missing computed fields (alerts, BMI,
+    // assigned_clinician, patient demographics, vitals_summary, etc.)
+    forceApi: true,
     enabled: id > 0,
   });
 }
@@ -121,7 +127,7 @@ export function useEncounterDiagnoses(encounterId: number) {
     transform: (rows) => rows.map(r => transformDiagnosisRow(r) as unknown as Diagnosis),
     queryKey: ['encounters', encounterId, 'diagnoses'],
     queryFn: () => encountersApi.getDiagnoses(encounterId),
-    forceApi: !encounterId,
+    forceApi: true,
     enabled: encounterId > 0,
   });
 }
@@ -162,7 +168,7 @@ export function useEncounterTreatmentPlan(encounterId: number) {
         throw err;
       }
     },
-    forceApi: !encounterId,
+    forceApi: true,
     enabled: encounterId > 0,
   });
 }
@@ -445,7 +451,7 @@ export function useEncounterMedications(treatmentPlanId: number | undefined) {
       // if a standalone endpoint exists, use it. Otherwise return empty.
       return [];
     },
-    forceApi: !treatmentPlanId,
+    forceApi: true,
     enabled: !!treatmentPlanId && treatmentPlanId > 0,
   });
 }
