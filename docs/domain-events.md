@@ -306,6 +306,24 @@ Convention: `<domain>.<aggregate>.<action>`
 | `ORDER_ITEM_CREATED` | `imaging.order_item.created` | `imaging/signals.py` |
 | `RESULT_COMPLETED` | `imaging.result.completed` | — (defined, not yet wired) |
 
+### TheatreEvents (13 constants)
+
+| Constant | Value | Published From |
+|----------|-------|---------------|
+| `CASE_CREATED` | `theatre.case.created` | `theatre/signals.py` |
+| `CASE_SCHEDULED` | `theatre.case.scheduled` | `theatre/signals.py` |
+| `CASE_STATUS_CHANGED` | `theatre.case.status_changed` | `theatre/signals.py` |
+| `CASE_CANCELLED` | `theatre.case.cancelled` | `theatre/signals.py` |
+| `CASE_POSTPONED` | `theatre.case.postponed` | `theatre/signals.py` |
+| `TEAM_ASSIGNED` | `theatre.team.assigned` | `theatre/signals.py` |
+| `CHECKLIST_SIGN_IN` | `theatre.checklist.sign_in` | `theatre/signals.py` |
+| `CHECKLIST_TIME_OUT` | `theatre.checklist.time_out` | `theatre/signals.py` |
+| `CHECKLIST_SIGN_OUT` | `theatre.checklist.sign_out` | `theatre/signals.py` |
+| `SURGERY_STARTED` | `theatre.surgery.started` | `theatre/signals.py` |
+| `SURGERY_COMPLETED` | `theatre.surgery.completed` | `theatre/signals.py` |
+| `PACU_ARRIVED` | `theatre.pacu.arrived` | `theatre/signals.py` |
+| `PACU_DISCHARGED` | `theatre.pacu.discharged` | `theatre/signals.py` |
+
 ### Summary
 
 | Class | Defined | Wired | Coverage |
@@ -321,7 +339,8 @@ Convention: `<domain>.<aggregate>.<action>`
 | CoreEvents | 5 | 3 | 60% |
 | SchedulingEvents | 19 | 19 | 100% |
 | ImagingEvents | 3 | 1 | 33% |
-| **Total** | **74** | **53** | **72%** |
+| TheatreEvents | 13 | 13 | 100% |
+| **Total** | **87** | **66** | **76%** |
 
 ---
 
@@ -437,6 +456,15 @@ Appointment status → Event mapping:
 | Handler | Signal | Model | Event(s) Published | Payload |
 |---------|--------|-------|--------------------|---------|
 | `create_invoice_item_for_imaging` | `post_save` | `ImagingOrderItem` | `ORDER_ITEM_CREATED` | `order_number`, `procedure_name`, `unit_price` |
+
+### Theatre (`hmis/apps/theatre/signals.py`)
+
+| Handler | Signal | Model | Event(s) Published | Payload |
+|---------|--------|-------|--------------------|---------|
+| `publish_surgery_case_event` | `post_save` | `SurgeryCase` | `CASE_CREATED` / status-mapped | `case_number`, `status`, `patient_id`, `theatre_id`, `scheduled_date`, `priority` |
+| `publish_team_assigned_event` | `post_save` | `SurgicalTeamMember` | `TEAM_ASSIGNED` | `staff_member_id`, `role` |
+| `publish_checklist_event` | `post_save` | `WHOSafetyChecklist` | `CHECKLIST_SIGN_IN` / `CHECKLIST_TIME_OUT` / `CHECKLIST_SIGN_OUT` | `case_number` |
+| `publish_pacu_event` | `post_save` | `PACURecord` | `PACU_ARRIVED` | `initial_aldrete_score` |
 
 ---
 

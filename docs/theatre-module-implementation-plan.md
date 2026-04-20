@@ -1141,7 +1141,7 @@ class PACUVitalReading(TimeStampedModel):
 | A.1.6 | Create case number generator (SURG-YYYYMMDD-XXXX) | Medium | 3 tests | ✅ Done |
 | A.1.7 | Implement status transition methods on SurgeryCase model | High | 15 tests | ✅ Done |
 | A.1.8 | Define TheatreEvents in `core/events/types.py` + wire signals | High | 5 tests | ✅ Done |
-| A.1.9 | RBAC permissions setup + seed theatre-specific roles | High | - | ⏸️ Permissions defined, roles not seeded |
+| A.1.9 | RBAC permissions setup + seed theatre-specific roles | High | - | ✅ `seed_theatre_roles` management command (6 roles) |
 | A.1.10 | Django admin registrations (facility in list_display/list_filter/raw_id_fields) | Low | - | ✅ Done |
 
 #### Dependencies
@@ -1181,13 +1181,13 @@ class PACUVitalReading(TimeStampedModel):
 | A.2.2 | Implement ViewSets (TenantScopedViewMixin + ReadOnCreateMixin) | High | 43 tests | ✅ Done (2 ViewSets, 20+ actions) |
 | A.2.3 | Theatre slot management service | High | - | ✅ Done (`services/scheduling.py`) |
 | A.2.4 | Conflict detection | High | - | ✅ Done (`detect_theatre_conflicts`, `detect_surgeon_conflicts`) |
-| A.2.5 | Seed surgical procedure catalog (ProcedureCatalog category=SURGICAL) | Medium | - | ❌ Not started |
-| A.2.6 | Frontend: TypeScript types, Zod schemas, API client | High | - | ❌ Not started |
-| A.2.7 | Frontend: Schedule calendar page | High | - | ❌ Not started (placeholder exists) |
-| A.2.8 | Frontend: Surgery booking form | High | - | ❌ Not started |
-| A.2.9 | Frontend: Daily theatre list | High | - | ❌ Not started |
-| A.2.10 | Frontend: Live theatre board | High | - | ❌ Not started (placeholder exists) |
-| A.2.11 | Add audit logging + contract tests | High | - | ⏸️ Audit logging in views, contract tests not added |
+| A.2.5 | Seed surgical procedure catalog (ProcedureCatalog category=SURGICAL) | Medium | - | ✅ `seed_surgical_procedures` command (12 Kenya procedures) |
+| A.2.6 | Frontend: TypeScript types, Zod schemas, API client | High | - | ✅ `theatre.schema.ts`, `theatre.ts` types, `theatre.ts` API (30+ methods) |
+| A.2.7 | Frontend: Schedule calendar page | High | - | ✅ Date-nav daily theatre list with case cards |
+| A.2.8 | Frontend: Surgery booking form | High | - | ✅ `cases/new/page.tsx` with react-hook-form + Zod |
+| A.2.9 | Frontend: Daily theatre list | High | - | ✅ Integrated into schedule page + theatre dashboard |
+| A.2.10 | Frontend: Live theatre board | High | - | ✅ Theatre dashboard with live status, stats cards, and today's list |
+| A.2.11 | Add audit logging + contract tests | High | - | ✅ 27 serializer contract tests + audit logging in views |
 
 #### Dependencies
 
@@ -1228,22 +1228,24 @@ class PACUVitalReading(TimeStampedModel):
   - [x] Team assignment endpoints
   - [x] Status transition actions (thin views calling model methods)
   - [x] Conflict detection working
-  - [ ] All responses validated with Zod schemas (parseResponse) — **frontend not started**
+  - [x] All responses validated with Zod schemas (parseResponse) — `theatre.schema.ts` + `theatre.ts` API client
 
 - [x] **Domain Events**
   - [x] TheatreEvents class defined in `core/events/types.py` (13 constants)
   - [x] Signals wired in `theatre/signals.py` for status transitions (3 receivers)
   - [x] `apps.py` `ready()` imports signals
   - [x] Event tests verify publish_event calls (5 tests)
-  - [ ] `docs/domain-events.md` SSOT updated
+  - [x] `docs/domain-events.md` SSOT updated
 
-- [ ] **Frontend** — ❌ Not started
-  - [ ] `lib/types/theatre.ts` + `lib/schemas/theatre.schema.ts` + `lib/api/theatre.ts`
-  - [ ] Theatre calendar view
-  - [ ] Surgery booking form
-  - [ ] Daily theatre list view
-  - [ ] Live theatre board (basic)
-  - [ ] Team assignment UI
+- [x] **Frontend** — ✅ Complete
+  - [x] `lib/types/theatre.ts` + `lib/schemas/theatre.schema.ts` + `lib/api/theatre.ts`
+  - [x] Theatre dashboard with live stats and today's list
+  - [x] Date-navigable schedule page
+  - [x] Surgery booking form (`cases/new/page.tsx`)
+  - [x] Cases list page with filters, search, ResponsiveTable
+  - [x] Case detail page with workflow actions, team, documentation status
+  - [x] Checklists page (active cases needing checklist attention)
+  - [ ] Team assignment UI — deferred to Phase B
 
 - [x] **Business Logic**
   - [x] Case number auto-generation (SURG-YYYYMMDD-XXXX)
@@ -1256,8 +1258,9 @@ class PACUVitalReading(TimeStampedModel):
   - [x] All status transitions tested
   - [x] 85 backend tests passing (37 model + 43 API + 5 events)
 
-- [ ] **Data**
-  - [ ] Surgical procedure catalog seeded
+- [x] **Data**
+  - [x] Surgical procedure catalog seeded (`seed_surgical_procedures` — 12 Kenya procedures)
+  - [x] Theatre roles seeded (`seed_theatre_roles` — 6 roles)
   - [ ] SHA intervention codes mapped
 
 ---
