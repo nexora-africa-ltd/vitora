@@ -65,6 +65,7 @@ app.conf.task_routes = {
     # Scheduling attendance tasks
     "hmis.apps.scheduling.tasks.mark_absent_shifts": {"queue": "monitoring"},
     "hmis.apps.scheduling.tasks.auto_clock_out_stale_shifts": {"queue": "monitoring"},
+    "hmis.apps.scheduling.tasks.send_shift_reminders": {"queue": "monitoring"},
 }
 
 # Configure periodic tasks (Celery Beat)
@@ -199,6 +200,11 @@ app.conf.beat_schedule = {
     "scheduling-expire-pending-swaps": {
         "task": "hmis.apps.scheduling.tasks.expire_pending_swap_requests",
         "schedule": crontab(minute="*/15"),
+    },
+    # Scheduling: Send clock-in reminders — every 5 minutes during working hours
+    "scheduling-send-shift-reminders": {
+        "task": "hmis.apps.scheduling.tasks.send_shift_reminders",
+        "schedule": crontab(minute="*/5", hour="5-22"),
     },
 }
 

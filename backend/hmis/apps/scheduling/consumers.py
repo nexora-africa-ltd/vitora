@@ -168,6 +168,14 @@ class SchedulingConsumer(AsyncJsonWebsocketConsumer):
         """Handle shift swap expired event."""
         await self.scheduling_update(event)
 
+    async def scheduling_shift_reminder(self, event):
+        """Handle shift clock-in reminder event."""
+        await self.scheduling_update(event)
+
+    async def scheduling_on_duty_update(self, event):
+        """Handle on-duty status update (clock-in/out/absent changes)."""
+        await self.scheduling_update(event)
+
     @database_sync_to_async
     def _facility_exists(self, facility_id):
         """Check if facility exists in database."""

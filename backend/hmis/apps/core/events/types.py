@@ -156,6 +156,9 @@ class SchedulingEvents:
     SHIFT_BREAK_RESUMED = "scheduling.shift.break_resumed"
     SHIFT_EMERGENCY_CREATED = "scheduling.shift.emergency_created"
 
+    # Shift notifications
+    SHIFT_REMINDER_SENT = "scheduling.shift.reminder_sent"
+
     # Shift swap lifecycle
     SWAP_REQUESTED = "scheduling.swap.requested"
     SWAP_ACCEPTED = "scheduling.swap.accepted"

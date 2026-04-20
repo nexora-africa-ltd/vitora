@@ -4,6 +4,7 @@ Celery tasks for scheduling attendance automation.
 Phase 2:
 - mark_absent_shifts: Mark SCHEDULED shifts as ABSENT if no clock-in 1hr after start
 - auto_clock_out_stale_shifts: Auto-complete shifts still ACTIVE 2hr past end time
+- send_shift_reminders: Push notification 10min before shift start
 """
 
 import logging
@@ -160,3 +161,94 @@ def expire_pending_swap_requests(self):
     if expired:
         logger.info("expire_pending_swap_requests: expired %d swap requests", expired)
     return expired
+
+
+@shared_task(bind=True, ignore_result=True, max_retries=1)
+def send_shift_reminders(self):
+    """
+    Send clock-in reminder notifications 10 minutes before shift start.
+
+    Runs every 5 minutes. Finds SCHEDULED shifts starting in the next 5-15
+    minute window and creates a Notification for each staff member.
+
+    Uses a narrow window (5-15 min) so that with a 5-minute beat schedule,
+    each shift gets exactly one reminder without duplicates.
+    """
+    from hmis.apps.core.models import Notification
+    from hmis.apps.scheduling.models import Shift
+
+    now = timezone.now()
+    today = timezone.localdate()
+
+    # Window: shifts starting between 5 and 15 minutes from now
+    window_start = now + timedelta(minutes=5)
+    window_end = now + timedelta(minutes=15)
+
+    non_working_types = {
+        "OFF",
+        "DAY_OFF",
+        "NIGHT_OFF",
+        "AFTERNOON_OFF",
+        "LEAVE",
+        "SICK_LEAVE",
+        "REST",
+    }
+
+    candidates = (
+        Shift.objects.filter(shift_date=today, status="SCHEDULED")
+        .exclude(shift_type__in=non_working_types)
+        .select_related("staff_resource", "staff_resource__staff_profile")
+    )
+
+    sent = 0
+    for shift in candidates:
+        shift_start_dt = (
+            timezone.make_aware(datetime.combine(shift.shift_date, shift.start_time))
+            if timezone.is_naive(datetime.combine(shift.shift_date, shift.start_time))
+            else datetime.combine(shift.shift_date, shift.start_time)
+        )
+
+        if not (window_start <= shift_start_dt <= window_end):
+            continue
+
+        # Resolve the user from staff_resource → staff_profile → user
+        staff_profile = getattr(shift.staff_resource, "staff_profile", None)
+        if not staff_profile:
+            continue
+        user = staff_profile.user
+
+        # Check for existing reminder to avoid duplicates (belt & suspenders)
+        already_sent = Notification.objects.filter(
+            user=user,
+            notification_type="shift_reminder",
+            related_model="Shift",
+            related_id=shift.id,
+        ).exists()
+        if already_sent:
+            continue
+
+        minutes_until = int((shift_start_dt - now).total_seconds() / 60)
+        shift_display = shift.get_shift_type_display()
+        time_str = shift.start_time.strftime("%I:%M %p").lstrip("0")
+
+        Notification.objects.create(
+            user=user,
+            notification_type="shift_reminder",
+            priority=Notification.Priority.HIGH,
+            title=f"Shift starts in ~{minutes_until} minutes",
+            message=f"Your {shift_display} shift starts at {time_str}. Please clock in on time.",
+            related_model="Shift",
+            related_id=shift.id,
+            action_url="/scheduling/my-shifts",
+        )
+        sent += 1
+        logger.info(
+            "Sent shift reminder for shift %d (staff: %s, starts at: %s)",
+            shift.id,
+            shift.staff_resource.name,
+            time_str,
+        )
+
+    if sent:
+        logger.info("send_shift_reminders: sent %d reminders", sent)
+    return sent

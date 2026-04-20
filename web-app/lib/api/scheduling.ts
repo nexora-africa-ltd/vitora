@@ -30,6 +30,7 @@ import {
   ShiftSwapRequestSchema,
   ShiftSwapListItemSchema,
   PaginatedShiftSwapListSchema,
+  OnDutyResponseSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -77,6 +78,7 @@ import type {
   ShiftSwapAcceptData,
   ShiftSwapRejectData,
   ShiftSwapApproveData,
+  OnDutyResponse,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -478,6 +480,14 @@ export const attendanceApi = {
     const response = await apiClient.get(`${BASE_URL}/shifts/my-today/`);
     return parseResponse(MyTodayResponseSchema, response.data, {
       context: 'attendanceApi.myToday',
+    });
+  },
+
+  /** Get live on-duty overview for managers. */
+  onDuty: async (): Promise<OnDutyResponse> => {
+    const response = await apiClient.get(`${BASE_URL}/shifts/on-duty/`);
+    return parseResponse(OnDutyResponseSchema, response.data, {
+      context: 'attendanceApi.onDuty',
     });
   },
 
