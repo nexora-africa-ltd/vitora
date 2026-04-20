@@ -106,6 +106,8 @@ export function useLabOrders(params?: LabOrderListParams) {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+  // Force API mode: lab orders require nested items with test names from the
+  // test catalog, which is not synced to PowerSync's local SQLite.
   return useOfflineQuery<LabOrderJoinedRow, PaginatedResponse<LabOrder>>({
     sql: `SELECT lo.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM laboratory_laborder lo
@@ -122,6 +124,7 @@ export function useLabOrders(params?: LabOrderListParams) {
     }),
     queryKey: ['lab-orders', params],
     queryFn: () => laboratoryApi.listOrders(params),
+    forceApi: true,
   });
 }
 
@@ -130,6 +133,7 @@ export function useLabOrders(params?: LabOrderListParams) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useLabOrder(orderNumber: string) {
+  // Force API mode: lab orders require nested items with test names
   return useOfflineQuery<LabOrderJoinedRow, LabOrder>({
     sql: `SELECT lo.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM laboratory_laborder lo
@@ -142,7 +146,7 @@ export function useLabOrder(orderNumber: string) {
     },
     queryKey: ['lab-orders', orderNumber],
     queryFn: () => laboratoryApi.getOrder(orderNumber),
-    forceApi: !orderNumber,
+    forceApi: true,
     enabled: !!orderNumber,
   });
 }
@@ -152,6 +156,7 @@ export function useLabOrder(orderNumber: string) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePatientLabOrders(patientId: number) {
+  // Force API mode: lab orders require nested items with test names
   return useOfflineQuery<LabOrderJoinedRow, LabOrder[]>({
     sql: `SELECT lo.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM laboratory_laborder lo
@@ -162,7 +167,7 @@ export function usePatientLabOrders(patientId: number) {
     transform: (rows) => rows.map(r => transformLabOrderRow(r) as unknown as LabOrder),
     queryKey: ['patients', patientId, 'lab-orders'],
     queryFn: () => laboratoryApi.getPatientOrders(patientId),
-    forceApi: !patientId,
+    forceApi: true,
     enabled: patientId > 0,
   });
 }
@@ -172,6 +177,7 @@ export function usePatientLabOrders(patientId: number) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useEncounterLabOrders(encounterId: number) {
+  // Force API mode: lab orders require nested items with test names
   return useOfflineQuery<LabOrderJoinedRow, LabOrder[]>({
     sql: `SELECT lo.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM laboratory_laborder lo
@@ -182,7 +188,7 @@ export function useEncounterLabOrders(encounterId: number) {
     transform: (rows) => rows.map(r => transformLabOrderRow(r) as unknown as LabOrder),
     queryKey: ['encounters', encounterId, 'lab-orders'],
     queryFn: () => laboratoryApi.getEncounterOrders(encounterId),
-    forceApi: !encounterId,
+    forceApi: true,
     enabled: encounterId > 0,
   });
 }
