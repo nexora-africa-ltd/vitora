@@ -150,15 +150,23 @@ export function InvestigationSuggestionsPanel({
     }
   }, [storedResults, result]);
 
-  // Auto-trigger from quick action
+  // Auto-trigger from quick action — wait until clinical data is available
+  // so the payload includes diagnoses/symptoms, not just encounter_id.
+  const hasClinicalData = !!(chiefComplaint || (diagnoses && diagnoses.length > 0));
   React.useEffect(() => {
-    if (autoTrigger && !autoTriggered.current && !mutation.isPending && !disabled) {
+    if (
+      autoTrigger &&
+      hasClinicalData &&
+      !autoTriggered.current &&
+      !mutation.isPending &&
+      !disabled
+    ) {
       autoTriggered.current = true;
       onAutoTriggerConsumed?.();
       handleGenerate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoTrigger]);
+  }, [autoTrigger, hasClinicalData]);
 
   if (!isAIEnabled) return null;
 
