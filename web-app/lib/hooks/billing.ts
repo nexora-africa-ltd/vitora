@@ -161,6 +161,8 @@ export function useInvoices(params?: InvoiceListParams) {
   const offset = ((params?.page || 1) - 1) * limit;
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+  // Force API mode: invoices require nested line items with service/drug names
+  // that can't be resolved from PowerSync's flat local SQLite tables.
   return useOfflineQuery<InvoiceJoinedRow, PaginatedResponse<Invoice>>({
     sql: `SELECT inv.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM billing_invoice inv
@@ -177,6 +179,7 @@ export function useInvoices(params?: InvoiceListParams) {
     }),
     queryKey: billingKeys.invoicesList(params),
     queryFn: () => billingApi.getInvoices(params),
+    forceApi: true,
   });
 }
 
@@ -185,6 +188,7 @@ export function useInvoices(params?: InvoiceListParams) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useInvoice(id: number | undefined) {
+  // Force API mode: invoices require nested line items with service/drug names
   return useOfflineQuery<InvoiceJoinedRow, Invoice>({
     sql: `SELECT inv.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM billing_invoice inv
@@ -197,7 +201,7 @@ export function useInvoice(id: number | undefined) {
     },
     queryKey: billingKeys.invoiceDetail(id!),
     queryFn: () => billingApi.getInvoice(id!),
-    forceApi: id === undefined,
+    forceApi: true,
     enabled: id !== undefined && id > 0,
   });
 }
@@ -207,14 +211,14 @@ export function useInvoice(id: number | undefined) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useOverdueInvoices() {
-  const today = new Date().toISOString().split('T')[0];
+  // Force API mode: invoices require nested line items
   return useOfflineQuery<InvoiceJoinedRow, PaginatedResponse<Invoice>>({
     sql: `SELECT inv.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM billing_invoice inv
       LEFT JOIN patients_patient p ON inv.patient_id = p.id
       WHERE inv.status IN ('PENDING', 'PARTIAL') AND inv.due_date < ?
       ORDER BY inv.due_date ASC`,
-    params: [today!],
+    params: [new Date().toISOString().split('T')[0]!],
     transform: (rows) => ({
       count: rows.length,
       next: null,
@@ -223,6 +227,7 @@ export function useOverdueInvoices() {
     }),
     queryKey: billingKeys.invoicesOverdue(),
     queryFn: () => billingApi.getOverdueInvoices(),
+    forceApi: true,
   });
 }
 

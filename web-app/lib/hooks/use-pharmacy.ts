@@ -263,6 +263,8 @@ export function usePrescriptions(params?: PrescriptionListParams) {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+  // Force API mode: prescriptions require nested items with medication names
+  // that can't be resolved from PowerSync's flat local SQLite tables.
   return useOfflineQuery<PrescriptionJoinedRow, PaginatedResponse<Prescription>>({
     sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM pharmacy_prescription rx
@@ -279,6 +281,7 @@ export function usePrescriptions(params?: PrescriptionListParams) {
     }),
     queryKey: ['prescriptions', params],
     queryFn: () => pharmacyApi.listPrescriptions(params),
+    forceApi: true,
   });
 }
 
@@ -287,6 +290,7 @@ export function usePrescriptions(params?: PrescriptionListParams) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePrescription(id: number) {
+  // Force API mode: prescriptions require nested items with medication names
   return useOfflineQuery<PrescriptionJoinedRow, Prescription>({
     sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM pharmacy_prescription rx
@@ -299,7 +303,8 @@ export function usePrescription(id: number) {
     },
     queryKey: ['prescriptions', id],
     queryFn: () => pharmacyApi.getPrescription(id),
-    forceApi: !id,
+    forceApi: true,
+    enabled: id > 0,
   });
 }
 
@@ -308,6 +313,7 @@ export function usePrescription(id: number) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePatientPrescriptions(patientId: number) {
+  // Force API mode: prescriptions require nested items with medication names
   return useOfflineQuery<PrescriptionJoinedRow, Prescription[]>({
     sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM pharmacy_prescription rx
@@ -318,7 +324,8 @@ export function usePatientPrescriptions(patientId: number) {
     transform: (rows) => rows.map(r => transformPrescriptionRow(r) as unknown as Prescription),
     queryKey: ['patients', patientId, 'prescriptions'],
     queryFn: () => pharmacyApi.getPatientPrescriptions(patientId),
-    forceApi: !patientId,
+    forceApi: true,
+    enabled: patientId > 0,
   });
 }
 
@@ -327,6 +334,7 @@ export function usePatientPrescriptions(patientId: number) {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function useEncounterPrescriptions(encounterId: number) {
+  // Force API mode: prescriptions require nested items with medication names
   return useOfflineQuery<PrescriptionJoinedRow, Prescription[]>({
     sql: `SELECT rx.*, p.first_name as patient_first_name, p.last_name as patient_last_name, p.mrn as patient_mrn
       FROM pharmacy_prescription rx
@@ -337,7 +345,8 @@ export function useEncounterPrescriptions(encounterId: number) {
     transform: (rows) => rows.map(r => transformPrescriptionRow(r) as unknown as Prescription),
     queryKey: ['encounters', encounterId, 'prescriptions'],
     queryFn: () => pharmacyApi.getEncounterPrescriptions(encounterId),
-    forceApi: !encounterId,
+    forceApi: true,
+    enabled: encounterId > 0,
   });
 }
 
