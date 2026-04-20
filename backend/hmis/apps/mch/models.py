@@ -32,6 +32,7 @@ from simple_history.models import HistoricalRecords
 from hmis.apps.core.history import HistoryMixin
 from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.models import TimeStampedModel
+from hmis.apps.core.upload_validators import validate_image_upload as _validate_image_upload
 
 # =============================================================================
 # Number Generation Helpers
@@ -1774,6 +1775,7 @@ class CommunityScreening(HistoryMixin, TimeStampedModel):
         upload_to="community_screenings/%Y/%m/",
         null=True,
         blank=True,
+        validators=[_validate_image_upload],
         help_text="Optional field photo attached to the screening record.",
     )
     captured_by = models.ForeignKey(

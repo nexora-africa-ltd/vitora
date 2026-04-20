@@ -844,6 +844,33 @@ class DICOMUploadView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # --- Upload safety limits ---
+        MAX_FILES = 50
+        MAX_FILE_SIZE_MB = 200
+        max_file_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
+
+        if len(files) > MAX_FILES:
+            return Response(
+                {"error": f"Too many files. Maximum {MAX_FILES} files per upload."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        ALLOWED_EXTENSIONS = {"dcm", "dicom"}
+        for f in files:
+            ext = f.name.rsplit(".", 1)[-1].lower() if "." in f.name else ""
+            if ext not in ALLOWED_EXTENSIONS:
+                return Response(
+                    {
+                        "error": f"File '{f.name}' has disallowed extension '.{ext}'. Allowed: dcm, dicom"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if f.size and f.size > max_file_bytes:
+                return Response(
+                    {"error": f"File '{f.name}' exceeds {MAX_FILE_SIZE_MB} MB limit."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         # Resolve the imaging order (optional)
         imaging_order = None
         order_id = request.data.get("imaging_order")

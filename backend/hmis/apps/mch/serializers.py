@@ -449,6 +449,14 @@ class CommunityScreeningSerializer(CommunityScreeningListSerializer):
                 raise serializers.ValidationError("Location must be valid JSON.") from exc
         return value
 
+    def validate_photo_upload(self, value):
+        if value is None:
+            return value
+        from hmis.apps.core.upload_validators import validate_image_upload
+
+        validate_image_upload(value)
+        return value
+
     def create(self, validated_data):
         photo_upload = validated_data.pop("photo_upload", None)
         if photo_upload is not None:

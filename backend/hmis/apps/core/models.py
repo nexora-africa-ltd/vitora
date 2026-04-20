@@ -15,6 +15,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.utils import timezone
 
+from hmis.apps.core.upload_validators import validate_image_upload as _validate_image_upload
+
 
 class AuditLog(models.Model):
     """
@@ -2352,6 +2354,7 @@ class Organization(TimeStampedModel):
         upload_to="organizations/logos/",
         null=True,
         blank=True,
+        validators=[_validate_image_upload],
         help_text="Organization logo for branding.",
     )
 
@@ -2672,6 +2675,7 @@ class Facility(TimeStampedModel):
         upload_to="facilities/logos/",
         null=True,
         blank=True,
+        validators=[_validate_image_upload],
         help_text="Facility logo for branding. Falls back to organization logo if not set.",
     )
 

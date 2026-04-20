@@ -10,6 +10,7 @@ multi-tenant request scoping.
 import logging
 from datetime import timedelta
 
+from django.conf import settings
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -383,3 +384,34 @@ class OnboardingEnforcementMiddleware:
             content_type="application/json",
             status=403,
         )
+
+
+# ---------------------------------------------------------------------------
+# Media Security Middleware
+# ---------------------------------------------------------------------------
+
+
+class MediaSecurityMiddleware:
+    """
+    Force ``Content-Disposition: attachment`` on all responses served from
+    the ``MEDIA_URL`` path.  This prevents browsers from rendering uploaded
+    files inline, mitigating stored XSS via HTML/SVG uploads.
+
+    Also sets ``X-Content-Type-Options: nosniff`` to stop browsers from
+    guessing the MIME type and executing content they shouldn't.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.media_url = settings.MEDIA_URL
+        if not self.media_url.startswith("/"):
+            self.media_url = "/" + self.media_url
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.path.startswith(self.media_url):
+            # Force download rather than inline rendering
+            if "Content-Disposition" not in response:
+                response["Content-Disposition"] = "attachment"
+            response["X-Content-Type-Options"] = "nosniff"
+        return response

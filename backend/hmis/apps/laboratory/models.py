@@ -16,6 +16,7 @@ from django.db import models
 from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel
+from hmis.apps.core.upload_validators import validate_document_upload as _validate_document_upload
 
 logger = logging.getLogger(__name__)
 
@@ -903,7 +904,12 @@ class LabResult(models.Model):
 
     # External results
     is_external_result = models.BooleanField(default=False)
-    external_result_attachment = models.FileField(upload_to="lab_results/", null=True, blank=True)
+    external_result_attachment = models.FileField(
+        upload_to="lab_results/",
+        null=True,
+        blank=True,
+        validators=[_validate_document_upload],
+    )
     external_result_date = models.DateField(null=True, blank=True)
 
     # Audit
