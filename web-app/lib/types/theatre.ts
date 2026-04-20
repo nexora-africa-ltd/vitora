@@ -37,6 +37,15 @@ export type {
   IntraOpVital,
   OperativeNote,
   TheatreConsumable,
+  TheatreReportRange,
+  TheatreReportTotals,
+  TheatreReportTurnaround,
+  TheatreReportOnTimeStarts,
+  TheatreReportDay,
+  TheatreReportUtilizationByTheatre,
+  TheatreReportStatusBreakdown,
+  TheatreReportClinicianWorkload,
+  TheatreReportSummary,
   PACUVital,
   PACURecord,
   // Paginated types
@@ -228,4 +237,9 @@ export interface SurgeryCaseListParams {
   scheduled_date_before?: string;
   patient?: number;
   theatre?: number;
+}
+
+export interface TheatreReportParams {
+  date_from?: string;
+  date_to?: string;
 }

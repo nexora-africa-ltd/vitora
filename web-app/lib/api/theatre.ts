@@ -27,6 +27,7 @@ import {
   IntraOpVitalSchema,
   OperativeNoteSchema,
   TheatreConsumableSchema,
+  TheatreReportSummarySchema,
   PACURecordSchema,
   PACUVitalSchema,
   PaginatedOperatingTheatreSchema,
@@ -45,6 +46,7 @@ import type {
   IntraOpVital,
   OperativeNote,
   TheatreConsumable,
+  TheatreReportSummary,
   PACURecord,
   PACUVital,
   PaginatedOperatingTheatres,
@@ -63,6 +65,7 @@ import type {
   PACUDischargeData,
   TheatreListParams,
   SurgeryCaseListParams,
+  TheatreReportParams,
 } from '@/lib/types/theatre';
 import { z } from 'zod';
 
@@ -146,6 +149,13 @@ export const theatreApi = {
     });
     return parseResponse(z.array(SurgeryCaseListSchema), response.data, {
       context: 'theatreApi.getDailyList',
+    });
+  },
+
+  async getReportSummary(params?: TheatreReportParams): Promise<TheatreReportSummary> {
+    const response = await apiClient.get('/api/theatre/cases/reports/summary/', { params });
+    return parseResponse(TheatreReportSummarySchema, response.data, {
+      context: 'theatreApi.getReportSummary',
     });
   },
 

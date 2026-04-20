@@ -414,12 +414,97 @@ export const TheatreConsumableSchema = z.object({
   expiry_date: z.string().nullable().optional(),
   quantity_used: z.number(),
   unit_cost: z.string(),
+  total_cost: z.string(),
+  allocation_count: z.number(),
+  source_batches: z.array(z.string()),
   is_implant: z.boolean(),
   implant_serial_number: z.string(),
   facility: z.number(),
   organization: z.number().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+});
+
+export const TheatreReportRangeSchema = z.object({
+  date_from: z.string(),
+  date_to: z.string(),
+  days: z.number(),
+});
+
+export const TheatreReportTotalsSchema = z.object({
+  case_count: z.number(),
+  completed_case_count: z.number(),
+  cancelled_case_count: z.number(),
+  urgent_case_count: z.number(),
+  active_case_count: z.number(),
+  scheduled_minutes: z.number(),
+  actual_minutes: z.number(),
+  available_minutes: z.number(),
+  utilization_percent: z.number(),
+  average_case_duration_minutes: z.number(),
+  average_daily_throughput: z.number(),
+});
+
+export const TheatreReportTurnaroundSchema = z.object({
+  cases_with_measurement_count: z.number(),
+  average_minutes: z.number(),
+});
+
+export const TheatreReportOnTimeStartsSchema = z.object({
+  measured_case_count: z.number(),
+  on_time_case_count: z.number(),
+  late_case_count: z.number(),
+  threshold_minutes: z.number(),
+  percent: z.number(),
+});
+
+export const TheatreReportDaySchema = z.object({
+  date: z.string(),
+  case_count: z.number(),
+  completed_case_count: z.number(),
+  scheduled_minutes: z.number(),
+});
+
+export const TheatreReportUtilizationByTheatreSchema = z.object({
+  theatre_id: z.number(),
+  theatre_code: z.string(),
+  theatre_name: z.string(),
+  case_count: z.number(),
+  completed_case_count: z.number(),
+  cancelled_case_count: z.number(),
+  scheduled_minutes: z.number(),
+  actual_minutes: z.number(),
+  available_minutes: z.number(),
+  utilization_percent: z.number(),
+  average_case_duration_minutes: z.number(),
+  turnaround_average_minutes: z.number(),
+});
+
+export const TheatreReportStatusBreakdownSchema = z.object({
+  status: z.string(),
+  count: z.number(),
+});
+
+export const TheatreReportClinicianWorkloadSchema = z.object({
+  clinician_id: z.number(),
+  clinician_name: z.string(),
+  case_count: z.number(),
+  completed_case_count: z.number(),
+  scheduled_minutes: z.number(),
+  actual_minutes: z.number(),
+  average_case_duration_minutes: z.number(),
+});
+
+export const TheatreReportSummarySchema = z.object({
+  range: TheatreReportRangeSchema,
+  totals: TheatreReportTotalsSchema,
+  turnaround: TheatreReportTurnaroundSchema,
+  on_time_starts: TheatreReportOnTimeStartsSchema,
+  throughput_by_day: z.array(TheatreReportDaySchema),
+  utilization_by_theatre: z.array(TheatreReportUtilizationByTheatreSchema),
+  surgeon_workload: z.array(TheatreReportClinicianWorkloadSchema),
+  anesthesiologist_workload: z.array(TheatreReportClinicianWorkloadSchema),
+  status_breakdown: z.array(TheatreReportStatusBreakdownSchema),
 });
 
 // =============================================================================
@@ -510,6 +595,15 @@ export type AnesthesiaRecord = z.infer<typeof AnesthesiaRecordSchema>;
 export type IntraOpVital = z.infer<typeof IntraOpVitalSchema>;
 export type OperativeNote = z.infer<typeof OperativeNoteSchema>;
 export type TheatreConsumable = z.infer<typeof TheatreConsumableSchema>;
+export type TheatreReportRange = z.infer<typeof TheatreReportRangeSchema>;
+export type TheatreReportTotals = z.infer<typeof TheatreReportTotalsSchema>;
+export type TheatreReportTurnaround = z.infer<typeof TheatreReportTurnaroundSchema>;
+export type TheatreReportOnTimeStarts = z.infer<typeof TheatreReportOnTimeStartsSchema>;
+export type TheatreReportDay = z.infer<typeof TheatreReportDaySchema>;
+export type TheatreReportUtilizationByTheatre = z.infer<typeof TheatreReportUtilizationByTheatreSchema>;
+export type TheatreReportStatusBreakdown = z.infer<typeof TheatreReportStatusBreakdownSchema>;
+export type TheatreReportClinicianWorkload = z.infer<typeof TheatreReportClinicianWorkloadSchema>;
+export type TheatreReportSummary = z.infer<typeof TheatreReportSummarySchema>;
 export type PACUVital = z.infer<typeof PACUVitalSchema>;
 export type PACURecord = z.infer<typeof PACURecordSchema>;
 export type PaginatedOperatingTheatres = z.infer<typeof PaginatedOperatingTheatreSchema>;
