@@ -22,7 +22,6 @@ from django.db import models
 from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel
-from hmis.apps.core.upload_validators import validate_document_upload as _validate_document_upload
 
 
 class ServiceCategory(models.Model):
@@ -2670,11 +2669,10 @@ class SHAClaimAttachment(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
-    # File storage
+    # File storage (validated at serializer level via magic-byte sniffing)
     file = models.FileField(
         upload_to="sha_claims/%Y/%m/",
         max_length=500,
-        validators=[_validate_document_upload],
     )
     file_size = models.IntegerField(null=True, blank=True, help_text="File size in bytes")
     mime_type = models.CharField(max_length=100, blank=True)

@@ -355,6 +355,7 @@ KNOWN_CUSTOM_ACTIONS = {
     "escalate_ihr_to_national",
     "notify_ihr_to_who",
     "manage_schedules",
+    "approve_swap",
     "approve_purchase_order",
     "approve_stock_transfer",
     "approve_stock_count",

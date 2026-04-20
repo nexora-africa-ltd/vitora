@@ -10,9 +10,11 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def community_screening_photo():
+    # Minimal JFIF header so libmagic detects image/jpeg
+    jpeg_header = b"\xff\xd8\xff\xe0" + b"\x00" * 100
     return SimpleUploadedFile(
         "screening.jpg",
-        b"fake-image-bytes",
+        jpeg_header,
         content_type="image/jpeg",
     )
 

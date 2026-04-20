@@ -972,4 +972,4 @@ class TestResultAttachmentUpload:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "File type not allowed" in str(response.data)
+        assert "not allowed" in str(response.data)
