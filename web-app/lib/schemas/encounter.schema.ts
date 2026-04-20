@@ -340,6 +340,15 @@ export const EncounterListItemSchema = z.object({
 
 export type EncounterListItemSchemaType = z.infer<typeof EncounterListItemSchema>;
 
+export const ClaimedEncounterListItemSchema = EncounterListItemSchema.extend({
+  assigned_clinician: z.number().optional().nullable(),
+  assigned_clinician_username: z.string().optional().nullable(),
+  assigned_clinician_name: z.string().optional().nullable(),
+  claimed_at: z.string().optional().nullable(),
+});
+
+export type ClaimedEncounterListItemSchemaType = z.infer<typeof ClaimedEncounterListItemSchema>;
+
 // =============================================================================
 // CLAIM/RELEASE RESPONSE SCHEMAS
 // =============================================================================
@@ -365,7 +374,7 @@ export type EncounterReleaseResponseSchemaType = z.infer<typeof EncounterRelease
 // =============================================================================
 
 export const MyClaimedEncountersResponseSchema = z.object({
-  results: z.array(EncounterSchema),
+  results: z.array(ClaimedEncounterListItemSchema),
   count: z.number(),
 });
 
