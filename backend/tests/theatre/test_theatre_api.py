@@ -12,7 +12,8 @@ Covers:
 - PACU endpoints
 """
 
-from datetime import date, time
+from datetime import date, datetime, time
+from decimal import Decimal
 
 import pytest  # type: ignore
 from rest_framework import status
@@ -462,6 +463,255 @@ class TestAnesthesiaRecordAPI:
         response = authenticated_client.post(vitals_url, data)
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["systolic_bp"] == 120
+
+
+@pytest.mark.django_db
+class TestTheatreReportingAPI:
+    def test_reports_summary_returns_utilization_turnaround_and_throughput(
+        self,
+        authenticated_client,
+        sample_surgery_case,
+        sample_theatre_2,
+        sample_patient,
+        sample_encounter,
+        sample_procedure_catalog,
+        test_user,
+        sample_organization,
+        sample_facility,
+        django_user_model,
+    ):
+        from django.utils import timezone
+
+        from hmis.apps.theatre.models import (
+            AnesthesiaRecord,
+            OperativeNote,
+            SurgeryCase,
+            SurgicalTeamMember,
+        )
+
+        lead_surgeon = django_user_model.objects.create_user(
+            username="lead-surgeon",
+            email="lead-surgeon@example.com",
+            password="password123",
+            first_name="Lead",
+            last_name="Surgeon",
+        )
+        second_surgeon = django_user_model.objects.create_user(
+            username="second-surgeon",
+            email="second-surgeon@example.com",
+            password="password123",
+            first_name="Second",
+            last_name="Surgeon",
+        )
+        anesthesiologist = django_user_model.objects.create_user(
+            username="theatre-anesthetist",
+            email="anesthetist@example.com",
+            password="password123",
+            first_name="Ana",
+            last_name="Esthetist",
+        )
+
+        sample_surgery_case.scheduled_start_time = time(9, 0)
+        sample_surgery_case.estimated_duration_minutes = 60
+        sample_surgery_case.save(
+            update_fields=["scheduled_start_time", "estimated_duration_minutes"]
+        )
+        sample_surgery_case.schedule(user=test_user)
+        sample_surgery_case.start_pre_op(user=test_user)
+        sample_surgery_case.enter_theatre(user=test_user)
+        sample_surgery_case.start_surgery(user=test_user)
+        sample_surgery_case.end_surgery(user=test_user)
+        sample_surgery_case.discharge(user=test_user)
+
+        OperativeNote.objects.create(
+            surgery_case=sample_surgery_case,
+            dictated_by=test_user,
+            incision_time=timezone.make_aware(datetime.combine(date.today(), time(9, 5))),
+            closure_time=timezone.make_aware(datetime.combine(date.today(), time(9, 50))),
+            pre_operative_diagnosis="Acute appendicitis",
+            post_operative_diagnosis="Acute appendicitis confirmed",
+            procedure_performed="Appendectomy",
+            findings="Inflamed appendix",
+            technique_description="Standard open appendectomy",
+            estimated_blood_loss=50,
+        )
+        SurgicalTeamMember.objects.create(
+            surgery_case=sample_surgery_case,
+            staff_member=lead_surgeon,
+            role="LEAD_SURGEON",
+        )
+        AnesthesiaRecord.objects.create(
+            surgery_case=sample_surgery_case,
+            anesthesiologist=anesthesiologist,
+            induction_time=timezone.make_aware(datetime.combine(date.today(), time(8, 58))),
+        )
+
+        follow_up_case = SurgeryCase.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            primary_procedure=sample_procedure_catalog,
+            theatre=sample_surgery_case.theatre,
+            scheduled_date=date.today(),
+            scheduled_start_time=time(10, 30),
+            estimated_duration_minutes=45,
+            priority="URGENT",
+            diagnosis="Follow-up abdominal washout",
+            requesting_doctor=test_user,
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        follow_up_case.schedule(user=test_user)
+        SurgicalTeamMember.objects.create(
+            surgery_case=follow_up_case,
+            staff_member=second_surgeon,
+            role="LEAD_SURGEON",
+        )
+        AnesthesiaRecord.objects.create(
+            surgery_case=follow_up_case,
+            anesthesiologist=anesthesiologist,
+            induction_time=timezone.make_aware(datetime.combine(date.today(), time(10, 50))),
+        )
+
+        second_theatre_case = SurgeryCase.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            primary_procedure=sample_procedure_catalog,
+            theatre=sample_theatre_2,
+            scheduled_date=date.today(),
+            scheduled_start_time=time(11, 0),
+            estimated_duration_minutes=30,
+            priority="ELECTIVE",
+            diagnosis="Day-case procedure",
+            requesting_doctor=test_user,
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        second_theatre_case.schedule(user=test_user)
+
+        response = authenticated_client.get(
+            f"{CASES_URL}reports/summary/",
+            {"date_from": str(date.today()), "date_to": str(date.today())},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["totals"]["case_count"] == 3
+        assert response.data["totals"]["completed_case_count"] == 1
+        assert response.data["totals"]["scheduled_minutes"] == 135
+        assert response.data["turnaround"]["cases_with_measurement_count"] == 1
+        assert response.data["turnaround"]["average_minutes"] == 40.0
+        assert response.data["on_time_starts"]["measured_case_count"] == 2
+        assert response.data["on_time_starts"]["on_time_case_count"] == 1
+        assert response.data["on_time_starts"]["late_case_count"] == 1
+        assert response.data["on_time_starts"]["threshold_minutes"] == 15
+        assert response.data["on_time_starts"]["percent"] == 50.0
+        assert len(response.data["throughput_by_day"]) == 1
+        assert response.data["throughput_by_day"][0]["case_count"] == 3
+        theatre_codes = {item["theatre_code"] for item in response.data["utilization_by_theatre"]}
+        assert {sample_surgery_case.theatre.code, sample_theatre_2.code}.issubset(theatre_codes)
+        surgeon_workload = {
+            item["clinician_name"]: item for item in response.data["surgeon_workload"]
+        }
+        assert surgeon_workload[lead_surgeon.get_full_name()]["case_count"] == 1
+        assert surgeon_workload[second_surgeon.get_full_name()]["case_count"] == 1
+        assert surgeon_workload[test_user.get_full_name() or test_user.username]["case_count"] == 1
+        anesthesiologist_workload = {
+            item["clinician_name"]: item for item in response.data["anesthesiologist_workload"]
+        }
+        assert anesthesiologist_workload[anesthesiologist.get_full_name()]["case_count"] == 2
+
+    def test_reports_summary_uses_requesting_doctor_when_no_lead_surgeon_is_assigned(
+        self,
+        authenticated_client,
+        sample_surgery_case,
+        test_user,
+    ):
+        sample_surgery_case.schedule(user=test_user)
+
+        response = authenticated_client.get(
+            f"{CASES_URL}reports/summary/",
+            {"date_from": str(date.today()), "date_to": str(date.today())},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["surgeon_workload"][0]["clinician_name"] == (
+            test_user.get_full_name() or test_user.username
+        )
+        assert response.data["surgeon_workload"][0]["case_count"] == 1
+
+
+@pytest.mark.django_db
+class TestTheatreConsumableStockAPI:
+    def test_add_consumable_deducts_stock_and_sets_cost(
+        self,
+        authenticated_client,
+        sample_surgery_case,
+        theatre_stock_drug,
+        theatre_stock_batch,
+    ):
+        url = _case_action_url(sample_surgery_case.case_number, "consumables/add")
+        response = authenticated_client.post(
+            url,
+            {
+                "item": theatre_stock_drug.id,
+                "quantity_used": 5,
+                "is_implant": False,
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        theatre_stock_batch.refresh_from_db()
+        assert theatre_stock_batch.quantity_available == 15
+        assert theatre_stock_batch.quantity_dispensed == 5
+        assert Decimal(response.data["unit_cost"]) == Decimal("950.00")
+        assert response.data["lot_number"] == theatre_stock_batch.batch_number
+        assert response.data["total_cost"] == "4750.00"
+        assert response.data["allocation_count"] == 1
+
+    def test_remove_consumable_restores_stock(
+        self,
+        authenticated_client,
+        sample_surgery_case,
+        theatre_stock_drug,
+        theatre_stock_batch,
+    ):
+        add_url = _case_action_url(sample_surgery_case.case_number, "consumables/add")
+        add_response = authenticated_client.post(
+            add_url,
+            {
+                "item": theatre_stock_drug.id,
+                "quantity_used": 4,
+            },
+        )
+        consumable_id = add_response.data["id"]
+
+        remove_response = authenticated_client.delete(
+            f"{_case_url(sample_surgery_case.case_number)}consumables/{consumable_id}/"
+        )
+
+        assert remove_response.status_code == status.HTTP_204_NO_CONTENT
+        theatre_stock_batch.refresh_from_db()
+        assert theatre_stock_batch.quantity_available == 20
+        assert theatre_stock_batch.quantity_dispensed == 0
+
+    def test_add_consumable_rejects_insufficient_stock(
+        self,
+        authenticated_client,
+        sample_surgery_case,
+        theatre_stock_drug,
+        theatre_stock_batch,
+    ):
+        url = _case_action_url(sample_surgery_case.case_number, "consumables/add")
+        response = authenticated_client.post(
+            url,
+            {
+                "item": theatre_stock_drug.id,
+                "quantity_used": 999,
+            },
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        theatre_stock_batch.refresh_from_db()
+        assert theatre_stock_batch.quantity_available == 20
 
 
 # ═══════════════════════════════════════════════════════════════════════════

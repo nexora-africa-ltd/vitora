@@ -2,7 +2,8 @@
 Pytest fixtures for the Theatre module tests.
 """
 
-from datetime import date, time
+from datetime import date, time, timedelta
+from decimal import Decimal
 
 import pytest  # type: ignore
 
@@ -221,4 +222,74 @@ def theatre_shift(
         created_by=test_user,
         organization=sample_organization,
         facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def theatre_stock_drug(db):
+    from hmis.apps.pharmacy.models import Drug
+
+    return Drug.objects.create(
+        code="THEATRE-DRUG-001",
+        generic_name="Propofol",
+        strength="200mg/20mL",
+        form="INJECTION",
+        category="CONTROLLED",
+        schedule="POM",
+        unit="vial",
+        requires_prescription=True,
+        reference_price=Decimal("1200.00"),
+    )
+
+
+@pytest.fixture
+def theatre_stock_batch(
+    db,
+    theatre_stock_drug,
+    test_user,
+    sample_organization,
+    sample_facility,
+):
+    from hmis.apps.pharmacy.models import StockBatch
+
+    return StockBatch.objects.create(
+        drug=theatre_stock_drug,
+        batch_number="TH-BATCH-001",
+        quantity_received=20,
+        quantity_available=20,
+        manufacture_date=date.today() - timedelta(days=60),
+        expiry_date=date.today() + timedelta(days=365),
+        received_date=date.today() - timedelta(days=10),
+        cost_price=Decimal("950.00"),
+        selling_price=Decimal("1200.00"),
+        supplier="Theatre Supplier Ltd",
+        received_by=test_user,
+        status="AVAILABLE",
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def theatre_billing_service_category(db):
+    from hmis.apps.billing.models import ServiceCategory
+
+    return ServiceCategory.objects.create(
+        name="Procedures",
+        code="PROC",
+        description="Procedure and theatre billing",
+        display_order=4,
+    )
+
+
+@pytest.fixture
+def theatre_billing_service(db, theatre_billing_service_category, test_user):
+    from hmis.apps.billing.models import Service
+
+    return Service.objects.create(
+        category=theatre_billing_service_category,
+        code="GS-APP",
+        name="Appendectomy Theatre Charge",
+        unit_price=Decimal("25000.00"),
+        created_by=test_user,
     )

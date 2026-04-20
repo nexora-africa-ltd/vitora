@@ -21,6 +21,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Sum
 
 from hmis.apps.billing.models import Invoice, InvoiceItem, Service, SHAClaim, SHAMember
 
@@ -63,11 +64,21 @@ class BillingAgentService:
         Returns:
             Draft Invoice instance.
         """
-        invoice = Invoice.objects.filter(
-            patient=patient,
-            invoice_date=date.today(),
-            status=Invoice.Status.DRAFT,
-        ).first()
+        invoice = None
+
+        if encounter is not None:
+            invoice = Invoice.objects.filter(
+                patient=patient,
+                encounter=encounter,
+                status=Invoice.Status.DRAFT,
+            ).first()
+
+        if invoice is None:
+            invoice = Invoice.objects.filter(
+                patient=patient,
+                invoice_date=date.today(),
+                status=Invoice.Status.DRAFT,
+            ).first()
 
         if invoice:
             # Link encounter if not already linked
@@ -127,6 +138,142 @@ class BillingAgentService:
             lab_order=lab_order,
             immunization_record=immunization_record,
         )
+
+    @staticmethod
+    def _resolve_theatre_primary_service(catalog_entry):
+        service = catalog_entry.billing_service
+        if service and service.is_active:
+            return service
+
+        return Service.objects.filter(
+            category__code="PROC",
+            code=catalog_entry.code,
+            is_active=True,
+        ).first()
+
+    @classmethod
+    def _upsert_theatre_item(
+        cls,
+        invoice: Invoice,
+        *,
+        surgery_case,
+        description: str,
+        item_type: str,
+        quantity,
+        unit_price,
+        service=None,
+        drug=None,
+        sha_code: str = "",
+        theatre_consumable=None,
+    ) -> InvoiceItem:
+        item = InvoiceItem.objects.filter(
+            invoice=invoice,
+            surgery_case=surgery_case,
+            theatre_consumable=theatre_consumable,
+            description=description,
+        ).first()
+
+        if item is None:
+            item = InvoiceItem(
+                invoice=invoice,
+                surgery_case=surgery_case,
+                theatre_consumable=theatre_consumable,
+                description=description,
+            )
+
+        item.item_type = item_type
+        item.service = service
+        item.drug = drug
+        item.quantity = quantity
+        item.unit_price = unit_price
+        item.sha_code = sha_code
+        item.save()
+        return item
+
+    @classmethod
+    @transaction.atomic
+    def sync_theatre_case_billing(cls, surgery_case):
+        """Sync a surgery case's billable lines onto a draft invoice."""
+        if not surgery_case.is_billable:
+            return None
+
+        invoice = cls.get_or_create_draft_invoice(surgery_case.patient, surgery_case.encounter)
+        procedure = surgery_case.primary_procedure
+        desired_item_ids: list[int] = []
+
+        primary_service = cls._resolve_theatre_primary_service(procedure)
+        primary_price = getattr(primary_service, "unit_price", None) or procedure.base_fee
+        if primary_price:
+            item = cls._upsert_theatre_item(
+                invoice,
+                surgery_case=surgery_case,
+                description=f"Theatre procedure: {procedure.name}",
+                item_type=InvoiceItem.ItemType.SERVICE,
+                quantity=Decimal("1.00"),
+                unit_price=primary_price,
+                service=primary_service,
+                sha_code=(
+                    getattr(primary_service, "sha_code", "") or procedure.sha_intervention_code
+                ),
+            )
+            desired_item_ids.append(item.pk)
+
+        for description, amount in (
+            ("Theatre surgeon fee", procedure.surgeon_fee),
+            ("Theatre usage fee", procedure.theatre_fee),
+            ("Theatre anesthesia fee", procedure.anesthesia_fee),
+        ):
+            if amount and amount > 0:
+                item = cls._upsert_theatre_item(
+                    invoice,
+                    surgery_case=surgery_case,
+                    description=description,
+                    item_type=InvoiceItem.ItemType.SERVICE,
+                    quantity=Decimal("1.00"),
+                    unit_price=amount,
+                )
+                desired_item_ids.append(item.pk)
+
+        consumables = surgery_case.consumables.select_related("item").all()
+        for consumable in consumables:
+            item = cls._upsert_theatre_item(
+                invoice,
+                surgery_case=surgery_case,
+                theatre_consumable=consumable,
+                description=f"Theatre consumable: {consumable.item.generic_name}",
+                item_type=InvoiceItem.ItemType.CONSUMABLE,
+                quantity=Decimal(str(consumable.quantity_used)),
+                unit_price=consumable.unit_cost,
+                drug=consumable.item,
+            )
+            desired_item_ids.append(item.pk)
+
+        stale_items = invoice.items.filter(surgery_case=surgery_case)
+        if desired_item_ids:
+            stale_items = stale_items.exclude(pk__in=desired_item_ids)
+        stale_items.delete()
+
+        total = invoice.items.filter(surgery_case=surgery_case).aggregate(total=Sum("line_total"))[
+            "total"
+        ] or Decimal("0.00")
+        if surgery_case.total_charges != total:
+            surgery_case.total_charges = total
+            surgery_case.save(update_fields=["total_charges", "updated_at"])
+
+        return invoice
+
+    @classmethod
+    @transaction.atomic
+    def remove_theatre_consumable_billing(cls, consumable) -> None:
+        """Remove draft invoice items linked to a theatre consumable before deletion."""
+        linked_items = InvoiceItem.objects.filter(theatre_consumable=consumable).select_related(
+            "invoice"
+        )
+        blocked = linked_items.exclude(invoice__status=Invoice.Status.DRAFT)
+        if blocked.exists():
+            raise ValueError("Consumable is already attached to a non-draft invoice item.")
+
+        linked_items.delete()
 
     # ── Event Handlers (called from signals) ─────────────────────
 

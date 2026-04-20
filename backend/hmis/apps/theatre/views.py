@@ -8,6 +8,8 @@ All ViewSets follow codebase conventions:
 - Thin views: validate input then delegate to model methods
 """
 
+from datetime import timedelta
+
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -15,9 +17,11 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.billing.agent import BillingAgentService
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.pharmacy.services import InsufficientStockError
 
 from .filters import OperatingTheatreFilter, SurgeryCaseFilter
 from .models import (
@@ -61,6 +65,8 @@ from .serializers import (
     WHOSignOutSerializer,
     WHOTimeOutSerializer,
 )
+from .services.consumables import create_theatre_consumable, restore_theatre_consumable_stock
+from .services.reports import build_theatre_report_summary
 from .services.scheduling import get_available_slots, get_case_scheduling_context
 
 # ─── Helpers ──────────────────────────────────────────────────────────────
@@ -706,11 +712,16 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         case = self.get_object()
         serializer = TheatreConsumableCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        consumable = serializer.save(
-            surgery_case=case,
-            added_by=request.user,
-            **self.get_tenant_save_kwargs(),
-        )
+        try:
+            consumable = create_theatre_consumable(
+                surgery_case=case,
+                added_by=request.user,
+                data=serializer.validated_data,
+                tenant_kwargs=self.get_tenant_save_kwargs(),
+            )
+        except InsufficientStockError as error:
+            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        BillingAgentService.sync_theatre_case_billing(case)
         _audit(
             request,
             "theatre_consumable_add",
@@ -734,11 +745,74 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
                 {"error": "Consumable not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        try:
+            BillingAgentService.remove_theatre_consumable_billing(consumable)
+        except ValueError as error:
+            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        restore_theatre_consumable_stock(consumable)
         _audit(
             request, "theatre_consumable_remove", "SurgeryCase", case.pk, item_id=consumable.item_id
         )
         consumable.delete()
+        BillingAgentService.sync_theatre_case_billing(case)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["get"], url_path="reports/summary")
+    def reports_summary(self, request, **kwargs):
+        date_from_str = request.query_params.get("date_from")
+        date_to_str = request.query_params.get("date_to")
+
+        if date_to_str:
+            try:
+                date_to = timezone.datetime.strptime(date_to_str, "%Y-%m-%d").date()
+            except ValueError:
+                return Response(
+                    {"error": "Invalid date_to format. Use YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            date_to = timezone.now().date()
+
+        if date_from_str:
+            try:
+                date_from = timezone.datetime.strptime(date_from_str, "%Y-%m-%d").date()
+            except ValueError:
+                return Response(
+                    {"error": "Invalid date_from format. Use YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            date_from = date_to - timedelta(days=29)
+
+        if date_from > date_to:
+            return Response(
+                {"error": "date_from cannot be after date_to."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        case_queryset = (
+            self.get_queryset()
+            .filter(scheduled_date__gte=date_from, scheduled_date__lte=date_to)
+            .select_related(
+                "operative_note", "pacu_record", "anesthesia_record", "requesting_doctor"
+            )
+            .prefetch_related("team_members__staff_member")
+        )
+        facility_id = getattr(
+            getattr(request.user, "staff_profile", None), "primary_facility_id", None
+        )
+        theatre_queryset = OperatingTheatre.objects.filter(is_active=True)
+        if facility_id:
+            theatre_queryset = theatre_queryset.filter(facility_id=facility_id)
+
+        return Response(
+            build_theatre_report_summary(
+                cases=case_queryset,
+                theatres=theatre_queryset,
+                start_date=date_from,
+                end_date=date_to,
+            )
+        )
 
     # ── PACU ──────────────────────────────────────────────────────────
 

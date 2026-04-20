@@ -452,10 +452,22 @@ class OperativeNoteCreateSerializer(serializers.ModelSerializer):
 
 class TheatreConsumableSerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(source="item.generic_name", read_only=True)
+    total_cost = serializers.SerializerMethodField()
+    allocation_count = serializers.SerializerMethodField()
+    source_batches = serializers.SerializerMethodField()
 
     class Meta:
         model = TheatreConsumable
         fields = "__all__"
+
+    def get_total_cost(self, obj):
+        return f"{obj.total_cost:.2f}"
+
+    def get_allocation_count(self, obj) -> int:
+        return obj.allocations.count()
+
+    def get_source_batches(self, obj) -> list[str]:
+        return list(obj.allocations.values_list("batch__batch_number", flat=True))
 
 
 class TheatreConsumableCreateSerializer(serializers.ModelSerializer):
