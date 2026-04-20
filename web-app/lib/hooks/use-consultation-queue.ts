@@ -197,6 +197,7 @@ export function useMyClaimedEncounters(
   return useQuery({
     queryKey: myClaimedEncountersKeys.list(params),
     queryFn: () => encountersApi.getMyClaimed(params),
+    networkMode: 'always',
     // Refetch every 30 seconds by default
     refetchInterval: options?.pollingInterval ?? 30000,
     refetchIntervalInBackground: false,
@@ -231,6 +232,7 @@ export function useAllClaimedEncounters(
   return useQuery({
     queryKey: allClaimedEncountersKeys.list(params),
     queryFn: () => encountersApi.getAllClaimed(params),
+    networkMode: 'always',
     // Refetch every 30 seconds by default
     refetchInterval: options?.pollingInterval ?? 30000,
     refetchIntervalInBackground: false,
