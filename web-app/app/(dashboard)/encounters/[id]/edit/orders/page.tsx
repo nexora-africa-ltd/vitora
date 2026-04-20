@@ -161,6 +161,13 @@ export default function EncounterEditOrdersPage() {
             encounterId={encounterId}
             patientId={session.patientId}
             disabled={!isEditable}
+            patientName={encounter?.patient_name ?? undefined}
+            patientMrn={encounter?.patient_mrn ?? undefined}
+            patientGender={encounter?.patient_gender ?? undefined}
+            patientDateOfBirth={encounter?.patient_date_of_birth ?? undefined}
+            encounterType={encounter?.encounter_type ?? undefined}
+            encounterDate={encounter?.encounter_date ?? undefined}
+            chiefComplaint={encounter?.chief_complaint ?? undefined}
             patientDemographics={encounter?.patient_date_of_birth ? {
               patientAge: calculateAge(encounter.patient_date_of_birth),
               patientSex: encounter.patient_gender === 'F' ? 'female' : 'male',

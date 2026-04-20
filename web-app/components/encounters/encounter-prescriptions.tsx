@@ -5,15 +5,18 @@
  */
 'use client';
 
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Plus, Pill, ExternalLink, Clock, CheckCircle2, AlertCircle, Package, Building2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
+import { PrescriptionForm } from '@/components/pharmacy/prescription-form';
 import { formatDate } from '@/lib/utils/format';
 import type { Prescription, PrescriptionStatus } from '@/lib/types/pharmacy';
 
@@ -22,8 +25,6 @@ interface EncounterPrescriptionsProps {
   patientId: number;
   disabled?: boolean;
   onPrevious?: () => void;
-  /** Called before navigating to create prescription - use to save pending changes */
-  onBeforeNavigate?: () => Promise<void>;
 }
 
 const STATUS_CONFIG: Record<PrescriptionStatus, { label: string; color: string; icon: React.ElementType }> = {
@@ -34,17 +35,15 @@ const STATUS_CONFIG: Record<PrescriptionStatus, { label: string; color: string; 
   EXPIRED: { label: 'Expired', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300', icon: AlertCircle },
 };
 
-export function EncounterPrescriptions({ encounterId, patientId, disabled = false, onPrevious, onBeforeNavigate }: EncounterPrescriptionsProps) {
-  const router = useRouter();
+export function EncounterPrescriptions({ encounterId, patientId, disabled = false, onPrevious }: EncounterPrescriptionsProps) {
+  const queryClient = useQueryClient();
   const { data: prescriptions, isLoading, error } = useEncounterPrescriptions(encounterId);
+  const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
 
-  // Handle navigation to new prescription - saves pending changes first
-  const handleNewPrescription = useCallback(async () => {
-    if (onBeforeNavigate) {
-      await onBeforeNavigate();
-    }
-    router.push(`/pharmacy/prescriptions/new?encounter=${encounterId}&patient=${patientId}`);
-  }, [onBeforeNavigate, router, encounterId, patientId]);
+  const handlePrescriptionCreated = useCallback(() => {
+    setShowPrescriptionForm(false);
+    queryClient.invalidateQueries({ queryKey: ['encounter-prescriptions', encounterId] });
+  }, [queryClient, encounterId]);
 
   if (isLoading) {
     return (
@@ -99,7 +98,7 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
             )}
           </CardTitle>
           {!disabled && (
-            <Button size="sm" onClick={handleNewPrescription}>
+            <Button size="sm" onClick={() => setShowPrescriptionForm(true)}>
               <Plus className="h-4 w-4 mr-1" />
               New Prescription
             </Button>
@@ -152,7 +151,7 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
 
       {prescriptions && prescriptions.length === 0 && !disabled && (
         <CardFooter className="pt-0 flex-col gap-3">
-          <Button variant="outline" className="w-full" onClick={handleNewPrescription}>
+          <Button variant="outline" className="w-full" onClick={() => setShowPrescriptionForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create First Prescription
           </Button>
@@ -172,6 +171,25 @@ export function EncounterPrescriptions({ encounterId, patientId, disabled = fals
           </Button>
         </CardFooter>
       )}
+
+      {/* New Prescription Sheet */}
+      <Sheet open={showPrescriptionForm} onOpenChange={setShowPrescriptionForm}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Prescription</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <PrescriptionForm
+                patientId={patientId}
+                encounterId={encounterId}
+                onSuccess={handlePrescriptionCreated}
+                onCancel={() => setShowPrescriptionForm(false)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 }
@@ -180,7 +198,6 @@ interface EncounterPrescriptionsContentProps {
   encounterId: number;
   patientId: number;
   disabled?: boolean;
-  onBeforeNavigate?: () => Promise<void>;
 }
 
 /**
@@ -191,17 +208,15 @@ export function EncounterPrescriptionsContent({
   encounterId,
   patientId,
   disabled = false,
-  onBeforeNavigate
 }: EncounterPrescriptionsContentProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: prescriptions, isLoading, error } = useEncounterPrescriptions(encounterId);
+  const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
 
-  const handleNewPrescription = useCallback(async () => {
-    if (onBeforeNavigate) {
-      await onBeforeNavigate();
-    }
-    router.push(`/pharmacy/prescriptions/new?encounter=${encounterId}&patient=${patientId}`);
-  }, [onBeforeNavigate, router, encounterId, patientId]);
+  const handlePrescriptionCreated = useCallback(() => {
+    setShowPrescriptionForm(false);
+    queryClient.invalidateQueries({ queryKey: ['encounter-prescriptions', encounterId] });
+  }, [queryClient, encounterId]);
 
   if (isLoading) {
     return (
@@ -230,7 +245,7 @@ export function EncounterPrescriptionsContent({
       {/* Action button */}
       {!disabled && (
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={handleNewPrescription}>
+          <Button size="sm" onClick={() => setShowPrescriptionForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             New Prescription
           </Button>
@@ -276,6 +291,25 @@ export function EncounterPrescriptionsContent({
           )}
         </div>
       )}
+
+      {/* New Prescription Sheet */}
+      <Sheet open={showPrescriptionForm} onOpenChange={setShowPrescriptionForm}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Prescription</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <PrescriptionForm
+                patientId={patientId}
+                encounterId={encounterId}
+                onSuccess={handlePrescriptionCreated}
+                onCancel={() => setShowPrescriptionForm(false)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

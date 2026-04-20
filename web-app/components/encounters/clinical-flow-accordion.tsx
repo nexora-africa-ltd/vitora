@@ -25,6 +25,7 @@ import {
   Beaker,
   ScanLine,
   Pill,
+  Syringe,
   HeartHandshake,
   ArrowRightLeft,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ import { DiagnosisFormContent } from '@/components/encounters/diagnosis-form';
 import { EncounterLabOrdersContent } from '@/components/encounters/encounter-lab-orders';
 import { EncounterImagingOrdersContent } from '@/components/encounters/encounter-imaging-orders';
 import { EncounterPrescriptionsContent } from '@/components/encounters/encounter-prescriptions';
+import { EncounterProcedureOrdersContent } from '@/components/encounters/encounter-procedure-orders';
 import { EncounterAlliedHealthContent } from '@/components/encounters/encounter-allied-health-content';
 import { EncounterReferralsContent } from '@/components/encounters/encounter-referrals-content';
 import { ClinicalTemplateFormContent } from '@/components/encounters/clinical-template-section';
@@ -43,6 +45,7 @@ import type { ClinicalTemplate } from '@/lib/types/clinical-template';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
 import type { Prescription } from '@/lib/types/pharmacy';
+import type { ProcedureOrderListItem } from '@/lib/types/procedure';
 
 // Helper functions to check if sections have data
 function hasMedicalHistory(data: EncounterFormData): boolean {
@@ -98,10 +101,10 @@ interface ClinicalFlowAccordionProps {
   imagingOrders?: ImagingOrder[];
   /** Prescriptions for this encounter */
   prescriptions?: Prescription[];
+  /** Procedure orders for this encounter */
+  procedureOrders?: ProcedureOrderListItem[];
   /** Whether the form is editable */
   disabled?: boolean;
-  /** Handler called before navigating away */
-  onBeforeNavigate?: () => Promise<void>;
   /** Currently open section(s) */
   openSections?: string[];
   /** Handler when open sections change */
@@ -125,8 +128,8 @@ export function ClinicalFlowAccordion({
   labOrders = [],
   imagingOrders = [],
   prescriptions = [],
+  procedureOrders = [],
   disabled = false,
-  onBeforeNavigate,
   openSections,
   onSectionChange,
 }: ClinicalFlowAccordionProps) {
@@ -219,7 +222,6 @@ export function ClinicalFlowAccordion({
           encounterId={encounterId}
           patientId={patientId}
           disabled={disabled}
-          onBeforeNavigate={onBeforeNavigate}
         />
       ),
     },
@@ -238,7 +240,6 @@ export function ClinicalFlowAccordion({
           patientId={patientId}
           patientName={patientName}
           disabled={disabled}
-          onBeforeNavigate={onBeforeNavigate}
         />
       ),
     },
@@ -256,7 +257,23 @@ export function ClinicalFlowAccordion({
           encounterId={encounterId}
           patientId={patientId}
           disabled={disabled}
-          onBeforeNavigate={onBeforeNavigate}
+        />
+      ),
+    },
+    {
+      id: 'procedures',
+      title: 'Procedures',
+      abbreviation: 'Proc',
+      icon: <Syringe className="h-4 w-4" />,
+      isComplete: procedureOrders.length > 0,
+      badge: procedureOrders.length > 0 ? procedureOrders.length : undefined,
+      tooltipTitle: 'Procedure Orders (Proc)',
+      tooltipDescription: 'Surgical and clinical procedures',
+      children: (
+        <EncounterProcedureOrdersContent
+          encounterId={encounterId}
+          patientId={patientId}
+          disabled={disabled}
         />
       ),
     },
@@ -310,8 +327,8 @@ export function ClinicalFlowAccordion({
     labOrders,
     imagingOrders,
     prescriptions,
+    procedureOrders,
     disabled,
-    onBeforeNavigate,
   ]);
 
   return (

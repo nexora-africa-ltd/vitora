@@ -10,17 +10,19 @@
  */
 'use client';
 
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Plus, Syringe, ExternalLink, Clock, CheckCircle2, AlertCircle, XCircle, PlayCircle } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { proceduresApi } from '@/lib/api/procedures';
 import { PROCEDURE_STATUS_COLORS, PROCEDURE_STATUS_LABELS, PROCEDURE_PRIORITY_COLORS } from '@/lib/types/procedure';
+import { ProcedureOrderForm } from '@/components/procedures/procedure-order-form';
 import type { ProcedureOrderListItem } from '@/lib/types/procedure';
 
 interface EncounterProcedureOrdersProps {
@@ -29,8 +31,6 @@ interface EncounterProcedureOrdersProps {
   admissionId?: number;
   patientId: number;
   disabled?: boolean;
-  /** Called before navigating to create page - use to save pending changes */
-  onBeforeNavigate?: () => Promise<void>;
 }
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
@@ -49,9 +49,8 @@ export function EncounterProcedureOrders({
   admissionId,
   patientId,
   disabled = false,
-  onBeforeNavigate,
 }: EncounterProcedureOrdersProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Build filter params
   const filterParams: Record<string, string> = {};
@@ -70,19 +69,12 @@ export function EncounterProcedureOrders({
   });
 
   const orders = (ordersData?.results ?? []) as ProcedureOrderListItem[];
+  const [showOrderForm, setShowOrderForm] = useState(false);
 
-  // Build URL for new order with pre-fill params
-  const handleNewOrder = useCallback(async () => {
-    if (onBeforeNavigate) {
-      await onBeforeNavigate();
-    }
-    const params = new URLSearchParams();
-    params.set('patient', String(patientId));
-    if (encounterId) params.set('encounter', String(encounterId));
-    if (clinicVisitId) params.set('clinic_visit', String(clinicVisitId));
-    if (admissionId) params.set('admission', String(admissionId));
-    router.push(`/procedures/orders/new?${params.toString()}`);
-  }, [onBeforeNavigate, router, patientId, encounterId, clinicVisitId, admissionId]);
+  const handleOrderCreated = useCallback(() => {
+    setShowOrderForm(false);
+    queryClient.invalidateQueries({ queryKey: ['procedure-orders', filterParams] });
+  }, [queryClient, filterParams]);
 
   if (isLoading) {
     return (
@@ -137,7 +129,7 @@ export function EncounterProcedureOrders({
             )}
           </CardTitle>
           {!disabled && (
-            <Button size="sm" onClick={handleNewOrder}>
+            <Button size="sm" onClick={() => setShowOrderForm(true)}>
               <Plus className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Order Procedure</span>
               <span className="sm:hidden">Order</span>
@@ -194,6 +186,27 @@ export function EncounterProcedureOrders({
           )}
         </CardContent>
       )}
+
+      {/* New Procedure Order Sheet */}
+      <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Procedure Order</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <ProcedureOrderForm
+                patientId={patientId}
+                encounterId={encounterId}
+                clinicVisitId={clinicVisitId}
+                admissionId={admissionId}
+                onSuccess={handleOrderCreated}
+                onCancel={() => setShowOrderForm(false)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 }
@@ -208,9 +221,8 @@ export function EncounterProcedureOrdersContent({
   admissionId,
   patientId,
   disabled = false,
-  onBeforeNavigate,
 }: EncounterProcedureOrdersProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const filterParams: Record<string, string> = {};
   if (encounterId) filterParams.encounter = String(encounterId);
@@ -224,18 +236,12 @@ export function EncounterProcedureOrdersContent({
   });
 
   const orders = (ordersData?.results ?? []) as ProcedureOrderListItem[];
+  const [showOrderForm, setShowOrderForm] = useState(false);
 
-  const handleNewOrder = useCallback(async () => {
-    if (onBeforeNavigate) {
-      await onBeforeNavigate();
-    }
-    const params = new URLSearchParams();
-    params.set('patient', String(patientId));
-    if (encounterId) params.set('encounter', String(encounterId));
-    if (clinicVisitId) params.set('clinic_visit', String(clinicVisitId));
-    if (admissionId) params.set('admission', String(admissionId));
-    router.push(`/procedures/orders/new?${params.toString()}`);
-  }, [onBeforeNavigate, router, patientId, encounterId, clinicVisitId, admissionId]);
+  const handleOrderCreated = useCallback(() => {
+    setShowOrderForm(false);
+    queryClient.invalidateQueries({ queryKey: ['procedure-orders-content', filterParams] });
+  }, [queryClient, filterParams]);
 
   if (isLoading) {
     return (
@@ -264,7 +270,7 @@ export function EncounterProcedureOrdersContent({
       {/* Action button */}
       {!disabled && (
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={handleNewOrder}>
+          <Button size="sm" onClick={() => setShowOrderForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Order Procedure
           </Button>
@@ -304,6 +310,27 @@ export function EncounterProcedureOrdersContent({
           )}
         </div>
       )}
+
+      {/* New Procedure Order Sheet */}
+      <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Procedure Order</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <ProcedureOrderForm
+                patientId={patientId}
+                encounterId={encounterId}
+                clinicVisitId={clinicVisitId}
+                admissionId={admissionId}
+                onSuccess={handleOrderCreated}
+                onCancel={() => setShowOrderForm(false)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -10,7 +10,6 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Plus, Beaker, ExternalLink, Clock, CheckCircle2, AlertCircle, FileText, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -20,7 +19,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
+import { useQueryClient } from '@tanstack/react-query';
 import { LabOrderDetail } from '@/components/laboratory/lab-order-detail';
+import { LabOrderForm } from '@/components/laboratory/lab-order-form';
 import { formatDate } from '@/lib/utils/format';
 import { EncounterLabResultsView } from './encounter-lab-results-view';
 import type { PatientDemographics } from './encounter-lab-results-view';
@@ -31,8 +32,14 @@ interface EncounterLabOrdersProps {
   patientId: number;
   disabled?: boolean;
   onNext?: () => void;
-  /** Called before navigating to create lab order - use to save pending changes */
-  onBeforeNavigate?: () => Promise<void>;
+  /** Patient details for the order form */
+  patientName?: string;
+  patientMrn?: string;
+  patientGender?: string;
+  patientDateOfBirth?: string;
+  encounterType?: string;
+  encounterDate?: string;
+  chiefComplaint?: string;
   /** Patient demographics for AI interpretation */
   patientDemographics?: PatientDemographics;
   /** Current diagnoses for AI interpretation context */
@@ -55,19 +62,17 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; color: string }> = {
   STAT: { label: 'STAT', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
 };
 
-export function EncounterLabOrders({ encounterId, patientId, disabled = false, onNext, onBeforeNavigate, patientDemographics, diagnoses }: EncounterLabOrdersProps) {
-  const router = useRouter();
+export function EncounterLabOrders({ encounterId, patientId, disabled = false, onNext, patientName, patientMrn, patientGender, patientDateOfBirth, encounterType, encounterDate, chiefComplaint, patientDemographics, diagnoses }: EncounterLabOrdersProps) {
+  const queryClient = useQueryClient();
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
   const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
   const [peekOrderNumber, setPeekOrderNumber] = useState<string | null>(null);
+  const [showOrderForm, setShowOrderForm] = useState(false);
 
-  // Handle navigation to new lab order - saves pending changes first
-  const handleNewLabOrder = useCallback(async () => {
-    if (onBeforeNavigate) {
-      await onBeforeNavigate();
-    }
-    router.push(`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`);
-  }, [onBeforeNavigate, router, encounterId, patientId]);
+  const handleOrderCreated = useCallback(() => {
+    setShowOrderForm(false);
+    queryClient.invalidateQueries({ queryKey: ['encounter-lab-orders', encounterId] });
+  }, [queryClient, encounterId]);
 
   if (isLoading) {
     return (
@@ -143,7 +148,7 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
               </Button>
             )}
             {!disabled && (
-              <Button size="sm" onClick={handleNewLabOrder}>
+              <Button size="sm" onClick={() => setShowOrderForm(true)}>
                 <Plus className="h-4 w-4 mr-1" />
                 Order Lab Test
               </Button>
@@ -197,7 +202,7 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
 
       {orders && orders.length === 0 && !disabled && (
         <CardFooter className="pt-0 flex-col gap-3">
-          <Button variant="outline" className="w-full" onClick={handleNewLabOrder}>
+          <Button variant="outline" className="w-full" onClick={() => setShowOrderForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Order First Lab Test
           </Button>
@@ -231,6 +236,32 @@ export function EncounterLabOrders({ encounterId, patientId, disabled = false, o
           </ScrollArea>
         </SheetContent>
       </Sheet>
+
+      {/* New Lab Order Sheet */}
+      <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Lab Order</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <LabOrderForm
+                patientId={patientId}
+                encounterId={encounterId}
+                patientName={patientName}
+                patientMrn={patientMrn}
+                patientGender={patientGender}
+                patientDateOfBirth={patientDateOfBirth}
+                encounterType={encounterType}
+                encounterDate={encounterDate}
+                chiefComplaint={chiefComplaint}
+                onSuccess={handleOrderCreated}
+                onCancel={() => setShowOrderForm(false)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 }
@@ -239,7 +270,14 @@ interface EncounterLabOrdersContentProps {
   encounterId: number;
   patientId: number;
   disabled?: boolean;
-  onBeforeNavigate?: () => Promise<void>;
+  /** Patient details for the inline order form */
+  patientName?: string;
+  patientMrn?: string;
+  patientGender?: string;
+  patientDateOfBirth?: string;
+  encounterType?: string;
+  encounterDate?: string;
+  chiefComplaint?: string;
   /** Patient demographics for AI interpretation */
   patientDemographics?: PatientDemographics;
   /** Current diagnoses for AI interpretation context */
@@ -254,21 +292,26 @@ export function EncounterLabOrdersContent({
   encounterId,
   patientId,
   disabled = false,
-  onBeforeNavigate,
+  patientName,
+  patientMrn,
+  patientGender,
+  patientDateOfBirth,
+  encounterType,
+  encounterDate,
+  chiefComplaint,
   patientDemographics,
   diagnoses,
 }: EncounterLabOrdersContentProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: orders, isLoading, error } = useEncounterLabOrders(encounterId);
   const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
   const [peekOrderNumber, setPeekOrderNumber] = useState<string | null>(null);
+  const [showOrderForm, setShowOrderForm] = useState(false);
 
-  const handleNewLabOrder = useCallback(async () => {
-    if (onBeforeNavigate) {
-      await onBeforeNavigate();
-    }
-    router.push(`/laboratory/orders/new?encounter=${encounterId}&patient=${patientId}`);
-  }, [onBeforeNavigate, router, encounterId, patientId]);
+  const handleOrderCreated = useCallback(() => {
+    setShowOrderForm(false);
+    queryClient.invalidateQueries({ queryKey: ['encounter-lab-orders', encounterId] });
+  }, [queryClient, encounterId]);
 
   if (isLoading) {
     return (
@@ -317,7 +360,7 @@ export function EncounterLabOrdersContent({
           </Button>
         )}
         {!disabled && (
-          <Button size="sm" onClick={handleNewLabOrder}>
+          <Button size="sm" onClick={() => setShowOrderForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Order Lab Test
           </Button>
@@ -370,6 +413,32 @@ export function EncounterLabOrdersContent({
           <ScrollArea className="h-full">
             <div className="p-6">
               {peekOrderNumber && <LabOrderDetail orderNumber={peekOrderNumber} />}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {/* New Lab Order Sheet */}
+      <Sheet open={showOrderForm} onOpenChange={setShowOrderForm}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Lab Order</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <LabOrderForm
+                patientId={patientId}
+                encounterId={encounterId}
+                patientName={patientName}
+                patientMrn={patientMrn}
+                patientGender={patientGender}
+                patientDateOfBirth={patientDateOfBirth}
+                encounterType={encounterType}
+                encounterDate={encounterDate}
+                chiefComplaint={chiefComplaint}
+                onSuccess={handleOrderCreated}
+                onCancel={() => setShowOrderForm(false)}
+              />
             </div>
           </ScrollArea>
         </SheetContent>

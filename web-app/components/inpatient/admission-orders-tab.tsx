@@ -5,14 +5,21 @@
  */
 'use client';
 
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Beaker, ImageIcon, Pill, Syringe, Clock, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAdmissionOrders } from '@/lib/hooks/use-inpatient';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { LabOrderForm } from '@/components/laboratory/lab-order-form';
+import { ImagingOrderForm } from '@/components/imaging/imaging-order-form';
+import { PrescriptionForm } from '@/components/pharmacy/prescription-form';
+import { ProcedureOrderForm } from '@/components/procedures/procedure-order-form';
 import { proceduresApi } from '@/lib/api/procedures';
 import { PROCEDURE_STATUS_COLORS, PROCEDURE_STATUS_LABELS, PROCEDURE_PRIORITY_COLORS } from '@/lib/types/procedure';
 import { formatDate } from '@/lib/utils/format';
@@ -70,6 +77,7 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; color: string }> = {
 // ============================================================================
 
 export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActive = true }: AdmissionOrdersTabProps) {
+  const queryClient = useQueryClient();
   const { data: orders, isLoading, error } = useAdmissionOrders(admissionId);
   const { data: procOrdersData } = useQuery({
     queryKey: ['procedure-orders', { admission: admissionId }],
@@ -77,6 +85,15 @@ export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActi
     enabled: !!admissionId,
   });
   const procOrders = (procOrdersData?.results ?? []) as import('@/lib/types/procedure').ProcedureOrderListItem[];
+
+  // Sheet state for each order type
+  const [activeSheet, setActiveSheet] = useState<'lab' | 'imaging' | 'rx' | 'procedure' | null>(null);
+
+  const handleOrderCreated = useCallback(() => {
+    setActiveSheet(null);
+    queryClient.invalidateQueries({ queryKey: ['admission-orders', admissionId] });
+    queryClient.invalidateQueries({ queryKey: ['procedure-orders', { admission: admissionId }] });
+  }, [queryClient, admissionId]);
 
   if (isLoading) {
     return <OrdersLoadingSkeleton />;
@@ -101,29 +118,21 @@ export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActi
       {/* Action buttons */}
       {isActive && (
         <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
-          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" asChild>
-            <Link href={`/laboratory/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`} title="New Lab Order">
-              <Beaker className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">New Lab Order</span>
-            </Link>
+          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" onClick={() => setActiveSheet('lab')} title="New Lab Order">
+            <Beaker className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">New Lab Order</span>
           </Button>
-          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" asChild>
-            <Link href={`/imaging/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`} title="New Imaging">
-              <ImageIcon className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">New Imaging</span>
-            </Link>
+          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" onClick={() => setActiveSheet('imaging')} title="New Imaging">
+            <ImageIcon className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">New Imaging</span>
           </Button>
-          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" asChild>
-            <Link href={`/pharmacy/prescriptions/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`} title="New Prescription">
-              <Pill className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">New Prescription</span>
-            </Link>
+          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" onClick={() => setActiveSheet('rx')} title="New Prescription">
+            <Pill className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">New Prescription</span>
           </Button>
-          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" asChild>
-            <Link href={`/procedures/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`} title="New Procedure">
-              <Syringe className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">New Procedure</span>
-            </Link>
+          <Button variant="outline" size="sm" className="sm:px-3 w-full sm:w-auto" onClick={() => setActiveSheet('procedure')} title="New Procedure">
+            <Syringe className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">New Procedure</span>
           </Button>
         </div>
       )}
@@ -214,6 +223,81 @@ export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActi
           />
         </div>
       )}
+
+      {/* Order Form Sheets */}
+      <Sheet open={activeSheet === 'lab'} onOpenChange={(open) => !open && setActiveSheet(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Lab Order</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <LabOrderForm
+                patientId={patientId}
+                encounterId={encounterId}
+                admissionId={admissionId}
+                onSuccess={() => handleOrderCreated()}
+                onCancel={() => setActiveSheet(null)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={activeSheet === 'imaging'} onOpenChange={(open) => !open && setActiveSheet(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Imaging Order</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <ImagingOrderForm
+                patientId={patientId}
+                encounterId={encounterId || 0}
+                onSuccess={() => handleOrderCreated()}
+                onCancel={() => setActiveSheet(null)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={activeSheet === 'rx'} onOpenChange={(open) => !open && setActiveSheet(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Prescription</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <PrescriptionForm
+                patientId={patientId}
+                encounterId={encounterId}
+                onSuccess={() => handleOrderCreated()}
+                onCancel={() => setActiveSheet(null)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={activeSheet === 'procedure'} onOpenChange={(open) => !open && setActiveSheet(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>New Procedure Order</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <ProcedureOrderForm
+                patientId={patientId}
+                encounterId={encounterId}
+                admissionId={admissionId}
+                onSuccess={() => handleOrderCreated()}
+                onCancel={() => setActiveSheet(null)}
+              />
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
