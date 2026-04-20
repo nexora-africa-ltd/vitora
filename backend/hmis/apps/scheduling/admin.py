@@ -18,6 +18,7 @@ from hmis.apps.scheduling.models import (
     ScheduleBreak,
     SchedulingSettings,
     Shift,
+    ShiftSwapRequest,
     StaffConstraint,
     TimeSlot,
 )
@@ -325,3 +326,61 @@ class StaffConstraintAdmin(admin.ModelAdmin):
     search_fields = ["staff_resource__name", "reason"]
     readonly_fields = ["created_at", "updated_at"]
     raw_id_fields = ["facility", "organization", "staff_resource"]
+
+
+@admin.register(ShiftSwapRequest)
+class ShiftSwapRequestAdmin(admin.ModelAdmin):
+    """Admin for shift swap requests."""
+
+    list_display = [
+        "id",
+        "requester",
+        "requesting_shift",
+        "target_staff",
+        "status_badge",
+        "is_partial",
+        "expires_at",
+        "facility",
+    ]
+    list_filter = ["status", "is_partial", "facility"]
+    search_fields = [
+        "requester__username",
+        "requesting_shift__staff_resource__name",
+        "target_staff__name",
+    ]
+    date_hierarchy = "created_at"
+    readonly_fields = [
+        "accepted_at",
+        "reviewed_at",
+        "created_at",
+        "updated_at",
+    ]
+    raw_id_fields = [
+        "facility",
+        "organization",
+        "requesting_shift",
+        "target_shift",
+        "target_staff",
+        "accepted_shift",
+        "requester",
+        "accepted_by",
+        "reviewed_by",
+    ]
+
+    @admin.display(description="Status")
+    def status_badge(self, obj):
+        colors = {
+            "PENDING": "#ffc107",
+            "ACCEPTED": "#17a2b8",
+            "APPROVED": "#28a745",
+            "COMPLETED": "#6c757d",
+            "REJECTED": "#dc3545",
+            "CANCELLED": "#6c757d",
+            "EXPIRED": "#fd7e14",
+        }
+        color = colors.get(obj.status, "#6c757d")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )

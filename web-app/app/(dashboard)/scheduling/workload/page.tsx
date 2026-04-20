@@ -67,21 +67,25 @@ export default function StaffWorkloadPage() {
         />
 
         {/* Date Range */}
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4 text-muted-foreground hidden sm:block" />
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="w-full sm:w-[160px] h-8 text-xs"
-          />
-          <span className="hidden sm:flex items-center text-xs text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="w-full sm:w-[160px] h-8 text-xs"
-          />
+          <div className="w-[125px] sm:w-[140px] shrink-0">
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="h-8 text-xs"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">to</span>
+          <div className="w-[125px] sm:w-[140px] shrink-0">
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="h-8 text-xs"
+            />
+          </div>
         </div>
 
         {/* Summary Cards */}

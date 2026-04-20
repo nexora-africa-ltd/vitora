@@ -181,7 +181,9 @@ export const ACTION_PERMISSIONS = {
   'scheduling.create_appointment': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
   'scheduling.manage_appointment': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
   'scheduling.view_schedules': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
-  'scheduling.manage_schedules': ['ADMIN', 'ORG-ADMIN', 'HR_OFFICER'],
+  'scheduling.manage_schedules': ['ADMIN', 'ORG-ADMIN', 'HR_OFFICER', 'SUPERVISOR'],
+  'scheduling.create_swap': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'NURSE_AIDE', 'LAB_TECH', 'PHARMACIST', 'PHARMACY_TECH', 'RECEPTIONIST', 'RADIOGRAPHER', 'PHYSIOTHERAPIST', 'DIETITIAN', 'OCCUPATIONAL_THERAPIST', 'SOCIAL_WORKER', 'COUNSELLOR', 'LAB_SCIENTIST', 'PHLEBOTOMIST', 'HR_OFFICER', 'SUPERVISOR', 'ADMIN', 'ORG-ADMIN'],
+  'scheduling.approve_swap': ['ADMIN', 'ORG-ADMIN', 'HR_OFFICER', 'SUPERVISOR'],
 
   // === Theatre Module ===
   'theatre.view_schedule': ['SURGEON', 'ANAESTHETIST', 'THEATRE_NURSE', 'DOCTOR', 'ADMIN'],

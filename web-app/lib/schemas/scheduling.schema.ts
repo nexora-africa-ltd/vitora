@@ -259,6 +259,7 @@ export const SchedulingSettingsSchema = z.object({
   default_shift_pattern: z.array(z.string()),
   active_shift_types: z.array(z.string()),
   overtime_threshold_hours: z.coerce.number(),
+  require_swap_approval: z.boolean(),
   enforce_constraints: z.boolean(),
   enforce_punctuality: z.boolean(),
   late_cutoff_minutes: z.number(),
@@ -348,3 +349,72 @@ export const QRTokenResponseSchema = z.object({
   valid_until: z.string(),
   generated_at: z.string(),
 });
+
+// =============================================================================
+// Shift Swap Request Schemas
+// =============================================================================
+
+export const ShiftSwapStatusSchema = z.enum([
+  'PENDING', 'ACCEPTED', 'APPROVED', 'COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED',
+]);
+
+export const ShiftSummarySchema = z.object({
+  id: z.number(),
+  staff_name: z.string().nullable(),
+  shift_date: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  shift_type: ShiftTypeSchema,
+  status: ShiftStatusSchema,
+});
+
+export const ShiftSwapRequestSchema = z.object({
+  id: z.number(),
+  requesting_shift: z.number(),
+  requesting_shift_summary: ShiftSummarySchema,
+  target_shift: z.number().nullable(),
+  target_shift_summary: ShiftSummarySchema.nullable(),
+  requester: z.number(),
+  requester_name: z.string(),
+  target_staff: z.number().nullable(),
+  target_staff_name: z.string().nullable(),
+  is_partial: z.boolean(),
+  partial_start_time: z.string().nullable(),
+  partial_end_time: z.string().nullable(),
+  status: ShiftSwapStatusSchema,
+  status_display: z.string(),
+  reason: z.string(),
+  rejection_reason: z.string(),
+  accepted_by: z.number().nullable(),
+  accepted_by_name: z.string().nullable(),
+  accepted_shift: z.number().nullable(),
+  accepted_shift_summary: ShiftSummarySchema.nullable(),
+  accepted_at: z.string().nullable(),
+  reviewed_by: z.number().nullable(),
+  reviewed_by_name: z.string().nullable(),
+  reviewed_at: z.string().nullable(),
+  expires_at: z.string(),
+  constraint_warnings: z.array(z.string()),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const ShiftSwapListItemSchema = z.object({
+  id: z.number(),
+  requesting_shift: z.number(),
+  requesting_shift_date: z.string(),
+  requesting_shift_type: ShiftTypeSchema,
+  requesting_staff_name: z.string(),
+  target_shift: z.number().nullable(),
+  target_staff_name: z.string().nullable(),
+  requester: z.number(),
+  requester_name: z.string(),
+  is_partial: z.boolean(),
+  status: ShiftSwapStatusSchema,
+  status_display: z.string(),
+  reason: z.string(),
+  expires_at: z.string(),
+  created_at: z.string(),
+});
+
+export const PaginatedShiftSwapListSchema = createPaginatedSchema(ShiftSwapListItemSchema);

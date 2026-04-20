@@ -165,6 +165,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Duty Roster', href: '/scheduling/shifts', icon: ClipboardList, actionKey: 'scheduling.manage_schedules' },
       { label: 'Staff Workload', href: '/scheduling/workload', icon: BarChart3, actionKey: 'scheduling.view_appointments' },
       { label: 'My Shifts', href: '/scheduling/my-shifts', icon: UserCheck, actionKey: 'scheduling.view_appointments' },
+      { label: 'Shift Swaps', href: '/scheduling/shift-swaps', icon: ArrowLeftRight, actionKey: 'scheduling.view_appointments' },
     ],
   },
   {

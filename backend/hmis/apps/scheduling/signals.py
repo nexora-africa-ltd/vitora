@@ -22,6 +22,7 @@ from hmis.apps.scheduling.models import (
     Resource,
     Schedule,
     Shift,
+    ShiftSwapRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -214,6 +215,50 @@ def publish_shift_event(sender, instance, created, **kwargs):
             "clock_in_method": getattr(instance, "clock_in_method", ""),
             "auto_clocked_out": getattr(instance, "auto_clocked_out", False),
             "late_minutes": instance.late_minutes,
+        },
+        facility_id=getattr(instance, "facility_id", None),
+        organization_id=getattr(instance, "organization_id", None),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Shift Swap Request events
+# ---------------------------------------------------------------------------
+
+_SWAP_STATUS_EVENT_MAP = {
+    "PENDING": SchedulingEvents.SWAP_REQUESTED,
+    "ACCEPTED": SchedulingEvents.SWAP_ACCEPTED,
+    "APPROVED": SchedulingEvents.SWAP_APPROVED,
+    "COMPLETED": SchedulingEvents.SWAP_COMPLETED,
+    "REJECTED": SchedulingEvents.SWAP_REJECTED,
+    "CANCELLED": SchedulingEvents.SWAP_CANCELLED,
+    "EXPIRED": SchedulingEvents.SWAP_EXPIRED,
+}
+
+
+@receiver(post_save, sender=ShiftSwapRequest)
+def publish_swap_event(sender, instance, created, **kwargs):
+    """Publish domain event when a shift swap request is created or changes status."""
+    if created:
+        event_type = SchedulingEvents.SWAP_REQUESTED
+    else:
+        event_type = _SWAP_STATUS_EVENT_MAP.get(instance.status)
+        if not event_type:
+            return
+
+    publish_event(
+        event_type=event_type,
+        aggregate_type="ShiftSwapRequest",
+        aggregate_id=instance.id,
+        payload={
+            "requesting_shift_id": instance.requesting_shift_id,
+            "target_shift_id": instance.target_shift_id,
+            "requester_id": instance.requester_id,
+            "target_staff_id": instance.target_staff_id,
+            "status": instance.status,
+            "is_partial": instance.is_partial,
+            "accepted_by_id": instance.accepted_by_id,
+            "reviewed_by_id": instance.reviewed_by_id,
         },
         facility_id=getattr(instance, "facility_id", None),
         organization_id=getattr(instance, "organization_id", None),

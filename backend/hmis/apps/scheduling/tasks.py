@@ -125,3 +125,38 @@ def auto_clock_out_stale_shifts(self):
     if completed:
         logger.info("auto_clock_out_stale_shifts: auto-completed %d shifts", completed)
     return completed
+
+
+@shared_task(bind=True, ignore_result=True, max_retries=1)
+def expire_pending_swap_requests(self):
+    """
+    Expire shift swap requests whose expires_at has passed.
+
+    Runs periodically. Scans all PENDING swap requests where
+    expires_at is in the past and transitions them to EXPIRED.
+    """
+    from hmis.apps.scheduling.models import ShiftSwapRequest
+
+    now = timezone.now()
+    candidates = ShiftSwapRequest.objects.filter(
+        status="PENDING",
+        expires_at__lte=now,
+    )
+
+    expired = 0
+    for swap in candidates:
+        try:
+            swap.expire()
+            expired += 1
+            logger.info(
+                "Expired swap request %d (requester: %s, shift date: %s)",
+                swap.id,
+                swap.requester.username if swap.requester else "?",
+                swap.requesting_shift.shift_date,
+            )
+        except (ValueError, Exception) as e:
+            logger.warning("Failed to expire swap request %d: %s", swap.id, e)
+
+    if expired:
+        logger.info("expire_pending_swap_requests: expired %d swap requests", expired)
+    return expired

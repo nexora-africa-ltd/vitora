@@ -156,6 +156,15 @@ class SchedulingEvents:
     SHIFT_BREAK_RESUMED = "scheduling.shift.break_resumed"
     SHIFT_EMERGENCY_CREATED = "scheduling.shift.emergency_created"
 
+    # Shift swap lifecycle
+    SWAP_REQUESTED = "scheduling.swap.requested"
+    SWAP_ACCEPTED = "scheduling.swap.accepted"
+    SWAP_APPROVED = "scheduling.swap.approved"
+    SWAP_COMPLETED = "scheduling.swap.completed"
+    SWAP_REJECTED = "scheduling.swap.rejected"
+    SWAP_CANCELLED = "scheduling.swap.cancelled"
+    SWAP_EXPIRED = "scheduling.swap.expired"
+
 
 class InventoryEvents:
     """Inventory / procurement domain event types."""

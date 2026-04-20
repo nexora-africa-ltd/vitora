@@ -195,6 +195,11 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.scheduling.tasks.auto_clock_out_stale_shifts",
         "schedule": crontab(minute="*/30"),
     },
+    # Scheduling: Expire pending swap requests — every 15 minutes
+    "scheduling-expire-pending-swaps": {
+        "task": "hmis.apps.scheduling.tasks.expire_pending_swap_requests",
+        "schedule": crontab(minute="*/15"),
+    },
 }
 
 # Timezone configuration

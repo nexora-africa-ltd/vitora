@@ -139,6 +139,35 @@ class SchedulingConsumer(AsyncJsonWebsocketConsumer):
         """Handle scheduling stats updated event."""
         await self.scheduling_update(event)
 
+    # Shift swap events
+    async def scheduling_swap_requested(self, event):
+        """Handle shift swap requested event."""
+        await self.scheduling_update(event)
+
+    async def scheduling_swap_accepted(self, event):
+        """Handle shift swap accepted event."""
+        await self.scheduling_update(event)
+
+    async def scheduling_swap_approved(self, event):
+        """Handle shift swap approved event."""
+        await self.scheduling_update(event)
+
+    async def scheduling_swap_completed(self, event):
+        """Handle shift swap completed event."""
+        await self.scheduling_update(event)
+
+    async def scheduling_swap_rejected(self, event):
+        """Handle shift swap rejected event."""
+        await self.scheduling_update(event)
+
+    async def scheduling_swap_cancelled(self, event):
+        """Handle shift swap cancelled event."""
+        await self.scheduling_update(event)
+
+    async def scheduling_swap_expired(self, event):
+        """Handle shift swap expired event."""
+        await self.scheduling_update(event)
+
     @database_sync_to_async
     def _facility_exists(self, facility_id):
         """Check if facility exists in database."""

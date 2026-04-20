@@ -1204,6 +1204,7 @@ class SchedulingSettingsSerializer(serializers.ModelSerializer):
             "default_shift_pattern",
             "active_shift_types",
             "overtime_threshold_hours",
+            "require_swap_approval",
             "enforce_constraints",
             "enforce_punctuality",
             "late_cutoff_minutes",
@@ -1240,3 +1241,238 @@ class StaffConstraintSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+# =============================================================================
+# Shift Swap Request Serializers
+# =============================================================================
+
+
+class ShiftSwapRequestSerializer(serializers.ModelSerializer):
+    """Read serializer for shift swap requests (detail view)."""
+
+    requester_name = serializers.SerializerMethodField()
+    requesting_shift_summary = serializers.SerializerMethodField()
+    target_shift_summary = serializers.SerializerMethodField()
+    target_staff_name = serializers.CharField(
+        source="target_staff.name", read_only=True, default=None
+    )
+    accepted_by_name = serializers.SerializerMethodField()
+    accepted_shift_summary = serializers.SerializerMethodField()
+    reviewed_by_name = serializers.SerializerMethodField()
+    constraint_warnings = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        from hmis.apps.scheduling.models import ShiftSwapRequest
+
+        model = ShiftSwapRequest
+        fields = [
+            "id",
+            "requesting_shift",
+            "requesting_shift_summary",
+            "target_shift",
+            "target_shift_summary",
+            "requester",
+            "requester_name",
+            "target_staff",
+            "target_staff_name",
+            "is_partial",
+            "partial_start_time",
+            "partial_end_time",
+            "status",
+            "status_display",
+            "reason",
+            "rejection_reason",
+            "accepted_by",
+            "accepted_by_name",
+            "accepted_shift",
+            "accepted_shift_summary",
+            "accepted_at",
+            "reviewed_by",
+            "reviewed_by_name",
+            "reviewed_at",
+            "expires_at",
+            "constraint_warnings",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "requester",
+            "status",
+            "accepted_by",
+            "accepted_at",
+            "reviewed_by",
+            "reviewed_at",
+            "expires_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def _shift_summary(self, shift):
+        if not shift:
+            return None
+        return {
+            "id": shift.id,
+            "staff_name": shift.staff_resource.name if shift.staff_resource else None,
+            "shift_date": str(shift.shift_date),
+            "start_time": str(shift.start_time),
+            "end_time": str(shift.end_time),
+            "shift_type": shift.shift_type,
+            "status": shift.status,
+        }
+
+    def get_requester_name(self, obj):
+        u = obj.requester
+        return f"{u.first_name} {u.last_name}".strip() or u.username if u else None
+
+    def get_requesting_shift_summary(self, obj):
+        return self._shift_summary(obj.requesting_shift)
+
+    def get_target_shift_summary(self, obj):
+        return self._shift_summary(obj.target_shift)
+
+    def get_accepted_by_name(self, obj):
+        u = obj.accepted_by
+        return f"{u.first_name} {u.last_name}".strip() or u.username if u else None
+
+    def get_accepted_shift_summary(self, obj):
+        return self._shift_summary(obj.accepted_shift)
+
+    def get_reviewed_by_name(self, obj):
+        u = obj.reviewed_by
+        return f"{u.first_name} {u.last_name}".strip() or u.username if u else None
+
+    def get_constraint_warnings(self, obj):
+        if obj.status in ("PENDING", "ACCEPTED"):
+            return obj.check_constraints()
+        return []
+
+
+class ShiftSwapRequestListSerializer(serializers.ModelSerializer):
+    """Lightweight list serializer for swap requests."""
+
+    requester_name = serializers.SerializerMethodField()
+    requesting_shift_date = serializers.DateField(
+        source="requesting_shift.shift_date", read_only=True
+    )
+    requesting_shift_type = serializers.CharField(
+        source="requesting_shift.shift_type", read_only=True
+    )
+    requesting_staff_name = serializers.CharField(
+        source="requesting_shift.staff_resource.name", read_only=True
+    )
+    target_staff_name = serializers.CharField(
+        source="target_staff.name", read_only=True, default=None
+    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        from hmis.apps.scheduling.models import ShiftSwapRequest
+
+        model = ShiftSwapRequest
+        fields = [
+            "id",
+            "requesting_shift",
+            "requesting_shift_date",
+            "requesting_shift_type",
+            "requesting_staff_name",
+            "target_shift",
+            "target_staff_name",
+            "requester",
+            "requester_name",
+            "is_partial",
+            "status",
+            "status_display",
+            "reason",
+            "expires_at",
+            "created_at",
+        ]
+
+    def get_requester_name(self, obj):
+        u = obj.requester
+        return f"{u.first_name} {u.last_name}".strip() or u.username if u else None
+
+
+class ShiftSwapCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for creating a swap request."""
+
+    class Meta:
+        from hmis.apps.scheduling.models import ShiftSwapRequest
+
+        model = ShiftSwapRequest
+        fields = [
+            "requesting_shift",
+            "target_shift",
+            "target_staff",
+            "is_partial",
+            "partial_start_time",
+            "partial_end_time",
+            "reason",
+        ]
+
+    def validate_requesting_shift(self, value):
+        if value.status != "SCHEDULED":
+            raise serializers.ValidationError("Can only swap shifts with SCHEDULED status.")
+        return value
+
+    def validate_target_shift(self, value):
+        if value and value.status != "SCHEDULED":
+            raise serializers.ValidationError("Target shift must have SCHEDULED status.")
+        return value
+
+    def validate(self, attrs):
+        requesting = attrs.get("requesting_shift")
+        target = attrs.get("target_shift")
+        is_partial = attrs.get("is_partial", False)
+
+        if target and requesting and target.pk == requesting.pk:
+            raise serializers.ValidationError("Cannot swap a shift with itself.")
+
+        if is_partial:
+            ps = attrs.get("partial_start_time")
+            pe = attrs.get("partial_end_time")
+            if not ps or not pe:
+                raise serializers.ValidationError(
+                    "partial_start_time and partial_end_time are required for partial swaps."
+                )
+            if pe <= ps:
+                raise serializers.ValidationError(
+                    "partial_end_time must be after partial_start_time."
+                )
+            if ps < requesting.start_time or pe > requesting.end_time:
+                raise serializers.ValidationError(
+                    "Partial swap times must be within the requesting shift's time range."
+                )
+
+        return attrs
+
+
+class ShiftSwapAcceptSerializer(serializers.Serializer):
+    """Serializer for accepting a swap request."""
+
+    offered_shift = serializers.PrimaryKeyRelatedField(
+        queryset=serializers.empty,
+        required=False,
+        allow_null=True,
+        help_text="Shift offered in exchange (required for open swaps without target_shift)",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from hmis.apps.scheduling.models import Shift
+
+        self.fields["offered_shift"].queryset = Shift.objects.filter(status="SCHEDULED")
+
+
+class ShiftSwapRejectSerializer(serializers.Serializer):
+    """Serializer for rejecting a swap request."""
+
+    reason = serializers.CharField(required=False, default="", allow_blank=True)
+
+
+class ShiftSwapApproveSerializer(serializers.Serializer):
+    """Serializer for manager approval of a swap request."""
+
+    notes = serializers.CharField(required=False, default="", allow_blank=True)
