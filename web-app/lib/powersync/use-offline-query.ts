@@ -19,6 +19,7 @@
 
 'use client';
 
+import { useRef, useMemo } from 'react';
 import { useQuery, type QueryKey, type UseQueryOptions } from '@tanstack/react-query';
 import { usePowerSyncQuery } from './hooks';
 import { useSyncStatus } from '@/lib/context/sync-context';
@@ -98,6 +99,24 @@ export function useOfflineQuery<
     ...queryOptions,
   });
 
+  // --- Memoize local transform to maintain referential stability ---
+  // Without this, transform() runs on every render and returns a new object,
+  // which causes infinite re-render loops when consumers depend on the result
+  // in useEffect deps (e.g. the clinical template sync in encounter notes).
+  const transformRef = useRef(transform);
+  transformRef.current = transform;
+
+  const localTransformed = useMemo<{ data: TResult | undefined; error: Error | null }>(() => {
+    if (!useLocal || localResult.isLoading) {
+      return { data: undefined, error: null };
+    }
+    try {
+      return { data: transformRef.current(localResult.data), error: null };
+    } catch (e) {
+      return { data: undefined, error: e instanceof Error ? e : new Error('Transform failed') };
+    }
+  }, [useLocal, localResult.isLoading, localResult.data]);
+
   // --- Short-circuit: return idle result when disabled ---
   if (!isEnabled) {
     return {
@@ -113,23 +132,20 @@ export function useOfflineQuery<
 
   // --- Merge results based on active path ---
   if (useLocal) {
-    let data: TResult | undefined;
-    try {
-      data = localResult.isLoading ? undefined : transform(localResult.data);
-    } catch (e) {
+    if (localTransformed.error) {
       return {
         data: undefined,
         isLoading: false,
         isError: true,
         isFetching: false,
-        error: e instanceof Error ? e : new Error('Transform failed'),
+        error: localTransformed.error,
         refetch: localResult.refresh,
         source: 'local',
       };
     }
 
     return {
-      data,
+      data: localTransformed.data,
       isLoading: localResult.isLoading,
       isError: !!localResult.error,
       isFetching: localResult.isLoading,

@@ -48,12 +48,17 @@ export default function EncounterEditNotesPage() {
   // Fetch template if encounter has one
   const { data: existingTemplate } = useClinicalTemplate(notes?.clinical_template || 0);
 
-  // Set selected template when existing template loads
+  // Set selected template when existing template loads.
+  // Depend on the template ID (a stable primitive) rather than the object
+  // reference to avoid an infinite re-render loop if the upstream hook
+  // returns a new object on every render.
+  const existingTemplateId = existingTemplate?.id;
   useEffect(() => {
     if (existingTemplate) {
       setSelectedTemplate(existingTemplate);
     }
-  }, [existingTemplate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync once when template ID resolves
+  }, [existingTemplateId]);
 
   // Build form data from store
   const formData = useMemo((): EncounterFormData => ({
