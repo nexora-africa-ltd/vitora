@@ -439,6 +439,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "max_night_shifts_per_week",
                 "min_rest_hours",
                 "overtime_threshold_hours",
+                "require_swap_approval",
                 "updated_at",
             }
         ),

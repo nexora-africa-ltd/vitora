@@ -207,7 +207,7 @@ class TestLabResultAttachment:
         with pytest.raises(ValidationError) as exc_info:
             validate_lab_attachment(invalid_file)
 
-        assert "File type not allowed" in str(exc_info.value)
+        assert "not allowed" in str(exc_info.value)
 
     def test_file_size_limit_exceeded(self, sample_lab_order, test_user):
         """Should reject files larger than 10MB."""

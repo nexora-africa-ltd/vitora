@@ -161,6 +161,7 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "Appointment": ("scheduling", "appointment"),
     "Schedule": ("scheduling", "schedule"),
     "Shift": ("scheduling", "shift"),
+    "ShiftSwapRequest": ("scheduling", "shiftswaprequest"),
     "CheckIn": ("checkin", "checkin"),
     # inventory
     "Supplier": ("inventory", "supplier"),
