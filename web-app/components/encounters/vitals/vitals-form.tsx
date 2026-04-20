@@ -102,9 +102,15 @@ export function VitalsForm({
   const criticalAlerts = alerts.filter(a => a.severity === 'CRITICAL');
   const warningAlerts = alerts.filter(a => a.severity === 'WARNING');
 
+  // Track whether the form is being reset from external data to avoid
+  // an infinite loop: reset → watch fires → onChange → parent updates →
+  // data prop changes → reset again.
+  const isResettingRef = React.useRef(false);
+
   // Sync form changes to parent
   useEffect(() => {
     const subscription = form.watch((values, { name }) => {
+      if (isResettingRef.current) return;
       if (name && values[name] !== undefined) {
         // Map the field to EncounterFormData field
         const fieldMapping: Record<string, keyof EncounterFormData> = {
@@ -128,6 +134,7 @@ export function VitalsForm({
 
   // Reset form when external data changes
   useEffect(() => {
+    isResettingRef.current = true;
     form.reset({
       temperature: data.temperature ?? null,
       pulse: data.pulse ?? null,
@@ -138,6 +145,9 @@ export function VitalsForm({
       weight: data.weight ?? null,
       height: data.height ?? null,
     }, { keepDirty: true });
+    // Allow the watch subscription to fire for user-initiated changes again
+    // after React finishes processing the reset.
+    requestAnimationFrame(() => { isResettingRef.current = false; });
   }, [data, form]);
 
   // Calculate BMI
