@@ -9,6 +9,7 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.encounters.serializers import (
+    ClaimedEncounterSerializer,
     DiagnosisNestedSerializer,
     DiagnosisSerializer,
     EncounterListSerializer,
@@ -74,6 +75,33 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "chief_complaint",
+                "clinic_name",
+                "clinic_type",
+                "clinic_visit_id",
+                "created_at",
+                "disposition",
+                "encounter_date",
+                "encounter_type",
+                "finalized_at",
+                "has_critical_vitals",
+                "id",
+                "patient",
+                "patient_mrn",
+                "patient_name",
+                "status",
+                "visit_reason",
+            }
+        ),
+    ),
+    (
+        ClaimedEncounterSerializer,
+        frozenset(
+            {
+                "assigned_clinician",
+                "assigned_clinician_name",
+                "assigned_clinician_username",
+                "chief_complaint",
+                "claimed_at",
                 "clinic_name",
                 "clinic_type",
                 "clinic_visit_id",

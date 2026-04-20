@@ -804,3 +804,30 @@ class EncounterListSerializer(serializers.ModelSerializer):
         if not obj.clinic_visit.session:
             return None
         return obj.clinic_visit.session.clinic.clinic_type
+
+
+class ClaimedEncounterSerializer(EncounterListSerializer):
+    """Lightweight serializer for claimed encounter lists."""
+
+    assigned_clinician = serializers.PrimaryKeyRelatedField(read_only=True)
+    assigned_clinician_username = serializers.CharField(
+        source="assigned_clinician.username", read_only=True, allow_null=True
+    )
+    assigned_clinician_name = serializers.SerializerMethodField()
+    claimed_at = serializers.DateTimeField(read_only=True)
+
+    class Meta(EncounterListSerializer.Meta):
+        fields = [
+            *EncounterListSerializer.Meta.fields,
+            "assigned_clinician",
+            "assigned_clinician_username",
+            "assigned_clinician_name",
+            "claimed_at",
+        ]
+        read_only_fields = fields
+
+    def get_assigned_clinician_name(self, obj: Encounter) -> str | None:
+        """Get the full name of the assigned clinician."""
+        if obj.assigned_clinician:
+            return obj.assigned_clinician.get_full_name() or obj.assigned_clinician.username
+        return None

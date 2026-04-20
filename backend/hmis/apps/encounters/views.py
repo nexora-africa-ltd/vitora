@@ -28,6 +28,7 @@ from .models import (
     TreatmentPlanTemplate,
 )
 from .serializers import (
+    ClaimedEncounterSerializer,
     DiagnosisSerializer,
     EncounterListSerializer,
     EncounterSerializer,
@@ -303,6 +304,8 @@ class EncounterViewSet(TenantScopedViewMixin, ModelHistoryMixin, viewsets.ModelV
         """
         if self.action == "list":
             return EncounterListSerializer
+        if self.action in {"my_claimed", "all_claimed"}:
+            return ClaimedEncounterSerializer
         return EncounterSerializer
 
     def retrieve(self, request, *args, **kwargs):
