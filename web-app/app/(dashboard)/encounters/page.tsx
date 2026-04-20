@@ -181,11 +181,11 @@ export default function EncountersPage() {
   });
 
   // Active encounters queries
-  const { data: myClaimedData, isLoading: isMyClaimedLoading } = useMyClaimedEncounters(
+  const { data: myClaimedData, isLoading: isMyClaimedLoading, error: myClaimedError } = useMyClaimedEncounters(
     undefined,
     { pollingInterval: activeTab === 'active' ? 15000 : false }
   );
-  const { data: allClaimedData, isLoading: isAllClaimedLoading } = useAllClaimedEncounters(
+  const { data: allClaimedData, isLoading: isAllClaimedLoading, error: allClaimedError } = useAllClaimedEncounters(
     undefined,
     { pollingInterval: activeTab === 'active' && !showOnlyMine ? 15000 : false, enabled: !showOnlyMine }
   );
@@ -214,6 +214,7 @@ export default function EncountersPage() {
   const activeEncounters = showOnlyMine ? myClaimedData?.results : allClaimedData?.results;
   const activeEncountersCount = showOnlyMine ? myClaimedData?.count : allClaimedData?.count;
   const isActiveLoading = showOnlyMine ? isMyClaimedLoading : isAllClaimedLoading;
+  const activeError = showOnlyMine ? myClaimedError : allClaimedError;
 
   const totalPages = data ? Math.ceil(data.count / pageSize) : 0;
 
@@ -310,6 +311,18 @@ export default function EncountersPage() {
                 </Card>
               ))}
             </div>
+          ) : activeError ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Activity className="h-12 w-12 text-destructive/60 mb-4" />
+                <p className="text-lg font-medium text-destructive">
+                  Failed to load active encounters
+                </p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-md text-center">
+                  {activeError.message || 'An unexpected error occurred. Please try refreshing the page.'}
+                </p>
+              </CardContent>
+            </Card>
           ) : !activeEncounters?.length ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
