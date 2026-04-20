@@ -549,21 +549,36 @@ def _get_mch_stats(today, facility=None, organization=None) -> dict:
 
 
 def _get_theatre_stats(today, facility=None, organization=None) -> dict:
-    """Get theatre / scheduling statistics."""
+    """Get theatre / operating room statistics."""
     try:
-        from hmis.apps.scheduling.models import Appointment
+        from hmis.apps.theatre.models import SurgeryCase
 
         scope = _build_scope_filter(facility, organization)
-        today_appointments = Appointment.objects.filter(
-            scheduled_start__date=today,
-            appointment_type="PROCEDURE",
+        today_cases = SurgeryCase.objects.filter(
+            scheduled_date=today,
             **scope,
         )
 
         return {
-            "scheduled_today": today_appointments.count(),
-            "in_progress": today_appointments.filter(status="IN_PROGRESS").count(),
-            "completed_today": today_appointments.filter(status="COMPLETED").count(),
+            "scheduled_today": today_cases.filter(
+                status__in=[
+                    SurgeryCase.CaseStatus.SCHEDULED,
+                    SurgeryCase.CaseStatus.PRE_OP,
+                    SurgeryCase.CaseStatus.IN_THEATRE,
+                    SurgeryCase.CaseStatus.IN_SURGERY,
+                    SurgeryCase.CaseStatus.IN_PACU,
+                    SurgeryCase.CaseStatus.DISCHARGED,
+                ]
+            ).count(),
+            "in_progress": today_cases.filter(
+                status__in=[
+                    SurgeryCase.CaseStatus.IN_THEATRE,
+                    SurgeryCase.CaseStatus.IN_SURGERY,
+                ]
+            ).count(),
+            "completed_today": today_cases.filter(
+                status=SurgeryCase.CaseStatus.DISCHARGED
+            ).count(),
         }
     except Exception:
         return {
