@@ -202,3 +202,21 @@ class ImagingEvents:
     ORDER_CREATED = "imaging.order.created"
     ORDER_ITEM_CREATED = "imaging.order_item.created"
     RESULT_COMPLETED = "imaging.result.completed"
+
+
+class TheatreEvents:
+    """Theatre / Operating Room domain event types."""
+
+    CASE_CREATED = "theatre.case.created"
+    CASE_SCHEDULED = "theatre.case.scheduled"
+    CASE_STATUS_CHANGED = "theatre.case.status_changed"
+    CASE_CANCELLED = "theatre.case.cancelled"
+    CASE_POSTPONED = "theatre.case.postponed"
+    TEAM_ASSIGNED = "theatre.team.assigned"
+    CHECKLIST_SIGN_IN = "theatre.checklist.sign_in"
+    CHECKLIST_TIME_OUT = "theatre.checklist.time_out"
+    CHECKLIST_SIGN_OUT = "theatre.checklist.sign_out"
+    SURGERY_STARTED = "theatre.surgery.started"
+    SURGERY_COMPLETED = "theatre.surgery.completed"
+    PACU_ARRIVED = "theatre.pacu.arrived"
+    PACU_DISCHARGED = "theatre.pacu.discharged"
