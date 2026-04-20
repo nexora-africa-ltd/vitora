@@ -846,7 +846,14 @@ class PatientViewSet(
             blood_pressure="",
         )
         if cutoff:
-            encounter_qs = encounter_qs.filter(created_at__gte=cutoff)
+            # Use vitals_recorded_at when available; fall back to created_at.
+            # This avoids filtering out encounters where vitals were recorded
+            # after the initial encounter creation (e.g. via triage → edit flow).
+            from django.db.models.functions import Coalesce
+
+            encounter_qs = encounter_qs.alias(
+                vitals_ts=Coalesce("vitals_recorded_at", "created_at"),
+            ).filter(vitals_ts__gte=cutoff)
 
         for enc in encounter_qs:
             ts = enc.vitals_recorded_at or enc.created_at
