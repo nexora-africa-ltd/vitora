@@ -1022,7 +1022,9 @@ export type SchedulingEventType =
   | 'scheduling.swap_completed'
   | 'scheduling.swap_rejected'
   | 'scheduling.swap_cancelled'
-  | 'scheduling.swap_expired';
+  | 'scheduling.swap_expired'
+  | 'scheduling.shift_reminder'
+  | 'scheduling.on_duty_update';
 
 /**
  * Scheduling WebSocket message structure
@@ -1107,6 +1109,26 @@ export function useSchedulingSocket(
           queryClient.invalidateQueries({ queryKey: ['shift-swaps'] });
           queryClient.invalidateQueries({ queryKey: ['shift-swaps-available'] });
           queryClient.invalidateQueries({ queryKey: ['shift-swaps-my'] });
+          queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
+          break;
+
+        case 'scheduling.shift_reminder': {
+          // Show toast notification for upcoming shift
+          const reminderData = message.data as { title?: string; message?: string; shift_type?: string; start_time?: string };
+          import('@/lib/hooks/use-toast').then(({ toast }) => {
+            toast({
+              title: reminderData.title ?? '⏰ Shift starting soon',
+              description: reminderData.message ?? `Your shift starts at ${reminderData.start_time ?? 'soon'}. Please clock in.`,
+              duration: 15000,
+            });
+          });
+          queryClient.invalidateQueries({ queryKey: ['my-today-shift'] });
+          queryClient.invalidateQueries({ queryKey: ['notifications'] });
+          break;
+        }
+
+        case 'scheduling.on_duty_update':
+          queryClient.invalidateQueries({ queryKey: ['on-duty'] });
           queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
           break;
       }

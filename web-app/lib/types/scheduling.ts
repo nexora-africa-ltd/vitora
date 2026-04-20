@@ -381,6 +381,46 @@ export interface CrossFacilityConflict {
 
 export type AttendanceStatus = 'NO_SHIFT' | 'UPCOMING' | 'SHOULD_CLOCK_IN' | 'CLOCKED_IN' | 'ON_BREAK' | 'COMPLETED';
 
+// =============================================================================
+// On-Duty Overview (Manager Widget)
+// =============================================================================
+
+export interface OnDutyStaffEntry {
+  shift_id: number;
+  staff_name: string;
+  staff_resource_id: number;
+  shift_type: ShiftType;
+  start_time: string;
+  end_time: string;
+  status: ShiftStatus;
+  department: string;
+  room_name: string | null;
+  clinic_name: string | null;
+  late_minutes: number;
+  started_at: string | null;
+  on_break?: boolean;
+  minutes_overdue?: number;
+  starts_in_minutes?: number;
+}
+
+export interface OnDutySummary {
+  clocked_in: number;
+  late: number;
+  absent: number;
+  upcoming: number;
+  completed: number;
+  total: number;
+}
+
+export interface OnDutyResponse {
+  clocked_in: OnDutyStaffEntry[];
+  late: OnDutyStaffEntry[];
+  absent: OnDutyStaffEntry[];
+  upcoming: OnDutyStaffEntry[];
+  summary: OnDutySummary;
+  as_of: string;
+}
+
 export interface MyTodayResponse {
   shifts: Shift[];
   attendance_status: AttendanceStatus;

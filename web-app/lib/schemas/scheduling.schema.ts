@@ -290,6 +290,46 @@ export const StaffConstraintSchema = z.object({
 export const PaginatedStaffConstraintSchema = createPaginatedSchema(StaffConstraintSchema);
 
 // =============================================================================
+// On-Duty Overview (Manager Widget)
+// =============================================================================
+
+export const OnDutyStaffEntrySchema = z.object({
+  shift_id: z.number(),
+  staff_name: z.string(),
+  staff_resource_id: z.number(),
+  shift_type: ShiftTypeSchema,
+  start_time: z.string(),
+  end_time: z.string(),
+  status: ShiftStatusSchema,
+  department: z.string(),
+  room_name: z.string().nullable(),
+  clinic_name: z.string().nullable(),
+  late_minutes: z.number(),
+  started_at: z.string().nullable(),
+  on_break: z.boolean().optional(),
+  minutes_overdue: z.number().optional(),
+  starts_in_minutes: z.number().optional(),
+});
+
+export const OnDutySummarySchema = z.object({
+  clocked_in: z.number(),
+  late: z.number(),
+  absent: z.number(),
+  upcoming: z.number(),
+  completed: z.number(),
+  total: z.number(),
+});
+
+export const OnDutyResponseSchema = z.object({
+  clocked_in: z.array(OnDutyStaffEntrySchema),
+  late: z.array(OnDutyStaffEntrySchema),
+  absent: z.array(OnDutyStaffEntrySchema),
+  upcoming: z.array(OnDutyStaffEntrySchema),
+  summary: OnDutySummarySchema,
+  as_of: z.string(),
+});
+
+// =============================================================================
 // Attendance / Clock-In
 // =============================================================================
 

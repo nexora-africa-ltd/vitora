@@ -47,6 +47,13 @@ import { useFacility } from '@/lib/context/facility-context';
 import { getClinicianHonorific } from '@/lib/utils/clinician-role';
 import { ShiftGreetingLine, TodayAssignmentCard, useMyTodayShift } from '@/components/dashboard/shift-assignment';
 
+const OnDutyWidget = dynamic(
+  () => import('@/components/dashboard/on-duty-widget').then((mod) => mod.OnDutyWidget),
+  {
+    loading: () => <WidgetTableSkeleton rows={4} />,
+  }
+);
+
 type DashboardStatCard = {
   title: string;
   value: string | number;
@@ -147,7 +154,7 @@ export default function DashboardPage() {
   useDashboardSocket(facility?.id ?? null);
   const isSupervisor = useIsSupervisor();
   const user = useUser();
-  const { canAccessModule } = usePermissions();
+  const { canAccessModule, canPerformAction } = usePermissions();
   const canViewPatients = canAccessModule('patients');
   const canViewTriage = canAccessModule('triage');
   const canViewConsultations = canAccessModule('encounters');
@@ -164,6 +171,7 @@ export default function DashboardPage() {
   const canViewProcedures = canAccessModule('procedures');
   const canViewAlliedHealth = canAccessModule('allied_health');
   const canViewAdmin = canAccessModule('admin');
+  const canManageSchedules = canPerformAction('scheduling.manage_schedules');
   const { data: staffProfile } = useMyStaffProfile();
   const { refresh, isRefreshing } = usePageRefresh();
 
@@ -587,6 +595,24 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-6 xl:col-span-4">
+            {canManageSchedules && (
+              <Card className="overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CardTitle className="text-base sm:text-lg">
+                      <Link href="/scheduling/roster" className="underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-primary sm:no-underline">
+                        Staff On Duty
+                      </Link>
+                    </CardTitle>
+                    <HelpPopover content="Live view of who's clocked in, who's late, and who's absent today. Updates every 30 seconds." />
+                  </div>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  <OnDutyWidget enabled={canManageSchedules} />
+                </CardContent>
+              </Card>
+            )}
+
             {canViewSurveillance && (
               <Card className="overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between gap-2">

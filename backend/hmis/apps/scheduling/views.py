@@ -2339,6 +2339,139 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
         )
         return response
 
+    @action(detail=False, methods=["get"], url_path="on-duty")
+    def on_duty(self, request):
+        """
+        Live on-duty overview for managers / charge nurses.
+
+        Returns a summary of today's shift statuses grouped into:
+        - clocked_in: staff currently ACTIVE or ON_BREAK
+        - late: staff whose shift has started but not yet clocked in (SCHEDULED, past start_time)
+        - absent: staff marked ABSENT
+        - upcoming: staff with SCHEDULED shifts that haven't started yet
+
+        Requires ``scheduling.manage_schedules`` permission.
+        """
+        from datetime import date as date_type
+
+        if (
+            not request.user.has_perm("scheduling.manage_schedules")
+            and not request.user.is_superuser
+        ):
+            return Response(
+                {"error": "Permission denied"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        today = date_type.today()
+        now = timezone.now()
+
+        non_working_types = {
+            "OFF",
+            "DAY_OFF",
+            "NIGHT_OFF",
+            "AFTERNOON_OFF",
+            "LEAVE",
+            "SICK_LEAVE",
+            "REST",
+        }
+
+        shifts = (
+            Shift.objects.filter(facility=facility, shift_date=today)
+            .exclude(shift_type__in=non_working_types)
+            .exclude(status="CANCELLED")
+            .select_related(
+                "staff_resource",
+                "staff_resource__staff_profile",
+                "department",
+                "room",
+                "clinic",
+            )
+            .order_by("start_time")
+        )
+
+        clocked_in = []
+        late = []
+        absent = []
+        upcoming = []
+
+        for shift in shifts:
+            entry = {
+                "shift_id": shift.id,
+                "staff_name": shift.staff_resource.name,
+                "staff_resource_id": shift.staff_resource_id,
+                "shift_type": shift.shift_type,
+                "start_time": str(shift.start_time),
+                "end_time": str(shift.end_time),
+                "status": shift.status,
+                "department": (
+                    shift.department.name
+                    if shift.department
+                    else shift.staff_resource.department.name
+                    if shift.staff_resource.department
+                    else ""
+                ),
+                "room_name": shift.room.name if shift.room else None,
+                "clinic_name": shift.clinic.name if shift.clinic else None,
+                "late_minutes": shift.late_minutes,
+                "started_at": shift.started_at.isoformat() if shift.started_at else None,
+            }
+
+            if shift.status in ("ACTIVE", "ON_BREAK"):
+                entry["on_break"] = shift.status == "ON_BREAK"
+                clocked_in.append(entry)
+            elif shift.status == "ABSENT":
+                absent.append(entry)
+            elif shift.status == "SCHEDULED":
+                shift_start_dt = (
+                    timezone.make_aware(datetime.combine(shift.shift_date, shift.start_time))
+                    if timezone.is_naive(datetime.combine(shift.shift_date, shift.start_time))
+                    else datetime.combine(shift.shift_date, shift.start_time)
+                )
+                if now >= shift_start_dt:
+                    entry["minutes_overdue"] = int((now - shift_start_dt).total_seconds() / 60)
+                    late.append(entry)
+                else:
+                    entry["starts_in_minutes"] = int((shift_start_dt - now).total_seconds() / 60)
+                    upcoming.append(entry)
+
+        # Completed count (for context)
+        completed_count = (
+            Shift.objects.filter(facility=facility, shift_date=today, status="COMPLETED")
+            .exclude(shift_type__in=non_working_types)
+            .count()
+        )
+
+        return Response(
+            {
+                "clocked_in": clocked_in,
+                "late": late,
+                "absent": absent,
+                "upcoming": upcoming,
+                "summary": {
+                    "clocked_in": len(clocked_in),
+                    "late": len(late),
+                    "absent": len(absent),
+                    "upcoming": len(upcoming),
+                    "completed": completed_count,
+                    "total": len(clocked_in)
+                    + len(late)
+                    + len(absent)
+                    + len(upcoming)
+                    + completed_count,
+                },
+                "as_of": now.isoformat(),
+            }
+        )
+
     @action(detail=False, methods=["post"], url_path="qr-clock-in")
     def qr_clock_in(self, request):
         """
