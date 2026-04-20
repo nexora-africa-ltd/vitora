@@ -153,7 +153,7 @@ export default function EncounterDetailPage() {
 
   // Vitals history for trend chart
   const { data: vitalsHistory, isLoading: isLoadingVitals } = usePatientVitalsHistory(
-    encounter?.patient ?? 0, '24h'
+    encounter?.patient ?? 0, 'all'
   );
 
   // Computed counts for grouped tabs
