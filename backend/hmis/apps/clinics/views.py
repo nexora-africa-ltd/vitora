@@ -394,6 +394,157 @@ class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         serializer = MonthlyClinicReportSerializer(report)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=["post"], url_path="seed-defaults")
+    def seed_defaults(self, request):
+        """Seed default clinics for the current facility.
+
+        Creates a standard set of Kenyan healthcare clinics (OPD, Eye, Dental,
+        ANC, etc.) scoped to the user's active facility.  Clinics that already
+        exist (matched by code) are skipped.
+
+        Returns:
+            201 with { created: [...], skipped: int }
+        """
+        self._resolve_tenant_context()
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+
+        if not facility:
+            return Response(
+                {"detail": "No facility in session context."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        default_clinics = [
+            # Core clinics (from migration 0005)
+            {
+                "code": "OPD-DEFAULT",
+                "name": "General OPD",
+                "clinic_type": "GENERAL_OPD",
+                "description": "General outpatient department",
+            },
+            {
+                "code": "EYE-DEFAULT",
+                "name": "Eye Clinic",
+                "clinic_type": "EYE",
+                "description": "Eye/ophthalmology services",
+            },
+            {
+                "code": "DENTAL-DEFAULT",
+                "name": "Dental Clinic",
+                "clinic_type": "DENTAL",
+                "description": "Dental and oral health services",
+            },
+            {
+                "code": "CCC-DEFAULT",
+                "name": "Comprehensive Care Clinic",
+                "clinic_type": "CCC",
+                "description": "HIV comprehensive care clinic",
+                "is_sensitive": True,
+                "required_permission": "clinics.view_ccc_clinic",
+            },
+            {
+                "code": "ANC-DEFAULT",
+                "name": "Antenatal Clinic",
+                "clinic_type": "ANC",
+                "description": "Antenatal care services",
+            },
+            {
+                "code": "PNC-DEFAULT",
+                "name": "Postnatal Clinic",
+                "clinic_type": "PNC",
+                "description": "Postnatal care services",
+            },
+            {
+                "code": "FP-DEFAULT",
+                "name": "Family Planning Clinic",
+                "clinic_type": "FP",
+                "description": "Family planning services",
+            },
+            {
+                "code": "CWC-DEFAULT",
+                "name": "Child Welfare Clinic",
+                "clinic_type": "CWC",
+                "description": "Child welfare and growth monitoring services",
+            },
+            {
+                "code": "IMM-DEFAULT",
+                "name": "Immunization Clinic",
+                "clinic_type": "IMMUNIZATION",
+                "description": "Childhood immunization services",
+            },
+            # Additional clinics (from migration 0006)
+            {
+                "code": "NUTRITION-DEFAULT",
+                "name": "Nutrition Clinic",
+                "clinic_type": "NUTRITION",
+                "description": "Nutrition assessment and counselling services",
+            },
+            {
+                "code": "ENT-DEFAULT",
+                "name": "ENT Clinic",
+                "clinic_type": "ENT",
+                "description": "Ear, Nose and Throat services",
+            },
+            {
+                "code": "SURGICAL-DEFAULT",
+                "name": "Surgical Outpatient Clinic",
+                "clinic_type": "SURGICAL",
+                "description": "Surgical outpatient assessment and follow-up",
+                "requires_referral": True,
+            },
+            {
+                "code": "TB-DEFAULT",
+                "name": "TB Clinic",
+                "clinic_type": "TB",
+                "description": "Tuberculosis assessment and treatment services",
+                "requires_referral": True,
+            },
+            {
+                "code": "DIABETIC-DEFAULT",
+                "name": "Diabetic Clinic",
+                "clinic_type": "DIABETIC",
+                "description": "Diabetes care and NCD follow-up",
+                "requires_referral": True,
+            },
+            {
+                "code": "HYPERTENSION-DEFAULT",
+                "name": "Hypertension Clinic",
+                "clinic_type": "HYPERTENSION",
+                "description": "Hypertension care and NCD follow-up",
+                "requires_referral": True,
+            },
+        ]
+
+        created = []
+        skipped = 0
+        for clinic_data in default_clinics:
+            code = f"{clinic_data['code']}-F{facility.pk}"
+            if Clinic.objects.filter(code=code, facility=facility).exists():
+                skipped += 1
+                continue
+
+            Clinic.objects.create(
+                code=code,
+                name=clinic_data["name"],
+                clinic_type=clinic_data["clinic_type"],
+                description=clinic_data.get("description", ""),
+                is_sensitive=clinic_data.get("is_sensitive", False),
+                required_permission=clinic_data.get("required_permission", ""),
+                requires_referral=clinic_data.get("requires_referral", False),
+                accepts_walk_ins=True,
+                triage_required=True,
+                status="ACTIVE",
+                facility=facility,
+                organization=organization,
+            )
+            created.append({"code": code, "name": clinic_data["name"]})
+
+        return Response(
+            {"created": created, "skipped": skipped, "total": len(created) + skipped},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
 
 # =============================================================================
 # ClinicSessionViewSet (Nested under Clinic)
