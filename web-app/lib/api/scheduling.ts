@@ -4,6 +4,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { z } from 'zod';
 import {
   PaginatedResourceListSchema,
   PaginatedScheduleListSchema,
@@ -26,6 +27,9 @@ import {
   ClockOutResponseSchema,
   AttendanceTrendsResponseSchema,
   QRTokenResponseSchema,
+  ShiftSwapRequestSchema,
+  ShiftSwapListItemSchema,
+  PaginatedShiftSwapListSchema,
 } from '@/lib/schemas/scheduling.schema';
 import type {
   Resource,
@@ -67,6 +71,12 @@ import type {
   QRTokenResponse,
   QRClockInPayload,
   PayrollExportParams,
+  ShiftSwapRequest,
+  ShiftSwapListItem,
+  ShiftSwapCreateData,
+  ShiftSwapAcceptData,
+  ShiftSwapRejectData,
+  ShiftSwapApproveData,
 } from '@/lib/types/scheduling';
 
 const BASE_URL = '/api/scheduling';
@@ -550,5 +560,95 @@ export const attendanceApi = {
       responseType: 'blob',
     });
     return response.data;
+  },
+};
+
+// =============================================================================
+// Shift Swaps API
+// =============================================================================
+
+export interface PaginatedShiftSwaps {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ShiftSwapListItem[];
+}
+
+export const shiftSwapsApi = {
+  /** List all swap requests (paginated). */
+  list: async (params?: Record<string, unknown>): Promise<PaginatedShiftSwaps> => {
+    const response = await apiClient.get(`${BASE_URL}/shift-swaps/`, { params });
+    return parseResponse(PaginatedShiftSwapListSchema, response.data, {
+      context: 'shiftSwapsApi.list',
+    });
+  },
+
+  /** Get swap request detail. */
+  get: async (id: number): Promise<ShiftSwapRequest> => {
+    const response = await apiClient.get(`${BASE_URL}/shift-swaps/${id}/`);
+    return parseResponse(ShiftSwapRequestSchema, response.data, {
+      context: 'shiftSwapsApi.get',
+    });
+  },
+
+  /** Create a swap request. */
+  create: async (data: ShiftSwapCreateData): Promise<ShiftSwapRequest> => {
+    const response = await apiClient.post(`${BASE_URL}/shift-swaps/`, data);
+    return parseResponse(ShiftSwapRequestSchema, response.data, {
+      context: 'shiftSwapsApi.create',
+    });
+  },
+
+  /** Delete a PENDING swap request. */
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`${BASE_URL}/shift-swaps/${id}/`);
+  },
+
+  /** Accept a swap request. */
+  accept: async (id: number, data?: ShiftSwapAcceptData): Promise<ShiftSwapRequest> => {
+    const response = await apiClient.post(`${BASE_URL}/shift-swaps/${id}/accept/`, data ?? {});
+    return parseResponse(ShiftSwapRequestSchema, response.data, {
+      context: 'shiftSwapsApi.accept',
+    });
+  },
+
+  /** Reject a swap request. */
+  reject: async (id: number, data?: ShiftSwapRejectData): Promise<ShiftSwapRequest> => {
+    const response = await apiClient.post(`${BASE_URL}/shift-swaps/${id}/reject/`, data ?? {});
+    return parseResponse(ShiftSwapRequestSchema, response.data, {
+      context: 'shiftSwapsApi.reject',
+    });
+  },
+
+  /** Approve a swap request (manager). */
+  approve: async (id: number, data?: ShiftSwapApproveData): Promise<ShiftSwapRequest> => {
+    const response = await apiClient.post(`${BASE_URL}/shift-swaps/${id}/approve/`, data ?? {});
+    return parseResponse(ShiftSwapRequestSchema, response.data, {
+      context: 'shiftSwapsApi.approve',
+    });
+  },
+
+  /** Cancel own swap request. */
+  cancel: async (id: number): Promise<ShiftSwapRequest> => {
+    const response = await apiClient.post(`${BASE_URL}/shift-swaps/${id}/cancel/`);
+    return parseResponse(ShiftSwapRequestSchema, response.data, {
+      context: 'shiftSwapsApi.cancel',
+    });
+  },
+
+  /** List open swap requests the current user can accept. */
+  available: async (): Promise<ShiftSwapListItem[]> => {
+    const response = await apiClient.get(`${BASE_URL}/shift-swaps/available/`);
+    return parseResponse(z.array(ShiftSwapListItemSchema), response.data, {
+      context: 'shiftSwapsApi.available',
+    });
+  },
+
+  /** List swap requests created by or targeting the current user. */
+  myRequests: async (): Promise<ShiftSwapListItem[]> => {
+    const response = await apiClient.get(`${BASE_URL}/shift-swaps/my-requests/`);
+    return parseResponse(z.array(ShiftSwapListItemSchema), response.data, {
+      context: 'shiftSwapsApi.myRequests',
+    });
   },
 };

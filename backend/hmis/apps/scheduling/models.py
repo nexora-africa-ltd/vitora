@@ -1949,6 +1949,11 @@ class SchedulingSettings(FacilityScopedModel, TimeStampedModel):
         default=40.0,
         help_text="Weekly hours threshold after which shifts count as overtime",
     )
+    require_swap_approval = models.BooleanField(
+        default=True,
+        help_text="When True, shift swaps require manager approval after peer acceptance. "
+        "When False, accepted swaps are completed automatically.",
+    )
     enforce_constraints = models.BooleanField(
         default=True,
         help_text="When True, the roster grid warns on constraint violations",
@@ -2040,3 +2045,390 @@ class StaffConstraint(FacilityScopedModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.staff_resource.name} — {self.get_constraint_type_display()}"
+
+
+# =============================================================================
+# Phase 4: Shift Swap Requests
+# =============================================================================
+
+
+class ShiftSwapRequest(FacilityScopedModel, TimeStampedModel):
+    """
+    A request by a staff member to swap one of their shifts with another.
+
+    Supports both **directed swaps** (targeting a specific shift/staff member)
+    and **open swaps** (any eligible colleague can accept). Partial swaps are
+    allowed: the requester may offer only a portion of their shift.
+
+    Status Flow:
+        PENDING  → ACCEPTED → APPROVED → COMPLETED
+           │          │          │
+           ▼          ▼          ▼
+        CANCELLED  REJECTED   REJECTED
+           │
+           ▼
+        EXPIRED
+
+    When ``require_swap_approval`` is False on SchedulingSettings, the APPROVED
+    step is skipped and an accepted swap moves straight to COMPLETED.
+    """
+
+    class SwapStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        APPROVED = "APPROVED", "Approved"
+        COMPLETED = "COMPLETED", "Completed"
+        REJECTED = "REJECTED", "Rejected"
+        CANCELLED = "CANCELLED", "Cancelled"
+        EXPIRED = "EXPIRED", "Expired"
+
+    VALID_TRANSITIONS = {
+        "PENDING": ["ACCEPTED", "CANCELLED", "EXPIRED", "REJECTED"],
+        "ACCEPTED": ["APPROVED", "COMPLETED", "REJECTED"],
+        "APPROVED": ["COMPLETED", "REJECTED"],
+        "COMPLETED": [],
+        "REJECTED": [],
+        "CANCELLED": [],
+        "EXPIRED": [],
+    }
+
+    # --- Core relationships ---------------------------------------------------
+
+    requesting_shift = models.ForeignKey(
+        Shift,
+        on_delete=models.PROTECT,
+        related_name="swap_requests_as_requester",
+        help_text="The shift the requester wants to give up (or partially give up)",
+    )
+    target_shift = models.ForeignKey(
+        Shift,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="swap_requests_as_target",
+        help_text="Specific shift to swap with (null = open request)",
+    )
+    requester = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="shift_swap_requests_created",
+        help_text="Staff member initiating the swap",
+    )
+    target_staff = models.ForeignKey(
+        Resource,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shift_swap_requests_targeted",
+        limit_choices_to={"resource_type": "PERSON"},
+        help_text="Specific staff member targeted (null = open to anyone)",
+    )
+
+    # --- Partial swap fields --------------------------------------------------
+
+    is_partial = models.BooleanField(
+        default=False,
+        help_text="True if swapping only a portion of the shift",
+    )
+    partial_start_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Start time of the partial segment being swapped",
+    )
+    partial_end_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="End time of the partial segment being swapped",
+    )
+
+    # --- Status & lifecycle ---------------------------------------------------
+
+    status = models.CharField(
+        max_length=20,
+        choices=SwapStatus.choices,
+        default=SwapStatus.PENDING,
+        db_index=True,
+    )
+    reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Why the swap is needed",
+    )
+    rejection_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for rejection (by peer or manager)",
+    )
+
+    # --- Acceptance -----------------------------------------------------------
+
+    accepted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shift_swap_requests_accepted",
+        help_text="User who accepted the swap (target peer)",
+    )
+    accepted_shift = models.ForeignKey(
+        Shift,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="swap_accepted_as_offer",
+        help_text="The shift offered by the acceptor in exchange (for open swaps)",
+    )
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    # --- Manager review -------------------------------------------------------
+
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shift_swap_requests_reviewed",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    # --- Expiry ---------------------------------------------------------------
+
+    expires_at = models.DateTimeField(
+        help_text="Auto-expire if no response by this time",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        verbose_name = "Shift Swap Request"
+        verbose_name_plural = "Shift Swap Requests"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "expires_at"]),
+            models.Index(fields=["requesting_shift", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        target = self.target_staff.name if self.target_staff else "open"
+        return (
+            f"Swap #{self.pk}: {self.requesting_shift.staff_resource.name} "
+            f"({self.requesting_shift.shift_date}) → {target} [{self.status}]"
+        )
+
+    # --- State machine --------------------------------------------------------
+
+    def _transition_to(self, new_status: str) -> None:
+        valid_next = self.VALID_TRANSITIONS.get(self.status, [])
+        if new_status not in valid_next:
+            raise ValueError(
+                f"Cannot transition from {self.status} to {new_status}. "
+                f"Valid transitions: {valid_next}"
+            )
+        self.status = new_status
+
+    def accept(self, user, offered_shift=None) -> None:
+        """Peer accepts the swap request.
+
+        If the facility's ``require_swap_approval`` is False, the swap
+        is completed immediately.
+        """
+        self._transition_to(self.SwapStatus.ACCEPTED)
+        self.accepted_by = user
+        self.accepted_at = timezone.now()
+        if offered_shift:
+            self.accepted_shift = offered_shift
+
+        # Check if auto-approval is enabled
+        settings_obj = SchedulingSettings.objects.filter(facility=self.facility).first()
+        if settings_obj and not settings_obj.require_swap_approval:
+            self.status = self.SwapStatus.COMPLETED
+            self.reviewed_at = timezone.now()
+            self._execute_swap()
+
+        self.save()
+
+    def approve(self, user, _notes: str = "") -> None:
+        """Manager approves the swap."""
+        self._transition_to(self.SwapStatus.APPROVED)
+        self.reviewed_by = user
+        self.reviewed_at = timezone.now()
+        self.save()
+        # Execute the actual swap
+        self._execute_swap()
+        self._transition_to(self.SwapStatus.COMPLETED)
+        self.save()
+
+    def reject(self, user, reason: str = "") -> None:
+        """Peer or manager rejects the swap."""
+        self._transition_to(self.SwapStatus.REJECTED)
+        self.rejection_reason = reason
+        self.reviewed_by = user
+        self.reviewed_at = timezone.now()
+        self.save()
+
+    def cancel(self) -> None:
+        """Requester cancels their own swap request."""
+        self._transition_to(self.SwapStatus.CANCELLED)
+        self.save()
+
+    def expire(self) -> None:
+        """System expires an unanswered request."""
+        self._transition_to(self.SwapStatus.EXPIRED)
+        self.save()
+
+    # --- Swap execution -------------------------------------------------------
+
+    def _execute_swap(self) -> None:
+        """Physically swap the staff assignments on the underlying Shift records.
+
+        For partial swaps, the original shift is split: a new Shift is created
+        for the swapped segment and reassigned to the acceptor's resource.
+        """
+        requester_shift = self.requesting_shift
+        acceptor_shift = self.accepted_shift or self.target_shift
+
+        if self.is_partial:
+            self._execute_partial_swap(requester_shift, acceptor_shift)
+        else:
+            self._execute_full_swap(requester_shift, acceptor_shift)
+
+    def _execute_full_swap(self, shift_a, shift_b) -> None:
+        """Swap staff_resource between two shifts."""
+        if shift_b:
+            # Two-way swap: exchange staff assignments
+            shift_a.staff_resource, shift_b.staff_resource = (
+                shift_b.staff_resource,
+                shift_a.staff_resource,
+            )
+            shift_b.save(update_fields=["staff_resource", "updated_at"])
+        else:
+            # One-way (open swap accepted): reassign to acceptor's resource
+            acceptor_resource = self._resolve_acceptor_resource()
+            if acceptor_resource:
+                shift_a.staff_resource = acceptor_resource
+        shift_a.save(update_fields=["staff_resource", "updated_at"])
+
+    def _execute_partial_swap(self, requester_shift, acceptor_shift) -> None:
+        """Split the requester's shift and reassign the partial segment.
+
+        Creates a new Shift for the swapped portion and adjusts the original
+        shift's times to cover the remaining portion.
+        """
+        acceptor_resource = (
+            acceptor_shift.staff_resource if acceptor_shift else self._resolve_acceptor_resource()
+        )
+        if not acceptor_resource:
+            return
+
+        original_start = requester_shift.start_time
+        original_end = requester_shift.end_time
+
+        # Create the swapped segment as a new shift assigned to acceptor
+        Shift.objects.create(
+            staff_resource=acceptor_resource,
+            shift_date=requester_shift.shift_date,
+            start_time=self.partial_start_time,
+            end_time=self.partial_end_time,
+            shift_type=requester_shift.shift_type,
+            status="SCHEDULED",
+            department=requester_shift.department,
+            facility=requester_shift.facility,
+            organization=requester_shift.organization,
+            notes=f"Partial swap from {requester_shift.staff_resource.name} (swap #{self.pk})",
+        )
+
+        # Adjust the original shift to cover the remaining portion(s)
+        if self.partial_start_time == original_start:
+            # Swapped the beginning → shift now starts at partial_end_time
+            requester_shift.start_time = self.partial_end_time
+            requester_shift.save(update_fields=["start_time", "updated_at"])
+        elif self.partial_end_time == original_end:
+            # Swapped the end → shift now ends at partial_start_time
+            requester_shift.end_time = self.partial_start_time
+            requester_shift.save(update_fields=["end_time", "updated_at"])
+        else:
+            # Swapped the middle → split into two remaining segments
+            requester_shift.end_time = self.partial_start_time
+            requester_shift.save(update_fields=["end_time", "updated_at"])
+            Shift.objects.create(
+                staff_resource=requester_shift.staff_resource,
+                shift_date=requester_shift.shift_date,
+                start_time=self.partial_end_time,
+                end_time=original_end,
+                shift_type=requester_shift.shift_type,
+                status="SCHEDULED",
+                department=requester_shift.department,
+                facility=requester_shift.facility,
+                organization=requester_shift.organization,
+                notes=f"Remainder after partial swap #{self.pk}",
+            )
+
+    def _resolve_acceptor_resource(self):
+        """Resolve the PERSON resource for the user who accepted."""
+        if not self.accepted_by:
+            return None
+        staff_profile = getattr(self.accepted_by, "staff_profile", None)
+        if not staff_profile:
+            return None
+        return Resource.objects.filter(
+            staff_profile=staff_profile,
+            resource_type="PERSON",
+            facility=self.facility,
+        ).first()
+
+    # --- Validation helpers ---------------------------------------------------
+
+    def check_constraints(self) -> list[str]:
+        """Check if the swap violates any scheduling constraints for either party.
+
+        Returns a list of warning messages (empty = no violations).
+        """
+        warnings: list[str] = []
+        settings_obj = SchedulingSettings.objects.filter(facility=self.facility).first()
+        if not settings_obj or not settings_obj.enforce_constraints:
+            return warnings
+
+        acceptor_shift = self.accepted_shift or self.target_shift
+        if not acceptor_shift:
+            return warnings
+
+        # Check requester taking acceptor's shift
+        warnings.extend(
+            self._check_staff_constraints(
+                self.requesting_shift.staff_resource,
+                acceptor_shift,
+                settings_obj,
+            )
+        )
+        # Check acceptor taking requester's shift
+        warnings.extend(
+            self._check_staff_constraints(
+                acceptor_shift.staff_resource,
+                self.requesting_shift,
+                settings_obj,
+            )
+        )
+        return warnings
+
+    @staticmethod
+    def _check_staff_constraints(staff_resource, target_shift, _settings_obj) -> list[str]:
+        """Check individual staff constraints against a target shift."""
+        warnings: list[str] = []
+        constraints = staff_resource.scheduling_constraints.filter(is_active=True)
+        for c in constraints:
+            if c.constraint_type == "NO_NIGHTS" and target_shift.shift_type == "NIGHT":
+                warnings.append(
+                    f"{staff_resource.name} has a NO_NIGHTS constraint but would be assigned a night shift."
+                )
+            elif c.constraint_type == "NO_WEEKENDS" and target_shift.shift_date.weekday() >= 5:
+                warnings.append(
+                    f"{staff_resource.name} has a NO_WEEKENDS constraint but the shift is on a weekend."
+                )
+            elif c.constraint_type == "NO_OVERTIME" and target_shift.shift_type == "OVERTIME":
+                warnings.append(f"{staff_resource.name} has a NO_OVERTIME constraint.")
+            elif c.constraint_type == "LIGHT_DUTY" and target_shift.shift_type not in (
+                "DAY",
+                "MORNING",
+            ):
+                warnings.append(
+                    f"{staff_resource.name} is on LIGHT_DUTY and should only work day/morning shifts."
+                )
+        return warnings

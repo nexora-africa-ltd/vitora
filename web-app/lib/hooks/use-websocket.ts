@@ -1015,7 +1015,14 @@ export type SchedulingEventType =
   | 'scheduling.appointment_no_show'
   | 'scheduling.schedule_updated'
   | 'scheduling.assignment_decided'
-  | 'scheduling.stats_updated';
+  | 'scheduling.stats_updated'
+  | 'scheduling.swap_requested'
+  | 'scheduling.swap_accepted'
+  | 'scheduling.swap_approved'
+  | 'scheduling.swap_completed'
+  | 'scheduling.swap_rejected'
+  | 'scheduling.swap_cancelled'
+  | 'scheduling.swap_expired';
 
 /**
  * Scheduling WebSocket message structure
@@ -1088,6 +1095,19 @@ export function useSchedulingSocket(
 
         case 'scheduling.stats_updated':
           queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+          break;
+
+        case 'scheduling.swap_requested':
+        case 'scheduling.swap_accepted':
+        case 'scheduling.swap_approved':
+        case 'scheduling.swap_completed':
+        case 'scheduling.swap_rejected':
+        case 'scheduling.swap_cancelled':
+        case 'scheduling.swap_expired':
+          queryClient.invalidateQueries({ queryKey: ['shift-swaps'] });
+          queryClient.invalidateQueries({ queryKey: ['shift-swaps-available'] });
+          queryClient.invalidateQueries({ queryKey: ['shift-swaps-my'] });
+          queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
           break;
       }
 

@@ -484,6 +484,7 @@ export interface SchedulingSettings {
   default_shift_pattern: string[];
   active_shift_types: string[];
   overtime_threshold_hours: number;
+  require_swap_approval: boolean;
   enforce_constraints: boolean;
   enforce_punctuality: boolean;
   late_cutoff_minutes: number;
@@ -523,4 +524,98 @@ export interface StaffConstraintCreateData {
   is_active?: boolean;
   effective_from?: string | null;
   effective_until?: string | null;
+}
+
+// =============================================================================
+// Shift Swap Request
+// =============================================================================
+
+export type ShiftSwapStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'APPROVED'
+  | 'COMPLETED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'EXPIRED';
+
+export interface ShiftSummary {
+  id: number;
+  staff_name: string | null;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  shift_type: ShiftType;
+  status: ShiftStatus;
+}
+
+export interface ShiftSwapRequest {
+  id: number;
+  requesting_shift: number;
+  requesting_shift_summary: ShiftSummary;
+  target_shift: number | null;
+  target_shift_summary: ShiftSummary | null;
+  requester: number;
+  requester_name: string;
+  target_staff: number | null;
+  target_staff_name: string | null;
+  is_partial: boolean;
+  partial_start_time: string | null;
+  partial_end_time: string | null;
+  status: ShiftSwapStatus;
+  status_display: string;
+  reason: string;
+  rejection_reason: string;
+  accepted_by: number | null;
+  accepted_by_name: string | null;
+  accepted_shift: number | null;
+  accepted_shift_summary: ShiftSummary | null;
+  accepted_at: string | null;
+  reviewed_by: number | null;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+  expires_at: string;
+  constraint_warnings: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShiftSwapListItem {
+  id: number;
+  requesting_shift: number;
+  requesting_shift_date: string;
+  requesting_shift_type: ShiftType;
+  requesting_staff_name: string;
+  target_shift: number | null;
+  target_staff_name: string | null;
+  requester: number;
+  requester_name: string;
+  is_partial: boolean;
+  status: ShiftSwapStatus;
+  status_display: string;
+  reason: string;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface ShiftSwapCreateData {
+  requesting_shift: number;
+  target_shift?: number | null;
+  target_staff?: number | null;
+  is_partial?: boolean;
+  partial_start_time?: string | null;
+  partial_end_time?: string | null;
+  reason?: string;
+}
+
+export interface ShiftSwapAcceptData {
+  offered_shift?: number | null;
+}
+
+export interface ShiftSwapRejectData {
+  reason?: string;
+}
+
+export interface ShiftSwapApproveData {
+  notes?: string;
 }
