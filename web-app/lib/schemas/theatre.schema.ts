@@ -34,12 +34,23 @@ export const ANESTHESIA_TYPES = [
 export const LATERALITIES = ['LEFT', 'RIGHT', 'BILATERAL', 'NA'] as const;
 
 export const TEAM_ROLES = [
-  'LEAD_SURGEON', 'ASSISTANT_SURGEON', 'ANESTHESIOLOGIST',
-  'ANESTHESIA_ASSISTANT', 'SCRUB_NURSE', 'CIRCULATING_NURSE',
-  'SCRUB_TECH', 'PERFUSIONIST', 'OTHER',
+  'LEAD_SURGEON',
+  'ASSISTANT_SURGEON',
+  'ANESTHESIOLOGIST',
+  'ANESTHESIA_TECH',
+  'CIRCULATING_NURSE',
+  'SCRUB_NURSE',
+  'SCRUB_TECH',
+  'RECOVERY_NURSE',
+  'OBSERVER',
 ] as const;
 
-export const PACU_DESTINATIONS = ['WARD', 'ICU', 'HDU', 'DAY_CASE', 'MORGUE'] as const;
+export const PACU_DESTINATIONS = [
+  'WARD',
+  'ICU',
+  'DAY_CASE_DISCHARGE',
+  'EXTENDED_OBSERVATION',
+] as const;
 
 // =============================================================================
 // HELPERS
@@ -78,6 +89,9 @@ export const OperatingTheatreListSchema = z.object({
   operating_hours_start: z.string(),
   operating_hours_end: z.string(),
   slot_duration_minutes: z.number(),
+  scheduling_resource: z.number().nullable(),
+  scheduling_resource_name: z.string().nullable().optional(),
+  has_resource_schedule: z.boolean(),
 });
 
 export const OperatingTheatreDetailSchema = OperatingTheatreListSchema.extend({
@@ -90,6 +104,27 @@ export const OperatingTheatreDetailSchema = OperatingTheatreListSchema.extend({
   maintenance_notes: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
+});
+
+export const TheatreAvailabilitySlotSchema = z.object({
+  start_time: z.string(),
+  end_time: z.string(),
+  duration_minutes: z.number(),
+  available: z.boolean(),
+  blocked_reason: z.string().nullable().optional(),
+  conflicting_case_number: z.string().nullable().optional(),
+  source: z.enum(['scheduling_resource', 'theatre_hours']),
+});
+
+export const TheatreAvailabilitySchema = z.object({
+  date: z.string(),
+  theatre_id: z.number(),
+  theatre_name: z.string(),
+  scheduling_resource: z.number().nullable(),
+  integration_source: z.enum(['scheduling_resource', 'theatre_hours']),
+  has_resource_schedule: z.boolean(),
+  slot_duration_minutes: z.number(),
+  slots: z.array(TheatreAvailabilitySlotSchema),
 });
 
 // =============================================================================
@@ -155,8 +190,55 @@ export const SurgeryCaseDetailSchema = SurgeryCaseListSchema.extend({
   has_operative_note: z.boolean(),
   has_anesthesia_record: z.boolean(),
   has_pacu_record: z.boolean(),
+  theatre_scheduling_resource: z.number().nullable().optional(),
+  theatre_has_resource_schedule: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
+});
+
+export const CaseSchedulingContextMemberSchema = z.object({
+  staff_member_id: z.number(),
+  role: z.string(),
+  staff_resource_id: z.number().nullable(),
+  has_staff_resource: z.boolean(),
+  has_shift_coverage: z.boolean(),
+  room_assignment_match: z.boolean(),
+  shift_ids: z.array(z.number()),
+  shift_statuses: z.array(z.string()),
+  message: z.string(),
+});
+
+export const CaseSchedulingContextSchema = z.object({
+  case_number: z.string(),
+  scheduled_date: z.string(),
+  scheduled_start_time: z.string(),
+  estimated_duration_minutes: z.number(),
+  slot_validation: z.object({
+    available: z.boolean(),
+    reason: z.string().nullable(),
+    source: z.enum(['scheduling_resource', 'theatre_hours']),
+    conflicts: z.array(
+      z.object({
+        case_number: z.string(),
+        scheduled_start_time: z.string(),
+        estimated_duration_minutes: z.number(),
+      })
+    ),
+  }),
+  theatre: z.object({
+    id: z.number(),
+    code: z.string(),
+    name: z.string(),
+    scheduling_resource_id: z.number().nullable(),
+    scheduling_resource_name: z.string().nullable(),
+    has_resource_schedule: z.boolean(),
+  }),
+  team_summary: z.object({
+    total_members: z.number(),
+    covered_members: z.number(),
+    coverage_complete: z.boolean(),
+  }),
+  members: z.array(CaseSchedulingContextMemberSchema),
 });
 
 // =============================================================================
@@ -226,6 +308,7 @@ export const AnesthesiaRecordSchema = z.object({
   surgery_case: z.number(),
   anesthesiologist: z.number(),
   anesthesiologist_name: z.string(),
+  pre_op_assessment_at: z.string().nullable().optional(),
   mallampati_class: z.string(),
   mouth_opening: z.string(),
   neck_mobility: z.string(),
@@ -236,28 +319,28 @@ export const AnesthesiaRecordSchema = z.object({
   premedication_given: z.string(),
   anesthesia_consent_obtained: z.boolean(),
   risks_explained: z.boolean(),
-  anesthesia_type: AnesthesiaTypeSchema.or(z.literal('')),
-  induction_agent: z.string(),
   induction_time: z.string().nullable().optional(),
   intubation_time: z.string().nullable().optional(),
+  extubation_time: z.string().nullable().optional(),
   airway_device: z.string(),
   tube_size: z.string(),
-  cuff_pressure: z.string(),
-  breathing_circuit: z.string(),
-  ventilation_mode: z.string(),
-  maintenance_agent: z.string(),
-  muscle_relaxant: z.string(),
-  analgesic: z.string(),
-  fluids_given: z.string(),
+  intubation_attempts: z.number(),
+  intubation_difficulty: z.string(),
+  anesthesia_technique: z.string(),
+  induction_agents: z.string(),
+  maintenance_agents: z.string(),
+  muscle_relaxants: z.string(),
+  reversal_agents: z.string(),
+  crystalloid_volume: z.number(),
+  colloid_volume: z.number(),
   blood_products: z.string(),
-  urine_output: z.string(),
-  estimated_blood_loss: z.string(),
+  estimated_blood_loss: z.number(),
+  urine_output: z.number(),
   intraop_complications: z.string(),
-  extubation_time: z.string().nullable().optional(),
-  reversal_agent: z.string(),
+  pacu_handover_at: z.string().nullable().optional(),
+  pacu_handover_notes: z.string(),
   pain_management_plan: z.string(),
-  nausea_prevention: z.string(),
-  dvt_prophylaxis: z.string(),
+  post_op_nausea_plan: z.string(),
   other_post_op_orders: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -306,7 +389,7 @@ export const OperativeNoteSchema = z.object({
   implants_used: z.string(),
   drains_placed: z.string(),
   sutures_used: z.string(),
-  estimated_blood_loss: z.string(),
+  estimated_blood_loss: z.number(),
   specimens_sent: z.string(),
   frozen_section: z.boolean(),
   frozen_section_result: z.string(),
@@ -415,9 +498,13 @@ export type PACUDestination = z.infer<typeof PACUDestinationSchema>;
 
 export type OperatingTheatreList = z.infer<typeof OperatingTheatreListSchema>;
 export type OperatingTheatreDetail = z.infer<typeof OperatingTheatreDetailSchema>;
+export type TheatreAvailabilitySlot = z.infer<typeof TheatreAvailabilitySlotSchema>;
+export type TheatreAvailability = z.infer<typeof TheatreAvailabilitySchema>;
 export type SurgicalTeamMember = z.infer<typeof SurgicalTeamMemberSchema>;
 export type SurgeryCaseList = z.infer<typeof SurgeryCaseListSchema>;
 export type SurgeryCaseDetail = z.infer<typeof SurgeryCaseDetailSchema>;
+export type CaseSchedulingContextMember = z.infer<typeof CaseSchedulingContextMemberSchema>;
+export type CaseSchedulingContext = z.infer<typeof CaseSchedulingContextSchema>;
 export type WHOChecklist = z.infer<typeof WHOChecklistSchema>;
 export type AnesthesiaRecord = z.infer<typeof AnesthesiaRecordSchema>;
 export type IntraOpVital = z.infer<typeof IntraOpVitalSchema>;

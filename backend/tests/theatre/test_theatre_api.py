@@ -41,7 +41,17 @@ class TestOperatingTheatreAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
-    def test_create_theatre(self, authenticated_client):
+    def test_create_theatre_requires_manage_settings_permission(self, authenticated_client):
+        data = {
+            "code": "OT-NEW",
+            "name": "New Operating Theatre",
+            "theatre_type": "GENERAL",
+            "location": "Block B",
+        }
+        response = authenticated_client.post(THEATRES_URL, data)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_theatre(self, authenticated_client, grant_theatre_settings_permission):
         data = {
             "code": "OT-NEW",
             "name": "New Operating Theatre",
@@ -57,7 +67,18 @@ class TestOperatingTheatreAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["code"] == "OT-01"
 
-    def test_update_theatre(self, authenticated_client, sample_theatre):
+    def test_update_theatre_requires_manage_settings_permission(
+        self, authenticated_client, sample_theatre
+    ):
+        response = authenticated_client.patch(
+            f"{THEATRES_URL}{sample_theatre.id}/",
+            {"name": "Updated Theatre"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_update_theatre(
+        self, authenticated_client, sample_theatre, grant_theatre_settings_permission
+    ):
         response = authenticated_client.patch(
             f"{THEATRES_URL}{sample_theatre.id}/",
             {"name": "Updated Theatre"},
@@ -84,11 +105,13 @@ class TestOperatingTheatreAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "slots" in response.data
         assert isinstance(response.data["slots"], list)
+        assert "integration_source" in response.data
+        assert "scheduling_resource" in response.data
+        assert response.data["has_resource_schedule"] is True
+        assert response.data["integration_source"] == "scheduling_resource"
 
     def test_theatre_availability_missing_date(self, authenticated_client, sample_theatre):
-        response = authenticated_client.get(
-            f"{THEATRES_URL}{sample_theatre.id}/availability/"
-        )
+        response = authenticated_client.get(f"{THEATRES_URL}{sample_theatre.id}/availability/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_unauthenticated_access_denied(self, api_client):
@@ -114,12 +137,8 @@ class TestSurgeryCaseAPI:
         assert response.data["case_number"].startswith("SURG-")
         assert response.data["status"] == "REQUESTED"
 
-    def test_retrieve_case_by_case_number(
-        self, authenticated_client, sample_surgery_case
-    ):
-        response = authenticated_client.get(
-            _case_url(sample_surgery_case.case_number)
-        )
+    def test_retrieve_case_by_case_number(self, authenticated_client, sample_surgery_case):
+        response = authenticated_client.get(_case_url(sample_surgery_case.case_number))
         assert response.status_code == status.HTTP_200_OK
         assert response.data["case_number"] == sample_surgery_case.case_number
 
@@ -129,9 +148,7 @@ class TestSurgeryCaseAPI:
         results = response.data["results"]
         assert all(r["status"] == "REQUESTED" for r in results)
 
-    def test_search_by_patient_name(
-        self, authenticated_client, sample_surgery_case
-    ):
+    def test_search_by_patient_name(self, authenticated_client, sample_surgery_case):
         response = authenticated_client.get(CASES_URL, {"search": "Jane"})
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
@@ -205,9 +222,7 @@ class TestSurgeryCaseWorkflow:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["status"] == "POSTPONED"
 
-    def test_invalid_transition_returns_error(
-        self, authenticated_client, sample_surgery_case
-    ):
+    def test_invalid_transition_returns_error(self, authenticated_client, sample_surgery_case):
         """Cannot go directly from REQUESTED to IN_SURGERY."""
         url = _case_action_url(sample_surgery_case.case_number, "start-surgery")
         response = authenticated_client.post(url)
@@ -228,18 +243,35 @@ class TestSurgicalTeamAPI:
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.data, list)
 
-    def test_add_team_member(self, authenticated_client, sample_surgery_case, test_user):
+    def test_add_team_member(
+        self, authenticated_client, sample_surgery_case, test_user, theatre_shift
+    ):
         url = _case_action_url(sample_surgery_case.case_number, "team/add")
-        response = authenticated_client.post(url, {
-            "staff_member": test_user.id,
-            "role": "LEAD_SURGEON",
-        })
+        response = authenticated_client.post(
+            url,
+            {
+                "staff_member": test_user.id,
+                "role": "LEAD_SURGEON",
+            },
+        )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["role"] == "LEAD_SURGEON"
 
-    def test_remove_team_member(
+    def test_add_team_member_requires_shift_coverage(
         self, authenticated_client, sample_surgery_case, test_user
     ):
+        url = _case_action_url(sample_surgery_case.case_number, "team/add")
+        response = authenticated_client.post(
+            url,
+            {
+                "staff_member": test_user.id,
+                "role": "LEAD_SURGEON",
+            },
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "staff_member" in response.data
+
+    def test_remove_team_member(self, authenticated_client, sample_surgery_case, test_user):
         from hmis.apps.theatre.models import SurgicalTeamMember
 
         member = SurgicalTeamMember.objects.create(
@@ -251,6 +283,26 @@ class TestSurgicalTeamAPI:
         response = authenticated_client.delete(url)
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
+    def test_case_scheduling_context(
+        self, authenticated_client, sample_surgery_case, test_user, theatre_shift
+    ):
+        add_url = _case_action_url(sample_surgery_case.case_number, "team/add")
+        authenticated_client.post(
+            add_url,
+            {
+                "staff_member": test_user.id,
+                "role": "LEAD_SURGEON",
+            },
+        )
+        context_url = _case_action_url(sample_surgery_case.case_number, "scheduling-context")
+        response = authenticated_client.get(context_url)
+        assert response.status_code == status.HTTP_200_OK
+        assert (
+            response.data["theatre"]["scheduling_resource_id"]
+            == sample_surgery_case.theatre.scheduling_resource_id
+        )
+        assert response.data["team_summary"]["coverage_complete"] is True
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  WHO Checklist
@@ -259,17 +311,13 @@ class TestSurgicalTeamAPI:
 
 @pytest.mark.django_db
 class TestWHOChecklistAPI:
-    def test_get_checklist_not_found(
-        self, authenticated_client, sample_surgery_case
-    ):
+    def test_get_checklist_not_found(self, authenticated_client, sample_surgery_case):
         url = _case_action_url(sample_surgery_case.case_number, "who-checklist")
         response = authenticated_client.get(url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_complete_sign_in(self, authenticated_client, sample_surgery_case):
-        url = _case_action_url(
-            sample_surgery_case.case_number, "who-checklist/sign-in"
-        )
+        url = _case_action_url(sample_surgery_case.case_number, "who-checklist/sign-in")
         data = {
             "patient_identity_confirmed": True,
             "procedure_site_marked": True,
@@ -282,13 +330,9 @@ class TestWHOChecklistAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["sign_in_complete"] is True
 
-    def test_time_out_requires_sign_in(
-        self, authenticated_client, sample_surgery_case
-    ):
+    def test_time_out_requires_sign_in(self, authenticated_client, sample_surgery_case):
         """Time-Out should fail if Sign-In not completed."""
-        url = _case_action_url(
-            sample_surgery_case.case_number, "who-checklist/time-out"
-        )
+        url = _case_action_url(sample_surgery_case.case_number, "who-checklist/time-out")
         data = {
             "team_members_introduced": True,
             "patient_name_confirmed": True,
@@ -298,25 +342,22 @@ class TestWHOChecklistAPI:
         response = authenticated_client.post(url, data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_complete_time_out_after_sign_in(
-        self, authenticated_client, sample_surgery_case
-    ):
+    def test_complete_time_out_after_sign_in(self, authenticated_client, sample_surgery_case):
         # First complete sign-in
-        sign_in_url = _case_action_url(
-            sample_surgery_case.case_number, "who-checklist/sign-in"
+        sign_in_url = _case_action_url(sample_surgery_case.case_number, "who-checklist/sign-in")
+        authenticated_client.post(
+            sign_in_url,
+            {
+                "patient_identity_confirmed": True,
+                "procedure_site_marked": True,
+                "consent_signed": True,
+                "anesthesia_machine_checked": True,
+                "pulse_oximeter_attached": True,
+                "allergies_reviewed": True,
+            },
         )
-        authenticated_client.post(sign_in_url, {
-            "patient_identity_confirmed": True,
-            "procedure_site_marked": True,
-            "consent_signed": True,
-            "anesthesia_machine_checked": True,
-            "pulse_oximeter_attached": True,
-            "allergies_reviewed": True,
-        })
         # Now time-out
-        time_out_url = _case_action_url(
-            sample_surgery_case.case_number, "who-checklist/time-out"
-        )
+        time_out_url = _case_action_url(sample_surgery_case.case_number, "who-checklist/time-out")
         data = {
             "team_members_introduced": True,
             "patient_name_confirmed": True,
@@ -327,35 +368,33 @@ class TestWHOChecklistAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["time_out_complete"] is True
 
-    def test_complete_sign_out_after_time_out(
-        self, authenticated_client, sample_surgery_case
-    ):
+    def test_complete_sign_out_after_time_out(self, authenticated_client, sample_surgery_case):
         # Complete sign-in
-        sign_in_url = _case_action_url(
-            sample_surgery_case.case_number, "who-checklist/sign-in"
+        sign_in_url = _case_action_url(sample_surgery_case.case_number, "who-checklist/sign-in")
+        authenticated_client.post(
+            sign_in_url,
+            {
+                "patient_identity_confirmed": True,
+                "procedure_site_marked": True,
+                "consent_signed": True,
+                "anesthesia_machine_checked": True,
+                "pulse_oximeter_attached": True,
+                "allergies_reviewed": True,
+            },
         )
-        authenticated_client.post(sign_in_url, {
-            "patient_identity_confirmed": True,
-            "procedure_site_marked": True,
-            "consent_signed": True,
-            "anesthesia_machine_checked": True,
-            "pulse_oximeter_attached": True,
-            "allergies_reviewed": True,
-        })
         # Complete time-out
-        time_out_url = _case_action_url(
-            sample_surgery_case.case_number, "who-checklist/time-out"
+        time_out_url = _case_action_url(sample_surgery_case.case_number, "who-checklist/time-out")
+        authenticated_client.post(
+            time_out_url,
+            {
+                "team_members_introduced": True,
+                "patient_name_confirmed": True,
+                "procedure_confirmed": True,
+                "site_confirmed": True,
+            },
         )
-        authenticated_client.post(time_out_url, {
-            "team_members_introduced": True,
-            "patient_name_confirmed": True,
-            "procedure_confirmed": True,
-            "site_confirmed": True,
-        })
         # Complete sign-out
-        sign_out_url = _case_action_url(
-            sample_surgery_case.case_number, "who-checklist/sign-out"
-        )
+        sign_out_url = _case_action_url(sample_surgery_case.case_number, "who-checklist/sign-out")
         data = {
             "procedure_name_recorded": True,
             "instrument_count_correct": True,
@@ -374,19 +413,13 @@ class TestWHOChecklistAPI:
 
 @pytest.mark.django_db
 class TestAnesthesiaRecordAPI:
-    def test_get_anesthesia_not_found(
-        self, authenticated_client, sample_surgery_case
-    ):
+    def test_get_anesthesia_not_found(self, authenticated_client, sample_surgery_case):
         url = _case_action_url(sample_surgery_case.case_number, "anesthesia")
         response = authenticated_client.get(url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_create_anesthesia_record(
-        self, authenticated_client, sample_surgery_case, test_user
-    ):
-        url = _case_action_url(
-            sample_surgery_case.case_number, "anesthesia/create"
-        )
+    def test_create_anesthesia_record(self, authenticated_client, sample_surgery_case, test_user):
+        url = _case_action_url(sample_surgery_case.case_number, "anesthesia/create")
         data = {
             "anesthesiologist": test_user.id,
             "mallampati_class": "II",
@@ -396,31 +429,28 @@ class TestAnesthesiaRecordAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["mallampati_class"] == "II"
 
-    def test_create_duplicate_fails(
-        self, authenticated_client, sample_surgery_case, test_user
+    def test_create_anesthesia_requires_manage_theatre_permission(
+        self, theatre_permissionless_client, sample_surgery_case, another_user
     ):
-        url = _case_action_url(
-            sample_surgery_case.case_number, "anesthesia/create"
-        )
+        url = _case_action_url(sample_surgery_case.case_number, "anesthesia/create")
+        response = theatre_permissionless_client.post(url, {"anesthesiologist": another_user.id})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_duplicate_fails(self, authenticated_client, sample_surgery_case, test_user):
+        url = _case_action_url(sample_surgery_case.case_number, "anesthesia/create")
         data = {"anesthesiologist": test_user.id}
         authenticated_client.post(url, data)
         response = authenticated_client.post(url, data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_add_intraop_vital(
-        self, authenticated_client, sample_surgery_case, test_user
-    ):
+    def test_add_intraop_vital(self, authenticated_client, sample_surgery_case, test_user):
         from django.utils import timezone
 
         # Create anesthesia record first
-        create_url = _case_action_url(
-            sample_surgery_case.case_number, "anesthesia/create"
-        )
+        create_url = _case_action_url(sample_surgery_case.case_number, "anesthesia/create")
         authenticated_client.post(create_url, {"anesthesiologist": test_user.id})
         # Add vital reading
-        vitals_url = _case_action_url(
-            sample_surgery_case.case_number, "anesthesia/vitals"
-        )
+        vitals_url = _case_action_url(sample_surgery_case.case_number, "anesthesia/vitals")
         data = {
             "recorded_at": timezone.now().isoformat(),
             "recorded_by": test_user.id,
@@ -441,12 +471,8 @@ class TestAnesthesiaRecordAPI:
 
 @pytest.mark.django_db
 class TestOperativeNoteAPI:
-    def test_create_operative_note(
-        self, authenticated_client, sample_surgery_case, test_user
-    ):
-        url = _case_action_url(
-            sample_surgery_case.case_number, "operative-note/create"
-        )
+    def test_create_operative_note(self, authenticated_client, sample_surgery_case, test_user):
+        url = _case_action_url(sample_surgery_case.case_number, "operative-note/create")
         data = {
             "dictated_by": test_user.id,
             "pre_operative_diagnosis": "Acute appendicitis",
@@ -459,9 +485,24 @@ class TestOperativeNoteAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["pre_operative_diagnosis"] == "Acute appendicitis"
 
-    def test_sign_operative_note(
-        self, authenticated_client, sample_surgery_case, test_user
+    def test_create_operative_note_requires_document_surgery_permission(
+        self, theatre_permissionless_client, sample_surgery_case, another_user
     ):
+        url = _case_action_url(sample_surgery_case.case_number, "operative-note/create")
+        response = theatre_permissionless_client.post(
+            url,
+            {
+                "dictated_by": another_user.id,
+                "pre_operative_diagnosis": "Acute appendicitis",
+                "post_operative_diagnosis": "Acute appendicitis confirmed",
+                "procedure_performed": "Laparoscopic appendectomy",
+                "findings": "Inflamed appendix",
+                "technique_description": "Standard 3-port technique",
+            },
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_sign_operative_note(self, authenticated_client, sample_surgery_case, test_user):
         from hmis.apps.theatre.models import OperativeNote
 
         OperativeNote.objects.create(
@@ -473,16 +514,12 @@ class TestOperativeNoteAPI:
             findings="Test",
             technique_description="Test",
         )
-        url = _case_action_url(
-            sample_surgery_case.case_number, "operative-note/sign"
-        )
+        url = _case_action_url(sample_surgery_case.case_number, "operative-note/sign")
         response = authenticated_client.post(url)
         assert response.status_code == status.HTTP_200_OK
         assert response.data["signed_at"] is not None
 
-    def test_get_operative_note(
-        self, authenticated_client, sample_surgery_case, test_user
-    ):
+    def test_get_operative_note(self, authenticated_client, sample_surgery_case, test_user):
         from hmis.apps.theatre.models import OperativeNote
 
         OperativeNote.objects.create(
@@ -494,9 +531,7 @@ class TestOperativeNoteAPI:
             findings="Test",
             technique_description="Test",
         )
-        url = _case_action_url(
-            sample_surgery_case.case_number, "operative-note"
-        )
+        url = _case_action_url(sample_surgery_case.case_number, "operative-note")
         response = authenticated_client.get(url)
         assert response.status_code == status.HTTP_200_OK
 
@@ -508,14 +543,10 @@ class TestOperativeNoteAPI:
 
 @pytest.mark.django_db
 class TestPACURecordAPI:
-    def test_create_pacu_record(
-        self, authenticated_client, in_pacu_surgery_case, test_user
-    ):
+    def test_create_pacu_record(self, authenticated_client, in_pacu_surgery_case, test_user):
         from django.utils import timezone
 
-        url = _case_action_url(
-            in_pacu_surgery_case.case_number, "pacu/create"
-        )
+        url = _case_action_url(in_pacu_surgery_case.case_number, "pacu/create")
         data = {
             "arrival_time": timezone.now().isoformat(),
             "arriving_nurse": test_user.id,
@@ -526,9 +557,7 @@ class TestPACURecordAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["initial_aldrete_score"] == 7
 
-    def test_add_pacu_vital(
-        self, authenticated_client, in_pacu_surgery_case, test_user
-    ):
+    def test_add_pacu_vital(self, authenticated_client, in_pacu_surgery_case, test_user):
         from django.utils import timezone
 
         from hmis.apps.theatre.models import PACURecord
@@ -540,9 +569,7 @@ class TestPACURecordAPI:
             arriving_nurse=test_user,
             initial_aldrete_score=7,
         )
-        url = _case_action_url(
-            in_pacu_surgery_case.case_number, "pacu/vitals"
-        )
+        url = _case_action_url(in_pacu_surgery_case.case_number, "pacu/vitals")
         data = {
             "recorded_at": timezone.now().isoformat(),
             "recorded_by": test_user.id,
@@ -553,9 +580,7 @@ class TestPACURecordAPI:
         response = authenticated_client.post(url, data)
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_discharge_pacu(
-        self, authenticated_client, in_pacu_surgery_case, test_user
-    ):
+    def test_discharge_pacu(self, authenticated_client, in_pacu_surgery_case, test_user):
         from django.utils import timezone
 
         from hmis.apps.theatre.models import PACURecord
@@ -566,9 +591,7 @@ class TestPACURecordAPI:
             arriving_nurse=test_user,
             initial_aldrete_score=7,
         )
-        url = _case_action_url(
-            in_pacu_surgery_case.case_number, "pacu/discharge"
-        )
+        url = _case_action_url(in_pacu_surgery_case.case_number, "pacu/discharge")
         data = {
             "discharge_aldrete_score": 9,
             "discharge_destination": "WARD",

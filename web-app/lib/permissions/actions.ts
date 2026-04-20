@@ -190,6 +190,7 @@ export const ACTION_PERMISSIONS = {
   'theatre.complete_checklist': ['SURGEON', 'ANAESTHETIST', 'THEATRE_NURSE'],
   'theatre.record_notes': ['SURGEON', 'ANAESTHETIST'],
   'theatre.view_reports': ['SURGEON', 'ANAESTHETIST', 'ADMIN'],
+  'theatre.manage_settings': ['ADMIN', 'ORG-ADMIN', 'OWNER'],
 
   // === Billing / Finance Module ===
   'billing.view_dashboard': ['BILLING_CLERK', 'CASHIER', 'BILLING_SUPERVISOR', 'ADMIN', 'ORG-ADMIN'],

@@ -334,10 +334,13 @@ const _allNavItems: NavItemType[] = [
     facilityModule: 'theatre',
     featureFlag: ENABLE_THEATRE,
     children: [
+      { label: 'Overview', href: '/theatre', icon: LayoutDashboard, actionKey: 'theatre.view_schedule' },
       { label: 'Schedule', href: '/theatre/schedule', icon: CalendarDays, actionKey: 'theatre.view_schedule' },
       { label: 'Checklists', href: '/theatre/checklists', icon: CheckSquare, actionKey: 'theatre.view_checklists' },
       { label: 'Cases', href: '/theatre/cases', icon: SquareDashedTopSolid, actionKey: 'theatre.schedule_case' },
+      { label: 'Anesthesia', href: '/theatre/anesthesia', icon: Syringe, actionKey: 'theatre.record_notes' },
       { label: 'Reports', href: '/theatre/reports', icon: BarChart3, actionKey: 'theatre.view_reports' },
+      { label: 'Setup', href: '/theatre/settings', icon: Settings, actionKey: 'theatre.manage_settings' },
     ],
   },
   {

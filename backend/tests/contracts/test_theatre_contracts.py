@@ -55,6 +55,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "operating_hours_start",
                 "operating_hours_end",
                 "slot_duration_minutes",
+                "scheduling_resource",
+                "scheduling_resource_name",
+                "has_resource_schedule",
             }
         ),
     ),
@@ -76,6 +79,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "has_image_intensifier",
                 "equipment_notes",
                 "maintenance_notes",
+                "scheduling_resource",
+                "scheduling_resource_name",
+                "has_resource_schedule",
                 "facility",
                 "organization",
                 "created_at",
@@ -207,6 +213,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "has_operative_note",
                 "has_anesthesia_record",
                 "has_pacu_record",
+                "theatre_scheduling_resource",
+                "theatre_has_resource_schedule",
             }
         ),
     ),

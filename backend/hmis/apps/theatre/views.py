@@ -22,16 +22,15 @@ from hmis.apps.core.permissions import get_client_ip
 from .filters import OperatingTheatreFilter, SurgeryCaseFilter
 from .models import (
     AnesthesiaRecord,
-    IntraOpVitalReading,
     OperatingTheatre,
     OperativeNote,
     PACURecord,
-    PACUVitalReading,
     SurgeryCase,
     SurgicalTeamMember,
     TheatreConsumable,
     WHOSafetyChecklist,
 )
+from .permissions import CanDocumentSurgery, CanManageTheatre, CanManageTheatreSettings
 from .serializers import (
     AnesthesiaRecordCreateSerializer,
     AnesthesiaRecordSerializer,
@@ -62,9 +61,10 @@ from .serializers import (
     WHOSignOutSerializer,
     WHOTimeOutSerializer,
 )
-
+from .services.scheduling import get_available_slots, get_case_scheduling_context
 
 # ─── Helpers ──────────────────────────────────────────────────────────────
+
 
 def _audit(request, action_name: str, resource_type: str, resource_id, **extra):
     """Shortcut for audit logging."""
@@ -83,11 +83,10 @@ def _audit(request, action_name: str, resource_type: str, resource_id, **extra):
 #  1. OperatingTheatreViewSet
 # ═══════════════════════════════════════════════════════════════════════════
 
-class OperatingTheatreViewSet(
-    TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet
-):
-    queryset = OperatingTheatre.objects.all()
-    permission_classes = [IsAuthenticated]
+
+class OperatingTheatreViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
+    queryset = OperatingTheatre.objects.select_related("scheduling_resource")
+    permission_classes = [IsAuthenticated, CanManageTheatreSettings]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = OperatingTheatreFilter
     search_fields = ["code", "name"]
@@ -113,7 +112,7 @@ class OperatingTheatreViewSet(
                 {"error": "date query parameter is required (YYYY-MM-DD)."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         try:
             target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -123,46 +122,43 @@ class OperatingTheatreViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        booked = set(
-            SurgeryCase.objects.filter(
-                theatre=theatre,
-                scheduled_date=target_date,
-                status__in=[
-                    SurgeryCase.CaseStatus.SCHEDULED,
-                    SurgeryCase.CaseStatus.PRE_OP,
-                    SurgeryCase.CaseStatus.IN_THEATRE,
-                    SurgeryCase.CaseStatus.IN_SURGERY,
-                ],
-            ).values_list("scheduled_start_time", flat=True)
+        slots = get_available_slots(theatre, target_date)
+        return Response(
+            {
+                "date": date_str,
+                "theatre_id": theatre.id,
+                "theatre_name": theatre.name,
+                "scheduling_resource": theatre.scheduling_resource_id,
+                "integration_source": slots[0]["source"]
+                if slots
+                else (
+                    "scheduling_resource"
+                    if theatre.scheduling_resource_id
+                    and theatre.scheduling_resource.get_schedules().exists()
+                    else "theatre_hours"
+                ),
+                "has_resource_schedule": bool(
+                    theatre.scheduling_resource_id
+                    and theatre.scheduling_resource.get_schedules().exists()
+                ),
+                "slot_duration_minutes": theatre.slot_duration_minutes,
+                "slots": slots,
+            }
         )
-
-        duration = theatre.slot_duration_minutes
-        current = datetime.combine(target_date, theatre.operating_hours_start)
-        end = datetime.combine(target_date, theatre.operating_hours_end)
-        slots = []
-
-        while current + timedelta(minutes=duration) <= end:
-            t = current.time()
-            slots.append({
-                "start_time": t.strftime("%H:%M"),
-                "end_time": (current + timedelta(minutes=duration)).time().strftime("%H:%M"),
-                "duration_minutes": duration,
-                "available": t not in booked,
-            })
-            current += timedelta(minutes=duration)
-
-        return Response({"date": date_str, "theatre_id": theatre.id, "slots": slots})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  2. SurgeryCaseViewSet
 # ═══════════════════════════════════════════════════════════════════════════
 
-class SurgeryCaseViewSet(
-    TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet
-):
+
+class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
     queryset = SurgeryCase.objects.select_related(
-        "patient", "theatre", "primary_procedure", "requesting_doctor"
+        "patient",
+        "theatre",
+        "theatre__scheduling_resource",
+        "primary_procedure",
+        "requesting_doctor",
     ).prefetch_related("team_members__staff_member")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -181,6 +177,49 @@ class SurgeryCaseViewSet(
         "requested_at",
     ]
     lookup_field = "case_number"
+
+    MANAGE_THEATRE_ACTIONS = {
+        "create",
+        "update",
+        "partial_update",
+        "destroy",
+        "schedule",
+        "start_pre_op",
+        "enter_theatre",
+        "start_surgery",
+        "end_surgery",
+        "enter_pacu",
+        "discharge",
+        "cancel",
+        "postpone",
+        "add_team_member",
+        "remove_team_member",
+        "who_sign_in",
+        "who_time_out",
+        "who_sign_out",
+        "create_anesthesia",
+        "update_anesthesia",
+        "add_intraop_vital",
+        "add_consumable",
+        "remove_consumable",
+        "create_pacu",
+        "add_pacu_vital",
+        "discharge_pacu",
+    }
+
+    DOCUMENT_SURGERY_ACTIONS = {
+        "create_operative_note",
+        "update_operative_note",
+        "sign_operative_note",
+    }
+
+    def get_permissions(self):
+        permissions = [IsAuthenticated()]
+        if self.action in self.DOCUMENT_SURGERY_ACTIONS:
+            permissions.append(CanDocumentSurgery())
+        elif self.action in self.MANAGE_THEATRE_ACTIONS:
+            permissions.append(CanManageTheatre())
+        return permissions
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -248,7 +287,7 @@ class SurgeryCaseViewSet(
     @action(detail=True, methods=["post"])
     def schedule(self, request, **kwargs):
         case = self.get_object()
-        serializer = CaseScheduleSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         # Update optional scheduling fields
@@ -264,8 +303,9 @@ class SurgeryCaseViewSet(
             case.schedule(user=request.user)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        _audit(request, "surgery_case_schedule", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(
+            request, "surgery_case_schedule", "SurgeryCase", case.pk, case_number=case.case_number
+        )
         return Response(SurgeryCaseDetailSerializer(case).data)
 
     @action(detail=True, methods=["post"], url_path="start-pre-op")
@@ -275,8 +315,7 @@ class SurgeryCaseViewSet(
             case.start_pre_op(user=request.user)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        _audit(request, "surgery_case_pre_op", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(request, "surgery_case_pre_op", "SurgeryCase", case.pk, case_number=case.case_number)
         return Response(SurgeryCaseDetailSerializer(case).data)
 
     @action(detail=True, methods=["post"], url_path="enter-theatre")
@@ -286,8 +325,13 @@ class SurgeryCaseViewSet(
             case.enter_theatre(user=request.user)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        _audit(request, "surgery_case_enter_theatre", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(
+            request,
+            "surgery_case_enter_theatre",
+            "SurgeryCase",
+            case.pk,
+            case_number=case.case_number,
+        )
         return Response(SurgeryCaseDetailSerializer(case).data)
 
     @action(detail=True, methods=["post"], url_path="start-surgery")
@@ -297,8 +341,13 @@ class SurgeryCaseViewSet(
             case.start_surgery(user=request.user)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        _audit(request, "surgery_case_start_surgery", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(
+            request,
+            "surgery_case_start_surgery",
+            "SurgeryCase",
+            case.pk,
+            case_number=case.case_number,
+        )
         return Response(SurgeryCaseDetailSerializer(case).data)
 
     @action(detail=True, methods=["post"], url_path="end-surgery")
@@ -308,8 +357,13 @@ class SurgeryCaseViewSet(
             case.end_surgery(user=request.user)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        _audit(request, "surgery_case_end_surgery", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(
+            request,
+            "surgery_case_end_surgery",
+            "SurgeryCase",
+            case.pk,
+            case_number=case.case_number,
+        )
         return Response(SurgeryCaseDetailSerializer(case).data)
 
     @action(detail=True, methods=["post"], url_path="enter-pacu")
@@ -323,8 +377,9 @@ class SurgeryCaseViewSet(
                 case.transition_to(SurgeryCase.CaseStatus.IN_PACU, user=request.user)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        _audit(request, "surgery_case_enter_pacu", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(
+            request, "surgery_case_enter_pacu", "SurgeryCase", case.pk, case_number=case.case_number
+        )
         return Response(SurgeryCaseDetailSerializer(case).data)
 
     @action(detail=True, methods=["post"])
@@ -334,8 +389,9 @@ class SurgeryCaseViewSet(
             case.discharge(user=request.user)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        _audit(request, "surgery_case_discharge", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(
+            request, "surgery_case_discharge", "SurgeryCase", case.pk, case_number=case.case_number
+        )
         return Response(SurgeryCaseDetailSerializer(case).data)
 
     @action(detail=True, methods=["post"])
@@ -347,8 +403,14 @@ class SurgeryCaseViewSet(
             case.cancel(user=request.user, reason=serializer.validated_data["reason"])
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        _audit(request, "surgery_case_cancel", "SurgeryCase", case.pk,
-               case_number=case.case_number, reason=serializer.validated_data["reason"])
+        _audit(
+            request,
+            "surgery_case_cancel",
+            "SurgeryCase",
+            case.pk,
+            case_number=case.case_number,
+            reason=serializer.validated_data["reason"],
+        )
         return Response(SurgeryCaseDetailSerializer(case).data)
 
     @action(detail=True, methods=["post"])
@@ -363,8 +425,9 @@ class SurgeryCaseViewSet(
             )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        _audit(request, "surgery_case_postpone", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(
+            request, "surgery_case_postpone", "SurgeryCase", case.pk, case_number=case.case_number
+        )
         return Response(SurgeryCaseDetailSerializer(case).data)
 
     # ── Team ──────────────────────────────────────────────────────────
@@ -378,11 +441,17 @@ class SurgeryCaseViewSet(
     @action(detail=True, methods=["post"], url_path="team/add")
     def add_team_member(self, request, **kwargs):
         case = self.get_object()
-        serializer = SurgicalTeamMemberCreateSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         member = serializer.save(surgery_case=case)
-        _audit(request, "surgery_team_assign", "SurgeryCase", case.pk,
-               role=member.role, staff_id=member.staff_member_id)
+        _audit(
+            request,
+            "surgery_team_assign",
+            "SurgeryCase",
+            case.pk,
+            role=member.role,
+            staff_id=member.staff_member_id,
+        )
         return Response(
             SurgicalTeamMemberSerializer(member).data,
             status=status.HTTP_201_CREATED,
@@ -398,10 +467,21 @@ class SurgeryCaseViewSet(
                 {"error": "Team member not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        _audit(request, "surgery_team_remove", "SurgeryCase", case.pk,
-               role=member.role, staff_id=member.staff_member_id)
+        _audit(
+            request,
+            "surgery_team_remove",
+            "SurgeryCase",
+            case.pk,
+            role=member.role,
+            staff_id=member.staff_member_id,
+        )
         member.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["get"], url_path="scheduling-context")
+    def scheduling_context(self, request, **kwargs):
+        case = self.get_object()
+        return Response(get_case_scheduling_context(case))
 
     # ── WHO Checklist ─────────────────────────────────────────────────
 
@@ -426,8 +506,7 @@ class SurgeryCaseViewSet(
         for field, value in serializer.validated_data.items():
             setattr(checklist, field, value)
         checklist.complete_sign_in(user=request.user)
-        _audit(request, "who_sign_in", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(request, "who_sign_in", "SurgeryCase", case.pk, case_number=case.case_number)
         return Response(WHOSafetyChecklistSerializer(checklist).data)
 
     @action(detail=True, methods=["post"], url_path="who-checklist/time-out")
@@ -450,8 +529,7 @@ class SurgeryCaseViewSet(
         for field, value in serializer.validated_data.items():
             setattr(checklist, field, value)
         checklist.complete_time_out(user=request.user)
-        _audit(request, "who_time_out", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(request, "who_time_out", "SurgeryCase", case.pk, case_number=case.case_number)
         return Response(WHOSafetyChecklistSerializer(checklist).data)
 
     @action(detail=True, methods=["post"], url_path="who-checklist/sign-out")
@@ -474,8 +552,7 @@ class SurgeryCaseViewSet(
         for field, value in serializer.validated_data.items():
             setattr(checklist, field, value)
         checklist.complete_sign_out(user=request.user)
-        _audit(request, "who_sign_out", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(request, "who_sign_out", "SurgeryCase", case.pk, case_number=case.case_number)
         return Response(WHOSafetyChecklistSerializer(checklist).data)
 
     # ── Anesthesia ────────────────────────────────────────────────────
@@ -506,8 +583,13 @@ class SurgeryCaseViewSet(
             surgery_case=case,
             pre_op_assessment_at=timezone.now(),
         )
-        _audit(request, "anesthesia_record_create", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(
+            request,
+            "anesthesia_record_create",
+            "SurgeryCase",
+            case.pk,
+            case_number=case.case_number,
+        )
         return Response(
             AnesthesiaRecordSerializer(record).data,
             status=status.HTTP_201_CREATED,
@@ -528,7 +610,7 @@ class SurgeryCaseViewSet(
         serializer.save()
         return Response(AnesthesiaRecordSerializer(record).data)
 
-    @action(detail=True, methods=["post"], url_path="anesthesia/vitals")
+    @action(detail=True, methods=["get", "post"], url_path="anesthesia/vitals")
     def add_intraop_vital(self, request, **kwargs):
         case = self.get_object()
         try:
@@ -538,6 +620,9 @@ class SurgeryCaseViewSet(
                 {"error": "Create anesthesia record first."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        if request.method.lower() == "get":
+            readings = record.vital_readings.order_by("recorded_at")
+            return Response(IntraOpVitalReadingSerializer(readings, many=True).data)
         serializer = IntraOpVitalReadingCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         vital = serializer.save(anesthesia_record=record)
@@ -571,8 +656,9 @@ class SurgeryCaseViewSet(
         serializer = OperativeNoteCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         note = serializer.save(surgery_case=case)
-        _audit(request, "operative_note_create", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(
+            request, "operative_note_create", "SurgeryCase", case.pk, case_number=case.case_number
+        )
         return Response(
             OperativeNoteSerializer(note).data,
             status=status.HTTP_201_CREATED,
@@ -604,8 +690,7 @@ class SurgeryCaseViewSet(
                 status=status.HTTP_404_NOT_FOUND,
             )
         note.sign(user=request.user)
-        _audit(request, "operative_note_sign", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(request, "operative_note_sign", "SurgeryCase", case.pk, case_number=case.case_number)
         return Response(OperativeNoteSerializer(note).data)
 
     # ── Consumables ───────────────────────────────────────────────────
@@ -626,8 +711,14 @@ class SurgeryCaseViewSet(
             added_by=request.user,
             **self.get_tenant_save_kwargs(),
         )
-        _audit(request, "theatre_consumable_add", "SurgeryCase", case.pk,
-               item_id=consumable.item_id, quantity=consumable.quantity_used)
+        _audit(
+            request,
+            "theatre_consumable_add",
+            "SurgeryCase",
+            case.pk,
+            item_id=consumable.item_id,
+            quantity=consumable.quantity_used,
+        )
         return Response(
             TheatreConsumableSerializer(consumable).data,
             status=status.HTTP_201_CREATED,
@@ -643,8 +734,9 @@ class SurgeryCaseViewSet(
                 {"error": "Consumable not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        _audit(request, "theatre_consumable_remove", "SurgeryCase", case.pk,
-               item_id=consumable.item_id)
+        _audit(
+            request, "theatre_consumable_remove", "SurgeryCase", case.pk, item_id=consumable.item_id
+        )
         consumable.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -673,8 +765,7 @@ class SurgeryCaseViewSet(
         serializer = PACURecordCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         record = serializer.save(surgery_case=case)
-        _audit(request, "pacu_record_create", "SurgeryCase", case.pk,
-               case_number=case.case_number)
+        _audit(request, "pacu_record_create", "SurgeryCase", case.pk, case_number=case.case_number)
         return Response(
             PACURecordSerializer(record).data,
             status=status.HTTP_201_CREATED,
@@ -716,20 +807,27 @@ class SurgeryCaseViewSet(
         record.discharge_destination = data["discharge_destination"]
         record.discharge_notes = data.get("discharge_notes", "")
         record.discharged_by = request.user
-        record.save(update_fields=[
-            "discharge_time",
-            "discharge_aldrete_score",
-            "discharge_destination",
-            "discharge_notes",
-            "discharged_by",
-            "updated_at",
-        ])
+        record.save(
+            update_fields=[
+                "discharge_time",
+                "discharge_aldrete_score",
+                "discharge_destination",
+                "discharge_notes",
+                "discharged_by",
+                "updated_at",
+            ]
+        )
         # Also transition the case to DISCHARGED
         case.discharge(user=request.user)
-        _audit(request, "pacu_discharge", "SurgeryCase", case.pk,
-               case_number=case.case_number,
-               aldrete_score=data["discharge_aldrete_score"],
-               destination=data["discharge_destination"])
+        _audit(
+            request,
+            "pacu_discharge",
+            "SurgeryCase",
+            case.pk,
+            case_number=case.case_number,
+            aldrete_score=data["discharge_aldrete_score"],
+            destination=data["discharge_destination"],
+        )
         return Response(PACURecordSerializer(record).data)
 
     # ── Schedule (Daily Theatre List) ─────────────────────────────────
@@ -740,16 +838,20 @@ class SurgeryCaseViewSet(
         date_str = request.query_params.get("date")
         if not date_str:
             date_str = str(timezone.now().date())
-        cases = self.get_queryset().filter(
-            scheduled_date=date_str,
-            status__in=[
-                SurgeryCase.CaseStatus.SCHEDULED,
-                SurgeryCase.CaseStatus.PRE_OP,
-                SurgeryCase.CaseStatus.IN_THEATRE,
-                SurgeryCase.CaseStatus.IN_SURGERY,
-                SurgeryCase.CaseStatus.IN_PACU,
-                SurgeryCase.CaseStatus.DISCHARGED,
-            ],
-        ).order_by("scheduled_start_time")
+        cases = (
+            self.get_queryset()
+            .filter(
+                scheduled_date=date_str,
+                status__in=[
+                    SurgeryCase.CaseStatus.SCHEDULED,
+                    SurgeryCase.CaseStatus.PRE_OP,
+                    SurgeryCase.CaseStatus.IN_THEATRE,
+                    SurgeryCase.CaseStatus.IN_SURGERY,
+                    SurgeryCase.CaseStatus.IN_PACU,
+                    SurgeryCase.CaseStatus.DISCHARGED,
+                ],
+            )
+            .order_by("scheduled_start_time")
+        )
         serializer = SurgeryCaseListSerializer(cases, many=True)
         return Response(serializer.data)

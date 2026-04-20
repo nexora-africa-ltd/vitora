@@ -25,9 +25,13 @@ export type {
   // Entity types
   OperatingTheatreList,
   OperatingTheatreDetail,
+  TheatreAvailability,
+  TheatreAvailabilitySlot,
   SurgicalTeamMember,
   SurgeryCaseList,
   SurgeryCaseDetail,
+  CaseSchedulingContext,
+  CaseSchedulingContextMember,
   WHOChecklist,
   AnesthesiaRecord,
   IntraOpVital,
@@ -155,6 +159,28 @@ export interface AnesthesiaRecordCreateData {
   premedication_given?: string;
   anesthesia_consent_obtained?: boolean;
   risks_explained?: boolean;
+  induction_time?: string;
+  intubation_time?: string;
+  extubation_time?: string;
+  airway_device?: string;
+  tube_size?: string;
+  intubation_attempts?: number;
+  intubation_difficulty?: string;
+  anesthesia_technique?: string;
+  induction_agents?: string;
+  maintenance_agents?: string;
+  muscle_relaxants?: string;
+  reversal_agents?: string;
+  crystalloid_volume?: number;
+  colloid_volume?: number;
+  blood_products?: string;
+  estimated_blood_loss?: number;
+  urine_output?: number;
+  intraop_complications?: string;
+  pacu_handover_notes?: string;
+  pain_management_plan?: string;
+  post_op_nausea_plan?: string;
+  other_post_op_orders?: string;
 }
 
 export interface OperativeNoteCreateData {
@@ -169,7 +195,7 @@ export interface OperativeNoteCreateData {
   implants_used?: string;
   drains_placed?: string;
   sutures_used?: string;
-  estimated_blood_loss?: string;
+  estimated_blood_loss?: number;
   specimens_sent?: string;
   frozen_section?: boolean;
   frozen_section_result?: string;

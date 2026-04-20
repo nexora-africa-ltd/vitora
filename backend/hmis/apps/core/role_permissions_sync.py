@@ -108,6 +108,9 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "ProcedureLog": ("procedures", "procedurelog"),
     "ProcedureOutcome": ("procedures", "procedureoutcome"),
     "ProcedureCatalog": ("procedures", "procedurecatalog"),
+    # theatre
+    "OperatingTheatre": ("theatre", "operatingtheatre"),
+    "SurgeryCase": ("theatre", "surgerycase"),
     # referrals
     "ClinicalReferral": ("referrals", "clinicalreferral"),
     # mch
@@ -250,7 +253,10 @@ CUSTOM_ACTIONS: set[str] = {
     "escalate_ihr_to_county",
     "escalate_ihr_to_national",
     "notify_ihr_to_who",
+    "manage_theatre",
+    "document_surgery",
     "manage_schedules",
+    "manage_theatre_settings",
     "approve_purchase_order",
     "approve_stock_transfer",
     "approve_stock_count",
