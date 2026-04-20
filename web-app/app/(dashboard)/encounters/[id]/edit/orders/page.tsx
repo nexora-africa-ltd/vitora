@@ -103,7 +103,7 @@ export default function EncounterEditOrdersPage() {
             .map(d => d.icd10_display || d.free_text_diagnosis)
             .filter(Boolean)}
           existingOrders={labOrders?.flatMap(order =>
-            order.items.map(item => item.test_name)
+            (order.items || []).map(item => item.test_name)
           )}
           patientAge={encounter?.patient_date_of_birth
             ? calculateAge(encounter.patient_date_of_birth)
