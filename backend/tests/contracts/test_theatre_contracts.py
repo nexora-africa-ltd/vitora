@@ -542,6 +542,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         TheatreConsumableSerializer,
         frozenset(
             {
+                "allocation_count",
                 "id",
                 "surgery_case",
                 "item",
@@ -554,6 +555,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "added_at",
                 "is_implant",
                 "implant_serial_number",
+                "source_batches",
+                "total_cost",
                 "facility",
                 "organization",
                 "created_at",
@@ -582,6 +585,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         PACURecordSerializer,
         frozenset(
             {
+                "active_complication_count",
                 "id",
                 "surgery_case",
                 "arrival_time",
@@ -599,6 +603,12 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "medications_given",
                 "discharged_by",
                 "discharge_notes",
+                "discharge_blockers",
+                "handover_completed_at",
+                "handover_given_to",
+                "handover_notes",
+                "latest_aldrete_score",
+                "ready_for_discharge",
                 "vital_readings",
                 "created_at",
                 "updated_at",

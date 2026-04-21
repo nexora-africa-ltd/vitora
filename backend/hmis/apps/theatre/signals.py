@@ -142,9 +142,13 @@ def auto_create_theatre_resource(sender, instance, created, **kwargs):
 @receiver(post_save, sender=SurgeryCase)
 def publish_surgery_case_event(sender, instance, created, **kwargs):
     """Publish domain event when a surgery case is created or its status changes."""
+    update_fields = kwargs.get("update_fields")
+
     if created:
         event_type = TheatreEvents.CASE_CREATED
     else:
+        if update_fields is not None and "status" not in update_fields:
+            return
         event_type = _STATUS_EVENT_MAP.get(instance.status, TheatreEvents.CASE_STATUS_CHANGED)
 
     publish_event(

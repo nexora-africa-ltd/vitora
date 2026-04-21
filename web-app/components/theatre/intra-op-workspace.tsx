@@ -9,6 +9,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ClipboardCheck,
+  Download,
   FileText,
   Loader2,
   Package,
@@ -46,6 +47,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { theatreApi } from '@/lib/api/theatre';
+import { downloadPDF } from '@/lib/export-utils';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils/format';
@@ -465,6 +467,15 @@ export function IntraOpWorkspace({
     }
   };
 
+  const downloadNotePdf = async () => {
+    try {
+      const blob = await theatreApi.downloadOperativeNotePdf(surgeryCase.case_number);
+      downloadPDF(blob, `operative-note-${surgeryCase.case_number}`);
+    } catch (error) {
+      toast({ title: 'Unable to download operative note PDF', description: getApiErrorMessage(error), variant: 'destructive' });
+    }
+  };
+
   const saveConsumable = async (values: ConsumableValues) => {
     try {
       await theatreApi.addConsumable(surgeryCase.case_number, values);
@@ -762,6 +773,7 @@ export function IntraOpWorkspace({
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button type="submit">{operativeNote ? 'Update note' : 'Create note'}</Button>
                   {operativeNote && !operativeNote.signed_at ? <Button type="button" variant="outline" onClick={() => void signNote()}>Sign note</Button> : null}
+                  {operativeNote ? <Button type="button" variant="outline" onClick={() => void downloadNotePdf()}><Download className="mr-2 h-4 w-4" />PDF</Button> : null}
                 </div>
               </form>
             </Form>

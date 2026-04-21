@@ -10,6 +10,7 @@ All ViewSets follow codebase conventions:
 
 from datetime import timedelta
 
+from django.http import HttpResponse
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -51,6 +52,7 @@ from .serializers import (
     PACUDischargeSerializer,
     PACURecordCreateSerializer,
     PACURecordSerializer,
+    PACURecordUpdateSerializer,
     PACUVitalReadingCreateSerializer,
     PACUVitalReadingSerializer,
     SurgeryCaseCreateSerializer,
@@ -66,6 +68,7 @@ from .serializers import (
     WHOTimeOutSerializer,
 )
 from .services.consumables import create_theatre_consumable, restore_theatre_consumable_stock
+from .services.pdf_exports import generate_operative_note_pdf, generate_pacu_summary_pdf
 from .services.reports import build_theatre_report_summary
 from .services.scheduling import get_available_slots, get_case_scheduling_context
 
@@ -209,14 +212,17 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         "add_consumable",
         "remove_consumable",
         "create_pacu",
+        "update_pacu",
         "add_pacu_vital",
         "discharge_pacu",
+        "pacu_pdf",
     }
 
     DOCUMENT_SURGERY_ACTIONS = {
         "create_operative_note",
         "update_operative_note",
         "sign_operative_note",
+        "operative_note_pdf",
     }
 
     def get_permissions(self):
@@ -262,6 +268,8 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         # PACU
         if self.action == "create_pacu":
             return PACURecordCreateSerializer
+        if self.action == "update_pacu":
+            return PACURecordUpdateSerializer
         if self.action == "add_pacu_vital":
             return PACUVitalReadingCreateSerializer
         if self.action == "discharge_pacu":
@@ -699,6 +707,25 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         _audit(request, "operative_note_sign", "SurgeryCase", case.pk, case_number=case.case_number)
         return Response(OperativeNoteSerializer(note).data)
 
+    @action(detail=True, methods=["get"], url_path="operative-note/pdf")
+    def operative_note_pdf(self, request, **kwargs):
+        case = self.get_object()
+        try:
+            note = case.operative_note
+        except OperativeNote.DoesNotExist:
+            return Response(
+                {"error": "No operative note found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        pdf_bytes = generate_operative_note_pdf(surgery_case=case, operative_note=note)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="operative-note-{case.case_number}.pdf"'
+        )
+        _audit(request, "operative_note_pdf", "SurgeryCase", case.pk, case_number=case.case_number)
+        return response
+
     # ── Consumables ───────────────────────────────────────────────────
 
     @action(detail=True, methods=["get"], url_path="consumables")
@@ -845,6 +872,35 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
             status=status.HTTP_201_CREATED,
         )
 
+    @action(detail=True, methods=["patch"], url_path="pacu/update")
+    def update_pacu(self, request, **kwargs):
+        case = self.get_object()
+        try:
+            record = case.pacu_record
+        except PACURecord.DoesNotExist:
+            return Response(
+                {"error": "No PACU record found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.get_serializer(record, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        handover_given_to = serializer.validated_data.get(
+            "handover_given_to", record.handover_given_to
+        )
+        handover_notes = serializer.validated_data.get("handover_notes", record.handover_notes)
+        if (
+            "handover_given_to" in serializer.validated_data
+            or "handover_notes" in serializer.validated_data
+        ):
+            if str(handover_given_to).strip() and str(handover_notes).strip():
+                record.record_handover(recipient=str(handover_given_to), notes=str(handover_notes))
+            else:
+                record.handover_completed_at = None
+                record.save(update_fields=["handover_completed_at", "updated_at"])
+        _audit(request, "pacu_record_update", "SurgeryCase", case.pk, case_number=case.case_number)
+        return Response(PACURecordSerializer(record).data)
+
     @action(detail=True, methods=["post"], url_path="pacu/vitals")
     def add_pacu_vital(self, request, **kwargs):
         case = self.get_object()
@@ -873,25 +929,20 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
                 {"error": "No PACU record found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        serializer = PACUDischargeSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
+        serializer.context["pacu_record"] = record
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        record.discharge_time = timezone.now()
-        record.discharge_aldrete_score = data["discharge_aldrete_score"]
-        record.discharge_destination = data["discharge_destination"]
-        record.discharge_notes = data.get("discharge_notes", "")
-        record.discharged_by = request.user
-        record.save(
-            update_fields=[
-                "discharge_time",
-                "discharge_aldrete_score",
-                "discharge_destination",
-                "discharge_notes",
-                "discharged_by",
-                "updated_at",
-            ]
+        record.record_handover(
+            recipient=data["handover_given_to"],
+            notes=data["handover_notes"],
         )
-        # Also transition the case to DISCHARGED
+        record.complete_discharge(
+            user=request.user,
+            aldrete_score=data["discharge_aldrete_score"],
+            destination=data["discharge_destination"],
+            notes=data.get("discharge_notes", ""),
+        )
         case.discharge(user=request.user)
         _audit(
             request,
@@ -903,6 +954,25 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
             destination=data["discharge_destination"],
         )
         return Response(PACURecordSerializer(record).data)
+
+    @action(detail=True, methods=["get"], url_path="pacu/pdf")
+    def pacu_pdf(self, request, **kwargs):
+        case = self.get_object()
+        try:
+            record = case.pacu_record
+        except PACURecord.DoesNotExist:
+            return Response(
+                {"error": "No PACU record found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        pdf_bytes = generate_pacu_summary_pdf(surgery_case=case, pacu_record=record)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="pacu-summary-{case.case_number}.pdf"'
+        )
+        _audit(request, "pacu_pdf", "SurgeryCase", case.pk, case_number=case.case_number)
+        return response
 
     # ── Schedule (Daily Theatre List) ─────────────────────────────────
 

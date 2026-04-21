@@ -847,6 +847,8 @@ class TheatreConsumableAllocation(TimeStampedModel):
 class PACURecord(TimeStampedModel):
     """Post-Anesthesia Care Unit (PACU) recovery record."""
 
+    DISCHARGE_ALDRETE_THRESHOLD = 9
+
     class DischargeDestination(models.TextChoices):
         WARD = "WARD", "Ward"
         ICU = "ICU", "ICU"
@@ -891,6 +893,11 @@ class PACURecord(TimeStampedModel):
     # Medications
     medications_given = models.TextField(blank=True, default="")
 
+    # Handover
+    handover_completed_at = models.DateTimeField(null=True, blank=True)
+    handover_given_to = models.CharField(max_length=120, blank=True, default="")
+    handover_notes = models.TextField(blank=True, default="")
+
     # Discharge sign-off
     discharged_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -907,6 +914,94 @@ class PACURecord(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"PACU – {self.surgery_case.case_number}"
+
+    @property
+    def latest_aldrete_score(self):
+        latest_vital = (
+            self.vital_readings.exclude(aldrete_score__isnull=True).order_by("-recorded_at").first()
+        )
+        if latest_vital is not None:
+            return latest_vital.aldrete_score
+        return self.discharge_aldrete_score or self.initial_aldrete_score
+
+    @property
+    def active_complication_count(self) -> int:
+        return sum(
+            [
+                self.nausea_vomiting,
+                self.shivering,
+                self.respiratory_issues,
+                self.cardiovascular_issues,
+            ]
+        )
+
+    @property
+    def discharge_blockers(self) -> list[str]:
+        blockers: list[str] = []
+        if not self.vital_readings.exists():
+            blockers.append("Record at least one PACU vital reading before discharge.")
+
+        latest_aldrete_score = self.latest_aldrete_score
+        if latest_aldrete_score is None:
+            blockers.append("Record an Aldrete score before discharge.")
+        elif latest_aldrete_score < self.DISCHARGE_ALDRETE_THRESHOLD:
+            blockers.append(
+                f"Aldrete score must be at least {self.DISCHARGE_ALDRETE_THRESHOLD} before discharge."
+            )
+
+        if self.active_complication_count and not self.complications_notes.strip():
+            blockers.append("Document recovery complication details before discharge.")
+
+        if not self.handover_given_to.strip():
+            blockers.append("Document who received the PACU handover before discharge.")
+
+        if not self.handover_notes.strip():
+            blockers.append("Document PACU handover notes before discharge.")
+
+        return blockers
+
+    @property
+    def ready_for_discharge(self) -> bool:
+        return not self.discharge_blockers
+
+    def record_handover(self, *, recipient: str, notes: str) -> None:
+        self.handover_given_to = recipient.strip()
+        self.handover_notes = notes.strip()
+        self.handover_completed_at = (
+            timezone.now() if self.handover_given_to and self.handover_notes else None
+        )
+        self.save(
+            update_fields=[
+                "handover_given_to",
+                "handover_notes",
+                "handover_completed_at",
+                "updated_at",
+            ]
+        )
+
+    def complete_discharge(
+        self,
+        *,
+        user,
+        aldrete_score: int,
+        destination: str,
+        notes: str = "",
+    ) -> None:
+        self.discharge_time = timezone.now()
+        self.discharge_aldrete_score = aldrete_score
+        self.discharge_destination = destination
+        self.discharge_notes = notes
+        self.discharged_by = user
+        self.save(
+            update_fields=[
+                "discharge_time",
+                "discharge_aldrete_score",
+                "discharge_destination",
+                "discharge_notes",
+                "discharged_by",
+                "updated_at",
+            ]
+        )
 
 
 # ---------------------------------------------------------------------------

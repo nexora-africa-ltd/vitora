@@ -216,6 +216,19 @@ export interface PACUDischargeData {
   discharge_aldrete_score: number;
   discharge_destination: string;
   discharge_notes?: string;
+  handover_given_to: string;
+  handover_notes: string;
+}
+
+export interface PACUUpdateData {
+  nausea_vomiting?: boolean;
+  shivering?: boolean;
+  respiratory_issues?: boolean;
+  cardiovascular_issues?: boolean;
+  complications_notes?: string;
+  medications_given?: string;
+  handover_given_to?: string;
+  handover_notes?: string;
 }
 
 export interface TheatreListParams {

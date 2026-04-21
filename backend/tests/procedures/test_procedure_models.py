@@ -31,7 +31,7 @@ class TestProcedureCatalog:
         assert str(procedure_catalog_entry) == "PROC-WC-001 - Wound Dressing (Simple)"
 
     def test_category_choices(self):
-        assert len(ProcedureCatalog.Category.choices) == 12
+        assert len(ProcedureCatalog.Category.choices) == 13
 
     def test_body_system_choices(self):
         assert len(ProcedureCatalog.BodySystem.choices) == 13

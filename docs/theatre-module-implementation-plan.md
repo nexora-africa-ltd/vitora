@@ -107,16 +107,19 @@ backend/hmis/apps/theatre/
 ├── views.py              # 2 ViewSets, 20+ @action methods ✅
 ├── services/
 │   ├── __init__.py
-│   └── scheduling.py     # Slot management, conflict detection ✅
+│   ├── scheduling.py     # Slot management, conflict detection ✅
+│   ├── consumables.py    # FEFO stock deduction/restoration ✅
+│   └── reports.py        # Summary analytics + workload/on-time starts ✅
 └── migrations/
-    ├── __init__.py
-    └── 0001_initial.py   # ✅ Created
+  ├── __init__.py
+  └── 0001-0006         # Initial schema + theatre consumable allocation ✅
 
 backend/tests/theatre/
 ├── __init__.py
 ├── conftest.py           # 7 fixtures ✅
 ├── test_theatre_models.py   # 37 tests ✅
-├── test_theatre_api.py      # 43 tests ✅
+├── test_theatre_api.py      # 43+ API/reporting tests ✅
+├── test_theatre_billing.py  # Billing integration workflow coverage ✅
 └── test_theatre_events.py   # 5 tests ✅
 ```
 
@@ -128,9 +131,11 @@ web-app/app/(dashboard)/theatre/
 ├── page.tsx                      # Theatre dashboard / daily board ✅
 ├── cases/page.tsx                # Surgery cases list ✅
 ├── cases/[caseNumber]/page.tsx   # Case detail + Phase B pre-op workspace ✅
+├── anesthesia/page.tsx           # Anesthesia queue / launcher ✅
+├── anesthesia/[caseNumber]/page.tsx # Dedicated anesthesia detail ✅
 ├── checklists/page.tsx           # Checklist route scaffold ✅
 ├── schedule/page.tsx             # Scheduling view ✅
-└── reports/page.tsx              # Reports scaffold ✅
+└── reports/page.tsx              # Backend-backed reports + workload cards ✅
 ```
 
 ### Key Integration Point: Procedures Module
@@ -324,20 +329,21 @@ backend/hmis/apps/theatre/           # ✅ IMPLEMENTED
 │   ├── __init__.py
 │   ├── scheduling.py         # Slot management, conflict detection ✅
 │   ├── consumables.py        # FEFO stock deduction/restoration for theatre use ✅
-│   ├── reports.py            # Theatre summary analytics (utilization/turnaround/throughput) ✅
+│   ├── reports.py            # Theatre summary analytics, on-time starts, workload ✅
 │   ├── checklist.py          # WHO Safety Checklist logic ❌ Not created
 │   ├── anesthesia.py         # Anesthesia record handling ❌ Not created
 ├── templates/
 │   └── theatre/              # PDF templates (consent, reports) ❌ Not created
 └── migrations/
     ├── __init__.py
-    └── 0001_initial.py       # ✅ Created
+    └── 0001-0006             # Initial schema + theatre consumable allocation ✅
 
 backend/tests/theatre/               # ✅ 85 TESTS PASSING
 ├── __init__.py
 ├── conftest.py               # 7 fixtures ✅
 ├── test_theatre_models.py    # 37 tests ✅
-├── test_theatre_api.py       # 43 tests ✅
+├── test_theatre_api.py       # 43+ API/reporting tests ✅
+├── test_theatre_billing.py   # Billing integration workflow coverage ✅
 └── test_theatre_events.py    # 5 tests ✅
 
 web-app/                             # ⚠️ FRONTEND PARTIALLY IMPLEMENTED
@@ -345,8 +351,7 @@ web-app/                             # ⚠️ FRONTEND PARTIALLY IMPLEMENTED
 │   ├── page.tsx              # Dashboard / daily theatre board ✅
 │   ├── layout.tsx            # Feature-flag gate (ENABLE_THEATRE) ✅
 │   ├── schedule/
-│   │   ├── page.tsx          # Theatre schedule view ✅
-│   │   └── [date]/page.tsx   # Daily theatre list — ❌ not created
+│   │   └── page.tsx          # Theatre schedule view + date-nav daily list ✅
 │   ├── cases/
 │   │   ├── page.tsx          # Surgery cases list ✅
 │   │   ├── new/page.tsx      # Book new surgery ✅
@@ -361,16 +366,15 @@ web-app/                             # ⚠️ FRONTEND PARTIALLY IMPLEMENTED
 │   │   ├── page.tsx              # Anesthesia case queue / workspace launcher ✅
 │   │   └── [caseNumber]/page.tsx # Dedicated anesthesia case detail ✅
 │   └── reports/
-│       └── page.tsx          # Backend-backed utilization/turnaround/throughput reports ✅
+│       └── page.tsx          # Backend-backed utilization/turnaround/throughput/workload reports ✅
 ├── components/theatre/       # ⚠️ partial
-│   ├── theatre-board.tsx
-│   ├── surgery-booking-form.tsx
-│   ├── pre-op-workspace.tsx  # ✅ implemented (consent, labs, WHO Sign-In, anesthesia)
-│   ├── who-checklist-dialog.tsx
-│   ├── anesthesia-record-form.tsx
-│   ├── operative-note-editor.tsx
-│   ├── pacu-monitoring-form.tsx
-│   └── case-status-badge.tsx
+│   ├── intra-op-workspace.tsx
+│   ├── operating-theatre-form-dialog.tsx
+│   ├── operating-theatre-table.tsx
+│   ├── post-op-workspace.tsx
+│   ├── pre-op-workspace.tsx
+│   ├── theatre-case-workspace-page.tsx
+│   └── theatre-display.tsx
 └── lib/
   ├── api/theatre.ts        # API client ✅
   ├── types/theatre.ts      # TypeScript types ✅
@@ -1174,7 +1178,7 @@ class PACUVitalReading(TimeStampedModel):
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Sprint A.2: Scheduling API & Frontend** (Week 2-4) — ⏸️ Backend complete, Frontend not started
+**Sprint A.2: Scheduling API & Frontend** (Week 2-4) — ✅ Implemented with backend + frontend baseline
 
 #### Tasks
 
@@ -1225,7 +1229,7 @@ class PACUVitalReading(TimeStampedModel):
   - [x] All models registered in Django admin (facility in list_display/list_filter/raw_id_fields)
   - [x] Migrations created and applied
 
-- [x] **API** (backend only — frontend Zod validation pending)
+- [x] **API**
   - [x] Full CRUD for theatre setup (TenantScopedViewMixin, ReadOnCreateMixin)
   - [x] Surgery booking workflow (request → schedule)
   - [x] Team assignment endpoints
@@ -1248,7 +1252,7 @@ class PACUVitalReading(TimeStampedModel):
   - [x] Cases list page with filters, search, ResponsiveTable
   - [x] Case detail page with workflow actions, team, documentation status
   - [x] Checklists page (active cases needing checklist attention)
-  - [ ] Team assignment UI — deferred to Phase B
+  - [x] Team assignment UI (case detail and pre-op roster add/remove actions)
 
 - [x] **Business Logic**
   - [x] Case number auto-generation (SURG-YYYYMMDD-XXXX)
@@ -1281,7 +1285,7 @@ class PACUVitalReading(TimeStampedModel):
 | B.1.3 | Pre-op consent integration | High | Focused Jest coverage | ✅ Done (reuses ProcedureOrder + ProcedureConsent in case detail pre-op workspace) |
 | B.1.4 | Pre-op labs verification | Medium | Focused Jest coverage | ✅ Done (encounter/patient lab orders surfaced with readiness gating) |
 | B.1.5 | Frontend: WHO Sign-In form | High | Focused Jest coverage | ✅ Done (case detail pre-op workspace) |
-| B.1.6 | Frontend: Pre-op checklist UI | High | Focused Jest coverage | ✅ Done (readiness card + case-level pre-op workspace) |
+| B.1.6 | Frontend: Pre-op checklist UI | High | Focused Jest coverage | ✅ Done (readiness card, case-level pre-op workspace, and surgical team assignment controls) |
 
 **Sprint B.2: Anesthesia Pre-Op** (Week 2-3) — ✅ BACKEND COMPLETE
 
@@ -1378,7 +1382,7 @@ class PACUVitalReading(TimeStampedModel):
 | C.2.2 | Operative note API | High | 3 tests | ✅ Done (GET/POST/sign actions) |
 | C.2.3 | Implement TheatreConsumable model | High | - | ✅ Done (FacilityScopedModel, FK to pharmacy.Drug) |
 | C.2.4 | Consumables/implant tracking API | High | - | ✅ Done (consumables CRUD on case) |
-| C.2.5 | Pharmacy stock deduction integration | Medium | - | ❌ Not started |
+| C.2.5 | Pharmacy stock deduction integration | Medium | - | ✅ Done (FEFO allocation/restoration + cost capture) |
 | C.2.6 | Frontend: Operative note editor | High | - | ✅ Done (draft/save/sign with full operative note fields) |
 | C.2.7 | Frontend: Consumables tracking UI | High | - | ✅ Done (search, add, list, remove) |
 
@@ -1415,7 +1419,7 @@ class PACUVitalReading(TimeStampedModel):
 - [x] **Intra-Op Vitals**
   - [x] Timed vital recordings (IntraOpVitalReading model)
   - [x] BP, HR, SpO2, EtCO2, FiO2, peak pressure tracking
-  - [ ] Vitals graph visualization — **frontend not started**
+  - [x] Vitals graph visualization
 
 - [x] **Operative Note** (frontend + backend)
 - [x] Structured editor for findings, technique, frozen section, and post-op plan
@@ -1437,7 +1441,7 @@ class PACUVitalReading(TimeStampedModel):
 
 ---
 
-### Phase D: Post-Operative & Analytics (2-3 weeks) — ▶️ Analytics, stock costing, and anesthesia detail pages implemented
+### Phase D: Post-Operative & Analytics (2-3 weeks) — ▶️ PACU backend, billing sync, summary analytics, and reports page implemented
 
 **Sprint D.1: PACU Recovery** (Week 1-2) — ✅ BACKEND COMPLETE
 
@@ -1618,22 +1622,21 @@ class PACUVitalReading(TimeStampedModel):
 │                                              └──────┬──────┘                │
 │                                                     │                       │
 │                                                     └───────┬───────────┐   │
-│                                                             │ ⏸️ Phase D│   │
-│                                                             │ PACU done │   │
-│                                                             │ Analytics │   │
-│                                                             │ pending   │   │
+│                                                             │ ▶️ Phase D│   │
+│                                                             │ PACU BE   │   │
+│                                                             │ reports   │   │
+│                                                             │ partially │   │
 │                                                             └───────────┘   │
 │                                                                             │
 │  ════════════════════════════════════════════════════════════════════════  │
 │  PROGRESS SNAPSHOT (April 20, 2026):                                        │
-│  • Backend: 85 tests passing across 10 models, 23 serializers, 2 ViewSets  │
-│  • Frontend: Placeholder pages only — types, schemas, API client needed     │
-│  • Remaining backend: richer discharge validation, role seeding,            │
-│    contract tests, domain-events.md                                         │
-│  • Remaining frontend: ALL pages, components, forms, live board             │
+│  • Backend: core theatre workflows, billing sync, and summary analytics live│
+│  • Frontend: dashboard, schedule, cases, anesthesia detail, and reports live│
+│  • Remaining backend: richer PACU discharge validation, handover/docs, PDFs │
+│  • Remaining frontend: PACU monitoring/discharge UX, deeper analytics UI    │
 │  Total Duration: 10-14 weeks                                                │
-│  Total Backend Tests: 450+ (target)  |  85 (current)                        │
-│  Total Frontend Tests: 100+ (target) |  0 (current)                         │
+│  Total Backend Tests: 450+ (target)  |  85+ focused theatre tests           │
+│  Total Frontend Tests: 100+ (target) | focused route/component coverage     │
 │  Target Coverage: ≥80%                                                      │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘

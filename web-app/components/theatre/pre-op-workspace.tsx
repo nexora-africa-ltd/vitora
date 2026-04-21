@@ -11,9 +11,11 @@ import {
   FileSignature,
   FlaskConical,
   Loader2,
+  Plus,
   ShieldAlert,
   ShieldCheck,
   Syringe,
+  Trash2,
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -34,16 +36,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { staffApi } from '@/lib/api/rbac';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { proceduresApi } from '@/lib/api/procedures';
 import { theatreApi } from '@/lib/api/theatre';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { TEAM_ROLES } from '@/lib/schemas/theatre.schema';
+import {
+  getTeamAssignmentErrorMessage,
+  TeamAssignmentDialog,
+  TEAM_ROLE_LABELS,
+} from '@/components/theatre/team-assignment-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ProcedureCatalogDetail, ProcedureOrder } from '@/lib/types/procedure';
+import type { StaffProfile } from '@/lib/types/rbac';
 import type {
   AnesthesiaRecord,
+  CaseSchedulingContext,
   SurgeryCaseDetail,
+  SurgicalTeamMember,
   WHOChecklist,
 } from '@/lib/types/theatre';
 
@@ -238,6 +251,7 @@ export function PreOpWorkspace({
   onCaseRefresh?: () => Promise<void> | void;
 }) {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [procedureOrder, setProcedureOrder] = useState<ProcedureOrder | null>(null);
@@ -245,11 +259,21 @@ export function PreOpWorkspace({
   const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
   const [whoChecklist, setWhoChecklist] = useState<WHOChecklist | null>(null);
   const [anesthesiaRecord, setAnesthesiaRecord] = useState<AnesthesiaRecord | null>(null);
+  const [schedulingContext, setSchedulingContext] = useState<CaseSchedulingContext | null>(null);
   const [creatingLinkedOrder, setCreatingLinkedOrder] = useState(false);
   const [savingConsent, setSavingConsent] = useState(false);
   const [signingConsent, setSigningConsent] = useState(false);
   const [savingWho, setSavingWho] = useState(false);
   const [savingAnesthesia, setSavingAnesthesia] = useState(false);
+  const [assignmentDialog, setAssignmentDialog] = useState(false);
+  const [staffSearch, setStaffSearch] = useState('');
+  const [staffResults, setStaffResults] = useState<StaffProfile[]>([]);
+  const [staffResultsLoading, setStaffResultsLoading] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
+  const [selectedRole, setSelectedRole] = useState<(typeof TEAM_ROLES)[number] | ''>('');
+  const [teamNotes, setTeamNotes] = useState('');
+  const [staffPickerOpen, setStaffPickerOpen] = useState(false);
+  const [teamMutationLoading, setTeamMutationLoading] = useState(false);
 
   const consentForm = useForm<ConsentFormValues>({
     resolver: zodResolver(consentFormSchema),
@@ -327,7 +351,7 @@ export function PreOpWorkspace({
             }
       );
 
-      const [catalogEntry, orderListing, linkedLabOrders, checklist, anesthesia] = await Promise.all([
+      const [catalogEntry, orderListing, linkedLabOrders, checklist, anesthesia, caseSchedulingContext] = await Promise.all([
         proceduresApi.getCatalogEntry(surgeryCase.primary_procedure).catch(() => null),
         procedureOrderPromise.catch(() => null),
         (surgeryCase.encounter != null
@@ -336,6 +360,7 @@ export function PreOpWorkspace({
         ).catch(() => []),
         theatreApi.getWHOChecklist(surgeryCase.case_number).catch(() => null),
         theatreApi.getAnesthesiaRecord(surgeryCase.case_number).catch(() => null),
+        theatreApi.getCaseSchedulingContext(surgeryCase.case_number).catch(() => null),
       ]);
 
       const linkedOrderList = orderListing?.results ?? [];
@@ -349,6 +374,7 @@ export function PreOpWorkspace({
       setLabOrders(linkedLabOrders);
       setWhoChecklist(checklist);
       setAnesthesiaRecord(anesthesia);
+      setSchedulingContext(caseSchedulingContext);
 
       consentForm.reset({
         consent_text:
@@ -410,6 +436,33 @@ export function PreOpWorkspace({
     void loadPreOpData(true);
   }, [loadPreOpData]);
 
+  const loadStaffOptions = useCallback(async (searchValue: string) => {
+    try {
+      setStaffResultsLoading(true);
+      const response = await staffApi.list({
+        search: searchValue || undefined,
+        page_size: 50,
+        employment_status: 'ACTIVE',
+      });
+      setStaffResults(response.results ?? []);
+    } catch {
+      toast({
+        title: 'Unable to load staff',
+        description: 'Staff candidates could not be loaded for team assignment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setStaffResultsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (!assignmentDialog) {
+      return;
+    }
+    void loadStaffOptions(staffSearch);
+  }, [assignmentDialog, loadStaffOptions, staffSearch]);
+
   const pendingLabOrders = useMemo(
     () => labOrders.filter((order) => order.status !== 'COMPLETED'),
     [labOrders]
@@ -421,6 +474,16 @@ export function PreOpWorkspace({
   const anesthesiaReady = Boolean(
     anesthesiaRecord && anesthesiaRecord.pre_op_assessment_at && anesthesiaRecord.npo_confirmed
   );
+  const canManageTeam = hasPermission('theatre.manage_theatre');
+  const coverageByMember = useMemo(
+    () => new Map(
+      (schedulingContext?.members || []).map((member) => [
+        `${member.staff_member_id}:${member.role}`,
+        member,
+      ])
+    ),
+    [schedulingContext]
+  );
 
   const refreshEverything = useCallback(async () => {
     await loadPreOpData(false);
@@ -428,6 +491,64 @@ export function PreOpWorkspace({
       await onCaseRefresh();
     }
   }, [loadPreOpData, onCaseRefresh]);
+
+  const resetTeamAssignmentForm = () => {
+    setSelectedStaffId(null);
+    setSelectedRole('');
+    setTeamNotes('');
+    setStaffSearch('');
+    setStaffPickerOpen(false);
+  };
+
+  const handleAssignTeamMember = async () => {
+    if (!selectedStaffId || !selectedRole) {
+      return;
+    }
+
+    try {
+      setTeamMutationLoading(true);
+      await theatreApi.addTeamMember(surgeryCase.case_number, {
+        staff_member: selectedStaffId,
+        role: selectedRole,
+        notes: teamNotes.trim() || undefined,
+      });
+      toast({
+        title: 'Team member assigned',
+        description: 'The surgical team roster has been updated.',
+      });
+      setAssignmentDialog(false);
+      resetTeamAssignmentForm();
+      await refreshEverything();
+    } catch (error) {
+      toast({
+        title: 'Assignment failed',
+        description: getTeamAssignmentErrorMessage(error, 'The team member could not be assigned.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setTeamMutationLoading(false);
+    }
+  };
+
+  const handleRemoveTeamMember = async (memberId: number) => {
+    try {
+      setTeamMutationLoading(true);
+      await theatreApi.removeTeamMember(surgeryCase.case_number, memberId);
+      toast({
+        title: 'Team member removed',
+        description: 'The team assignment has been removed from the case.',
+      });
+      await refreshEverything();
+    } catch (error) {
+      toast({
+        title: 'Removal failed',
+        description: getTeamAssignmentErrorMessage(error, 'The team member could not be removed.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setTeamMutationLoading(false);
+    }
+  };
 
   const handleCreateLinkedOrder = async () => {
     try {
@@ -590,6 +711,49 @@ export function PreOpWorkspace({
         anesthesiaReady={anesthesiaReady}
         labOrders={labOrders}
       />
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Surgical Team
+            <Badge variant="secondary" size="sm" className="ml-auto w-fit">
+              {surgeryCase.team_members.length}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {canManageTeam ? (
+            <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">Assign team members before sign-in</p>
+                <p className="text-xs text-muted-foreground">Keep the pre-op roster aligned with the scheduled surgeon, anesthesia, and nursing coverage.</p>
+              </div>
+              <Button type="button" size="sm" onClick={() => setAssignmentDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Assign Member
+              </Button>
+            </div>
+          ) : null}
+
+          {surgeryCase.team_members.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No team members assigned yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {surgeryCase.team_members.map((member) => (
+                <PreOpTeamMemberRow
+                  key={member.id}
+                  member={member}
+                  coverage={coverageByMember.get(`${member.staff_member}:${member.role}`) ?? null}
+                  canManageTeam={canManageTeam}
+                  removing={teamMutationLoading}
+                  onRemove={() => handleRemoveTeamMember(member.id)}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
@@ -1097,6 +1261,79 @@ export function PreOpWorkspace({
           </CardContent>
         </Card>
       </div>
+
+      <TeamAssignmentDialog
+        open={assignmentDialog}
+        onOpenChange={(open) => {
+          setAssignmentDialog(open);
+          if (!open) {
+            resetTeamAssignmentForm();
+          }
+        }}
+        staffPickerOpen={staffPickerOpen}
+        onStaffPickerOpenChange={setStaffPickerOpen}
+        staffSearch={staffSearch}
+        onStaffSearchChange={setStaffSearch}
+        staffResults={staffResults}
+        staffResultsLoading={staffResultsLoading}
+        selectedStaffId={selectedStaffId}
+        onSelectedStaffIdChange={setSelectedStaffId}
+        selectedRole={selectedRole}
+        onSelectedRoleChange={setSelectedRole}
+        teamNotes={teamNotes}
+        onTeamNotesChange={setTeamNotes}
+        onSubmit={handleAssignTeamMember}
+        submitting={teamMutationLoading}
+      />
+    </div>
+  );
+}
+
+function PreOpTeamMemberRow({
+  member,
+  coverage,
+  canManageTeam,
+  onRemove,
+  removing,
+}: {
+  member: SurgicalTeamMember;
+  coverage: CaseSchedulingContext['members'][number] | null;
+  canManageTeam: boolean;
+  onRemove: () => void;
+  removing: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-lg border p-3 text-sm">
+      <div className="min-w-0 space-y-1">
+        <p className="font-medium">{member.staff_name}</p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="outline" size="sm" className="w-fit">
+            {TEAM_ROLE_LABELS[member.role as (typeof TEAM_ROLES)[number]] ?? member.role.replace(/_/g, ' ')}
+          </Badge>
+          {member.notes ? <span>{member.notes}</span> : null}
+        </div>
+        {coverage ? (
+          <p className="text-xs text-muted-foreground">
+            {coverage.message}
+            {coverage.shift_statuses.length > 0 ? ` Shift status: ${coverage.shift_statuses.join(', ')}.` : ''}
+          </p>
+        ) : (
+          <p className="text-xs text-amber-600">No matching shift coverage found for this assignment.</p>
+        )}
+      </div>
+      {canManageTeam ? (
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          onClick={onRemove}
+          disabled={removing}
+          aria-label={`Remove ${member.staff_name} from team`}
+        >
+          {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        </Button>
+      ) : null}
     </div>
   );
 }

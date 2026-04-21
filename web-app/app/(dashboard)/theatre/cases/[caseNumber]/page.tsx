@@ -20,6 +20,8 @@ import {
   ChevronRight,
   PauseCircle,
   Scissors,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,7 +37,17 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { theatreApi } from '@/lib/api/theatre';
+import { staffApi } from '@/lib/api/rbac';
 import type { CaseSchedulingContext, SurgeryCaseDetail, SurgicalTeamMember } from '@/lib/types/theatre';
+import type { StaffProfile } from '@/lib/types/rbac';
+import { TEAM_ROLES } from '@/lib/schemas/theatre.schema';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useToast } from '@/lib/hooks/use-toast';
+import {
+  getTeamAssignmentErrorMessage,
+  TeamAssignmentDialog,
+  TEAM_ROLE_LABELS,
+} from '@/components/theatre/team-assignment-dialog';
 import { PreOpWorkspace } from '@/components/theatre/pre-op-workspace';
 import { IntraOpWorkspace } from '@/components/theatre/intra-op-workspace';
 import { PostOpWorkspace } from '@/components/theatre/post-op-workspace';
@@ -50,19 +62,29 @@ const STATUS_FLOW: Record<string, { label: string; action: string; icon: React.E
   PRE_OP: { label: 'Enter Theatre', action: 'enterTheatre', icon: DoorOpen },
   IN_THEATRE: { label: 'Start Surgery', action: 'startSurgery', icon: Scissors },
   IN_SURGERY: { label: 'End Surgery', action: 'endSurgery', icon: Square },
-  IN_PACU: { label: 'Discharge', action: 'dischargeCase', icon: ChevronRight },
 };
 
 export default function CaseDetailPage() {
   const { caseNumber } = useParams<{ caseNumber: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { hasPermission } = usePermissions();
+  const { toast } = useToast();
   const [surgeryCase, setSurgeryCase] = useState<SurgeryCaseDetail | null>(null);
   const [schedulingContext, setSchedulingContext] = useState<CaseSchedulingContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [cancelDialog, setCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [assignmentDialog, setAssignmentDialog] = useState(false);
+  const [staffSearch, setStaffSearch] = useState('');
+  const [staffResults, setStaffResults] = useState<StaffProfile[]>([]);
+  const [staffResultsLoading, setStaffResultsLoading] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
+  const [selectedRole, setSelectedRole] = useState<(typeof TEAM_ROLES)[number] | ''>('');
+  const [teamNotes, setTeamNotes] = useState('');
+  const [staffPickerOpen, setStaffPickerOpen] = useState(false);
+  const [teamMutationLoading, setTeamMutationLoading] = useState(false);
 
   const requestedTab = searchParams.get('tab');
   const derivedDefaultTab = requestedTab && ['overview', 'pre-op', 'intra-op', 'post-op'].includes(requestedTab)
@@ -100,6 +122,31 @@ export default function CaseDetailPage() {
   }, [caseNumber]);
 
   useEffect(() => { fetchCase(); }, [fetchCase]);
+
+  const loadStaffOptions = useCallback(async (searchValue: string) => {
+    try {
+      setStaffResultsLoading(true);
+      const response = await staffApi.list({
+        search: searchValue || undefined,
+        page_size: 50,
+        employment_status: 'ACTIVE',
+      });
+      setStaffResults(response.results ?? []);
+    } catch {
+      toast({
+        title: 'Unable to load staff',
+        description: 'Staff candidates could not be loaded for team assignment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setStaffResultsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (!assignmentDialog) return;
+    void loadStaffOptions(staffSearch);
+  }, [assignmentDialog, staffSearch, loadStaffOptions]);
 
   const runAction = async (action: string) => {
     if (!surgeryCase) return;
@@ -152,6 +199,63 @@ export default function CaseDetailPage() {
     }
   };
 
+  const resetTeamAssignmentForm = () => {
+    setSelectedStaffId(null);
+    setSelectedRole('');
+    setTeamNotes('');
+    setStaffSearch('');
+    setStaffPickerOpen(false);
+  };
+
+  const handleAssignTeamMember = async () => {
+    if (!surgeryCase || !selectedStaffId || !selectedRole) return;
+    try {
+      setTeamMutationLoading(true);
+      await theatreApi.addTeamMember(surgeryCase.case_number, {
+        staff_member: selectedStaffId,
+        role: selectedRole,
+        notes: teamNotes.trim() || undefined,
+      });
+      toast({
+        title: 'Team member assigned',
+        description: 'The surgical team roster has been updated.',
+      });
+      setAssignmentDialog(false);
+      resetTeamAssignmentForm();
+      await fetchCase();
+    } catch (error) {
+      const message = getTeamAssignmentErrorMessage(error, 'The team member could not be assigned.');
+      toast({
+        title: 'Assignment failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setTeamMutationLoading(false);
+    }
+  };
+
+  const handleRemoveTeamMember = async (memberId: number) => {
+    if (!surgeryCase) return;
+    try {
+      setTeamMutationLoading(true);
+      await theatreApi.removeTeamMember(surgeryCase.case_number, memberId);
+      toast({
+        title: 'Team member removed',
+        description: 'The team assignment has been removed from the case.',
+      });
+      await fetchCase();
+    } catch (error) {
+      toast({
+        title: 'Removal failed',
+        description: getTeamAssignmentErrorMessage(error, 'The team member could not be removed.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setTeamMutationLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -172,6 +276,7 @@ export default function CaseDetailPage() {
   const nextStep = STATUS_FLOW[surgeryCase.status];
   const isTerminal = ['DISCHARGED', 'CANCELLED'].includes(surgeryCase.status);
   const canCancel = !['DISCHARGED', 'CANCELLED', 'IN_SURGERY'].includes(surgeryCase.status);
+  const canManageTeam = hasPermission('theatre.manage_theatre');
   const coverageByMember = new Map(
     (schedulingContext?.members || []).map((member: CaseSchedulingContext['members'][number]) => [
       `${member.staff_member_id}:${member.role}`,
@@ -331,7 +436,19 @@ export default function CaseDetailPage() {
                   <Badge variant="secondary" className="text-xs ml-auto">{surgeryCase.team_members.length}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
+                {canManageTeam ? (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-dashed p-3">
+                    <div>
+                      <p className="text-sm font-medium">Assign team members</p>
+                      <p className="text-xs text-muted-foreground">Add surgeons, anesthesia staff, and theatre nurses from the active staff directory.</p>
+                    </div>
+                    <Button type="button" size="sm" onClick={() => setAssignmentDialog(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Assign Member
+                    </Button>
+                  </div>
+                ) : null}
                 {surgeryCase.team_members.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No team members assigned yet.</p>
                 ) : (
@@ -341,6 +458,9 @@ export default function CaseDetailPage() {
                         key={m.id}
                         member={m}
                         coverage={coverageByMember.get(`${m.staff_member}:${m.role}`) ?? null}
+                        canManageTeam={canManageTeam}
+                        onRemove={() => handleRemoveTeamMember(m.id)}
+                        removing={teamMutationLoading}
                       />
                     ))}
                   </div>
@@ -417,6 +537,28 @@ export default function CaseDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TeamAssignmentDialog
+        open={assignmentDialog}
+        onOpenChange={(open) => {
+          setAssignmentDialog(open);
+          if (!open) resetTeamAssignmentForm();
+        }}
+        staffPickerOpen={staffPickerOpen}
+        onStaffPickerOpenChange={setStaffPickerOpen}
+        staffSearch={staffSearch}
+        onStaffSearchChange={setStaffSearch}
+        staffResults={staffResults}
+        staffResultsLoading={staffResultsLoading}
+        selectedStaffId={selectedStaffId}
+        onSelectedStaffIdChange={setSelectedStaffId}
+        selectedRole={selectedRole}
+        onSelectedRoleChange={setSelectedRole}
+        teamNotes={teamNotes}
+        onTeamNotesChange={setTeamNotes}
+        onSubmit={handleAssignTeamMember}
+        submitting={teamMutationLoading}
+      />
     </div>
   );
 }
@@ -430,7 +572,19 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TeamMemberRow({ member, coverage }: { member: SurgicalTeamMember; coverage: CaseSchedulingContext['members'][number] | null }) {
+function TeamMemberRow({
+  member,
+  coverage,
+  canManageTeam,
+  onRemove,
+  removing,
+}: {
+  member: SurgicalTeamMember;
+  coverage: CaseSchedulingContext['members'][number] | null;
+  canManageTeam: boolean;
+  onRemove: () => void;
+  removing: boolean;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <div className="min-w-0">
@@ -450,6 +604,19 @@ function TeamMemberRow({ member, coverage }: { member: SurgicalTeamMember; cover
         <Badge variant="outline" className="text-xs">
           {member.role.replace(/_/g, ' ')}
         </Badge>
+        {canManageTeam ? (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={onRemove}
+            disabled={removing}
+            aria-label={`Remove ${member.staff_name} from team`}
+          >
+            {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        ) : null}
       </div>
     </div>
   );
