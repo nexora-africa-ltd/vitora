@@ -179,3 +179,94 @@ export interface MetabaseDashboardInfo {
   name: string;
   description: string;
 }
+
+// ---------------------------------------------------------------------------
+// Room Utilization
+// ---------------------------------------------------------------------------
+
+export interface RoomUtilizationRow {
+  facility_id: number;
+  room_id: number;
+  room_name: string | null;
+  clinic_id: number | null;
+  clinic_name: string | null;
+  stat_date: string;
+  staffed_minutes: number;
+  consultation_minutes: number;
+  utilization_rate: number;
+  visits_completed: number;
+  no_show_count: number;
+  avg_wait_to_room_minutes: number;
+  avg_consultation_minutes: number;
+  active_clinicians_count: number;
+  last_updated: string;
+}
+
+export interface RoomUtilizationSummary {
+  total_rooms: number;
+  staffed_rooms: number;
+  active_rooms: number;
+  idle_rooms: number;
+  overloaded_rooms: number;
+  total_visits_completed: number;
+  avg_utilization_rate: number;
+  avg_wait_to_room_minutes: number;
+}
+
+export interface RoomUtilizationParams {
+  date?: string;
+  room_id?: number;
+  clinic_id?: number;
+  facility_id?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Projection Stats
+// ---------------------------------------------------------------------------
+
+export interface ClinicQueueProjectionRow {
+  facility_id: number;
+  clinic_id: number;
+  waiting_count: number;
+  in_consultation_count: number;
+  completed_today: number;
+  no_show_today: number;
+  avg_wait_seconds: number;
+  longest_wait_seconds: number;
+  last_updated: string;
+}
+
+export interface WardOccupancyProjectionRow {
+  facility_id: number;
+  ward_id: number;
+  total_beds: number;
+  occupied_beds: number;
+  available_beds: number;
+  occupancy_rate: number;
+  admissions_today: number;
+  discharges_today: number;
+  last_updated: string;
+}
+
+export interface PharmacyQueueProjectionRow {
+  facility_id: number;
+  pending_prescriptions: number;
+  dispensed_today: number;
+  critical_stock_count: number;
+  low_stock_count: number;
+  last_updated: string;
+}
+
+export interface ClinicQueueProjectionParams {
+  clinic_id: number;
+  facility_id?: number;
+}
+
+export interface WardOccupancyProjectionParams {
+  ward_id?: number;
+  facility_id?: number;
+}
+
+export interface PharmacyQueueProjectionParams {
+  facility_id?: number;
+}

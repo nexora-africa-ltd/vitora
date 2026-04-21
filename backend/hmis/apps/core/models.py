@@ -3853,5 +3853,6 @@ from hmis.apps.core.mfa.models import (  # noqa: E402, F401
 from hmis.apps.core.projections.models import (  # noqa: E402, F401
     ClinicQueueStats,
     PharmacyQueueStats,
+    RoomUtilizationStats,
     WardOccupancyStats,
 )

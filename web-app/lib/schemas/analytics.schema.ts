@@ -142,3 +142,77 @@ export const MetabaseEmbedResponseSchema = z.object({
   token: z.string(),
   instance_url: z.string(),
 });
+
+// ---------------------------------------------------------------------------
+// Room Utilization
+// ---------------------------------------------------------------------------
+
+export const RoomUtilizationRowSchema = z.object({
+  facility_id: z.number(),
+  room_id: z.number(),
+  room_name: z.string().nullable(),
+  clinic_id: z.number().nullable(),
+  clinic_name: z.string().nullable(),
+  stat_date: z.string(),
+  staffed_minutes: z.number(),
+  consultation_minutes: z.number(),
+  utilization_rate: z.union([z.number(), z.string()]).transform(Number),
+  visits_completed: z.number(),
+  no_show_count: z.number(),
+  avg_wait_to_room_minutes: z.union([z.number(), z.string()]).transform(Number),
+  avg_consultation_minutes: z.union([z.number(), z.string()]).transform(Number),
+  active_clinicians_count: z.number(),
+  last_updated: z.string(),
+});
+
+export const RoomUtilizationArraySchema = z.array(RoomUtilizationRowSchema);
+
+export const RoomUtilizationSummarySchema = z.object({
+  total_rooms: z.number(),
+  staffed_rooms: z.number(),
+  active_rooms: z.number(),
+  idle_rooms: z.number(),
+  overloaded_rooms: z.number(),
+  total_visits_completed: z.number(),
+  avg_utilization_rate: z.union([z.number(), z.string()]).transform(Number),
+  avg_wait_to_room_minutes: z.union([z.number(), z.string()]).transform(Number),
+});
+
+export const ClinicQueueProjectionRowSchema = z.object({
+  facility_id: z.number(),
+  clinic_id: z.number(),
+  waiting_count: z.number(),
+  in_consultation_count: z.number(),
+  completed_today: z.number(),
+  no_show_today: z.number(),
+  avg_wait_seconds: z.union([z.number(), z.string()]).transform(Number),
+  longest_wait_seconds: z.union([z.number(), z.string()]).transform(Number),
+  last_updated: z.string(),
+});
+
+export const ClinicQueueProjectionArraySchema = z.array(ClinicQueueProjectionRowSchema);
+
+export const WardOccupancyProjectionRowSchema = z.object({
+  facility_id: z.number(),
+  ward_id: z.number(),
+  total_beds: z.number(),
+  occupied_beds: z.number(),
+  available_beds: z.number(),
+  occupancy_rate: z.union([z.number(), z.string()]).transform(Number),
+  admissions_today: z.number(),
+  discharges_today: z.number(),
+  last_updated: z.string(),
+});
+
+export const WardOccupancyProjectionArraySchema = z.array(WardOccupancyProjectionRowSchema);
+
+export const PharmacyQueueProjectionRowSchema = z.object({
+  facility_id: z.number(),
+  pending_prescriptions: z.number(),
+  dispensed_today: z.number(),
+  critical_stock_count: z.number(),
+  low_stock_count: z.number(),
+  last_updated: z.string(),
+});
+
+export const PharmacyQueueProjectionArraySchema = z.array(PharmacyQueueProjectionRowSchema);
