@@ -106,7 +106,11 @@ az containerapp update \
     "DEFAULT_FROM_EMAIL=noreply@vitora.digital" \
     "SHA_ENABLED=${SHA_ENABLED:-true}" \
     "SHA_API_BASE_URL=${SHA_API_BASE_URL:-https://uat.dha.go.ke}" \
+    "SHA_AUTH_MODE=${SHA_AUTH_MODE:-legacy}" \
+    "SHA_AUTH_BASE_URL=${SHA_AUTH_BASE_URL:-${SHA_API_BASE_URL:-https://uat.dha.go.ke}}" \
+    "SHA_AUTH_TOKEN_ENDPOINT=${SHA_AUTH_TOKEN_ENDPOINT:-}" \
     "SHA_CONSUMER_KEY=${SHA_CONSUMER_KEY:-1FL-DHABP05113}" \
+    "SHA_CLIENT_ID=${SHA_CLIENT_ID:-}" \
     "SHA_CLIENT_SECRET=secretref:sha-client-secret" \
     "SHA_USERNAME=${SHA_USERNAME:-r6i6gOQwxHj4WS1jYeX}" \
     "SHA_PASSWORD=secretref:sha-password" \

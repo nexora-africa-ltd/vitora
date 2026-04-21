@@ -75,9 +75,13 @@ jobs:
             CELERY_TASK_ALWAYS_EAGER=true
             SHA_ENABLED=true
             SHA_API_BASE_URL=https://uat.dha.go.ke
+            SHA_AUTH_MODE=${{ vars.SHA_AUTH_MODE || 'legacy' }}
+            SHA_AUTH_BASE_URL=${{ vars.SHA_AUTH_BASE_URL || 'https://uat.dha.go.ke' }}
+            SHA_AUTH_TOKEN_ENDPOINT=${{ vars.SHA_AUTH_TOKEN_ENDPOINT || '' }}
             SHA_USERNAME=secretref:sha-username
             SHA_PASSWORD=secretref:sha-password
             SHA_CONSUMER_KEY=secretref:sha-consumer-key
+            SHA_CLIENT_ID=${{ vars.SHA_CLIENT_ID || '' }}
             SHA_CLIENT_SECRET=secretref:sha-client-secret
             SHA_ENCRYPTED_PIN=secretref:sha-encrypted-pin
             SHA_AGENT=DHABP05113
