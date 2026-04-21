@@ -491,6 +491,10 @@ class TheatreConsumableCreateSerializer(serializers.ModelSerializer):
 
 class PACURecordSerializer(serializers.ModelSerializer):
     vital_readings = serializers.SerializerMethodField()
+    latest_aldrete_score = serializers.IntegerField(read_only=True)
+    active_complication_count = serializers.IntegerField(read_only=True)
+    ready_for_discharge = serializers.BooleanField(read_only=True)
+    discharge_blockers = serializers.ListField(child=serializers.CharField(), read_only=True)
 
     class Meta:
         model = PACURecord
@@ -509,6 +513,39 @@ class PACURecordCreateSerializer(serializers.ModelSerializer):
             "initial_aldrete_score",
             "initial_pain_score",
         ]
+
+
+class PACURecordUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PACURecord
+        fields = [
+            "nausea_vomiting",
+            "shivering",
+            "respiratory_issues",
+            "cardiovascular_issues",
+            "complications_notes",
+            "medications_given",
+            "handover_given_to",
+            "handover_notes",
+        ]
+
+    def validate(self, attrs):
+        complication_flags = [
+            attrs.get("nausea_vomiting", getattr(self.instance, "nausea_vomiting", False)),
+            attrs.get("shivering", getattr(self.instance, "shivering", False)),
+            attrs.get("respiratory_issues", getattr(self.instance, "respiratory_issues", False)),
+            attrs.get(
+                "cardiovascular_issues", getattr(self.instance, "cardiovascular_issues", False)
+            ),
+        ]
+        notes = attrs.get("complications_notes", getattr(self.instance, "complications_notes", ""))
+        if any(complication_flags) and not str(notes).strip():
+            raise serializers.ValidationError(
+                {
+                    "complications_notes": "Complication details are required when an issue is flagged."
+                }
+            )
+        return attrs
 
 
 class PACUVitalReadingSerializer(serializers.ModelSerializer):
@@ -545,6 +582,44 @@ class PACUDischargeSerializer(serializers.Serializer):
         choices=PACURecord.DischargeDestination.choices,
     )
     discharge_notes = serializers.CharField(required=False, default="", allow_blank=True)
+    handover_given_to = serializers.CharField()
+    handover_notes = serializers.CharField()
+
+    def validate(self, attrs):
+        pacu_record = self.context.get("pacu_record")
+        if pacu_record is None:
+            return attrs
+
+        if pacu_record.discharge_time is not None:
+            raise serializers.ValidationError("PACU discharge has already been completed.")
+
+        if attrs["discharge_aldrete_score"] < PACURecord.DISCHARGE_ALDRETE_THRESHOLD:
+            raise serializers.ValidationError(
+                {
+                    "discharge_aldrete_score": (
+                        f"PACU discharge requires an Aldrete score of at least "
+                        f"{PACURecord.DISCHARGE_ALDRETE_THRESHOLD}."
+                    )
+                }
+            )
+
+        blockers = list(pacu_record.discharge_blockers)
+        blockers = [
+            blocker
+            for blocker in blockers
+            if blocker
+            not in {
+                (
+                    f"Aldrete score must be at least "
+                    f"{PACURecord.DISCHARGE_ALDRETE_THRESHOLD} before discharge."
+                ),
+                "Document who received the PACU handover before discharge.",
+                "Document PACU handover notes before discharge.",
+            }
+        ]
+        if blockers:
+            raise serializers.ValidationError({"non_field_errors": blockers})
+        return attrs
 
 
 # ═══════════════════════════════════════════════════════════════════════════

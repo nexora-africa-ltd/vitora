@@ -785,6 +785,28 @@ class TestOperativeNoteAPI:
         response = authenticated_client.get(url)
         assert response.status_code == status.HTTP_200_OK
 
+    def test_download_operative_note_pdf(
+        self, authenticated_client, sample_surgery_case, test_user
+    ):
+        from hmis.apps.theatre.models import OperativeNote
+
+        OperativeNote.objects.create(
+            surgery_case=sample_surgery_case,
+            dictated_by=test_user,
+            pre_operative_diagnosis="Acute appendicitis",
+            post_operative_diagnosis="Acute appendicitis confirmed",
+            procedure_performed="Laparoscopic appendectomy",
+            findings="Inflamed appendix",
+            technique_description="Standard 3-port technique",
+        )
+
+        url = _case_action_url(sample_surgery_case.case_number, "operative-note/pdf")
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "application/pdf"
+        assert "operative-note" in response["Content-Disposition"]
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  PACU
@@ -833,6 +855,43 @@ class TestPACURecordAPI:
     def test_discharge_pacu(self, authenticated_client, in_pacu_surgery_case, test_user):
         from django.utils import timezone
 
+        from hmis.apps.theatre.models import PACURecord, PACUVitalReading
+
+        record = PACURecord.objects.create(
+            surgery_case=in_pacu_surgery_case,
+            arrival_time=timezone.now(),
+            arriving_nurse=test_user,
+            initial_aldrete_score=7,
+        )
+        PACUVitalReading.objects.create(
+            pacu_record=record,
+            recorded_at=timezone.now(),
+            recorded_by=test_user,
+            heart_rate=78,
+            spo2=98,
+            aldrete_score=9,
+        )
+        url = _case_action_url(in_pacu_surgery_case.case_number, "pacu/discharge")
+        data = {
+            "discharge_aldrete_score": 9,
+            "discharge_destination": "WARD",
+            "discharge_notes": "Stable for ward transfer",
+            "handover_given_to": "Ward nurse",
+            "handover_notes": "Continue monitoring, analgesia charted.",
+        }
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["discharge_aldrete_score"] == 9
+        assert response.data["handover_given_to"] == "Ward nurse"
+        # Case should now be DISCHARGED
+        in_pacu_surgery_case.refresh_from_db()
+        assert in_pacu_surgery_case.status == "DISCHARGED"
+
+    def test_update_pacu_record_supports_complications_and_handover(
+        self, authenticated_client, in_pacu_surgery_case, test_user
+    ):
+        from django.utils import timezone
+
         from hmis.apps.theatre.models import PACURecord
 
         PACURecord.objects.create(
@@ -841,15 +900,80 @@ class TestPACURecordAPI:
             arriving_nurse=test_user,
             initial_aldrete_score=7,
         )
-        url = _case_action_url(in_pacu_surgery_case.case_number, "pacu/discharge")
-        data = {
-            "discharge_aldrete_score": 9,
-            "discharge_destination": "WARD",
-            "discharge_notes": "Stable for ward transfer",
-        }
-        response = authenticated_client.post(url, data)
+
+        url = _case_action_url(in_pacu_surgery_case.case_number, "pacu/update")
+        response = authenticated_client.patch(
+            url,
+            {
+                "respiratory_issues": True,
+                "complications_notes": "Transient desaturation corrected with oxygen.",
+                "medications_given": "Paracetamol IV 1g",
+                "handover_given_to": "ICU nurse",
+                "handover_notes": "High-dependency monitoring for 2 hours.",
+            },
+            format="json",
+        )
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["discharge_aldrete_score"] == 9
-        # Case should now be DISCHARGED
-        in_pacu_surgery_case.refresh_from_db()
-        assert in_pacu_surgery_case.status == "DISCHARGED"
+        assert response.data["respiratory_issues"] is True
+        assert response.data["ready_for_discharge"] is False
+        assert response.data["handover_completed_at"] is not None
+
+    def test_discharge_pacu_rejects_missing_handover_and_observations(
+        self, authenticated_client, in_pacu_surgery_case, test_user
+    ):
+        from django.utils import timezone
+
+        from hmis.apps.theatre.models import PACURecord
+
+        PACURecord.objects.create(
+            surgery_case=in_pacu_surgery_case,
+            arrival_time=timezone.now(),
+            arriving_nurse=test_user,
+            initial_aldrete_score=8,
+        )
+
+        url = _case_action_url(in_pacu_surgery_case.case_number, "pacu/discharge")
+        response = authenticated_client.post(
+            url,
+            {
+                "discharge_aldrete_score": 8,
+                "discharge_destination": "WARD",
+                "discharge_notes": "Stable",
+                "handover_given_to": "Ward nurse",
+                "handover_notes": "Observe",
+            },
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "discharge_aldrete_score" in response.data or "non_field_errors" in response.data
+
+    def test_download_pacu_pdf(self, authenticated_client, in_pacu_surgery_case, test_user):
+        from django.utils import timezone
+
+        from hmis.apps.theatre.models import PACURecord, PACUVitalReading
+
+        record = PACURecord.objects.create(
+            surgery_case=in_pacu_surgery_case,
+            arrival_time=timezone.now(),
+            arriving_nurse=test_user,
+            initial_aldrete_score=8,
+            handover_given_to="Ward nurse",
+            handover_notes="Standard recovery handover completed.",
+            handover_completed_at=timezone.now(),
+        )
+        PACUVitalReading.objects.create(
+            pacu_record=record,
+            recorded_at=timezone.now(),
+            recorded_by=test_user,
+            heart_rate=76,
+            spo2=98,
+            aldrete_score=9,
+        )
+
+        url = _case_action_url(in_pacu_surgery_case.case_number, "pacu/pdf")
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "application/pdf"
+        assert "pacu-summary" in response["Content-Disposition"]

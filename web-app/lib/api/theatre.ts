@@ -63,6 +63,7 @@ import type {
   AnesthesiaRecordCreateData,
   OperativeNoteCreateData,
   PACUDischargeData,
+  PACUUpdateData,
   TheatreListParams,
   SurgeryCaseListParams,
   TheatreReportParams,
@@ -354,6 +355,13 @@ export const theatreApi = {
     });
   },
 
+  async downloadOperativeNotePdf(caseNumber: string): Promise<Blob> {
+    const response = await apiClient.get(`/api/theatre/cases/${caseNumber}/operative-note/pdf/`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
   // =========================================================================
   //  Consumables
   // =========================================================================
@@ -394,6 +402,13 @@ export const theatreApi = {
     });
   },
 
+  async updatePACURecord(caseNumber: string, data: PACUUpdateData): Promise<PACURecord> {
+    const response = await apiClient.patch(`/api/theatre/cases/${caseNumber}/pacu/update/`, data);
+    return parseResponse(PACURecordSchema, response.data, {
+      context: 'theatreApi.updatePACURecord',
+    });
+  },
+
   async addPACUVital(caseNumber: string, data: Record<string, unknown>): Promise<PACUVital> {
     const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/pacu/vitals/`, data);
     return parseResponse(PACUVitalSchema, response.data, {
@@ -406,5 +421,12 @@ export const theatreApi = {
     return parseResponse(PACURecordSchema, response.data, {
       context: 'theatreApi.dischargePACU',
     });
+  },
+
+  async downloadPACUPdf(caseNumber: string): Promise<Blob> {
+    const response = await apiClient.get(`/api/theatre/cases/${caseNumber}/pacu/pdf/`, {
+      responseType: 'blob',
+    });
+    return response.data;
   },
 };
