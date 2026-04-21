@@ -132,6 +132,51 @@ export interface PermissionGroup {
 
 export type EmploymentStatus = 'ACTIVE' | 'ON_LEAVE' | 'SUSPENDED' | 'TERMINATED';
 export type EmploymentType = 'PERMANENT' | 'CONTRACT' | 'LOCUM';
+export type OrgMembershipStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+
+export interface OrgMembershipFacilityDetail {
+  id: number;
+  name: string;
+  mfl_code: string;
+}
+
+export interface OrgMembership {
+  id: number;
+  staff_profile: number;
+  staff_name: string;
+  organization: number;
+  organization_name: string;
+  role: number;
+  role_code: string;
+  role_name: string;
+  department: number | null;
+  department_name: string | null;
+  facilities_detail: OrgMembershipFacilityDetail[];
+  facility_ids: number[];
+  is_primary: boolean;
+  status: OrgMembershipStatus;
+  joined_at: string;
+  invited_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrgMembershipCreateData {
+  staff_profile: number;
+  role: number;
+  department?: number | null;
+  facilities?: number[];
+  is_primary?: boolean;
+  status?: OrgMembershipStatus;
+}
+
+export interface OrgMembershipUpdateData extends Partial<OrgMembershipCreateData> {}
+
+export interface OrgMembershipListParams {
+  staff_profile?: number;
+  status?: OrgMembershipStatus;
+  is_primary?: boolean;
+}
 
 export interface StaffProfile {
   id: number;
@@ -198,6 +243,7 @@ export interface StaffProfileCreateData {
   employee_id: string;
   department?: number | null;
   role?: number | null;
+  primary_facility?: number | null;
   phone_number?: string;
   hwr_id?: string;
   license_number?: string;

@@ -4,12 +4,15 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { departmentsApi, rolesApi, permissionsApi, staffApi, auditLogsApi } from '@/lib/api/rbac';
+import { departmentsApi, rolesApi, permissionsApi, staffApi, orgMembershipsApi, auditLogsApi } from '@/lib/api/rbac';
 import type {
   DepartmentCreateData,
   DepartmentUpdateData,
   DepartmentListParams,
   OrgChartParams,
+  OrgMembershipCreateData,
+  OrgMembershipListParams,
+  OrgMembershipUpdateData,
   RoleCreateData,
   RoleUpdateData,
   RoleListParams,
@@ -222,6 +225,44 @@ export function useDeleteStaffProfile() {
     mutationFn: (id: number) => staffApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+}
+
+export function useOrgMemberships(params?: OrgMembershipListParams) {
+  return useQuery({
+    queryKey: ['org-memberships', params],
+    queryFn: () => orgMembershipsApi.list(params),
+  });
+}
+
+export function useCreateOrgMembership() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: OrgMembershipCreateData) => orgMembershipsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-memberships'] });
+    },
+  });
+}
+
+export function useUpdateOrgMembership() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: OrgMembershipUpdateData }) =>
+      orgMembershipsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-memberships'] });
+    },
+  });
+}
+
+export function useDeleteOrgMembership() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => orgMembershipsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-memberships'] });
     },
   });
 }

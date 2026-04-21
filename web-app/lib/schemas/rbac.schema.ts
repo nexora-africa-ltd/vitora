@@ -25,6 +25,8 @@ export const EmploymentStatusSchema = z.enum(['ACTIVE', 'ON_LEAVE', 'SUSPENDED',
 
 export const EmploymentTypeSchema = z.enum(['PERMANENT', 'CONTRACT', 'LOCUM']);
 
+export const OrgMembershipStatusSchema = z.enum(['ACTIVE', 'SUSPENDED', 'REVOKED']);
+
 export const GenderSchema = z.enum(['M', 'F', 'O']);
 
 export const AuditActionSchema = z.enum([
@@ -122,6 +124,35 @@ export type PermissionGroupSchemaType = z.infer<typeof PermissionGroupSchema>;
 // =============================================================================
 // STAFF PROFILE SCHEMA
 // =============================================================================
+
+export const OrgMembershipFacilityDetailSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  mfl_code: z.string(),
+});
+
+export const OrgMembershipSchema = z.object({
+  id: z.number(),
+  staff_profile: z.number(),
+  staff_name: z.string(),
+  organization: z.number(),
+  organization_name: z.string(),
+  role: z.number(),
+  role_code: z.string(),
+  role_name: z.string(),
+  department: z.number().nullable(),
+  department_name: z.string().nullable(),
+  facilities_detail: z.array(OrgMembershipFacilityDetailSchema),
+  facility_ids: z.array(z.number()),
+  is_primary: z.boolean(),
+  status: OrgMembershipStatusSchema,
+  joined_at: z.string(),
+  invited_by: z.number().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type OrgMembershipSchemaType = z.infer<typeof OrgMembershipSchema>;
 
 export const StaffProfileSchema = z.object({
   id: z.number(),
@@ -261,6 +292,13 @@ export const PaginatedStaffProfileSchema = z.object({
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(StaffProfileSchema),
+});
+
+export const PaginatedOrgMembershipSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(OrgMembershipSchema),
 });
 
 export const PaginatedAuditLogSchema = z.object({

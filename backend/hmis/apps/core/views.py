@@ -35,6 +35,7 @@ from .models import (
     FrontendEvent,
     Notification,
     Organization,
+    OrgMembership,
     Role,
     StaffProfile,
     SubCounty,
@@ -60,6 +61,8 @@ from .serializers import (
     OrganizationDetailSerializer,
     OrganizationListSerializer,
     OrgChartPayloadSerializer,
+    OrgMembershipCreateSerializer,
+    OrgMembershipSerializer,
     PermissionSerializer,
     RevokeCertificateRequestSerializer,
     RoleSerializer,
@@ -1174,6 +1177,99 @@ class StaffProfileViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 "username": instance.user.username,
             },
         )
+
+
+class OrgMembershipViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Manage organization membership assignments for the active organization."""
+
+    queryset = OrgMembership.objects.select_related(
+        "staff_profile__user", "organization", "role", "department"
+    ).prefetch_related("facilities")
+    serializer_class = OrgMembershipSerializer
+    tenant_scope = "organization"
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["staff_profile", "status", "is_primary"]
+    ordering_fields = ["is_primary", "joined_at", "created_at"]
+    ordering = ["-is_primary", "-joined_at"]
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return OrgMembershipCreateSerializer
+        return OrgMembershipSerializer
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            permission_classes = [IsAdminUser]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        membership = serializer.save(**self.get_tenant_save_kwargs())
+
+        AuditLog.log(
+            action="org_membership_created",
+            user=request.user,
+            resource_type="OrgMembership",
+            resource_id=membership.id,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "staff_profile": membership.staff_profile_id,
+                "organization": membership.organization_id,
+                "role": membership.role_id,
+                "is_primary": membership.is_primary,
+            },
+        )
+
+        return Response(OrgMembershipSerializer(membership).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        membership = self.get_object()
+        serializer = self.get_serializer(
+            membership,
+            data=request.data,
+            partial=partial,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        membership = serializer.save(**self.get_tenant_save_kwargs())
+
+        AuditLog.log(
+            action="org_membership_updated",
+            user=request.user,
+            resource_type="OrgMembership",
+            resource_id=membership.id,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "changed_fields": sorted(serializer.validated_data.keys()),
+                "staff_profile": membership.staff_profile_id,
+                "organization": membership.organization_id,
+            },
+        )
+
+        return Response(OrgMembershipSerializer(membership).data)
+
+    def perform_destroy(self, instance):
+        AuditLog.log(
+            action="org_membership_deleted",
+            user=self.request.user,
+            resource_type="OrgMembership",
+            resource_id=instance.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "staff_profile": instance.staff_profile_id,
+                "organization": instance.organization_id,
+                "role": instance.role_id,
+                "is_primary": instance.is_primary,
+            },
+        )
+        super().perform_destroy(instance)
 
 
 @extend_schema(responses=UserPermissionsSerializer)

@@ -37,6 +37,7 @@ from .views import (
     FeatureFlagViewSet,
     FrontendEventViewSet,
     NotificationViewSet,
+    OrgMembershipViewSet,
     RoleViewSet,
     StaffProfileViewSet,
     generate_case_number_view,
@@ -50,6 +51,7 @@ router.register(r"events", FrontendEventViewSet, basename="frontendevent")
 router.register(r"departments", DepartmentViewSet, basename="department")
 router.register(r"roles", RoleViewSet, basename="role")
 router.register(r"staff", StaffProfileViewSet, basename="staffprofile")
+router.register(r"org-memberships", OrgMembershipViewSet, basename="orgmembership")
 router.register(r"notifications", NotificationViewSet, basename="notification")
 router.register(r"features", FeatureFlagViewSet, basename="featureflag")
 router.register(r"facilities", FacilityViewSet, basename="facility")

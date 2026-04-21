@@ -1781,9 +1781,15 @@ class OrgMembershipSerializer(serializers.ModelSerializer):
 class OrgMembershipCreateSerializer(serializers.ModelSerializer):
     """Write serializer for OrgMembership."""
 
+    staff_profile = serializers.PrimaryKeyRelatedField(queryset=StaffProfile.objects.all())
+    organization = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(), required=False
+    )
+
     class Meta:
         model = OrgMembership
         fields = [
+            "staff_profile",
             "organization",
             "role",
             "department",
@@ -1795,6 +1801,20 @@ class OrgMembershipCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Validate facilities belong to the target org."""
         org = data.get("organization")
+        if org is None and self.instance is not None:
+            org = self.instance.organization
+
+        request = self.context.get("request")
+        request_org = getattr(request, "organization", None) if request else None
+        if request_org is not None:
+            if org is None:
+                org = request_org
+                data["organization"] = request_org
+            elif org.pk != request_org.pk:
+                raise serializers.ValidationError(
+                    {"organization": "Membership organization must match the active organization."}
+                )
+
         facilities = data.get("facilities", [])
         if org and facilities:
             bad = [f.name for f in facilities if f.organization_id != org.pk]
