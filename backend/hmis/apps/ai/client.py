@@ -355,6 +355,67 @@ class TibaBotClient:
         )
 
     # -----------------------------------------------------------------
+    # Phase 8 — Surgical Assistant
+    # -----------------------------------------------------------------
+
+    def assess_surgical_pre_op(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Run TibaBot surgical pre-operative risk assessment."""
+        return self._request(
+            method="POST",
+            endpoint="/surgical/pre-op/assess",
+            data=payload,
+        )
+
+    def start_surgical_checklist(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Start a TibaBot advisory WHO checklist session."""
+        return self._request(
+            method="POST",
+            endpoint="/surgical/checklist/start",
+            data=payload,
+        )
+
+    def advance_surgical_checklist(
+        self,
+        session_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Advance a TibaBot advisory WHO checklist session."""
+        return self._request(
+            method="POST",
+            endpoint=f"/surgical/checklist/{session_id}/advance",
+            data=payload,
+        )
+
+    def get_surgical_checklist_status(self, session_id: str) -> dict[str, Any]:
+        """Fetch current TibaBot checklist session state."""
+        return self._request(
+            method="GET",
+            endpoint=f"/surgical/checklist/{session_id}/status",
+        )
+
+    def generate_surgical_post_op_care_plan(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Generate a TibaBot post-operative care plan."""
+        return self._request(
+            method="POST",
+            endpoint="/surgical/post-op/care-plan",
+            data=payload,
+        )
+
+    def list_surgical_procedures(self) -> dict[str, Any]:
+        """List TibaBot surgical procedure templates."""
+        return self._request(
+            method="GET",
+            endpoint="/surgical/procedures",
+        )
+
+    def get_surgical_procedure(self, procedure_key: str) -> dict[str, Any]:
+        """Get a TibaBot surgical procedure template."""
+        return self._request(
+            method="GET",
+            endpoint=f"/surgical/procedures/{procedure_key}",
+        )
+
+    # -----------------------------------------------------------------
     # Phase 3 — Feedback
     # -----------------------------------------------------------------
 

@@ -7,11 +7,7 @@ from decimal import Decimal
 import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 
-from hmis.apps.inventory.models import (
-    StockCount,
-    StockCountItem,
-    StockCountStatus,
-)
+from hmis.apps.inventory.models import StockCount, StockCountItem, StockCountStatus
 
 pytestmark = pytest.mark.django_db
 

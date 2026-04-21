@@ -6,7 +6,7 @@ Features tested:
 - send_shift_reminders Celery task — notification creation
 """
 
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from unittest.mock import patch
 
 import pytest  # type: ignore
@@ -27,17 +27,43 @@ def _staff_with_profile(db, sample_person_resource, test_staff_profile):
 
 
 @pytest.fixture
-def today_shift_scheduled(db, sample_person_resource, sample_facility, sample_department):
+def fixed_local_now(monkeypatch):
+    """Pin scheduling tests to a stable local time to avoid midnight boundary flakiness."""
+    fixed_now = timezone.make_aware(
+        datetime(2026, 4, 21, 9, 0),
+        timezone.get_current_timezone(),
+    )
+
+    monkeypatch.setattr(
+        "hmis.apps.scheduling.views.timezone.localtime", lambda *args, **kwargs: fixed_now
+    )
+    monkeypatch.setattr(
+        "hmis.apps.scheduling.views.timezone.localdate", lambda *args, **kwargs: fixed_now.date()
+    )
+    monkeypatch.setattr(
+        "hmis.apps.scheduling.tasks.timezone.now", lambda *args, **kwargs: fixed_now
+    )
+    monkeypatch.setattr(
+        "hmis.apps.scheduling.tasks.timezone.localdate", lambda *args, **kwargs: fixed_now.date()
+    )
+
+    return fixed_now
+
+
+@pytest.fixture
+def today_shift_scheduled(
+    db, sample_person_resource, sample_facility, sample_department, fixed_local_now
+):
     """A SCHEDULED shift for today whose start_time is in the past (should show as late)."""
     from hmis.apps.scheduling.models import Shift
 
-    now = timezone.now()
+    now = fixed_local_now
     past_start = (now - timedelta(minutes=30)).time().replace(second=0, microsecond=0)
     future_end = (now + timedelta(hours=7)).time().replace(second=0, microsecond=0)
 
     return Shift.objects.create(
         staff_resource=sample_person_resource,
-        shift_date=date.today(),
+        shift_date=timezone.localdate(),
         start_time=past_start,
         end_time=future_end,
         shift_type="MORNING",
@@ -48,17 +74,19 @@ def today_shift_scheduled(db, sample_person_resource, sample_facility, sample_de
 
 
 @pytest.fixture
-def today_shift_active(db, sample_person_resource, sample_facility, sample_department):
+def today_shift_active(
+    db, sample_person_resource, sample_facility, sample_department, fixed_local_now
+):
     """An ACTIVE shift for today (already clocked in)."""
     from hmis.apps.scheduling.models import Shift
 
-    now = timezone.now()
+    now = fixed_local_now
     past_start = (now - timedelta(hours=1)).time().replace(second=0, microsecond=0)
     future_end = (now + timedelta(hours=6)).time().replace(second=0, microsecond=0)
 
     return Shift.objects.create(
         staff_resource=sample_person_resource,
-        shift_date=date.today(),
+        shift_date=timezone.localdate(),
         start_time=past_start,
         end_time=future_end,
         shift_type="DAY",
@@ -71,19 +99,20 @@ def today_shift_active(db, sample_person_resource, sample_facility, sample_depar
 
 
 @pytest.fixture
-def today_shift_upcoming(db, sample_person_resource, sample_facility, sample_department):
+def today_shift_upcoming(
+    db, sample_person_resource, sample_facility, sample_department, fixed_local_now
+):
     """A SCHEDULED shift for today whose start_time is in the future."""
     from hmis.apps.scheduling.models import Shift
 
-    now_local = timezone.localtime()
-    future_start = (now_local + timedelta(hours=3)).time().replace(second=0, microsecond=0)
-    future_end = (now_local + timedelta(hours=11)).time().replace(second=0, microsecond=0)
+    future_start_dt = fixed_local_now + timedelta(hours=3)
+    future_end_dt = fixed_local_now + timedelta(hours=11)
 
     return Shift.objects.create(
         staff_resource=sample_person_resource,
-        shift_date=date.today(),
-        start_time=future_start,
-        end_time=future_end,
+        shift_date=future_start_dt.date(),
+        start_time=future_start_dt.time().replace(second=0, microsecond=0),
+        end_time=future_end_dt.time().replace(second=0, microsecond=0),
         shift_type="AFTERNOON",
         department=sample_department,
         facility=sample_facility,
@@ -92,13 +121,15 @@ def today_shift_upcoming(db, sample_person_resource, sample_facility, sample_dep
 
 
 @pytest.fixture
-def today_shift_absent(db, sample_person_resource, sample_facility, sample_department):
+def today_shift_absent(
+    db, sample_person_resource, sample_facility, sample_department, fixed_local_now
+):
     """An ABSENT shift for today."""
     from hmis.apps.scheduling.models import Shift
 
     return Shift.objects.create(
         staff_resource=sample_person_resource,
-        shift_date=date.today(),
+        shift_date=fixed_local_now.date(),
         start_time=time(6, 0),
         end_time=time(14, 0),
         shift_type="MORNING",
@@ -182,7 +213,7 @@ class TestOnDutyEndpoint:
 
         Shift.objects.create(
             staff_resource=sample_person_resource,
-            shift_date=date.today(),
+            shift_date=timezone.localdate(),
             start_time=time(8, 0),
             end_time=time(16, 0),
             shift_type="OFF",
@@ -203,7 +234,7 @@ class TestOnDutyEndpoint:
 
         Shift.objects.create(
             staff_resource=sample_person_resource,
-            shift_date=date.today(),
+            shift_date=timezone.localdate(),
             start_time=time(8, 0),
             end_time=time(16, 0),
             shift_type="DAY",
@@ -257,6 +288,7 @@ class TestShiftReminderTask:
         self,
         db,
         _staff_with_profile,
+        fixed_local_now,
         sample_facility,
         sample_department,
         sample_person_resource,
@@ -267,13 +299,14 @@ class TestShiftReminderTask:
         from hmis.apps.scheduling.models import Shift
         from hmis.apps.scheduling.tasks import send_shift_reminders
 
-        now_local = timezone.localtime()
-        shift_start = (now_local + timedelta(minutes=10)).time().replace(second=0, microsecond=0)
-        shift_end = (now_local + timedelta(hours=8)).time().replace(second=0, microsecond=0)
+        shift_start = (
+            (fixed_local_now + timedelta(minutes=10)).time().replace(second=0, microsecond=0)
+        )
+        shift_end = (fixed_local_now + timedelta(hours=8)).time().replace(second=0, microsecond=0)
 
         Shift.objects.create(
             staff_resource=sample_person_resource,
-            shift_date=date.today(),
+            shift_date=fixed_local_now.date(),
             start_time=shift_start,
             end_time=shift_end,
             shift_type="MORNING",
@@ -290,21 +323,27 @@ class TestShiftReminderTask:
         assert notification.related_model == "Shift"
 
     def test_skips_shifts_outside_window(
-        self, db, _staff_with_profile, sample_facility, sample_department, sample_person_resource
+        self,
+        db,
+        _staff_with_profile,
+        fixed_local_now,
+        sample_facility,
+        sample_department,
+        sample_person_resource,
     ):
         """Should skip shifts starting >15min or <5min from now."""
         from hmis.apps.core.models import Notification
         from hmis.apps.scheduling.models import Shift
         from hmis.apps.scheduling.tasks import send_shift_reminders
 
-        now = timezone.now()
-
         # Too far: 30 minutes from now
         Shift.objects.create(
             staff_resource=sample_person_resource,
-            shift_date=date.today(),
-            start_time=(now + timedelta(minutes=30)).time().replace(second=0, microsecond=0),
-            end_time=(now + timedelta(hours=8)).time().replace(second=0, microsecond=0),
+            shift_date=fixed_local_now.date(),
+            start_time=(fixed_local_now + timedelta(minutes=30))
+            .time()
+            .replace(second=0, microsecond=0),
+            end_time=(fixed_local_now + timedelta(hours=8)).time().replace(second=0, microsecond=0),
             shift_type="DAY",
             facility=sample_facility,
             organization=sample_facility.organization,
@@ -319,6 +358,7 @@ class TestShiftReminderTask:
         self,
         db,
         _staff_with_profile,
+        fixed_local_now,
         sample_facility,
         sample_department,
         sample_person_resource,
@@ -329,13 +369,14 @@ class TestShiftReminderTask:
         from hmis.apps.scheduling.models import Shift
         from hmis.apps.scheduling.tasks import send_shift_reminders
 
-        now = timezone.now()
-        shift_start = (now + timedelta(minutes=10)).time().replace(second=0, microsecond=0)
-        shift_end = (now + timedelta(hours=8)).time().replace(second=0, microsecond=0)
+        shift_start = (
+            (fixed_local_now + timedelta(minutes=10)).time().replace(second=0, microsecond=0)
+        )
+        shift_end = (fixed_local_now + timedelta(hours=8)).time().replace(second=0, microsecond=0)
 
         shift = Shift.objects.create(
             staff_resource=sample_person_resource,
-            shift_date=date.today(),
+            shift_date=fixed_local_now.date(),
             start_time=shift_start,
             end_time=shift_end,
             shift_type="MORNING",
@@ -359,20 +400,21 @@ class TestShiftReminderTask:
         assert Notification.objects.filter(notification_type="shift_reminder").count() == 1
 
     def test_skips_non_working_shift_types(
-        self, db, _staff_with_profile, sample_facility, sample_person_resource
+        self, db, _staff_with_profile, fixed_local_now, sample_facility, sample_person_resource
     ):
         """Should skip OFF/LEAVE/REST shift types."""
         from hmis.apps.core.models import Notification
         from hmis.apps.scheduling.models import Shift
         from hmis.apps.scheduling.tasks import send_shift_reminders
 
-        now = timezone.now()
-        shift_start = (now + timedelta(minutes=10)).time().replace(second=0, microsecond=0)
-        shift_end = (now + timedelta(hours=8)).time().replace(second=0, microsecond=0)
+        shift_start = (
+            (fixed_local_now + timedelta(minutes=10)).time().replace(second=0, microsecond=0)
+        )
+        shift_end = (fixed_local_now + timedelta(hours=8)).time().replace(second=0, microsecond=0)
 
         Shift.objects.create(
             staff_resource=sample_person_resource,
-            shift_date=date.today(),
+            shift_date=fixed_local_now.date(),
             start_time=shift_start,
             end_time=shift_end,
             shift_type="LEAVE",
@@ -385,15 +427,18 @@ class TestShiftReminderTask:
         assert result == 0
         assert Notification.objects.filter(notification_type="shift_reminder").count() == 0
 
-    def test_skips_shift_without_staff_profile(self, db, sample_facility, sample_department):
+    def test_skips_shift_without_staff_profile(
+        self, db, fixed_local_now, sample_facility, sample_department
+    ):
         """Should skip shifts where staff resource has no linked staff profile."""
         from hmis.apps.core.models import Notification
         from hmis.apps.scheduling.models import Resource, Shift
         from hmis.apps.scheduling.tasks import send_shift_reminders
 
-        now = timezone.now()
-        shift_start = (now + timedelta(minutes=10)).time().replace(second=0, microsecond=0)
-        shift_end = (now + timedelta(hours=8)).time().replace(second=0, microsecond=0)
+        shift_start = (
+            (fixed_local_now + timedelta(minutes=10)).time().replace(second=0, microsecond=0)
+        )
+        shift_end = (fixed_local_now + timedelta(hours=8)).time().replace(second=0, microsecond=0)
 
         resource = Resource.objects.create(
             name="No Profile Staff",
@@ -406,7 +451,7 @@ class TestShiftReminderTask:
 
         Shift.objects.create(
             staff_resource=resource,
-            shift_date=date.today(),
+            shift_date=fixed_local_now.date(),
             start_time=shift_start,
             end_time=shift_end,
             shift_type="MORNING",

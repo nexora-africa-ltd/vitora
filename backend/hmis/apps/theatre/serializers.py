@@ -159,6 +159,9 @@ class SurgeryCaseListSerializer(serializers.ModelSerializer):
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     theatre_name = serializers.CharField(source="theatre.name", read_only=True)
     primary_procedure_name = serializers.CharField(source="primary_procedure.name", read_only=True)
+    primary_procedure_tibabot_key = serializers.CharField(
+        source="primary_procedure.tibabot_procedure_key", read_only=True
+    )
 
     class Meta:
         model = SurgeryCase
@@ -170,6 +173,7 @@ class SurgeryCaseListSerializer(serializers.ModelSerializer):
             "patient_mrn",
             "primary_procedure",
             "primary_procedure_name",
+            "primary_procedure_tibabot_key",
             "theatre",
             "theatre_name",
             "scheduled_date",
@@ -237,6 +241,9 @@ class SurgeryCaseDetailSerializer(serializers.ModelSerializer):
     theatre_name = serializers.CharField(source="theatre.name", read_only=True)
     theatre_code = serializers.CharField(source="theatre.code", read_only=True)
     primary_procedure_name = serializers.CharField(source="primary_procedure.name", read_only=True)
+    primary_procedure_tibabot_key = serializers.CharField(
+        source="primary_procedure.tibabot_procedure_key", read_only=True
+    )
     requesting_doctor_name = serializers.SerializerMethodField()
     team_members = SurgicalTeamMemberSerializer(many=True, read_only=True)
     has_who_checklist = serializers.SerializerMethodField()
@@ -247,6 +254,7 @@ class SurgeryCaseDetailSerializer(serializers.ModelSerializer):
         source="theatre.scheduling_resource_id", read_only=True
     )
     theatre_has_resource_schedule = serializers.SerializerMethodField()
+    ai_surgical_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = SurgeryCase
@@ -273,6 +281,44 @@ class SurgeryCaseDetailSerializer(serializers.ModelSerializer):
 
     def get_theatre_has_resource_schedule(self, obj) -> bool:
         return theatre_scheduling.has_resource_schedule(obj.theatre)
+
+    def get_ai_surgical_summary(self, obj) -> dict:
+        latest_pre_op = obj.ai_surgical_pre_op_assessments.order_by("-created_at").first()
+        latest_checklist = obj.ai_surgical_checklist_sessions.order_by("-created_at").first()
+        latest_post_op = obj.ai_surgical_post_op_care_plans.order_by("-created_at").first()
+
+        return {
+            "pre_op": {
+                "has_result": latest_pre_op is not None,
+                "latest_result_id": str(latest_pre_op.id) if latest_pre_op else None,
+                "overall_risk_level": (latest_pre_op.overall_risk_level if latest_pre_op else ""),
+                "facility_capable": (latest_pre_op.facility_capable if latest_pre_op else None),
+                "created_at": latest_pre_op.created_at if latest_pre_op else None,
+            },
+            "checklist": {
+                "has_session": latest_checklist is not None,
+                "latest_result_id": str(latest_checklist.id) if latest_checklist else None,
+                "tibabot_session_id": (
+                    latest_checklist.tibabot_session_id if latest_checklist else ""
+                ),
+                "current_phase": latest_checklist.current_phase if latest_checklist else "",
+                "percent_complete": (
+                    latest_checklist.percent_complete if latest_checklist else None
+                ),
+                "phase_complete": (latest_checklist.phase_complete if latest_checklist else False),
+                "created_at": latest_checklist.created_at if latest_checklist else None,
+            },
+            "post_op": {
+                "has_result": latest_post_op is not None,
+                "latest_result_id": str(latest_post_op.id) if latest_post_op else None,
+                "procedure_key": latest_post_op.procedure_key if latest_post_op else "",
+                "surgical_apgar_score": (
+                    latest_post_op.surgical_apgar_score if latest_post_op else None
+                ),
+                "risk_level": latest_post_op.risk_level if latest_post_op else "",
+                "created_at": latest_post_op.created_at if latest_post_op else None,
+            },
+        }
 
 
 # ═══════════════════════════════════════════════════════════════════════════

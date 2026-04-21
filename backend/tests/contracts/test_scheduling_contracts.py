@@ -26,6 +26,7 @@ from hmis.apps.scheduling.serializers import (
     AutoAssignResponseSerializer,
     AvailabilityQuerySerializer,
     AvailabilitySlotSerializer,
+    EmergencyClockInSerializer,
     ManualOverrideRequestSerializer,
     ManualOverrideResponseSerializer,
     OverrideApprovalSerializer,
@@ -41,6 +42,12 @@ from hmis.apps.scheduling.serializers import (
     ShiftListSerializer,
     ShiftSerializer,
     ShiftStartSerializer,
+    ShiftSwapAcceptSerializer,
+    ShiftSwapApproveSerializer,
+    ShiftSwapCreateSerializer,
+    ShiftSwapRejectSerializer,
+    ShiftSwapRequestListSerializer,
+    ShiftSwapRequestSerializer,
     SlotCheckQuerySerializer,
     SlotCheckResponseSerializer,
     StaffConstraintSerializer,
@@ -286,6 +293,19 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "date",
                 "end_time",
                 "start_time",
+            }
+        ),
+    ),
+    (
+        EmergencyClockInSerializer,
+        frozenset(
+            {
+                "clinic_id",
+                "duration_hours",
+                "method",
+                "reason",
+                "room_id",
+                "shift_type",
             }
         ),
     ),
@@ -541,6 +561,101 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "clinic_id",
                 "method",
                 "room_id",
+            }
+        ),
+    ),
+    (
+        ShiftSwapAcceptSerializer,
+        frozenset(
+            {
+                "offered_shift",
+            }
+        ),
+    ),
+    (
+        ShiftSwapApproveSerializer,
+        frozenset(
+            {
+                "notes",
+            }
+        ),
+    ),
+    (
+        ShiftSwapCreateSerializer,
+        frozenset(
+            {
+                "is_partial",
+                "partial_end_time",
+                "partial_start_time",
+                "reason",
+                "requesting_shift",
+                "target_shift",
+                "target_staff",
+            }
+        ),
+    ),
+    (
+        ShiftSwapRejectSerializer,
+        frozenset(
+            {
+                "reason",
+            }
+        ),
+    ),
+    (
+        ShiftSwapRequestListSerializer,
+        frozenset(
+            {
+                "created_at",
+                "expires_at",
+                "id",
+                "is_partial",
+                "reason",
+                "requester",
+                "requester_name",
+                "requesting_shift",
+                "requesting_shift_date",
+                "requesting_shift_type",
+                "requesting_staff_name",
+                "status",
+                "status_display",
+                "target_shift",
+                "target_staff_name",
+            }
+        ),
+    ),
+    (
+        ShiftSwapRequestSerializer,
+        frozenset(
+            {
+                "accepted_at",
+                "accepted_by",
+                "accepted_by_name",
+                "accepted_shift",
+                "accepted_shift_summary",
+                "constraint_warnings",
+                "created_at",
+                "expires_at",
+                "id",
+                "is_partial",
+                "partial_end_time",
+                "partial_start_time",
+                "reason",
+                "rejection_reason",
+                "requester",
+                "requester_name",
+                "requesting_shift",
+                "requesting_shift_summary",
+                "reviewed_at",
+                "reviewed_by",
+                "reviewed_by_name",
+                "status",
+                "status_display",
+                "target_shift",
+                "target_shift_summary",
+                "target_staff",
+                "target_staff_name",
+                "updated_at",
             }
         ),
     ),

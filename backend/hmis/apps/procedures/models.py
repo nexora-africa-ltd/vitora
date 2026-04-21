@@ -78,6 +78,12 @@ class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
     icd10_pcs_code = models.CharField(
         max_length=10, blank=True, default="", help_text="ICD-10-PCS code (if applicable)"
     )
+    tibabot_procedure_key = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Mapped TibaBot surgical procedure key for AI surgical assistant integration.",
+    )
 
     # Consent & Requirements
     consent_required = models.BooleanField(

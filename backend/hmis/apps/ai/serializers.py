@@ -2126,6 +2126,189 @@ class StoredICURiskResultSerializer(StoredAIResultSerializer):
 
 
 # =============================================================================
+# Phase 8 — Surgical Assistant
+# =============================================================================
+
+
+class SurgicalPreOpAssessRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/surgical/pre-op/assess/."""
+
+    surgery_case_id = serializers.IntegerField(
+        help_text="Link result to this surgery case for persistence.",
+    )
+    procedure_key = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    age = serializers.IntegerField(min_value=0, max_value=120)
+    sex = serializers.ChoiceField(choices=["male", "female"])
+    asa_class = serializers.ChoiceField(choices=["I", "II", "III", "IV", "V", "VI"])
+    urgency = serializers.ChoiceField(
+        choices=["elective", "urgent", "emergency"],
+        required=False,
+        default="elective",
+    )
+    high_risk_surgery = serializers.BooleanField(required=False, default=False)
+    ischemic_heart_disease = serializers.BooleanField(required=False, default=False)
+    congestive_heart_failure = serializers.BooleanField(required=False, default=False)
+    cerebrovascular_disease = serializers.BooleanField(required=False, default=False)
+    insulin_dependent_diabetes = serializers.BooleanField(required=False, default=False)
+    creatinine_above_2 = serializers.BooleanField(required=False, default=False)
+    caprini_factors = serializers.ListField(
+        child=serializers.CharField(max_length=100),
+        required=False,
+        default=list,
+    )
+    mallampati_class = serializers.ChoiceField(
+        choices=["I", "II", "III", "IV"],
+        required=False,
+        allow_null=True,
+    )
+    facility_level = serializers.CharField(required=False, allow_blank=True, max_length=10)
+    include_fhir = serializers.BooleanField(required=False, default=False)
+
+
+class SurgicalChecklistStartRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/surgical/checklist/start/."""
+
+    surgery_case_id = serializers.IntegerField(
+        help_text="Link checklist session to this surgery case.",
+    )
+    procedure_key = serializers.CharField(max_length=100)
+    patient_id = serializers.CharField(max_length=100)
+
+
+class SurgicalChecklistAdvanceRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/surgical/checklist/{session_id}/advance/."""
+
+    checked_items = serializers.ListField(
+        child=serializers.CharField(max_length=20),
+        required=False,
+        default=list,
+    )
+    notes = serializers.DictField(required=False, default=dict)
+    checked_by = serializers.CharField(required=False, allow_blank=True, max_length=200)
+
+
+class SurgicalPostOpCarePlanRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/surgical/post-op/care-plan/."""
+
+    surgery_case_id = serializers.IntegerField(
+        help_text="Link result to this surgery case for persistence.",
+    )
+    procedure_key = serializers.CharField(max_length=100)
+    estimated_blood_loss_ml = serializers.IntegerField(required=False, min_value=0)
+    lowest_heart_rate = serializers.IntegerField(required=False, min_value=0)
+    lowest_map = serializers.IntegerField(required=False, min_value=0)
+    findings = serializers.CharField(required=False, allow_blank=True, max_length=5000)
+    complications_intraop = serializers.ListField(
+        child=serializers.CharField(max_length=500),
+        required=False,
+        default=list,
+    )
+    drain_placed = serializers.BooleanField(required=False, default=False)
+    stoma_formed = serializers.BooleanField(required=False, default=False)
+    caprini_score = serializers.IntegerField(required=False, min_value=0)
+    include_fhir = serializers.BooleanField(required=False, default=False)
+
+
+class SurgicalPreOpAssessResponseSerializer(serializers.Serializer):
+    """Response from POST /api/ai/surgical/pre-op/assess/."""
+
+    risk_scores = serializers.DictField()
+    facility_capable = serializers.BooleanField(required=False, allow_null=True)
+    facility_alert = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    cds_alerts = serializers.ListField(child=serializers.DictField(), required=False)
+    fhir_risk_assessment = serializers.DictField(required=False, allow_null=True)
+    stored_id = serializers.CharField(required=False)
+    mode = serializers.CharField(required=False)
+    error = serializers.CharField(required=False, allow_null=True)
+
+
+class SurgicalChecklistSessionResponseSerializer(serializers.Serializer):
+    """Response from surgical checklist start/advance/status endpoints."""
+
+    session = serializers.DictField(required=False)
+    progress = serializers.DictField(required=False)
+    message = serializers.CharField(required=False, allow_blank=True)
+    phase_complete = serializers.BooleanField(required=False)
+    unchecked_critical_items = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+    )
+    stored_id = serializers.CharField(required=False)
+    tibabot_session_id = serializers.CharField(required=False)
+    mode = serializers.CharField(required=False)
+    error = serializers.CharField(required=False, allow_null=True)
+
+
+class SurgicalPostOpCarePlanResponseSerializer(serializers.Serializer):
+    """Response from POST /api/ai/surgical/post-op/care-plan/."""
+
+    procedure_key = serializers.CharField()
+    procedure_name = serializers.CharField(required=False, allow_blank=True)
+    surgical_apgar = serializers.DictField(required=False, allow_null=True)
+    monitoring = serializers.CharField(required=False, allow_blank=True)
+    medications = serializers.ListField(child=serializers.CharField(), required=False)
+    activity = serializers.CharField(required=False, allow_blank=True)
+    nutrition = serializers.CharField(required=False, allow_blank=True)
+    wound_care = serializers.CharField(required=False, allow_blank=True)
+    complications_to_watch = serializers.ListField(child=serializers.DictField(), required=False)
+    discharge_criteria = serializers.ListField(child=serializers.CharField(), required=False)
+    follow_up = serializers.DictField(required=False, allow_null=True)
+    cds_alerts = serializers.ListField(child=serializers.DictField(), required=False)
+    fhir_care_plan = serializers.DictField(required=False, allow_null=True)
+    stored_id = serializers.CharField(required=False)
+    mode = serializers.CharField(required=False)
+    error = serializers.CharField(required=False, allow_null=True)
+
+
+class SurgicalProcedureListResponseSerializer(serializers.Serializer):
+    """Response from GET /api/ai/surgical/procedures/."""
+
+    procedures = serializers.ListField(child=serializers.DictField(), required=False)
+    results = serializers.ListField(child=serializers.DictField(), required=False)
+    error = serializers.CharField(required=False, allow_null=True)
+
+
+class SurgicalProcedureDetailResponseSerializer(serializers.Serializer):
+    """Response from GET /api/ai/surgical/procedures/{key}/."""
+
+    key = serializers.CharField(required=False)
+    name = serializers.CharField(required=False)
+    display_name = serializers.CharField(required=False)
+    specialty = serializers.CharField(required=False)
+    min_facility_level = serializers.CharField(required=False)
+    urgency_categories = serializers.ListField(child=serializers.CharField(), required=False)
+    icd10_code = serializers.CharField(required=False, allow_blank=True)
+    error = serializers.CharField(required=False, allow_null=True)
+
+
+class StoredSurgicalPreOpAssessSerializer(StoredAIResultSerializer):
+    """Persisted surgical pre-op assessment for GET endpoint."""
+
+    surgery_case_id = serializers.IntegerField(read_only=True)
+    overall_risk_level = serializers.CharField(read_only=True)
+    facility_capable = serializers.BooleanField(read_only=True)
+
+
+class StoredSurgicalChecklistSessionSerializer(StoredAIResultSerializer):
+    """Persisted surgical checklist advisory session for GET endpoint."""
+
+    surgery_case_id = serializers.IntegerField(read_only=True)
+    tibabot_session_id = serializers.CharField(read_only=True)
+    current_phase = serializers.CharField(read_only=True)
+    percent_complete = serializers.FloatField(read_only=True)
+    phase_complete = serializers.BooleanField(read_only=True)
+
+
+class StoredSurgicalPostOpCarePlanSerializer(StoredAIResultSerializer):
+    """Persisted surgical post-op care plan for GET endpoint."""
+
+    surgery_case_id = serializers.IntegerField(read_only=True)
+    procedure_key = serializers.CharField(read_only=True)
+    surgical_apgar_score = serializers.IntegerField(read_only=True)
+    risk_level = serializers.CharField(read_only=True)
+
+
+# =============================================================================
 # Phase 7 — Investigation Suggestions
 # =============================================================================
 

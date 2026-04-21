@@ -1054,6 +1054,173 @@ export interface StoredICURiskResult extends StoredAIResultBase {
 }
 
 // =============================================================================
+// Phase 7 — Surgical Assistant
+// =============================================================================
+
+export interface AISurgicalRiskScores {
+  asa?: Record<string, unknown>;
+  rcri?: Record<string, unknown>;
+  caprini?: Record<string, unknown>;
+  mallampati?: Record<string, unknown>;
+  overall_risk_level?: string;
+  alerts?: string[];
+  recommendations?: string[];
+  [key: string]: unknown;
+}
+
+export interface AISurgicalPreOpAssessRequest {
+  surgery_case_id: number;
+  procedure_key?: string;
+  age: number;
+  sex: 'male' | 'female';
+  asa_class: 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
+  urgency?: 'elective' | 'urgent' | 'emergency';
+  high_risk_surgery?: boolean;
+  ischemic_heart_disease?: boolean;
+  congestive_heart_failure?: boolean;
+  cerebrovascular_disease?: boolean;
+  insulin_dependent_diabetes?: boolean;
+  creatinine_above_2?: boolean;
+  caprini_factors?: string[];
+  mallampati_class?: 'I' | 'II' | 'III' | 'IV' | null;
+  facility_level?: string;
+  include_fhir?: boolean;
+}
+
+export interface AISurgicalPreOpAssessResponse {
+  risk_scores: AISurgicalRiskScores;
+  facility_capable?: boolean | null;
+  facility_alert?: string | null;
+  cds_alerts?: Record<string, unknown>[];
+  fhir_risk_assessment?: Record<string, unknown> | null;
+  stored_id?: string;
+  mode?: string;
+  error?: string | null;
+}
+
+export interface AISurgicalChecklistSession {
+  id?: string;
+  state?: string;
+  items?: string[];
+  [key: string]: unknown;
+}
+
+export interface AISurgicalChecklistProgress {
+  current_phase?: string;
+  total_items?: number;
+  total_checked?: number;
+  percent_complete?: number;
+  [key: string]: unknown;
+}
+
+export interface AISurgicalChecklistStartRequest {
+  surgery_case_id: number;
+  procedure_key: string;
+  patient_id: string;
+}
+
+export interface AISurgicalChecklistAdvanceRequest {
+  checked_items?: string[];
+  notes?: Record<string, unknown>;
+  checked_by?: string;
+}
+
+export interface AISurgicalChecklistSessionResponse {
+  session?: AISurgicalChecklistSession;
+  progress?: AISurgicalChecklistProgress;
+  message?: string;
+  phase_complete?: boolean;
+  unchecked_critical_items?: string[];
+  stored_id?: string;
+  tibabot_session_id?: string;
+  mode?: string;
+  error?: string | null;
+}
+
+export interface AISurgicalPostOpCarePlanRequest {
+  surgery_case_id: number;
+  procedure_key: string;
+  estimated_blood_loss_ml?: number;
+  lowest_heart_rate?: number;
+  lowest_map?: number;
+  findings?: string;
+  complications_intraop?: string[];
+  drain_placed?: boolean;
+  stoma_formed?: boolean;
+  caprini_score?: number;
+  include_fhir?: boolean;
+}
+
+export interface AISurgicalApgar {
+  score?: number;
+  risk_level?: string;
+  complication_rate?: string;
+  [key: string]: unknown;
+}
+
+export interface AISurgicalFollowUp {
+  timing?: string;
+  actions?: string[];
+  [key: string]: unknown;
+}
+
+export interface AISurgicalPostOpCarePlanResponse {
+  procedure_key: string;
+  procedure_name?: string;
+  surgical_apgar?: AISurgicalApgar | null;
+  monitoring?: string;
+  medications?: string[];
+  activity?: string;
+  nutrition?: string;
+  wound_care?: string;
+  complications_to_watch?: Record<string, unknown>[];
+  discharge_criteria?: string[];
+  follow_up?: AISurgicalFollowUp | null;
+  cds_alerts?: Record<string, unknown>[];
+  fhir_care_plan?: Record<string, unknown> | null;
+  stored_id?: string;
+  mode?: string;
+  error?: string | null;
+}
+
+export interface AISurgicalProcedureTemplate {
+  key: string;
+  name?: string;
+  display_name?: string;
+  specialty?: string;
+  min_facility_level?: string;
+  urgency_categories?: string[];
+  icd10_code?: string;
+}
+
+export interface AISurgicalProcedureListResponse {
+  procedures?: AISurgicalProcedureTemplate[];
+  results?: AISurgicalProcedureTemplate[];
+  error?: string | null;
+}
+
+export interface StoredSurgicalPreOpAssessResult extends StoredAIResultBase {
+  surgery_case_id: number | null;
+  overall_risk_level: string;
+  facility_capable: boolean | null;
+}
+
+export interface StoredSurgicalChecklistSessionResult extends StoredAIResultBase {
+  surgery_case_id: number | null;
+  tibabot_session_id: string;
+  current_phase: string;
+  percent_complete: number | null;
+  phase_complete: boolean;
+}
+
+export interface StoredSurgicalPostOpCarePlanResult extends StoredAIResultBase {
+  surgery_case_id: number | null;
+  procedure_key: string;
+  surgical_apgar_score: number | null;
+  risk_level: string;
+}
+
+// =============================================================================
 // Investigation Suggestions
 // =============================================================================
 

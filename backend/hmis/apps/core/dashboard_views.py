@@ -576,9 +576,7 @@ def _get_theatre_stats(today, facility=None, organization=None) -> dict:
                     SurgeryCase.CaseStatus.IN_SURGERY,
                 ]
             ).count(),
-            "completed_today": today_cases.filter(
-                status=SurgeryCase.CaseStatus.DISCHARGED
-            ).count(),
+            "completed_today": today_cases.filter(status=SurgeryCase.CaseStatus.DISCHARGED).count(),
         }
     except Exception:
         return {

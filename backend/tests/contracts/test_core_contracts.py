@@ -15,6 +15,7 @@ from hmis.apps.core.serializers import (
     ChangePasswordSerializer,
     CodeSystemSerializer,
     CountySerializer,
+    CrossOrgAcceptSerializer,
     DepartmentSerializer,
     DocumentSignatureSerializer,
     EmailVerifySerializer,
@@ -31,6 +32,12 @@ from hmis.apps.core.serializers import (
     OrganizationListSerializer,
     OrgChartPayloadSerializer,
     OrgChartSummarySerializer,
+    OrgJoinRequestApproveSerializer,
+    OrgJoinRequestCreateSerializer,
+    OrgJoinRequestRejectSerializer,
+    OrgJoinRequestSerializer,
+    OrgMembershipCreateSerializer,
+    OrgMembershipSerializer,
     OrgSignupSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -151,6 +158,14 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "code",
                 "id",
                 "name",
+            }
+        ),
+    ),
+    (
+        CrossOrgAcceptSerializer,
+        frozenset(
+            {
+                "token",
             }
         ),
     ),
@@ -414,6 +429,97 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        OrgJoinRequestApproveSerializer,
+        frozenset(
+            {
+                "department",
+                "facilities",
+                "review_notes",
+                "role",
+            }
+        ),
+    ),
+    (
+        OrgJoinRequestCreateSerializer,
+        frozenset(
+            {
+                "message",
+                "organization",
+                "requested_role",
+            }
+        ),
+    ),
+    (
+        OrgJoinRequestRejectSerializer,
+        frozenset(
+            {
+                "review_notes",
+            }
+        ),
+    ),
+    (
+        OrgJoinRequestSerializer,
+        frozenset(
+            {
+                "created_at",
+                "id",
+                "message",
+                "organization",
+                "organization_name",
+                "requested_role",
+                "requested_role_name",
+                "review_notes",
+                "reviewed_at",
+                "reviewed_by",
+                "reviewed_by_name",
+                "status",
+                "updated_at",
+                "user",
+                "user_email",
+                "user_name",
+            }
+        ),
+    ),
+    (
+        OrgMembershipCreateSerializer,
+        frozenset(
+            {
+                "department",
+                "facilities",
+                "is_primary",
+                "organization",
+                "role",
+                "staff_profile",
+                "status",
+            }
+        ),
+    ),
+    (
+        OrgMembershipSerializer,
+        frozenset(
+            {
+                "created_at",
+                "department",
+                "department_name",
+                "facilities_detail",
+                "facility_ids",
+                "id",
+                "invited_by",
+                "is_primary",
+                "joined_at",
+                "organization",
+                "organization_name",
+                "role",
+                "role_code",
+                "role_name",
+                "staff_name",
+                "staff_profile",
+                "status",
+                "updated_at",
+            }
+        ),
+    ),
+    (
         OrgSignupSerializer,
         frozenset(
             {
@@ -422,13 +528,13 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "admin_last_name",
                 "admin_password",
                 "confirm_password",
-                "org_name",
-                "facility_name",
-                "facility_mfl_code",
                 "facility_county",
-                "facility_sub_county",
                 "facility_level",
+                "facility_mfl_code",
+                "facility_name",
                 "facility_ownership",
+                "facility_sub_county",
+                "org_name",
             }
         ),
     ),

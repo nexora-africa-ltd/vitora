@@ -5,11 +5,7 @@ Tests for Phase 3 + 4 domain events (signals).
 import pytest  # type: ignore
 
 from hmis.apps.core.events import InventoryEvents
-from hmis.apps.inventory.models import (
-    StockCountStatus,
-    WardStockTransaction,
-    WardTransactionType,
-)
+from hmis.apps.inventory.models import StockCountStatus, WardStockTransaction, WardTransactionType
 
 pytestmark = pytest.mark.django_db
 

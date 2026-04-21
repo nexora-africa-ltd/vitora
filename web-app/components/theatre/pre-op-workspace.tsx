@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { aiApi } from '@/lib/api/ai';
 import { staffApi } from '@/lib/api/rbac';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { laboratoryApi } from '@/lib/api/laboratory';
@@ -50,6 +51,7 @@ import {
 } from '@/components/theatre/team-assignment-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { LabOrder } from '@/lib/types/laboratory';
+import type { StoredSurgicalPreOpAssessResult } from '@/lib/types/ai';
 import type { ProcedureCatalogDetail, ProcedureOrder } from '@/lib/types/procedure';
 import type { StaffProfile } from '@/lib/types/rbac';
 import type {
@@ -265,6 +267,10 @@ export function PreOpWorkspace({
   const [signingConsent, setSigningConsent] = useState(false);
   const [savingWho, setSavingWho] = useState(false);
   const [savingAnesthesia, setSavingAnesthesia] = useState(false);
+  const [runningSurgicalAssessment, setRunningSurgicalAssessment] = useState(false);
+  const [storedPreOpAssessments, setStoredPreOpAssessments] = useState<StoredSurgicalPreOpAssessResult[]>([]);
+  const [surgicalPatientAge, setSurgicalPatientAge] = useState<number | ''>('');
+  const [surgicalPatientSex, setSurgicalPatientSex] = useState<'male' | 'female'>('female');
   const [assignmentDialog, setAssignmentDialog] = useState(false);
   const [staffSearch, setStaffSearch] = useState('');
   const [staffResults, setStaffResults] = useState<StaffProfile[]>([]);
@@ -351,7 +357,7 @@ export function PreOpWorkspace({
             }
       );
 
-      const [catalogEntry, orderListing, linkedLabOrders, checklist, anesthesia, caseSchedulingContext] = await Promise.all([
+      const [catalogEntry, orderListing, linkedLabOrders, checklist, anesthesia, caseSchedulingContext, preOpAssessments] = await Promise.all([
         proceduresApi.getCatalogEntry(surgeryCase.primary_procedure).catch(() => null),
         procedureOrderPromise.catch(() => null),
         (surgeryCase.encounter != null
@@ -361,6 +367,7 @@ export function PreOpWorkspace({
         theatreApi.getWHOChecklist(surgeryCase.case_number).catch(() => null),
         theatreApi.getAnesthesiaRecord(surgeryCase.case_number).catch(() => null),
         theatreApi.getCaseSchedulingContext(surgeryCase.case_number).catch(() => null),
+        aiApi.getStoredSurgicalPreOpAssessments({ surgery_case_id: surgeryCase.id }).catch(() => []),
       ]);
 
       const linkedOrderList = orderListing?.results ?? [];
@@ -375,6 +382,7 @@ export function PreOpWorkspace({
       setWhoChecklist(checklist);
       setAnesthesiaRecord(anesthesia);
       setSchedulingContext(caseSchedulingContext);
+      setStoredPreOpAssessments(preOpAssessments);
 
       consentForm.reset({
         consent_text:
@@ -475,6 +483,13 @@ export function PreOpWorkspace({
     anesthesiaRecord && anesthesiaRecord.pre_op_assessment_at && anesthesiaRecord.npo_confirmed
   );
   const canManageTeam = hasPermission('theatre.manage_theatre');
+  const mappedProcedureKey = procedureCatalog?.tibabot_procedure_key || surgeryCase.primary_procedure_tibabot_key || '';
+  const latestStoredPreOp = storedPreOpAssessments[0] ?? null;
+  const latestStoredPreOpData = latestStoredPreOp?.result_data as Record<string, unknown> | undefined;
+  const latestStoredRiskScores = latestStoredPreOpData?.risk_scores as Record<string, unknown> | undefined;
+  const aiAsaClass = ['I', 'II', 'III', 'IV', 'V', 'VI'].includes(surgeryCase.asa_class)
+    ? (surgeryCase.asa_class as 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI')
+    : 'II';
   const coverageByMember = useMemo(
     () => new Map(
       (schedulingContext?.members || []).map((member) => [
@@ -680,6 +695,55 @@ export function PreOpWorkspace({
     }
   };
 
+  const handleRunSurgicalAssessment = async () => {
+    if (!mappedProcedureKey) {
+      toast({
+        title: 'Procedure mapping required',
+        description: 'Set a TibaBot procedure key on the linked procedure catalog entry first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (surgicalPatientAge === '') {
+      toast({
+        title: 'Patient age required',
+        description: 'Enter the patient age before running the surgical assessment.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setRunningSurgicalAssessment(true);
+      await aiApi.assessSurgicalPreOp({
+        surgery_case_id: surgeryCase.id,
+        procedure_key: mappedProcedureKey,
+        age: Number(surgicalPatientAge),
+        sex: surgicalPatientSex,
+        asa_class: aiAsaClass,
+        urgency: surgeryCase.priority === 'EMERGENCY' ? 'emergency' : surgeryCase.priority === 'URGENT' ? 'urgent' : 'elective',
+        mallampati_class: anesthesiaRecord?.mallampati_class ? (anesthesiaRecord.mallampati_class as 'I' | 'II' | 'III' | 'IV') : null,
+        facility_level: 'H4',
+        high_risk_surgery: false,
+        caprini_factors: [],
+      });
+      toast({
+        title: 'Surgical AI assessment complete',
+        description: 'The advisory pre-op risk assessment has been persisted for this case.',
+      });
+      await refreshEverything();
+    } catch (error) {
+      toast({
+        title: 'Unable to run surgical assessment',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
+    } finally {
+      setRunningSurgicalAssessment(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="grid gap-4 lg:grid-cols-2">
@@ -711,6 +775,95 @@ export function PreOpWorkspace({
         anesthesiaReady={anesthesiaReady}
         labOrders={labOrders}
       />
+
+      <Card className="relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+          aria-hidden="true"
+        />
+        <CardHeader className="relative pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ClipboardCheck className="h-4 w-4" />
+            Surgical AI Pre-Op Advisory
+            <Badge variant={surgeryCase.ai_surgical_summary.pre_op.has_result ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
+              {surgeryCase.ai_surgical_summary.pre_op.has_result ? 'Result available' : 'Not run'}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="relative space-y-4">
+          {!mappedProcedureKey ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>No TibaBot procedure mapping</AlertTitle>
+              <AlertDescription>
+                Add a TibaBot procedure key to the linked procedure catalog entry to enable the surgical assistant.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div className="rounded-lg border p-3 text-sm">
+              <p className="text-muted-foreground">Mapped procedure key</p>
+              <p className="mt-1 font-medium">{mappedProcedureKey || 'Not mapped'}</p>
+            </div>
+            <div>
+              <FormLabel>Patient age</FormLabel>
+              <Input
+                type="number"
+                min={0}
+                value={surgicalPatientAge}
+                onChange={(event) => setSurgicalPatientAge(event.target.value ? Number(event.target.value) : '')}
+              />
+            </div>
+            <div>
+              <FormLabel>Patient sex</FormLabel>
+              <Select value={surgicalPatientSex} onValueChange={(value) => setSurgicalPatientSex(value as 'male' | 'female')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="male">Male</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => void handleRunSurgicalAssessment()}
+                disabled={runningSurgicalAssessment || !mappedProcedureKey}
+              >
+                {runningSurgicalAssessment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                Run assessment
+              </Button>
+            </div>
+          </div>
+
+          {latestStoredPreOp ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border p-3 text-sm">
+                <p className="text-muted-foreground">Overall risk</p>
+                <p className="mt-1 font-medium">{latestStoredPreOp.overall_risk_level || 'Unavailable'}</p>
+              </div>
+              <div className="rounded-lg border p-3 text-sm">
+                <p className="text-muted-foreground">Facility capable</p>
+                <p className="mt-1 font-medium">{latestStoredPreOp.facility_capable == null ? 'Unknown' : latestStoredPreOp.facility_capable ? 'Yes' : 'No'}</p>
+              </div>
+              <div className="rounded-lg border p-3 text-sm sm:col-span-2 xl:col-span-2">
+                <p className="text-muted-foreground">Alerts</p>
+                <p className="mt-1 font-medium">
+                  {Array.isArray(latestStoredRiskScores?.alerts) && latestStoredRiskScores.alerts.length > 0
+                    ? latestStoredRiskScores.alerts.join(', ')
+                    : 'No alerts recorded'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No advisory pre-op assessment has been saved for this case yet.</p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-3">

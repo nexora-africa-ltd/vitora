@@ -6,11 +6,7 @@ from decimal import Decimal
 
 import pytest  # type: ignore
 
-from hmis.apps.inventory.models import (
-    WardStock,
-    WardStockTransaction,
-    WardTransactionType,
-)
+from hmis.apps.inventory.models import WardStock, WardStockTransaction, WardTransactionType
 
 pytestmark = pytest.mark.django_db
 

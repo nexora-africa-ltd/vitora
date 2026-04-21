@@ -5,9 +5,11 @@ import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   PaginatedProcedureCatalogSchema,
+  ProcedureCatalogDetailSchema,
   PaginatedProcedureOrderSchema,
   ProcedureDashboardSchema,
 } from '@/lib/schemas/procedure.schema';
+import type { ProcedureCatalogDetail } from '@/lib/types/procedure';
 
 export const proceduresApi = {
   // ---- Catalog ----
@@ -18,9 +20,11 @@ export const proceduresApi = {
     });
   },
 
-  getCatalogEntry: async (id: number) => {
+  getCatalogEntry: async (id: number): Promise<ProcedureCatalogDetail> => {
     const response = await apiClient.get(`/api/procedures/catalog/${id}/`);
-    return response.data;
+    return parseResponse(ProcedureCatalogDetailSchema, response.data, {
+      context: 'proceduresApi.getCatalogEntry',
+    });
   },
 
   createCatalogEntry: async (data: Record<string, unknown>) => {

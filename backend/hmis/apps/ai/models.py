@@ -279,3 +279,63 @@ class AIInvestigationSuggestResult(AIResultBase):
 
     def __str__(self) -> str:
         return f"InvestigationSuggest {self.id} — {self.suggestion_count} suggestions"
+
+
+class AISurgicalPreOpAssessResult(AIResultBase):
+    """Persisted surgical pre-operative risk assessment."""
+
+    surgery_case = models.ForeignKey(
+        "theatre.SurgeryCase",
+        on_delete=models.CASCADE,
+        related_name="ai_surgical_pre_op_assessments",
+    )
+    overall_risk_level = models.CharField(max_length=20, blank=True, default="")
+    facility_capable = models.BooleanField(null=True, blank=True)
+
+    class Meta(AIResultBase.Meta):
+        verbose_name = "AI Surgical Pre-Op Assessment"
+        verbose_name_plural = "AI Surgical Pre-Op Assessments"
+
+    def __str__(self) -> str:
+        return f"SurgicalPreOp {self.id} — {self.overall_risk_level or 'unknown'}"
+
+
+class AISurgicalChecklistSessionResult(AIResultBase):
+    """Persisted advisory WHO checklist session state from TibaBot."""
+
+    surgery_case = models.ForeignKey(
+        "theatre.SurgeryCase",
+        on_delete=models.CASCADE,
+        related_name="ai_surgical_checklist_sessions",
+    )
+    tibabot_session_id = models.CharField(max_length=100, db_index=True)
+    current_phase = models.CharField(max_length=40, blank=True, default="")
+    percent_complete = models.FloatField(null=True, blank=True)
+    phase_complete = models.BooleanField(default=False)
+
+    class Meta(AIResultBase.Meta):
+        verbose_name = "AI Surgical Checklist Session"
+        verbose_name_plural = "AI Surgical Checklist Sessions"
+
+    def __str__(self) -> str:
+        return f"SurgicalChecklist {self.id} — {self.current_phase or self.tibabot_session_id}"
+
+
+class AISurgicalPostOpCarePlanResult(AIResultBase):
+    """Persisted surgical post-operative care plan result."""
+
+    surgery_case = models.ForeignKey(
+        "theatre.SurgeryCase",
+        on_delete=models.CASCADE,
+        related_name="ai_surgical_post_op_care_plans",
+    )
+    procedure_key = models.CharField(max_length=100, blank=True, default="")
+    surgical_apgar_score = models.IntegerField(null=True, blank=True)
+    risk_level = models.CharField(max_length=20, blank=True, default="")
+
+    class Meta(AIResultBase.Meta):
+        verbose_name = "AI Surgical Post-Op Care Plan"
+        verbose_name_plural = "AI Surgical Post-Op Care Plans"
+
+    def __str__(self) -> str:
+        return f"SurgicalPostOp {self.id} — {self.procedure_key or 'unknown procedure'}"

@@ -24,6 +24,7 @@ class ProcedureCatalogListSerializer(serializers.ModelSerializer):
             "id",
             "code",
             "name",
+            "tibabot_procedure_key",
             "category",
             "body_system",
             "risk_level",
