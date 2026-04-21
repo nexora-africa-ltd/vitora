@@ -1,14 +1,4 @@
-"""
-SHA Authentication Service for Vitora HMIS.
-
-This module handles SHA (Social Health Authority) API authentication
-using two methods:
-1. Basic Auth to obtain JWT tokens for client registry/eligibility APIs
-2. Self-signed JWT for terminology APIs (uses client_secret as HMAC key)
-
-Reference: docs/sha-api-validation-report.md
-Official Endpoint: GET /v1/hie-auth?key={consumer_key}
-"""
+"""SHA authentication service with support for legacy DHA and ILM middleware."""
 
 import base64
 import hashlib
@@ -76,18 +66,38 @@ class SHAAuthService:
         >>> response = requests.get(url, headers=headers)
     """
 
-    # Class-level token cache for efficiency
-    _token_cache: SHAToken | None = None
-    _terminology_token_cache: SHAToken | None = None
+    # Class-level token cache for efficiency, keyed by auth configuration.
+    _token_cache: dict[str, SHAToken] = {}
 
     def __init__(self):
         """Initialize SHAAuthService with settings from Django config."""
         self.base_url = settings.SHA_API_BASE_URL.rstrip("/")
+        self.auth_mode = getattr(settings, "SHA_AUTH_MODE", "legacy").strip().lower()
+        self.auth_base_url = getattr(settings, "SHA_AUTH_BASE_URL", self.base_url).rstrip("/")
+        self.auth_token_endpoint = getattr(
+            settings,
+            "SHA_AUTH_TOKEN_ENDPOINT",
+            "/api/v1/tenants/token" if self.auth_mode == "ilm" else "/v1/hie-auth",
+        )
         self.consumer_key = settings.SHA_CONSUMER_KEY
+        self.client_id = getattr(settings, "SHA_CLIENT_ID", "") or self.consumer_key
         self.client_secret = getattr(settings, "SHA_CLIENT_SECRET", "")
         self.username = settings.SHA_USERNAME
         self.password = settings.SHA_PASSWORD
         self.timeout = getattr(settings, "SHA_API_TIMEOUT", 19)
+
+    def _cache_key(self) -> str:
+        """Build a stable cache key for the active auth mode and credentials."""
+        return ":".join(
+            [
+                self.auth_mode,
+                self.auth_base_url,
+                self.auth_token_endpoint,
+                self.client_id,
+                self.consumer_key,
+                self.username,
+            ]
+        )
 
     def _base64url_encode(self, data: bytes) -> str:
         """
@@ -175,6 +185,12 @@ class SHAAuthService:
         Returns:
             Dict with Authorization and Accept headers
         """
+        if self.auth_mode == "ilm":
+            return {
+                "Authorization": f"Bearer {self.get_token()}",
+                "Accept": "application/json",
+            }
+
         token = self.generate_terminology_token()
         return {
             "Authorization": f"Bearer {token}",
@@ -201,19 +217,34 @@ class SHAAuthService:
             >>> token = auth_service.get_token()
             >>> print(f"Bearer {token}")
         """
-        # Check cache first
-        if not force_refresh and self._token_cache and self._token_cache.is_valid:
-            logger.debug("Using cached SHA token")
-            return self._token_cache.token
+        cache_key = self._cache_key()
+        cached_token = SHAAuthService._token_cache.get(cache_key)
+        if not force_refresh and cached_token and cached_token.is_valid:
+            logger.debug("Using cached SHA token for mode %s", self.auth_mode)
+            return cached_token.token
 
-        # Fetch new token
-        logger.info("Fetching new SHA authentication token")
+        logger.info("Fetching new SHA authentication token using %s mode", self.auth_mode)
 
+        if self.auth_mode == "ilm":
+            token, expires_in = self._get_ilm_token()
+        else:
+            token, expires_in = self._get_legacy_token()
+
+        SHAAuthService._token_cache[cache_key] = SHAToken(
+            token=token,
+            obtained_at=datetime.now(),
+            expires_in_seconds=expires_in,
+        )
+        logger.info("Successfully obtained SHA authentication token")
+        return token
+
+    def _get_legacy_token(self) -> tuple[str, int]:
+        """Fetch a token from the legacy DHA HIE auth endpoint."""
         basic_auth = self._create_basic_auth_header()
 
         try:
             response = requests.get(
-                f"{self.base_url}/v1/hie-auth",
+                f"{self.auth_base_url}{self.auth_token_endpoint}",
                 params={"key": self.consumer_key},
                 headers={
                     "Authorization": f"Basic {basic_auth}",
@@ -221,68 +252,70 @@ class SHAAuthService:
                 },
                 timeout=self.timeout,
             )
-
-            # Log response for debugging
-            logger.debug(f"SHA auth response status: {response.status_code}")
-
-            if response.status_code == 401:
-                raise SHAAuthError("Authentication failed: Invalid credentials", status_code=401)
-
-            if response.status_code == 403:
-                raise SHAAuthError("Authentication failed: Access denied", status_code=403)
-
-            response.raise_for_status()
-
-            # Handle different response formats
-            # The API may return:
-            # 1. Plain text JWT token directly
-            # 2. JSON with {"token": "..."}
-            # 3. JSON with {"IsSuccess": true, "Data": {"token": "..."}}
-
-            content_type = response.headers.get("Content-Type", "")
-            response_text = response.text.strip()
-
-            if "application/json" in content_type:
-                data = response.json()
-                # Official format: {"token": "..."}
-                # Alternative: {"IsSuccess": true, "Data": {"token": "..."}}
-                token = data.get("token")
-                if not token and data.get("Data"):
-                    token = data["Data"].get("token")
-            else:
-                # Plain text JWT token (official DHA format)
-                # Check if it looks like a JWT (starts with eyJ)
-                if response_text.startswith("eyJ"):
-                    token = response_text
-                    data = {"token": token}
-                else:
-                    raise SHAAuthError(
-                        f"Unexpected response format: {response_text[:100]}",
-                        status_code=response.status_code,
-                    )
-
-            if not token:
-                raise SHAAuthError(
-                    f"No token in response: {data}", status_code=response.status_code
-                )
-
-            # Parse expiry if provided
-            expires_in = int(data.get("expires_in", 19))
-
-            # Cache the token
-            SHAAuthService._token_cache = SHAToken(
-                token=token,
-                obtained_at=datetime.now(),
-                expires_in_seconds=expires_in,
-            )
-
-            logger.info("Successfully obtained SHA authentication token")
-            return token
-
+            return self._extract_token_from_response(response, default_expiry=19)
         except requests.Timeout:
             raise SHAAuthError("Authentication request timed out", status_code=0)
-        except requests.RequestException as e:
-            raise SHAAuthError(f"Authentication request failed: {str(e)}", status_code=0)
+        except requests.RequestException as exc:
+            raise SHAAuthError(f"Authentication request failed: {str(exc)}", status_code=0)
+
+    def _get_ilm_token(self) -> tuple[str, int]:
+        """Fetch a token from the ILM middleware client credentials endpoint."""
+        try:
+            response = requests.post(
+                f"{self.auth_base_url}{self.auth_token_endpoint}",
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                data={
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                    "grant_type": "client_credentials",
+                },
+                timeout=self.timeout,
+            )
+            return self._extract_token_from_response(response, default_expiry=3600)
+        except requests.Timeout:
+            raise SHAAuthError("Authentication request timed out", status_code=0)
+        except requests.RequestException as exc:
+            raise SHAAuthError(f"Authentication request failed: {str(exc)}", status_code=0)
+
+    def _extract_token_from_response(
+        self, response: requests.Response, default_expiry: int
+    ) -> tuple[str, int]:
+        """Normalize token responses from both legacy DHA and ILM middleware."""
+        logger.debug("SHA auth response status: %s", response.status_code)
+
+        if response.status_code == 401:
+            raise SHAAuthError("Authentication failed: Invalid credentials", status_code=401)
+
+        if response.status_code == 403:
+            raise SHAAuthError("Authentication failed: Access denied", status_code=403)
+
+        response.raise_for_status()
+
+        content_type = response.headers.get("Content-Type", "")
+        response_text = response.text.strip()
+
+        if "application/json" in content_type:
+            data = response.json()
+            token = data.get("access_token") or data.get("token")
+            if not token and data.get("Data"):
+                token = data["Data"].get("access_token") or data["Data"].get("token")
+        else:
+            if response_text.startswith("eyJ"):
+                token = response_text
+                data = {"token": token}
+            else:
+                raise SHAAuthError(
+                    f"Unexpected response format: {response_text[:100]}",
+                    status_code=response.status_code,
+                )
+
+        if not token:
+            raise SHAAuthError(f"No token in response: {data}", status_code=response.status_code)
+
+        return token, int(data.get("expires_in", default_expiry))
 
     def get_auth_headers(self, force_refresh: bool = False) -> dict:
         """
@@ -306,13 +339,14 @@ class SHAAuthService:
             "Content-Type": "application/json",
         }
 
-    def clear_token_cache(self):
+    @classmethod
+    def clear_token_cache(cls):
         """
         Clear the cached token.
 
         Use this if the token becomes invalid before expiry.
         """
-        SHAAuthService._token_cache = None
+        cls._token_cache = {}
         logger.debug("SHA token cache cleared")
 
     def is_configured(self) -> bool:
@@ -322,14 +356,10 @@ class SHAAuthService:
         Returns:
             True if all required credentials are set
         """
-        return all(
-            [
-                self.base_url,
-                self.consumer_key,
-                self.username,
-                self.password,
-            ]
-        )
+        if self.auth_mode == "ilm":
+            return all([self.auth_base_url, self.client_id, self.client_secret])
+
+        return all([self.auth_base_url, self.consumer_key, self.username, self.password])
 
 
 class SHAAuthError(Exception):
