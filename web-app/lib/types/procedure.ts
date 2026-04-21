@@ -2,6 +2,7 @@ export interface ProcedureCatalogEntry {
   id: number;
   code: string;
   name: string;
+  tibabot_procedure_key: string;
   description: string;
   category: string;
   body_system: string;

@@ -36,6 +36,16 @@ from .views import (
     StoredICURiskResultListView,
     StoredInvestigationSuggestListView,
     StoredLabInterpretListView,
+    StoredSurgicalChecklistSessionListView,
+    StoredSurgicalPostOpCarePlanListView,
+    StoredSurgicalPreOpAssessListView,
+    SurgicalChecklistAdvanceView,
+    SurgicalChecklistStartView,
+    SurgicalChecklistStatusView,
+    SurgicalPostOpCarePlanView,
+    SurgicalPreOpAssessView,
+    SurgicalProcedureDetailView,
+    SurgicalProcedureListView,
 )
 
 app_name = "ai"
@@ -130,6 +140,42 @@ urlpatterns = [
         InvestigationSuggestView.as_view(),
         name="investigations-suggest",
     ),
+    # Phase 8 — Surgical Assistant
+    path(
+        "surgical/pre-op/assess/",
+        SurgicalPreOpAssessView.as_view(),
+        name="surgical-pre-op-assess",
+    ),
+    path(
+        "surgical/checklist/start/",
+        SurgicalChecklistStartView.as_view(),
+        name="surgical-checklist-start",
+    ),
+    path(
+        "surgical/checklist/<str:session_id>/advance/",
+        SurgicalChecklistAdvanceView.as_view(),
+        name="surgical-checklist-advance",
+    ),
+    path(
+        "surgical/checklist/<str:session_id>/status/",
+        SurgicalChecklistStatusView.as_view(),
+        name="surgical-checklist-status",
+    ),
+    path(
+        "surgical/post-op/care-plan/",
+        SurgicalPostOpCarePlanView.as_view(),
+        name="surgical-post-op-care-plan",
+    ),
+    path(
+        "surgical/procedures/",
+        SurgicalProcedureListView.as_view(),
+        name="surgical-procedures",
+    ),
+    path(
+        "surgical/procedures/<str:procedure_key>/",
+        SurgicalProcedureDetailView.as_view(),
+        name="surgical-procedure-detail",
+    ),
     # Stored AI result retrieval
     path("results/care-plans/", StoredCarePlanListView.as_view(), name="results-care-plans"),
     path(
@@ -149,5 +195,20 @@ urlpatterns = [
         "results/investigation-suggestions/",
         StoredInvestigationSuggestListView.as_view(),
         name="results-investigation-suggestions",
+    ),
+    path(
+        "results/surgical/pre-op-assessments/",
+        StoredSurgicalPreOpAssessListView.as_view(),
+        name="results-surgical-pre-op-assessments",
+    ),
+    path(
+        "results/surgical/checklist-sessions/",
+        StoredSurgicalChecklistSessionListView.as_view(),
+        name="results-surgical-checklist-sessions",
+    ),
+    path(
+        "results/surgical/post-op-care-plans/",
+        StoredSurgicalPostOpCarePlanListView.as_view(),
+        name="results-surgical-post-op-care-plans",
     ),
 ]

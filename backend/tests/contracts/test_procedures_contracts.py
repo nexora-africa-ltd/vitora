@@ -84,6 +84,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "special_equipment",
                 "surgeon_fee",
                 "theatre_fee",
+                "tibabot_procedure_key",
                 "typical_blood_requirement",
                 "typical_duration_minutes",
                 "updated_at",
@@ -106,6 +107,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "is_active",
                 "name",
                 "risk_level",
+                "tibabot_procedure_key",
                 "typical_duration_minutes",
             }
         ),

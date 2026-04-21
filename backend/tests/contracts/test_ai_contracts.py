@@ -73,6 +73,7 @@ from hmis.apps.ai.serializers import (
     ICUPredictPatientDataSerializer,
     ICUPredictRequestSerializer,
     ICUPredictResponseSerializer,
+    InvestigationSuggestRequestSerializer,
     LabFlagSerializer,
     LabInterpretRequestSerializer,
     LabInterpretResponseSerializer,
@@ -84,7 +85,20 @@ from hmis.apps.ai.serializers import (
     StoredCDSResultSerializer,
     StoredDischargeResultSerializer,
     StoredICURiskResultSerializer,
+    StoredInvestigationSuggestSerializer,
     StoredLabInterpretSerializer,
+    StoredSurgicalChecklistSessionSerializer,
+    StoredSurgicalPostOpCarePlanSerializer,
+    StoredSurgicalPreOpAssessSerializer,
+    SurgicalChecklistAdvanceRequestSerializer,
+    SurgicalChecklistSessionResponseSerializer,
+    SurgicalChecklistStartRequestSerializer,
+    SurgicalPostOpCarePlanRequestSerializer,
+    SurgicalPostOpCarePlanResponseSerializer,
+    SurgicalPreOpAssessRequestSerializer,
+    SurgicalPreOpAssessResponseSerializer,
+    SurgicalProcedureDetailResponseSerializer,
+    SurgicalProcedureListResponseSerializer,
     VitalsSnapshotSerializer,
 )
 
@@ -920,6 +934,26 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        InvestigationSuggestRequestSerializer,
+        frozenset(
+            {
+                "chief_complaint",
+                "diagnoses",
+                "encounter_id",
+                "existing_orders",
+                "existing_results",
+                "facility_level",
+                "include_fhir",
+                "is_pregnant",
+                "max_suggestions",
+                "patient_age",
+                "patient_sex",
+                "region",
+                "symptoms",
+            }
+        ),
+    ),
+    (
         LabFlagSerializer,
         frozenset(
             {
@@ -1072,6 +1106,21 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        StoredInvestigationSuggestSerializer,
+        frozenset(
+            {
+                "created_at",
+                "created_by",
+                "encounter_id",
+                "id",
+                "matched_conditions",
+                "result_data",
+                "service_mode",
+                "suggestion_count",
+            }
+        ),
+    ),
+    (
         StoredLabInterpretSerializer,
         frozenset(
             {
@@ -1084,6 +1133,194 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "lab_result_id",
                 "result_data",
                 "service_mode",
+            }
+        ),
+    ),
+    (
+        StoredSurgicalChecklistSessionSerializer,
+        frozenset(
+            {
+                "created_at",
+                "created_by",
+                "current_phase",
+                "id",
+                "percent_complete",
+                "phase_complete",
+                "result_data",
+                "service_mode",
+                "surgery_case_id",
+                "tibabot_session_id",
+            }
+        ),
+    ),
+    (
+        StoredSurgicalPostOpCarePlanSerializer,
+        frozenset(
+            {
+                "created_at",
+                "created_by",
+                "id",
+                "procedure_key",
+                "result_data",
+                "risk_level",
+                "service_mode",
+                "surgery_case_id",
+                "surgical_apgar_score",
+            }
+        ),
+    ),
+    (
+        StoredSurgicalPreOpAssessSerializer,
+        frozenset(
+            {
+                "created_at",
+                "created_by",
+                "facility_capable",
+                "id",
+                "overall_risk_level",
+                "result_data",
+                "service_mode",
+                "surgery_case_id",
+            }
+        ),
+    ),
+    (
+        SurgicalChecklistAdvanceRequestSerializer,
+        frozenset(
+            {
+                "checked_by",
+                "checked_items",
+                "notes",
+            }
+        ),
+    ),
+    (
+        SurgicalChecklistSessionResponseSerializer,
+        frozenset(
+            {
+                "error",
+                "message",
+                "mode",
+                "phase_complete",
+                "progress",
+                "session",
+                "stored_id",
+                "tibabot_session_id",
+                "unchecked_critical_items",
+            }
+        ),
+    ),
+    (
+        SurgicalChecklistStartRequestSerializer,
+        frozenset(
+            {
+                "patient_id",
+                "procedure_key",
+                "surgery_case_id",
+            }
+        ),
+    ),
+    (
+        SurgicalPostOpCarePlanRequestSerializer,
+        frozenset(
+            {
+                "caprini_score",
+                "complications_intraop",
+                "drain_placed",
+                "estimated_blood_loss_ml",
+                "findings",
+                "include_fhir",
+                "lowest_heart_rate",
+                "lowest_map",
+                "procedure_key",
+                "stoma_formed",
+                "surgery_case_id",
+            }
+        ),
+    ),
+    (
+        SurgicalPostOpCarePlanResponseSerializer,
+        frozenset(
+            {
+                "activity",
+                "cds_alerts",
+                "complications_to_watch",
+                "discharge_criteria",
+                "error",
+                "fhir_care_plan",
+                "follow_up",
+                "medications",
+                "mode",
+                "monitoring",
+                "nutrition",
+                "procedure_key",
+                "procedure_name",
+                "stored_id",
+                "surgical_apgar",
+                "wound_care",
+            }
+        ),
+    ),
+    (
+        SurgicalPreOpAssessRequestSerializer,
+        frozenset(
+            {
+                "age",
+                "asa_class",
+                "caprini_factors",
+                "cerebrovascular_disease",
+                "congestive_heart_failure",
+                "creatinine_above_2",
+                "facility_level",
+                "high_risk_surgery",
+                "include_fhir",
+                "insulin_dependent_diabetes",
+                "ischemic_heart_disease",
+                "mallampati_class",
+                "procedure_key",
+                "sex",
+                "surgery_case_id",
+                "urgency",
+            }
+        ),
+    ),
+    (
+        SurgicalPreOpAssessResponseSerializer,
+        frozenset(
+            {
+                "cds_alerts",
+                "error",
+                "facility_alert",
+                "facility_capable",
+                "fhir_risk_assessment",
+                "mode",
+                "risk_scores",
+                "stored_id",
+            }
+        ),
+    ),
+    (
+        SurgicalProcedureDetailResponseSerializer,
+        frozenset(
+            {
+                "display_name",
+                "error",
+                "icd10_code",
+                "key",
+                "min_facility_level",
+                "name",
+                "specialty",
+                "urgency_categories",
+            }
+        ),
+    ),
+    (
+        SurgicalProcedureListResponseSerializer,
+        frozenset(
+            {
+                "error",
+                "procedures",
+                "results",
             }
         ),
     ),

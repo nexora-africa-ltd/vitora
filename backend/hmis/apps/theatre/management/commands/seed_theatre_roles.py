@@ -19,8 +19,7 @@ THEATRE_ROLES = [
         "name": "Theatre Coordinator",
         "category": "CLINICAL",
         "description": (
-            "Manages theatre scheduling, assigns surgical teams, "
-            "and oversees daily theatre lists."
+            "Manages theatre scheduling, assigns surgical teams, and oversees daily theatre lists."
         ),
     },
     {
@@ -93,22 +92,17 @@ class Command(BaseCommand):
                 self.stdout.write(f"  [exists] {role_data['code']}: {role_data['name']}")
             else:
                 if dry_run:
-                    self.stdout.write(
-                        f"  [would create] {role_data['code']}: {role_data['name']}"
-                    )
+                    self.stdout.write(f"  [would create] {role_data['code']}: {role_data['name']}")
                 else:
                     Role.objects.create(**role_data)
                     self.stdout.write(
-                        self.style.SUCCESS(
-                            f"  [created] {role_data['code']}: {role_data['name']}"
-                        )
+                        self.style.SUCCESS(f"  [created] {role_data['code']}: {role_data['name']}")
                     )
                 created_count += 1
 
         verb = "Would create" if dry_run else "Created"
         self.stdout.write(
             self.style.SUCCESS(
-                f"\n{verb} {created_count} role(s), "
-                f"{existing_count} already existed."
+                f"\n{verb} {created_count} role(s), {existing_count} already existed."
             )
         )

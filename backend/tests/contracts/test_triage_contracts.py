@@ -23,6 +23,7 @@ from hmis.apps.triage.serializers import (
     TriageAssessmentSerializer,
     TriageCategoryCalculationSerializer,
     TriageQueueSerializer,
+    TriageSettingsSerializer,
     TriageVitalThresholdSerializer,
     WaitingQueueCreateSerializer,
     WaitingQueueSerializer,
@@ -334,6 +335,20 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "triage_time",
                 "updated_at",
                 "wait_time_minutes",
+            }
+        ),
+    ),
+    (
+        TriageSettingsSerializer,
+        frozenset(
+            {
+                "auto_route_to_room",
+                "created_at",
+                "facility",
+                "id",
+                "triage_department",
+                "triage_department_name",
+                "updated_at",
             }
         ),
     ),

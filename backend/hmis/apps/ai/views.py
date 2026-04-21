@@ -35,6 +35,9 @@ from .models import (
     AIICURiskResult,
     AIInvestigationSuggestResult,
     AILabInterpretResult,
+    AISurgicalChecklistSessionResult,
+    AISurgicalPostOpCarePlanResult,
+    AISurgicalPreOpAssessResult,
     ChatMessage,
     ChatSession,
 )
@@ -77,6 +80,18 @@ from .serializers import (
     StoredICURiskResultSerializer,
     StoredInvestigationSuggestSerializer,
     StoredLabInterpretSerializer,
+    StoredSurgicalChecklistSessionSerializer,
+    StoredSurgicalPostOpCarePlanSerializer,
+    StoredSurgicalPreOpAssessSerializer,
+    SurgicalChecklistAdvanceRequestSerializer,
+    SurgicalChecklistSessionResponseSerializer,
+    SurgicalChecklistStartRequestSerializer,
+    SurgicalPostOpCarePlanRequestSerializer,
+    SurgicalPostOpCarePlanResponseSerializer,
+    SurgicalPreOpAssessRequestSerializer,
+    SurgicalPreOpAssessResponseSerializer,
+    SurgicalProcedureDetailResponseSerializer,
+    SurgicalProcedureListResponseSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -95,6 +110,14 @@ _AI_CHAT_ALLOWED_ROLES = {
     "ADMIN",
     "NURSE",
 }
+
+
+def _parse_bool(value: object) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    return None
 
 
 # =============================================================================
@@ -2426,3 +2449,411 @@ class StoredICURiskResultListView(AIFeatureGatedMixin, APIView):
         if facility:
             qs = qs.filter(facility=facility)
         return Response(StoredICURiskResultSerializer(qs[:10], many=True).data)
+
+
+# =============================================================================
+# Phase 8 — Surgical Assistant
+# =============================================================================
+
+
+class SurgicalPreOpAssessView(AIFeatureGatedMixin, APIView):
+    """Proxy surgical pre-operative risk assessment and persist results."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def post(self, request: Request) -> Response:
+        serializer = SurgicalPreOpAssessRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        surgery_case_id = data.pop("surgery_case_id")
+        payload = {
+            **data,
+            "user_context": build_user_context(request),
+            "facility_context": build_facility_context(request),
+        }
+
+        AuditLog.log(
+            action="ai_surgical_pre_op_assess",
+            user=request.user,
+            resource_type="SurgeryCase",
+            resource_id=surgery_case_id,
+            ip_address=_get_client_ip(request),
+            details={
+                "procedure_key": data.get("procedure_key", ""),
+                "asa_class": data.get("asa_class"),
+                "include_fhir": data.get("include_fhir", False),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.assess_surgical_pre_op(payload)
+            result["mode"] = "tibabot"
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for surgical pre-op assessment")
+            return Response(
+                {"error": "TibaBot AI service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for surgical pre-op assessment: %s", e)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        risk_scores = result.get("risk_scores", {})
+        try:
+            stored = AISurgicalPreOpAssessResult.objects.create(
+                created_by=request.user,
+                surgery_case_id=surgery_case_id,
+                overall_risk_level=risk_scores.get("overall_risk_level", "")[:20],
+                facility_capable=_parse_bool(result.get("facility_capable")),
+                request_data=data,
+                result_data=result,
+                service_mode=result.get("mode", "tibabot"),
+                **_get_tenant_kwargs(request),
+            )
+            result["stored_id"] = str(stored.id)
+        except Exception:
+            logger.exception("Failed to persist surgical pre-op assessment result")
+
+        response_serializer = SurgicalPreOpAssessResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class SurgicalChecklistStartView(AIFeatureGatedMixin, APIView):
+    """Start a TibaBot advisory checklist session and persist the initial snapshot."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def post(self, request: Request) -> Response:
+        serializer = SurgicalChecklistStartRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        surgery_case_id = data.pop("surgery_case_id")
+
+        AuditLog.log(
+            action="ai_surgical_checklist_start",
+            user=request.user,
+            resource_type="SurgeryCase",
+            resource_id=surgery_case_id,
+            ip_address=_get_client_ip(request),
+            details={"procedure_key": data.get("procedure_key", "")},
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.start_surgical_checklist(data)
+            result["mode"] = "tibabot"
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for surgical checklist start")
+            return Response(
+                {"error": "TibaBot AI service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for surgical checklist start: %s", e)
+            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        session = result.get("session", {})
+        tibabot_session_id = session.get("id") or result.get("session_id") or ""
+        progress = result.get("progress", {})
+        try:
+            stored = AISurgicalChecklistSessionResult.objects.create(
+                created_by=request.user,
+                surgery_case_id=surgery_case_id,
+                tibabot_session_id=tibabot_session_id,
+                current_phase=(session.get("state") or progress.get("current_phase") or "")[:40],
+                percent_complete=progress.get("percent_complete"),
+                phase_complete=bool(result.get("phase_complete", False)),
+                request_data=data,
+                result_data=result,
+                service_mode=result.get("mode", "tibabot"),
+                **_get_tenant_kwargs(request),
+            )
+            result["stored_id"] = str(stored.id)
+            result["tibabot_session_id"] = tibabot_session_id
+        except Exception:
+            logger.exception("Failed to persist surgical checklist session result")
+
+        response_serializer = SurgicalChecklistSessionResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class SurgicalChecklistAdvanceView(AIFeatureGatedMixin, APIView):
+    """Advance a persisted TibaBot advisory checklist session."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def post(self, request: Request, session_id: str) -> Response:
+        serializer = SurgicalChecklistAdvanceRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        AuditLog.log(
+            action="ai_surgical_checklist_advance",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={"tibabot_session_id": session_id},
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.advance_surgical_checklist(session_id, data)
+            result["mode"] = "tibabot"
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for surgical checklist advance")
+            return Response(
+                {"error": "TibaBot AI service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for surgical checklist advance: %s", e)
+            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        latest = (
+            AISurgicalChecklistSessionResult.objects.filter(tibabot_session_id=session_id)
+            .order_by("-created_at")
+            .first()
+        )
+        session = result.get("session", {})
+        progress = result.get("progress", {})
+        if latest is not None:
+            try:
+                stored = AISurgicalChecklistSessionResult.objects.create(
+                    created_by=request.user,
+                    surgery_case=latest.surgery_case,
+                    tibabot_session_id=session_id,
+                    current_phase=(session.get("state") or progress.get("current_phase") or "")[
+                        :40
+                    ],
+                    percent_complete=progress.get("percent_complete"),
+                    phase_complete=bool(result.get("phase_complete", False)),
+                    request_data=data,
+                    result_data=result,
+                    service_mode=result.get("mode", "tibabot"),
+                    facility=latest.facility,
+                    organization=latest.organization,
+                )
+                result["stored_id"] = str(stored.id)
+            except Exception:
+                logger.exception("Failed to persist surgical checklist advance result")
+        result["tibabot_session_id"] = session_id
+
+        response_serializer = SurgicalChecklistSessionResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class SurgicalChecklistStatusView(AIFeatureGatedMixin, APIView):
+    """Fetch live status for a TibaBot advisory checklist session."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def get(self, request: Request, session_id: str) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.get_surgical_checklist_status(session_id)
+            result["mode"] = "tibabot"
+            result["tibabot_session_id"] = session_id
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for surgical checklist status")
+            return Response(
+                {"error": "TibaBot AI service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for surgical checklist status: %s", e)
+            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        response_serializer = SurgicalChecklistSessionResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class SurgicalPostOpCarePlanView(AIFeatureGatedMixin, APIView):
+    """Generate a TibaBot post-operative care plan and persist it."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def post(self, request: Request) -> Response:
+        serializer = SurgicalPostOpCarePlanRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        surgery_case_id = data.pop("surgery_case_id")
+        if data.get("findings"):
+            data["findings"] = sanitize_clinical_text(data["findings"])
+
+        AuditLog.log(
+            action="ai_surgical_post_op_care_plan",
+            user=request.user,
+            resource_type="SurgeryCase",
+            resource_id=surgery_case_id,
+            ip_address=_get_client_ip(request),
+            details={"procedure_key": data.get("procedure_key", "")},
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.generate_surgical_post_op_care_plan(data)
+            result["mode"] = "tibabot"
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for surgical post-op care plan")
+            return Response(
+                {"error": "TibaBot AI service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for surgical post-op care plan: %s", e)
+            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        surgical_apgar = result.get("surgical_apgar", {})
+        try:
+            stored = AISurgicalPostOpCarePlanResult.objects.create(
+                created_by=request.user,
+                surgery_case_id=surgery_case_id,
+                procedure_key=data.get("procedure_key", "")[:100],
+                surgical_apgar_score=surgical_apgar.get("score"),
+                risk_level=surgical_apgar.get("risk_level", "")[:20],
+                request_data=data,
+                result_data=result,
+                service_mode=result.get("mode", "tibabot"),
+                **_get_tenant_kwargs(request),
+            )
+            result["stored_id"] = str(stored.id)
+        except Exception:
+            logger.exception("Failed to persist surgical post-op care plan result")
+
+        response_serializer = SurgicalPostOpCarePlanResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class SurgicalProcedureListView(AIFeatureGatedMixin, APIView):
+    """List TibaBot surgical procedure templates for mapping and UI fallback."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def get(self, request: Request) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.list_surgical_procedures()
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for surgical procedures list")
+            return Response(
+                {"error": "TibaBot AI service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for surgical procedures list: %s", e)
+            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        response_serializer = SurgicalProcedureListResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class SurgicalProcedureDetailView(AIFeatureGatedMixin, APIView):
+    """Get a single TibaBot surgical procedure template."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def get(self, request: Request, procedure_key: str) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.get_surgical_procedure(procedure_key)
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for surgical procedure detail")
+            return Response(
+                {"error": "TibaBot AI service is currently unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for surgical procedure detail: %s", e)
+            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        response_serializer = SurgicalProcedureDetailResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class StoredSurgicalPreOpAssessListView(AIFeatureGatedMixin, APIView):
+    """Return saved surgical pre-op assessments for a surgery case."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def get(self, request: Request) -> Response:
+        surgery_case_id = request.query_params.get("surgery_case_id")
+        if not surgery_case_id:
+            return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        qs = AISurgicalPreOpAssessResult.objects.select_related("created_by").filter(
+            surgery_case_id=surgery_case_id,
+        )
+        if facility:
+            qs = qs.filter(facility=facility)
+        return Response(StoredSurgicalPreOpAssessSerializer(qs[:10], many=True).data)
+
+
+class StoredSurgicalChecklistSessionListView(AIFeatureGatedMixin, APIView):
+    """Return saved advisory checklist session snapshots for a surgery case."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def get(self, request: Request) -> Response:
+        surgery_case_id = request.query_params.get("surgery_case_id")
+        if not surgery_case_id:
+            return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        qs = AISurgicalChecklistSessionResult.objects.select_related("created_by").filter(
+            surgery_case_id=surgery_case_id,
+        )
+        if facility:
+            qs = qs.filter(facility=facility)
+        return Response(StoredSurgicalChecklistSessionSerializer(qs[:10], many=True).data)
+
+
+class StoredSurgicalPostOpCarePlanListView(AIFeatureGatedMixin, APIView):
+    """Return saved surgical post-op care plans for a surgery case."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_SURGICAL_ASSISTANT"
+
+    def get(self, request: Request) -> Response:
+        surgery_case_id = request.query_params.get("surgery_case_id")
+        if not surgery_case_id:
+            return Response([])
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        qs = AISurgicalPostOpCarePlanResult.objects.select_related("created_by").filter(
+            surgery_case_id=surgery_case_id,
+        )
+        if facility:
+            qs = qs.filter(facility=facility)
+        return Response(StoredSurgicalPostOpCarePlanSerializer(qs[:10], many=True).data)

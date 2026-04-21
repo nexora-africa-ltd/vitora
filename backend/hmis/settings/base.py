@@ -856,6 +856,9 @@ TIBABOT_ENABLE_CARE_PLAN = os.getenv("TIBABOT_ENABLE_CARE_PLAN", "true").lower()
 TIBABOT_ENABLE_CLERKING_ASSIST = (
     os.getenv("TIBABOT_ENABLE_CLERKING_ASSIST", "true").lower() == "true"
 )
+TIBABOT_ENABLE_SURGICAL_ASSISTANT = (
+    os.getenv("TIBABOT_ENABLE_SURGICAL_ASSISTANT", "true").lower() == "true"
+)
 
 # ============================================================================
 # SMART on FHIR OAuth2 Configuration (Phase 5)

@@ -40,10 +40,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { aiApi } from '@/lib/api/ai';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { theatreApi } from '@/lib/api/theatre';
 import { downloadPDF } from '@/lib/export-utils';
 import { useToast } from '@/lib/hooks/use-toast';
+import type { StoredSurgicalPostOpCarePlanResult } from '@/lib/types/ai';
 import type { PACURecord, SurgeryCaseDetail } from '@/lib/types/theatre';
 
 const pacuArrivalSchema = z.object({
@@ -115,6 +117,13 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pacuRecord, setPacuRecord] = useState<PACURecord | null>(null);
+  const [storedPostOpPlans, setStoredPostOpPlans] = useState<StoredSurgicalPostOpCarePlanResult[]>([]);
+  const [generatingCarePlan, setGeneratingCarePlan] = useState(false);
+  const [estimatedBloodLossMl, setEstimatedBloodLossMl] = useState<number | ''>('');
+  const [lowestHeartRate, setLowestHeartRate] = useState<number | ''>('');
+  const [lowestMap, setLowestMap] = useState<number | ''>('');
+  const [capriniScore, setCapriniScore] = useState<number | ''>('');
+  const [postOpFindings, setPostOpFindings] = useState('');
 
   const arrivalForm = useForm<z.infer<typeof pacuArrivalSchema>>({
     resolver: zodResolver(pacuArrivalSchema),
@@ -167,8 +176,12 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
   const loadRecord = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true); else setRefreshing(true);
     try {
-      const record = await theatreApi.getPACURecord(surgeryCase.case_number).catch(() => null);
+      const [record, postOpPlans] = await Promise.all([
+        theatreApi.getPACURecord(surgeryCase.case_number).catch(() => null),
+        aiApi.getStoredSurgicalPostOpCarePlans({ surgery_case_id: surgeryCase.id }).catch(() => []),
+      ]);
       setPacuRecord(record);
+      setStoredPostOpPlans(postOpPlans);
       if (record) {
         arrivalForm.reset({
           arrival_time: toDateTimeLocalValue(record.arrival_time),
@@ -206,6 +219,15 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
     await loadRecord(false);
     await onCaseRefresh?.();
   }, [loadRecord, onCaseRefresh]);
+
+  const mappedProcedureKey = surgeryCase.primary_procedure_tibabot_key || surgeryCase.ai_surgical_summary.post_op.procedure_key || '';
+  const latestStoredPostOp = storedPostOpPlans[0] ?? null;
+  const latestStoredPostOpData = latestStoredPostOp?.result_data as Record<string, unknown> | undefined;
+  const latestSurgicalApgar = latestStoredPostOpData?.surgical_apgar as Record<string, unknown> | undefined;
+  const latestSurgicalApgarScore =
+    typeof latestSurgicalApgar?.score === 'number' ? latestSurgicalApgar.score : null;
+  const latestSurgicalApgarRiskLevel =
+    typeof latestSurgicalApgar?.risk_level === 'string' ? latestSurgicalApgar.risk_level : '';
 
   const chartData = useMemo(
     () => (pacuRecord?.vital_readings || []).map((vital) => ({
@@ -296,6 +318,36 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
     }
   };
 
+  const generatePostOpCarePlan = async () => {
+    if (!mappedProcedureKey) {
+      toast({
+        title: 'Procedure mapping required',
+        description: 'Set a TibaBot procedure key on the linked procedure catalog entry first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setGeneratingCarePlan(true);
+      await aiApi.generateSurgicalPostOpCarePlan({
+        surgery_case_id: surgeryCase.id,
+        procedure_key: mappedProcedureKey,
+        estimated_blood_loss_ml: estimatedBloodLossMl === '' ? undefined : Number(estimatedBloodLossMl),
+        lowest_heart_rate: lowestHeartRate === '' ? undefined : Number(lowestHeartRate),
+        lowest_map: lowestMap === '' ? undefined : Number(lowestMap),
+        findings: postOpFindings || undefined,
+        caprini_score: capriniScore === '' ? undefined : Number(capriniScore),
+      });
+      toast({ title: 'Post-op AI care plan generated', description: 'The advisory post-operative care plan has been saved for this case.' });
+      await refreshAll();
+    } catch (error) {
+      toast({ title: 'Unable to generate post-op care plan', description: getApiErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setGeneratingCarePlan(false);
+    }
+  };
+
   if (loading) {
     return <div className="grid gap-4 lg:grid-cols-2"><Skeleton className="h-56" /><Skeleton className="h-56" /></div>;
   }
@@ -317,6 +369,100 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
           <Button variant="outline" size="sm" onClick={() => void refreshAll()} disabled={refreshing}>{refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}</Button>
         </div>
       </div>
+
+      <Card className="relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+          aria-hidden="true"
+        />
+        <CardHeader className="relative pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Surgical AI Post-Op Care Plan
+            <Badge variant={latestStoredPostOp ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
+              {latestStoredPostOp ? 'Result available' : 'Not generated'}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="relative space-y-4">
+          {!mappedProcedureKey ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>No TibaBot procedure mapping</AlertTitle>
+              <AlertDescription>Add a TibaBot procedure key to the linked procedure catalog entry to enable post-op care plan generation.</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="rounded-lg border p-3 text-sm xl:col-span-1">
+              <p className="text-muted-foreground">Procedure key</p>
+              <p className="mt-1 font-medium">{mappedProcedureKey || 'Not mapped'}</p>
+            </div>
+            <div>
+              <FormLabel>Blood loss (mL)</FormLabel>
+              <Input type="number" min={0} value={estimatedBloodLossMl} onChange={(event) => setEstimatedBloodLossMl(event.target.value ? Number(event.target.value) : '')} />
+            </div>
+            <div>
+              <FormLabel>Lowest HR</FormLabel>
+              <Input type="number" min={0} value={lowestHeartRate} onChange={(event) => setLowestHeartRate(event.target.value ? Number(event.target.value) : '')} />
+            </div>
+            <div>
+              <FormLabel>Lowest MAP</FormLabel>
+              <Input type="number" min={0} value={lowestMap} onChange={(event) => setLowestMap(event.target.value ? Number(event.target.value) : '')} />
+            </div>
+            <div>
+              <FormLabel>Caprini score</FormLabel>
+              <Input type="number" min={0} value={capriniScore} onChange={(event) => setCapriniScore(event.target.value ? Number(event.target.value) : '')} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <FormLabel>Operative findings for the care plan prompt</FormLabel>
+            <Textarea rows={3} value={postOpFindings} onChange={(event) => setPostOpFindings(event.target.value)} placeholder="Key findings, drains, stoma, or intra-op concerns" />
+          </div>
+
+          <Button type="button" onClick={() => void generatePostOpCarePlan()} disabled={generatingCarePlan || !mappedProcedureKey}>
+            {generatingCarePlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+            Generate advisory care plan
+          </Button>
+
+          {latestStoredPostOp ? (
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-lg border p-3 text-sm">
+                  <p className="text-muted-foreground">Surgical Apgar</p>
+                  <p className="mt-1 font-medium">{latestStoredPostOp.surgical_apgar_score ?? latestSurgicalApgarScore ?? 'Unavailable'}</p>
+                </div>
+                <div className="rounded-lg border p-3 text-sm">
+                  <p className="text-muted-foreground">Risk level</p>
+                  <p className="mt-1 font-medium">{latestStoredPostOp.risk_level || latestSurgicalApgarRiskLevel || 'Unavailable'}</p>
+                </div>
+                <div className="rounded-lg border p-3 text-sm xl:col-span-2">
+                  <p className="text-muted-foreground">Monitoring</p>
+                  <p className="mt-1 font-medium">{String(latestStoredPostOpData?.monitoring || 'No monitoring guidance recorded')}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 xl:grid-cols-3">
+                <div className="rounded-lg border p-3 text-sm xl:col-span-2">
+                  <p className="text-muted-foreground">Medications</p>
+                  <p className="mt-1 font-medium">
+                    {Array.isArray(latestStoredPostOpData?.medications) && latestStoredPostOpData.medications.length > 0
+                      ? latestStoredPostOpData.medications.join(', ')
+                      : 'No medication guidance recorded'}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3 text-sm">
+                  <p className="text-muted-foreground">Follow-up</p>
+                  <p className="mt-1 font-medium">{String((latestStoredPostOpData?.follow_up as Record<string, unknown> | undefined)?.timing || 'Not specified')}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No advisory post-operative care plan has been generated for this case yet.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {!pacuRecord ? (
         <Card>

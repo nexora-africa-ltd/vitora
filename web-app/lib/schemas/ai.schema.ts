@@ -516,6 +516,119 @@ export const StoredICURiskResultSchema = StoredAIResultBaseSchema.extend({
 });
 
 // =============================================================================
+// Phase 7 — Surgical Assistant
+// =============================================================================
+
+export const AISurgicalRiskScoresSchema = z.object({
+  overall_risk_level: z.string().optional(),
+  alerts: z.array(z.string()).optional(),
+  recommendations: z.array(z.string()).optional(),
+}).catchall(z.unknown());
+
+export const AISurgicalPreOpAssessResponseSchema = z.object({
+  risk_scores: AISurgicalRiskScoresSchema,
+  facility_capable: z.boolean().nullable().optional(),
+  facility_alert: z.string().nullable().optional(),
+  cds_alerts: z.array(z.record(z.unknown())).optional(),
+  fhir_risk_assessment: z.record(z.unknown()).nullable().optional(),
+  stored_id: z.string().optional(),
+  mode: z.string().optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+export const AISurgicalChecklistSessionSchema = z.object({
+  id: z.string().optional(),
+  state: z.string().optional(),
+  items: z.array(z.string()).optional(),
+}).catchall(z.unknown());
+
+export const AISurgicalChecklistProgressSchema = z.object({
+  current_phase: z.string().optional(),
+  total_items: z.number().optional(),
+  total_checked: z.number().optional(),
+  percent_complete: z.number().optional(),
+}).catchall(z.unknown());
+
+export const AISurgicalChecklistSessionResponseSchema = z.object({
+  session: AISurgicalChecklistSessionSchema.optional(),
+  progress: AISurgicalChecklistProgressSchema.optional(),
+  message: z.string().optional(),
+  phase_complete: z.boolean().optional(),
+  unchecked_critical_items: z.array(z.string()).optional(),
+  stored_id: z.string().optional(),
+  tibabot_session_id: z.string().optional(),
+  mode: z.string().optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+export const AISurgicalApgarSchema = z.object({
+  score: z.number().optional(),
+  risk_level: z.string().optional(),
+  complication_rate: z.string().optional(),
+}).catchall(z.unknown());
+
+export const AISurgicalFollowUpSchema = z.object({
+  timing: z.string().optional(),
+  actions: z.array(z.string()).optional(),
+}).catchall(z.unknown());
+
+export const AISurgicalPostOpCarePlanResponseSchema = z.object({
+  procedure_key: z.string(),
+  procedure_name: z.string().optional(),
+  surgical_apgar: AISurgicalApgarSchema.nullable().optional(),
+  monitoring: z.string().optional(),
+  medications: z.array(z.string()).optional(),
+  activity: z.string().optional(),
+  nutrition: z.string().optional(),
+  wound_care: z.string().optional(),
+  complications_to_watch: z.array(z.record(z.unknown())).optional(),
+  discharge_criteria: z.array(z.string()).optional(),
+  follow_up: AISurgicalFollowUpSchema.nullable().optional(),
+  cds_alerts: z.array(z.record(z.unknown())).optional(),
+  fhir_care_plan: z.record(z.unknown()).nullable().optional(),
+  stored_id: z.string().optional(),
+  mode: z.string().optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+export const AISurgicalProcedureTemplateSchema = z.object({
+  key: z.string(),
+  name: z.string().optional(),
+  display_name: z.string().optional(),
+  specialty: z.string().optional(),
+  min_facility_level: z.string().optional(),
+  urgency_categories: z.array(z.string()).optional(),
+  icd10_code: z.string().optional(),
+}).passthrough();
+
+export const AISurgicalProcedureListResponseSchema = z.object({
+  procedures: z.array(AISurgicalProcedureTemplateSchema).optional(),
+  results: z.array(AISurgicalProcedureTemplateSchema).optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+export const StoredSurgicalPreOpAssessResultSchema = StoredAIResultBaseSchema.extend({
+  surgery_case_id: z.number().nullable(),
+  overall_risk_level: z.string(),
+  facility_capable: z.boolean().nullable(),
+});
+
+export const StoredSurgicalChecklistSessionResultSchema = StoredAIResultBaseSchema.extend({
+  surgery_case_id: z.number().nullable(),
+  tibabot_session_id: z.string(),
+  current_phase: z.string(),
+  percent_complete: z.number().nullable(),
+  phase_complete: z.boolean(),
+});
+
+export const StoredSurgicalPostOpCarePlanResultSchema = StoredAIResultBaseSchema.extend({
+  surgery_case_id: z.number().nullable(),
+  procedure_key: z.string(),
+  surgical_apgar_score: z.number().nullable(),
+  risk_level: z.string(),
+});
+
+// =============================================================================
 // Investigation Suggestions
 // =============================================================================
 

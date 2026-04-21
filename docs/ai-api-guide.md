@@ -210,6 +210,21 @@ Rate limit headers returned on `429`:
 | `/community/trends` | GET | Optional | Top symptom trends (anonymized) |
 | `/community/screening/coverage` | GET | Optional | Screening coverage summary |
 
+### Surgical Assistant
+
+> Full guide: [surgical-assistant-api-guide.md](surgical-assistant-api-guide.md)
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/surgical/health` | GET | No | Service health and template count |
+| `/surgical/pre-op/assess` | POST | **Yes** | Pre-operative risk assessment (ASA, RCRI, Caprini, Mallampati) |
+| `/surgical/checklist/start` | POST | No | Start WHO Surgical Safety Checklist session |
+| `/surgical/checklist/{session_id}/advance` | POST | No | Advance checklist to next phase |
+| `/surgical/checklist/{session_id}/status` | GET | No | Get checklist progress |
+| `/surgical/post-op/care-plan` | POST | **Yes** | Generate post-operative care plan |
+| `/surgical/procedures` | GET | No | List procedure templates |
+| `/surgical/procedures/{key}` | GET | No | Get procedure template details |
+
 ### WhatsApp Webhooks
 
 | Endpoint | Method | Auth | Description |
@@ -2615,6 +2630,276 @@ GET /webhooks/whatsapp/stats
   }
 }
 ```
+
+---
+
+### 20. Surgical Assistant
+
+AI-powered surgical assistant with pre-operative risk scoring, WHO Surgical Safety Checklist, and post-operative care plan generation. Kenya MOH aligned with facility-level gating.
+
+> **Feature flag:** `TIBABOT_ENABLE_SURGICAL_ASSISTANT` (default: `true`)
+>
+> **Full guide:** [surgical-assistant-api-guide.md](surgical-assistant-api-guide.md) — includes all Caprini VTE factor keys, WHO checklist item reference, CDS rules, and FHIR output details.
+
+#### Health Check
+
+```http
+GET /surgical/health
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "templates_loaded": 10,
+  "active_checklists": 0
+}
+```
+
+#### Pre-Operative Risk Assessment
+
+Computes ASA Physical Status, RCRI (cardiac risk), Caprini VTE score, and Mallampati airway classification. Returns aggregated risk level, CDS alerts, and actionable recommendations.
+
+```http
+POST /surgical/pre-op/assess
+Content-Type: application/json
+X-API-Key: your-api-key
+```
+
+**Request:**
+```json
+{
+  "age": 65,
+  "sex": "male",
+  "asa_class": "III",
+  "procedure_key": "cholecystectomy",
+  "urgency": "elective",
+  "high_risk_surgery": true,
+  "ischemic_heart_disease": true,
+  "insulin_dependent_diabetes": true,
+  "caprini_factors": ["age_61_74", "major_surgery_over_45_min", "malignancy"],
+  "mallampati_class": "II",
+  "facility_level": "H4",
+  "include_fhir": false
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `age` | int (0–120) | **Yes** | Patient age in years |
+| `sex` | string | **Yes** | `"male"` or `"female"` |
+| `asa_class` | string | **Yes** | ASA Physical Status: `"I"`–`"VI"` |
+| `procedure_key` | string | No | Procedure template key (e.g., `"appendectomy"`) |
+| `urgency` | string | No | `"elective"`, `"urgent"`, or `"emergency"` (default: `"elective"`) |
+| `high_risk_surgery` | bool | No | Intraperitoneal, intrathoracic, or suprainguinal vascular surgery |
+| `ischemic_heart_disease` | bool | No | History of ischemic heart disease (RCRI criterion) |
+| `congestive_heart_failure` | bool | No | History of CHF (RCRI criterion) |
+| `cerebrovascular_disease` | bool | No | History of stroke/TIA (RCRI criterion) |
+| `insulin_dependent_diabetes` | bool | No | Insulin-dependent diabetes (RCRI criterion) |
+| `creatinine_above_2` | bool | No | Pre-op creatinine > 2 mg/dL (RCRI criterion) |
+| `caprini_factors` | string[] | No | Caprini VTE risk factor keys — see [full list](surgical-assistant-api-guide.md#caprini-vte-risk-factor-keys) |
+| `mallampati_class` | string | No | `"I"`, `"II"`, `"III"`, or `"IV"` |
+| `facility_level` | string | No | Kenya MOH facility level (`"H1"`–`"H5"`) for capability gating |
+| `include_fhir` | bool | No | Include FHIR R4 `RiskAssessment` resource in response |
+
+**Response:**
+```json
+{
+  "risk_scores": {
+    "asa": {
+      "classification": "III",
+      "label": "Severe systemic disease",
+      "risk_level": "moderate",
+      "mortality_range": "1.8%"
+    },
+    "rcri": {
+      "score": 2,
+      "risk_class": "III",
+      "criteria_met": ["high_risk_surgery", "ischemic_heart_disease"],
+      "risk_level": "moderate",
+      "cardiac_risk_percent": "6.6%"
+    },
+    "caprini": {
+      "score": 6,
+      "risk_category": "High",
+      "risk_level": "high",
+      "prophylaxis_recommendation": "Enoxaparin 40mg SC OD. Duration: 7-10 days."
+    },
+    "mallampati": {
+      "classification": "II",
+      "risk_level": "low",
+      "intubation_difficulty": "Generally easy intubation"
+    },
+    "overall_risk_level": "high",
+    "alerts": [
+      "RCRI score 2 (Class III): cardiac event risk ~6.6%.",
+      "Caprini VTE score 6 (High risk). Pharmacological prophylaxis mandatory."
+    ],
+    "recommendations": [
+      "Consider cardiology consultation pre-operatively",
+      "Obtain baseline ECG and troponin",
+      "Initiate Enoxaparin 40mg SC OD unless contraindicated",
+      "Check HbA1c — postpone elective surgery if > 8.5%"
+    ]
+  },
+  "facility_capable": true,
+  "facility_alert": null,
+  "cds_alerts": [],
+  "fhir_risk_assessment": null
+}
+```
+
+#### WHO Surgical Safety Checklist
+
+Three-phase state machine: **Sign In** (before anaesthesia, 7 items) → **Time Out** (before incision, 7 items) → **Sign Out** (before leaving theatre, 5 items). Critical items must be checked to advance.
+
+**Start session:**
+```http
+POST /surgical/checklist/start
+Content-Type: application/json
+```
+
+```json
+{
+  "procedure_key": "appendectomy",
+  "patient_id": "P001"
+}
+```
+
+**Advance phase:**
+```http
+POST /surgical/checklist/{session_id}/advance
+Content-Type: application/json
+```
+
+```json
+{
+  "checked_items": ["SI-01", "SI-02", "SI-03", "SI-04", "SI-05", "SI-06"],
+  "notes": { "SI-04": "NKDA" },
+  "checked_by": "Nurse Amina"
+}
+```
+
+**Response:**
+```json
+{
+  "session": { "state": "time_out", "items": ["..."] },
+  "message": "WHO TIME OUT — Before skin incision...",
+  "phase_complete": true,
+  "unchecked_critical_items": []
+}
+```
+
+**Check status:**
+```http
+GET /surgical/checklist/{session_id}/status
+```
+
+```json
+{
+  "progress": {
+    "current_phase": "time_out",
+    "total_items": 19,
+    "total_checked": 7,
+    "percent_complete": 36.8
+  }
+}
+```
+
+> See [surgical-assistant-api-guide.md](surgical-assistant-api-guide.md#checklist-item-reference) for the complete 19-item reference table.
+
+#### Post-Operative Care Plan
+
+Generates a structured care plan from procedure template + intraoperative data. Computes Surgical Apgar Score when all three intra-op values are provided.
+
+```http
+POST /surgical/post-op/care-plan
+Content-Type: application/json
+X-API-Key: your-api-key
+```
+
+**Request:**
+```json
+{
+  "procedure_key": "appendectomy",
+  "estimated_blood_loss_ml": 50,
+  "lowest_heart_rate": 68,
+  "lowest_map": 72,
+  "findings": "Gangrenous appendix, no perforation",
+  "drain_placed": false,
+  "caprini_score": 2,
+  "include_fhir": false
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `procedure_key` | string | **Yes** | Procedure template key |
+| `estimated_blood_loss_ml` | int | No | EBL in mL (Surgical Apgar input) |
+| `lowest_heart_rate` | int | No | Lowest intra-op HR (Surgical Apgar input) |
+| `lowest_map` | int | No | Lowest intra-op MAP (Surgical Apgar input) |
+| `findings` | string | No | Key intraoperative findings |
+| `complications_intraop` | string[] | No | Intraoperative complications |
+| `drain_placed` | bool | No | Whether a drain was placed |
+| `stoma_formed` | bool | No | Whether a stoma was formed |
+| `caprini_score` | int | No | Pre-op Caprini VTE score (triggers VTE prophylaxis CDS if ≥ 5) |
+| `include_fhir` | bool | No | Include FHIR R4 `CarePlan` resource |
+
+**Response:**
+```json
+{
+  "procedure_key": "appendectomy",
+  "procedure_name": "Open Appendectomy",
+  "surgical_apgar": {
+    "score": 9,
+    "risk_level": "low",
+    "complication_rate": "4%"
+  },
+  "monitoring": "Vitals q15min x 4, then q30min x 4, then q4h.",
+  "medications": [
+    "Paracetamol 1g PO/IV q6h",
+    "Diclofenac 75mg IM/PO q12h PRN",
+    "Ceftriaxone 1g IV q24h x 24h"
+  ],
+  "activity": "Sit up in bed 6h post-op. Ambulate within 24h.",
+  "nutrition": "Sips of water 6h post-op. Light diet once bowel sounds present.",
+  "wound_care": "Keep wound clean and dry. Remove dressing at 48h.",
+  "complications_to_watch": [
+    {
+      "complication": "Surgical site infection",
+      "signs": ["Fever > 38°C after POD 2", "Wound erythema", "Purulent discharge"],
+      "action": "Wound swab, IV antibiotics per culture"
+    }
+  ],
+  "discharge_criteria": [
+    "Tolerating oral diet",
+    "Pain controlled on oral analgesia",
+    "Afebrile for 24 hours"
+  ],
+  "follow_up": {
+    "timing": "Review in 7-10 days",
+    "actions": ["Wound check", "Remove sutures", "Histology review"]
+  },
+  "cds_alerts": [],
+  "fhir_care_plan": null
+}
+```
+
+#### Procedure Catalog
+
+```http
+GET /surgical/procedures
+```
+
+Returns a list of all available procedure templates with key, display name, specialty, minimum facility level, urgency categories, and ICD-10 code.
+
+```http
+GET /surgical/procedures/{procedure_key}
+```
+
+Returns the full procedure template including pre-op checklist, anaesthesia options, required equipment, required personnel, post-op care, complications watchlist, discharge criteria, follow-up, and Kenya MOH references.
+
+**Supported procedures (10):** `appendectomy`, `hernia_repair`, `cholecystectomy`, `bowel_obstruction`, `caesarean_section`, `ectopic_pregnancy`, `fracture_fixation_open`, `amputation`, `trauma_laparotomy`, `chest_drain`.
 
 ---
 

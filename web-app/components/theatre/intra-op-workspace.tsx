@@ -13,6 +13,7 @@ import {
   FileText,
   Loader2,
   Package,
+  Play,
   Plus,
   ShieldCheck,
   Syringe,
@@ -44,12 +45,14 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { aiApi } from '@/lib/api/ai';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { theatreApi } from '@/lib/api/theatre';
 import { downloadPDF } from '@/lib/export-utils';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useToast } from '@/lib/hooks/use-toast';
+import type { StoredSurgicalChecklistSessionResult } from '@/lib/types/ai';
 import { formatCurrency } from '@/lib/utils/format';
 import type { Drug } from '@/lib/types/pharmacy';
 import type {
@@ -195,6 +198,10 @@ export function IntraOpWorkspace({
   const [vitals, setVitals] = useState<IntraOpVital[]>([]);
   const [operativeNote, setOperativeNote] = useState<OperativeNote | null>(null);
   const [consumables, setConsumables] = useState<TheatreConsumable[]>([]);
+  const [storedChecklistSessions, setStoredChecklistSessions] = useState<StoredSurgicalChecklistSessionResult[]>([]);
+  const [checkedItems, setCheckedItems] = useState<string[]>([]);
+  const [checklistBusy, setChecklistBusy] = useState(false);
+  const [liveChecklistStatus, setLiveChecklistStatus] = useState<Record<string, unknown> | null>(null);
   const [drugSearch, setDrugSearch] = useState('');
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [removingConsumableId, setRemovingConsumableId] = useState<number | null>(null);
@@ -260,12 +267,13 @@ export function IntraOpWorkspace({
   const loadWorkspace = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true); else setRefreshing(true);
     try {
-      const [who, anesthesia, intraOpVitals, note, caseConsumables] = await Promise.all([
+      const [who, anesthesia, intraOpVitals, note, caseConsumables, checklistSessions] = await Promise.all([
         theatreApi.getWHOChecklist(surgeryCase.case_number).catch(() => null),
         theatreApi.getAnesthesiaRecord(surgeryCase.case_number).catch(() => null),
         theatreApi.listIntraOpVitals(surgeryCase.case_number).catch(() => []),
         theatreApi.getOperativeNote(surgeryCase.case_number).catch(() => null),
         theatreApi.listConsumables(surgeryCase.case_number).catch(() => []),
+        aiApi.getStoredSurgicalChecklistSessions({ surgery_case_id: surgeryCase.id }).catch(() => []),
       ]);
 
       setChecklist(who);
@@ -273,6 +281,7 @@ export function IntraOpWorkspace({
       setVitals(intraOpVitals);
       setOperativeNote(note);
       setConsumables(caseConsumables);
+      setStoredChecklistSessions(checklistSessions);
 
       timeOutForm.reset({
         team_members_introduced: who?.team_members_introduced ?? false,
@@ -359,6 +368,20 @@ export function IntraOpWorkspace({
     await loadWorkspace(false);
     await onCaseRefresh?.();
   }, [loadWorkspace, onCaseRefresh]);
+
+  const mappedProcedureKey = surgeryCase.primary_procedure_tibabot_key || '';
+  const latestStoredChecklist = storedChecklistSessions[0] ?? null;
+  const latestStoredChecklistData = latestStoredChecklist?.result_data as Record<string, unknown> | undefined;
+  const storedSession = latestStoredChecklistData?.session as Record<string, unknown> | undefined;
+  const storedProgress = latestStoredChecklistData?.progress as Record<string, unknown> | undefined;
+  const liveSession = (liveChecklistStatus?.session as Record<string, unknown> | undefined) ?? storedSession;
+  const liveProgress = (liveChecklistStatus?.progress as Record<string, unknown> | undefined) ?? storedProgress;
+  const checklistItems = Array.isArray(liveSession?.items) ? (liveSession.items as string[]) : [];
+  const currentChecklistSessionId = latestStoredChecklist?.tibabot_session_id || surgeryCase.ai_surgical_summary.checklist.tibabot_session_id;
+  const checklistPercentComplete =
+    typeof liveProgress?.percent_complete === 'number'
+      ? liveProgress.percent_complete
+      : latestStoredChecklist?.percent_complete ?? surgeryCase.ai_surgical_summary.checklist.percent_complete ?? 0;
 
   const chartData = useMemo(
     () => vitals.map((vital) => ({
@@ -499,6 +522,72 @@ export function IntraOpWorkspace({
       toast({ title: 'Unable to remove consumable', description: getApiErrorMessage(error), variant: 'destructive' });
     } finally {
       setRemovingConsumableId(null);
+    }
+  };
+
+  const startSurgicalChecklist = async () => {
+    if (!mappedProcedureKey) {
+      toast({
+        title: 'Procedure mapping required',
+        description: 'Set a TibaBot procedure key on the procedure catalog entry first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setChecklistBusy(true);
+      const response = await aiApi.startSurgicalChecklist({
+        surgery_case_id: surgeryCase.id,
+        procedure_key: mappedProcedureKey,
+        patient_id: String(surgeryCase.patient),
+      });
+      setLiveChecklistStatus(response as unknown as Record<string, unknown>);
+      setCheckedItems([]);
+      toast({ title: 'Surgical checklist session started', description: 'The advisory checklist session is now active.' });
+      await refreshAll();
+    } catch (error) {
+      toast({ title: 'Unable to start surgical checklist', description: getApiErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setChecklistBusy(false);
+    }
+  };
+
+  const advanceSurgicalChecklist = async () => {
+    if (!currentChecklistSessionId) {
+      return;
+    }
+
+    try {
+      setChecklistBusy(true);
+      const response = await aiApi.advanceSurgicalChecklist(currentChecklistSessionId, {
+        checked_items: checkedItems,
+      });
+      setLiveChecklistStatus(response as unknown as Record<string, unknown>);
+      setCheckedItems([]);
+      toast({ title: 'Checklist advanced', description: 'The surgical checklist session moved to the next advisory phase.' });
+      await refreshAll();
+    } catch (error) {
+      toast({ title: 'Unable to advance checklist', description: getApiErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setChecklistBusy(false);
+    }
+  };
+
+  const refreshSurgicalChecklistStatus = async () => {
+    if (!currentChecklistSessionId) {
+      return;
+    }
+
+    try {
+      setChecklistBusy(true);
+      const response = await aiApi.getSurgicalChecklistStatus(currentChecklistSessionId);
+      setLiveChecklistStatus(response as unknown as Record<string, unknown>);
+      toast({ title: 'Checklist status refreshed', description: 'The latest TibaBot checklist progress has been loaded.' });
+    } catch (error) {
+      toast({ title: 'Unable to refresh checklist status', description: getApiErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setChecklistBusy(false);
     }
   };
 
@@ -850,6 +939,90 @@ export function IntraOpWorkspace({
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+          aria-hidden="true"
+        />
+        <CardHeader className="relative pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ClipboardCheck className="h-4 w-4" />
+            Surgical AI Checklist Advisory
+            <Badge variant={latestStoredChecklist ? 'info' : 'outline'} size="sm" className="ml-auto w-fit">
+              {currentChecklistSessionId ? 'Session active' : 'Not started'}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="relative space-y-4">
+          {!mappedProcedureKey ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>No TibaBot procedure mapping</AlertTitle>
+              <AlertDescription>Add a TibaBot procedure key to the linked procedure catalog entry to use the advisory checklist session.</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-lg border p-3 text-sm">
+              <p className="text-muted-foreground">Procedure key</p>
+              <p className="mt-1 font-medium">{mappedProcedureKey || 'Not mapped'}</p>
+            </div>
+            <div className="rounded-lg border p-3 text-sm">
+              <p className="text-muted-foreground">Current phase</p>
+              <p className="mt-1 font-medium">{latestStoredChecklist?.current_phase || surgeryCase.ai_surgical_summary.checklist.current_phase || 'Not started'}</p>
+            </div>
+            <div className="rounded-lg border p-3 text-sm">
+              <p className="text-muted-foreground">Completion</p>
+              <p className="mt-1 font-medium">{checklistPercentComplete}%</p>
+            </div>
+            <div className="flex items-end gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => void refreshSurgicalChecklistStatus()} disabled={checklistBusy || !currentChecklistSessionId}>
+                {checklistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Refresh status
+              </Button>
+            </div>
+          </div>
+
+          {!currentChecklistSessionId ? (
+            <Button type="button" onClick={() => void startSurgicalChecklist()} disabled={checklistBusy || !mappedProcedureKey}>
+              {checklistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+              Start advisory checklist
+            </Button>
+          ) : (
+            <>
+              {checklistItems.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {checklistItems.map((item) => {
+                    const checked = checkedItems.includes(item);
+                    return (
+                      <label key={item} className="flex items-center gap-3 rounded-lg border p-3 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(value) => {
+                            const nextChecked = value === true;
+                            setCheckedItems((current) =>
+                              nextChecked ? Array.from(new Set([...current, item])) : current.filter((entry) => entry !== item)
+                            );
+                          }}
+                        />
+                        <span>{item}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No current checklist items are available yet. Refresh status after starting the session.</p>
+              )}
+
+              <Button type="button" onClick={() => void advanceSurgicalChecklist()} disabled={checklistBusy || checkedItems.length === 0}>
+                {checklistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                Advance with selected items
+              </Button>
+            </>
           )}
         </CardContent>
       </Card>

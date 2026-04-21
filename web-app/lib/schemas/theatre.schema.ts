@@ -155,6 +155,7 @@ export const SurgeryCaseListSchema = z.object({
   patient_mrn: z.string(),
   primary_procedure: z.number(),
   primary_procedure_name: z.string(),
+  primary_procedure_tibabot_key: z.string().optional().default(''),
   theatre: z.number(),
   theatre_name: z.string(),
   scheduled_date: z.string(),
@@ -166,6 +167,33 @@ export const SurgeryCaseListSchema = z.object({
   anesthesia_type: AnesthesiaTypeSchema,
   laterality: LateralitySchema,
   requested_at: z.string(),
+});
+
+export const AISurgicalCaseSummarySchema = z.object({
+  pre_op: z.object({
+    has_result: z.boolean(),
+    latest_result_id: z.string().nullable(),
+    overall_risk_level: z.string(),
+    facility_capable: z.boolean().nullable(),
+    created_at: z.string().nullable(),
+  }),
+  checklist: z.object({
+    has_session: z.boolean(),
+    latest_result_id: z.string().nullable(),
+    tibabot_session_id: z.string(),
+    current_phase: z.string(),
+    percent_complete: z.number().nullable(),
+    phase_complete: z.boolean(),
+    created_at: z.string().nullable(),
+  }),
+  post_op: z.object({
+    has_result: z.boolean(),
+    latest_result_id: z.string().nullable(),
+    procedure_key: z.string(),
+    surgical_apgar_score: z.number().nullable(),
+    risk_level: z.string(),
+    created_at: z.string().nullable(),
+  }),
 });
 
 export const SurgeryCaseDetailSchema = SurgeryCaseListSchema.extend({
@@ -192,6 +220,7 @@ export const SurgeryCaseDetailSchema = SurgeryCaseListSchema.extend({
   has_pacu_record: z.boolean(),
   theatre_scheduling_resource: z.number().nullable().optional(),
   theatre_has_resource_schedule: z.boolean(),
+  ai_surgical_summary: AISurgicalCaseSummarySchema,
   created_at: z.string(),
   updated_at: z.string(),
 });

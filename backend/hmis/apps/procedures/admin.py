@@ -20,16 +20,27 @@ class ProcedureKitItemInline(admin.TabularInline):
 
 @admin.register(ProcedureCatalog)
 class ProcedureCatalogAdmin(admin.ModelAdmin):
-    list_display = ["code", "name", "category_badge", "risk_badge", "base_fee", "is_active"]
+    list_display = [
+        "code",
+        "name",
+        "tibabot_procedure_key",
+        "category_badge",
+        "risk_badge",
+        "base_fee",
+        "is_active",
+    ]
     list_filter = ["category", "risk_level", "body_system", "is_active", "facility"]
-    search_fields = ["code", "name", "ichi_code", "cpt_code"]
+    search_fields = ["code", "name", "ichi_code", "cpt_code", "tibabot_procedure_key"]
     filter_horizontal = ("default_clinics",)
     fieldsets = (
         (
             "Identification",
             {"fields": ("code", "name", "description", "category", "body_system", "risk_level")},
         ),
-        ("Standard Coding", {"fields": ("ichi_code", "cpt_code", "icd10_pcs_code")}),
+        (
+            "Standard Coding",
+            {"fields": ("ichi_code", "cpt_code", "icd10_pcs_code", "tibabot_procedure_key")},
+        ),
         (
             "Consent",
             {

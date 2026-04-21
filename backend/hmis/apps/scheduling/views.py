@@ -2352,8 +2352,6 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
         Requires ``scheduling.manage_schedules`` permission.
         """
-        from datetime import date as date_type
-
         if (
             not request.user.has_perm("scheduling.manage_schedules")
             and not request.user.is_superuser
@@ -2371,8 +2369,9 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        today = date_type.today()
-        now = timezone.now()
+        today = timezone.localdate()
+        now = timezone.localtime()
+        current_timezone = timezone.get_current_timezone()
 
         non_working_types = {
             "OFF",
@@ -2431,10 +2430,9 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
             elif shift.status == "ABSENT":
                 absent.append(entry)
             elif shift.status == "SCHEDULED":
-                shift_start_dt = (
-                    timezone.make_aware(datetime.combine(shift.shift_date, shift.start_time))
-                    if timezone.is_naive(datetime.combine(shift.shift_date, shift.start_time))
-                    else datetime.combine(shift.shift_date, shift.start_time)
+                shift_start_dt = timezone.make_aware(
+                    datetime.combine(shift.shift_date, shift.start_time),
+                    current_timezone,
                 )
                 if now >= shift_start_dt:
                     entry["minutes_overdue"] = int((now - shift_start_dt).total_seconds() / 60)

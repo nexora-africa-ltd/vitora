@@ -28,11 +28,19 @@ import {
   AIClerkingStructureResponseSchema,
   AIClinicalDocumentResponseSchema,
   AICDSEvaluateResponseSchema,
+  AISurgicalChecklistSessionResponseSchema,
+  AISurgicalPostOpCarePlanResponseSchema,
+  AISurgicalPreOpAssessResponseSchema,
+  AISurgicalProcedureTemplateSchema,
+  AISurgicalProcedureListResponseSchema,
   StoredCarePlanResultSchema,
   StoredCDSResultSchema,
   StoredLabInterpretResultSchema,
   StoredDischargeResultSchema,
   StoredICURiskResultSchema,
+  StoredSurgicalChecklistSessionResultSchema,
+  StoredSurgicalPostOpCarePlanResultSchema,
+  StoredSurgicalPreOpAssessResultSchema,
   AIInvestigationSuggestResponseSchema,
   StoredInvestigationSuggestResultSchema,
 } from '@/lib/schemas/ai.schema';
@@ -73,11 +81,23 @@ import type {
   AIClinicalDocumentResponse,
   AICDSEvaluateRequest,
   AICDSEvaluateResponse,
+  AISurgicalChecklistAdvanceRequest,
+  AISurgicalChecklistSessionResponse,
+  AISurgicalChecklistStartRequest,
+  AISurgicalPostOpCarePlanRequest,
+  AISurgicalPostOpCarePlanResponse,
+  AISurgicalPreOpAssessRequest,
+  AISurgicalPreOpAssessResponse,
+  AISurgicalProcedureListResponse,
+  AISurgicalProcedureTemplate,
   StoredCarePlanResult,
   StoredCDSResult,
   StoredLabInterpretResult,
   StoredDischargeResult,
   StoredICURiskResult,
+  StoredSurgicalChecklistSessionResult,
+  StoredSurgicalPostOpCarePlanResult,
+  StoredSurgicalPreOpAssessResult,
   AIInvestigationSuggestRequest,
   AIInvestigationSuggestResponse,
   StoredInvestigationSuggestResult,
@@ -500,6 +520,70 @@ export const aiApi = {
   },
 
   // ===========================================================================
+  // Phase 7 — Surgical Assistant
+  // ===========================================================================
+
+  assessSurgicalPreOp: async (
+    data: AISurgicalPreOpAssessRequest,
+  ): Promise<AISurgicalPreOpAssessResponse> => {
+    const response = await apiClient.post('/api/ai/surgical/pre-op/assess/', data);
+    return parseResponse(AISurgicalPreOpAssessResponseSchema, response.data, {
+      context: 'aiApi.assessSurgicalPreOp',
+    });
+  },
+
+  startSurgicalChecklist: async (
+    data: AISurgicalChecklistStartRequest,
+  ): Promise<AISurgicalChecklistSessionResponse> => {
+    const response = await apiClient.post('/api/ai/surgical/checklist/start/', data);
+    return parseResponse(AISurgicalChecklistSessionResponseSchema, response.data, {
+      context: 'aiApi.startSurgicalChecklist',
+    });
+  },
+
+  advanceSurgicalChecklist: async (
+    sessionId: string,
+    data: AISurgicalChecklistAdvanceRequest,
+  ): Promise<AISurgicalChecklistSessionResponse> => {
+    const response = await apiClient.post(`/api/ai/surgical/checklist/${sessionId}/advance/`, data);
+    return parseResponse(AISurgicalChecklistSessionResponseSchema, response.data, {
+      context: 'aiApi.advanceSurgicalChecklist',
+    });
+  },
+
+  getSurgicalChecklistStatus: async (
+    sessionId: string,
+  ): Promise<AISurgicalChecklistSessionResponse> => {
+    const response = await apiClient.get(`/api/ai/surgical/checklist/${sessionId}/status/`);
+    return parseResponse(AISurgicalChecklistSessionResponseSchema, response.data, {
+      context: 'aiApi.getSurgicalChecklistStatus',
+    });
+  },
+
+  generateSurgicalPostOpCarePlan: async (
+    data: AISurgicalPostOpCarePlanRequest,
+  ): Promise<AISurgicalPostOpCarePlanResponse> => {
+    const response = await apiClient.post('/api/ai/surgical/post-op/care-plan/', data);
+    return parseResponse(AISurgicalPostOpCarePlanResponseSchema, response.data, {
+      context: 'aiApi.generateSurgicalPostOpCarePlan',
+    });
+  },
+
+  listSurgicalProcedures: async (): Promise<AISurgicalProcedureListResponse> => {
+    const response = await apiClient.get('/api/ai/surgical/procedures/');
+    return parseResponse(AISurgicalProcedureListResponseSchema, response.data, {
+      context: 'aiApi.listSurgicalProcedures',
+    });
+  },
+
+  getSurgicalProcedure: async (procedureKey: string): Promise<AISurgicalProcedureTemplate> => {
+    const response = await apiClient.get(`/api/ai/surgical/procedures/${procedureKey}/`);
+    return parseResponse(AISurgicalProcedureTemplateSchema, response.data, {
+      context: 'aiApi.getSurgicalProcedure',
+    });
+  },
+
+  // ===========================================================================
   // Stored AI Results — retrieval
   // ===========================================================================
 
@@ -535,6 +619,27 @@ export const aiApi = {
     const response = await apiClient.get('/api/ai/results/icu-risk/', { params });
     return parseResponse(StoredICURiskResultSchema.array(), response.data, {
       context: 'aiApi.getStoredICURiskResults',
+    });
+  },
+
+  getStoredSurgicalPreOpAssessments: async (params: { surgery_case_id: number }): Promise<StoredSurgicalPreOpAssessResult[]> => {
+    const response = await apiClient.get('/api/ai/results/surgical/pre-op-assessments/', { params });
+    return parseResponse(StoredSurgicalPreOpAssessResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredSurgicalPreOpAssessments',
+    });
+  },
+
+  getStoredSurgicalChecklistSessions: async (params: { surgery_case_id: number }): Promise<StoredSurgicalChecklistSessionResult[]> => {
+    const response = await apiClient.get('/api/ai/results/surgical/checklist-sessions/', { params });
+    return parseResponse(StoredSurgicalChecklistSessionResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredSurgicalChecklistSessions',
+    });
+  },
+
+  getStoredSurgicalPostOpCarePlans: async (params: { surgery_case_id: number }): Promise<StoredSurgicalPostOpCarePlanResult[]> => {
+    const response = await apiClient.get('/api/ai/results/surgical/post-op-care-plans/', { params });
+    return parseResponse(StoredSurgicalPostOpCarePlanResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredSurgicalPostOpCarePlans',
     });
   },
 

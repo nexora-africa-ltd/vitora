@@ -11,6 +11,9 @@ from .models import (
     AIICURiskResult,
     AIInvestigationSuggestResult,
     AILabInterpretResult,
+    AISurgicalChecklistSessionResult,
+    AISurgicalPostOpCarePlanResult,
+    AISurgicalPreOpAssessResult,
     ChatMessage,
     ChatSession,
 )
@@ -121,3 +124,47 @@ class AIInvestigationSuggestResultAdmin(AIResultBaseAdmin):
         "created_at",
     )
     raw_id_fields = ("created_by", "encounter")
+
+
+@admin.register(AISurgicalPreOpAssessResult)
+class AISurgicalPreOpAssessResultAdmin(AIResultBaseAdmin):
+    list_display = (
+        "id",
+        "surgery_case",
+        "overall_risk_level",
+        "facility_capable",
+        "service_mode",
+        "created_by",
+        "created_at",
+    )
+    raw_id_fields = ("created_by", "surgery_case")
+
+
+@admin.register(AISurgicalChecklistSessionResult)
+class AISurgicalChecklistSessionResultAdmin(AIResultBaseAdmin):
+    list_display = (
+        "id",
+        "surgery_case",
+        "tibabot_session_id",
+        "current_phase",
+        "percent_complete",
+        "service_mode",
+        "created_by",
+        "created_at",
+    )
+    raw_id_fields = ("created_by", "surgery_case")
+
+
+@admin.register(AISurgicalPostOpCarePlanResult)
+class AISurgicalPostOpCarePlanResultAdmin(AIResultBaseAdmin):
+    list_display = (
+        "id",
+        "surgery_case",
+        "procedure_key",
+        "surgical_apgar_score",
+        "risk_level",
+        "service_mode",
+        "created_by",
+        "created_at",
+    )
+    raw_id_fields = ("created_by", "surgery_case")
