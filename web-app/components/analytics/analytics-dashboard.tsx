@@ -24,6 +24,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { FacilityOperationsPanel } from '@/components/analytics/facility-operations-panel';
+import { RoomUtilizationPanel } from '@/components/analytics/room-utilization-panel';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { LineChart, BarChart, DonutChart } from '@/components/charts';
 import { ChartEmptyState } from '@/components/charts';
@@ -154,7 +156,7 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
   const { data: demoData, isLoading: demoLoading } = useDemographics();
 
   // Derived metrics
-  const summaries = summaryData?.results ?? [];
+  const summaries = useMemo(() => summaryData?.results ?? [], [summaryData]);
   const latest = summaries[0] as FacilityDailySummary | undefined;
   const totalEncounters = summaries.reduce((s, d) => s + d.encounters_total, 0);
   const totalRevenue = summaries.reduce((s, d) => s + d.revenue_total, 0);
@@ -417,6 +419,10 @@ export function AnalyticsDashboard({ period }: AnalyticsDashboardProps) {
           href="/patients"
         />
       </div>
+
+      <RoomUtilizationPanel date={dateRange.date_to} />
+
+  <FacilityOperationsPanel />
 
       {/* Charts Row 1: Volume + Revenue */}
       <div className="grid gap-4 lg:grid-cols-2">

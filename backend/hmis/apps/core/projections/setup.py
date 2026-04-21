@@ -12,6 +12,7 @@ import logging
 from hmis.apps.core.projections.clinic_queue import ClinicQueueProjection
 from hmis.apps.core.projections.pharmacy_queue import PharmacyQueueProjection
 from hmis.apps.core.projections.registry import get_projection_registry
+from hmis.apps.core.projections.room_utilization import RoomUtilizationProjection
 from hmis.apps.core.projections.ward_occupancy import WardOccupancyProjection
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ def register_projections() -> None:
     registry.register(ClinicQueueProjection())
     registry.register(WardOccupancyProjection())
     registry.register(PharmacyQueueProjection())
+    registry.register(RoomUtilizationProjection())
 
     registry.wire()
     logger.info("All projections registered and wired.")

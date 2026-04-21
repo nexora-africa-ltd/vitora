@@ -11,6 +11,10 @@ import type {
   DepartmentPerformanceParams,
   DiagnosisTrendParams,
   MetabaseResourceType,
+  ClinicQueueProjectionParams,
+  WardOccupancyProjectionParams,
+  PharmacyQueueProjectionParams,
+  RoomUtilizationParams,
 } from '@/lib/types/analytics';
 
 // Query keys
@@ -22,6 +26,16 @@ export const ANALYTICS_KEYS = {
   diagnosisTrends: (params?: DiagnosisTrendParams) =>
     ['analytics', 'diagnosis-trends', params] as const,
   demographics: () => ['analytics', 'demographics'] as const,
+  clinicQueueProjection: (params: ClinicQueueProjectionParams) =>
+    ['analytics', 'clinic-queue-projection', params] as const,
+  wardOccupancyProjection: (params?: WardOccupancyProjectionParams) =>
+    ['analytics', 'ward-occupancy-projection', params] as const,
+  pharmacyQueueProjection: (params?: PharmacyQueueProjectionParams) =>
+    ['analytics', 'pharmacy-queue-projection', params] as const,
+  roomUtilization: (params?: RoomUtilizationParams) =>
+    ['analytics', 'room-utilization', params] as const,
+  roomUtilizationSummary: (params?: Pick<RoomUtilizationParams, 'date' | 'facility_id'>) =>
+    ['analytics', 'room-utilization-summary', params] as const,
   metabaseEmbed: (type: MetabaseResourceType, id: number) =>
     ['analytics', 'metabase-embed', type, id] as const,
   metabaseDashboards: () => ['analytics', 'metabase-dashboards'] as const,
@@ -71,6 +85,49 @@ export function useDemographics() {
     queryKey: ANALYTICS_KEYS.demographics(),
     queryFn: () => analyticsApi.getDemographics(),
     staleTime: STALE_TIME,
+  });
+}
+
+export function useClinicQueueProjection(params: ClinicQueueProjectionParams | undefined) {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.clinicQueueProjection(params ?? { clinic_id: 0 }),
+    queryFn: () => analyticsApi.getClinicQueueProjection(params!),
+    staleTime: 60 * 1000,
+    enabled: !!params?.clinic_id,
+  });
+}
+
+export function useWardOccupancyProjection(params?: WardOccupancyProjectionParams) {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.wardOccupancyProjection(params),
+    queryFn: () => analyticsApi.getWardOccupancyProjection(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function usePharmacyQueueProjection(params?: PharmacyQueueProjectionParams) {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.pharmacyQueueProjection(params),
+    queryFn: () => analyticsApi.getPharmacyQueueProjection(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useRoomUtilization(params?: RoomUtilizationParams) {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.roomUtilization(params),
+    queryFn: () => analyticsApi.getRoomUtilization(params),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useRoomUtilizationSummary(
+  params?: Pick<RoomUtilizationParams, 'date' | 'facility_id'>
+) {
+  return useQuery({
+    queryKey: ANALYTICS_KEYS.roomUtilizationSummary(params),
+    queryFn: () => analyticsApi.getRoomUtilizationSummary(params),
+    staleTime: 60 * 1000,
   });
 }
 

@@ -20,15 +20,22 @@ from django.utils import timezone
 from hmis.apps.core.events import DomainEvent, get_event_bus
 from hmis.apps.core.events.bus import reset_event_bus
 from hmis.apps.core.events.store import EventStore
-from hmis.apps.core.events.types import ClinicalEvents, InpatientEvents, PharmacyEvents
+from hmis.apps.core.events.types import (
+    ClinicalEvents,
+    InpatientEvents,
+    PharmacyEvents,
+    SchedulingEvents,
+)
 from hmis.apps.core.projections.clinic_queue import ClinicQueueProjection
 from hmis.apps.core.projections.models import (
     ClinicQueueStats,
     PharmacyQueueStats,
+    RoomUtilizationStats,
     WardOccupancyStats,
 )
 from hmis.apps.core.projections.pharmacy_queue import PharmacyQueueProjection
 from hmis.apps.core.projections.registry import get_projection_registry, reset_projection_registry
+from hmis.apps.core.projections.room_utilization import RoomUtilizationProjection
 from hmis.apps.core.projections.ward_occupancy import WardOccupancyProjection
 
 
@@ -88,12 +95,14 @@ class TestProjectionRegistry:
         registry.register(ClinicQueueProjection())
         registry.register(WardOccupancyProjection())
         registry.register(PharmacyQueueProjection())
+        registry.register(RoomUtilizationProjection())
 
         all_projs = registry.all()
-        assert len(all_projs) == 3
+        assert len(all_projs) == 4
         assert "ClinicQueueProjection" in all_projs
         assert "WardOccupancyProjection" in all_projs
         assert "PharmacyQueueProjection" in all_projs
+        assert "RoomUtilizationProjection" in all_projs
 
     def test_wire_subscribes_to_event_bus(self):
         """wire() should subscribe projections to the EventBus."""
@@ -525,6 +534,140 @@ class TestPharmacyQueueProjection:
 
 
 # =============================================================================
+# RoomUtilizationProjection Tests
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestRoomUtilizationProjection:
+    """Test RoomUtilizationProjection event handling."""
+
+    def test_shift_and_visit_events_recompute_daily_room_stats(
+        self,
+        sample_organization,
+        sample_facility,
+        sample_department,
+        sample_patient,
+    ):
+        """Room utilization should be recomputed from shift and visit activity."""
+        from datetime import datetime, time
+
+        from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
+        from hmis.apps.scheduling.models import Resource, Shift
+
+        target_date = timezone.localdate()
+        room = Resource.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Consultation Room 1",
+            resource_type="PLACE",
+            code="ROOM-001",
+            department=sample_department,
+        )
+        clinician = Resource.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Dr Test",
+            resource_type="PERSON",
+            code="DOC-001",
+            department=sample_department,
+        )
+        clinic = Clinic.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="General OPD",
+            clinic_type="GENERAL_OPD",
+            code="OPD-001",
+            department=sample_department,
+        )
+        session = ClinicSession.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            clinic=clinic,
+            session_date=target_date,
+            status="OPEN",
+        )
+
+        started_at = timezone.make_aware(datetime.combine(target_date, time(8, 0)))
+        completed_at = timezone.make_aware(datetime.combine(target_date, time(16, 0)))
+        shift = Shift.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            staff_resource=clinician,
+            shift_date=target_date,
+            start_time=time(8, 0),
+            end_time=time(16, 0),
+            shift_type="DAY",
+            status="COMPLETED",
+            department=sample_department,
+            room=room,
+            clinic=clinic,
+            started_at=started_at,
+            completed_at=completed_at,
+            total_break_minutes=30,
+        )
+        visit = ClinicVisit.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            session=session,
+            patient=sample_patient,
+            queue_number=1,
+            status="COMPLETED",
+            room=room,
+        )
+        visit.registered_at = timezone.make_aware(
+            timezone.datetime.combine(target_date, time(8, 30))
+        )
+        visit.called_at = timezone.make_aware(timezone.datetime.combine(target_date, time(8, 55)))
+        visit.consultation_started_at = timezone.make_aware(
+            timezone.datetime.combine(target_date, time(9, 0))
+        )
+        visit.completed_at = timezone.make_aware(
+            timezone.datetime.combine(target_date, time(9, 20))
+        )
+        visit.save(
+            update_fields=[
+                "registered_at",
+                "called_at",
+                "consultation_started_at",
+                "completed_at",
+            ]
+        )
+
+        proj = RoomUtilizationProjection()
+        proj.handle_event(
+            _make_event(
+                SchedulingEvents.SHIFT_COMPLETED,
+                aggregate_type="Shift",
+                aggregate_id=shift.id,
+                facility_id=sample_facility.id,
+            )
+        )
+        proj.handle_event(
+            _make_event(
+                ClinicalEvents.CLINIC_VISIT_STATUS_CHANGED,
+                aggregate_type="ClinicVisit",
+                aggregate_id=visit.id,
+                facility_id=sample_facility.id,
+            )
+        )
+
+        stats = RoomUtilizationStats.objects.get(
+            facility_id=sample_facility.id,
+            room_id=room.id,
+            stat_date=target_date,
+        )
+        assert stats.staffed_minutes == 450
+        assert stats.consultation_minutes == 20
+        assert stats.visits_completed == 1
+        assert stats.no_show_count == 0
+        assert stats.active_clinicians_count == 0
+        assert float(stats.avg_wait_to_room_minutes) == 30.0
+        assert float(stats.avg_consultation_minutes) == 20.0
+        assert float(stats.utilization_rate) == pytest.approx(4.44, rel=1e-3)
+
+
+# =============================================================================
 # Rebuild Tests
 # =============================================================================
 
@@ -670,6 +813,135 @@ class TestProjectionAPIs:
         response = authenticated_client.get("/api/projections/ward-occupancy/?facility_id=1")
         assert response.status_code == 200
         assert len(response.data) == 1
+
+    def test_room_utilization_returns_facility_scoped_rows(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+        sample_department,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Room utilization endpoint should scope results to the user's facility."""
+        from hmis.apps.core.models import Facility, Organization
+        from hmis.apps.scheduling.models import Resource
+
+        other_org = Organization.objects.create(
+            name="Other Org",
+            slug="other-org",
+            contact_email="other@example.com",
+            is_active=True,
+            is_verified=True,
+        )
+        other_facility = Facility.objects.create(
+            organization=other_org,
+            name="Other Facility",
+            mfl_code="88888",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        room = Resource.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Consultation Room 1",
+            resource_type="PLACE",
+            code="ROOM-API-1",
+            department=sample_department,
+        )
+        other_room = Resource.objects.create(
+            organization=other_org,
+            facility=other_facility,
+            name="Other Room",
+            resource_type="PLACE",
+            code="ROOM-API-2",
+        )
+        RoomUtilizationStats.objects.create(
+            facility_id=sample_facility.id,
+            room_id=room.id,
+            stat_date=timezone.localdate(),
+            staffed_minutes=240,
+            consultation_minutes=120,
+            utilization_rate=50,
+            visits_completed=4,
+        )
+        RoomUtilizationStats.objects.create(
+            facility_id=other_facility.id,
+            room_id=other_room.id,
+            stat_date=timezone.localdate(),
+            staffed_minutes=240,
+            consultation_minutes=60,
+            utilization_rate=25,
+            visits_completed=2,
+        )
+
+        response = authenticated_client.get("/api/projections/room-utilization/")
+
+        assert response.status_code == 200
+        assert len(response.data) == 1
+        assert response.data[0]["room_id"] == room.id
+        assert response.data[0]["room_name"] == "Consultation Room 1"
+
+    def test_room_utilization_summary_returns_aggregates(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+        sample_department,
+    ):
+        """Summary endpoint should aggregate KPI values for the facility."""
+        from hmis.apps.scheduling.models import Resource
+
+        room_a = Resource.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Room A",
+            resource_type="PLACE",
+            code="ROOM-SUM-1",
+            department=sample_department,
+        )
+        room_b = Resource.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Room B",
+            resource_type="PLACE",
+            code="ROOM-SUM-2",
+            department=sample_department,
+        )
+        RoomUtilizationStats.objects.create(
+            facility_id=sample_facility.id,
+            room_id=room_a.id,
+            stat_date=timezone.localdate(),
+            staffed_minutes=300,
+            consultation_minutes=210,
+            utilization_rate=70,
+            visits_completed=6,
+            avg_wait_to_room_minutes=18,
+            active_clinicians_count=1,
+        )
+        RoomUtilizationStats.objects.create(
+            facility_id=sample_facility.id,
+            room_id=room_b.id,
+            stat_date=timezone.localdate(),
+            staffed_minutes=180,
+            consultation_minutes=0,
+            utilization_rate=0,
+            visits_completed=0,
+            avg_wait_to_room_minutes=0,
+            active_clinicians_count=0,
+        )
+
+        response = authenticated_client.get("/api/projections/room-utilization/summary/")
+
+        assert response.status_code == 200
+        assert response.data["total_rooms"] == 2
+        assert response.data["staffed_rooms"] == 2
+        assert response.data["active_rooms"] == 1
+        assert response.data["idle_rooms"] == 1
+        assert response.data["total_visits_completed"] == 6
+        assert response.data["avg_utilization_rate"] == 35.0
 
     def test_pharmacy_queue_stats_returns_data(self, authenticated_client):
         """GET /api/projections/pharmacy-queue/ should return stats."""

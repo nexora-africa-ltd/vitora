@@ -12,6 +12,11 @@ import {
   PaginatedDiagnosisTrendSchema,
   PaginatedDemographicSnapshotSchema,
   MetabaseEmbedResponseSchema,
+  ClinicQueueProjectionArraySchema,
+  WardOccupancyProjectionArraySchema,
+  PharmacyQueueProjectionArraySchema,
+  RoomUtilizationArraySchema,
+  RoomUtilizationSummarySchema,
 } from '@/lib/schemas/analytics.schema';
 import type { PaginatedResponse } from '@/lib/types';
 import type {
@@ -25,6 +30,15 @@ import type {
   MetabaseResourceType,
   MetabaseEmbedResponse,
   MetabaseDashboardInfo,
+  ClinicQueueProjectionParams,
+  ClinicQueueProjectionRow,
+  WardOccupancyProjectionParams,
+  WardOccupancyProjectionRow,
+  PharmacyQueueProjectionParams,
+  PharmacyQueueProjectionRow,
+  RoomUtilizationParams,
+  RoomUtilizationRow,
+  RoomUtilizationSummary,
 } from '@/lib/types/analytics';
 
 export const analyticsApi = {
@@ -100,5 +114,50 @@ export const analyticsApi = {
   getMetabaseDashboards: async (): Promise<MetabaseDashboardInfo[]> => {
     const response = await apiClient.get('/api/analytics/metabase-dashboards/');
     return response.data;
+  },
+
+  getClinicQueueProjection: async (
+    params: ClinicQueueProjectionParams
+  ): Promise<ClinicQueueProjectionRow[]> => {
+    const response = await apiClient.get('/api/projections/clinic-queue/', { params });
+    return parseResponse(ClinicQueueProjectionArraySchema, response.data, {
+      context: 'analyticsApi.getClinicQueueProjection',
+    });
+  },
+
+  getWardOccupancyProjection: async (
+    params?: WardOccupancyProjectionParams
+  ): Promise<WardOccupancyProjectionRow[]> => {
+    const response = await apiClient.get('/api/projections/ward-occupancy/', { params });
+    return parseResponse(WardOccupancyProjectionArraySchema, response.data, {
+      context: 'analyticsApi.getWardOccupancyProjection',
+    });
+  },
+
+  getPharmacyQueueProjection: async (
+    params?: PharmacyQueueProjectionParams
+  ): Promise<PharmacyQueueProjectionRow[]> => {
+    const response = await apiClient.get('/api/projections/pharmacy-queue/', { params });
+    return parseResponse(PharmacyQueueProjectionArraySchema, response.data, {
+      context: 'analyticsApi.getPharmacyQueueProjection',
+    });
+  },
+
+  getRoomUtilization: async (
+    params?: RoomUtilizationParams
+  ): Promise<RoomUtilizationRow[]> => {
+    const response = await apiClient.get('/api/projections/room-utilization/', { params });
+    return parseResponse(RoomUtilizationArraySchema, response.data, {
+      context: 'analyticsApi.getRoomUtilization',
+    });
+  },
+
+  getRoomUtilizationSummary: async (
+    params?: Pick<RoomUtilizationParams, 'date' | 'facility_id'>
+  ): Promise<RoomUtilizationSummary> => {
+    const response = await apiClient.get('/api/projections/room-utilization/summary/', { params });
+    return parseResponse(RoomUtilizationSummarySchema, response.data, {
+      context: 'analyticsApi.getRoomUtilizationSummary',
+    });
   },
 };

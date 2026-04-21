@@ -52,6 +52,7 @@ import {
   useOpenSession,
   useCloseSession,
 } from '@/lib/hooks/use-clinics';
+import { useClinicQueueProjection } from '@/lib/hooks/use-analytics';
 import { useClinicQueueSocket } from '@/lib/hooks/use-websocket';
 import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -70,6 +71,9 @@ export default function ClinicDashboardPage() {
   const { data: session, isLoading: sessionLoading, refetch: refetchSession } = useTodaySession(clinicId);
   const { data: queue, isLoading: queueLoading, refetch: refetchQueue } = useClinicQueue(clinicId);
   const { data: stats, refetch: refetchStats } = useQueueStats(clinicId);
+  const { data: projectionRows, isLoading: projectionLoading } = useClinicQueueProjection(
+    clinicId ? { clinic_id: clinicId } : undefined
+  );
 
   // WebSocket for real-time queue updates
   const { connectionState, reconnectAttempts } = useClinicQueueSocket(clinicId);
@@ -106,6 +110,10 @@ export default function ClinicDashboardPage() {
     () => (queue ?? []).filter((v) => v.status === 'COMPLETED'),
     [queue]
   );
+
+  const projection = projectionRows?.[0];
+  const projectionAvgWaitMinutes = projection ? Math.round(projection.avg_wait_seconds / 60) : null;
+  const projectionLongestWaitMinutes = projection ? Math.round(projection.longest_wait_seconds / 60) : null;
 
   // Handle session actions
   const handleOpenSession = async () => {
@@ -315,6 +323,44 @@ export default function ClinicDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base sm:text-lg">Projection Snapshot</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Waiting</p>
+            <p className="text-2xl font-semibold">{projectionLoading ? '—' : projection?.waiting_count ?? waitingQueue.length}</p>
+            <p className="text-xs text-muted-foreground">Projection-backed queue depth</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">In Consultation</p>
+            <p className="text-2xl font-semibold">{projectionLoading ? '—' : projection?.in_consultation_count ?? inConsultation.length}</p>
+            <p className="text-xs text-muted-foreground">Active consultations in read model</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Completed / No-shows</p>
+            <p className="text-2xl font-semibold">
+              {projectionLoading ? '—' : `${projection?.completed_today ?? completedToday.length} / ${projection?.no_show_today ?? 0}`}
+            </p>
+            <p className="text-xs text-muted-foreground">Today&apos;s clinic outcomes</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Wait Window</p>
+            <p className="text-2xl font-semibold">
+              {projectionLoading
+                ? '—'
+                : `${projectionAvgWaitMinutes ?? 0}m avg / ${projectionLongestWaitMinutes ?? 0}m max`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {projection?.last_updated
+                ? `Updated ${new Date(projection.last_updated).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Projection updates with queue activity'}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Queue Tabs */}
       <Tabs defaultValue="queue" className="space-y-4">

@@ -107,3 +107,56 @@ class PharmacyQueueStats(models.Model):
 
     def __str__(self):
         return f"PharmacyQueueStats(facility={self.facility_id})"
+
+
+class RoomUtilizationStats(models.Model):
+    """
+    Denormalized room utilization statistics per room per day.
+
+    Updated by RoomUtilizationProjection from scheduling shift and clinic visit
+    events. Powers room operations dashboards without expensive live joins.
+    """
+
+    facility_id = models.IntegerField(db_index=True)
+    room_id = models.IntegerField(db_index=True)
+    clinic_id = models.IntegerField(null=True, blank=True, db_index=True)
+    stat_date = models.DateField(db_index=True)
+    staffed_minutes = models.PositiveIntegerField(default=0)
+    consultation_minutes = models.PositiveIntegerField(default=0)
+    utilization_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text="Consultation time / staffed time * 100",
+    )
+    visits_completed = models.PositiveIntegerField(default=0)
+    no_show_count = models.PositiveIntegerField(default=0)
+    avg_wait_to_room_minutes = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        help_text="Average minutes from registration to consultation start",
+    )
+    avg_consultation_minutes = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        help_text="Average minutes spent in consultation",
+    )
+    active_clinicians_count = models.PositiveIntegerField(default=0)
+    last_updated = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = [("facility_id", "room_id", "stat_date")]
+        indexes = [
+            models.Index(fields=["facility_id", "stat_date"], name="idx_rus_facility_date"),
+            models.Index(fields=["facility_id", "clinic_id"], name="idx_rus_facility_clinic"),
+        ]
+        verbose_name = "Room Utilization Stats"
+        verbose_name_plural = "Room Utilization Stats"
+
+    def __str__(self):
+        return (
+            f"RoomUtilizationStats(facility={self.facility_id}, room={self.room_id}, "
+            f"date={self.stat_date})"
+        )
