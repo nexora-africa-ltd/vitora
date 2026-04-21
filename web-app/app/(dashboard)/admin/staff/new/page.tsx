@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, Check, X, Loader2, Sparkles, Send } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -35,18 +36,25 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { DHAPractitionerSearch } from '@/components/sha/practitioner-search';
 import { staffApi } from '@/lib/api/rbac';
 import { invitationsApi } from '@/lib/api/onboarding';
+import { facilitiesApi } from '@/lib/api/facilities';
 import { CredentialDialog } from '@/components/admin/credential-dialog';
 import type { DHAPractitioner } from '@/lib/types/sha';
 import type { Department, Role } from '@/lib/types/rbac';
+import { useFacility } from '@/lib/context/facility-context';
 import { useDebouncedCallback } from 'use-debounce';
 
 export default function NewStaffPage() {
   const router = useRouter();
   const { toast } = useToast();
   const createStaff = useCreateStaffProfile();
+  const { facility, organization } = useFacility();
 
   const { data: departments } = useDepartments({ is_active: true, page_size: 100 });
   const { data: roles } = useRoles({ page_size: 100 });
+  const { data: facilities } = useQuery({
+    queryKey: ['facilities-list'],
+    queryFn: () => facilitiesApi.list({ page_size: 100, is_active: true }),
+  });
 
   // Mode: "invite" (default) or "direct"
   const [mode, setMode] = useState<'invite' | 'direct'>('invite');
@@ -89,6 +97,18 @@ export default function NewStaffPage() {
     loadOrgs();
   }, []);
 
+  useEffect(() => {
+    if (!organization?.id && !facility?.id) {
+      return;
+    }
+
+    setInviteData((prev) => ({
+      ...prev,
+      organization: prev.organization || (organization?.id ? String(organization.id) : ''),
+      facility: prev.facility || (facility?.id ? String(facility.id) : ''),
+    }));
+  }, [facility?.id, organization?.id]);
+
   // Form state
   const [formData, setFormData] = useState({
     username: '',
@@ -99,6 +119,7 @@ export default function NewStaffPage() {
     employee_id: '',
     department: '',
     role: '',
+    primary_facility: '',
     phone_number: '',
     hwr_id: '',
     license_number: '',
@@ -107,6 +128,17 @@ export default function NewStaffPage() {
     specialization: '',
     hire_date: new Date(),
   });
+
+  useEffect(() => {
+    if (!facility?.id) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      primary_facility: prev.primary_facility || String(facility.id),
+    }));
+  }, [facility?.id]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -315,6 +347,9 @@ export default function NewStaffPage() {
     if (!formData.role) {
       newErrors.role = 'Role is required';
     }
+    if (!formData.primary_facility) {
+      newErrors.primary_facility = 'Primary facility is required';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -335,6 +370,7 @@ export default function NewStaffPage() {
         employee_id: formData.employee_id,
         department: parseInt(formData.department),
         role: parseInt(formData.role),
+        primary_facility: parseInt(formData.primary_facility),
         phone_number: formData.phone_number || undefined,
         hwr_id: formData.hwr_id || undefined,
         license_number: formData.license_number || undefined,
@@ -411,6 +447,13 @@ export default function NewStaffPage() {
     }
   };
 
+  const filteredInviteFacilities = (facilities?.results ?? []).filter((item) => {
+    if (!inviteData.organization) {
+      return true;
+    }
+    return item.organization === Number(inviteData.organization);
+  });
+
   return (
     <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
       <PageHeader
@@ -481,7 +524,14 @@ export default function NewStaffPage() {
                     <Select
                       value={inviteData.organization}
                       onValueChange={(v) => {
-                        setInviteData(prev => ({ ...prev, organization: v }));
+                        setInviteData((prev) => {
+                          const nextFacility = prev.facility && (facilities?.results ?? []).some(
+                            (item) => item.id === Number(prev.facility) && item.organization === Number(v)
+                          )
+                            ? prev.facility
+                            : '';
+                          return { ...prev, organization: v, facility: nextFacility };
+                        });
                         if (inviteErrors.organization) setInviteErrors(prev => ({ ...prev, organization: '' }));
                       }}
                     >
@@ -504,6 +554,33 @@ export default function NewStaffPage() {
                     {inviteErrors.organization && (
                       <p className="text-sm text-destructive">{inviteErrors.organization}</p>
                     )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Primary Facility</Label>
+                    <Select
+                      value={inviteData.facility}
+                      onValueChange={(v) => setInviteData((prev) => ({ ...prev, facility: v }))}
+                    >
+                      <SelectTrigger>
+                        <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <SelectValue placeholder="Select facility" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredInviteFacilities.length > 0 ? (
+                          filteredInviteFacilities.map((item) => (
+                            <SelectItem key={item.id} value={item.id.toString()}>
+                              {item.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectEmpty>No facilities available</SelectEmpty>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Optional, but recommended when the staff member should land in a specific facility.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -984,6 +1061,37 @@ export default function NewStaffPage() {
                 {errors.role && (
                   <p className="text-sm text-destructive">{errors.role}</p>
                 )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="primary_facility">
+                  Primary Facility <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.primary_facility}
+                  onValueChange={(value) => handleChange('primary_facility', value)}
+                >
+                  <SelectTrigger className={errors.primary_facility ? 'border-destructive' : ''}>
+                    <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Select facility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {facilities?.results && facilities.results.length > 0 ? (
+                      facilities.results.map((item) => (
+                        <SelectItem key={item.id} value={item.id.toString()}>
+                          {item.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectEmpty>No facilities available</SelectEmpty>
+                    )}
+                  </SelectContent>
+                </Select>
+                {errors.primary_facility && (
+                  <p className="text-sm text-destructive">{errors.primary_facility}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  The selected facility becomes the staff member&apos;s primary assignment and drives organization resolution.
+                </p>
               </div>
             </div>
           </CardContent>

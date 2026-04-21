@@ -25,6 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
+  SelectEmpty,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -53,7 +54,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useStaffProfile, useUpdateStaffProfile, useDeleteStaffProfile, useDepartments, useRoles, useStaffList } from '@/lib/hooks/use-rbac';
+import { useStaffProfile, useUpdateStaffProfile, useDeleteStaffProfile, useDepartments, useRoles, useStaffList, useOrgMemberships, useCreateOrgMembership, useUpdateOrgMembership, useDeleteOrgMembership } from '@/lib/hooks/use-rbac';
 import { facilitiesApi } from '@/lib/api/facilities';
 
 export default function EditStaffPage() {
@@ -65,6 +66,10 @@ export default function EditStaffPage() {
   const { data: staff, isLoading, error } = useStaffProfile(staffId);
   const updateStaff = useUpdateStaffProfile();
   const terminateStaff = useDeleteStaffProfile();
+  const { data: orgMemberships } = useOrgMemberships({ staff_profile: staffId });
+  const createMembership = useCreateOrgMembership();
+  const updateMembership = useUpdateOrgMembership();
+  const deleteMembership = useDeleteOrgMembership();
 
   const { data: departments } = useDepartments({ is_active: true, page_size: 100 });
   const { data: roles } = useRoles({ page_size: 100 });
@@ -82,6 +87,7 @@ export default function EditStaffPage() {
     employee_id: '',
     department: '',
     role: '',
+    primary_facility: '',
     phone_number: '',
     license_number: '',
     license_expiry: '',
@@ -92,6 +98,13 @@ export default function EditStaffPage() {
   const [secondaryDepartments, setSecondaryDepartments] = useState<string[]>([]);
   const [secondaryFacilities, setSecondaryFacilities] = useState<string[]>([]);
   const [supervisor, setSupervisor] = useState<string>('');
+  const [membershipForm, setMembershipForm] = useState({
+    role: '',
+    department: '',
+    status: 'ACTIVE',
+    facilities: [] as string[],
+  });
+  const [membershipErrors, setMembershipErrors] = useState<Record<string, string>>({});
 
   // Load staff data into form
   useEffect(() => {
@@ -103,6 +116,7 @@ export default function EditStaffPage() {
         employee_id: staff.employee_id || '',
         department: staff.primary_department?.toString() || '',
         role: staff.primary_role?.toString() || '',
+        primary_facility: staff.primary_facility?.toString() || '',
         phone_number: staff.phone_number || '',
         license_number: staff.license_number || '',
         license_expiry: staff.license_expiry || '',
@@ -118,6 +132,39 @@ export default function EditStaffPage() {
     }
   }, [staff]);
 
+  const currentMembership = orgMemberships?.results?.[0] ?? null;
+
+  useEffect(() => {
+    if (currentMembership) {
+      setMembershipForm({
+        role: currentMembership.role.toString(),
+        department: currentMembership.department?.toString() || '',
+        status: currentMembership.status,
+        facilities: currentMembership.facility_ids.map(String),
+      });
+      return;
+    }
+
+    if (!staff) {
+      return;
+    }
+
+    setMembershipForm({
+      role: staff.primary_role?.toString() || '',
+      department: staff.primary_department?.toString() || '',
+      status: 'ACTIVE',
+      facilities: staff.primary_facility ? [staff.primary_facility.toString()] : [],
+    });
+  }, [currentMembership, staff]);
+
+  useEffect(() => {
+    if (!formData.primary_facility) {
+      return;
+    }
+
+    setSecondaryFacilities((prev) => prev.filter((value) => value !== formData.primary_facility));
+  }, [formData.primary_facility]);
+
   const handleChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (formErrors[field]) {
@@ -125,6 +172,17 @@ export default function EditStaffPage() {
         const newErrors = { ...prev };
         delete newErrors[field];
         return newErrors;
+      });
+    }
+  };
+
+  const handleMembershipFieldChange = (field: 'role' | 'department' | 'status', value: string) => {
+    setMembershipForm((prev) => ({ ...prev, [field]: value }));
+    if (membershipErrors[field]) {
+      setMembershipErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
       });
     }
   };
@@ -152,6 +210,9 @@ export default function EditStaffPage() {
     if (!formData.role) {
       newErrors.role = 'Role is required';
     }
+    if (!formData.primary_facility) {
+      newErrors.primary_facility = 'Primary facility is required';
+    }
 
     setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -172,6 +233,7 @@ export default function EditStaffPage() {
           employee_id: formData.employee_id,
           department: parseInt(formData.department),
           role: parseInt(formData.role),
+          primary_facility: parseInt(formData.primary_facility),
           phone_number: formData.phone_number || undefined,
           license_number: formData.license_number || undefined,
           license_expiry: formData.license_expiry || undefined,
@@ -212,6 +274,74 @@ export default function EditStaffPage() {
         variant: 'destructive',
         title: 'Error',
         description: err instanceof Error ? err.message : 'Failed to terminate staff',
+      });
+    }
+  };
+
+  const validateMembership = () => {
+    const nextErrors: Record<string, string> = {};
+
+    if (!membershipForm.role) {
+      nextErrors.role = 'Organization role is required';
+    }
+
+    setMembershipErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleMembershipSave = async () => {
+    if (!validateMembership()) {
+      return;
+    }
+
+    const payload = {
+      staff_profile: staffId,
+      role: parseInt(membershipForm.role),
+      department: membershipForm.department ? parseInt(membershipForm.department) : null,
+      facilities: membershipForm.facilities.map(Number),
+      status: membershipForm.status as 'ACTIVE' | 'SUSPENDED' | 'REVOKED',
+      is_primary: currentMembership?.is_primary ?? false,
+    };
+
+    try {
+      if (currentMembership) {
+        await updateMembership.mutateAsync({
+          id: currentMembership.id,
+          data: payload,
+        });
+      } else {
+        await createMembership.mutateAsync(payload);
+      }
+
+      toast({
+        title: currentMembership ? 'Membership updated' : 'Membership created',
+        description: 'Organization-specific role, department, and facility access were saved.',
+      });
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Membership save failed',
+        description: err instanceof Error ? err.message : 'Failed to save organization membership',
+      });
+    }
+  };
+
+  const handleMembershipDelete = async () => {
+    if (!currentMembership) {
+      return;
+    }
+
+    try {
+      await deleteMembership.mutateAsync(currentMembership.id);
+      toast({
+        title: 'Membership removed',
+        description: 'The organization membership was deleted.',
+      });
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Membership delete failed',
+        description: err instanceof Error ? err.message : 'Failed to delete organization membership',
       });
     }
   };
@@ -450,6 +580,7 @@ export default function EditStaffPage() {
 
           {/* ── Role & Assignment ── */}
           <TabsContent value="assignment">
+            <div className="space-y-4">
             <Card>
               <CardContent className="space-y-4 pt-6">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -501,6 +632,37 @@ export default function EditStaffPage() {
                       <p className="text-sm text-destructive">{formErrors.role}</p>
                     )}
                   </div>
+                </div>
+
+                <Separator />
+
+                <div className="max-w-sm space-y-2">
+                  <Label htmlFor="primary_facility">
+                    <Building2 className="mr-1 inline h-4 w-4" />
+                    Primary Facility *
+                  </Label>
+                  <Select
+                    value={formData.primary_facility}
+                    onValueChange={(value) => handleChange('primary_facility', value)}
+                  >
+                    <SelectTrigger id="primary_facility" aria-label="Primary facility">
+                      <SelectValue placeholder="Select primary facility" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(facilities?.results ?? []).length > 0 ? (
+                        (facilities?.results ?? []).map((item) => (
+                          <SelectItem key={item.id} value={item.id.toString()}>
+                            {item.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectEmpty>No facilities available</SelectEmpty>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.primary_facility && (
+                    <p className="text-sm text-destructive">{formErrors.primary_facility}</p>
+                  )}
                 </div>
 
                 <Separator />
@@ -561,7 +723,7 @@ export default function EditStaffPage() {
 
                   <MultiSelect
                     data={(facilities?.results ?? [])
-                      .filter((f) => f.id !== staff?.primary_facility)
+                      .filter((f) => f.id.toString() !== formData.primary_facility)
                       .map((f) => ({ label: f.name, value: f.id.toString() }))}
                     type="secondary-facilities"
                     values={secondaryFacilities}
@@ -573,7 +735,7 @@ export default function EditStaffPage() {
                       <MultiSelectList>
                         <MultiSelectGroup>
                           {(facilities?.results ?? [])
-                            .filter((f) => f.id !== staff?.primary_facility)
+                            .filter((f) => f.id.toString() !== formData.primary_facility)
                             .map((f) => (
                               <MultiSelectItem key={f.id} value={f.id.toString()}>
                                 {f.name}
@@ -587,6 +749,138 @@ export default function EditStaffPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Organization Membership</p>
+                    <p className="text-sm text-muted-foreground">
+                      Manage this staff member&apos;s current-organization role, status, and facility access separately from the home-profile fields above.
+                    </p>
+                  </div>
+                  {currentMembership ? (
+                    <Badge variant={currentMembership.is_primary ? 'default' : 'secondary'} className="w-fit">
+                      {currentMembership.is_primary ? 'Primary membership' : 'Secondary membership'}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="w-fit">No membership record yet</Badge>
+                  )}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="membership-role">Organization Role *</Label>
+                    <Select
+                      value={membershipForm.role}
+                      onValueChange={(value) => handleMembershipFieldChange('role', value)}
+                    >
+                      <SelectTrigger id="membership-role" aria-label="Organization role">
+                        <SelectValue placeholder="Select organization role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles?.results.map((role) => (
+                          <SelectItem key={role.id} value={role.id.toString()}>
+                            {role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {membershipErrors.role && (
+                      <p className="text-sm text-destructive">{membershipErrors.role}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="membership-department">Organization Department</Label>
+                    <Select
+                      value={membershipForm.department || 'none'}
+                      onValueChange={(value) => handleMembershipFieldChange('department', value === 'none' ? '' : value)}
+                    >
+                      <SelectTrigger id="membership-department" aria-label="Organization department">
+                        <SelectValue placeholder="Select organization department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No department</SelectItem>
+                        {departments?.results.map((dept: { id: number; name: string }) => (
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="membership-status">Membership Status</Label>
+                    <Select
+                      value={membershipForm.status}
+                      onValueChange={(value) => handleMembershipFieldChange('status', value)}
+                    >
+                      <SelectTrigger id="membership-status" aria-label="Membership status">
+                        <SelectValue placeholder="Select membership status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                        <SelectItem value="REVOKED">Revoked</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Allowed Facilities</Label>
+                    <MultiSelect
+                      data={(facilities?.results ?? []).map((facility) => ({
+                        label: facility.name,
+                        value: facility.id.toString(),
+                      }))}
+                      type="membership-facilities"
+                      values={membershipForm.facilities}
+                      onValuesChange={(values) => setMembershipForm((prev) => ({ ...prev, facilities: values }))}
+                    >
+                      <MultiSelectTrigger placeholder="Membership facilities…" />
+                      <MultiSelectContent>
+                        <MultiSelectInput placeholder="Search facilities…" />
+                        <MultiSelectList>
+                          <MultiSelectGroup>
+                            {(facilities?.results ?? []).map((facility) => (
+                              <MultiSelectItem key={facility.id} value={facility.id.toString()}>
+                                {facility.name}
+                              </MultiSelectItem>
+                            ))}
+                          </MultiSelectGroup>
+                          <MultiSelectEmpty>No facilities found</MultiSelectEmpty>
+                        </MultiSelectList>
+                      </MultiSelectContent>
+                    </MultiSelect>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  {currentMembership && !currentMembership.is_primary ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleMembershipDelete}
+                      disabled={deleteMembership.isPending}
+                    >
+                      {deleteMembership.isPending ? 'Removing…' : 'Remove Membership'}
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    onClick={handleMembershipSave}
+                    disabled={createMembership.isPending || updateMembership.isPending}
+                  >
+                    {createMembership.isPending || updateMembership.isPending ? 'Saving Membership…' : currentMembership ? 'Save Membership' : 'Create Membership'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            </div>
           </TabsContent>
 
           {/* ── Professional Information ── */}

@@ -13,6 +13,7 @@ import {
   RoleSchema,
   PermissionSchema,
   StaffProfileSchema,
+  OrgMembershipSchema,
   UserPermissionsSchema,
   AuditLogEntrySchema,
   UsernameCheckResponseSchema,
@@ -20,6 +21,7 @@ import {
   PaginatedDepartmentSchema,
   PaginatedRoleSchema,
   PaginatedStaffProfileSchema,
+  PaginatedOrgMembershipSchema,
   PaginatedAuditLogSchema,
 } from '@/lib/schemas/rbac.schema';
 import type { PaginatedResponse } from '@/lib/types';
@@ -38,6 +40,10 @@ import type {
   StaffProfile,
   StaffProfileCreateData,
   StaffProfileUpdateData,
+  OrgMembership,
+  OrgMembershipCreateData,
+  OrgMembershipUpdateData,
+  OrgMembershipListParams,
   StaffListParams,
   UserPermissions,
   AuditLogEntry,
@@ -197,6 +203,27 @@ export const staffApi = {
       middle_name: middleName || '',
     });
     return parseResponse(UsernameSuggestionResponseSchema, response.data, { context: 'staffApi.suggestUsername' });
+  },
+};
+
+export const orgMembershipsApi = {
+  list: async (params?: OrgMembershipListParams): Promise<PaginatedResponse<OrgMembership>> => {
+    const response = await apiClient.get<PaginatedResponse<OrgMembership>>('/api/org-memberships/', { params });
+    return parseResponse(PaginatedOrgMembershipSchema, response.data, { context: 'orgMembershipsApi.list' });
+  },
+
+  create: async (data: OrgMembershipCreateData): Promise<OrgMembership> => {
+    const response = await apiClient.post<OrgMembership>('/api/org-memberships/', data);
+    return parseResponse(OrgMembershipSchema, response.data, { context: 'orgMembershipsApi.create' });
+  },
+
+  update: async (id: number, data: OrgMembershipUpdateData): Promise<OrgMembership> => {
+    const response = await apiClient.patch<OrgMembership>(`/api/org-memberships/${id}/`, data);
+    return parseResponse(OrgMembershipSchema, response.data, { context: 'orgMembershipsApi.update' });
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`/api/org-memberships/${id}/`);
   },
 };
 
