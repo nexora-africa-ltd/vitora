@@ -29,6 +29,7 @@ class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
         OBSTETRIC = "OBSTETRIC", "Obstetric Procedure"
         WOUND_CARE = "WOUND_CARE", "Wound Care"
         INJECTION = "INJECTION", "Injection/Infusion"
+        SURGICAL = "SURGICAL", "Surgical Procedure"
         OTHER = "OTHER", "Other"
 
     class BodySystem(models.TextChoices):
@@ -175,6 +176,46 @@ class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
     # Status
     is_active = models.BooleanField(
         default=True, help_text="Whether procedure is currently offered"
+    )
+
+    # -- Theatre-specific fields (applicable when category=SURGICAL) --
+    class Complexity(models.TextChoices):
+        MINOR = "MINOR", "Minor"
+        INTERMEDIATE = "INTERMEDIATE", "Intermediate"
+        MAJOR = "MAJOR", "Major"
+        COMPLEX = "COMPLEX", "Complex"
+
+    complexity = models.CharField(
+        max_length=20,
+        choices=Complexity.choices,
+        blank=True,
+        default="",
+        help_text="Surgical complexity (only for SURGICAL category)",
+    )
+    sha_intervention_code = models.CharField(
+        max_length=50, blank=True, default="", help_text="Kenya SHA intervention code"
+    )
+    requires_icu_bed = models.BooleanField(default=False)
+    typical_blood_requirement = models.CharField(
+        max_length=50, blank=True, default="", help_text='e.g. "2 units PRBC"'
+    )
+    special_equipment = models.TextField(
+        blank=True, default="", help_text="Equipment needed beyond standard theatre setup"
+    )
+    setup_time_minutes = models.PositiveIntegerField(
+        default=15, help_text="Time to prepare the theatre before surgery"
+    )
+    cleanup_time_minutes = models.PositiveIntegerField(
+        default=15, help_text="Time to clean the theatre after surgery"
+    )
+    surgeon_fee = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, help_text="Surgeon fee (KES)"
+    )
+    theatre_fee = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, help_text="Theatre usage fee (KES)"
+    )
+    anesthesia_fee = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, help_text="Anesthesia fee (KES)"
     )
 
     class Meta:

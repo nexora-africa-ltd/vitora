@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     "hmis.apps.analytics.apps.AnalyticsConfig",
     "hmis.apps.moh_reporting.apps.MohReportingConfig",
     "hmis.apps.inventory.apps.InventoryConfig",
+    "hmis.apps.theatre.apps.TheatreConfig",
 ]
 
 MIDDLEWARE = [

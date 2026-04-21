@@ -149,6 +149,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "service",
                 "service_name",
                 "sha_code",
+                "surgery_case",
+                "surgery_case_number",
+                "theatre_consumable",
                 "unit_price",
                 "updated_at",
             }
