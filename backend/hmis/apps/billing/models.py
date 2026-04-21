@@ -593,6 +593,8 @@ class Invoice(FacilityScopedModel):
                 drug=item.drug,
                 dispensing=item.dispensing,
                 lab_order=item.lab_order,
+                surgery_case=item.surgery_case,
+                theatre_consumable=item.theatre_consumable,
                 description=item.description,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
@@ -658,6 +660,8 @@ class Invoice(FacilityScopedModel):
                 item_type=item.item_type,
                 service=item.service,
                 drug=item.drug,
+                surgery_case=item.surgery_case,
+                theatre_consumable=item.theatre_consumable,
                 description=item.description,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
@@ -743,6 +747,20 @@ class InvoiceItem(models.Model):
     # For immunization items
     immunization_record = models.ForeignKey(
         "immunizations.ImmunizationRecord",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="invoice_items",
+    )
+    surgery_case = models.ForeignKey(
+        "theatre.SurgeryCase",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="invoice_items",
+    )
+    theatre_consumable = models.ForeignKey(
+        "theatre.TheatreConsumable",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
@@ -834,6 +852,10 @@ class InvoiceItem(models.Model):
             raise ValidationError({"quantity": "Quantity must be greater than 0."})
         if self.unit_price is not None and self.unit_price <= 0:
             raise ValidationError({"unit_price": "Unit price must be greater than 0."})
+        if self.theatre_consumable_id and not self.surgery_case_id:
+            raise ValidationError(
+                {"surgery_case": "Theatre consumable invoice items must link to a surgery case."}
+            )
 
         # NOTE: Stock validation is intentionally NOT done here.
         # Stock availability is validated at DISPENSING time, not billing time.

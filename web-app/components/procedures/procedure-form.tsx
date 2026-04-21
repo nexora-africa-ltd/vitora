@@ -44,6 +44,7 @@ const CATEGORIES = [
   { value: 'OPHTHALMIC', label: 'Ophthalmic' },
   { value: 'ENT', label: 'ENT' },
   { value: 'OBSTETRIC', label: 'Obstetric' },
+  { value: 'SURGICAL', label: 'Surgical' },
   { value: 'WOUND_CARE', label: 'Wound Care' },
   { value: 'INJECTION', label: 'Injection/Infusion' },
   { value: 'OTHER', label: 'Other' },

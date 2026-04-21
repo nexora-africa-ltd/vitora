@@ -31,6 +31,7 @@ from hmis.apps.core.events.types import (
     PharmacyEvents,
     SchedulingEvents,
     SurveillanceEvents,
+    TheatreEvents,
 )
 
 __all__ = [
@@ -52,4 +53,5 @@ __all__ = [
     "PharmacyEvents",
     "SchedulingEvents",
     "SurveillanceEvents",
+    "TheatreEvents",
 ]
