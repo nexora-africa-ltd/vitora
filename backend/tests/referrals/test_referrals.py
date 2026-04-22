@@ -510,6 +510,95 @@ class TestClinicalReferralAPI:
 
         assert response.status_code == status.HTTP_200_OK
 
+    def test_filter_by_patient_id_alias(
+        self,
+        authenticated_client,
+        referral_data,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter referrals when callers send patient_id."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
+        target_referral_id = create_resp.data["id"]
+        other_patient = Patient.objects.create(
+            first_name="Alias",
+            last_name="Referral",
+            date_of_birth="1992-04-10",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=other_patient,
+            encounter_type="OPD",
+            chief_complaint="Other referral",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        authenticated_client.post(
+            "/api/referrals/",
+            {
+                "encounter": other_encounter.id,
+                "target_service": "NUTRITION",
+                "reason": "Other patient referral",
+                "clinical_notes": "Other patient",
+                "priority": "ROUTINE",
+            },
+            format="json",
+        )
+
+        response = authenticated_client.get(
+            f"/api/referrals/?patient_id={create_resp.data['patient']}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        referral_ids = {item["id"] for item in response.data["results"]}
+        assert referral_ids == {target_referral_id}
+
+    def test_filter_by_encounter_id_alias(
+        self,
+        authenticated_client,
+        referral_data,
+        sample_encounter,
+        sample_patient,
+        test_user,
+    ):
+        """Should filter referrals when callers send encounter_id."""
+        from hmis.apps.referrals.models import ClinicalReferral
+
+        create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
+        target_referral_id = create_resp.data["id"]
+        other_encounter = sample_encounter.__class__.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Referral follow-up",
+            organization=sample_encounter.organization,
+            facility=sample_encounter.facility,
+        )
+        ClinicalReferral.objects.create(
+            encounter=other_encounter,
+            patient=sample_patient,
+            target_service="SOCIAL_WORK",
+            reason="Other encounter referral",
+            clinical_notes="Other encounter",
+            priority="ROUTINE",
+            referral_type="ALLIED_HEALTH",
+            referred_by=test_user,
+        )
+
+        response = authenticated_client.get(f"/api/referrals/?encounter_id={sample_encounter.id}")
+
+        assert response.status_code == status.HTTP_200_OK
+        referral_ids = {item["id"] for item in response.data["results"]}
+        assert referral_ids == {target_referral_id}
+
     def test_search_by_referral_number(self, authenticated_client, referral_data):
         """Should search referrals by number."""
         create_resp = authenticated_client.post("/api/referrals/", referral_data, format="json")
