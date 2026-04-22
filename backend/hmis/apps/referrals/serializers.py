@@ -11,6 +11,7 @@ role-appropriate field exposure:
 
 from rest_framework import serializers
 
+from hmis.apps.clinics.models import Clinic
 from hmis.apps.referrals.models import ClinicalReferral
 
 
@@ -28,6 +29,9 @@ class ClinicalReferralListSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.SerializerMethodField()
     referred_by_name = serializers.SerializerMethodField()
+    destination_clinic_name = serializers.CharField(
+        source="destination_clinic.name", read_only=True
+    )
 
     class Meta:
         model = ClinicalReferral
@@ -42,6 +46,8 @@ class ClinicalReferralListSerializer(serializers.ModelSerializer):
             "patient_name",
             "patient_mrn",
             "encounter",
+            "destination_clinic",
+            "destination_clinic_name",
             "priority",
             "priority_display",
             "status",
@@ -89,6 +95,9 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
     referred_by_name = serializers.SerializerMethodField()
     accepted_by_name = serializers.SerializerMethodField()
     declined_by_name = serializers.SerializerMethodField()
+    destination_clinic_name = serializers.CharField(
+        source="destination_clinic.name", read_only=True
+    )
     is_active = serializers.BooleanField(read_only=True)
     is_terminal = serializers.BooleanField(read_only=True)
 
@@ -106,6 +115,8 @@ class ClinicalReferralSerializer(serializers.ModelSerializer):
             "patient_name",
             "patient_mrn",
             "encounter",
+            "destination_clinic",
+            "destination_clinic_name",
             # Clinician input
             "reason",
             "clinical_notes",
@@ -204,11 +215,18 @@ class ClinicalReferralCreateSerializer(serializers.ModelSerializer):
     Everything else is auto-populated.
     """
 
+    destination_clinic = serializers.PrimaryKeyRelatedField(
+        queryset=Clinic.objects.filter(status="ACTIVE"),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = ClinicalReferral
         fields = [
             "encounter",
             "target_service",
+            "destination_clinic",
             "reason",
             "clinical_notes",
             "priority",
@@ -235,6 +253,8 @@ class ClinicalReferralCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Cross-field validation."""
         target_service = data.get("target_service", "")
+        encounter = data.get("encounter")
+        destination_clinic = data.get("destination_clinic")
 
         # Derive referral type for validation
         referral_type = ClinicalReferral.SERVICE_TO_TYPE.get(target_service, "SPECIALTY_CLINIC")
@@ -263,6 +283,52 @@ class ClinicalReferralCreateSerializer(serializers.ModelSerializer):
                         )
                     }
                 )
+
+        clinic_type = ClinicalReferral.SERVICE_TO_CLINIC_TYPE.get(target_service)
+        requires_destination_clinic = (
+            referral_type == "SPECIALTY_CLINIC" and bool(clinic_type) and target_service != "OTHER"
+        )
+
+        if requires_destination_clinic and encounter:
+            eligible_clinics = Clinic.objects.filter(
+                facility=encounter.facility,
+                organization=encounter.organization,
+                clinic_type=clinic_type,
+                status="ACTIVE",
+            ).order_by("name", "id")
+
+            if destination_clinic:
+                if not eligible_clinics.filter(pk=destination_clinic.pk).exists():
+                    raise serializers.ValidationError(
+                        {
+                            "destination_clinic": (
+                                "Selected clinic is not an active routing destination for this service "
+                                "in the encounter facility."
+                            )
+                        }
+                    )
+            else:
+                clinic_count = eligible_clinics.count()
+                if clinic_count == 1:
+                    data["destination_clinic"] = eligible_clinics.first()
+                elif clinic_count == 0:
+                    raise serializers.ValidationError(
+                        {
+                            "destination_clinic": (
+                                "No active clinic is configured for this referral service in the "
+                                "encounter facility."
+                            )
+                        }
+                    )
+                else:
+                    raise serializers.ValidationError(
+                        {
+                            "destination_clinic": (
+                                "Multiple active clinics can receive this referral. Select the "
+                                "destination clinic explicitly."
+                            )
+                        }
+                    )
 
         return data
 
@@ -317,6 +383,9 @@ class EncounterReferralSerializer(serializers.ModelSerializer):
     priority_display = serializers.CharField(source="get_priority_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     referred_by_name = serializers.SerializerMethodField()
+    destination_clinic_name = serializers.CharField(
+        source="destination_clinic.name", read_only=True
+    )
 
     class Meta:
         model = ClinicalReferral
@@ -327,6 +396,8 @@ class EncounterReferralSerializer(serializers.ModelSerializer):
             "referral_type_display",
             "target_service",
             "target_service_display",
+            "destination_clinic",
+            "destination_clinic_name",
             "reason",
             "priority",
             "priority_display",

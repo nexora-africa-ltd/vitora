@@ -11,6 +11,21 @@ import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from rest_framework import status
 
+
+@pytest.fixture
+def sample_dental_clinic(db, sample_facility, sample_organization):
+    """Create a single eligible dental clinic for specialty referral tests."""
+    from hmis.apps.clinics.models import Clinic
+
+    return Clinic.objects.create(
+        name="Dental Clinic",
+        code="DENTAL-TST",
+        clinic_type="DENTAL",
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
 # ============================================================================
 # Model Tests
 # ============================================================================
@@ -625,7 +640,9 @@ class TestClinicalReferralAPI:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_create_multiple_referral_types(self, authenticated_client, sample_encounter):
+    def test_create_multiple_referral_types(
+        self, authenticated_client, sample_encounter, sample_dental_clinic
+    ):
         """Should support creating different referral types from same encounter."""
         # Allied health
         r1 = authenticated_client.post(
@@ -672,6 +689,126 @@ class TestClinicalReferralAPI:
         assert vitals.get("temperature") == "37.5"
         assert vitals.get("pulse") == "80"
 
+    def test_create_specialty_referral_auto_selects_only_matching_clinic(
+        self,
+        authenticated_client,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should auto-assign destination_clinic when one eligible clinic exists."""
+        from hmis.apps.clinics.models import Clinic
+
+        clinic = Clinic.objects.create(
+            name="Surgical Clinic A",
+            code="SURG-A",
+            clinic_type="SURGICAL",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.post(
+            "/api/referrals/",
+            {
+                "encounter": sample_encounter.id,
+                "target_service": "SURGICAL",
+                "reason": "Surgical outpatient review",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["destination_clinic"] == clinic.id
+
+    def test_create_specialty_referral_requires_destination_when_multiple_clinics_match(
+        self,
+        authenticated_client,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should reject ambiguous clinic routing when multiple clinics match."""
+        from hmis.apps.clinics.models import Clinic
+
+        Clinic.objects.create(
+            name="Surgical Clinic A",
+            code="SURG-A2",
+            clinic_type="SURGICAL",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        Clinic.objects.create(
+            name="Surgical Clinic B",
+            code="SURG-B2",
+            clinic_type="SURGICAL",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.post(
+            "/api/referrals/",
+            {
+                "encounter": sample_encounter.id,
+                "target_service": "SURGICAL",
+                "reason": "Surgical outpatient review",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "destination_clinic" in response.data
+
+    def test_accept_specialty_referral_routes_to_explicit_destination_clinic(
+        self,
+        authenticated_client,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+    ):
+        """Should create the clinic visit in the chosen destination clinic."""
+        from hmis.apps.clinics.models import Clinic, ClinicVisit
+
+        clinic_a = Clinic.objects.create(
+            name="Surgical Clinic A",
+            code="SURG-A3",
+            clinic_type="SURGICAL",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        clinic_b = Clinic.objects.create(
+            name="Surgical Clinic B",
+            code="SURG-B3",
+            clinic_type="SURGICAL",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        create_response = authenticated_client.post(
+            "/api/referrals/",
+            {
+                "encounter": sample_encounter.id,
+                "target_service": "SURGICAL",
+                "reason": "Surgical outpatient review",
+                "destination_clinic": clinic_b.id,
+            },
+            format="json",
+        )
+
+        assert create_response.status_code == status.HTTP_201_CREATED
+        assert create_response.data["destination_clinic"] == clinic_b.id
+
+        accept_response = authenticated_client.post(
+            f"/api/referrals/{create_response.data['id']}/accept/",
+            {},
+            format="json",
+        )
+
+        assert accept_response.status_code == status.HTTP_200_OK
+
+        visit = ClinicVisit.objects.get(pk=accept_response.data["clinic_visit"])
+        assert visit.session.clinic_id == clinic_b.id
+        assert visit.session.clinic_id != clinic_a.id
+
 
 # ============================================================================
 # Audit Log Tests
@@ -681,7 +818,9 @@ class TestClinicalReferralAPI:
 class TestReferralAuditLogging:
     """Tests for referral audit logging."""
 
-    def test_create_referral_creates_audit_log(self, authenticated_client, sample_encounter):
+    def test_create_referral_creates_audit_log(
+        self, authenticated_client, sample_encounter, sample_dental_clinic
+    ):
         """Creating a referral should create an audit log entry."""
         from hmis.apps.core.models import AuditLog
 
@@ -696,7 +835,9 @@ class TestReferralAuditLogging:
         assert log is not None
         assert log.resource_type == "ClinicalReferral"
 
-    def test_accept_referral_creates_audit_log(self, authenticated_client, sample_encounter):
+    def test_accept_referral_creates_audit_log(
+        self, authenticated_client, sample_encounter, sample_dental_clinic
+    ):
         """Accepting a referral should create an audit log entry."""
         from hmis.apps.core.models import AuditLog
 

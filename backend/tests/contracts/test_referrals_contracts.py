@@ -24,6 +24,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "clinical_notes",
+                "destination_clinic",
                 "encounter",
                 "external_facility_code",
                 "external_facility_name",
@@ -43,6 +44,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "created_at",
+                "destination_clinic",
+                "destination_clinic_name",
                 "encounter",
                 "id",
                 "is_sensitive",
@@ -79,6 +82,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "declined_at",
                 "declined_by",
                 "declined_by_name",
+                "destination_clinic",
+                "destination_clinic_name",
                 "encounter",
                 "expires_at",
                 "external_facility_code",
@@ -120,6 +125,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "created_at",
+                "destination_clinic",
+                "destination_clinic_name",
                 "id",
                 "is_sensitive",
                 "priority",

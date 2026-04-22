@@ -81,6 +81,7 @@ class ClinicalReferralViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
         "referred_by",
         "accepted_by",
         "declined_by",
+        "destination_clinic",
         "clinic_visit",
     )
     permission_classes = [IsAuthenticated]

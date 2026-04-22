@@ -252,10 +252,22 @@ def _create_clinic_visit(referral):
             )
             return
 
-        clinic = Clinic.objects.filter(
-            clinic_type=clinic_type,
-            status="ACTIVE",
-        ).first()
+        clinic = None
+        if referral.destination_clinic_id:
+            clinic = Clinic.objects.filter(
+                pk=referral.destination_clinic_id,
+                status="ACTIVE",
+            ).first()
+
+        if not clinic:
+            clinic = (
+                Clinic.objects.filter(
+                    clinic_type=clinic_type,
+                    status="ACTIVE",
+                )
+                .order_by("name", "id")
+                .first()
+            )
 
         if not clinic:
             logger.warning(
