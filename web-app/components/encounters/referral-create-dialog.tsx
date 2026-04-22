@@ -16,6 +16,7 @@
 'use client';
 
 import * as React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -37,10 +38,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { clinicsApi } from '@/lib/api/clinics';
 import { useCreateReferral } from '@/lib/hooks/use-referrals';
+import { getApiErrorMessage } from '@/lib/api/client';
 import {
   TARGET_SERVICE_GROUPS,
   ADMISSION_SERVICES,
+  SPECIALTY_CLINIC_SERVICES,
+  REFERRAL_SPECIALTY_TO_CLINIC_TYPE,
   type ReferralTargetService,
   type ReferralPriority,
 } from '@/lib/types/referral';
@@ -74,16 +79,45 @@ export function ReferralCreateDialog({
   // External-specific
   const [externalFacilityName, setExternalFacilityName] = React.useState('');
   const [externalFacilityCode, setExternalFacilityCode] = React.useState('');
+  const [destinationClinicId, setDestinationClinicId] = React.useState<string>('');
 
   const isAdmission = targetService
     ? ADMISSION_SERVICES.includes(targetService as ReferralTargetService)
     : false;
   const isExternal = targetService === 'OTHER';
+  const specialtyClinicType = targetService
+    ? REFERRAL_SPECIALTY_TO_CLINIC_TYPE[targetService as ReferralTargetService]
+    : undefined;
+  const requiresSpecialtyClinicRouting = Boolean(
+    targetService && SPECIALTY_CLINIC_SERVICES.includes(targetService as ReferralTargetService) && specialtyClinicType
+  );
+
+  const { data: specialtyClinicsData, isLoading: isLoadingSpecialtyClinics } = useQuery({
+    queryKey: ['referral-destination-clinics', specialtyClinicType],
+    queryFn: () =>
+      clinicsApi.list({
+        clinic_type: specialtyClinicType,
+        status: 'ACTIVE',
+        page_size: 100,
+      }),
+    enabled: requiresSpecialtyClinicRouting && Boolean(specialtyClinicType),
+  });
+
+  const eligibleClinics = React.useMemo(
+    () => (requiresSpecialtyClinicRouting ? specialtyClinicsData?.results ?? [] : []),
+    [requiresSpecialtyClinicRouting, specialtyClinicsData?.results]
+  );
+  const hasMultipleEligibleClinics = eligibleClinics.length > 1;
+  const autoSelectedClinicId = eligibleClinics.length === 1 ? eligibleClinics[0]?.id : undefined;
+  const resolvedDestinationClinicId = destinationClinicId
+    ? Number(destinationClinicId)
+    : autoSelectedClinicId;
 
   const canSubmit =
     targetService &&
     reason.trim().length > 0 &&
-    (!isAdmission || provisionalDiagnosisText.trim().length > 0);
+    (!isAdmission || provisionalDiagnosisText.trim().length > 0) &&
+    (!requiresSpecialtyClinicRouting || !!resolvedDestinationClinicId);
 
   function resetForm() {
     setTargetService('');
@@ -96,6 +130,12 @@ export function ReferralCreateDialog({
     setPreferredWardType('');
     setExternalFacilityName('');
     setExternalFacilityCode('');
+    setDestinationClinicId('');
+  }
+
+  function handleTargetServiceChange(value: ReferralTargetService) {
+    setTargetService(value);
+    setDestinationClinicId('');
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -107,6 +147,7 @@ export function ReferralCreateDialog({
       await createReferral.mutateAsync({
         encounter: encounterId,
         target_service: targetService as ReferralTargetService,
+        destination_clinic: resolvedDestinationClinicId,
         reason: reason.trim(),
         priority,
         clinical_notes: clinicalNotes.trim() || undefined,
@@ -128,7 +169,7 @@ export function ReferralCreateDialog({
       resetForm();
       onOpenChange(false);
     } catch (error) {
-      toast.error('Failed to create referral');
+      toast.error(getApiErrorMessage(error));
     }
   }
 
@@ -148,7 +189,7 @@ export function ReferralCreateDialog({
             <Label htmlFor="target-service">Refer To *</Label>
             <Select
               value={targetService}
-              onValueChange={(v) => setTargetService(v as ReferralTargetService)}
+              onValueChange={(v) => handleTargetServiceChange(v as ReferralTargetService)}
             >
               <SelectTrigger id="target-service">
                 <SelectValue placeholder="Select service..." />
@@ -167,6 +208,46 @@ export function ReferralCreateDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {requiresSpecialtyClinicRouting && (
+            <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="destination-clinic">Receiving Clinic</Label>
+                <HelpPopover content="Specialty referrals are routed to an explicit clinic queue. If more than one clinic can receive this service, choose the destination clinic." />
+              </div>
+
+              {isLoadingSpecialtyClinics ? (
+                <p className="text-sm text-muted-foreground">Loading eligible clinics...</p>
+              ) : eligibleClinics.length === 0 ? (
+                <p className="text-sm text-destructive">
+                  No active clinic is configured for this specialty service in the current facility.
+                </p>
+              ) : hasMultipleEligibleClinics ? (
+                <Select value={destinationClinicId} onValueChange={setDestinationClinicId}>
+                  <SelectTrigger id="destination-clinic">
+                    <SelectValue placeholder="Select receiving clinic..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eligibleClinics.map((clinic) => (
+                      <SelectItem key={clinic.id} value={String(clinic.id)}>
+                        {clinic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="rounded-md border bg-background px-3 py-2 text-sm">
+                  {eligibleClinics[0]?.name}
+                </div>
+              )}
+
+              {hasMultipleEligibleClinics && !destinationClinicId && (
+                <p className="text-xs text-muted-foreground">
+                  Choose the clinic that should receive this referral.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Reason */}
           <div className="space-y-2">
