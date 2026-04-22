@@ -33,6 +33,9 @@ export const patientsApi = {
     if (params.gender) searchParams.set('gender', params.gender);
     if (params.county) searchParams.set('county', String(params.county));
     if (params.is_sensitive !== undefined) searchParams.set('is_sensitive', String(params.is_sensitive));
+    if (params.current_facility_only !== undefined) {
+      searchParams.set('current_facility_only', String(params.current_facility_only));
+    }
     if (params.ordering) searchParams.set('ordering', params.ordering);
 
     const response = await apiClient.get<PaginatedResponse<Patient>>(

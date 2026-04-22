@@ -132,6 +132,8 @@ export const PatientSchema = z.object({
   // Metadata
   registered_by: z.number().nullable(),
   registered_by_username: z.string().optional(),
+  registered_at_facility: z.number().optional().nullable(),
+  registered_at_facility_name: z.string().optional().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -156,6 +158,8 @@ export const PatientListItemSchema = z.object({
   phone_number: z.string().optional().nullable(),
   county_name: z.string().optional(),
   sub_county_name: z.string().optional(),
+  registered_at_facility: z.number().optional().nullable(),
+  registered_at_facility_name: z.string().optional().nullable(),
   is_sensitive: z.boolean(),
   created_at: z.string(),
 });

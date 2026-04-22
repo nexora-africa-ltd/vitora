@@ -328,6 +328,15 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
           <Badge className={`shrink-0 w-fit ${genderColors[patient.gender]}`}>
             {genderLabels[patient.gender]}
           </Badge>
+          {patient.registered_at_facility_name && (
+            <>
+              <span className="text-muted-foreground/50">•</span>
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {patient.registered_at_facility_name}
+              </span>
+            </>
+          )}
           {patient.phone_number && (
             <>
               <span className="text-muted-foreground/50">•</span>
@@ -406,6 +415,13 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
           hideOnMobile: true,
           sortable: true,
           cell: (patient) => patient.county_name || '—',
+        },
+        {
+          key: 'registered_at_facility_name',
+          header: 'Facility',
+          hideOnMobile: true,
+          sortable: true,
+          cell: (patient) => patient.registered_at_facility_name || '—',
         },
         {
           key: 'created_at',
@@ -523,6 +539,11 @@ function PatientGridView({ patients, selectMode, onSelect }: PatientGridViewProp
               icon: <MapPin className="h-3 w-3" />,
               label: 'County',
               value: patient.county_name,
+            }] : []),
+            ...(patient.registered_at_facility_name ? [{
+              icon: <MapPin className="h-3 w-3" />,
+              label: 'Facility',
+              value: patient.registered_at_facility_name,
             }] : []),
             {
               icon: <Calendar className="h-3 w-3" />,

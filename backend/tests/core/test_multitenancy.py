@@ -1073,6 +1073,47 @@ class TestPatientAPIScopping:
         assert "OrgOne" in names
         assert "OrgTwo" not in names
 
+    def test_patient_list_can_filter_to_current_facility(
+        self,
+        staff_client,
+        sample_org,
+        sample_facility,
+        second_facility,
+        org_county,
+        org_sub_county,
+    ):
+        """Patient list should support narrowing org-wide results to the active facility."""
+        from hmis.apps.patients.models import Patient
+
+        Patient.objects.create(
+            first_name="HQPatient",
+            last_name="Pat",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=org_county,
+            sub_county=org_sub_county,
+            organization=sample_org,
+            registered_at_facility=sample_facility,
+        )
+        Patient.objects.create(
+            first_name="BranchPatient",
+            last_name="Pat",
+            date_of_birth="1991-02-02",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
+            organization=sample_org,
+            registered_at_facility=second_facility,
+        )
+
+        response = staff_client.get("/api/patients/?current_facility_only=true")
+
+        assert response.status_code == 200
+        results = response.data.get("results", response.data)
+        names = [p["first_name"] for p in results]
+        assert "HQPatient" in names
+        assert "BranchPatient" not in names
+
     def test_patient_create_auto_sets_org(
         self, staff_client, sample_org, sample_facility, org_county, org_sub_county
     ):

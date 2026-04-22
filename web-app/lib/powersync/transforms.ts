@@ -161,6 +161,7 @@ export interface PatientLocalRecord {
   ward_name?: string;
   is_deceased: boolean;
   registered_by: number;
+  registered_at_facility?: number;
   created_at: string;
   updated_at: string;
 }
@@ -202,6 +203,9 @@ export function transformPatientRow(
     ward_name: (row.ward_name as string) || undefined,
     is_deceased: toBool(row.is_deceased as number),
     registered_by: toNumericId(row.registered_by_id as string),
+    registered_at_facility: row.registered_at_facility_id
+      ? toNumericId(row.registered_at_facility_id as string)
+      : undefined,
     created_at: (row.created_at as string) || '',
     updated_at: (row.updated_at as string) || '',
   };
