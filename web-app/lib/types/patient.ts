@@ -93,6 +93,8 @@ export interface Patient {
   chronic_conditions_summary?: string;
   registered_by: number;
   registered_by_username?: string;
+  registered_at_facility?: number | null;
+  registered_at_facility_name?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -170,6 +172,7 @@ export interface PatientListParams {
   gender?: string;
   county?: number;
   is_sensitive?: boolean;
+  current_facility_only?: boolean;
   ordering?: string;
 }
 

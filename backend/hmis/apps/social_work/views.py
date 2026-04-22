@@ -51,6 +51,9 @@ class SocialWorkReferralFilter(django_filters.FilterSet):
     """Filter for SocialWorkReferral."""
 
     patient = django_filters.NumberFilter()
+    patient_id = django_filters.NumberFilter(field_name="patient")
+    encounter = django_filters.NumberFilter()
+    encounter_id = django_filters.NumberFilter(field_name="encounter")
     status = django_filters.CharFilter(lookup_expr="iexact")
     urgency = django_filters.CharFilter(lookup_expr="iexact")
     reason = django_filters.CharFilter(lookup_expr="iexact")
@@ -64,6 +67,9 @@ class SocialWorkReferralFilter(django_filters.FilterSet):
         model = SocialWorkReferral
         fields = [
             "patient",
+            "patient_id",
+            "encounter",
+            "encounter_id",
             "status",
             "urgency",
             "reason",
@@ -361,6 +367,7 @@ class SocialWorkCaseFilter(django_filters.FilterSet):
     """Filter for SocialWorkCase."""
 
     patient = django_filters.NumberFilter()
+    patient_id = django_filters.NumberFilter(field_name="patient")
     status = django_filters.CharFilter(lookup_expr="iexact")
     case_type = django_filters.CharFilter(lookup_expr="iexact")
     risk_level = django_filters.CharFilter(lookup_expr="iexact")
@@ -377,6 +384,7 @@ class SocialWorkCaseFilter(django_filters.FilterSet):
         model = SocialWorkCase
         fields = [
             "patient",
+            "patient_id",
             "status",
             "case_type",
             "risk_level",

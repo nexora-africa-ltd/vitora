@@ -126,6 +126,7 @@ export default function StockTransferDetailPage({
   const queryClient = useQueryClient();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const { canPerformAction } = usePermissions();
 
   const {
     data: transfer,
@@ -204,7 +205,6 @@ export default function StockTransferDetailPage({
   }
 
   const canSubmit = transfer.status === 'DRAFT';
-  const { canPerformAction } = usePermissions();
   const canApprove = transfer.status === 'REQUESTED' && canPerformAction('inventory.approve_transfer' as never);
   const canDispatch = transfer.status === 'APPROVED';
   const canReceive = transfer.status === 'IN_TRANSIT';

@@ -467,10 +467,152 @@ class TestNutritionConsultationAPI:
         for consultation in response.data["results"]:
             assert consultation["status"] == "DRAFT"
 
+    def test_filter_consultations_by_patient_id_alias(
+        self,
+        authenticated_client,
+        sample_patient,
+        test_user,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter consultations when frontend sends patient_id."""
+        from hmis.apps.nutrition.models import NutritionConsultation
+        from hmis.apps.patients.models import Patient
+
+        NutritionConsultation.objects.create(
+            patient=sample_patient,
+            referral_reason="GENERAL",
+            referred_by=test_user,
+            facility=sample_facility,
+        )
+        other_patient = Patient.objects.create(
+            first_name="Mark",
+            last_name="Otieno",
+            date_of_birth="1988-09-14",
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+        )
+        NutritionConsultation.objects.create(
+            patient=other_patient,
+            referral_reason="GENERAL",
+            referred_by=test_user,
+            facility=sample_facility,
+        )
+
+        response = authenticated_client.get(
+            f"/api/nutrition/consultations/?patient_id={sample_patient.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        patient_ids = {item["patient"] for item in response.data["results"]}
+        assert patient_ids == {sample_patient.id}
+
+    def test_filter_consultations_by_encounter_id_alias(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter consultations when frontend sends encounter_id."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.nutrition.models import NutritionConsultation
+
+        target_consultation = NutritionConsultation.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            referral_reason="GENERAL",
+            referred_by=test_user,
+            facility=sample_facility,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Diet review",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        NutritionConsultation.objects.create(
+            patient=sample_patient,
+            encounter=other_encounter,
+            referral_reason="GENERAL",
+            referred_by=test_user,
+            facility=sample_facility,
+        )
+
+        response = authenticated_client.get(
+            f"/api/nutrition/consultations/?encounter_id={sample_encounter.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        consultation_ids = {item["id"] for item in response.data["results"]}
+        assert consultation_ids == {target_consultation.id}
+
 
 @pytest.mark.django_db
 class TestDietPlanAPI:
     """Tests for DietPlan API endpoints."""
+
+    def test_filter_diet_plans_by_patient_id_alias(
+        self,
+        authenticated_client,
+        sample_patient,
+        test_user,
+        sample_nutrition_consultation,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter diet plans when frontend sends patient_id."""
+        from hmis.apps.nutrition.models import DietPlan, NutritionConsultation
+        from hmis.apps.patients.models import Patient
+
+        DietPlan.objects.create(
+            patient=sample_patient,
+            consultation=sample_nutrition_consultation,
+            name="Patient Plan",
+            plan_type="DIABETIC",
+            created_by=test_user,
+        )
+        other_patient = Patient.objects.create(
+            first_name="Ruth",
+            last_name="Achieng",
+            date_of_birth="1991-07-08",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+        )
+        other_consultation = NutritionConsultation.objects.create(
+            patient=other_patient,
+            referral_reason="GENERAL",
+            referred_by=test_user,
+            facility=sample_facility,
+        )
+        DietPlan.objects.create(
+            patient=other_patient,
+            consultation=other_consultation,
+            name="Other Plan",
+            plan_type="RENAL",
+            created_by=test_user,
+        )
+
+        response = authenticated_client.get(
+            f"/api/nutrition/diet-plans/?patient_id={sample_patient.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        patient_ids = {item["patient"] for item in response.data["results"]}
+        assert patient_ids == {sample_patient.id}
 
     def test_create_diet_plan(self, authenticated_client, sample_patient):
         """Should create diet plan when authenticated."""

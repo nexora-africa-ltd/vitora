@@ -543,6 +543,115 @@ class TestPhysiotherapyOrderAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["order_number"] == order.order_number
 
+    def test_filter_orders_by_patient_id_alias(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        treatment_type,
+        test_user,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter physiotherapy orders when frontend sends patient_id."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.physiotherapy.models import PhysiotherapyOrder
+
+        PhysiotherapyOrder.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            treatment_type=treatment_type,
+            ordered_by=test_user,
+            clinical_indication="Target patient order",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        other_patient = Patient.objects.create(
+            first_name="Daniel",
+            last_name="Mwangi",
+            date_of_birth="1979-11-02",
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=other_patient,
+            encounter_type="OPD",
+            chief_complaint="Back pain",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        PhysiotherapyOrder.objects.create(
+            patient=other_patient,
+            encounter=other_encounter,
+            treatment_type=treatment_type,
+            ordered_by=test_user,
+            clinical_indication="Other patient order",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            f"/api/physiotherapy/orders/?patient_id={sample_patient.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        patient_ids = {item["patient"] for item in response.data["results"]}
+        assert patient_ids == {sample_patient.id}
+
+    def test_filter_orders_by_encounter_id_alias(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        treatment_type,
+        test_user,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter physiotherapy orders when frontend sends encounter_id."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.physiotherapy.models import PhysiotherapyOrder
+
+        target_order = PhysiotherapyOrder.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            treatment_type=treatment_type,
+            ordered_by=test_user,
+            clinical_indication="Target encounter order",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Back pain review",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        PhysiotherapyOrder.objects.create(
+            patient=sample_patient,
+            encounter=other_encounter,
+            treatment_type=treatment_type,
+            ordered_by=test_user,
+            clinical_indication="Other encounter order",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            f"/api/physiotherapy/orders/?encounter_id={sample_encounter.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        order_ids = {item["id"] for item in response.data["results"]}
+        assert order_ids == {target_order.id}
+
     def test_update_order_status_action(
         self, authenticated_client, sample_patient, sample_encounter, treatment_type, test_user
     ):

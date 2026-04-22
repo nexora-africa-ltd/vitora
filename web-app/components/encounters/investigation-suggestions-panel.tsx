@@ -168,6 +168,26 @@ export function InvestigationSuggestionsPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTrigger, hasClinicalData]);
 
+  const grouped = React.useMemo(() => {
+    if (!result?.suggestions) return [];
+
+    const groups: Record<string, AIInvestigationSuggestion[]> = {};
+    for (const s of result.suggestions) {
+      if (dismissedNames.has(s.name)) continue;
+      const priority = s.priority || 'routine';
+      if (!groups[priority]) groups[priority] = [];
+      groups[priority].push(s);
+    }
+
+    return Object.entries(groups)
+      .sort(([a], [b]) => {
+        const orderA = PRIORITY_CONFIG[a as keyof typeof PRIORITY_CONFIG]?.order ?? 99;
+        const orderB = PRIORITY_CONFIG[b as keyof typeof PRIORITY_CONFIG]?.order ?? 99;
+        return orderA - orderB;
+      })
+      .map(([priority, items]) => ({ priority, items }));
+  }, [result, dismissedNames]);
+
   if (!isAIEnabled) return null;
 
   function handleGenerate() {
@@ -290,27 +310,6 @@ export function InvestigationSuggestionsPanel({
       setIsCreatingOrder(false);
     }
   }
-
-  // Group suggestions by priority
-  const grouped = React.useMemo(() => {
-    if (!result?.suggestions) return [];
-
-    const groups: Record<string, AIInvestigationSuggestion[]> = {};
-    for (const s of result.suggestions) {
-      if (dismissedNames.has(s.name)) continue;
-      const priority = s.priority || 'routine';
-      if (!groups[priority]) groups[priority] = [];
-      groups[priority].push(s);
-    }
-
-    return Object.entries(groups)
-      .sort(([a], [b]) => {
-        const orderA = PRIORITY_CONFIG[a as keyof typeof PRIORITY_CONFIG]?.order ?? 99;
-        const orderB = PRIORITY_CONFIG[b as keyof typeof PRIORITY_CONFIG]?.order ?? 99;
-        return orderA - orderB;
-      })
-      .map(([priority, items]) => ({ priority, items }));
-  }, [result, dismissedNames]);
 
   const activeSuggestionCount = grouped.reduce((sum, g) => sum + g.items.length, 0);
 

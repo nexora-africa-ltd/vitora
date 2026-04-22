@@ -83,6 +83,9 @@ class PhysiotherapyOrderFilter(django_filters.FilterSet):
     """Filter for PhysiotherapyOrder."""
 
     patient = django_filters.NumberFilter()
+    patient_id = django_filters.NumberFilter(field_name="patient")
+    encounter = django_filters.NumberFilter()
+    encounter_id = django_filters.NumberFilter(field_name="encounter")
     status = django_filters.CharFilter(lookup_expr="iexact")
     priority = django_filters.CharFilter(lookup_expr="iexact")
     assigned_therapist = django_filters.NumberFilter()
@@ -95,6 +98,9 @@ class PhysiotherapyOrderFilter(django_filters.FilterSet):
         model = PhysiotherapyOrder
         fields = [
             "patient",
+            "patient_id",
+            "encounter",
+            "encounter_id",
             "status",
             "priority",
             "assigned_therapist",

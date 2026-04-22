@@ -84,6 +84,9 @@ class CounsellingReferralFilter(django_filters.FilterSet):
     """Filter for CounsellingReferral."""
 
     patient = django_filters.NumberFilter()
+    patient_id = django_filters.NumberFilter(field_name="patient")
+    encounter = django_filters.NumberFilter()
+    encounter_id = django_filters.NumberFilter(field_name="encounter")
     status = django_filters.CharFilter(lookup_expr="iexact")
     urgency = django_filters.CharFilter(lookup_expr="iexact")
     reason = django_filters.CharFilter(lookup_expr="iexact")
@@ -98,6 +101,9 @@ class CounsellingReferralFilter(django_filters.FilterSet):
         model = CounsellingReferral
         fields = [
             "patient",
+            "patient_id",
+            "encounter",
+            "encounter_id",
             "status",
             "urgency",
             "reason",

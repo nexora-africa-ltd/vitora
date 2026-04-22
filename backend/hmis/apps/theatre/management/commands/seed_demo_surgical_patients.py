@@ -1,14 +1,16 @@
 """Seed demo surgical patients and surgery cases for theatre walkthroughs."""
 
+from collections import Counter
 from datetime import date, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-from django.db.models.deletion import CASCADE, PROTECT
 from django.utils import timezone
 
+from hmis.apps.billing.models import Invoice, InvoiceItem
 from hmis.apps.core.models import County, Facility, Organization, SubCounty
+from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 from hmis.apps.procedures.models import ProcedureCatalog
 from hmis.apps.theatre.models import (
@@ -254,7 +256,13 @@ class Command(BaseCommand):
                 or Facility.objects.filter(mfl_code=facility_hint).first()
             )
         if organization is not None:
-            return Facility.objects.filter(organization=organization, is_active=True).first()
+            facilities = Facility.objects.filter(organization=organization, is_active=True)
+            return (
+                facilities.filter(name="Demo General Hospital").first()
+                or facilities.filter(is_headquarters=True).first()
+                or facilities.filter(branch_code="HQ").first()
+                or facilities.first()
+            )
         return Facility.objects.filter(is_active=True).first()
 
     def _resolve_location(
@@ -337,8 +345,17 @@ class Command(BaseCommand):
             theatre = self._get_or_create_theatre(
                 spec["theatre"], organization, facility, dry_run=dry_run
             )
+            encounter = self._get_or_create_encounter(
+                patient=patient,
+                procedure=procedure,
+                spec=spec,
+                facility=facility,
+                organization=organization,
+                dry_run=dry_run,
+            )
             _, case_created = self._get_or_create_case(
                 patient=patient,
+                encounter=encounter,
                 procedure=procedure,
                 theatre=theatre,
                 spec=spec,
@@ -361,6 +378,21 @@ class Command(BaseCommand):
             date_of_birth=patient_spec["date_of_birth"],
         ).first()
         if existing:
+            if not dry_run:
+                update_fields = []
+                if existing.organization_id != organization.id:
+                    existing.organization = organization
+                    update_fields.append("organization")
+                if existing.registered_at_facility_id != facility.id:
+                    existing.registered_at_facility = facility
+                    update_fields.append("registered_at_facility")
+                if patient_spec.get("phone_number") and existing.phone_number != patient_spec.get(
+                    "phone_number", ""
+                ):
+                    existing.phone_number = patient_spec.get("phone_number", "")
+                    update_fields.append("phone_number")
+                if update_fields:
+                    existing.save(update_fields=update_fields)
             self.stdout.write(
                 f"  ⏭  Patient {existing.first_name} {existing.last_name} already exists"
             )
@@ -401,6 +433,62 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"  ✅  Patient {patient.first_name} {patient.last_name} ({patient.mrn})")
         return patient, True
+
+    def _get_or_create_encounter(
+        self,
+        *,
+        patient,
+        procedure,
+        spec: dict,
+        facility: Facility,
+        organization: Organization,
+        dry_run: bool,
+    ):
+        scheduled_date = timezone.localdate() + timedelta(days=spec["scheduled_day_offset"])
+        chief_complaint = f"Pre-operative review for {procedure.name.lower()}"
+        encounter_defaults = {
+            "organization": organization,
+            "facility": facility,
+            "encounter_type": "PROCEDURE",
+            "encounter_date": scheduled_date,
+            "chief_complaint": chief_complaint,
+            "notes": (
+                f"Theatre booking for {procedure.name}. {spec['diagnosis']}. "
+                f"Patient prepared for {spec['status'].replace('_', ' ').lower()} workflow in {facility.name}."
+            ),
+            "history_of_present_illness": (
+                f"Booked for {procedure.name} after evaluation for {spec['diagnosis'].lower()}."
+            ),
+            "physical_examination": (
+                f"Pre-op review completed. ASA {spec['asa_class']}, priority {spec['priority'].lower()}."
+            ),
+            "assessment": (
+                f"Fit for theatre workflow with planned {spec['procedure']['anesthesia_type'].lower()} anesthesia."
+            ),
+        }
+        existing = Encounter.objects.filter(
+            patient=patient,
+            encounter_type="PROCEDURE",
+            encounter_date=scheduled_date,
+            chief_complaint=chief_complaint,
+        ).first()
+        if existing:
+            if not dry_run:
+                update_fields = []
+                for field_name, field_value in encounter_defaults.items():
+                    if getattr(existing, field_name) != field_value:
+                        setattr(existing, field_name, field_value)
+                        update_fields.append(field_name)
+                if update_fields:
+                    existing.save(update_fields=update_fields)
+            return existing
+
+        if dry_run:
+            return Encounter(patient=patient, **encounter_defaults)
+
+        encounter = Encounter.objects.create(patient=patient, **encounter_defaults)
+        self.stdout.write(f"  ✅  Encounter seeded for {patient.first_name} {patient.last_name}")
+        return encounter
 
     def _get_or_create_procedure(
         self, procedure_spec: dict, organization: Organization, facility: Facility, *, dry_run: bool
@@ -476,6 +564,7 @@ class Command(BaseCommand):
         self,
         *,
         patient,
+        encounter,
         procedure,
         theatre,
         spec: dict,
@@ -492,12 +581,34 @@ class Command(BaseCommand):
             diagnosis=spec["diagnosis"],
         ).first()
         if existing:
+            if not dry_run:
+                update_fields = []
+                desired_values = {
+                    "encounter": encounter,
+                    "theatre": theatre,
+                    "scheduled_start_time": spec["scheduled_time"],
+                    "estimated_duration_minutes": spec["procedure"]["duration"],
+                    "priority": spec["priority"],
+                    "laterality": spec["laterality"],
+                    "asa_class": spec["asa_class"],
+                    "anesthesia_type": spec["procedure"]["anesthesia_type"],
+                    "requesting_doctor": users["surgeon"],
+                    "organization": organization,
+                    "facility": facility,
+                }
+                for field_name, field_value in desired_values.items():
+                    if getattr(existing, field_name) != field_value:
+                        setattr(existing, field_name, field_value)
+                        update_fields.append(field_name)
+                if update_fields:
+                    existing.save(update_fields=update_fields)
             self.stdout.write(f"  ⏭  Case {existing.case_number} already exists")
             return existing, False
 
         if dry_run:
             case = SurgeryCase(
                 patient=patient,
+                encounter=encounter,
                 primary_procedure=procedure,
                 theatre=theatre,
                 scheduled_date=scheduled_date,
@@ -516,6 +627,7 @@ class Command(BaseCommand):
 
         case = SurgeryCase.objects.create(
             patient=patient,
+            encounter=encounter,
             primary_procedure=procedure,
             theatre=theatre,
             scheduled_date=scheduled_date,
@@ -709,24 +821,37 @@ class Command(BaseCommand):
             )
             return
 
-        patched = []
-        for field in Patient._meta.get_fields():
-            if hasattr(field, "on_delete") and field.on_delete is PROTECT:
-                patched.append((field, PROTECT))
-                field.on_delete = CASCADE
+        counts: Counter[str] = Counter()
+        demo_cases = SurgeryCase.objects.filter(patient__in=demo_patients)
+        demo_encounters = Encounter.objects.filter(patient__in=demo_patients)
+        demo_invoices = Invoice.objects.filter(patient__in=demo_patients)
 
-        try:
-            _, counts = demo_patients.delete()
-        finally:
-            for field, original in patched:
-                field.on_delete = original
-
-        SurgeryCase.objects.filter(theatre__code__startswith="DEMO-OT-").delete()
-        OperatingTheatre.objects.filter(code__startswith="DEMO-OT-").delete()
-        ProcedureCatalog.objects.filter(
+        deleted_count, deleted_map = InvoiceItem.objects.filter(invoice__in=demo_invoices).delete()
+        counts.update(deleted_map)
+        deleted_count, deleted_map = InvoiceItem.objects.filter(
+            surgery_case__in=demo_cases
+        ).delete()
+        counts.update(deleted_map)
+        deleted_count, deleted_map = demo_invoices.delete()
+        counts.update(deleted_map)
+        deleted_count, deleted_map = demo_cases.delete()
+        counts.update(deleted_map)
+        deleted_count, deleted_map = demo_encounters.delete()
+        counts.update(deleted_map)
+        deleted_count, deleted_map = demo_patients.delete()
+        counts.update(deleted_map)
+        deleted_count, deleted_map = OperatingTheatre.objects.filter(
+            code__startswith="DEMO-OT-"
+        ).delete()
+        counts.update(deleted_map)
+        deleted_count, deleted_map = ProcedureCatalog.objects.filter(
             code__in=[spec["procedure"]["code"] for spec in DEMO_CASE_SPECS]
         ).delete()
-        get_user_model().objects.filter(username__startswith=DEMO_USER_PREFIX).delete()
+        counts.update(deleted_map)
+        deleted_count, deleted_map = (
+            get_user_model().objects.filter(username__startswith=DEMO_USER_PREFIX).delete()
+        )
+        counts.update(deleted_map)
 
         self.stdout.write(
             self.style.SUCCESS(f"Deleted {count} demo surgical patient(s) and related records.")

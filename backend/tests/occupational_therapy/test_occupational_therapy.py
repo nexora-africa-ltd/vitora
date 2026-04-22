@@ -428,6 +428,109 @@ class TestOccupationalTherapyOrderAPI:
         for order in response.data["results"]:
             assert order["patient"] == sample_patient.id
 
+    def test_filter_orders_by_patient_id_alias(
+        self,
+        authenticated_client,
+        ot_order,
+        ot_treatment_type,
+        test_user,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter OT orders when frontend sends patient_id."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        other_patient = Patient.objects.create(
+            first_name="Grace",
+            last_name="Njeri",
+            date_of_birth="1984-12-01",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=other_patient,
+            encounter_type="OPD",
+            chief_complaint="ADL difficulty",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        OccupationalTherapyOrder.objects.create(
+            patient=other_patient,
+            encounter=other_encounter,
+            treatment_type=ot_treatment_type,
+            ordered_by=test_user,
+            assessment_type="INITIAL",
+            referral_reason="ADL_SUPPORT",
+            clinical_indication="Other patient OT order",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            f"/api/occupational-therapy/orders/?patient_id={ot_order.patient_id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        patient_ids = {item["patient"] for item in response.data["results"]}
+        assert patient_ids == {ot_order.patient_id}
+
+    def test_filter_orders_by_encounter_id_alias(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        ot_treatment_type,
+        test_user,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter OT orders when frontend sends encounter_id."""
+        from hmis.apps.encounters.models import Encounter
+
+        target_order = OccupationalTherapyOrder.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            treatment_type=ot_treatment_type,
+            ordered_by=test_user,
+            assessment_type="INITIAL",
+            referral_reason="ADL_SUPPORT",
+            clinical_indication="Target encounter OT order",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="ADL follow-up",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        OccupationalTherapyOrder.objects.create(
+            patient=sample_patient,
+            encounter=other_encounter,
+            treatment_type=ot_treatment_type,
+            ordered_by=test_user,
+            assessment_type="INITIAL",
+            referral_reason="ADL_SUPPORT",
+            clinical_indication="Other encounter OT order",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            f"/api/occupational-therapy/orders/?encounter_id={sample_encounter.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        order_ids = {item["id"] for item in response.data["results"]}
+        assert order_ids == {target_order.id}
+
 
 class TestOTSessionAPI:
     """Tests for OTSession API endpoints."""

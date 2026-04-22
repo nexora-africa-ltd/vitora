@@ -37,6 +37,9 @@ class NutritionConsultationFilter(django_filters.FilterSet):
     """Filter for NutritionConsultation."""
 
     patient = django_filters.NumberFilter()
+    patient_id = django_filters.NumberFilter(field_name="patient")
+    encounter = django_filters.NumberFilter()
+    encounter_id = django_filters.NumberFilter(field_name="encounter")
     status = django_filters.CharFilter(lookup_expr="iexact")
     priority = django_filters.CharFilter(lookup_expr="iexact")
     dietitian = django_filters.NumberFilter()
@@ -55,6 +58,9 @@ class NutritionConsultationFilter(django_filters.FilterSet):
         model = NutritionConsultation
         fields = [
             "patient",
+            "patient_id",
+            "encounter",
+            "encounter_id",
             "status",
             "priority",
             "dietitian",
@@ -338,6 +344,7 @@ class DietPlanFilter(django_filters.FilterSet):
     """Filter for DietPlan."""
 
     patient = django_filters.NumberFilter()
+    patient_id = django_filters.NumberFilter(field_name="patient")
     consultation = django_filters.NumberFilter()
     status = django_filters.CharFilter(lookup_expr="iexact")
     plan_type = django_filters.CharFilter(lookup_expr="iexact")
@@ -350,6 +357,7 @@ class DietPlanFilter(django_filters.FilterSet):
         model = DietPlan
         fields = [
             "patient",
+            "patient_id",
             "consultation",
             "status",
             "plan_type",

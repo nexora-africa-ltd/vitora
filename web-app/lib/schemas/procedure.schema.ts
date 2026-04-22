@@ -1,5 +1,22 @@
 import { z } from 'zod';
 
+const ProcedureOrderStatusSchema = z.enum([
+  'ORDERED',
+  'CONSENT_PENDING',
+  'SCHEDULED',
+  'READY',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+]);
+
+const ProcedurePrioritySchema = z.enum([
+  'EMERGENCY',
+  'URGENT',
+  'ROUTINE',
+  'ELECTIVE',
+]);
+
 const NumericNullableSchema = z
   .union([z.number(), z.string()])
   .nullable()
@@ -67,8 +84,8 @@ export const ProcedureOrderListSchema = z.object({
   procedure_name: z.string(),
   patient: z.number(),
   patient_name: z.string(),
-  status: z.string(),
-  priority: z.string(),
+  status: ProcedureOrderStatusSchema,
+  priority: ProcedurePrioritySchema,
   scheduled_date: z.string().nullable(),
   scheduled_time: z.string().nullable(),
   scheduled_clinic: z.number().nullable(),

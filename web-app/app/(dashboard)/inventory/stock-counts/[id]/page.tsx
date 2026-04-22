@@ -132,6 +132,7 @@ export default function StockCountDetailPage({
     Record<number, { counted_quantity: string; variance_reason: string }>
   >({});
   const [savingItemId, setSavingItemId] = useState<number | null>(null);
+  const { canPerformAction } = usePermissions();
 
   const {
     data: count,
@@ -266,7 +267,6 @@ export default function StockCountDetailPage({
 
   const isDraft = count.status === 'DRAFT';
   const isInProgress = count.status === 'IN_PROGRESS';
-  const { canPerformAction } = usePermissions();
   const isCompleted = count.status === 'COMPLETED';
   const canApproveCount = isCompleted && canPerformAction('inventory.approve_stock_count' as never);
   const canCancel = !['APPROVED', 'CANCELLED'].includes(count.status);

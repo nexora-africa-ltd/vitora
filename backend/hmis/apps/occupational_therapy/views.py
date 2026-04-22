@@ -83,6 +83,9 @@ class OccupationalTherapyOrderFilter(django_filters.FilterSet):
     """Filter for OccupationalTherapyOrder."""
 
     patient = django_filters.NumberFilter()
+    patient_id = django_filters.NumberFilter(field_name="patient")
+    encounter = django_filters.NumberFilter()
+    encounter_id = django_filters.NumberFilter(field_name="encounter")
     status = django_filters.CharFilter(lookup_expr="iexact")
     priority = django_filters.CharFilter(lookup_expr="iexact")
     assessment_type = django_filters.CharFilter(lookup_expr="iexact")
@@ -96,6 +99,9 @@ class OccupationalTherapyOrderFilter(django_filters.FilterSet):
         model = OccupationalTherapyOrder
         fields = [
             "patient",
+            "patient_id",
+            "encounter",
+            "encounter_id",
             "status",
             "priority",
             "assessment_type",

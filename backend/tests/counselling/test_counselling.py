@@ -441,6 +441,115 @@ class TestCounsellingTypeAPI:
 class TestCounsellingReferralAPI:
     """Tests for CounsellingReferral API endpoints."""
 
+    def test_filter_referrals_by_patient_id_alias(
+        self,
+        authenticated_client,
+        counselling_referral,
+        counselling_type,
+        test_user,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter referrals when frontend sends patient_id."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        other_patient = Patient.objects.create(
+            first_name="Alice",
+            last_name="Brown",
+            date_of_birth="1992-03-10",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=other_patient,
+            encounter_type="OPD",
+            chief_complaint="Stress review",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        CounsellingReferral.objects.create(
+            patient=other_patient,
+            encounter=other_encounter,
+            counselling_type=counselling_type,
+            referred_by=test_user,
+            reason="GENERAL_STRESS",
+            urgency="ROUTINE",
+            clinical_summary="Other patient referral",
+            presenting_issues="Sleep disturbance",
+            goals="Provide support",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            f"/api/counselling/referrals/?patient_id={counselling_referral.patient_id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        patient_ids = {item["patient"] for item in response.data["results"]}
+        assert patient_ids == {counselling_referral.patient_id}
+
+    def test_filter_referrals_by_encounter_id_alias(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        counselling_type,
+        test_user,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter referrals when frontend sends encounter_id."""
+        from hmis.apps.encounters.models import Encounter
+
+        target_referral = CounsellingReferral.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            counselling_type=counselling_type,
+            referred_by=test_user,
+            reason="GENERAL_STRESS",
+            urgency="ROUTINE",
+            clinical_summary="Target encounter referral",
+            presenting_issues="Stress",
+            goals="Support",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Follow-up",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        CounsellingReferral.objects.create(
+            patient=sample_patient,
+            encounter=other_encounter,
+            counselling_type=counselling_type,
+            referred_by=test_user,
+            reason="GENERAL_STRESS",
+            urgency="ROUTINE",
+            clinical_summary="Other encounter referral",
+            presenting_issues="Sleep disturbance",
+            goals="Monitor",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            f"/api/counselling/referrals/?encounter_id={sample_encounter.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        referral_ids = {item["id"] for item in response.data["results"]}
+        assert referral_ids == {target_referral.id}
+
     def test_create_referral(
         self, authenticated_client, sample_patient, sample_encounter, counselling_type
     ):

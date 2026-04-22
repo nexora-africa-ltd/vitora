@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import type { ProcedureAvailableSlotsResponse } from '@/lib/types/procedure';
+import type {
+  ProcedureAvailableSlotsResponse,
+  ProcedureCatalogDetail,
+  ProcedureOrderListItem,
+} from '@/lib/types/procedure';
+import type { PaginatedResponse } from '@/lib/types';
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
@@ -9,7 +14,6 @@ import {
   PaginatedProcedureOrderSchema,
   ProcedureDashboardSchema,
 } from '@/lib/schemas/procedure.schema';
-import type { ProcedureCatalogDetail } from '@/lib/types/procedure';
 
 export const proceduresApi = {
   // ---- Catalog ----
@@ -38,7 +42,9 @@ export const proceduresApi = {
   },
 
   // ---- Orders ----
-  listOrders: async (params?: Record<string, string>) => {
+  listOrders: async (
+    params?: Record<string, string>
+  ): Promise<PaginatedResponse<ProcedureOrderListItem>> => {
     const response = await apiClient.get('/api/procedures/orders/', { params });
     return parseResponse(PaginatedProcedureOrderSchema, response.data, {
       context: 'proceduresApi.listOrders',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Search, Filter } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -16,16 +17,21 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PatientTable } from '@/components/patients/patient-table';
 import { usePatients } from '@/lib/hooks/use-patients';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context';
 import { GENDER_OPTIONS } from '@/lib/utils/constants';
+import { organizationsApi } from '@/lib/api/organizations';
 
 export default function PatientsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh, isRefreshing } = usePageRefresh();
+  const { facility, organization } = useFacility();
 
   // Check if we're in select mode (coming from another page that needs a patient)
   const selectMode = searchParams.get('select') === 'true';
@@ -35,16 +41,34 @@ export default function PatientsPage() {
   const [gender, setGender] = useState<string>('');
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [currentFacilityOnly, setCurrentFacilityOnly] = useState(true);
   const pageSize = viewMode === 'grid' ? 12 : 10; // More items in grid view
 
   const debouncedSearch = useDebounce(search, 300);
+
+  const { data: organizationFacilities = [] } = useQuery({
+    queryKey: ['organization-facilities', organization?.id],
+    queryFn: () => organizationsApi.listFacilities(organization!.id),
+    enabled: organization !== null,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data, isLoading, error } = usePatients({
     page,
     page_size: pageSize,
     search: debouncedSearch || undefined,
     gender: gender || undefined,
+    current_facility_only: currentFacilityOnly,
   });
+
+  const facilityNameById = new Map(organizationFacilities.map((item) => [item.id, item.name]));
+  const patients = (data?.results ?? []).map((patient) => ({
+    ...patient,
+    registered_at_facility_name:
+      patient.registered_at_facility_name
+      ?? (patient.registered_at_facility ? facilityNameById.get(patient.registered_at_facility) : null)
+      ?? (patient.registered_at_facility === facility?.id ? (facility?.name ?? null) : null),
+  }));
 
   const totalPages = data ? Math.ceil(data.count / pageSize) : 0;
 
@@ -126,11 +150,39 @@ export default function PatientsPage() {
         </Select>
 
         <ViewToggle value={viewMode} onChange={setViewMode} />
+
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 w-fit cursor-default rounded-md border px-3 py-2">
+                <Switch
+                  checked={currentFacilityOnly}
+                  onCheckedChange={(checked) => {
+                    setCurrentFacilityOnly(checked);
+                    setPage(1);
+                  }}
+                />
+                <span className="text-sm font-medium">
+                  {currentFacilityOnly
+                    ? (facility ? `${facility.name}` : 'Current Facility')
+                    : 'All Organization Patients'}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>
+                {currentFacilityOnly
+                  ? 'Switch to all patients in this organization'
+                  : `Switch to ${facility?.name ?? 'the current facility'} only`}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Patient table/grid */}
       <PatientTable
-        patients={data?.results ?? []}
+        patients={patients}
         isLoading={isLoading}
         error={error as Error | null}
         page={page}

@@ -43,6 +43,7 @@ import { useQuery } from '@tanstack/react-query';
 import { usePatientEmergencyContacts } from '@/lib/hooks/use-patients';
 import { usePatientPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { usePatientLabOrders } from '@/lib/hooks/use-laboratory';
+import { usePatientProcedureOrders } from '@/lib/hooks/use-procedures';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
@@ -64,8 +65,14 @@ import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { shaApi } from '@/lib/api/sha';
 import { cn } from '@/lib/utils';
+import type { PaginatedResponse } from '@/lib/types';
 import type { Prescription, PrescriptionStatus } from '@/lib/types/pharmacy';
 import type { LabOrder, LabOrderStatus } from '@/lib/types/laboratory';
+import {
+  PROCEDURE_STATUS_COLORS,
+  PROCEDURE_STATUS_LABELS,
+  type ProcedureOrderListItem,
+} from '@/lib/types/procedure';
 
 export default function PatientDetailPage() {
   const params = useParams();
@@ -88,6 +95,10 @@ export default function PatientDetailPage() {
   const { data: prescriptionsData, isLoading: loadingPrescriptions } =
     usePatientPrescriptions(patientId);
   const { data: labOrdersData, isLoading: loadingLabOrders } = usePatientLabOrders(patientId);
+  const patientProcedureOrdersQuery = usePatientProcedureOrders(patientId);
+  const procedureOrdersData: PaginatedResponse<ProcedureOrderListItem> | undefined =
+    patientProcedureOrdersQuery.data as PaginatedResponse<ProcedureOrderListItem> | undefined;
+  const loadingProcedureOrders = patientProcedureOrdersQuery.isLoading;
 
   // Fetch SHA member for this patient to check if they're a principal
   const { data: shaMembersData } = useQuery({
@@ -120,6 +131,7 @@ export default function PatientDetailPage() {
   const genderLabels: Record<string, string> = { M: 'Male', F: 'Female', O: 'Other' };
   const prescriptions = prescriptionsData ?? [];
   const labOrders = labOrdersData ?? [];
+  const procedureOrders = procedureOrdersData?.results ?? [];
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -387,10 +399,10 @@ export default function PatientDetailPage() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <TabsTrigger value="orders" className="text-xs sm:text-sm gap-1.5">
-                  Orders ({(prescriptions?.length || 0) + (labOrders?.length || 0)})
+                  Orders ({(prescriptions?.length || 0) + (labOrders?.length || 0) + procedureOrders.length})
                 </TabsTrigger>
               </TooltipTrigger>
-              <TooltipContent><p>Prescriptions, lab results & imaging orders</p></TooltipContent>
+              <TooltipContent><p>Prescriptions, procedures, lab results & imaging orders</p></TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -459,9 +471,9 @@ export default function PatientDetailPage() {
             </Accordion>
           </TabsContent>
 
-          {/* Orders — Prescriptions | Lab Results | Imaging */}
+          {/* Orders — Prescriptions | Procedures | Lab Results | Imaging */}
           <TabsContent value="orders">
-            <Accordion type="multiple" defaultValue={['prescriptions', 'lab-results', 'imaging']}>
+            <Accordion type="multiple" defaultValue={['prescriptions', 'procedures', 'lab-results', 'imaging']}>
               <AccordionItem value="prescriptions">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
@@ -476,6 +488,25 @@ export default function PatientDetailPage() {
                   <PatientPrescriptionsSection
                     prescriptions={prescriptions}
                     isLoading={loadingPrescriptions}
+                    patientId={patientId}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="procedures">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Clipboard className="h-4 w-4 text-muted-foreground" />
+                    <span>Procedures</span>
+                    {procedureOrders.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">{procedureOrders.length}</Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientProceduresSection
+                    procedureOrders={procedureOrders}
+                    isLoading={loadingProcedureOrders}
                     patientId={patientId}
                   />
                 </AccordionContent>
@@ -808,6 +839,93 @@ function PatientLabResultsSection({
             onClick={() => router.push(`/laboratory/orders?patient=${patientId}`)}
           >
             View all {labOrders.length} lab orders
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
+// Procedures Section
+// =============================================================================
+
+function PatientProceduresSection({
+  procedureOrders,
+  isLoading,
+  patientId,
+}: {
+  procedureOrders: ProcedureOrderListItem[];
+  isLoading: boolean;
+  patientId: number;
+}) {
+  const router = useRouter();
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 py-8">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!procedureOrders.length) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <EmptyState
+            icon={Clipboard}
+            title="No procedures"
+            description="This patient has no procedure orders yet."
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base sm:text-lg">
+          Procedures ({procedureOrders.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {procedureOrders.slice(0, 10).map((order) => (
+          <div
+            key={order.id}
+            className="flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+            onClick={() => router.push(`/procedures/orders/${order.id}`)}
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{order.procedure_name}</p>
+              <p className="text-xs text-muted-foreground">
+                #{order.order_number}
+                {order.scheduled_date ? ` • ${formatDate(order.scheduled_date)}` : ` • Ordered ${formatDate(order.ordered_at)}`}
+                {order.scheduled_clinic_name ? ` • ${order.scheduled_clinic_name}` : ''}
+              </p>
+            </div>
+            <Badge
+              className={cn(
+                'w-fit shrink-0 self-start sm:self-auto',
+                PROCEDURE_STATUS_COLORS[order.status]
+              )}
+            >
+              {PROCEDURE_STATUS_LABELS[order.status]}
+            </Badge>
+          </div>
+        ))}
+        {procedureOrders.length > 10 && (
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => router.push(`/procedures/orders?patient=${patientId}`)}
+          >
+            View all {procedureOrders.length} procedure orders
           </Button>
         )}
       </CardContent>

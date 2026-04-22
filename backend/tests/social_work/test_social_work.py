@@ -379,9 +379,153 @@ class TestSocialWorkReferralAPI:
         for ref in response.data["results"]:
             assert ref["urgency"] == "EMERGENCY"
 
+    def test_filter_referrals_by_patient_id_alias(
+        self,
+        authenticated_client,
+        sw_referral,
+        test_user,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter referrals when frontend sends patient_id."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        other_patient = Patient.objects.create(
+            first_name="Kevin",
+            last_name="Mutiso",
+            date_of_birth="1990-02-11",
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=other_patient,
+            encounter_type="OPD",
+            chief_complaint="Social support",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        SocialWorkReferral.objects.create(
+            patient=other_patient,
+            encounter=other_encounter,
+            referred_by=test_user,
+            reason="FINANCIAL_HARDSHIP",
+            urgency="ROUTINE",
+            clinical_summary="Other patient referral",
+            presenting_issues="Transport barrier",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            f"/api/social-work/referrals/?patient_id={sw_referral.patient_id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        patient_ids = {item["patient"] for item in response.data["results"]}
+        assert patient_ids == {sw_referral.patient_id}
+
+    def test_filter_referrals_by_encounter_id_alias(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter referrals when frontend sends encounter_id."""
+        from hmis.apps.encounters.models import Encounter
+
+        target_referral = SocialWorkReferral.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            referred_by=test_user,
+            reason="FINANCIAL_HARDSHIP",
+            urgency="ROUTINE",
+            clinical_summary="Target encounter referral",
+            presenting_issues="Medication costs",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Social follow-up",
+            organization=sample_organization,
+            facility=sample_facility,
+        )
+        SocialWorkReferral.objects.create(
+            patient=sample_patient,
+            encounter=other_encounter,
+            referred_by=test_user,
+            reason="FINANCIAL_HARDSHIP",
+            urgency="ROUTINE",
+            clinical_summary="Other encounter referral",
+            presenting_issues="Transport barrier",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+        response = authenticated_client.get(
+            f"/api/social-work/referrals/?encounter_id={sample_encounter.id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        referral_ids = {item["id"] for item in response.data["results"]}
+        assert referral_ids == {target_referral.id}
+
 
 class TestSocialWorkCaseAPI:
     """Tests for SocialWorkCase API endpoints."""
+
+    def test_filter_cases_by_patient_id_alias(
+        self,
+        authenticated_client,
+        sw_case,
+        test_user,
+        sample_county,
+        sample_sub_county,
+        sample_organization,
+        sample_facility,
+    ):
+        """Should filter cases when frontend sends patient_id."""
+        from hmis.apps.patients.models import Patient
+
+        other_patient = Patient.objects.create(
+            first_name="Lucy",
+            last_name="Chebet",
+            date_of_birth="1987-06-19",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            registered_at_facility=sample_facility,
+        )
+        SocialWorkCase.objects.create(
+            patient=other_patient,
+            assigned_worker=test_user,
+            case_type="FINANCIAL",
+            title="Other patient case",
+            presenting_problem="Needs social support",
+            goals="Coordinate assistance",
+            risk_level="LOW",
+            priority="MEDIUM",
+            status="OPEN",
+        )
+
+        response = authenticated_client.get(
+            f"/api/social-work/cases/?patient_id={sw_case.patient_id}"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        patient_ids = {item["patient"] for item in response.data["results"]}
+        assert patient_ids == {sw_case.patient_id}
 
     def test_create_case(self, authenticated_client, sample_patient):
         """Should create a new case."""

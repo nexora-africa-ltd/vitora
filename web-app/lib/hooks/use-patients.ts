@@ -17,6 +17,7 @@ import { generateId } from '@/lib/powersync/uuid';
 import { transformPatientRow } from '@/lib/powersync/transforms';
 import type { PatientRow } from '@/lib/powersync/schema';
 import type { PaginatedResponse } from '@/lib/types';
+import { useFacility } from '@/lib/context';
 
 // =============================================================================
 // QUERY KEYS
@@ -48,6 +49,7 @@ export const patientKeys = {
  * Reads from local PowerSync SQLite when available, falls back to API.
  */
 export function usePatients(params: PatientListParams = {}) {
+  const { facility } = useFacility();
   const searchTerm = params.search || '';
   const limit = params.page_size || 20;
   const offset = ((params.page || 1) - 1) * limit;
@@ -68,6 +70,10 @@ export function usePatients(params: PatientListParams = {}) {
   if (params.county) {
     conditions.push('p.county_id = ?');
     sqlParams.push(String(params.county));
+  }
+  if (params.current_facility_only && facility?.id) {
+    conditions.push('p.registered_at_facility_id = ?');
+    sqlParams.push(String(facility.id));
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
