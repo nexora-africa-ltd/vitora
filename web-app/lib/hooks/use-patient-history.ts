@@ -4,6 +4,7 @@
 
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { theatreApi } from '@/lib/api/theatre';
 import type {
   PatientHistoryParams,
   PatientHistoryResponse,
@@ -11,6 +12,7 @@ import type {
   TimelineFilters
 } from '@/lib/types/timeline';
 import type { Encounter } from '@/lib/types/encounter';
+import type { SurgeryCaseList } from '@/lib/types/theatre';
 
 // Transform encounters to timeline events
 function transformEncounterToTimelineEvent(encounter: Encounter): TimelineEvent {
@@ -29,26 +31,58 @@ function transformEncounterToTimelineEvent(encounter: Encounter): TimelineEvent 
   };
 }
 
+function transformSurgeryCaseToTimelineEvent(surgeryCase: SurgeryCaseList): TimelineEvent {
+  const timestamp = surgeryCase.status_changed_at || surgeryCase.scheduled_date;
+
+  return {
+    id: `surgery-${surgeryCase.case_number}`,
+    type: 'surgery',
+    title: surgeryCase.primary_procedure_name,
+    description: surgeryCase.diagnosis,
+    timestamp,
+    metadata: {
+      encounterId: surgeryCase.encounter || undefined,
+      caseNumber: surgeryCase.case_number,
+      theatreName: surgeryCase.theatre_name,
+      procedureName: surgeryCase.primary_procedure_name,
+      surgeryStatus: surgeryCase.status,
+      status: surgeryCase.status,
+    },
+  };
+}
+
 // Mock patient history API - transforms encounters into timeline format
 // In production, this would call a dedicated /api/patients/{id}/history endpoint
 async function fetchPatientHistory(params: PatientHistoryParams): Promise<PatientHistoryResponse> {
   const { patientId, filters, page = 1, pageSize = 20 } = params;
 
-  // Fetch patient encounters
-  const encountersResponse = await apiClient.get(`/api/encounters/`, {
-    params: {
+  const [encountersResponse, surgeryCasesResponse] = await Promise.all([
+    apiClient.get(`/api/encounters/`, {
+      params: {
+        patient: patientId,
+        page,
+        page_size: pageSize,
+        ordering: '-encounter_date',
+      },
+    }),
+    theatreApi.listCases({
       patient: patientId,
       page,
       page_size: pageSize,
-      ordering: '-encounter_date',
-    },
-  });
+    }),
+  ]);
 
   const encounters: Encounter[] = encountersResponse.data.results || [];
-  const totalCount = encountersResponse.data.count || 0;
+  const encounterCount = encountersResponse.data.count || 0;
+  const surgeryCases: SurgeryCaseList[] = surgeryCasesResponse.results || [];
+  const surgeryCount = surgeryCasesResponse.count || 0;
 
-  // Transform to timeline events
-  let events: TimelineEvent[] = encounters.map(transformEncounterToTimelineEvent);
+  let events: TimelineEvent[] = [
+    ...encounters.map(transformEncounterToTimelineEvent),
+    ...surgeryCases.map(transformSurgeryCaseToTimelineEvent),
+  ];
+
+  events.sort((left, right) => right.timestamp.localeCompare(left.timestamp));
 
   // Apply client-side filters (in production, this would be server-side)
   if (filters?.eventTypes && filters.eventTypes.length > 0) {
@@ -68,22 +102,27 @@ async function fetchPatientHistory(params: PatientHistoryParams): Promise<Patien
     events = events.filter(
       event =>
         event.title.toLowerCase().includes(query) ||
-        event.description?.toLowerCase().includes(query)
+        event.description?.toLowerCase().includes(query) ||
+        String(event.metadata?.caseNumber || '').toLowerCase().includes(query) ||
+        String(event.metadata?.theatreName || '').toLowerCase().includes(query)
     );
   }
 
   // Calculate summary
   const summary = {
-    totalEncounters: totalCount,
+    totalEncounters: encounterCount,
+    totalSurgeries: surgeryCount,
     totalLabResults: 0, // Would come from lab API
     totalPrescriptions: 0, // Would come from pharmacy API
-    lastVisit: encounters[0]?.encounter_date,
+    lastVisit: events[0]?.timestamp,
   };
 
   return {
     events,
-    totalCount,
-    hasMore: page * pageSize < totalCount,
+    totalCount: encounterCount + surgeryCount,
+    hasMore:
+      page * pageSize < encounterCount ||
+      page * pageSize < surgeryCount,
     summary,
   };
 }

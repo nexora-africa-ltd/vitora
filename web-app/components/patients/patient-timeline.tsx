@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Loader2, History, Calendar, FileText, TestTube2, Pill, Printer } from 'lucide-react';
+import { Loader2, History, Calendar, FileText, TestTube2, Pill, Printer, Scissors } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,7 +15,7 @@ interface PatientTimelineProps {
 }
 
 const defaultFilters: FilterType = {
-  eventTypes: ['encounter', 'lab_result', 'prescription', 'vital_alert', 'diagnosis', 'admission', 'discharge'] as TimelineEventType[],
+  eventTypes: ['encounter', 'surgery', 'lab_result', 'prescription', 'vital_alert', 'diagnosis', 'admission', 'discharge'] as TimelineEventType[],
   startDate: undefined,
   endDate: undefined,
   searchQuery: undefined,
@@ -62,11 +62,16 @@ export function PatientTimeline({ patientId }: PatientTimelineProps) {
     <div className="space-y-6">
       {/* Summary Cards */}
       {summary && (
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 print:hidden">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-5 print:hidden">
           <SummaryCard
             icon={FileText}
             label="Total Visits"
             value={summary.totalEncounters}
+          />
+          <SummaryCard
+            icon={Scissors}
+            label="Surgeries"
+            value={summary.totalSurgeries}
           />
           <SummaryCard
             icon={TestTube2}
