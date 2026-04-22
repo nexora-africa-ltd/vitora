@@ -75,6 +75,88 @@ class TestProcedureOrderCRUD:
         response = authenticated_client.get("/api/procedures/orders/")
         assert response.status_code == status.HTTP_200_OK
 
+    def test_filter_orders_by_patient_id_alias(
+        self,
+        authenticated_client,
+        procedure_order,
+        procedure_catalog_entry,
+        test_user,
+        sample_county,
+        sample_sub_county,
+    ):
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        other_patient = Patient.objects.create(
+            first_name="Other",
+            last_name="Procedure",
+            date_of_birth="1983-08-11",
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=procedure_order.organization,
+            registered_at_facility=procedure_order.facility,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=other_patient,
+            encounter_type="PROCEDURE",
+            chief_complaint="Other procedure",
+            organization=procedure_order.organization,
+            facility=procedure_order.facility,
+        )
+        ProcedureOrder.objects.create(
+            procedure=procedure_catalog_entry,
+            patient=other_patient,
+            encounter=other_encounter,
+            indication="Other patient procedure",
+            ordered_by=test_user,
+            facility=procedure_order.facility,
+            organization=procedure_order.organization,
+        )
+
+        response = authenticated_client.get(
+            "/api/procedures/orders/",
+            {"patient_id": procedure_order.patient_id},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert all(
+            item["patient"] == procedure_order.patient_id for item in response.data["results"]
+        )
+
+    def test_filter_orders_by_encounter_id_alias(
+        self,
+        authenticated_client,
+        procedure_order,
+        procedure_catalog_entry,
+        test_user,
+    ):
+        other_encounter = procedure_order.encounter.__class__.objects.create(
+            patient=procedure_order.patient,
+            encounter_type="PROCEDURE",
+            chief_complaint="Other procedure encounter",
+            organization=procedure_order.organization,
+            facility=procedure_order.facility,
+        )
+        ProcedureOrder.objects.create(
+            procedure=procedure_catalog_entry,
+            patient=procedure_order.patient,
+            encounter=other_encounter,
+            indication="Other encounter procedure",
+            ordered_by=test_user,
+            facility=procedure_order.facility,
+            organization=procedure_order.organization,
+        )
+
+        response = authenticated_client.get(
+            "/api/procedures/orders/",
+            {"encounter_id": procedure_order.encounter_id},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        order_numbers = {item["order_number"] for item in response.data["results"]}
+        assert order_numbers == {procedure_order.order_number}
+
     def test_retrieve_order(self, authenticated_client, procedure_order):
         response = authenticated_client.get(f"/api/procedures/orders/{procedure_order.id}/")
         assert response.status_code == status.HTTP_200_OK

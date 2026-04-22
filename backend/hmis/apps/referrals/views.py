@@ -32,7 +32,9 @@ class ClinicalReferralFilter(django_filters.FilterSet):
     """Filter for ClinicalReferral."""
 
     patient = django_filters.NumberFilter()
+    patient_id = django_filters.NumberFilter(field_name="patient")
     encounter = django_filters.NumberFilter()
+    encounter_id = django_filters.NumberFilter(field_name="encounter")
     referral_type = django_filters.CharFilter(lookup_expr="iexact")
     target_service = django_filters.CharFilter(lookup_expr="iexact")
     status = django_filters.CharFilter(lookup_expr="iexact")
@@ -46,7 +48,9 @@ class ClinicalReferralFilter(django_filters.FilterSet):
         model = ClinicalReferral
         fields = [
             "patient",
+            "patient_id",
             "encounter",
+            "encounter_id",
             "referral_type",
             "target_service",
             "status",

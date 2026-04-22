@@ -16,6 +16,10 @@ class ProcedureCatalogFilter(django_filters.FilterSet):
 
 
 class ProcedureOrderFilter(django_filters.FilterSet):
+    patient = django_filters.NumberFilter()
+    patient_id = django_filters.NumberFilter(field_name="patient")
+    encounter = django_filters.NumberFilter()
+    encounter_id = django_filters.NumberFilter(field_name="encounter")
     scheduled_date_from = django_filters.DateFilter(field_name="scheduled_date", lookup_expr="gte")
     scheduled_date_to = django_filters.DateFilter(field_name="scheduled_date", lookup_expr="lte")
 
@@ -25,7 +29,9 @@ class ProcedureOrderFilter(django_filters.FilterSet):
             "status": ["exact"],
             "priority": ["exact"],
             "patient": ["exact"],
+            "patient_id": ["exact"],
             "encounter": ["exact"],
+            "encounter_id": ["exact"],
             "clinic_visit": ["exact"],
             "admission": ["exact"],
             "facility": ["exact"],

@@ -132,6 +132,74 @@ class TestSurgeryCaseAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
+    def test_filter_cases_by_patient_id_alias(
+        self,
+        authenticated_client,
+        sample_surgery_case,
+        sample_county,
+        sample_sub_county,
+    ):
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.theatre.models import SurgeryCase
+
+        other_patient = Patient.objects.create(
+            first_name="Other",
+            last_name="Surgery",
+            date_of_birth="1985-02-14",
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_surgery_case.organization,
+            registered_at_facility=sample_surgery_case.facility,
+        )
+        other_encounter = Encounter.objects.create(
+            patient=other_patient,
+            encounter_type="PROCEDURE",
+            chief_complaint="Other surgery",
+            organization=sample_surgery_case.organization,
+            facility=sample_surgery_case.facility,
+        )
+        SurgeryCase.objects.create(
+            patient=other_patient,
+            encounter=other_encounter,
+            primary_procedure=sample_surgery_case.primary_procedure,
+            theatre=sample_surgery_case.theatre,
+            scheduled_date=sample_surgery_case.scheduled_date,
+            scheduled_start_time=time(11, 0),
+            estimated_duration_minutes=90,
+            priority=sample_surgery_case.priority,
+            diagnosis="Other patient surgery",
+            laterality=sample_surgery_case.laterality,
+            asa_class=sample_surgery_case.asa_class,
+            anesthesia_type=sample_surgery_case.anesthesia_type,
+            requesting_doctor=sample_surgery_case.requesting_doctor,
+            organization=sample_surgery_case.organization,
+            facility=sample_surgery_case.facility,
+        )
+
+        response = authenticated_client.get(
+            CASES_URL,
+            {"patient_id": sample_surgery_case.patient_id},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        case_numbers = {item["case_number"] for item in response.data["results"]}
+        assert sample_surgery_case.case_number in case_numbers
+        assert all(
+            item["patient"] == sample_surgery_case.patient_id for item in response.data["results"]
+        )
+
+    def test_filter_cases_by_encounter_id_alias(self, authenticated_client, sample_surgery_case):
+        response = authenticated_client.get(
+            CASES_URL,
+            {"encounter_id": sample_surgery_case.encounter_id},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        case_numbers = {item["case_number"] for item in response.data["results"]}
+        assert case_numbers == {sample_surgery_case.case_number}
+
     def test_create_case(self, authenticated_client, surgery_case_data):
         response = authenticated_client.post(CASES_URL, surgery_case_data)
         assert response.status_code == status.HTTP_201_CREATED
