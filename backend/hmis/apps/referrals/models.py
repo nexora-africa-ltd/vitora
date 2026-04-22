@@ -417,6 +417,14 @@ class ClinicalReferral(HistoryMixin, TimeStampedModel):
     # =========================================================================
     # Clinic Queue Integration
     # =========================================================================
+    destination_clinic = models.ForeignKey(
+        "clinics.Clinic",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="incoming_referrals",
+        help_text="Explicit clinic destination for clinic-routed referrals.",
+    )
     clinic_visit = models.ForeignKey(
         "clinics.ClinicVisit",
         on_delete=models.SET_NULL,
