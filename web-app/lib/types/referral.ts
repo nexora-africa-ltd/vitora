@@ -1,3 +1,5 @@
+import type { ClinicType } from '@/lib/types/clinic';
+
 /**
  * Referral types for Vitora HMIS.
  *
@@ -179,6 +181,31 @@ export const ADMISSION_SERVICES: ReferralTargetService[] = [
   'HDU',
 ];
 
+export const SPECIALTY_CLINIC_SERVICES: ReferralTargetService[] = [
+  'DENTAL',
+  'EYE',
+  'ENT',
+  'SURGICAL',
+  'ORTHO',
+  'DERM',
+  'CARDIOLOGY',
+  'ONCOLOGY',
+  'MENTAL_HEALTH',
+  'DIALYSIS',
+];
+
+export const REFERRAL_SPECIALTY_TO_CLINIC_TYPE: Partial<Record<ReferralTargetService, ClinicType>> = {
+  DENTAL: 'DENTAL',
+  EYE: 'EYE',
+  ENT: 'ENT',
+  SURGICAL: 'SURGICAL',
+  ORTHO: 'ORTHO',
+  DERM: 'DERM',
+  ONCOLOGY: 'ONCOLOGY',
+  MENTAL_HEALTH: 'MENTAL_HEALTH',
+  DIALYSIS: 'DIALYSIS',
+};
+
 // =============================================================================
 // Interfaces
 // =============================================================================
@@ -212,6 +239,8 @@ export interface ClinicalReferral {
   patient_name: string;
   patient_mrn: string;
   encounter: number;
+  destination_clinic: number | null;
+  destination_clinic_name: string;
   // Clinician input
   reason: string;
   clinical_notes: string;
@@ -268,6 +297,8 @@ export interface ClinicalReferralListItem {
   patient_name: string;
   patient_mrn: string;
   encounter: number;
+  destination_clinic: number | null;
+  destination_clinic_name: string;
   priority: ReferralPriority;
   priority_display: string;
   status: ReferralStatus;
@@ -287,6 +318,8 @@ export interface EncounterReferralItem {
   referral_type_display: string;
   target_service: ReferralTargetService;
   target_service_display: string;
+  destination_clinic: number | null;
+  destination_clinic_name: string;
   reason: string;
   priority: ReferralPriority;
   priority_display: string;
@@ -301,6 +334,7 @@ export interface EncounterReferralItem {
 export interface ReferralCreateData {
   encounter: number;
   target_service: ReferralTargetService;
+  destination_clinic?: number;
   reason: string;
   clinical_notes?: string;
   priority?: ReferralPriority;
