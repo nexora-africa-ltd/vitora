@@ -10,6 +10,7 @@ import {
   FileText,
   LogIn,
   LogOut,
+  Scissors,
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -33,6 +34,12 @@ const eventConfig: Record<TimelineEventType, {
     color: 'text-blue-600',
     bgColor: 'bg-blue-100 dark:bg-blue-900/30',
     label: 'Visit',
+  },
+  surgery: {
+    icon: Scissors,
+    color: 'text-rose-600',
+    bgColor: 'bg-rose-100 dark:bg-rose-900/30',
+    label: 'Surgery',
   },
   lab_result: {
     icon: TestTube2,
@@ -83,6 +90,8 @@ export function TimelineItem({ event, isLast = false }: TimelineItemProps) {
     switch (event.type) {
       case 'encounter':
         return `/encounters/${event.metadata?.encounterId}`;
+      case 'surgery':
+        return `/theatre/cases/${event.metadata?.caseNumber}`;
       case 'lab_result':
         return `/laboratory/results/${event.id.replace('lab-', '')}`;
       case 'prescription':
@@ -155,6 +164,14 @@ export function TimelineItem({ event, isLast = false }: TimelineItemProps) {
         {event.metadata?.provider && (
           <p className="mt-1 text-xs text-muted-foreground">
             Provider: {event.metadata.provider}
+          </p>
+        )}
+
+        {event.type === 'surgery' && (event.metadata?.caseNumber || event.metadata?.theatreName) && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {event.metadata?.caseNumber ? `Case ${event.metadata.caseNumber}` : ''}
+            {event.metadata?.caseNumber && event.metadata?.theatreName ? ' • ' : ''}
+            {event.metadata?.theatreName || ''}
           </p>
         )}
 

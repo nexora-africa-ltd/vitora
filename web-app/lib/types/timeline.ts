@@ -4,6 +4,7 @@
 
 export type TimelineEventType =
   | 'encounter'
+  | 'surgery'
   | 'lab_result'
   | 'prescription'
   | 'vital_alert'
@@ -21,6 +22,10 @@ export interface TimelineEvent {
     encounterId?: number;
     encounterType?: string;
     status?: string;
+    caseNumber?: string;
+    theatreName?: string;
+    procedureName?: string;
+    surgeryStatus?: string;
     severity?: 'normal' | 'warning' | 'critical';
     provider?: string;
     icd10Code?: string;
@@ -51,6 +56,7 @@ export interface PatientHistoryResponse {
   hasMore: boolean;
   summary: {
     totalEncounters: number;
+    totalSurgeries: number;
     totalLabResults: number;
     totalPrescriptions: number;
     lastVisit?: string;

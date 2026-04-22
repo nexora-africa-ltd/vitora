@@ -23,6 +23,7 @@ interface TimelineFiltersProps {
 
 const eventTypeOptions: { value: TimelineEventType; label: string }[] = [
   { value: 'encounter', label: 'Visits' },
+  { value: 'surgery', label: 'Surgeries' },
   { value: 'lab_result', label: 'Lab Results' },
   { value: 'prescription', label: 'Prescriptions' },
   { value: 'vital_alert', label: 'Vital Alerts' },
