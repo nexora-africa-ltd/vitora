@@ -1,0 +1,107 @@
+# =============================================================================
+# Vitora HMIS — Monitoring & Analytics Stack
+# =============================================================================
+# Includes:
+#   - Prometheus (metrics collection)
+#   - Grafana (dashboards & alerting)
+#   - Umami (privacy-focused web analytics)
+#
+# Usage:
+#   docker compose -f monitoring/compose.yml up -d
+#
+# Access:
+#   Prometheus:  http://localhost:9090
+#   Grafana:     http://localhost:3456  (admin / vitora-grafana)
+#   Umami:       http://localhost:3457  (admin / umami)
+# =============================================================================
+
+services:
+  # ─── Prometheus ─────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    container_name: vitora-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── Grafana ────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: vitora-grafana
+    restart: unless-stopped
+    ports:
+      - "3456:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-vitora-grafana}"
+      GF_SERVER_ROOT_URL: "${GRAFANA_ROOT_URL:-http://localhost:3456}"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/vitora-django-api.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── Umami (Web Analytics) ─────────────────────────────────────────────
+  umami-db:
+    image: postgres:16-alpine
+    container_name: vitora-umami-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: "${UMAMI_DB_PASSWORD:-umami-secret}"
+    volumes:
+      - umami-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-v2.15.1
+    container_name: vitora-umami
+    restart: unless-stopped
+    ports:
+      - "3457:3000"
+    environment:
+      DATABASE_URL: "postgresql://umami:${UMAMI_DB_PASSWORD:-umami-secret}@umami-db:5432/umami"
+      APP_SECRET: "${UMAMI_APP_SECRET:-vitora-umami-secret-change-me}"
+      # Disable telemetry
+      DISABLE_TELEMETRY: 1
+    depends_on:
+      umami-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  umami-db-data:

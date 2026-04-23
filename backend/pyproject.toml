@@ -61,6 +61,7 @@ django-ratelimit = "^4.1.0"
 resend = "^2.26.0"
 webauthn = "^2.7"
 python-magic = "^0.4.27"
+django-prometheus = "^2.4.1"
 
 [tool.poetry.extras]
 azure = ["azure-identity", "azure-keyvault-keys"]

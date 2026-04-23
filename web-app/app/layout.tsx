@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { PWARegister } from '@/components/pwa/pwa-register';
+import { UmamiAnalytics } from '@/components/analytics/umami';
 import { APP_NAME } from '@/lib/utils/constants';
 
 const inter = Inter({
@@ -53,6 +54,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <PWARegister />
+        <UmamiAnalytics />
         <Providers>{children}</Providers>
       </body>
     </html>

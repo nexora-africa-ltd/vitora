@@ -1,0 +1,39 @@
+# =============================================================================
+# Prometheus Configuration for Vitora HMIS
+# =============================================================================
+# Scrapes Django backend metrics exposed by django-prometheus at /metrics
+# =============================================================================
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # ─── Django Backend ───────────────────────────────────────────────────────
+  - job_name: "vitora-api"
+    metrics_path: /metrics
+    # Local development: Django runs on host
+    static_configs:
+      - targets: ["host.docker.internal:9088"]
+        labels:
+          environment: "development"
+          service: "vitora-api"
+
+  # ─── Staging / Production (Azure Container Apps) ──────────────────────────
+  # Uncomment and set the FQDN of your ACA instance.
+  # Note: The /metrics endpoint must be reachable from the Prometheus instance.
+  # For Azure, consider using Azure Monitor Managed Prometheus instead of
+  # self-hosted (see docs/monitoring.md).
+  #
+  # - job_name: "vitora-api-staging"
+  #   metrics_path: /metrics
+  #   scheme: https
+  #   static_configs:
+  #     - targets: ["vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io"]
+  #       labels:
+  #         environment: "staging"
+  #         service: "vitora-api"
+
+  # ─── Prometheus self-monitoring ───────────────────────────────────────────
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
