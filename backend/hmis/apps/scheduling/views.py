@@ -535,6 +535,63 @@ class ResourceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=False, methods=["post"], url_path="sync-from-equipment")
+    def sync_from_equipment(self, request):
+        """
+        Auto-create ASSET resources from ColdChainEquipment that don't have one yet.
+
+        Only creates resources for operational equipment at the current facility.
+        Returns the count of newly created resources.
+        """
+        from hmis.apps.immunizations.models import ColdChainEquipment
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {"error": "No facility context available"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        equipment_without_resource = ColdChainEquipment.objects.filter(
+            status="OPERATIONAL",
+            facility=facility,
+            scheduling_resource__isnull=True,
+        )
+
+        created_count = 0
+        for equipment in equipment_without_resource:
+            code = f"EQUIP-{equipment.serial_number}"
+            if Resource.objects.filter(code=code, facility=facility).exists():
+                code = f"EQUIP-{equipment.pk}"
+
+            resource = Resource.objects.create(
+                name=equipment.name,
+                resource_type="ASSET",
+                code=code,
+                is_active=True,
+                description=equipment.location or "",
+                facility=facility,
+                organization=facility.organization,
+                metadata={
+                    "synced_from": "cold_chain_equipment",
+                    "equipment_type": equipment.equipment_type,
+                    "serial_number": equipment.serial_number,
+                    "model_number": equipment.model_number or "",
+                    "manufacturer": equipment.manufacturer or "",
+                    "location": equipment.location or "",
+                },
+            )
+            equipment.scheduling_resource = resource
+            equipment.save(update_fields=["scheduling_resource"])
+            created_count += 1
+
+        return Response(
+            {
+                "created": created_count,
+                "message": f"Created {created_count} resource(s) from equipment",
+            }
+        )
+
 
 class ScheduleViewSet(NestedTenantScopeMixin, ReadOnCreateMixin, viewsets.ModelViewSet):
     """

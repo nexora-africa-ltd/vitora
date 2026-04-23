@@ -15,6 +15,7 @@ import {
   Users,
   Building2,
   BedDouble,
+  Wrench,
   ChevronRight,
   Pencil,
 } from 'lucide-react';
@@ -250,7 +251,16 @@ export default function SchedulingResourcesPage() {
     onError: () => toast({ title: 'Error', description: 'Failed to sync wards.', variant: 'destructive' }),
   });
 
-  const isSyncing = syncStaffMutation.isPending || syncClinicsMutation.isPending || syncWardsMutation.isPending;
+  const syncEquipmentMutation = useMutation({
+    mutationFn: () => resourcesApi.syncFromEquipment(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduling-resources'] });
+      toast({ title: 'Equipment Synced', description: result.message });
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to sync equipment.', variant: 'destructive' }),
+  });
+
+  const isSyncing = syncStaffMutation.isPending || syncClinicsMutation.isPending || syncWardsMutation.isPending || syncEquipmentMutation.isPending;
 
   function closeDialog() {
     setShowCreate(false);
@@ -331,6 +341,10 @@ export default function SchedulingResourcesPage() {
                   <DropdownMenuItem onClick={() => syncWardsMutation.mutate()} disabled={isSyncing}>
                     <BedDouble className="h-4 w-4 mr-2" />
                     Sync Wards
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => syncEquipmentMutation.mutate()} disabled={isSyncing}>
+                    <Wrench className="h-4 w-4 mr-2" />
+                    Sync Equipment
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

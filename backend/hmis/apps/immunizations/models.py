@@ -1087,6 +1087,14 @@ class ColdChainEquipment(FacilityScopedModel, TimeStampedModel):
         blank=True,
         default="",
     )
+    scheduling_resource = models.ForeignKey(
+        "scheduling.Resource",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cold_chain_equipment",
+        help_text="Linked scheduling resource for this equipment",
+    )
 
     class Meta:
         ordering = ["name"]
