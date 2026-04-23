@@ -312,6 +312,7 @@ class LabOrderSerializer(serializers.ModelSerializer):
             "specimen_collected_at",
             "specimen_collected_by",
             "total_cost",
+            "bill_patient",
             "items",
             "ordered_at",
             "completed_at",
@@ -344,6 +345,7 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
     """Create order with items."""
 
     items = LabOrderItemCreateSerializer(many=True, write_only=True)
+    bill_patient = serializers.BooleanField(required=False)
 
     class Meta:
         model = LabOrder
@@ -355,11 +357,17 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
             "external_lab",
             "priority",
             "clinical_notes",
+            "bill_patient",
             "items",
         ]
 
     def create(self, validated_data):
         items_data = validated_data.pop("items")
+        # Default bill_patient based on order_type when not explicitly provided
+        if "bill_patient" not in validated_data:
+            validated_data["bill_patient"] = (
+                validated_data.get("order_type", "IN_HOUSE") != "EXTERNAL"
+            )
         ordered_by = self.context["request"].user
         order = LabOrder.objects.create(ordered_by=ordered_by, **validated_data)
 
