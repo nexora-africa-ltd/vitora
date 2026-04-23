@@ -1,0 +1,21 @@
+# Prometheus scrape config for Azure Container Apps
+# Targets use internal ACA FQDN (resolved within the same environment)
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "vitora-api"
+    metrics_path: /metrics
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+    static_configs:
+      - targets: ["vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io"]
+        labels:
+          environment: "staging"
+          service: "vitora-api"
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
