@@ -305,6 +305,7 @@ export const DischargeSchema = z.object({
   pnc_clinic_visit: z.number().nullable().optional(),
   pnc_appointment: z.number().nullable().optional(),
   follow_up_date: z.string().nullable().optional(),
+  follow_up_appointment: z.number().nullable().optional(),
   follow_up_instructions: z.string().optional(),
   referral_facility: z.string().optional(),
   referral_reason: z.string().optional(),

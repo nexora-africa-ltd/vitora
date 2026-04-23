@@ -564,6 +564,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "final_diagnosis",
                 "final_diagnosis_text",
                 "follow_up_date",
+                "follow_up_appointment",
                 "follow_up_instructions",
                 "id",
                 "lab_results_acknowledged",

@@ -806,7 +806,7 @@ export default function DischargePage() {
         treatment_summary: dischargeSummary,
         patient_instructions: patientInstructions,
         maternity_continuity_action: admission.mch_registration ? maternityContinuityAction : undefined,
-        follow_up_date: requiresScheduledFollowUpDate ? followUpDate || undefined : undefined,
+        follow_up_date: followUpDate || undefined,
         follow_up_instructions: followUpInstructions || undefined,
         discharge_medications: allDischargeMeds,
       });

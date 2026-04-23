@@ -1076,6 +1076,14 @@ class Discharge(TimeStampedModel):
         blank=True,
         help_text="Date for follow-up appointment",
     )
+    follow_up_appointment = models.ForeignKey(
+        "scheduling.Appointment",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="discharge_follow_ups",
+        help_text="Scheduled follow-up appointment created from discharge",
+    )
     follow_up_instructions = models.TextField(
         blank=True,
         default="",
