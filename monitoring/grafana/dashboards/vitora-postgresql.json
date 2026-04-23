@@ -1,0 +1,510 @@
+{
+  "uid": "vitora-postgresql",
+  "title": "Vitora HMIS — PostgreSQL & Database",
+  "description": "Database performance metrics from django-prometheus: query rates, latency, connections, and errors",
+  "tags": ["vitora", "postgresql", "database", "django"],
+  "timezone": "browser",
+  "editable": true,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total DB Queries",
+      "description": "Total number of database queries executed",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(django_db_execute_total)",
+          "legendFormat": "Total Queries",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10000 },
+              { "color": "red", "value": 100000 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "DB Connections Opened",
+      "description": "Total new database connections created",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(django_db_new_connections_total)",
+          "legendFormat": "Connections",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 2000 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Avg Query Duration",
+      "description": "Average database query duration",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(django_db_query_duration_seconds_sum[5m]) / rate(django_db_query_duration_seconds_count[5m])",
+          "legendFormat": "Avg Duration",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.5 }
+            ]
+          },
+          "unit": "s"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Query Rate (qps)",
+      "description": "Current queries per second",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(django_db_execute_total[5m]))",
+          "legendFormat": "QPS",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 200 }
+            ]
+          },
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Database Query Rate",
+      "description": "Rate of SQL queries executed over time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "sum(rate(django_db_execute_total[5m]))",
+          "legendFormat": "Queries/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "palette-classic" },
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "New DB Connections Rate",
+      "description": "Rate of new database connections being opened",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "expr": "sum(rate(django_db_new_connections_total[5m]))",
+          "legendFormat": "New Connections/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "fixedColor": "orange", "mode": "fixed" },
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Query Duration (Percentiles)",
+      "description": "Database query latency at p50, p90, p95, and p99 percentiles",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(django_db_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.90, sum(rate(django_db_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p90",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(django_db_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(django_db_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "palette-classic" },
+          "unit": "s"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Average Query Duration",
+      "description": "Mean database query duration over time",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "rate(django_db_query_duration_seconds_sum[5m]) / rate(django_db_query_duration_seconds_count[5m])",
+          "legendFormat": "Avg Duration",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "red", "value": 0.5 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Query Duration Distribution (Heatmap-style)",
+      "description": "Query duration histogram buckets over time — shows distribution of query speeds",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum(rate(django_db_query_duration_seconds_bucket[5m])) by (le)",
+          "legendFormat": "≤ {{le}}s",
+          "refId": "A",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": { "mode": "normal", "group": "A" },
+            "lineWidth": 0,
+            "pointSize": 5,
+            "showPoints": "never"
+          },
+          "color": { "mode": "palette-classic" },
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Queries by View (Top 10 Slowest)",
+      "description": "Average query-related latency per Django view — helps identify slow endpoints",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "topk(10, sum(rate(django_http_requests_latency_seconds_by_view_method_sum[5m])) by (view) / sum(rate(django_http_requests_latency_seconds_by_view_method_count[5m])) by (view))",
+          "legendFormat": "{{view}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0,
+            "stacking": { "mode": "none" },
+            "showPoints": "never"
+          },
+          "color": { "mode": "palette-classic" },
+          "unit": "s"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Queries by View (Top 10 Most Frequent)",
+      "description": "Most frequently accessed Django views — proxy for DB-heavy endpoints",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "targets": [
+        {
+          "expr": "topk(10, sum(rate(django_http_requests_total_by_view_transport_method_total[5m])) by (view))",
+          "legendFormat": "{{view}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "palette-classic" },
+          "unit": "reqps"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "5xx Errors (Potential DB Issues)",
+      "description": "Server errors that often indicate database problems (connection failures, query timeouts)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "sum(rate(django_http_responses_total_by_status_total{status=~\"5..\"}[5m])) by (status)",
+          "legendFormat": "HTTP {{status}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "fixedColor": "red", "mode": "fixed" },
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 13,
+      "type": "gauge",
+      "title": "Query Duration P99",
+      "description": "99th percentile query duration — indicates worst-case query performance",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(django_db_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "orange", "value": 0.3 },
+              { "color": "red", "value": 0.5 }
+            ]
+          },
+          "min": 0,
+          "max": 1,
+          "unit": "s"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 14,
+      "type": "gauge",
+      "title": "Connection Rate",
+      "description": "Rate of new database connections — high rate may indicate connection pooling issues",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 36 },
+      "targets": [
+        {
+          "expr": "sum(rate(django_db_new_connections_total[5m]))",
+          "legendFormat": "Conn/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          },
+          "min": 0,
+          "max": 30,
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "id": null
+}
