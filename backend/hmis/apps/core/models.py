@@ -1852,6 +1852,39 @@ class Notification(models.Model):
             self.save(update_fields=["is_read", "read_at"])
 
 
+class PushSubscription(models.Model):
+    """
+    Web Push subscription for browser push notifications.
+
+    Stores the Push API subscription info (endpoint, p256dh key, auth secret)
+    returned by PushManager.subscribe() in the browser. Used by pywebpush to
+    send notifications via the Web Push protocol (RFC 8030).
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+    )
+    endpoint = models.URLField(max_length=500, help_text="Push service endpoint URL")
+    p256dh = models.CharField(max_length=200, help_text="Client public key (base64url)")
+    auth = models.CharField(max_length=200, help_text="Auth secret (base64url)")
+    user_agent = models.CharField(max_length=300, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "endpoint"], name="unique_push_subscription"),
+        ]
+        verbose_name = "Push Subscription"
+        verbose_name_plural = "Push Subscriptions"
+
+    def __str__(self) -> str:
+        return f"{self.user.username}: {self.endpoint[:60]}..."
+
+
 class IdempotencyKey(models.Model):
     """
     Track idempotent API requests to prevent duplicate operations.

@@ -16,6 +16,33 @@ from hmis.apps.core.events import ClinicalEvents, CoreEvents, OrganizationEvents
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# Push Notification on High/Critical Notifications
+# ============================================================================
+
+
+@receiver(post_save, sender="core.Notification")
+def send_push_on_notification_create(sender, instance, created, **kwargs):
+    """Send a browser push notification for high/critical in-app notifications."""
+    if not created:
+        return
+    if instance.priority not in ("high", "critical"):
+        return
+
+    try:
+        from hmis.apps.core.services.push_service import send_push_to_user
+
+        send_push_to_user(
+            user=instance.user,
+            title=instance.title,
+            body=instance.message[:200],
+            url=instance.action_url or "",
+            tag=f"notification-{instance.pk}",
+        )
+    except Exception:
+        logger.exception("Failed to send push notification for Notification %s", instance.pk)
+
+
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
     """Log successful user login."""
