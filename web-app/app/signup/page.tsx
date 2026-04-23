@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -66,6 +67,7 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [submittedUsername, setSubmittedUsername] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Location data
   const [counties, setCounties] = useState<LocationOption[]>([]);
@@ -166,6 +168,7 @@ export default function SignupPage() {
     if (!formData.admin_password) errors.admin_password = 'Password is required';
     else if (formData.admin_password.length < 8) errors.admin_password = 'At least 8 characters';
     if (formData.admin_password !== formData.confirm_password) errors.confirm_password = 'Passwords do not match';
+    if (!agreedToTerms) errors.agree_to_terms = 'You must agree to the Terms of Service and Privacy Policy';
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -559,7 +562,48 @@ export default function SignupPage() {
                   </div>
                 </fieldset>
 
-                <Button type="submit" className="w-full h-11" disabled={isSubmitting}>
+                {/* ── Terms & Privacy ──────────────────────────────── */}
+                <div className="space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="agree_to_terms"
+                      checked={agreedToTerms}
+                      onCheckedChange={(checked) => {
+                        setAgreedToTerms(checked === true);
+                        if (validationErrors.agree_to_terms) {
+                          setValidationErrors(prev => ({ ...prev, agree_to_terms: '' }));
+                        }
+                      }}
+                      disabled={isSubmitting}
+                      className={`mt-0.5 ${validationErrors.agree_to_terms ? 'border-destructive' : ''}`}
+                    />
+                    <label htmlFor="agree_to_terms" className="text-sm leading-snug text-muted-foreground cursor-pointer">
+                      I agree to the{' '}
+                      <a
+                        href="https://vitora.nexora.africa/legal/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline hover:text-primary/80"
+                      >
+                        Terms of Service
+                      </a>{' '}
+                      and{' '}
+                      <a
+                        href="https://vitora.nexora.africa/legal/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline hover:text-primary/80"
+                      >
+                        Privacy Policy
+                      </a>
+                    </label>
+                  </div>
+                  {validationErrors.agree_to_terms && (
+                    <p className="text-xs text-destructive">{validationErrors.agree_to_terms}</p>
+                  )}
+                </div>
+
+                <Button type="submit" className="w-full h-11" disabled={isSubmitting || !agreedToTerms}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
