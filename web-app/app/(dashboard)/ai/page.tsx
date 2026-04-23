@@ -11,7 +11,7 @@
  */
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Trash2,
@@ -40,6 +40,7 @@ import {
   useAIClinicalChat,
   useAIClinicalAssist,
   useAIChatSessions,
+  useAIChatSession,
   useDeleteAIChatSession,
 } from '@/lib/hooks/use-ai';
 import type { AIChatMessage, AIChatSession } from '@/lib/types/ai';
@@ -151,9 +152,20 @@ export default function AIPage() {
   const chatMutation = useAIClinicalChat();
   const assistMutation = useAIClinicalAssist();
   const { data: sessionsData, isLoading: sessionsLoading } = useAIChatSessions();
+  const { data: sessionDetail } = useAIChatSession(activeSessionId);
   const deleteSession = useDeleteAIChatSession();
 
   const [sessionSheetOpen, setSessionSheetOpen] = useState(false);
+
+  // Load messages when a session is selected and its detail is fetched
+  useEffect(() => {
+    if (sessionDetail?.messages && activeSessionId) {
+      clearMessages();
+      for (const msg of sessionDetail.messages) {
+        addMessage(msg);
+      }
+    }
+  }, [sessionDetail, activeSessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle send message
   const handleSendMessage = useCallback(
