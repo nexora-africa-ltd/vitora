@@ -349,6 +349,8 @@ urlpatterns = [
     # OpenAPI schema & docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    # Prometheus metrics (scraped by Prometheus, not public)
+    path("", include("django_prometheus.urls")),
     # SMART on FHIR OAuth2 endpoints
     path("", include("hmis.apps.core.oauth.urls")),
     # FHIR R4 Resource endpoints (for IPS testing)

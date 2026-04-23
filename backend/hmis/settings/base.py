@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "oauth2_provider",  # SMART on FHIR OAuth2 server
     "drf_spectacular",  # OpenAPI schema generation
     "simple_history",  # Model version tracking for audit trail (DHA compliance)
+    "django_prometheus",  # Prometheus metrics export (/metrics)
     # Local apps
     "hmis.apps.core",
     "hmis.apps.patients",
@@ -94,6 +95,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -108,6 +110,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",  # Tracks request user for history
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "hmis.urls"

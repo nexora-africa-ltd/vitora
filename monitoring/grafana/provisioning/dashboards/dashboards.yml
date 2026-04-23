@@ -1,0 +1,16 @@
+# =============================================================================
+# Grafana — Auto-provision dashboard JSON files
+# =============================================================================
+apiVersion: 1
+
+providers:
+  - name: "Vitora HMIS"
+    orgId: 1
+    folder: "Vitora HMIS"
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

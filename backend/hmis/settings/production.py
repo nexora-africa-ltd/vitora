@@ -35,6 +35,8 @@ if DATABASE_URL:
             ssl_require=True,
         )
     }
+    # Wrap DB engine for Prometheus query metrics
+    DATABASES["default"]["ENGINE"] = "django_prometheus.db.backends.postgresql"
 else:
     # Fallback to individual env vars
     DATABASES = {
