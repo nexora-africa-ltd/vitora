@@ -687,8 +687,53 @@ function buildOrgChart(
       });
     }
 
-    // Connect root departments to their org (if only 1 org, connect all roots to it)
-    if (organizations.length === 1) {
+    // Connect root departments to facilities (inferred from staff primary_facility)
+    // or fall back to org if no facility can be inferred
+    if (hasFacilities) {
+      const facilityIds = new Set(facilities.map((f) => f.id));
+
+      // Build a map: departmentId → facilityId (by majority staff assignment)
+      const deptFacilityVotes = new Map<number, Map<number, number>>();
+      for (const staffMember of staff) {
+        if (!staffMember.primary_department || !staffMember.primary_facility) continue;
+        if (!facilityIds.has(staffMember.primary_facility)) continue;
+        const votes = deptFacilityVotes.get(staffMember.primary_department) ?? new Map<number, number>();
+        votes.set(staffMember.primary_facility, (votes.get(staffMember.primary_facility) ?? 0) + 1);
+        deptFacilityVotes.set(staffMember.primary_department, votes);
+      }
+
+      const deptToFacility = new Map<number, number>();
+      for (const [deptId, votes] of deptFacilityVotes) {
+        let bestFacility = 0;
+        let bestCount = 0;
+        for (const [facId, count] of votes) {
+          if (count > bestCount) {
+            bestFacility = facId;
+            bestCount = count;
+          }
+        }
+        if (bestFacility) deptToFacility.set(deptId, bestFacility);
+      }
+
+      // Default facility for departments with no staff: use first facility
+      const defaultFacilityId = facilities[0]?.id;
+
+      for (const rootId of rootIds) {
+        const inferredFacility = deptToFacility.get(rootId) ?? defaultFacilityId;
+        if (inferredFacility && facilityIds.has(inferredFacility)) {
+          edges.push({
+            id: `fac-dept-edge-${inferredFacility}-${rootId}`,
+            source: `facility-${inferredFacility}`,
+            target: `department-${rootId}`,
+            type: 'smoothstep',
+            animated: false,
+            markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
+            style: { strokeWidth: 1.5, stroke: '#10b981' },
+          });
+        }
+      }
+    } else if (organizations.length === 1) {
+      // No facilities loaded — fall back to connecting root depts to the org
       const firstOrg = organizations[0]!;
       const orgNodeId = `org-${firstOrg.id}`;
       for (const rootId of rootIds) {
