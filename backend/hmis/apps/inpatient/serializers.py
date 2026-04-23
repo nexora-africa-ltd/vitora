@@ -444,6 +444,9 @@ class DischargeSerializer(serializers.ModelSerializer):
     )
     pnc_clinic_visit = serializers.IntegerField(source="pnc_clinic_visit_id", read_only=True)
     pnc_appointment = serializers.IntegerField(source="pnc_appointment_id", read_only=True)
+    follow_up_appointment = serializers.IntegerField(
+        source="follow_up_appointment_id", read_only=True
+    )
     length_of_stay = serializers.ReadOnlyField()
     death_record_id = serializers.SerializerMethodField()
 
@@ -475,6 +478,7 @@ class DischargeSerializer(serializers.ModelSerializer):
             "pnc_clinic_visit",
             "pnc_appointment",
             "follow_up_date",
+            "follow_up_appointment",
             "follow_up_instructions",
             "referral_facility",
             "referral_reason",
@@ -490,6 +494,7 @@ class DischargeSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "maternity_continuity_status",
+            "follow_up_appointment",
             "created_at",
             "updated_at",
         ]
@@ -636,6 +641,69 @@ class DischargeSerializer(serializers.ModelSerializer):
             ]
         )
 
+    def _schedule_follow_up_appointment(self, discharge: Discharge) -> None:
+        """Create a follow-up Appointment when follow_up_date is set (non-maternity)."""
+        if not discharge.follow_up_date:
+            return
+        # Maternity discharges handle their own appointments via _apply_maternity_continuity
+        if discharge.admission.mch_registration_id:
+            return
+
+        import zoneinfo
+        from datetime import datetime, time, timedelta
+
+        from django.db.models import Q
+
+        from hmis.apps.scheduling.models import Appointment, Resource
+
+        # Find a suitable PLACE resource at this facility (prefer OPD/outpatient)
+        facility = discharge.admission.facility
+        resource = (
+            Resource.objects.filter(
+                facility=facility,
+                resource_type="PLACE",
+                is_active=True,
+            )
+            .filter(
+                Q(code__icontains="OPD")
+                | Q(name__icontains="outpatient")
+                | Q(name__icontains="consultation")
+            )
+            .first()
+        )
+        if resource is None:
+            resource = Resource.objects.filter(
+                facility=facility,
+                resource_type="PLACE",
+                is_active=True,
+            ).first()
+        if resource is None:
+            # No resource configured — store the date but skip appointment creation
+            return
+
+        tz = zoneinfo.ZoneInfo("Africa/Nairobi")
+        start_dt = datetime.combine(discharge.follow_up_date, time(8, 0), tzinfo=tz)
+        end_dt = start_dt + timedelta(minutes=30)
+
+        appointment = Appointment(
+            patient=discharge.admission.patient,
+            resource=resource,
+            facility=facility,
+            organization=discharge.admission.organization,
+            appointment_type="FOLLOW_UP",
+            scheduled_start=start_dt,
+            scheduled_end=end_dt,
+            reason=f"Post-discharge follow-up — {discharge.final_diagnosis_text or 'General'}",
+            notes=discharge.follow_up_instructions or "",
+            priority="ROUTINE",
+            status="CREATED",
+            created_by=discharge.discharged_by,
+        )
+        appointment.save()
+
+        discharge.follow_up_appointment = appointment
+        discharge.save(update_fields=["follow_up_appointment", "updated_at"])
+
     def create(self, validated_data):
         diagnoses_data = validated_data.pop("diagnoses", [])
         discharge = super().create(validated_data)
@@ -652,6 +720,7 @@ class DischargeSerializer(serializers.ModelSerializer):
             discharge.save(update_fields=["final_diagnosis", "final_diagnosis_text", "updated_at"])
 
         self._apply_maternity_continuity(discharge)
+        self._schedule_follow_up_appointment(discharge)
         return discharge
 
     def update(self, instance, validated_data):

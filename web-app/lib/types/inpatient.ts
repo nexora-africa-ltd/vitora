@@ -244,6 +244,7 @@ export interface Discharge {
   pnc_clinic_visit?: number | null;
   pnc_appointment?: number | null;
   follow_up_date?: string | null;
+  follow_up_appointment?: number | null;
   follow_up_instructions?: string;
   referral_facility?: string;
   referral_reason?: string;
