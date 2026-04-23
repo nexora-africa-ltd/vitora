@@ -350,6 +350,10 @@ export default function DischargePage() {
 
   // Check if all clearances are complete (automated from live department data)
   const allClearancesComplete = clearanceStatus?.all_cleared ?? false;
+  // Clearances are bypassed for non-standard discharges (AMA, deceased, absconded)
+  const CLEARANCE_BYPASS_TYPES: DischargeType[] = ['AGAINST_ADVICE', 'DECEASED', 'ABSCONDED'];
+  const clearanceRequired = !CLEARANCE_BYPASS_TYPES.includes(dischargeType);
+  const clearanceSatisfied = !clearanceRequired || allClearancesComplete;
   const requiresMaternityContinuityAction = !!admission?.mch_registration && ['NORMAL', 'TRANSFERRED'].includes(dischargeType);
   const requiresScheduledFollowUpDate = requiresMaternityContinuityAction && maternityContinuityAction === 'SCHEDULE_EARLY_PNC';
 
@@ -856,7 +860,7 @@ export default function DischargePage() {
       return;
     }
 
-    if (!allClearancesComplete) {
+    if (!clearanceSatisfied) {
       toast({
         title: 'Clearances Required',
         description: 'All department clearances must be completed before discharge',
@@ -1095,6 +1099,35 @@ export default function DischargePage() {
         />
       )}
 
+      {/* Discharge Type — positioned early so clearance logic reacts to the selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Discharge Type</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Select value={dischargeType} onValueChange={(v) => setDischargeType(v as DischargeType)}>
+              <SelectTrigger id="discharge-type" aria-label="Discharge Type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DISCHARGE_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!clearanceRequired && (
+              <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                Department clearances are bypassed for {DISCHARGE_TYPES.find((t) => t.value === dischargeType)?.label?.toLowerCase()} discharges.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Automated Department Clearances */}
       <ClearanceStatusPanel admissionId={admissionId} />
 
@@ -1146,23 +1179,6 @@ export default function DischargePage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Discharge Type */}
-          <div className="space-y-2">
-            <Label htmlFor="discharge-type">Discharge Type *</Label>
-            <Select value={dischargeType} onValueChange={(v) => setDischargeType(v as DischargeType)}>
-              <SelectTrigger id="discharge-type" aria-label="Discharge Type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DISCHARGE_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Discharge Diagnoses — Suggestions + Manual Add */}
           <div className="space-y-3">
             {/* Suggested diagnoses from admission / encounter / AI */}
@@ -1620,7 +1636,7 @@ export default function DischargePage() {
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={createDischarge.isPending || cdsEvaluate.isPending || !dischargeSummary || !patientInstructions || !allClearancesComplete || (requiresScheduledFollowUpDate && !followUpDate)}
+          disabled={createDischarge.isPending || cdsEvaluate.isPending || !dischargeSummary || !patientInstructions || !clearanceSatisfied || (requiresScheduledFollowUpDate && !followUpDate)}
           className="w-full sm:w-auto"
         >
           {cdsEvaluate.isPending ? (

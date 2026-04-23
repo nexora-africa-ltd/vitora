@@ -216,7 +216,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       discharge_date: new Date().toISOString(),
       length_of_stay_days: lengthOfStay,
       ward: admission.ward_name || '',
-      discharge_type: dischargeType === 'ROUTINE' || dischargeType === 'ABSCONDED' ? 'NORMAL' : dischargeType as ClinicalDocAdmissionContext['discharge_type'],
+      discharge_type: ({'ROUTINE': 'NORMAL', 'ABSCONDED': 'NORMAL', 'AGAINST_ADVICE': 'AMA', 'TRANSFERRED': 'TRANSFER', 'DECEASED': 'DEATH'} as Record<string, ClinicalDocAdmissionContext['discharge_type']>)[dischargeType] ?? dischargeType as ClinicalDocAdmissionContext['discharge_type'],
       medications_given: medicationsGiven.length > 0 ? medicationsGiven : undefined,
       discharge_medications: dischargeMedsStructured.length > 0 ? dischargeMedsStructured : undefined,
       key_investigations: keyInvestigations.length > 0 ? keyInvestigations : undefined,
