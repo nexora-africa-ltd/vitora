@@ -7,7 +7,7 @@
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,9 +27,7 @@ import {
   ScanLine,
   Image as ImageIcon,
   Eye,
-  Plus,
   SquareDashedTopSolid,
-  RefreshCw,
   ExternalLink,
 } from 'lucide-react';
 
@@ -44,7 +42,6 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
   const {
     data: ordersData,
     isLoading: ordersLoading,
-    refetch: refetchOrders,
   } = useQuery({
     queryKey: ['patient-imaging-orders', patientId],
     queryFn: () => imagingApi.listOrders({ patient: patientId, page_size: 10 }),
@@ -55,7 +52,6 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
   const {
     data: studiesData,
     isLoading: studiesLoading,
-    refetch: refetchStudies,
   } = useQuery({
     queryKey: ['patient-dicom-studies', patientId],
     queryFn: () => imagingApi.listStudies({ patient: patientId, page_size: 10 }),
@@ -66,34 +62,13 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
   const studies = studiesData?.results || [];
   const isLoading = ordersLoading || studiesLoading;
 
-  const handleRefresh = () => {
-    refetchOrders();
-    refetchStudies();
-  };
-
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ScanLine className="h-5 w-5" />
-            <CardTitle className="text-lg">Imaging</CardTitle>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button size="sm" asChild>
-              <Link href={`/imaging/orders/new?patient=${patientId}`}>
-                <Plus className="h-4 w-4 mr-1.5" />
-                Order
-              </Link>
-            </Button>
-          </div>
+        <div className="flex items-center gap-2">
+          <ScanLine className="h-5 w-5" />
+          <CardTitle className="text-lg">Imaging ({orders.length})</CardTitle>
         </div>
-        <CardDescription>
-          Imaging orders and DICOM studies for this patient
-        </CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -106,16 +81,6 @@ export function PatientImagingSection({ patientId }: PatientImagingSectionProps)
           <div className="text-center py-8">
             <ScanLine className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
             <p className="text-muted-foreground">No imaging records found</p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              asChild
-            >
-              <Link href={`/imaging/orders/new?patient=${patientId}`}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create First Imaging Order
-              </Link>
-            </Button>
           </div>
         ) : (
           <Tabs defaultValue="orders" className="space-y-4">
