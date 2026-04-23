@@ -167,6 +167,9 @@ export const SurgeryCaseListSchema = z.object({
   anesthesia_type: AnesthesiaTypeSchema,
   laterality: LateralitySchema,
   requested_at: z.string(),
+  diagnosis: z.string().optional().default(''),
+  encounter: z.number().nullable().optional(),
+  status_changed_at: z.string().nullable().optional(),
 });
 
 export const AISurgicalCaseSummarySchema = z.object({
