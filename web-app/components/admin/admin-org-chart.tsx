@@ -31,12 +31,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils/cn';
 import type { Department, StaffProfile } from '@/lib/types/rbac';
+import type { FacilityListItem } from '@/lib/types/facility';
 import type { OrganizationListItem } from '@/lib/types/organization';
 
 const DEPARTMENT_NODE_WIDTH = 260;
 const NODE_HEIGHT = 138;
 const STAFF_NODE_WIDTH = 220;
 const STAFF_NODE_HEIGHT = 112;
+const FACILITY_NODE_WIDTH = 260;
+const FACILITY_NODE_HEIGHT = 128;
 const HORIZONTAL_GAP = 84;
 const VERTICAL_GAP = 228;
 const STAFF_VERTICAL_GAP = 160;
@@ -77,7 +80,20 @@ type OrganizationNodeData = {
   isActive: boolean;
 };
 
-type OrgChartNodeData = DepartmentNodeData | StaffNodeData | OrganizationNodeData;
+type FacilityNodeData = {
+  kind: 'facility';
+  facilityId: number;
+  orgId: number;
+  name: string;
+  mflCode: string;
+  level: string;
+  ownership: string;
+  countyName: string;
+  isHeadquarters: boolean;
+  isActive: boolean;
+};
+
+type OrgChartNodeData = DepartmentNodeData | StaffNodeData | OrganizationNodeData | FacilityNodeData;
 
 type DepartmentDetail = {
   department: Department;
@@ -249,16 +265,62 @@ function OrganizationNode({ data, selected }: NodeProps<Node<OrganizationNodeDat
   );
 }
 
+function FacilityNode({ data, selected }: NodeProps<Node<FacilityNodeData>>) {
+  return (
+    <div
+      className={cn(
+        'w-[260px] rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur-sm transition-all',
+        selected
+          ? 'border-emerald-500 ring-2 ring-emerald-500/25'
+          : 'border-border/70 hover:border-emerald-500/40',
+        !data.isActive && 'opacity-75'
+      )}
+    >
+      <Handle type="target" position={Position.Top} className="!h-3 !w-3 !bg-emerald-500" />
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">{data.name}</p>
+            <p className="mt-1 truncate font-mono text-xs text-muted-foreground">MFL {data.mflCode}</p>
+          </div>
+          {data.isHeadquarters ? (
+            <Badge variant="default">HQ</Badge>
+          ) : (
+            <Badge variant={data.isActive ? 'secondary' : 'outline'}>
+              {data.isActive ? 'Active' : 'Inactive'}
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">Level {data.level}</Badge>
+          <Badge variant="secondary">{data.ownership}</Badge>
+        </div>
+
+        <div className="space-y-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{data.countyName}</span>
+          </div>
+        </div>
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !bg-emerald-500" />
+    </div>
+  );
+}
+
 const nodeTypes = {
   department: DepartmentNode,
   staff: StaffNode,
   organization: OrganizationNode,
+  facility: FacilityNode,
 };
 
 function buildOrgChart(
   departments: Department[],
   staff: StaffProfile[],
   organizations: OrganizationListItem[],
+  facilities: FacilityListItem[],
   focusedDepartmentId: number | null,
   showStaffLines: boolean
 ): ChartBuildResult {
@@ -530,48 +592,100 @@ function buildOrgChart(
     }
   }
 
-  // Add organization nodes at the top, shift everything else down
+  // Add organization + facility nodes at the top, shift everything else down
   const hasOrgs = organizations.length > 0;
+  const hasFacilities = facilities.length > 0;
+  const facilityYOffset = hasFacilities ? FACILITY_NODE_HEIGHT + VERTICAL_GAP : 0;
   const orgYOffset = hasOrgs ? ORG_NODE_HEIGHT + VERTICAL_GAP : 0;
+  const totalTopOffset = orgYOffset + facilityYOffset;
 
-  if (hasOrgs) {
-    // Shift all existing nodes down
+  if (hasOrgs || hasFacilities) {
+    // Shift all existing department/staff nodes down
     for (const node of nodes) {
-      node.position.y += orgYOffset;
+      node.position.y += totalTopOffset;
     }
 
-    // Place org nodes in a row at the top
-    const orgTotalWidth = organizations.length * (ORG_NODE_WIDTH + HORIZONTAL_GAP) - HORIZONTAL_GAP;
     const existingXValues = nodes.map((n) => n.position.x);
     const existingMinX = existingXValues.length > 0 ? Math.min(...existingXValues) : 40;
     const existingMaxX = existingXValues.length > 0 ? Math.max(...existingXValues) : 40;
     const existingCenterX = (existingMinX + existingMaxX) / 2;
-    const orgStartX = existingCenterX - orgTotalWidth / 2;
 
-    organizations.forEach((org, index) => {
-      const orgNodeId = `org-${org.id}`;
-      nodes.push({
-        id: orgNodeId,
-        type: 'organization',
-        position: {
-          x: orgStartX + index * (ORG_NODE_WIDTH + HORIZONTAL_GAP),
-          y: 40,
-        },
-        draggable: false,
-        selectable: true,
-        data: {
-          kind: 'organization',
-          orgId: org.id,
-          name: org.name,
-          slug: org.slug,
-          subscriptionTier: org.subscription_tier,
-          facilityCount: org.facility_count,
-          staffCount: org.staff_count,
-          countyName: org.county_name,
-          isActive: org.is_active,
-        },
-      } satisfies Node<OrgChartNodeData>);
-    });
+    // Place org nodes in a row at the top
+    if (hasOrgs) {
+      const orgTotalWidth = organizations.length * (ORG_NODE_WIDTH + HORIZONTAL_GAP) - HORIZONTAL_GAP;
+      const orgStartX = existingCenterX - orgTotalWidth / 2;
+
+      organizations.forEach((org, index) => {
+        const orgNodeId = `org-${org.id}`;
+        nodes.push({
+          id: orgNodeId,
+          type: 'organization',
+          position: {
+            x: orgStartX + index * (ORG_NODE_WIDTH + HORIZONTAL_GAP),
+            y: 40,
+          },
+          draggable: false,
+          selectable: true,
+          data: {
+            kind: 'organization',
+            orgId: org.id,
+            name: org.name,
+            slug: org.slug,
+            subscriptionTier: org.subscription_tier,
+            facilityCount: org.facility_count,
+            staffCount: org.staff_count,
+            countyName: org.county_name,
+            isActive: org.is_active,
+          },
+        } satisfies Node<OrgChartNodeData>);
+      });
+    }
+
+    // Place facility nodes between orgs and departments
+    if (hasFacilities) {
+      const facilityTotalWidth = facilities.length * (FACILITY_NODE_WIDTH + HORIZONTAL_GAP) - HORIZONTAL_GAP;
+      const facilityStartX = existingCenterX - facilityTotalWidth / 2;
+      const facilityY = 40 + orgYOffset;
+
+      facilities.forEach((facility, index) => {
+        const facilityNodeId = `facility-${facility.id}`;
+        nodes.push({
+          id: facilityNodeId,
+          type: 'facility',
+          position: {
+            x: facilityStartX + index * (FACILITY_NODE_WIDTH + HORIZONTAL_GAP),
+            y: facilityY,
+          },
+          draggable: false,
+          selectable: true,
+          data: {
+            kind: 'facility',
+            facilityId: facility.id,
+            orgId: facility.organization ?? 0,
+            name: facility.name,
+            mflCode: facility.mfl_code,
+            level: facility.level,
+            ownership: facility.ownership,
+            countyName: facility.county_name,
+            isHeadquarters: facility.is_headquarters,
+            isActive: facility.is_active,
+          },
+        } satisfies Node<OrgChartNodeData>);
+
+        // Connect facility to its organization
+        if (facility.organization) {
+          edges.push({
+            id: `org-fac-edge-${facility.organization}-${facility.id}`,
+            source: `org-${facility.organization}`,
+            target: facilityNodeId,
+            type: 'smoothstep',
+            animated: false,
+            markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
+            style: { strokeWidth: 1.5, stroke: '#10b981' },
+          });
+        }
+      });
+    }
 
     // Connect root departments to their org (if only 1 org, connect all roots to it)
     if (organizations.length === 1) {
@@ -628,10 +742,12 @@ export function AdminOrgChart({
   departments,
   staff,
   organizations = [],
+  facilities = [],
 }: {
   departments: Department[];
   staff: StaffProfile[];
   organizations?: OrganizationListItem[];
+  facilities?: FacilityListItem[];
 }) {
   const [showInactive, setShowInactive] = useState(false);
   const [showStaffLines, setShowStaffLines] = useState(true);
@@ -694,8 +810,8 @@ export function AdminOrgChart({
   }, [deferredSearchQuery, visibleDepartments, visibleStaff]);
 
   const chart = useMemo(
-    () => buildOrgChart(visibleDepartments, visibleStaff, organizations, selectedDepartmentId, showStaffLines),
-    [selectedDepartmentId, showStaffLines, visibleDepartments, visibleStaff, organizations]
+    () => buildOrgChart(visibleDepartments, visibleStaff, organizations, facilities, selectedDepartmentId, showStaffLines),
+    [selectedDepartmentId, showStaffLines, visibleDepartments, visibleStaff, organizations, facilities]
   );
 
   useEffect(() => {
@@ -883,6 +999,12 @@ export function AdminOrgChart({
             nodeColor={(node) => {
               if (node.data?.kind === 'staff') {
                 return '#0f766e';
+              }
+              if (node.data?.kind === 'facility') {
+                return '#10b981';
+              }
+              if (node.data?.kind === 'organization') {
+                return '#6366f1';
               }
               return node.data?.isActive ? '#0891b2' : '#94a3b8';
             }}
