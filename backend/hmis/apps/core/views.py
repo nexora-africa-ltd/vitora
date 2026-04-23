@@ -36,6 +36,7 @@ from .models import (
     Notification,
     Organization,
     OrgMembership,
+    PushSubscription,
     Role,
     StaffProfile,
     SubCounty,
@@ -64,6 +65,7 @@ from .serializers import (
     OrgMembershipCreateSerializer,
     OrgMembershipSerializer,
     PermissionSerializer,
+    PushSubscriptionSerializer,
     RevokeCertificateRequestSerializer,
     RoleSerializer,
     SignDocumentRequestSerializer,
@@ -1414,6 +1416,60 @@ class NotificationViewSet(viewsets.ModelViewSet):
         ).count()
 
         return Response({"unread_count": count})
+
+
+# ============================================================================
+# Web Push Subscription Endpoints
+# ============================================================================
+
+
+class PushSubscriptionViewSet(viewsets.ModelViewSet):
+    """
+    Manage Web Push subscriptions for the authenticated user.
+
+    POST   /api/push-subscriptions/          — Register a push subscription
+    GET    /api/push-subscriptions/           — List user's subscriptions
+    DELETE /api/push-subscriptions/{id}/      — Unsubscribe a specific subscription
+    GET    /api/push-subscriptions/vapid-key/ — Get the VAPID public key
+    """
+
+    serializer_class = PushSubscriptionSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "delete", "head", "options"]
+
+    def get_queryset(self):
+        return PushSubscription.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Upsert: if this endpoint already exists for this user, update it
+        endpoint = serializer.validated_data["endpoint"]
+        existing = PushSubscription.objects.filter(
+            user=self.request.user,
+            endpoint=endpoint,
+        ).first()
+        if existing:
+            existing.p256dh = serializer.validated_data["p256dh"]
+            existing.auth = serializer.validated_data["auth"]
+            existing.user_agent = self.request.META.get("HTTP_USER_AGENT", "")[:300]
+            existing.save(update_fields=["p256dh", "auth", "user_agent", "updated_at"])
+            # Attach the existing instance so the response serializes it
+            serializer.instance = existing
+        else:
+            serializer.save(
+                user=self.request.user,
+                user_agent=self.request.META.get("HTTP_USER_AGENT", "")[:300],
+            )
+
+    @action(detail=False, methods=["get"], url_path="vapid-key")
+    def vapid_key(self, request):
+        """Return the VAPID public key for client-side PushManager.subscribe()."""
+        key = django_settings.VAPID_PUBLIC_KEY
+        if not key:
+            return Response(
+                {"error": "Push notifications are not configured"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({"vapid_public_key": key})
 
 
 # ============================================================================

@@ -56,6 +56,7 @@ declare -A SECRETS=(
   ["metabase-embedding-secret"]="${METABASE_EMBEDDING_SECRET:-}"
   ["metabase-api-key"]="${METABASE_API_KEY:-}"
   ["resend-api-key"]="${RESEND_API_KEY:-}"
+  ["vapid-private-key"]="${VAPID_PRIVATE_KEY:-}"
 )
 
 SECRET_ARGS=()
@@ -162,6 +163,9 @@ az containerapp update \
     "POWERSYNC_URL=${POWERSYNC_URL:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
     "POWERSYNC_JWT_KID=${POWERSYNC_JWT_KID:-vitora-hmis-1}" \
     "POWERSYNC_JWT_AUDIENCE=${POWERSYNC_JWT_AUDIENCE:-https://69d7e1b30e377e689729cf08.powersync.journeyapps.com}" \
+    "VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}" \
+    "VAPID_PRIVATE_KEY=secretref:vapid-private-key" \
+    "VAPID_CLAIM_EMAIL=${VAPID_CLAIM_EMAIL:-mailto:info@nexora.africa}" \
   --output none
 
 echo ""

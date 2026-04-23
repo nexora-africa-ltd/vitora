@@ -34,6 +34,7 @@ from hmis.apps.core.views import (
     OrganizationViewSet,
     OrgMembershipViewSet,
     PermissionViewSet,
+    PushSubscriptionViewSet,
     RoleViewSet,
     StaffProfileViewSet,
     SubCountyViewSet,
@@ -144,6 +145,7 @@ router.register(r"permissions", PermissionViewSet, basename="permission")
 
 # Notification endpoints
 router.register(r"notifications", NotificationViewSet, basename="notification")
+router.register(r"push-subscriptions", PushSubscriptionViewSet, basename="pushsubscription")
 
 # Facility endpoint (Capability-Based Experience)
 router.register(r"facilities", FacilityViewSet, basename="facility")

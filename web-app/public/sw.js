@@ -87,3 +87,50 @@ function shouldCacheStaticAsset(request, url) {
     url.pathname === '/manifest.webmanifest'
   );
 }
+
+// ==========================================================================
+// Web Push Notifications
+// ==========================================================================
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let data;
+  try {
+    data = event.data.json();
+  } catch {
+    data = { title: 'Vitora HMIS', body: event.data.text() };
+  }
+
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/logo.png',
+    badge: '/favicon.png',
+    tag: data.tag || 'vitora-notification',
+    data: data.data || {},
+    vibrate: [200, 100, 200],
+    requireInteraction: true,
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title || 'Vitora HMIS', options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const url = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Focus existing window if one is open
+      for (const client of clientList) {
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      // Open new window
+      return clients.openWindow(url);
+    })
+  );
+});

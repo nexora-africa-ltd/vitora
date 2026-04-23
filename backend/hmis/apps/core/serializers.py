@@ -19,6 +19,7 @@ from .models import (
     Notification,
     Organization,
     OrgMembership,
+    PushSubscription,
     Role,
     StaffInvitation,
     StaffProfile,
@@ -695,6 +696,15 @@ class FeatureFlagSerializer(serializers.ModelSerializer):
         model = FeatureFlag
         fields = ["id", "name", "is_enabled", "description"]
         read_only_fields = fields
+
+
+class PushSubscriptionSerializer(serializers.ModelSerializer):
+    """Serializer for Web Push subscription registration."""
+
+    class Meta:
+        model = PushSubscription
+        fields = ["id", "endpoint", "p256dh", "auth", "created_at"]
+        read_only_fields = ["id", "created_at"]
 
 
 # ============================================================================

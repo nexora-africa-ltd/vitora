@@ -49,6 +49,7 @@ import {
   useMarkNotificationRead,
   useMarkAllRead,
 } from '@/lib/hooks/use-notifications';
+import { PushNotificationToggle } from './push-notification-toggle';
 import type { Notification, NotificationPriority } from '@/lib/types/notification';
 
 /** Get icon component based on notification type */
@@ -300,7 +301,7 @@ export function FloatingNotificationCenter() {
               )}
             </div>
 
-            {/* Filter */}
+            {/* Filter & Push Toggle */}
             <div className="flex items-center gap-3">
               <Select
                 value={priorityFilter}
@@ -338,6 +339,7 @@ export function FloatingNotificationCenter() {
                   </SelectItem>
                 </SelectContent>
               </Select>
+              <PushNotificationToggle className="bg-white/10 hover:bg-white/20 text-white border-white/20" />
             </div>
           </div>
 
