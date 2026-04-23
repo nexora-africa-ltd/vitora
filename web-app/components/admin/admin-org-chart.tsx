@@ -687,48 +687,35 @@ function buildOrgChart(
       });
     }
 
-    // Connect root departments to facilities (inferred from staff primary_facility)
-    // or fall back to org if no facility can be inferred
+    // Connect root departments to their facility using the real FK
+    // Fall back to org if no facility FK is set
     if (hasFacilities) {
       const facilityIds = new Set(facilities.map((f) => f.id));
 
-      // Build a map: departmentId → facilityId (by majority staff assignment)
-      const deptFacilityVotes = new Map<number, Map<number, number>>();
-      for (const staffMember of staff) {
-        if (!staffMember.primary_department || !staffMember.primary_facility) continue;
-        if (!facilityIds.has(staffMember.primary_facility)) continue;
-        const votes = deptFacilityVotes.get(staffMember.primary_department) ?? new Map<number, number>();
-        votes.set(staffMember.primary_facility, (votes.get(staffMember.primary_facility) ?? 0) + 1);
-        deptFacilityVotes.set(staffMember.primary_department, votes);
-      }
-
-      const deptToFacility = new Map<number, number>();
-      for (const [deptId, votes] of deptFacilityVotes) {
-        let bestFacility = 0;
-        let bestCount = 0;
-        for (const [facId, count] of votes) {
-          if (count > bestCount) {
-            bestFacility = facId;
-            bestCount = count;
-          }
-        }
-        if (bestFacility) deptToFacility.set(deptId, bestFacility);
-      }
-
-      // Default facility for departments with no staff: use first facility
-      const defaultFacilityId = facilities[0]?.id;
-
       for (const rootId of rootIds) {
-        const inferredFacility = deptToFacility.get(rootId) ?? defaultFacilityId;
-        if (inferredFacility && facilityIds.has(inferredFacility)) {
+        const dept = departmentsById.get(rootId);
+        const deptFacilityId = dept?.facility ?? null;
+
+        if (deptFacilityId && facilityIds.has(deptFacilityId)) {
           edges.push({
-            id: `fac-dept-edge-${inferredFacility}-${rootId}`,
-            source: `facility-${inferredFacility}`,
+            id: `fac-dept-edge-${deptFacilityId}-${rootId}`,
+            source: `facility-${deptFacilityId}`,
             target: `department-${rootId}`,
             type: 'smoothstep',
             animated: false,
             markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
             style: { strokeWidth: 1.5, stroke: '#10b981' },
+          });
+        } else if (organizations.length === 1) {
+          // Department has no facility FK — connect to org directly
+          edges.push({
+            id: `org-dept-edge-${organizations[0]!.id}-${rootId}`,
+            source: `org-${organizations[0]!.id}`,
+            target: `department-${rootId}`,
+            type: 'smoothstep',
+            animated: false,
+            markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
+            style: { strokeWidth: 1.5, stroke: '#6366f1', strokeDasharray: '6 4' },
           });
         }
       }

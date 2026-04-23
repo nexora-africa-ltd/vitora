@@ -612,16 +612,20 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
 # ============================================================================
 
 
-class DepartmentViewSet(viewsets.ModelViewSet):
+class DepartmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Department CRUD operations.
 
+    Scoped to the active facility via TenantScopedViewMixin.
     List/retrieve accessible to authenticated users.
     Create/update/delete restricted to admins.
     """
 
-    queryset = Department.objects.all()
+    queryset = Department.objects.select_related(
+        "parent", "head", "head__user", "facility", "organization"
+    ).all()
     serializer_class = DepartmentSerializer
+    tenant_scope = "facility"
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["department_type", "is_active", "parent"]
     search_fields = ["name", "code"]
@@ -638,7 +642,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Create department and record the admin audit trail."""
-        department = serializer.save()
+        department = serializer.save(**self.get_tenant_save_kwargs())
         AuditLog.log(
             action="department_created",
             user=self.request.user,
@@ -706,9 +710,9 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         """Return a non-paginated hierarchy payload for the admin org chart."""
         include_inactive = _query_param_truthy(request.query_params.get("include_inactive"))
 
-        departments = Department.objects.select_related("parent", "head", "head__user").order_by(
-            "name"
-        )
+        departments = Department.objects.select_related(
+            "parent", "head", "head__user", "facility", "organization"
+        ).order_by("name")
         if not include_inactive:
             departments = departments.filter(is_active=True)
         departments = list(departments)

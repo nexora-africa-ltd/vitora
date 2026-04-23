@@ -12,8 +12,6 @@ from django.db import models, transaction
 from rest_framework import status
 from rest_framework.response import Response
 
-from hmis.apps.core.models import IdempotencyKey
-
 
 class IdempotentCreateMixin:
     """
@@ -53,6 +51,8 @@ class IdempotentCreateMixin:
 
         if idempotency_key:
             # Check for existing idempotency record
+            from hmis.apps.core.models import IdempotencyKey
+
             existing = IdempotencyKey.get_or_none(key=idempotency_key, user=request.user)
 
             if existing:
@@ -68,7 +68,9 @@ class IdempotentCreateMixin:
 
             # Cache the response for idempotency
             if idempotency_key and response.status_code in (200, 201):
-                IdempotencyKey.objects.create(
+                from hmis.apps.core.models import IdempotencyKey as _IK
+
+                _IK.objects.create(
                     key=idempotency_key,
                     user=request.user,
                     resource_type=self.get_serializer_class().Meta.model.__name__,

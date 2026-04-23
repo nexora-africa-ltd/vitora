@@ -198,6 +198,10 @@ class DepartmentSerializer(serializers.ModelSerializer):
     department_type_display = serializers.CharField(
         source="get_department_type_display", read_only=True
     )
+    facility_name = serializers.CharField(source="facility.name", read_only=True, default=None)
+    organization_name = serializers.CharField(
+        source="organization.name", read_only=True, default=None
+    )
 
     class Meta:
         """Meta options for DepartmentSerializer."""
@@ -214,8 +218,12 @@ class DepartmentSerializer(serializers.ModelSerializer):
             "parent_name",
             "head",
             "head_name",
-            "staff_count",
+            "facility",
+            "facility_name",
+            "organization",
+            "organization_name",
             "is_active",
+            "staff_count",
             "created_at",
             "updated_at",
         ]

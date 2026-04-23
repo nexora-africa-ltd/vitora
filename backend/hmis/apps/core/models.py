@@ -15,6 +15,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.utils import timezone
 
+from hmis.apps.core.mixins import FacilityScopedModel
 from hmis.apps.core.upload_validators import validate_image_upload as _validate_image_upload
 
 
@@ -1064,12 +1065,15 @@ class Ward(models.Model):
 # ============================================================================
 
 
-class Department(models.Model):
+class Department(FacilityScopedModel):
     """
     Hospital department for staff organization and access control.
 
     Supports hierarchical structure for complex organizational charts.
     Each department can have a head (StaffProfile) and multiple staff members.
+
+    Scoped to a Facility (branch). The ``organization`` FK is auto-set from
+    the facility on save via :class:`FacilityScopedModel`.
     """
 
     DEPARTMENT_TYPES = [
@@ -1084,8 +1088,7 @@ class Department(models.Model):
 
     code = models.CharField(
         max_length=20,
-        unique=True,
-        help_text="Unique department code (e.g., OPD, IPD, LAB)",
+        help_text="Department code (e.g., OPD, IPD, LAB). Unique per facility.",
     )
     name = models.CharField(
         max_length=100,
@@ -1128,6 +1131,13 @@ class Department(models.Model):
         verbose_name = "Department"
         verbose_name_plural = "Departments"
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="unique_department_code_per_facility",
+                condition=models.Q(facility__isnull=False),
+            ),
+        ]
 
     def __str__(self) -> str:
         """Return department name."""
