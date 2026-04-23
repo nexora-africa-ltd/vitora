@@ -152,11 +152,17 @@ def sample_facility(db, sample_organization, sample_county, sample_sub_county):
 
 
 @pytest.fixture
-def sample_department(db):
+def sample_department(db, sample_facility):
     """Create a sample Department for testing."""
     from hmis.apps.core.models import Department
 
-    return Department.objects.create(name="General Outpatient", code="GOP", is_active=True)
+    return Department.objects.create(
+        name="General Outpatient",
+        code="GOP",
+        is_active=True,
+        facility=sample_facility,
+        organization=sample_facility.organization,
+    )
 
 
 @pytest.fixture

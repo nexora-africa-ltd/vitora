@@ -30,6 +30,10 @@ export interface Department {
   parent_name: string | null;
   head: number | null;
   head_name: string | null;
+  facility: number | null;
+  facility_name: string | null;
+  organization: number | null;
+  organization_name: string | null;
   is_active: boolean;
   staff_count: number;
   created_at: string;

@@ -251,14 +251,17 @@ class DepartmentAdmin(admin.ModelAdmin):
         "code",
         "name",
         "department_type",
+        "facility",
+        "organization",
         "parent",
         "get_staff_count",
         "is_active",
     ]
-    list_filter = ["department_type", "is_active", "parent"]
+    list_filter = ["department_type", "is_active", "facility", "organization", "parent"]
     search_fields = ["name", "code"]
     ordering = ["name"]
     readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["facility", "organization", "parent", "head"]
 
     fieldsets = (
         (
@@ -269,6 +272,15 @@ class DepartmentAdmin(admin.ModelAdmin):
                     "name",
                     "department_type",
                     "is_active",
+                )
+            },
+        ),
+        (
+            "Tenant",
+            {
+                "fields": (
+                    "facility",
+                    "organization",
                 )
             },
         ),

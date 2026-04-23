@@ -41,7 +41,7 @@ class TestDepartmentAPI:
         return api_client
 
     @pytest.fixture
-    def sample_department(self):
+    def sample_department(self, sample_facility):
         """Create sample department."""
         from hmis.apps.core.models import Department
 
@@ -49,6 +49,8 @@ class TestDepartmentAPI:
             code="OPD",
             name="Outpatient Department",
             department_type="CLINICAL",
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
 
     def test_list_departments_authenticated(self, authenticated_client, sample_department):
