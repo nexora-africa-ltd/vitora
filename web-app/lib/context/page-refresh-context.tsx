@@ -19,6 +19,8 @@ interface PageRefreshContextValue {
   refresh: () => Promise<void>;
   /** Report that data was fetched (called by queries) */
   reportFetch: () => void;
+  /** Monotonically increasing key that changes on each refresh (used by offline queries) */
+  refreshKey: number;
 }
 
 const PageRefreshContext = createContext<PageRefreshContextValue | null>(null);
@@ -27,6 +29,7 @@ export function PageRefreshProvider({ children }: { children: React.ReactNode })
   const queryClient = useQueryClient();
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Initialize from cached queries and listen to React Query events
   useEffect(() => {
@@ -68,6 +71,8 @@ export function PageRefreshProvider({ children }: { children: React.ReactNode })
     try {
       // Invalidate all active queries - this triggers refetch for queries with active observers
       await queryClient.invalidateQueries();
+      // Bump refreshKey to trigger PowerSync/offline query re-execution
+      setRefreshKey(k => k + 1);
       setLastFetchTime(new Date());
     } finally {
       setIsRefreshing(false);
@@ -79,7 +84,8 @@ export function PageRefreshProvider({ children }: { children: React.ReactNode })
     isRefreshing,
     refresh,
     reportFetch,
-  }), [lastFetchTime, isRefreshing, refresh, reportFetch]);
+    refreshKey,
+  }), [lastFetchTime, isRefreshing, refresh, reportFetch, refreshKey]);
 
   return (
     <PageRefreshContext.Provider value={value}>
@@ -97,6 +103,7 @@ export function usePageRefresh(): PageRefreshContextValue {
       isRefreshing: false,
       refresh: async () => {},
       reportFetch: () => {},
+      refreshKey: 0,
     };
   }
   return context;

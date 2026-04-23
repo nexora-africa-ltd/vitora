@@ -19,10 +19,11 @@
 
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useQuery, type QueryKey, type UseQueryOptions } from '@tanstack/react-query';
 import { usePowerSyncQuery } from './hooks';
 import { useSyncStatus } from '@/lib/context/sync-context';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 
 export interface UseOfflineQueryOptions<TRow extends Record<string, unknown>, TResult> {
   /** SQL query for the local PowerSync database */
@@ -79,6 +80,7 @@ export function useOfflineQuery<
   } = options;
 
   const { isReady, hasSynced } = useSyncStatus();
+  const { refreshKey } = usePageRefresh();
   const isEnabled = enabled !== false;
   // Only read from local SQLite when PowerSync has actually synced data.
   // If PowerSync is initialized but hasn't synced (auth failure, network issue),
@@ -98,6 +100,17 @@ export function useOfflineQuery<
     enabled: !useLocal && isEnabled,
     ...queryOptions,
   });
+
+  // --- Refresh PowerSync local queries when the global refresh button is pressed ---
+  const prevRefreshKey = useRef(refreshKey);
+  useEffect(() => {
+    if (refreshKey !== prevRefreshKey.current) {
+      prevRefreshKey.current = refreshKey;
+      if (useLocal) {
+        localResult.refresh();
+      }
+    }
+  }, [refreshKey, useLocal, localResult]);
 
   // --- Memoize local transform to maintain referential stability ---
   // Without this, transform() runs on every render and returns a new object,
