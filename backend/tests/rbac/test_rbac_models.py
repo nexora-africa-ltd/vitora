@@ -37,22 +37,26 @@ class TestDepartmentModel:
         assert department.created_at is not None
         assert department.updated_at is not None
 
-    def test_department_code_uniqueness(self):
-        """Should reject duplicate department codes."""
+    def test_department_code_uniqueness(self, sample_facility):
+        """Should reject duplicate department codes within the same facility."""
         from hmis.apps.core.models import Department
 
         Department.objects.create(
             code="LAB",
             name="Laboratory",
             department_type="LABORATORY",
+            facility=sample_facility,
+            organization=sample_facility.organization,
         )
 
-        # Attempting to create department with same code should fail
+        # Attempting to create department with same code in same facility should fail
         with pytest.raises(IntegrityError):
             Department.objects.create(
                 code="LAB",
                 name="Lab Copy",
                 department_type="LABORATORY",
+                facility=sample_facility,
+                organization=sample_facility.organization,
             )
 
     def test_department_parent_relationship(self):

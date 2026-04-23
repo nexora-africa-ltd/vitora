@@ -54,7 +54,10 @@ class TestProductionSettings:
         """Production database should be PostgreSQL."""
         from hmis.settings import production
 
-        assert production.DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql"
+        assert production.DATABASES["default"]["ENGINE"] in (
+            "django.db.backends.postgresql",
+            "django_prometheus.db.backends.postgresql",
+        )
 
     def test_database_settings_from_env(self):
         """Database settings should come from environment."""
