@@ -349,6 +349,10 @@ class LabOrder(FacilityScopedModel):
     # Billing
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_paid = models.BooleanField(default=False)
+    bill_patient = models.BooleanField(
+        default=True,
+        help_text="Whether to auto-bill the patient. Defaults to False for external lab orders.",
+    )
 
     # Cancellation tracking
     cancellation_reason = models.TextField(blank=True, help_text="Reason for cancellation")

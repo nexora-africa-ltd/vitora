@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,6 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast as sonnerToast } from 'sonner';
 import { Plus, Trash2, FlaskConical, Search, User, AlertTriangle } from 'lucide-react';
@@ -42,6 +43,7 @@ const orderSchema = z.object({
   external_lab: z.string().optional(),
   priority: z.enum(['ROUTINE', 'URGENT', 'STAT']).default('ROUTINE'),
   clinical_notes: z.string().optional(),
+  bill_patient: z.boolean().default(true),
   items: z.array(
     z.object({
       test: z.number().min(0, 'Test is required'),
@@ -159,6 +161,7 @@ export function LabOrderForm({
       order_type: 'IN_HOUSE',
       priority: prefillPriority || 'ROUTINE',
       clinical_notes: prefillClinicalNotes || '',
+      bill_patient: true,
       items: [],
     },
     mode: 'onChange', // Validate on change to catch issues early
@@ -175,6 +178,12 @@ export function LabOrderForm({
 
   const orderType = form.watch('order_type');
   const items = form.watch('items');
+
+  // Auto-toggle bill_patient when order_type changes
+  useEffect(() => {
+    form.setValue('bill_patient', orderType !== 'EXTERNAL');
+  }, [orderType, form]);
+
   // Calculate total, ensuring cost is treated as number
   const totalCost = items.reduce((sum, item) => {
     const cost = typeof item.cost === 'string' ? parseFloat(item.cost) : (item.cost || 0);
@@ -255,6 +264,7 @@ export function LabOrderForm({
         external_lab: data.external_lab,
         priority: data.priority as LabPriority,
         clinical_notes: data.clinical_notes,
+        bill_patient: data.bill_patient,
         items: data.items.map(item => ({
           test_code: item.test_code,
           special_instructions: item.special_instructions,
@@ -483,6 +493,29 @@ export function LabOrderForm({
                       <Input placeholder="Enter external lab name" {...field} />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {orderType === 'EXTERNAL' && (
+              <FormField
+                control={form.control}
+                name="bill_patient"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="flex items-center gap-2">
+                      <FormLabel className="font-normal cursor-pointer">
+                        Bill patient for these tests
+                      </FormLabel>
+                      <HelpPopover content="External lab orders are not billed by default. Enable this if the facility should charge the patient for these tests." />
+                    </div>
                   </FormItem>
                 )}
               />

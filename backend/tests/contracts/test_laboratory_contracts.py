@@ -214,6 +214,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "admission",
+                "bill_patient",
                 "clinical_notes",
                 "encounter",
                 "external_lab",
@@ -256,6 +257,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "admission",
+                "bill_patient",
                 "cancellation_reason",
                 "cancelled_at",
                 "cancelled_by",

@@ -509,6 +509,7 @@ export interface LabOrderCreateData {
   external_lab?: string;
   priority?: LabPriority;
   clinical_notes?: string;
+  bill_patient?: boolean;
   items: LabOrderItemCreateData[];
 }
 

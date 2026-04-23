@@ -409,6 +409,7 @@ export const LabOrderSchema = z.object({
   cancelled_at: z.string().nullable().optional(),
   items: z.array(LabOrderItemSchema),
   total_cost: z.number(),
+  bill_patient: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
 });

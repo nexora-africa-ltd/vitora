@@ -315,9 +315,17 @@ def handle_lab_order_billing(sender, instance, **kwargs):
     """Auto-bill lab tests when order status transitions to ORDERED.
 
     Delegates to BillingAgentService to add lab test line items
-    to the patient's draft invoice.
+    to the patient's draft invoice. Skipped when bill_patient is False
+    (default for external lab orders).
     """
     if instance.status != "ORDERED":
+        return
+
+    if not instance.bill_patient:
+        logger.info(
+            "Billing agent: skipping billing for lab order %s (bill_patient=False)",
+            instance.order_number,
+        )
         return
 
     try:
