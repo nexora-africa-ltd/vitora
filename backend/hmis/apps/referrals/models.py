@@ -422,7 +422,7 @@ class ClinicalReferral(HistoryMixin, TimeStampedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="incoming_referrals",
+        related_name="incoming_clinical_referrals",
         help_text="Explicit clinic destination for clinic-routed referrals.",
     )
     clinic_visit = models.ForeignKey(
