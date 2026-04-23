@@ -30,9 +30,18 @@ export const metadata: Metadata = {
     email: false,
   },
   icons: {
-    icon: '/favicon.png?v=2',
-    shortcut: '/favicon.png?v=2',
-    apple: '/favicon.png?v=2',
+    icon: [
+      {
+        url: '/favicon-light.png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/favicon-dark.png',
+        media: '(prefers-color-scheme: dark)',
+      },
+    ],
+    shortcut: '/favicon-light.png',
+    apple: '/favicon-light.png',
   },
 };
 
