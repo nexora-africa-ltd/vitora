@@ -33,8 +33,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDepartmentOrgChart, useRoles } from '@/lib/hooks/use-rbac';
 import { organizationsApi } from '@/lib/api/organizations';
+import { facilitiesApi } from '@/lib/api/facilities';
 import { useQuery } from '@tanstack/react-query';
 import type { OrganizationListItem } from '@/lib/types/organization';
+import type { FacilityListItem } from '@/lib/types/facility';
 
 const AdminOrgChart = dynamic(
   () => import('@/components/admin/admin-org-chart').then((mod) => mod.AdminOrgChart),
@@ -107,10 +109,21 @@ export default function AdminOverviewPage() {
     queryFn: () => organizationsApi.list({ page_size: 200 }),
   });
 
+  const {
+    data: facilitiesData,
+    isLoading: facilitiesLoading,
+    error: facilitiesError,
+    refetch: refetchFacilities,
+  } = useQuery({
+    queryKey: ['facilities', { page_size: 200 }],
+    queryFn: () => facilitiesApi.list({ page_size: 200 }),
+  });
+
   const departments = orgChartData?.departments ?? [];
   const roles = rolesData?.results ?? [];
   const staff = orgChartData?.staff ?? [];
   const organizations = (orgsData?.results ?? []) as OrganizationListItem[];
+  const allFacilities = (facilitiesData?.results ?? []) as FacilityListItem[];
 
   const totalOrgs = organizations.length;
   const activeOrgs = organizations.filter((o: OrganizationListItem) => o.is_active).length;
@@ -140,8 +153,8 @@ export default function AdminOverviewPage() {
   const licensedRoleShare = roles.length > 0 ? Math.round((licensedRoles / roles.length) * 100) : 0;
   const headAssignmentRate = departments.length > 0 ? Math.round((assignedHeads / departments.length) * 100) : 0;
 
-  const isLoading = orgChartLoading || rolesLoading || orgsLoading;
-  const hasError = orgChartError || rolesError || orgsError;
+  const isLoading = orgChartLoading || rolesLoading || orgsLoading || facilitiesLoading;
+  const hasError = orgChartError || rolesError || orgsError || facilitiesError;
 
   const attentionItems = [
     {
@@ -176,7 +189,7 @@ export default function AdminOverviewPage() {
 
   const handleRefresh = async () => {
     await refresh();
-    await Promise.all([refetchOrgChart(), refetchRoles(), refetchOrgs()]);
+    await Promise.all([refetchOrgChart(), refetchRoles(), refetchOrgs(), refetchFacilities()]);
   };
 
   return (
@@ -428,7 +441,7 @@ export default function AdminOverviewPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <AdminOrgChart departments={departments} staff={staff} organizations={organizations} />
+              <AdminOrgChart departments={departments} staff={staff} organizations={organizations} facilities={allFacilities} />
             </CardContent>
           </Card>
 
