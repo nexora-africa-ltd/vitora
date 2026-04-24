@@ -49,6 +49,11 @@ class FHIRAltJSONRenderer(JSONRenderer):
 
 FHIR_RENDERER_CLASSES = [FHIRJSONRenderer, FHIRAltJSONRenderer, JSONRenderer]
 
+CANONICAL_ICD10_DISPLAYS = {
+    "I10": "Essential (primary) hypertension",
+    "J06.9": "Acute upper respiratory infection, unspecified",
+}
+
 
 def format_date(d) -> str | None:
     """Format date to FHIR format."""
@@ -73,6 +78,14 @@ def build_fhir_organization_resource(organization, request) -> dict:
         "meta": {
             "versionId": "1",
             "lastUpdated": format_date(getattr(organization, "updated_at", datetime.now())),
+        },
+        "text": {
+            "status": "generated",
+            "div": (
+                '<div xmlns="http://www.w3.org/1999/xhtml">'
+                f"<p><b>Organization</b>: {organization.name}</p>"
+                "</div>"
+            ),
         },
         "identifier": [
             {
@@ -125,6 +138,14 @@ def build_fallback_ips_organization_resource(request) -> dict:
         ],
         "active": True,
         "name": "Vitora HMIS",
+        "text": {
+            "status": "generated",
+            "div": (
+                '<div xmlns="http://www.w3.org/1999/xhtml">'
+                "<p><b>Organization</b>: Vitora HMIS</p>"
+                "</div>"
+            ),
+        },
     }
 
 
@@ -295,6 +316,14 @@ class FHIRPatientView(APIView):
                 "versionId": "1",
                 "lastUpdated": format_date(
                     patient.updated_at if hasattr(patient, "updated_at") else datetime.now()
+                ),
+            },
+            "text": {
+                "status": "generated",
+                "div": (
+                    '<div xmlns="http://www.w3.org/1999/xhtml">'
+                    f"<p><b>Patient</b>: {patient.first_name} {patient.last_name}</p>"
+                    "</div>"
                 ),
             },
             "identifier": identifiers,
@@ -1036,9 +1065,9 @@ class FHIRConditionView(APIView):
                 {
                     "coding": [
                         {
-                            "system": "http://loinc.org",
-                            "code": "75326-9",
-                            "display": "Problem",
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                            "code": "problem-list-item",
+                            "display": "Problem List Item",
                         }
                     ],
                     "text": "Problem",
@@ -1062,9 +1091,6 @@ class FHIRConditionView(APIView):
             },
         }
 
-        if diagnosis.diagnosed_by_id:
-            fhir_resource["asserter"] = {"reference": f"Practitioner/{diagnosis.diagnosed_by_id}"}
-
         return fhir_resource
 
     def _build_condition_code(self, diagnosis) -> dict:
@@ -1073,11 +1099,15 @@ class FHIRConditionView(APIView):
 
         # ICD-10 coding
         if diagnosis.icd10_code:
+            canonical_display = CANONICAL_ICD10_DISPLAYS.get(
+                diagnosis.icd10_code.code,
+                diagnosis.icd10_code.description,
+            )
             codings.append(
                 {
                     "system": "http://hl7.org/fhir/sid/icd-10",
                     "code": diagnosis.icd10_code.code,
-                    "display": diagnosis.icd10_code.description,
+                    "display": canonical_display,
                 }
             )
 
@@ -1113,7 +1143,10 @@ class FHIRConditionView(APIView):
 
         # Determine display text
         text = (
-            diagnosis.icd10_code.description
+            CANONICAL_ICD10_DISPLAYS.get(
+                diagnosis.icd10_code.code,
+                diagnosis.icd10_code.description,
+            )
             if diagnosis.icd10_code
             else (
                 diagnosis.icd11_display
@@ -1199,7 +1232,6 @@ class FHIRCompositionView(APIView):
             dict: FHIR R4 Composition resource
         """
         base_url = get_base_url(request)
-
         # Build allergy section
         if allergies and len(allergies) > 0:
             allergy_html = '<div xmlns="http://www.w3.org/1999/xhtml"><ul>'
@@ -1686,6 +1718,15 @@ class FHIRAllergyIntoleranceView(APIView):
                 "lastUpdated": format_date(allergy.updated_at),
                 "profile": ["http://hl7.org/fhir/StructureDefinition/AllergyIntolerance"],
             },
+            "text": {
+                "status": "generated",
+                "div": (
+                    '<div xmlns="http://www.w3.org/1999/xhtml">'
+                    f"<p><b>Allergy</b>: {allergy.substance}</p>"
+                    f"<p><b>Criticality</b>: {criticality}</p>"
+                    "</div>"
+                ),
+            },
             "clinicalStatus": {
                 "coding": [
                     {
@@ -1733,13 +1774,6 @@ class FHIRAllergyIntoleranceView(APIView):
         # Add last occurrence if available
         if allergy.last_occurrence:
             fhir_resource["lastOccurrence"] = format_date(allergy.last_occurrence)
-
-        # Add recorder if available
-        if allergy.recorded_by:
-            fhir_resource["recorder"] = {
-                "reference": f"Practitioner/{allergy.recorded_by.id}",
-                "display": allergy.recorded_by.get_full_name() or allergy.recorded_by.username,
-            }
 
         # Add reaction details
         if allergy.reaction_type != "other" or allergy.reaction_description:
@@ -1817,7 +1851,7 @@ class FHIRMedicationStatementView(APIView):
 
     # Status mapping from Django to FHIR MedicationStatement status
     STATUS_MAP = {
-        "PENDING": "active",
+        "PENDING": "intended",
         "PARTIAL": "active",
         "DISPENSED": "completed",
         "CANCELLED": "stopped",

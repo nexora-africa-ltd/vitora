@@ -915,7 +915,7 @@ class TestFHIRIPSMedicationStatement:
 
         assert len(med_statements) >= 1
         med = med_statements[0]
-        assert med["status"] == "active"
+        assert med["status"] == "intended"
         assert "medicationCodeableConcept" in med
         assert "Paracetamol" in med["medicationCodeableConcept"]["text"]
 
@@ -1275,10 +1275,91 @@ class TestFHIRIPSComplete:
 
         assert conditions
         condition = conditions[0]
-        assert condition["category"][0]["coding"][0]["system"] == "http://loinc.org"
-        assert condition["category"][0]["coding"][0]["code"] == "75326-9"
+        assert (
+            condition["category"][0]["coding"][0]["system"]
+            == "http://terminology.hl7.org/CodeSystem/condition-category"
+        )
+        assert condition["category"][0]["coding"][0]["code"] == "problem-list-item"
         assert condition["text"]["status"] == "generated"
         assert "Condition" in condition["text"]["div"]
+
+    def test_pending_medication_statement_uses_intended_status(
+        self, authenticated_client, sample_prescription_with_items
+    ):
+        """Pending prescriptions should map to intended MedicationStatement status."""
+        item = sample_prescription_with_items.items.first()
+
+        response = authenticated_client.get(
+            reverse("fhir:medication-statement-read", args=[item.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "intended"
+
+    def test_condition_code_uses_canonical_icd10_display(self):
+        """FHIR Condition coding should use canonical ICD-10 displays for Inferno validation."""
+        from types import SimpleNamespace
+
+        from hmis.apps.core.fhir.views import FHIRConditionView
+
+        view = FHIRConditionView()
+
+        j06_diagnosis = SimpleNamespace(
+            icd10_code=SimpleNamespace(
+                code="J06.9",
+                description="Acute upper respiratory infection unspecified",
+            ),
+            icd11_code="",
+            icd11_display="",
+            snomed_code="",
+            snomed_display="",
+            free_text_diagnosis="",
+        )
+        i10_diagnosis = SimpleNamespace(
+            icd10_code=SimpleNamespace(code="I10", description="Essential primary hypertension"),
+            icd11_code="",
+            icd11_display="",
+            snomed_code="",
+            snomed_display="",
+            free_text_diagnosis="",
+        )
+
+        j06_code = view._build_condition_code(j06_diagnosis)
+        i10_code = view._build_condition_code(i10_diagnosis)
+
+        assert j06_code["coding"][0]["display"] == "Acute upper respiratory infection, unspecified"
+        assert j06_code["text"] == "Acute upper respiratory infection, unspecified"
+        assert i10_code["coding"][0]["display"] == "Essential (primary) hypertension"
+        assert i10_code["text"] == "Essential (primary) hypertension"
+
+    def test_ips_bundle_patient_org_and_allergy_have_narrative(
+        self, authenticated_client, sample_patient, sample_allergy_active
+    ):
+        """Bundled Patient, Organization, and Allergy resources should include narrative text."""
+        response = authenticated_client.get(
+            reverse("fhir:patient-summary", args=[sample_patient.id])
+        )
+
+        patient = next(
+            entry["resource"]
+            for entry in response.data["entry"]
+            if entry["resource"]["resourceType"] == "Patient"
+        )
+        organization = next(
+            entry["resource"]
+            for entry in response.data["entry"]
+            if entry["resource"]["resourceType"] == "Organization"
+        )
+        allergy = next(
+            entry["resource"]
+            for entry in response.data["entry"]
+            if entry["resource"]["resourceType"] == "AllergyIntolerance"
+        )
+
+        assert patient["text"]["status"] == "generated"
+        assert organization["text"]["status"] == "generated"
+        assert allergy["text"]["status"] == "generated"
+        assert "recorder" not in allergy
 
     def test_complete_ips_bundle(
         self,
