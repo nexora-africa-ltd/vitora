@@ -64,6 +64,48 @@ def get_base_url(request) -> str:
     return f"{request.scheme}://{request.get_host()}/fhir"
 
 
+def build_fhir_organization_resource(organization, request) -> dict:
+    """Convert a tenant Organization to a FHIR Organization resource."""
+    base_url = get_base_url(request)
+    fhir_resource = {
+        "resourceType": "Organization",
+        "id": str(organization.id),
+        "meta": {
+            "versionId": "1",
+            "lastUpdated": format_date(getattr(organization, "updated_at", datetime.now())),
+        },
+        "identifier": [
+            {
+                "use": "official",
+                "system": f"{base_url}/identifier/organization",
+                "value": organization.slug or str(organization.id),
+            }
+        ],
+        "active": organization.is_active,
+        "name": organization.name,
+    }
+
+    telecom = []
+    if organization.contact_phone:
+        telecom.append({"system": "phone", "value": organization.contact_phone, "use": "work"})
+    if organization.contact_email:
+        telecom.append({"system": "email", "value": organization.contact_email, "use": "work"})
+    if telecom:
+        fhir_resource["telecom"] = telecom
+
+    if organization.address:
+        fhir_resource["address"] = [
+            {
+                "use": "work",
+                "type": "both",
+                "text": organization.address,
+                "country": "Kenya",
+            }
+        ]
+
+    return fhir_resource
+
+
 class FHIRPatientView(APIView):
     """
     FHIR Patient resource endpoint.
@@ -917,15 +959,14 @@ class FHIRConditionView(APIView):
             "SECONDARY": {"code": "encounter-diagnosis", "display": "Encounter Diagnosis"},
             "CHRONIC": {"code": "problem-list-item", "display": "Problem List Item"},
         }
-        category = category_map.get(
-            diagnosis.diagnosis_type,
-            {"code": "encounter-diagnosis", "display": "Encounter Diagnosis"},
-        )
-
         fhir_resource = {
             "resourceType": "Condition",
             "id": str(diagnosis.id),
-            "meta": {"versionId": "1", "lastUpdated": format_date(datetime.now())},
+            "meta": {
+                "versionId": "1",
+                "lastUpdated": format_date(datetime.now()),
+                "profile": ["http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"],
+            },
             "clinicalStatus": {
                 "coding": [
                     {
@@ -949,16 +990,16 @@ class FHIRConditionView(APIView):
                     "coding": [
                         {
                             "system": "http://terminology.hl7.org/CodeSystem/condition-category",
-                            "code": category["code"],
-                            "display": category["display"],
+                            "code": "problem-list-item",
+                            "display": "Problem List Item",
                         }
                     ]
                 }
             ],
             "code": self._build_condition_code(diagnosis),
             "subject": {"reference": f"Patient/{diagnosis.encounter.patient.id}"},
-            "encounter": {"reference": f"Encounter/{diagnosis.encounter.id}"},
             "recordedDate": format_date(diagnosis.encounter.encounter_date),
+            "onsetDateTime": format_date(diagnosis.encounter.encounter_date),
         }
 
         return fhir_resource
@@ -1434,7 +1475,20 @@ class FHIRCompositionView(APIView):
             },
             "subject": {"reference": f"Patient/{patient.id}"},
             "date": format_date(datetime.now()),
-            "author": [{"reference": "Organization/1", "display": "Vitora HMIS"}],
+            "author": [
+                {
+                    "reference": (
+                        f"Organization/{patient.organization.id}"
+                        if getattr(patient, "organization", None)
+                        else "Organization/vitora-hmis"
+                    ),
+                    "display": (
+                        patient.organization.name
+                        if getattr(patient, "organization", None)
+                        else "Vitora HMIS"
+                    ),
+                }
+            ],
             "title": f"International Patient Summary for {patient.first_name} {patient.last_name}",
             "section": sections,
         }
@@ -1767,33 +1821,53 @@ class FHIRMedicationStatementView(APIView):
 
         # Add route if available
         if item.route:
-            fhir_resource["dosage"][0]["route"] = {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "display": item.route,
-                    }
-                ],
-                "text": item.route,
+            route_map = {
+                "oral": {
+                    "system": "http://snomed.info/sct",
+                    "code": "26643006",
+                    "display": "Oral route",
+                },
+                "po": {
+                    "system": "http://snomed.info/sct",
+                    "code": "26643006",
+                    "display": "Oral route",
+                },
+                "iv": {
+                    "system": "http://snomed.info/sct",
+                    "code": "47625008",
+                    "display": "Intravenous route",
+                },
+                "im": {
+                    "system": "http://snomed.info/sct",
+                    "code": "78421000",
+                    "display": "Intramuscular route",
+                },
+                "id": {
+                    "system": "http://snomed.info/sct",
+                    "code": "372464004",
+                    "display": "Intradermal route",
+                },
+                "sc": {
+                    "system": "http://snomed.info/sct",
+                    "code": "34206005",
+                    "display": "Subcutaneous route",
+                },
+                "subcutaneous": {
+                    "system": "http://snomed.info/sct",
+                    "code": "34206005",
+                    "display": "Subcutaneous route",
+                },
             }
+            route_coding = route_map.get(item.route.strip().lower())
+            fhir_resource["dosage"][0]["route"] = (
+                {"coding": [route_coding], "text": item.route}
+                if route_coding
+                else {"text": item.route}
+            )
 
         # Add instructions as patientInstruction
         if item.instructions:
             fhir_resource["dosage"][0]["patientInstruction"] = item.instructions
-
-        # Add prescriber
-        if prescription.prescribed_by:
-            fhir_resource["informationSource"] = {
-                "reference": f"Practitioner/{prescription.prescribed_by.id}",
-                "display": prescription.prescribed_by.get_full_name()
-                or prescription.prescribed_by.username,
-            }
-
-        # Add encounter context if available
-        if prescription.encounter:
-            fhir_resource["context"] = {
-                "reference": f"Encounter/{prescription.encounter.id}",
-            }
 
         # Add KEML code if available (Kenya Essential Medicines List)
         if drug.keml_code:
@@ -2970,6 +3044,27 @@ class FHIRPatientSummaryView(APIView):
             if problem_section:
                 problem_section.pop("emptyReason", None)
                 problem_section["entry"] = [{"reference": f"Condition/{d.id}"} for d in diagnoses]
+                problem_items = [
+                    diagnosis.icd10_code.description
+                    if diagnosis.icd10_code
+                    else diagnosis.free_text_diagnosis or diagnosis.notes or "Unknown"
+                    for diagnosis in diagnoses
+                ]
+                problem_section["text"] = {
+                    "status": "generated",
+                    "div": '<div xmlns="http://www.w3.org/1999/xhtml"><ul>'
+                    + "".join(f"<li>{item}</li>" for item in problem_items)
+                    + "</ul></div>",
+                }
+
+        organization_entries = []
+        if getattr(patient, "organization", None):
+            organization_entries.append(
+                {
+                    "fullUrl": f"{base_url}/Organization/{patient.organization.id}",
+                    "resource": build_fhir_organization_resource(patient.organization, request),
+                }
+            )
 
         # Build the IPS Bundle
         ips_bundle = {
@@ -2989,6 +3084,7 @@ class FHIRPatientSummaryView(APIView):
                 {"fullUrl": f"{base_url}/Composition/{patient.id}", "resource": fhir_composition},
                 {"fullUrl": f"{base_url}/Patient/{patient.id}", "resource": fhir_patient},
             ]
+            + organization_entries
             + condition_entries
             + allergy_entries
             + medication_entries
