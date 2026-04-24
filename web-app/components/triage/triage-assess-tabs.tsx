@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useTriageAssessStore, getSectionStatus } from '@/lib/stores/triage-assess-store';
+import { useTriageAssessHistoryAvailability } from '@/lib/hooks/use-triage-assess-history-availability';
 import type { TriageAssessSession } from '@/lib/stores/triage-assess-store';
 import { Badge } from '@/components/ui/badge';
 
@@ -92,17 +93,20 @@ export function TriageAssessTabs() {
 
   const patientId = params.patientId as string;
   const encounterId = params.encounterId as string;
+  const patientIdNum = parseInt(patientId, 10);
   const encounterIdNum = parseInt(encounterId, 10);
+  const { showHistoryStep } = useTriageAssessHistoryAvailability(patientIdNum, encounterIdNum);
 
   const completion = getSectionCompletion(encounterIdNum);
   const session = getSession(encounterIdNum);
+  const visibleTabs = showHistoryStep ? TABS : TABS.filter((tab) => tab.id !== 'history');
 
   // Base path for tab links
   const basePath = `/triage/assess/${patientId}/${encounterId}`;
 
   // Determine active tab from pathname
   const getActiveTab = () => {
-    for (const tab of TABS) {
+    for (const tab of visibleTabs) {
       if (pathname.endsWith(tab.path)) {
         return tab.id;
       }
@@ -122,7 +126,7 @@ export function TriageAssessTabs() {
         className="flex items-center gap-1 px-2 sm:px-4 overflow-x-auto"
         aria-label="Triage assessment tabs"
       >
-        {TABS.map((tab, index) => {
+        {visibleTabs.map((tab, index) => {
           const isActive = activeTab === tab.id;
           const href = tab.id === 'vitals' ? basePath : `${basePath}${tab.path}`;
           const isComplete = tab.sectionKey && completion?.[tab.sectionKey];

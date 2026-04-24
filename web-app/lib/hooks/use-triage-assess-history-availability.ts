@@ -8,8 +8,6 @@ function hasClinicalSnapshotContent(snapshot?: {
   current_medications?: string[];
   pending_results?: unknown[];
   alerts?: string[];
-  last_visit_date?: string | null;
-  last_visit_clinic?: string | null;
 } | null): boolean {
   if (!snapshot) return false;
 
@@ -19,8 +17,6 @@ function hasClinicalSnapshotContent(snapshot?: {
       || snapshot.current_medications?.length
       || snapshot.pending_results?.length
       || snapshot.alerts?.length
-      || snapshot.last_visit_date
-      || snapshot.last_visit_clinic
   );
 }
 
@@ -41,6 +37,6 @@ export function useTriageAssessHistoryAvailability(patientId: number, encounterI
     hasPastEncounters,
     hasSnapshot,
     isLoading,
-    showHistoryStep: isLoading || hasHistory,
+    showHistoryStep: hasHistory,
   };
 }
