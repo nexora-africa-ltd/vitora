@@ -604,6 +604,50 @@ class TestFHIRIPSBundle:
         assert composition["resourceType"] == "Composition"
         assert "section" in composition
 
+    def test_composition_document_operation_returns_ips_bundle(
+        self,
+        authenticated_client,
+        sample_patient,
+    ):
+        """Composition/$document should return a document bundle."""
+        url = reverse("fhir:composition-document", args=[sample_patient.id])
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
+        assert response.data["type"] == "document"
+        assert response.data["entry"][0]["resource"]["resourceType"] == "Composition"
+
+    def test_composition_read_accepts_fhir_json_accept_header(
+        self,
+        authenticated_client,
+        sample_patient,
+    ):
+        """Composition reads should negotiate application/fhir+json."""
+        url = reverse("fhir:composition-read", args=[sample_patient.id])
+        response = authenticated_client.get(url, HTTP_ACCEPT="application/fhir+json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"].startswith("application/fhir+json")
+
+    def test_patient_summary_allows_post_operation_invocation(
+        self,
+        authenticated_client,
+        sample_patient,
+    ):
+        """Patient/$summary should support POST operation invocation."""
+        url = reverse("fhir:patient-summary", args=[sample_patient.id])
+        response = authenticated_client.post(
+            url,
+            data={},
+            format="json",
+            HTTP_ACCEPT="application/fhir+json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
+        assert response.data["type"] == "document"
+
     def test_ips_bundle_contains_patient(self, authenticated_client, sample_patient):
         """Test IPS bundle contains Patient resource."""
         url = reverse("fhir:patient-summary", args=[sample_patient.id])
@@ -625,12 +669,29 @@ class TestFHIRIPSBundle:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data["resourceType"] == "OperationOutcome"
 
-    def test_ips_bundle_requires_authentication(self, api_client, sample_patient):
-        """Test IPS endpoint requires authentication."""
+    def test_ips_bundle_allows_unauthenticated_access(self, api_client, sample_patient):
+        """IPS summary should be callable without auth for Inferno IPS tests."""
         url = reverse("fhir:patient-summary", args=[sample_patient.id])
         response = api_client.get(url)
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
+
+    def test_composition_read_allows_unauthenticated_access(self, api_client, sample_patient):
+        """Composition read should be callable without auth for Inferno IPS tests."""
+        url = reverse("fhir:composition-read", args=[sample_patient.id])
+        response = api_client.get(url, HTTP_ACCEPT="application/fhir+json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Composition"
+
+    def test_composition_document_allows_unauthenticated_access(self, api_client, sample_patient):
+        """Composition/$document should be callable without auth for Inferno IPS tests."""
+        url = reverse("fhir:composition-document", args=[sample_patient.id])
+        response = api_client.get(url, HTTP_ACCEPT="application/fhir+json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
 
 
 class TestFHIRObservation:

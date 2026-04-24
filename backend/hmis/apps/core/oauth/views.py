@@ -242,6 +242,13 @@ class CapabilityStatementView(APIView):
                     {"code": "delete"},
                     {"code": "history-instance"},
                 ],
+                "operation": [
+                    {
+                        "name": "summary",
+                        "definition": "http://hl7.org/fhir/OperationDefinition/Patient-summary",
+                        "documentation": "Generate an International Patient Summary bundle for a patient.",
+                    }
+                ],
                 "searchParam": [
                     {"name": "identifier", "type": "token"},
                     {"name": "name", "type": "string"},
@@ -332,10 +339,15 @@ class CapabilityStatementView(APIView):
                 ],
                 "operation": [
                     {
+                        "name": "summary",
+                        "definition": "http://hl7.org/fhir/OperationDefinition/Patient-summary",
+                        "documentation": "IPS summary operation exposed for Inferno compatibility.",
+                    },
+                    {
                         "name": "document",
                         "definition": "http://hl7.org/fhir/OperationDefinition/Composition-document",
                         "documentation": "Generate a fully bundled IPS document for a Composition.",
-                    }
+                    },
                 ],
                 "searchParam": [
                     {"name": "subject", "type": "reference"},
