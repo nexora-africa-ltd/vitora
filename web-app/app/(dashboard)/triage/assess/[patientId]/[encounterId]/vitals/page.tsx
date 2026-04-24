@@ -249,7 +249,9 @@ export default function TriageVitalsPage() {
   const bmiColor = bmiResult?.classification ? getBMIColorClass(bmiResult.classification) : '';
   const showNeonatalFields = patientAgeGroup ? isNeonateOrInfant(patientAgeGroup) : false;
   const showPediatricFields = patientAgeGroup ? isPediatric(patientAgeGroup) : false;
-  const isUnder2 = patientAgeGroup === 'neonate' || patientAgeGroup === 'infant' || patientAgeGroup === 'toddler';
+  const isUnder2 = patient
+    ? ((Date.now() - new Date(patient.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) < 2
+    : false;
 
   // Real-time vital evaluation for inline field color-coding (age-adjusted)
   const temperatureSeverity = evaluateVitalSeverity(watchedVitals.temperature, ageThresholds.temperature!, 'temperature');
