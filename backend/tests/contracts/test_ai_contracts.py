@@ -171,6 +171,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "admission_status",
                 "bed_number",
                 "chief_complaint",
+                "clinical_notes",
                 "condition_status",
                 "diet",
                 "length_of_stay_days",
@@ -605,6 +606,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "chief_complaint",
+                "clinical_notes",
                 "examination_findings",
                 "hpi",
                 "vitals",
