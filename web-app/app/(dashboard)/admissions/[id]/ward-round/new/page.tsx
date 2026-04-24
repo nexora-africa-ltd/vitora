@@ -82,9 +82,6 @@ export default function NewWardRoundPage() {
       : 'WARD_ROUND'
   );
 
-  // Clinical Notes (for E2E test compatibility)
-  const [clinicalNotes, setClinicalNotes] = useState('');
-
   // SOAP Notes
   const [subjective, setSubjective] = useState('');
   const [objective, setObjective] = useState('');
@@ -226,22 +223,23 @@ export default function NewWardRoundPage() {
     };
   }, [setQuickActions, WARD_ROUND_QUICK_ACTIONS]);
 
-  // Validation: Either clinical notes OR all SOAP fields must be filled (SHA/FHIR compliance)
-  const hasSOAPNotes = subjective.trim() && objective.trim() && assessment.trim() && plan.trim();
-  const hasClinicalNotes = clinicalNotes.trim();
-  const hasNotes = hasSOAPNotes || hasClinicalNotes;
+  const hasSubjective = subjective.trim().length > 0;
+  const hasObjective = objective.trim().length > 0;
+  const hasAssessment = assessment.trim().length > 0;
+  const hasPlan = plan.trim().length > 0;
+  const hasSOAPNotes = hasSubjective && hasObjective && hasAssessment && hasPlan;
 
   // Compute validation errors
   const validationErrors = useMemo(() => {
     const errors: string[] = [];
-    if (!hasNotes) {
-      errors.push('Clinical Notes OR all SOAP fields (Subjective, Objective, Assessment, Plan) are required');
+    if (!hasSOAPNotes) {
+      errors.push('All SOAP fields (Subjective, Objective, Assessment, Plan) are required');
     }
     if (!user?.id) {
       errors.push('User not authenticated');
     }
     return errors;
-  }, [hasNotes, user?.id]);
+  }, [hasSOAPNotes, user?.id]);
 
   const isFormValid = validationErrors.length === 0;
 
@@ -270,11 +268,10 @@ export default function NewWardRoundPage() {
         review_type: reviewType,
         review_request: reviewRequestId ? parseInt(reviewRequestId) : undefined,
         condition_status: conditionStatus,
-        // Use clinical notes as fallback for SOAP if not provided
-        subjective: subjective.trim() || clinicalNotes.trim(),
-        objective: objective.trim() || 'See clinical notes',
-        assessment: assessment.trim() || 'See clinical notes',
-        plan: plan.trim() || 'See clinical notes',
+        subjective: subjective.trim(),
+        objective: objective.trim(),
+        assessment: assessment.trim(),
+        plan: plan.trim(),
         maternity_continuity_action: admission?.mch_registration ? maternityContinuityAction : undefined,
         maternity_continuity_notes: admission?.mch_registration ? maternityContinuityNotes.trim() || undefined : undefined,
         temperature: temperature ? parseFloat(temperature) : undefined,
@@ -531,37 +528,18 @@ export default function NewWardRoundPage() {
         </CardContent>
       </Card>
 
-      {/* Clinical Notes (Quick Entry) */}
-      <Card className={hasAttemptedSubmit && !hasNotes ? 'border-destructive' : ''}>
+      <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Stethoscope className="h-5 w-5" />
-            <CardTitle className="text-lg">Clinical Notes</CardTitle>
+            <CardTitle className="text-lg">Patient Condition</CardTitle>
             <span className="text-destructive">*</span>
           </div>
           <CardDescription>
-            Quick notes entry. <strong>Required</strong> if SOAP fields below are not filled.
+            Set the overall patient condition for this review. All SOAP fields below must also be completed before saving.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <RequiredLabel htmlFor="clinicalNotes">Clinical Notes</RequiredLabel>
-            <Textarea
-              id="clinicalNotes"
-              value={clinicalNotes}
-              onChange={(e) => setClinicalNotes(e.target.value)}
-              placeholder="Enter clinical observations, progress notes, and findings..."
-              rows={4}
-              className={hasAttemptedSubmit && !hasNotes ? 'border-destructive' : ''}
-            />
-            {hasAttemptedSubmit && !hasNotes && (
-              <p className="text-sm text-destructive">
-                Either Clinical Notes OR all SOAP fields are required
-              </p>
-            )}
-          </div>
-
-          {/* Condition Status */}
+        <CardContent>
           <div className="space-y-2">
             <RequiredLabel htmlFor="condition-status">Patient Condition</RequiredLabel>
             <Select value={conditionStatus} onValueChange={(v) => setConditionStatus(v as ConditionStatus)}>
@@ -581,7 +559,7 @@ export default function NewWardRoundPage() {
       </Card>
 
       {/* SOAP Format (Detailed) */}
-      <Card className={hasAttemptedSubmit && !hasNotes ? 'border-destructive' : ''}>
+      <Card className={hasAttemptedSubmit && !hasSOAPNotes ? 'border-destructive' : ''}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Stethoscope className="h-5 w-5" />
@@ -590,7 +568,7 @@ export default function NewWardRoundPage() {
           </div>
           <CardDescription>
             Structured clinical documentation following SHA/FHIR compliance standards.
-            <strong> Required</strong> if Clinical Notes above is not filled.
+            <strong> All four SOAP fields are mandatory.</strong>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -603,8 +581,9 @@ export default function NewWardRoundPage() {
               onChange={(e) => setSubjective(e.target.value)}
               placeholder="Patient's symptoms, complaints, and history..."
               rows={3}
-              className={hasAttemptedSubmit && !hasNotes && !subjective.trim() ? 'border-destructive' : ''}
+              className={hasAttemptedSubmit && !hasSubjective ? 'border-destructive' : ''}
             />
+            {hasAttemptedSubmit && !hasSubjective && <p className="text-sm text-destructive">Subjective is required.</p>}
           </div>
 
           {/* Objective */}
@@ -616,8 +595,9 @@ export default function NewWardRoundPage() {
               onChange={(e) => setObjective(e.target.value)}
               placeholder="Physical examination findings, vital signs, lab results..."
               rows={3}
-              className={hasAttemptedSubmit && !hasNotes && !objective.trim() ? 'border-destructive' : ''}
+              className={hasAttemptedSubmit && !hasObjective ? 'border-destructive' : ''}
             />
+            {hasAttemptedSubmit && !hasObjective && <p className="text-sm text-destructive">Objective is required.</p>}
           </div>
 
           {/* Assessment */}
@@ -629,8 +609,9 @@ export default function NewWardRoundPage() {
               onChange={(e) => setAssessment(e.target.value)}
               placeholder="Clinical assessment and diagnosis..."
               rows={3}
-              className={hasAttemptedSubmit && !hasNotes && !assessment.trim() ? 'border-destructive' : ''}
+              className={hasAttemptedSubmit && !hasAssessment ? 'border-destructive' : ''}
             />
+            {hasAttemptedSubmit && !hasAssessment && <p className="text-sm text-destructive">Assessment is required.</p>}
           </div>
 
           {/* Plan */}
@@ -642,8 +623,9 @@ export default function NewWardRoundPage() {
               onChange={(e) => setPlan(e.target.value)}
               placeholder="Treatment plan, orders, and follow-up actions..."
               rows={4}
-              className={hasAttemptedSubmit && !hasNotes && !plan.trim() ? 'border-destructive' : ''}
+              className={hasAttemptedSubmit && !hasPlan ? 'border-destructive' : ''}
             />
+            {hasAttemptedSubmit && !hasPlan && <p className="text-sm text-destructive">Plan is required.</p>}
           </div>
         </CardContent>
       </Card>

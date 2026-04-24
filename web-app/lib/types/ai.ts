@@ -72,6 +72,7 @@ export interface AIPatientContext {
 /** Encounter context for Clinical Assist */
 export interface AIEncounterContext {
   chief_complaint?: string;
+  clinical_notes?: string;
   vitals?: {
     spo2?: number;
     pulse?: number;
@@ -889,6 +890,7 @@ export interface ClinicalDocVitals {
 
 export interface ClinicalDocEncounterContext {
   chief_complaint?: string;
+  clinical_notes?: string;
   vitals?: ClinicalDocVitals;
   hpi?: string;
   examination_findings?: string;

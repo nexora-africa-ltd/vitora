@@ -332,6 +332,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "mch_registration",
                 "mch_registration_number",
                 "opd_encounter",
+                "source_encounter",
                 "patient",
                 "patient_age",
                 "patient_gender",

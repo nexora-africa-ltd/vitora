@@ -181,6 +181,35 @@ class TestAdmissionAPI:
         sample_bed.refresh_from_db()
         assert sample_bed.status == "OCCUPIED"
 
+    def test_create_admission_accepts_source_encounter_alias(
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        sample_inpatient_ward,
+        sample_bed,
+    ):
+        """Should accept source_encounter as an alias for opd_encounter."""
+        data = {
+            "patient": sample_patient.id,
+            "source_encounter": sample_encounter.id,
+            "admission_date": timezone.now().isoformat(),
+            "admitting_diagnosis": "J18.9",
+            "admitting_diagnosis_text": "Pneumonia, unspecified",
+            "admitting_officer": test_user.id,
+            "attending_doctor": test_user.id,
+            "ward": sample_inpatient_ward.id,
+            "bed": sample_bed.id,
+            "payer_type": "CASH",
+        }
+
+        response = authenticated_client.post("/api/inpatient/admissions/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["opd_encounter"] == sample_encounter.id
+        assert response.data["source_encounter"] == sample_encounter.id
+
     def test_retrieve_admission_with_length_of_stay(self, authenticated_client, sample_admission):
         """Should retrieve admission with computed length_of_stay."""
         response = authenticated_client.get(f"/api/inpatient/admissions/{sample_admission.id}/")

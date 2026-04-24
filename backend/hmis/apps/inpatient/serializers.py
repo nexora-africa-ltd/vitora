@@ -191,6 +191,11 @@ class AdmissionSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     patient_age = serializers.SerializerMethodField()
     patient_gender = serializers.SerializerMethodField()
+    source_encounter = serializers.IntegerField(
+        source="opd_encounter_id",
+        read_only=True,
+        help_text="Alias for opd_encounter used by some frontend admission flows.",
+    )
     clinical_context = serializers.SerializerMethodField(
         help_text="AI-ready clinical context: comorbidities, medications, allergies, recent lab results.",
     )
@@ -229,6 +234,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
             "patient_name",
             "patient_age",
             "patient_gender",
+            "source_encounter",
             "clinical_context",
             "opd_encounter",
             "mch_registration",
@@ -270,6 +276,28 @@ class AdmissionSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def to_internal_value(self, data):
+        source_encounter = data.get("source_encounter") if hasattr(data, "get") else None
+        opd_encounter = data.get("opd_encounter") if hasattr(data, "get") else None
+
+        has_source = source_encounter not in (None, "", "null")
+        has_opd = opd_encounter not in (None, "", "null")
+
+        if has_source and has_opd and str(source_encounter) != str(opd_encounter):
+            raise serializers.ValidationError(
+                {
+                    "source_encounter": (
+                        "source_encounter must match opd_encounter when both are provided."
+                    )
+                }
+            )
+
+        if has_source and not has_opd:
+            data = data.copy() if hasattr(data, "copy") else dict(data)
+            data["opd_encounter"] = source_encounter
+
+        return super().to_internal_value(data)
 
     def validate(self, attrs):
         patient = attrs.get("patient") or getattr(self.instance, "patient", None)
@@ -885,6 +913,31 @@ class WardRoundSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        placeholder_values = {"see clinical notes", "see notes", "refer to clinical notes"}
+        field_values = {
+            "subjective": attrs.get("subjective"),
+            "objective": attrs.get("objective"),
+            "assessment": attrs.get("assessment"),
+            "plan": attrs.get("plan"),
+        }
+        errors = {}
+
+        for field_name, value in field_values.items():
+            normalized = (value or "").strip()
+            if not normalized:
+                errors[field_name] = "This field is required."
+                continue
+            if normalized.lower() in placeholder_values:
+                errors[field_name] = "Enter the actual ward-round content for this field."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
 
     def get_patient_name(self, obj) -> str:
         """Get patient full name."""
