@@ -25,7 +25,7 @@ from datetime import date, datetime
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -1032,7 +1032,7 @@ class FHIRCompositionView(APIView):
     Used for IPS document structure.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     renderer_classes = FHIR_RENDERER_CLASSES
 
     @extend_schema(
@@ -2640,7 +2640,7 @@ class FHIRPatientSummaryView(APIView):
     - CarePlan resources (from treatment plans)
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     renderer_classes = FHIR_RENDERER_CLASSES
 
     @extend_schema(
@@ -3008,7 +3008,7 @@ class FHIRPatientSummaryView(APIView):
 class FHIRCompositionDocumentView(FHIRPatientSummaryView):
     """FHIR Composition $document operation endpoint."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
