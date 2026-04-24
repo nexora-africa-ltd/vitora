@@ -2,9 +2,10 @@
 
 > **FHIR R4 International Patient Summary (IPS) Bundle for Vitora HMIS**
 >
-> Version: 1.0
+> Version: 1.1
 > Implemented: February 23, 2026
-> Status: ✅ Complete
+> Updated: April 24, 2026
+> Status: ✅ Active
 
 ---
 
@@ -38,6 +39,13 @@ Generates a complete IPS Bundle for the specified patient containing:
 - **AllergyIntolerance** resources
 - **MedicationStatement** resources (from prescriptions)
 - **CarePlan** resources (from treatment plans)
+- **Observation** resources (laboratory, social history, pregnancy)
+- **Specimen** resources
+- **DiagnosticReport** resources
+- **Immunization** resources
+- **Procedure** resources
+- **ImagingStudy** resources
+- **Media** resources
 
 **Authentication**: Required (JWT Bearer token)
 
@@ -101,8 +109,18 @@ curl -X GET "https://api.vitora.health/fhir/Patient/123/$summary" \
 | `GET /fhir/CarePlan/{id}` | Read CarePlan (treatment plan) resource |
 | `GET /fhir/Composition/{id}` | Read Composition resource |
 | `GET /fhir/Practitioner/{id}` | Read Practitioner resource |
+| `GET /fhir/PractitionerRole/{id}` | Read PractitionerRole resource |
 | `GET /fhir/Organization/{id}` | Read Organization resource |
-| `GET /fhir/Observation/{id}` | Read Observation (vitals) resource |
+| `GET /fhir/Observation/{id}` | Read Observation resource (lab, vitals, social history, pregnancy) |
+| `GET /fhir/Medication/{id}` | Read Medication resource |
+| `GET /fhir/Specimen/{id}` | Read Specimen resource |
+| `GET /fhir/DiagnosticReport/{id}` | Read DiagnosticReport resource |
+| `GET /fhir/Immunization/{id}` | Read Immunization resource |
+| `GET /fhir/Procedure/{id}` | Read Procedure resource |
+| `GET /fhir/ImagingStudy/{id}` | Read ImagingStudy resource |
+| `GET /fhir/Media/{id}` | Read Media resource |
+| `GET /fhir/Device/{id}` | Read implant-backed Device resource |
+| `GET /fhir/DeviceUseStatement/{id}` | Read implant-backed DeviceUseStatement resource |
 
 ---
 
@@ -200,6 +218,49 @@ Included when the patient has active treatment plans.
 }
 ```
 
+### 5. Diagnostic Results (Conditional)
+
+**LOINC Code**: `30954-2`
+
+Included when the patient has laboratory results, diagnostic reports, specimens, imaging studies, or media.
+
+```json
+{
+  "title": "Diagnostic Results",
+  "entry": [
+    { "reference": "Observation/1" },
+    { "reference": "DiagnosticReport/1" },
+    { "reference": "Specimen/1" },
+    { "reference": "ImagingStudy/1" },
+    { "reference": "Media/1" }
+  ]
+}
+```
+
+### 6. Social History (Conditional)
+
+**LOINC Code**: `29762-2`
+
+Included when dedicated social-history observations exist.
+
+### 7. History of Pregnancy (Conditional)
+
+**LOINC Code**: `10162-6`
+
+Included when pregnancy-related observations exist.
+
+### 8. History of Immunizations (Conditional)
+
+**LOINC Code**: `11369-6`
+
+Included when immunization records exist.
+
+### 9. Procedure History (Conditional)
+
+**LOINC Code**: `47519-4`
+
+Included when completed or scheduled procedures exist.
+
 ---
 
 ## Resource Mappings
@@ -251,6 +312,40 @@ The IPS Bundle aggregates data from the following Django models:
 | Medications | `pharmacy.PrescriptionItem` | `prescription.status IN (PENDING, PARTIAL, DISPENSED)`, `is_cancelled=False` |
 | Conditions | `encounters.Diagnosis` | All diagnoses linked to patient encounters |
 | Plan of Care | `encounters.TreatmentPlan` | `status IN (ACTIVE, DRAFT)` |
+| Laboratory Results | `laboratory.LabResult` | `order_item.lab_order.patient = patient` |
+| Diagnostic Reports | `laboratory.DiagnosticReport` | `lab_order.patient = patient` |
+| Specimens | `laboratory.Specimen` | `lab_order.patient = patient` |
+| Social History | `encounters.SocialHistoryObservation` | `patient = patient` |
+| Pregnancy History | `encounters.PregnancyObservation` | `patient = patient` |
+| Immunizations | `immunizations.ImmunizationRecord` | `patient = patient` |
+| Procedures | `procedures.ProcedureOrder` | `patient = patient` |
+| Imaging | `imaging.DICOMStudy`, `imaging.DICOMInstance` | `patient = patient` |
+| Devices | `theatre.TheatreConsumable` | `is_implant=True`, via surgery case patient linkage |
+
+### Inferno Seed Data
+
+Use the management command below to create stable Inferno test IDs for the currently supported IPS-adjacent FHIR resources:
+
+```bash
+cd backend
+poetry run python manage.py seed_fhir_test_data
+```
+
+The command now prints IDs for:
+- Laboratory Observation
+- Alcohol use Observation
+- Tobacco use Observation
+- Pregnancy status Observation
+- Pregnancy expected delivery date Observation
+- Pregnancy outcome Observation
+- Immunization
+- Specimen
+- DiagnosticReport
+- Procedure
+- ImagingStudy
+- Media
+- Device
+- DeviceUseStatement
 
 ### Query Limits
 
@@ -259,6 +354,10 @@ To prevent oversized bundles:
 - Allergies: Up to 20
 - Prescriptions: Last 10 (all non-cancelled items included)
 - Treatment Plans: Last 5 active/draft
+- Laboratory results: Up to 20
+- Social history observations: Up to 10
+- Pregnancy observations: Up to 10
+- Diagnostic reports, immunizations, procedures, imaging studies, media: Up to 10 each
 
 ---
 
@@ -369,12 +468,15 @@ poetry run pytest tests/core/test_fhir_ips.py --cov=hmis.apps.core.fhir
 | Test Class | Tests | Description |
 |------------|-------|-------------|
 | `TestFHIRIPSBundle` | 5 | Bundle structure, composition, patient, auth |
+| `TestFHIRObservation` | 5 | Lab, social history, and pregnancy observations |
+| `TestFHIRAdditionalResources` | 10 | Standalone IPS-adjacent resources including Device and DeviceUseStatement |
 | `TestFHIRIPSMedicationStatement` | 5 | Medication inclusion, dosage, multiple meds |
 | `TestFHIRIPSCarePlan` | 6 | CarePlan inclusion, activities, referrals |
 | `TestFHIRIPSEmptySections` | 2 | Empty section handling |
 | `TestFHIRIPSAllergies` | 2 | Allergy integration |
-| `TestFHIRIPSComplete` | 3 | Complete bundle with all resources |
-| **Total** | **23** | |
+| `TestFHIRIPSComplete` | 4 | Complete bundle and expanded composition sections |
+| `TestSeedFHIRTestDataCommand` | 1 | Inferno seed coverage and output keys |
+| **Total** | **40** | |
 
 ### Test Fixtures
 
@@ -433,12 +535,11 @@ Returned when authentication is missing or invalid:
 
 The following enhancements are planned for future sprints:
 
-1. **Immunization Section** - Add vaccination records to IPS
-2. **Procedures Section** - Add surgical history
-3. **Results Section** - Add recent lab results (Observation resources)
-4. **Vital Signs Section** - Add recent vital measurements
-5. **IPS Document Generation** - PDF export of IPS summary
-6. **IPS Validation** - Integration with FHIR validator for conformance checking
+1. **Vital Signs Section** - Add recent encounter vitals into the summary bundle
+2. **Medication Resource Linking** - Add explicit `Medication` entries referenced from bundle medication statements
+3. **Richer Device Coverage** - Expand beyond theatre implants to other clinically relevant device sources when patient linkage is explicit
+4. **IPS Document Generation** - PDF export of IPS summary
+5. **IPS Validation** - Integration with FHIR validator for conformance checking
 
 ---
 
@@ -452,5 +553,5 @@ The following enhancements are planned for future sprints:
 
 ---
 
-**Last Updated**: February 23, 2026
+**Last Updated**: April 24, 2026
 **Maintainer**: Backend Team

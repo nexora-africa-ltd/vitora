@@ -43,6 +43,397 @@ def sample_drug(db):
 
 
 @pytest.fixture
+def sample_specimen(sample_lab_order, test_user):
+    """Create a sample specimen for FHIR tests."""
+    from django.utils import timezone
+
+    from hmis.apps.laboratory.models import Specimen
+
+    specimen = Specimen.objects.create(
+        barcode="FHIR-SPEC-001",
+        specimen_type="BLOOD",
+        lab_order=sample_lab_order,
+        collected_by=test_user,
+        collected_at=timezone.now(),
+        status="COLLECTED",
+    )
+    specimen.order_items.add(*sample_lab_order.items.all())
+    return specimen
+
+
+@pytest.fixture
+def sample_diagnostic_report(sample_lab_order, test_user):
+    """Create a sample diagnostic report for FHIR tests."""
+    from hmis.apps.laboratory.models import DiagnosticReport
+
+    return DiagnosticReport.objects.create(
+        lab_order=sample_lab_order,
+        issued_by=test_user,
+        status="FINAL",
+        conclusion="Routine chemistry panel within normal limits.",
+    )
+
+
+@pytest.fixture
+def anc_clinic(sample_facility, sample_organization):
+    """Create an ANC clinic for pregnancy-related FHIR tests."""
+    from hmis.apps.clinics.models import Clinic
+
+    return Clinic.objects.create(
+        name="FHIR ANC Clinic",
+        clinic_type="ANC",
+        code="FHIR-ANC-001",
+        status="ACTIVE",
+        facility=sample_facility,
+        organization=sample_organization,
+    )
+
+
+@pytest.fixture
+def sample_anc_enrollment(
+    anc_clinic,
+    sample_patient,
+    test_user,
+):
+    """Create an ANC enrollment with EDD data for FHIR tests."""
+    from hmis.apps.clinics.models import ClinicEnrollment
+
+    return ClinicEnrollment.objects.create(
+        clinic=anc_clinic,
+        patient=sample_patient,
+        enrollment_date=date.today(),
+        enrolled_by=test_user,
+        gravida=2,
+        para=1,
+        lmp=date.today() - timedelta(days=140),
+    )
+
+
+@pytest.fixture
+def sample_mch_registration(sample_patient, sample_anc_enrollment):
+    """Create an MCH registration for pregnancy-related FHIR tests."""
+    from hmis.apps.mch.models import MCHRegistration
+
+    return MCHRegistration.objects.create(
+        mother=sample_patient,
+        anc_enrollment=sample_anc_enrollment,
+        registration_date=date.today(),
+    )
+
+
+@pytest.fixture
+def sample_delivery(sample_mch_registration, test_user):
+    """Create a completed delivery for pregnancy-outcome FHIR tests."""
+    from hmis.apps.mch.models import Delivery
+
+    return Delivery.objects.create(
+        registration=sample_mch_registration,
+        delivery_date=date.today() - timedelta(days=30),
+        delivery_type="SVD",
+        delivery_outcome="LIVE_BIRTH",
+        status="COMPLETED",
+        delivered_by=test_user,
+        baby_gender="F",
+    )
+
+
+@pytest.fixture
+def sample_social_history_observation(sample_patient, sample_encounter, test_user):
+    """Create a dedicated social-history observation for FHIR tests."""
+    from hmis.apps.encounters.models import SocialHistoryObservation
+
+    return SocialHistoryObservation.objects.create(
+        patient=sample_patient,
+        encounter=sample_encounter,
+        observation_type="ALCOHOL_USE",
+        status="CURRENT",
+        value_text="Occasional alcohol use on weekends",
+        recorded_by=test_user,
+        effective_date=sample_encounter.encounter_date,
+    )
+
+
+@pytest.fixture
+def sample_tobacco_history_observation(sample_patient, sample_encounter, test_user):
+    """Create a tobacco-use social-history observation for FHIR tests."""
+    from hmis.apps.encounters.models import SocialHistoryObservation
+
+    return SocialHistoryObservation.objects.create(
+        patient=sample_patient,
+        encounter=sample_encounter,
+        observation_type="TOBACCO_USE",
+        status="FORMER",
+        value_text="Former smoker, stopped 2 years ago",
+        recorded_by=test_user,
+        effective_date=sample_encounter.encounter_date,
+    )
+
+
+@pytest.fixture
+def sample_pregnancy_status_observation(
+    sample_patient,
+    sample_encounter,
+    sample_mch_registration,
+    test_user,
+):
+    """Create a pregnancy-status observation for FHIR tests."""
+    from hmis.apps.encounters.models import PregnancyObservation
+
+    return PregnancyObservation.objects.create(
+        patient=sample_patient,
+        encounter=sample_encounter,
+        mch_registration=sample_mch_registration,
+        observation_type="PREGNANCY_STATUS",
+        status_value="PREGNANT",
+        recorded_by=test_user,
+        effective_date=sample_encounter.encounter_date,
+    )
+
+
+@pytest.fixture
+def sample_pregnancy_edd_observation(
+    sample_patient,
+    sample_encounter,
+    sample_mch_registration,
+    test_user,
+):
+    """Create a pregnancy EDD observation for FHIR tests."""
+    from hmis.apps.encounters.models import PregnancyObservation
+
+    return PregnancyObservation.objects.create(
+        patient=sample_patient,
+        encounter=sample_encounter,
+        mch_registration=sample_mch_registration,
+        observation_type="PREGNANCY_EXPECTED_DELIVERY_DATE",
+        value_date=sample_mch_registration.edd,
+        recorded_by=test_user,
+        effective_date=sample_encounter.encounter_date,
+    )
+
+
+@pytest.fixture
+def sample_pregnancy_outcome_observation(
+    sample_patient,
+    sample_encounter,
+    sample_mch_registration,
+    sample_delivery,
+    test_user,
+):
+    """Create a pregnancy outcome observation for FHIR tests."""
+    from hmis.apps.encounters.models import PregnancyObservation
+
+    return PregnancyObservation.objects.create(
+        patient=sample_patient,
+        encounter=sample_encounter,
+        mch_registration=sample_mch_registration,
+        delivery=sample_delivery,
+        observation_type="PREGNANCY_OUTCOME",
+        status_value="LIVE_BIRTH",
+        recorded_by=test_user,
+        effective_date=sample_delivery.delivery_date,
+    )
+
+
+@pytest.fixture
+def sample_vaccine_definition(db):
+    """Create a vaccine definition for FHIR tests."""
+    from hmis.apps.immunizations.models import VaccineDefinition
+
+    return VaccineDefinition.objects.create(
+        code="BCG-FHIR",
+        name="BCG Vaccine",
+        disease_target="Tuberculosis",
+    )
+
+
+@pytest.fixture
+def sample_immunization_record(
+    sample_patient,
+    sample_encounter,
+    test_user,
+    sample_vaccine_definition,
+    sample_organization,
+    sample_facility,
+):
+    """Create an immunization record for FHIR tests."""
+    from hmis.apps.immunizations.models import ImmunizationRecord
+
+    return ImmunizationRecord.objects.create(
+        patient=sample_patient,
+        encounter=sample_encounter,
+        vaccine=sample_vaccine_definition,
+        scheduled_date=date.today(),
+        administered_date=date.today(),
+        status="ADMINISTERED",
+        dose_number=1,
+        batch_number="BATCH-001",
+        site="LEFT_ARM",
+        administered_by=test_user,
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_procedure_catalog(sample_organization, sample_facility):
+    """Create a procedure catalog entry for FHIR tests."""
+    from hmis.apps.procedures.models import ProcedureCatalog
+
+    return ProcedureCatalog.objects.create(
+        code="PROC-FHIR-001",
+        name="Wound Debridement",
+        category="THERAPEUTIC",
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_procedure_order(
+    sample_patient,
+    sample_encounter,
+    test_user,
+    sample_procedure_catalog,
+    sample_organization,
+    sample_facility,
+):
+    """Create a procedure order for FHIR tests."""
+    from hmis.apps.procedures.models import ProcedureOrder
+
+    return ProcedureOrder.objects.create(
+        procedure=sample_procedure_catalog,
+        patient=sample_patient,
+        encounter=sample_encounter,
+        indication="Debride infected wound",
+        ordered_by=test_user,
+        status="COMPLETED",
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_surgical_procedure_catalog(sample_organization, sample_facility):
+    """Create a surgical procedure catalog entry for device-backed FHIR tests."""
+    from hmis.apps.procedures.models import ProcedureCatalog
+
+    return ProcedureCatalog.objects.create(
+        code="SURG-FHIR-001",
+        name="Hip Arthroplasty",
+        category="SURGICAL",
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_theatre(sample_organization, sample_facility):
+    """Create an operating theatre for device-backed FHIR tests."""
+    from hmis.apps.theatre.models import OperatingTheatre
+
+    return OperatingTheatre.objects.create(
+        code="FHIR-OT-01",
+        name="FHIR Operating Theatre",
+        theatre_type="ORTHO",
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+
+@pytest.fixture
+def sample_implant_consumable(
+    sample_patient,
+    sample_encounter,
+    test_user,
+    sample_organization,
+    sample_facility,
+    sample_theatre,
+    sample_surgical_procedure_catalog,
+    sample_drug,
+):
+    """Create an implant-backed theatre consumable for Device FHIR tests."""
+    from datetime import time
+
+    from hmis.apps.theatre.models import SurgeryCase, TheatreConsumable
+
+    surgery_case = SurgeryCase.objects.create(
+        patient=sample_patient,
+        encounter=sample_encounter,
+        primary_procedure=sample_surgical_procedure_catalog,
+        theatre=sample_theatre,
+        scheduled_date=date.today(),
+        scheduled_start_time=time(9, 0),
+        estimated_duration_minutes=120,
+        priority="ELECTIVE",
+        diagnosis="End-stage osteoarthritis of hip",
+        requesting_doctor=test_user,
+        organization=sample_organization,
+        facility=sample_facility,
+    )
+
+    return TheatreConsumable.objects.create(
+        surgery_case=surgery_case,
+        item=sample_drug,
+        quantity_used=1,
+        unit_cost="125000.00",
+        added_by=test_user,
+        organization=sample_organization,
+        facility=sample_facility,
+        is_implant=True,
+        implant_serial_number="IMPLANT-FHIR-001",
+        lot_number="LOT-FHIR-001",
+    )
+
+
+@pytest.fixture
+def sample_dicom_study(sample_patient, test_user):
+    """Create a DICOM study for FHIR tests."""
+    from hmis.apps.imaging.models import DICOMStudy
+
+    return DICOMStudy.objects.create(
+        study_instance_uid="1.2.840.113619.2.55.3.604688433.1234.1",
+        patient=sample_patient,
+        study_date=date.today(),
+        study_description="Chest X-Ray",
+        accession_number="ACC-FHIR-001",
+        modality="XR",
+        number_of_series=1,
+        number_of_instances=1,
+        uploaded_by=test_user,
+    )
+
+
+@pytest.fixture
+def sample_dicom_series(sample_dicom_study):
+    """Create a DICOM series for FHIR tests."""
+    from hmis.apps.imaging.models import DICOMSeries
+
+    return DICOMSeries.objects.create(
+        study=sample_dicom_study,
+        series_instance_uid="1.2.840.113619.2.55.3.604688433.1234.2",
+        series_number=1,
+        series_description="PA View",
+        modality="XR",
+        number_of_instances=1,
+    )
+
+
+@pytest.fixture
+def sample_dicom_instance(sample_dicom_series):
+    """Create a DICOM instance for FHIR tests."""
+    from hmis.apps.imaging.models import DICOMInstance
+
+    return DICOMInstance.objects.create(
+        series=sample_dicom_series,
+        sop_instance_uid="1.2.840.113619.2.55.3.604688433.1234.3",
+        sop_class_uid="1.2.840.10008.5.1.4.1.1.1",
+        instance_number=1,
+        file_path="dicom/test/chest-xray-1.dcm",
+        file_size=2048,
+    )
+
+
+@pytest.fixture
 def sample_drug_2(db):
     """Create a second sample drug for multiple medication tests."""
     from hmis.apps.pharmacy.models import Drug
@@ -240,6 +631,206 @@ class TestFHIRIPSBundle:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+class TestFHIRObservation:
+    """Tests for FHIR Observation endpoints."""
+
+    def test_lab_result_observation_endpoint(self, authenticated_client, sample_lab_result):
+        """Lab results should be exposed as valid FHIR Observation resources."""
+        url = reverse("fhir:observation-read", args=[sample_lab_result.id])
+        response = authenticated_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Observation"
+        assert response.data["id"] == str(sample_lab_result.id)
+        assert response.data["category"][0]["coding"][0]["code"] == "laboratory"
+        assert response.data["subject"]["reference"] == (
+            f"Patient/{sample_lab_result.order_item.lab_order.patient.id}"
+        )
+        assert response.data["code"]["text"] == sample_lab_result.order_item.test.name
+        assert response.data["valueQuantity"]["value"] == float(sample_lab_result.numeric_value)
+
+    def test_social_history_alcohol_observation_endpoint(
+        self,
+        authenticated_client,
+        sample_social_history_observation,
+    ):
+        response = authenticated_client.get(
+            reverse("fhir:observation-read", args=[sample_social_history_observation.fhir_id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Observation"
+        assert response.data["id"] == str(sample_social_history_observation.fhir_id)
+        assert response.data["category"][0]["coding"][0]["code"] == "social-history"
+        assert response.data["code"]["text"] == "Alcohol use"
+        assert response.data["valueCodeableConcept"]["text"] == "Current use"
+
+    def test_social_history_tobacco_observation_endpoint(
+        self,
+        authenticated_client,
+        sample_tobacco_history_observation,
+    ):
+        response = authenticated_client.get(
+            reverse("fhir:observation-read", args=[sample_tobacco_history_observation.fhir_id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Observation"
+        assert response.data["id"] == str(sample_tobacco_history_observation.fhir_id)
+        assert response.data["code"]["text"] == "Tobacco use"
+        assert response.data["valueCodeableConcept"]["text"] == "Former use"
+
+    def test_pregnancy_status_observation_endpoint(
+        self,
+        authenticated_client,
+        sample_pregnancy_status_observation,
+    ):
+        response = authenticated_client.get(
+            reverse("fhir:observation-read", args=[sample_pregnancy_status_observation.fhir_id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Observation"
+        assert response.data["id"] == str(sample_pregnancy_status_observation.fhir_id)
+        assert response.data["code"]["text"] == "Pregnancy status"
+        assert response.data["valueCodeableConcept"]["text"] == "Pregnant"
+
+    def test_pregnancy_edd_observation_endpoint(
+        self,
+        authenticated_client,
+        sample_pregnancy_edd_observation,
+    ):
+        response = authenticated_client.get(
+            reverse("fhir:observation-read", args=[sample_pregnancy_edd_observation.fhir_id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Observation"
+        assert response.data["id"] == str(sample_pregnancy_edd_observation.fhir_id)
+        assert response.data["code"]["text"] == "Estimated delivery date"
+        assert response.data["valueDateTime"].startswith(
+            sample_pregnancy_edd_observation.value_date.isoformat()
+        )
+
+    def test_pregnancy_outcome_observation_endpoint(
+        self,
+        authenticated_client,
+        sample_pregnancy_outcome_observation,
+    ):
+        response = authenticated_client.get(
+            reverse("fhir:observation-read", args=[sample_pregnancy_outcome_observation.fhir_id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Observation"
+        assert response.data["id"] == str(sample_pregnancy_outcome_observation.fhir_id)
+        assert response.data["code"]["text"] == "Pregnancy outcome"
+        assert response.data["valueCodeableConcept"]["text"] == "Live birth"
+
+
+class TestFHIRAdditionalResources:
+    """Tests for additional FHIR resources needed by Inferno input fields."""
+
+    def test_practitioner_role_endpoint(self, authenticated_client, test_staff_profile):
+        response = authenticated_client.get(
+            reverse("fhir:practitioner-role-read", args=[test_staff_profile.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "PractitionerRole"
+        assert response.data["id"] == str(test_staff_profile.id)
+
+    def test_medication_endpoint(self, authenticated_client, sample_drug):
+        response = authenticated_client.get(reverse("fhir:medication-read", args=[sample_drug.id]))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Medication"
+        assert response.data["id"] == str(sample_drug.id)
+
+    def test_specimen_endpoint(self, authenticated_client, sample_specimen):
+        response = authenticated_client.get(
+            reverse("fhir:specimen-read", args=[sample_specimen.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Specimen"
+        assert response.data["id"] == str(sample_specimen.id)
+
+    def test_diagnostic_report_endpoint(
+        self,
+        authenticated_client,
+        sample_lab_result,
+        sample_specimen,
+        sample_diagnostic_report,
+    ):
+        sample_lab_result.specimen = sample_specimen
+        sample_lab_result.save(update_fields=["specimen"])
+
+        response = authenticated_client.get(
+            reverse("fhir:diagnostic-report-read", args=[sample_diagnostic_report.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "DiagnosticReport"
+        assert response.data["id"] == str(sample_diagnostic_report.id)
+
+    def test_immunization_endpoint(self, authenticated_client, sample_immunization_record):
+        response = authenticated_client.get(
+            reverse("fhir:immunization-read", args=[sample_immunization_record.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Immunization"
+        assert response.data["id"] == str(sample_immunization_record.id)
+
+    def test_procedure_endpoint(self, authenticated_client, sample_procedure_order):
+        response = authenticated_client.get(
+            reverse("fhir:procedure-read", args=[sample_procedure_order.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Procedure"
+        assert response.data["id"] == str(sample_procedure_order.id)
+
+    def test_imaging_study_endpoint(self, authenticated_client, sample_dicom_study):
+        response = authenticated_client.get(
+            reverse("fhir:imaging-study-read", args=[sample_dicom_study.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "ImagingStudy"
+        assert response.data["id"] == str(sample_dicom_study.id)
+
+    def test_media_endpoint(self, authenticated_client, sample_dicom_instance):
+        response = authenticated_client.get(
+            reverse("fhir:media-read", args=[sample_dicom_instance.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Media"
+        assert response.data["id"] == str(sample_dicom_instance.id)
+
+    def test_device_endpoint(self, authenticated_client, sample_implant_consumable):
+        response = authenticated_client.get(
+            reverse("fhir:device-read", args=[sample_implant_consumable.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Device"
+        assert response.data["id"] == str(sample_implant_consumable.id)
+        assert response.data["serialNumber"] == sample_implant_consumable.implant_serial_number
+
+    def test_device_use_statement_endpoint(self, authenticated_client, sample_implant_consumable):
+        response = authenticated_client.get(
+            reverse("fhir:device-use-statement-read", args=[sample_implant_consumable.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "DeviceUseStatement"
+        assert response.data["id"] == str(sample_implant_consumable.id)
+        assert response.data["device"]["reference"] == f"Device/{sample_implant_consumable.id}"
 
 
 class TestFHIRIPSMedicationStatement:
@@ -518,8 +1109,23 @@ class TestFHIRIPSComplete:
         sample_prescription_with_items,
         sample_treatment_plan_full,
         sample_allergy_active,
+        sample_lab_result,
+        sample_specimen,
+        sample_diagnostic_report,
+        sample_immunization_record,
+        sample_procedure_order,
+        sample_dicom_study,
+        sample_dicom_instance,
+        sample_social_history_observation,
+        sample_tobacco_history_observation,
+        sample_pregnancy_status_observation,
+        sample_pregnancy_edd_observation,
+        sample_pregnancy_outcome_observation,
     ):
         """Test IPS bundle with all resource types populated."""
+        sample_lab_result.specimen = sample_specimen
+        sample_lab_result.save(update_fields=["specimen"])
+
         url = reverse("fhir:patient-summary", args=[sample_patient.id])
         response = authenticated_client.get(url)
 
@@ -534,12 +1140,92 @@ class TestFHIRIPSComplete:
         assert "MedicationStatement" in resource_types
         assert "CarePlan" in resource_types
         assert "AllergyIntolerance" in resource_types
+        assert "Observation" in resource_types
+        assert "Specimen" in resource_types
+        assert "DiagnosticReport" in resource_types
+        assert "Immunization" in resource_types
+        assert "Procedure" in resource_types
+        assert "ImagingStudy" in resource_types
+        assert "Media" in resource_types
 
         # Composition should be first
         assert response.data["entry"][0]["resource"]["resourceType"] == "Composition"
 
         # Patient should be second
         assert response.data["entry"][1]["resource"]["resourceType"] == "Patient"
+
+    def test_expanded_composition_sections(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_lab_result,
+        sample_specimen,
+        sample_diagnostic_report,
+        sample_immunization_record,
+        sample_procedure_order,
+        sample_dicom_study,
+        sample_dicom_instance,
+        sample_social_history_observation,
+        sample_tobacco_history_observation,
+        sample_pregnancy_status_observation,
+        sample_pregnancy_edd_observation,
+        sample_pregnancy_outcome_observation,
+    ):
+        """IPS Composition should reference the expanded clinical sections."""
+        sample_lab_result.specimen = sample_specimen
+        sample_lab_result.save(update_fields=["specimen"])
+
+        response = authenticated_client.get(
+            reverse("fhir:patient-summary", args=[sample_patient.id])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        composition = response.data["entry"][0]["resource"]
+        results_section = next(
+            (s for s in composition["section"] if s["title"] == "Diagnostic Results"), None
+        )
+        social_history_section = next(
+            (s for s in composition["section"] if s["title"] == "Social History"), None
+        )
+        pregnancy_section = next(
+            (s for s in composition["section"] if s["title"] == "History of Pregnancy"), None
+        )
+        immunization_section = next(
+            (s for s in composition["section"] if s["title"] == "History of Immunizations"),
+            None,
+        )
+        procedure_section = next(
+            (s for s in composition["section"] if s["title"] == "Procedure History"), None
+        )
+
+        assert results_section is not None
+        assert {entry["reference"] for entry in results_section["entry"]} >= {
+            f"Observation/{sample_lab_result.id}",
+            f"DiagnosticReport/{sample_diagnostic_report.id}",
+            f"Specimen/{sample_specimen.id}",
+            f"ImagingStudy/{sample_dicom_study.id}",
+            f"Media/{sample_dicom_instance.id}",
+        }
+        assert social_history_section is not None
+        assert {entry["reference"] for entry in social_history_section["entry"]} >= {
+            f"Observation/{sample_social_history_observation.fhir_id}",
+            f"Observation/{sample_tobacco_history_observation.fhir_id}",
+        }
+        assert pregnancy_section is not None
+        assert {entry["reference"] for entry in pregnancy_section["entry"]} >= {
+            f"Observation/{sample_pregnancy_status_observation.fhir_id}",
+            f"Observation/{sample_pregnancy_edd_observation.fhir_id}",
+            f"Observation/{sample_pregnancy_outcome_observation.fhir_id}",
+        }
+        assert immunization_section is not None
+        assert immunization_section["entry"] == [
+            {"reference": f"Immunization/{sample_immunization_record.id}"}
+        ]
+        assert procedure_section is not None
+        assert procedure_section["entry"] == [
+            {"reference": f"Procedure/{sample_procedure_order.id}"}
+        ]
 
     def test_ips_bundle_identifier(self, authenticated_client, sample_patient):
         """Test IPS bundle has proper identifier."""

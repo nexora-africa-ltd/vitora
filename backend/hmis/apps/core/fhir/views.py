@@ -370,6 +370,60 @@ class FHIROrganizationView(APIView):
         return fhir_resource
 
 
+class FHIRPractitionerRoleView(APIView):
+    """FHIR PractitionerRole resource endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 PractitionerRole resource by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Get a PractitionerRole resource by ID."""
+        from hmis.apps.core.models import StaffProfile
+
+        try:
+            staff = StaffProfile.objects.select_related("primary_role").get(pk=pk)
+        except StaffProfile.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"PractitionerRole with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_practitioner_role(staff), status=status.HTTP_200_OK)
+
+    def _to_fhir_practitioner_role(self, staff) -> dict:
+        """Convert Django StaffProfile to FHIR PractitionerRole resource."""
+        return {
+            "resourceType": "PractitionerRole",
+            "id": str(staff.id),
+            "active": staff.user.is_active if staff.user else True,
+            "practitioner": {"reference": f"Practitioner/{staff.id}"},
+            "code": [
+                {
+                    "coding": [
+                        {
+                            "system": "urn:vitora:role",
+                            "code": staff.primary_role.code,
+                            "display": staff.primary_role.name,
+                        }
+                    ],
+                    "text": staff.primary_role.name,
+                }
+            ],
+        }
+
+
 class FHIRObservationView(APIView):
     """
     FHIR Observation resource endpoint.
@@ -390,6 +444,30 @@ class FHIRObservationView(APIView):
     )
     def get(self, request, pk: int) -> Response:
         """Get an Observation resource by ID."""
+        from hmis.apps.encounters.models import PregnancyObservation, SocialHistoryObservation
+
+        try:
+            social_history_observation = SocialHistoryObservation.objects.select_related(
+                "patient", "encounter"
+            ).get(fhir_id=pk)
+            return Response(
+                self._social_history_to_fhir(social_history_observation, request),
+                status=status.HTTP_200_OK,
+            )
+        except SocialHistoryObservation.DoesNotExist:
+            pass
+
+        try:
+            pregnancy_observation = PregnancyObservation.objects.select_related(
+                "patient", "encounter", "mch_registration", "delivery"
+            ).get(fhir_id=pk)
+            return Response(
+                self._pregnancy_observation_to_fhir(pregnancy_observation, request),
+                status=status.HTTP_200_OK,
+            )
+        except PregnancyObservation.DoesNotExist:
+            pass
+
         # Check lab results first
         from hmis.apps.laboratory.models import LabResult
 
@@ -431,16 +509,31 @@ class FHIRObservationView(APIView):
 
     def _lab_result_to_fhir(self, lab_result, request) -> dict:
         """Convert LabResult to FHIR Observation."""
-        base_url = get_base_url(request)
+        order_item = lab_result.order_item
+        lab_order = order_item.lab_order
+        test = order_item.test
+
+        value_field = {}
+        if lab_result.numeric_value is not None:
+            value_field = {
+                "valueQuantity": {
+                    "value": float(lab_result.numeric_value),
+                    "unit": lab_result.result_unit or test.result_unit,
+                    "system": "http://unitsofmeasure.org",
+                    "code": lab_result.result_unit or test.result_unit,
+                }
+            }
+        elif lab_result.text_value:
+            value_field = {"valueString": lab_result.text_value}
+        elif lab_result.option_value:
+            value_field = {"valueString": lab_result.option_value}
 
         fhir_resource = {
             "resourceType": "Observation",
             "id": str(lab_result.id),
             "meta": {
                 "versionId": "1",
-                "lastUpdated": format_date(
-                    lab_result.created_at if hasattr(lab_result, "created_at") else datetime.now()
-                ),
+                "lastUpdated": format_date(lab_result.updated_at),
             },
             "status": "final",
             "category": [
@@ -458,30 +551,192 @@ class FHIRObservationView(APIView):
                 "coding": [
                     {
                         "system": "http://loinc.org",
-                        "code": (
-                            lab_result.lab_order.test_type.loinc_code
-                            if hasattr(lab_result.lab_order.test_type, "loinc_code")
-                            else "unknown"
-                        ),
-                        "display": (
-                            lab_result.lab_order.test_type.name
-                            if lab_result.lab_order.test_type
-                            else "Lab Test"
-                        ),
+                        "code": test.loinc_code or "unknown",
+                        "display": test.name,
                     }
                 ],
-                "text": (
-                    lab_result.lab_order.test_type.name
-                    if lab_result.lab_order.test_type
-                    else "Lab Test"
-                ),
+                "text": test.name,
             },
-            "subject": {"reference": f"Patient/{lab_result.lab_order.patient.id}"},
-            "effectiveDateTime": format_date(
-                lab_result.result_date if hasattr(lab_result, "result_date") else datetime.now()
-            ),
-            "valueString": str(lab_result.value) if hasattr(lab_result, "value") else "",
+            "subject": {"reference": f"Patient/{lab_order.patient.id}"},
+            "effectiveDateTime": format_date(lab_result.verified_at or lab_result.entered_at),
         }
+
+        if lab_order.encounter_id:
+            fhir_resource["encounter"] = {"reference": f"Encounter/{lab_order.encounter_id}"}
+
+        if lab_result.reference_range_text:
+            fhir_resource["referenceRange"] = [{"text": lab_result.reference_range_text}]
+
+        if lab_result.result_flag:
+            fhir_resource["interpretation"] = [
+                {
+                    "text": lab_result.get_result_flag_display(),
+                }
+            ]
+
+        if lab_result.specimen_id:
+            fhir_resource["specimen"] = {"reference": f"Specimen/{lab_result.specimen_id}"}
+
+        fhir_resource.update(value_field)
+
+        return fhir_resource
+
+    def _social_history_to_fhir(self, observation, request) -> dict:
+        """Convert a dedicated social-history observation to FHIR Observation."""
+        code_map = {
+            "ALCOHOL_USE": {
+                "code": "74013-4",
+                "display": "Alcohol use",
+                "text": "Alcohol use",
+            },
+            "TOBACCO_USE": {
+                "code": "72166-2",
+                "display": "Tobacco smoking status",
+                "text": "Tobacco use",
+            },
+            "OCCUPATION": {
+                "code": "11341-5",
+                "display": "History of Occupation",
+                "text": "Occupation",
+            },
+            "LIFESTYLE": {
+                "code": "86198-2",
+                "display": "Social history narrative",
+                "text": "Lifestyle",
+            },
+        }
+        status_text = {
+            "CURRENT": "Current use",
+            "FORMER": "Former use",
+            "NEVER": "Never used",
+            "UNKNOWN": "Unknown",
+        }
+        code = code_map[observation.observation_type]
+
+        fhir_resource = {
+            "resourceType": "Observation",
+            "id": str(observation.fhir_id),
+            "meta": {
+                "versionId": "1",
+                "lastUpdated": format_date(observation.updated_at),
+            },
+            "status": "final",
+            "category": [
+                {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                            "code": "social-history",
+                            "display": "Social History",
+                        }
+                    ]
+                }
+            ],
+            "code": {
+                "coding": [
+                    {
+                        "system": "http://loinc.org",
+                        "code": code["code"],
+                        "display": code["display"],
+                    }
+                ],
+                "text": code["text"],
+            },
+            "subject": {"reference": f"Patient/{observation.patient_id}"},
+            "effectiveDateTime": format_date(observation.effective_date),
+            "valueCodeableConcept": {
+                "text": status_text.get(observation.status, observation.status),
+            },
+        }
+
+        if observation.encounter_id:
+            fhir_resource["encounter"] = {"reference": f"Encounter/{observation.encounter_id}"}
+
+        if observation.value_text:
+            fhir_resource["note"] = [{"text": observation.value_text}]
+
+        return fhir_resource
+
+    def _pregnancy_observation_to_fhir(self, observation, request) -> dict:
+        """Convert a dedicated pregnancy observation to FHIR Observation."""
+        code_map = {
+            "PREGNANCY_STATUS": {
+                "system": "http://loinc.org",
+                "code": "82810-3",
+                "display": "Pregnancy status",
+                "text": "Pregnancy status",
+            },
+            "PREGNANCY_EXPECTED_DELIVERY_DATE": {
+                "system": "http://loinc.org",
+                "code": "11778-8",
+                "display": "Delivery date Estimated",
+                "text": "Estimated delivery date",
+            },
+            "PREGNANCY_OUTCOME": {
+                "system": "http://loinc.org",
+                "code": "11636-8",
+                "display": "Birth outcome",
+                "text": "Pregnancy outcome",
+            },
+        }
+        value_text = {
+            "PREGNANT": "Pregnant",
+            "POSTPARTUM": "Postpartum",
+            "NOT_PREGNANT": "Not pregnant",
+            "UNKNOWN": "Unknown",
+            "LIVE_BIRTH": "Live birth",
+            "STILLBIRTH": "Stillbirth",
+            "MISCARRIAGE": "Miscarriage",
+            "ABORTION": "Abortion",
+            "ECTOPIC": "Ectopic pregnancy",
+        }
+        code = code_map[observation.observation_type]
+
+        fhir_resource = {
+            "resourceType": "Observation",
+            "id": str(observation.fhir_id),
+            "meta": {
+                "versionId": "1",
+                "lastUpdated": format_date(observation.updated_at),
+            },
+            "status": "final",
+            "category": [
+                {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                            "code": "survey",
+                            "display": "Survey",
+                        }
+                    ]
+                }
+            ],
+            "code": {
+                "coding": [
+                    {
+                        "system": code["system"],
+                        "code": code["code"],
+                        "display": code["display"],
+                    }
+                ],
+                "text": code["text"],
+            },
+            "subject": {"reference": f"Patient/{observation.patient_id}"},
+            "effectiveDateTime": format_date(observation.effective_date),
+        }
+
+        if observation.encounter_id:
+            fhir_resource["encounter"] = {"reference": f"Encounter/{observation.encounter_id}"}
+
+        if observation.observation_type == "PREGNANCY_EXPECTED_DELIVERY_DATE":
+            fhir_resource["valueDateTime"] = format_date(observation.value_date)
+        else:
+            fhir_resource["valueCodeableConcept"] = {
+                "text": value_text.get(observation.status_value, observation.status_value),
+            }
+
+        if observation.notes:
+            fhir_resource["note"] = [{"text": observation.notes}]
 
         return fhir_resource
 
@@ -789,7 +1044,21 @@ class FHIRCompositionView(APIView):
         return Response(fhir_composition, status=status.HTTP_200_OK)
 
     def _to_fhir_composition(
-        self, patient, request, allergies=None, medication_items=None, treatment_plans=None
+        self,
+        patient,
+        request,
+        allergies=None,
+        medication_items=None,
+        treatment_plans=None,
+        lab_results=None,
+        diagnostic_reports=None,
+        specimens=None,
+        immunizations=None,
+        procedures=None,
+        imaging_studies=None,
+        media_items=None,
+        social_history_observations=None,
+        pregnancy_observations=None,
     ) -> dict:
         """
         Create an IPS Composition for a patient.
@@ -938,8 +1207,156 @@ class FHIRCompositionView(APIView):
             },
         }
 
+        if lab_results or diagnostic_reports or specimens or imaging_studies or media_items:
+            diagnostic_results_entries = []
+            if lab_results:
+                diagnostic_results_entries.extend(
+                    [{"reference": f"Observation/{result.id}"} for result in lab_results]
+                )
+            if diagnostic_reports:
+                diagnostic_results_entries.extend(
+                    [
+                        {"reference": f"DiagnosticReport/{report.id}"}
+                        for report in diagnostic_reports
+                    ]
+                )
+            if specimens:
+                diagnostic_results_entries.extend(
+                    [{"reference": f"Specimen/{specimen.id}"} for specimen in specimens]
+                )
+            if imaging_studies:
+                diagnostic_results_entries.extend(
+                    [{"reference": f"ImagingStudy/{study.id}"} for study in imaging_studies]
+                )
+            if media_items:
+                diagnostic_results_entries.extend(
+                    [{"reference": f"Media/{media.id}"} for media in media_items]
+                )
+            diagnostic_results_section = {
+                "title": "Diagnostic Results",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "30954-2",
+                            "display": "Relevant diagnostic tests/laboratory data Narrative",
+                        }
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": '<div xmlns="http://www.w3.org/1999/xhtml">Diagnostic reports, specimens, and imaging summaries</div>',
+                },
+                "entry": diagnostic_results_entries,
+            }
+        else:
+            diagnostic_results_section = None
+
+        if social_history_observations:
+            social_history_section = {
+                "title": "Social History",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "29762-2",
+                            "display": "Social history Narrative",
+                        }
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": '<div xmlns="http://www.w3.org/1999/xhtml">Social history observations</div>',
+                },
+                "entry": [
+                    {"reference": f"Observation/{observation.fhir_id}"}
+                    for observation in social_history_observations
+                ],
+            }
+        else:
+            social_history_section = None
+
+        if pregnancy_observations:
+            pregnancy_section = {
+                "title": "History of Pregnancy",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "10162-6",
+                            "display": "History of pregnancies Narrative",
+                        }
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": '<div xmlns="http://www.w3.org/1999/xhtml">Pregnancy-related observations</div>',
+                },
+                "entry": [
+                    {"reference": f"Observation/{observation.fhir_id}"}
+                    for observation in pregnancy_observations
+                ],
+            }
+        else:
+            pregnancy_section = None
+
+        if immunizations:
+            immunization_section = {
+                "title": "History of Immunizations",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "11369-6",
+                            "display": "History of Immunization Narrative",
+                        }
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": '<div xmlns="http://www.w3.org/1999/xhtml">Immunization history</div>',
+                },
+                "entry": [
+                    {"reference": f"Immunization/{immunization.id}"}
+                    for immunization in immunizations
+                ],
+            }
+        else:
+            immunization_section = None
+
+        if procedures:
+            procedure_section = {
+                "title": "Procedure History",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "47519-4",
+                            "display": "History of Procedures Document",
+                        }
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": '<div xmlns="http://www.w3.org/1999/xhtml">Procedure history</div>',
+                },
+                "entry": [{"reference": f"Procedure/{procedure.id}"} for procedure in procedures],
+            }
+        else:
+            procedure_section = None
+
         # Build sections list
         sections = [allergy_section, medication_section, problem_section]
+
+        for extra_section in [
+            diagnostic_results_section,
+            social_history_section,
+            pregnancy_section,
+            immunization_section,
+            procedure_section,
+        ]:
+            if extra_section:
+                sections.append(extra_section)
 
         # Build plan of care section (for treatment plans)
         if treatment_plans and len(treatment_plans) > 0:
@@ -1404,20 +1821,554 @@ class FHIRDeviceView(APIView):
     )
     def get(self, request, pk: int) -> Response:
         """Get a Device resource by ID."""
-        # Return placeholder - devices may not be tracked in the system
-        return Response(
-            {
-                "resourceType": "OperationOutcome",
-                "issue": [
+        from hmis.apps.theatre.models import TheatreConsumable
+
+        try:
+            implant = TheatreConsumable.objects.select_related(
+                "surgery_case__patient",
+                "item",
+            ).get(pk=pk, is_implant=True)
+        except TheatreConsumable.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"Device with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_device(implant), status=status.HTTP_200_OK)
+
+    def _to_fhir_device(self, implant) -> dict:
+        """Convert an implant-backed theatre consumable to FHIR Device."""
+        item_name = getattr(implant.item, "generic_name", str(implant.item))
+        identifiers = []
+        if implant.implant_serial_number:
+            identifiers.append(
+                {
+                    "system": "urn:vitora:implant-serial",
+                    "value": implant.implant_serial_number,
+                }
+            )
+        if implant.lot_number:
+            identifiers.append({"system": "urn:vitora:implant-lot", "value": implant.lot_number})
+
+        fhir_resource = {
+            "resourceType": "Device",
+            "id": str(implant.id),
+            "status": "active",
+            "patient": {"reference": f"Patient/{implant.surgery_case.patient_id}"},
+            "type": {
+                "coding": [
                     {
-                        "severity": "error",
-                        "code": "not-found",
-                        "diagnostics": f"Device with ID {pk} not found",
+                        "system": "urn:vitora:drug",
+                        "code": implant.item.code,
+                        "display": item_name,
                     }
                 ],
+                "text": item_name,
             },
-            status=status.HTTP_404_NOT_FOUND,
-        )
+            "serialNumber": implant.implant_serial_number,
+            "lotNumber": implant.lot_number,
+        }
+        if identifiers:
+            fhir_resource["identifier"] = identifiers
+        return fhir_resource
+
+
+class FHIRDeviceUseStatementView(APIView):
+    """FHIR DeviceUseStatement resource endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 DeviceUseStatement resource by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Get a DeviceUseStatement resource by ID."""
+        from hmis.apps.theatre.models import TheatreConsumable
+
+        try:
+            implant = TheatreConsumable.objects.select_related(
+                "surgery_case__patient",
+                "item",
+            ).get(pk=pk, is_implant=True)
+        except TheatreConsumable.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"DeviceUseStatement with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_device_use_statement(implant), status=status.HTTP_200_OK)
+
+    def _to_fhir_device_use_statement(self, implant) -> dict:
+        """Convert an implant-backed theatre consumable to FHIR DeviceUseStatement."""
+        item_name = getattr(implant.item, "generic_name", str(implant.item))
+        statement = {
+            "resourceType": "DeviceUseStatement",
+            "id": str(implant.id),
+            "status": "active",
+            "subject": {"reference": f"Patient/{implant.surgery_case.patient_id}"},
+            "device": {
+                "reference": f"Device/{implant.id}",
+                "display": item_name,
+            },
+            "timingDateTime": format_date(implant.added_at),
+            "source": {"reference": f"Practitioner/{implant.added_by_id}"},
+            "reasonCode": [{"text": implant.surgery_case.diagnosis}],
+            "note": [
+                {
+                    "text": f"Implant used during surgery case {implant.surgery_case.case_number}",
+                }
+            ],
+        }
+        if implant.implant_serial_number:
+            statement["note"].append(
+                {"text": f"Implant serial number: {implant.implant_serial_number}"}
+            )
+        return statement
+
+
+class FHIRMedicationView(APIView):
+    """FHIR Medication resource endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Medication resource by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Get a Medication resource by ID."""
+        from hmis.apps.pharmacy.models import Drug
+
+        try:
+            drug = Drug.objects.get(pk=pk)
+        except Drug.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"Medication with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_medication(drug), status=status.HTTP_200_OK)
+
+    def _to_fhir_medication(self, drug) -> dict:
+        """Convert Django Drug to FHIR Medication resource."""
+        coding = [
+            {
+                "system": "urn:vitora:drug",
+                "code": drug.code,
+                "display": drug.generic_name,
+            }
+        ]
+        if drug.keml_code:
+            coding.append(
+                {
+                    "system": "urn:kenya:keml",
+                    "code": drug.keml_code,
+                    "display": drug.generic_name,
+                }
+            )
+
+        return {
+            "resourceType": "Medication",
+            "id": str(drug.id),
+            "status": "active" if drug.is_active else "inactive",
+            "code": {
+                "coding": coding,
+                "text": f"{drug.generic_name} {drug.strength} {drug.form}",
+            },
+            "doseForm": {"text": drug.get_form_display()},
+        }
+
+
+class FHIRSpecimenView(APIView):
+    """FHIR Specimen resource endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Specimen resource by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Get a Specimen resource by ID."""
+        from hmis.apps.laboratory.models import Specimen
+
+        try:
+            specimen = Specimen.objects.select_related("lab_order__patient").get(pk=pk)
+        except Specimen.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"Specimen with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_specimen(specimen), status=status.HTTP_200_OK)
+
+    def _to_fhir_specimen(self, specimen) -> dict:
+        """Convert Django Specimen to FHIR Specimen resource."""
+        fhir_resource = {
+            "resourceType": "Specimen",
+            "id": str(specimen.id),
+            "identifier": [{"value": specimen.barcode}],
+            "status": specimen.status.lower(),
+            "type": {"text": specimen.get_specimen_type_display()},
+            "subject": {"reference": f"Patient/{specimen.lab_order.patient_id}"},
+        }
+        if specimen.collected_at or specimen.collection_site:
+            fhir_resource["collection"] = {
+                "collectedDateTime": format_date(specimen.collected_at),
+                "bodySite": {"text": specimen.collection_site},
+            }
+        if specimen.received_at:
+            fhir_resource["receivedTime"] = format_date(specimen.received_at)
+        return fhir_resource
+
+
+class FHIRDiagnosticReportView(APIView):
+    """FHIR DiagnosticReport resource endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    STATUS_MAP = {
+        "DRAFT": "registered",
+        "PRELIMINARY": "preliminary",
+        "FINAL": "final",
+        "AMENDED": "amended",
+        "CANCELLED": "cancelled",
+    }
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 DiagnosticReport resource by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Get a DiagnosticReport resource by ID."""
+        from hmis.apps.laboratory.models import DiagnosticReport
+
+        try:
+            report = DiagnosticReport.objects.select_related("lab_order__patient").get(pk=pk)
+        except DiagnosticReport.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"DiagnosticReport with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_diagnostic_report(report), status=status.HTTP_200_OK)
+
+    def _to_fhir_diagnostic_report(self, report) -> dict:
+        """Convert Django DiagnosticReport to FHIR DiagnosticReport resource."""
+        results = []
+        specimens = []
+        for order_item in report.lab_order.items.select_related("result").all():
+            if hasattr(order_item, "result"):
+                results.append({"reference": f"Observation/{order_item.result.id}"})
+                if order_item.result.specimen_id:
+                    specimens.append({"reference": f"Specimen/{order_item.result.specimen_id}"})
+
+        fhir_resource = {
+            "resourceType": "DiagnosticReport",
+            "id": str(report.id),
+            "status": self.STATUS_MAP.get(report.status, "unknown"),
+            "code": {"text": "Laboratory Diagnostic Report"},
+            "subject": {"reference": f"Patient/{report.lab_order.patient_id}"},
+            "effectiveDateTime": format_date(report.issued_at or report.created_at),
+            "issued": format_date(report.issued_at or report.created_at),
+            "result": results,
+        }
+        if specimens:
+            fhir_resource["specimen"] = specimens
+        if report.conclusion:
+            fhir_resource["conclusion"] = report.conclusion
+        return fhir_resource
+
+
+class FHIRImmunizationView(APIView):
+    """FHIR Immunization resource endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    STATUS_MAP = {
+        "SCHEDULED": "completed",
+        "ADMINISTERED": "completed",
+        "MISSED": "not-done",
+        "CONTRAINDICATED": "not-done",
+        "DEFERRED": "not-done",
+    }
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Immunization resource by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Get an Immunization resource by ID."""
+        from hmis.apps.immunizations.models import ImmunizationRecord
+
+        try:
+            record = ImmunizationRecord.objects.select_related("patient", "vaccine").get(pk=pk)
+        except ImmunizationRecord.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"Immunization with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_immunization(record), status=status.HTTP_200_OK)
+
+    def _to_fhir_immunization(self, record) -> dict:
+        """Convert Django ImmunizationRecord to FHIR Immunization resource."""
+        fhir_resource = {
+            "resourceType": "Immunization",
+            "id": str(record.id),
+            "status": self.STATUS_MAP.get(record.status, "completed"),
+            "vaccineCode": {
+                "coding": [{"system": "urn:vitora:vaccine", "code": record.vaccine.code}],
+                "text": record.vaccine.name,
+            },
+            "patient": {"reference": f"Patient/{record.patient_id}"},
+            "occurrenceDateTime": format_date(record.administered_date or record.scheduled_date),
+            "protocolApplied": [{"doseNumberPositiveInt": record.dose_number}],
+        }
+        if record.batch_number or record.lot_number:
+            fhir_resource["lotNumber"] = record.batch_number or record.lot_number
+        if record.site:
+            fhir_resource["site"] = {"text": record.get_site_display()}
+        return fhir_resource
+
+
+class FHIRProcedureView(APIView):
+    """FHIR Procedure resource endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    STATUS_MAP = {
+        "ORDERED": "preparation",
+        "CONSENT_PENDING": "preparation",
+        "SCHEDULED": "preparation",
+        "READY": "preparation",
+        "IN_PROGRESS": "in-progress",
+        "COMPLETED": "completed",
+        "CANCELLED": "stopped",
+    }
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Procedure resource by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Get a Procedure resource by ID."""
+        from hmis.apps.procedures.models import ProcedureOrder
+
+        try:
+            order = ProcedureOrder.objects.select_related("patient", "procedure").get(pk=pk)
+        except ProcedureOrder.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"Procedure with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_procedure(order), status=status.HTTP_200_OK)
+
+    def _to_fhir_procedure(self, order) -> dict:
+        """Convert Django ProcedureOrder to FHIR Procedure resource."""
+        fhir_resource = {
+            "resourceType": "Procedure",
+            "id": str(order.id),
+            "status": self.STATUS_MAP.get(order.status, "unknown"),
+            "code": {
+                "coding": [
+                    {
+                        "system": "urn:vitora:procedure",
+                        "code": order.procedure.code,
+                        "display": order.procedure.name,
+                    }
+                ],
+                "text": order.procedure.name,
+            },
+            "subject": {"reference": f"Patient/{order.patient_id}"},
+            "performedDateTime": format_date(order.scheduled_date or order.ordered_at),
+            "reasonCode": [{"text": order.indication}],
+        }
+        if order.body_site:
+            fhir_resource["bodySite"] = [{"text": order.body_site}]
+        return fhir_resource
+
+
+class FHIRImagingStudyView(APIView):
+    """FHIR ImagingStudy resource endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 ImagingStudy resource by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Get an ImagingStudy resource by ID."""
+        from hmis.apps.imaging.models import DICOMStudy
+
+        try:
+            study = DICOMStudy.objects.prefetch_related("series_set__instances").get(pk=pk)
+        except DICOMStudy.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"ImagingStudy with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_imaging_study(study), status=status.HTTP_200_OK)
+
+    def _to_fhir_imaging_study(self, study) -> dict:
+        """Convert Django DICOMStudy to FHIR ImagingStudy resource."""
+        return {
+            "resourceType": "ImagingStudy",
+            "id": str(study.id),
+            "identifier": [{"value": study.accession_number or study.study_instance_uid}],
+            "status": "available",
+            "subject": {"reference": f"Patient/{study.patient_id}"},
+            "started": format_date(
+                datetime.combine(study.study_date, study.study_time or datetime.min.time())
+            ),
+            "numberOfSeries": study.number_of_series,
+            "numberOfInstances": study.number_of_instances,
+            "series": [
+                {
+                    "uid": series.series_instance_uid,
+                    "number": series.series_number,
+                    "modality": {"code": series.modality},
+                    "description": series.series_description,
+                    "numberOfInstances": series.number_of_instances,
+                    "instance": [
+                        {
+                            "uid": instance.sop_instance_uid,
+                            "number": instance.instance_number,
+                            "sopClass": {"code": instance.sop_class_uid},
+                        }
+                        for instance in series.instances.all()
+                    ],
+                }
+                for series in study.series_set.all()
+            ],
+        }
+
+
+class FHIRMediaView(APIView):
+    """FHIR Media resource endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a FHIR R4 Media resource by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Get a Media resource by ID."""
+        from hmis.apps.imaging.models import DICOMInstance
+
+        try:
+            instance = DICOMInstance.objects.select_related("series__study__patient").get(pk=pk)
+        except DICOMInstance.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"Media with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._to_fhir_media(instance), status=status.HTTP_200_OK)
+
+    def _to_fhir_media(self, instance) -> dict:
+        """Convert Django DICOMInstance to FHIR Media resource."""
+        patient_id = instance.series.study.patient_id
+        return {
+            "resourceType": "Media",
+            "id": str(instance.id),
+            "status": "completed",
+            "subject": {"reference": f"Patient/{patient_id}"},
+            "modality": {"text": instance.series.modality},
+            "content": {
+                "contentType": "application/dicom",
+                "url": instance.file_path,
+                "size": instance.file_size,
+                "title": instance.sop_instance_uid,
+            },
+            "createdDateTime": format_date(instance.created_at),
+        }
 
 
 class FHIRCarePlanView(APIView):
@@ -1677,9 +2628,18 @@ class FHIRPatientSummaryView(APIView):
     )
     def get(self, request, pk: int) -> Response:
         """Generate IPS Bundle for a patient."""
-        from hmis.apps.encounters.models import Diagnosis, TreatmentPlan
+        from hmis.apps.encounters.models import (
+            Diagnosis,
+            PregnancyObservation,
+            SocialHistoryObservation,
+            TreatmentPlan,
+        )
+        from hmis.apps.imaging.models import DICOMInstance, DICOMStudy
+        from hmis.apps.immunizations.models import ImmunizationRecord
+        from hmis.apps.laboratory.models import DiagnosticReport, LabResult, Specimen
         from hmis.apps.patients.models import Allergy, Patient
         from hmis.apps.pharmacy.models import Prescription
+        from hmis.apps.procedures.models import ProcedureOrder
 
         try:
             patient = Patient.objects.select_related("county", "sub_county", "ward").get(pk=pk)
@@ -1729,15 +2689,86 @@ class FHIRPatientSummaryView(APIView):
             .order_by("-created_at")[:5]
         )
 
+        social_history_observations = SocialHistoryObservation.objects.filter(
+            patient=patient
+        ).select_related("encounter")[:10]
+
+        pregnancy_observations = PregnancyObservation.objects.filter(
+            patient=patient
+        ).select_related("encounter", "mch_registration", "delivery")[:10]
+
+        lab_results = LabResult.objects.filter(
+            order_item__lab_order__patient=patient
+        ).select_related(
+            "order_item__lab_order__patient",
+            "order_item__test",
+            "specimen",
+        )[:20]
+
+        diagnostic_reports = DiagnosticReport.objects.filter(
+            lab_order__patient=patient
+        ).select_related("lab_order__patient")[:10]
+
+        specimen_ids = set(
+            Specimen.objects.filter(lab_order__patient=patient).values_list("id", flat=True)[:20]
+        )
+        for report in diagnostic_reports:
+            for order_item in report.lab_order.items.select_related("result").all():
+                if hasattr(order_item, "result") and order_item.result.specimen_id:
+                    specimen_ids.add(order_item.result.specimen_id)
+        specimens = Specimen.objects.filter(id__in=specimen_ids)
+
+        immunizations = ImmunizationRecord.objects.filter(patient=patient).select_related(
+            "vaccine"
+        )[:10]
+
+        procedures = ProcedureOrder.objects.filter(patient=patient).select_related("procedure")[:10]
+
+        imaging_studies = DICOMStudy.objects.filter(patient=patient).prefetch_related(
+            "series_set__instances"
+        )[:10]
+        media_items = DICOMInstance.objects.filter(series__study__patient=patient).select_related(
+            "series__study__patient"
+        )[:10]
+
         # Build IPS Bundle
         ips_bundle = self._build_ips_bundle(
-            patient, diagnoses, allergies, prescriptions, treatment_plans, request
+            patient,
+            diagnoses,
+            allergies,
+            prescriptions,
+            treatment_plans,
+            lab_results,
+            social_history_observations,
+            pregnancy_observations,
+            diagnostic_reports,
+            specimens,
+            immunizations,
+            procedures,
+            imaging_studies,
+            media_items,
+            request,
         )
 
         return Response(ips_bundle, status=status.HTTP_200_OK)
 
     def _build_ips_bundle(
-        self, patient, diagnoses, allergies, prescriptions, treatment_plans, request
+        self,
+        patient,
+        diagnoses,
+        allergies,
+        prescriptions,
+        treatment_plans,
+        lab_results,
+        social_history_observations,
+        pregnancy_observations,
+        diagnostic_reports,
+        specimens,
+        immunizations,
+        procedures,
+        imaging_studies,
+        media_items,
+        request,
     ) -> dict:
         """
         Build an IPS Bundle for the patient.
@@ -1801,6 +2832,92 @@ class FHIRPatientSummaryView(APIView):
                 {"fullUrl": f"{base_url}/CarePlan/{plan.id}", "resource": fhir_plan}
             )
 
+        observation_entries = []
+        observation_view = FHIRObservationView()
+        for lab_result in lab_results:
+            observation_entries.append(
+                {
+                    "fullUrl": f"{base_url}/Observation/{lab_result.id}",
+                    "resource": observation_view._lab_result_to_fhir(lab_result, request),
+                }
+            )
+        for observation in social_history_observations:
+            observation_entries.append(
+                {
+                    "fullUrl": f"{base_url}/Observation/{observation.fhir_id}",
+                    "resource": observation_view._social_history_to_fhir(observation, request),
+                }
+            )
+        for observation in pregnancy_observations:
+            observation_entries.append(
+                {
+                    "fullUrl": f"{base_url}/Observation/{observation.fhir_id}",
+                    "resource": observation_view._pregnancy_observation_to_fhir(
+                        observation, request
+                    ),
+                }
+            )
+
+        specimen_entries = []
+        specimen_view = FHIRSpecimenView()
+        for specimen in specimens:
+            specimen_entries.append(
+                {
+                    "fullUrl": f"{base_url}/Specimen/{specimen.id}",
+                    "resource": specimen_view._to_fhir_specimen(specimen),
+                }
+            )
+
+        diagnostic_report_entries = []
+        diagnostic_report_view = FHIRDiagnosticReportView()
+        for report in diagnostic_reports:
+            diagnostic_report_entries.append(
+                {
+                    "fullUrl": f"{base_url}/DiagnosticReport/{report.id}",
+                    "resource": diagnostic_report_view._to_fhir_diagnostic_report(report),
+                }
+            )
+
+        immunization_entries = []
+        immunization_view = FHIRImmunizationView()
+        for immunization in immunizations:
+            immunization_entries.append(
+                {
+                    "fullUrl": f"{base_url}/Immunization/{immunization.id}",
+                    "resource": immunization_view._to_fhir_immunization(immunization),
+                }
+            )
+
+        procedure_entries = []
+        procedure_view = FHIRProcedureView()
+        for procedure in procedures:
+            procedure_entries.append(
+                {
+                    "fullUrl": f"{base_url}/Procedure/{procedure.id}",
+                    "resource": procedure_view._to_fhir_procedure(procedure),
+                }
+            )
+
+        imaging_study_entries = []
+        imaging_study_view = FHIRImagingStudyView()
+        for study in imaging_studies:
+            imaging_study_entries.append(
+                {
+                    "fullUrl": f"{base_url}/ImagingStudy/{study.id}",
+                    "resource": imaging_study_view._to_fhir_imaging_study(study),
+                }
+            )
+
+        media_entries = []
+        media_view = FHIRMediaView()
+        for media in media_items:
+            media_entries.append(
+                {
+                    "fullUrl": f"{base_url}/Media/{media.id}",
+                    "resource": media_view._to_fhir_media(media),
+                }
+            )
+
         # Build composition with all section references
         composition_view = FHIRCompositionView()
         fhir_composition = composition_view._to_fhir_composition(
@@ -1809,6 +2926,15 @@ class FHIRPatientSummaryView(APIView):
             allergies=allergies,
             medication_items=all_items,
             treatment_plans=treatment_plans,
+            lab_results=lab_results,
+            diagnostic_reports=diagnostic_reports,
+            specimens=specimens,
+            immunizations=immunizations,
+            procedures=procedures,
+            imaging_studies=imaging_studies,
+            media_items=media_items,
+            social_history_observations=social_history_observations,
+            pregnancy_observations=pregnancy_observations,
         )
 
         # Update composition with condition references
@@ -1841,7 +2967,14 @@ class FHIRPatientSummaryView(APIView):
             + condition_entries
             + allergy_entries
             + medication_entries
-            + care_plan_entries,
+            + care_plan_entries
+            + observation_entries
+            + specimen_entries
+            + diagnostic_report_entries
+            + immunization_entries
+            + procedure_entries
+            + imaging_study_entries
+            + media_entries,
         }
 
         return ips_bundle

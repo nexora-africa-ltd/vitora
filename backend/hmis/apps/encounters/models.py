@@ -8,15 +8,17 @@ Sprint 1.1-1.2: Enhanced encounter management with diagnosis and treatment track
 """
 
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from hmis.apps.core.history import HistoryMixin
-from hmis.apps.core.mixins import FacilityScopedModel
+from hmis.apps.core.mixins import FacilityScopedModel, resolve_tenant_from_related
+from hmis.apps.core.models import TimeStampedModel
 
 # ICD-10 code format validator
 icd10_code_validator = RegexValidator(
@@ -2764,3 +2766,199 @@ class EncounterStateHistory(models.Model):
 
     def __str__(self):
         return f"Encounter {self.encounter_id}: {self.from_status} → {self.to_status}"
+
+
+def _next_reserved_fhir_id(model_class, floor: int) -> int:
+    """Allocate IDs from a model-specific reserved range for FHIR Observation reads."""
+    current_max = model_class.objects.order_by("-fhir_id").values_list("fhir_id", flat=True).first()
+    return (current_max or (floor - 1)) + 1
+
+
+class SocialHistoryObservation(FacilityScopedModel, TimeStampedModel):
+    """Structured social-history observations exposed as standalone FHIR Observations."""
+
+    class ObservationType(models.TextChoices):
+        ALCOHOL_USE = "ALCOHOL_USE", "Alcohol use"
+        TOBACCO_USE = "TOBACCO_USE", "Tobacco use"
+        OCCUPATION = "OCCUPATION", "Occupation"
+        LIFESTYLE = "LIFESTYLE", "Lifestyle"
+
+    class UsageStatus(models.TextChoices):
+        CURRENT = "CURRENT", "Current use"
+        FORMER = "FORMER", "Former use"
+        NEVER = "NEVER", "Never used"
+        UNKNOWN = "UNKNOWN", "Unknown"
+
+    FHIR_ID_FLOOR = 700000000
+
+    fhir_id = models.PositiveIntegerField(unique=True, editable=False, db_index=True)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="social_history_observations",
+    )
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="social_history_observations",
+    )
+    observation_type = models.CharField(max_length=30, choices=ObservationType.choices)
+    status = models.CharField(
+        max_length=20, choices=UsageStatus.choices, default=UsageStatus.UNKNOWN
+    )
+    value_text = models.TextField(blank=True, default="")
+    effective_date = models.DateField(default=timezone.localdate)
+    recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_social_history_observations",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-effective_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["fhir_id"]),
+            models.Index(fields=["patient", "observation_type"]),
+        ]
+
+    def __str__(self) -> str:
+        label = dict(self.ObservationType.choices).get(self.observation_type, self.observation_type)
+        return f"{label} - {self.patient}"
+
+    def save(self, *args, **kwargs):
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        if not self.fhir_id:
+            self.fhir_id = _next_reserved_fhir_id(self.__class__, self.FHIR_ID_FLOOR)
+        super().save(*args, **kwargs)
+
+
+class PregnancyObservation(FacilityScopedModel, TimeStampedModel):
+    """Structured pregnancy observations exposed as standalone FHIR Observations."""
+
+    class ObservationType(models.TextChoices):
+        PREGNANCY_STATUS = "PREGNANCY_STATUS", "Pregnancy status"
+        PREGNANCY_EXPECTED_DELIVERY_DATE = (
+            "PREGNANCY_EXPECTED_DELIVERY_DATE",
+            "Estimated delivery date",
+        )
+        PREGNANCY_OUTCOME = "PREGNANCY_OUTCOME", "Pregnancy outcome"
+
+    class StatusValue(models.TextChoices):
+        PREGNANT = "PREGNANT", "Pregnant"
+        POSTPARTUM = "POSTPARTUM", "Postpartum"
+        NOT_PREGNANT = "NOT_PREGNANT", "Not pregnant"
+        UNKNOWN = "UNKNOWN", "Unknown"
+        LIVE_BIRTH = "LIVE_BIRTH", "Live birth"
+        STILLBIRTH = "STILLBIRTH", "Stillbirth"
+        MISCARRIAGE = "MISCARRIAGE", "Miscarriage"
+        ABORTION = "ABORTION", "Abortion"
+        ECTOPIC = "ECTOPIC", "Ectopic pregnancy"
+
+    FHIR_ID_FLOOR = 710000000
+
+    fhir_id = models.PositiveIntegerField(unique=True, editable=False, db_index=True)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="pregnancy_observations",
+    )
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pregnancy_observations",
+    )
+    mch_registration = models.ForeignKey(
+        "mch.MCHRegistration",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pregnancy_observations",
+    )
+    delivery = models.ForeignKey(
+        "mch.Delivery",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pregnancy_observations",
+    )
+    observation_type = models.CharField(max_length=40, choices=ObservationType.choices)
+    status_value = models.CharField(
+        max_length=20,
+        choices=StatusValue.choices,
+        blank=True,
+        default="",
+    )
+    value_date = models.DateField(null=True, blank=True)
+    effective_date = models.DateField(default=timezone.localdate)
+    recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_pregnancy_observations",
+    )
+    notes = models.TextField(blank=True, default="")
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-effective_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["fhir_id"]),
+            models.Index(fields=["patient", "observation_type"]),
+        ]
+
+    def __str__(self) -> str:
+        label = dict(self.ObservationType.choices).get(self.observation_type, self.observation_type)
+        return f"{label} - {self.patient}"
+
+    def clean(self):
+        super().clean()
+        if self.observation_type == self.ObservationType.PREGNANCY_EXPECTED_DELIVERY_DATE:
+            if (
+                not self.value_date
+                and self.mch_registration is not None
+                and self.mch_registration.edd
+            ):
+                self.value_date = self.mch_registration.edd
+            if not self.value_date:
+                raise ValidationError({"value_date": "EDD observations require a value_date."})
+        elif not self.status_value:
+            raise ValidationError(
+                {"status_value": "This pregnancy observation requires a status value."}
+            )
+
+    def save(self, *args, **kwargs):
+        if getattr(self, "patient_id", None) is None:
+            if self.mch_registration is not None:
+                self.patient = self.mch_registration.mother
+            elif self.delivery is not None:
+                self.patient = self.delivery.registration.mother
+
+        if (
+            self.observation_type == self.ObservationType.PREGNANCY_EXPECTED_DELIVERY_DATE
+            and not self.value_date
+            and self.mch_registration is not None
+        ):
+            self.value_date = self.mch_registration.edd
+            if not self.value_date and getattr(self.mch_registration, "anc_enrollment_id", None):
+                lmp = self.mch_registration.anc_enrollment.lmp
+                if lmp:
+                    self.value_date = lmp + timedelta(days=280)
+
+        if (
+            self.observation_type == self.ObservationType.PREGNANCY_OUTCOME
+            and not self.status_value
+            and self.delivery is not None
+        ):
+            self.status_value = self.delivery.delivery_outcome
+
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        self.full_clean()
+        if not self.fhir_id:
+            self.fhir_id = _next_reserved_fhir_id(self.__class__, self.FHIR_ID_FLOOR)
+        super().save(*args, **kwargs)
