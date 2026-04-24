@@ -330,20 +330,6 @@ export default function NewWardRoundPage() {
     );
   }
 
-  if (admission.admission_status !== 'ACTIVE') {
-    return (
-      <div className="container mx-auto py-12 text-center">
-        <p className="text-xl font-semibold">Cannot Record Ward Round</p>
-        <p className="text-muted-foreground mt-2">
-          Ward rounds can only be recorded for active admissions.
-        </p>
-        <Button onClick={() => router.push(`/admissions/${admissionId}`)} className="mt-4">
-          View Admission Details
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
       <PageHeader
@@ -404,18 +390,20 @@ export default function NewWardRoundPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Select value={reviewType} onValueChange={(v) => setReviewType(v as ReviewType)}>
-            <SelectTrigger id="review-type" className="w-full md:w-[300px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {REVIEW_TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value} title={type.description}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-full md:w-[300px]">
+            <Select value={reviewType} onValueChange={(v) => setReviewType(v as ReviewType)}>
+              <SelectTrigger id="review-type" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REVIEW_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value} title={type.description}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 

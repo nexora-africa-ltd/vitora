@@ -352,6 +352,7 @@ function getStageStatus(stage: string) {
 
 function StageStatusDot({ stage }: { stage: string }) {
   const status = getStageStatus(stage);
+  const pulseClassName = status.dotClassName.replace(/^bg-red-/, 'bg-pink-');
 
   return (
     <Popover>
@@ -363,7 +364,7 @@ function StageStatusDot({ stage }: { stage: string }) {
               className="relative inline-flex h-4 w-4 items-center justify-center rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               aria-label={status.label}
             >
-              <span className={cn('absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full opacity-75', status.dotClassName)} />
+              <span className={cn('absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full opacity-75', pulseClassName)} />
               <span className={cn('relative inline-flex h-2.5 w-2.5 rounded-full shadow-sm', status.dotClassName)} />
             </button>
           </PopoverTrigger>
