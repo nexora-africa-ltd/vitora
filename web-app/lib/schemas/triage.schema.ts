@@ -53,7 +53,7 @@ export const ChiefComplaintCategorySchema = z.enum([
 ]);
 
 export const AgeGroupSchema = z.enum([
-  'neonate', 'infant', 'toddler', 'preschool', 'child', 'adolescent', 'adult',
+  'neonate', 'infant', 'young_child', 'school_age', 'adolescent', 'adult',
 ]);
 
 export const DehydrationLevelSchema = z.enum(['NONE', 'SOME', 'SEVERE']);

@@ -614,27 +614,24 @@ function getVitalRangeHint(
     heart_rate: {
       neonate: '100-160 bpm',
       infant: '100-150 bpm',
-      toddler: '80-130 bpm',
-      preschool: '80-120 bpm',
-      child: '70-110 bpm',
+      young_child: '80-130 bpm',
+      school_age: '70-110 bpm',
       adolescent: '60-100 bpm',
       adult: '60-100 bpm',
     },
     respiratory_rate: {
       neonate: '30-60 /min',
       infant: '25-50 /min',
-      toddler: '20-30 /min',
-      preschool: '20-30 /min',
-      child: '18-25 /min',
+      young_child: '20-30 /min',
+      school_age: '18-25 /min',
       adolescent: '12-20 /min',
       adult: '12-20 /min',
     },
     temperature: {
       neonate: '36.5-37.5 °C',
       infant: '36.0-37.5 °C',
-      toddler: '36.0-37.5 °C',
-      preschool: '36.0-37.5 °C',
-      child: '36.0-37.5 °C',
+      young_child: '36.0-37.5 °C',
+      school_age: '36.0-37.5 °C',
       adolescent: '36.0-37.5 °C',
       adult: '36.0-37.5 °C',
     },
@@ -1960,7 +1957,7 @@ export function TriageAssessmentForm({
               {/* Height / Length (optional) */}
               <div className="space-y-2">
                 <Label htmlFor="height">
-                  {isNeonateOrInfant(patientAgeGroup) || patientAgeGroup === 'toddler'
+                  {patientAge < 2
                     ? 'Length (recumbent)'
                     : 'Height'}
                 </Label>

@@ -204,7 +204,7 @@ export const VITAL_RANGES = {
 /**
  * Age group classification (mirrors types/triage.ts AgeGroup)
  */
-type AgeGroupKey = 'neonate' | 'infant' | 'toddler' | 'preschool' | 'child' | 'adolescent' | 'adult';
+type AgeGroupKey = 'neonate' | 'infant' | 'young_child' | 'school_age' | 'adolescent' | 'adult';
 
 /**
  * Pediatric vital sign thresholds by age group.
@@ -225,17 +225,12 @@ const PEDIATRIC_INPUT_THRESHOLDS: Record<string, Record<string, VitalInputThresh
     respiratory_rate: { criticalLow: 15,  criticalHigh: 60,  warningLow: 25,  warningHigh: 50,  unit: '/min', normalRange: '25-50/min' },
     temperature:      { criticalLow: 32,  criticalHigh: 40,  warningLow: 36,  warningHigh: 37.5,unit: '°C',   normalRange: '36.0-37.5°C' },
   },
-  toddler: {
+  young_child: {
     heart_rate:       { criticalLow: 60,  criticalHigh: 170, warningLow: 80,  warningHigh: 130, unit: 'bpm',  normalRange: '80-130 bpm' },
     respiratory_rate: { criticalLow: 12,  criticalHigh: 40,  warningLow: 20,  warningHigh: 30,  unit: '/min', normalRange: '20-30/min' },
     temperature:      { criticalLow: 32,  criticalHigh: 40,  warningLow: 36,  warningHigh: 37.5,unit: '°C',   normalRange: '36.0-37.5°C' },
   },
-  preschool: {
-    heart_rate:       { criticalLow: 60,  criticalHigh: 160, warningLow: 80,  warningHigh: 120, unit: 'bpm',  normalRange: '80-120 bpm' },
-    respiratory_rate: { criticalLow: 12,  criticalHigh: 40,  warningLow: 20,  warningHigh: 30,  unit: '/min', normalRange: '20-30/min' },
-    temperature:      { criticalLow: 32,  criticalHigh: 40,  warningLow: 36,  warningHigh: 37.5,unit: '°C',   normalRange: '36.0-37.5°C' },
-  },
-  child: {
+  school_age: {
     heart_rate:       { criticalLow: 50,  criticalHigh: 150, warningLow: 70,  warningHigh: 110, unit: 'bpm',  normalRange: '70-110 bpm' },
     respiratory_rate: { criticalLow: 10,  criticalHigh: 35,  warningLow: 18,  warningHigh: 25,  unit: '/min', normalRange: '18-25/min' },
     temperature:      { criticalLow: 32,  criticalHigh: 40,  warningLow: 36,  warningHigh: 37.5,unit: '°C',   normalRange: '36.0-37.5°C' },

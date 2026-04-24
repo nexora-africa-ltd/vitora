@@ -422,9 +422,8 @@ export const ARRIVAL_MODE_CONFIG: Record<ArrivalMode, { label: string }> = {
 export type AgeGroup =
   | 'neonate'     // 0-28 days
   | 'infant'      // 1-12 months
-  | 'toddler'     // 1-3 years
-  | 'preschool'   // 3-5 years
-  | 'child'       // 5-12 years
+  | 'young_child' // 1-5 years
+  | 'school_age'  // 6-12 years
   | 'adolescent'  // 12-18 years
   | 'adult';      // 18+ years
 
@@ -494,16 +493,14 @@ export function getAgeGroup(dob: string | Date): AgeGroup {
   if (days <= 28) return 'neonate';
   if (days <= 365) return 'infant';
   const years = days / 365.25;
-  if (years < 3) return 'toddler';
-  if (years < 5) return 'preschool';
-  if (years < 12) return 'child';
-  if (years < 18) return 'adolescent';
+  if (years < 6) return 'young_child';
+  if (years < 18) return years < 13 ? 'school_age' : 'adolescent';
   return 'adult';
 }
 
 /** Returns true if the patient is pediatric (<12 years) */
 export function isPediatric(ageGroup: AgeGroup): boolean {
-  return ['neonate', 'infant', 'toddler', 'preschool', 'child'].includes(ageGroup);
+  return ['neonate', 'infant', 'young_child', 'school_age'].includes(ageGroup);
 }
 
 /** Returns true if the patient is a neonate or young infant (<1 year) */
