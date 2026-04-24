@@ -107,6 +107,25 @@ class TestClinicalReferralModel:
 
         assert referral.patient == sample_encounter.patient
 
+    def test_create_referral_marks_opd_encounter_as_referred(self, db, sample_encounter, test_user):
+        """Creating a referral should mark the source OPD encounter as referred."""
+        from hmis.apps.referrals.models import ClinicalReferral
+
+        referral = ClinicalReferral.objects.create(
+            encounter=sample_encounter,
+            patient=sample_encounter.patient,
+            target_service="PHYSIOTHERAPY",
+            reason="Knee pain rehabilitation",
+            referred_by=test_user,
+        )
+
+        sample_encounter.refresh_from_db()
+
+        assert sample_encounter.disposition == "REFERRED"
+        assert referral.referral_number in sample_encounter.disposition_notes
+        assert "PHYSIOTHERAPY" in sample_encounter.disposition_notes
+        assert "Knee pain rehabilitation" in sample_encounter.disposition_notes
+
     def test_sequential_numbering_per_day(self, db, sample_encounter, test_user):
         """Should generate sequential numbers within the same day."""
         from hmis.apps.referrals.models import ClinicalReferral

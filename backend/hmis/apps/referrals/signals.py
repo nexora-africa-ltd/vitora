@@ -17,6 +17,36 @@ from hmis.apps.referrals.models import ClinicalReferral
 logger = logging.getLogger(__name__)
 
 
+def _build_referral_disposition_note(referral: ClinicalReferral) -> str:
+    """Return a concise encounter note describing the referral handoff."""
+    return f"Referral {referral.referral_number} to {referral.target_service}: {referral.reason}"
+
+
+@receiver(post_save, sender=ClinicalReferral)
+def mark_source_encounter_referred(sender, instance, created, **kwargs):
+    """Mark the originating OPD encounter as referred when a referral is created."""
+    if not created:
+        return
+
+    encounter = instance.encounter
+    if not encounter or encounter.encounter_type != "OPD":
+        return
+
+    if encounter.status in ("CLOSED", "CANCELLED"):
+        return
+
+    disposition_note = _build_referral_disposition_note(instance)
+    existing_notes = (encounter.disposition_notes or "").strip()
+    if disposition_note in existing_notes:
+        return
+
+    encounter.disposition = "REFERRED"
+    encounter.disposition_notes = (
+        f"{existing_notes}\n{disposition_note}" if existing_notes else disposition_note
+    )
+    encounter.save(update_fields=["disposition", "disposition_notes", "updated_at"])
+
+
 @receiver(post_save, sender=ClinicalReferral)
 def handle_referral_accepted(sender, instance, created, **kwargs):
     """

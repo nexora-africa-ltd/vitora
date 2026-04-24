@@ -184,6 +184,11 @@ class TestAdmissionCreation:
         assert admission.payer_type == "SHA"
         assert admission.insurance_details["policy_number"] == "SHA-12345"
 
+        opd_encounter.refresh_from_db()
+        assert opd_encounter.status == "CLOSED"
+        assert opd_encounter.disposition == "ADMITTED"
+        assert opd_encounter.finalized_at is not None
+
     def test_admission_number_auto_generation(
         self, sample_patient, ipd_encounter, sample_ward, available_bed, test_user
     ):

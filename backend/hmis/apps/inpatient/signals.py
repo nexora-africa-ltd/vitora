@@ -23,6 +23,32 @@ from hmis.apps.inpatient.websockets import (
 logger = logging.getLogger(__name__)
 
 
+@receiver(post_save, sender=Admission)
+def close_source_opd_encounter_on_admission(sender, instance, created, **kwargs):
+    """Close the source OPD encounter once a real admission handoff exists."""
+    if not created or not instance.opd_encounter_id:
+        return
+
+    encounter = instance.opd_encounter
+    if encounter.encounter_type != "OPD":
+        return
+
+    if encounter.status in ("CLOSED", "CANCELLED"):
+        return
+
+    try:
+        encounter.disposition = "ADMITTED"
+        encounter.save(update_fields=["disposition", "updated_at"])
+        encounter.finalize(instance.admitting_officer)
+    except Exception as exc:
+        logger.exception(
+            "Failed to auto-close OPD encounter %s after admission %s: %s",
+            encounter.id,
+            instance.id,
+            exc,
+        )
+
+
 # Fields to track for ward constraint changes
 WARD_CONSTRAINT_FIELDS = {
     "gender_restriction",
