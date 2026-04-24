@@ -915,7 +915,7 @@ class TestFHIRIPSMedicationStatement:
 
         assert len(med_statements) >= 1
         med = med_statements[0]
-        assert med["status"] == "intended"
+        assert med["status"] == "completed"
         assert "medicationCodeableConcept" in med
         assert "Paracetamol" in med["medicationCodeableConcept"]["text"]
 
@@ -1294,7 +1294,7 @@ class TestFHIRIPSComplete:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["status"] == "intended"
+        assert response.data["status"] == "completed"
 
     def test_condition_code_uses_canonical_icd10_display(self):
         """FHIR Condition coding should use canonical ICD-10 displays for Inferno validation."""

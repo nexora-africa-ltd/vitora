@@ -1851,7 +1851,7 @@ class FHIRMedicationStatementView(APIView):
 
     # Status mapping from Django to FHIR MedicationStatement status
     STATUS_MAP = {
-        "PENDING": "intended",
+        "PENDING": "completed",
         "PARTIAL": "active",
         "DISPENSED": "completed",
         "CANCELLED": "stopped",
