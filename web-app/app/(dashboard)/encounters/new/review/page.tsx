@@ -352,7 +352,28 @@ export default function NewEncounterReviewPage() {
         variant: 'destructive',
       });
     }
-  }, [getFormData, createEncounter, checkInPatient, toast, isUrgentEncounterType, vitalsRecorded, details, patientData, clearSession, router]);
+  }, [
+    getFormData,
+    createEncounter,
+    diagnoses,
+    createAdmission,
+    checkInPatient,
+    toast,
+    isUrgentEncounterType,
+    isIPD,
+    vitalsRecorded,
+    details,
+    patientData,
+    admission.bedId,
+    admission.bedNumber,
+    admission.payerType,
+    admission.requiresIsolation,
+    admission.wardId,
+    admission.wardName,
+    clearSession,
+    router,
+    user,
+  ]);
 
   // Handle triage modal response
   const handleGoToTriage = useCallback(() => {

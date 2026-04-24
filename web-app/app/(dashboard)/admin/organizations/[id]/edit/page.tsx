@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { Save, Building2, Shield, MapPin, Loader2, Upload, Trash2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -234,7 +235,13 @@ export default function EditOrganizationPage() {
             <div className="flex items-center gap-4">
               {logoPreview ? (
                 <div className="relative h-16 w-16 shrink-0 rounded-lg border overflow-hidden bg-muted">
-                  <img src={logoPreview.startsWith('http') ? logoPreview : `${API_BASE_URL}${logoPreview}`} alt="Organization logo" className="h-full w-full object-cover" />
+                  <Image
+                    src={logoPreview.startsWith('http') ? logoPreview : `${API_BASE_URL}${logoPreview}`}
+                    alt="Organization logo"
+                    width={64}
+                    height={64}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
               ) : (
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
@@ -256,7 +263,11 @@ export default function EditOrganizationPage() {
                   disabled={isUploadingLogo}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {isUploadingLogo ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5" />}
+                  {isUploadingLogo ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-3.5 w-3.5" />
+                  )}
                   {logoPreview ? 'Change' : 'Upload'}
                 </Button>
                 {logoPreview && (
