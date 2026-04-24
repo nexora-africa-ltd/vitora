@@ -21,6 +21,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.fhir.views import FHIR_RENDERER_CLASSES
 from hmis.apps.core.oauth.scopes import SMARTScopes
 
 logger = logging.getLogger(__name__)
@@ -110,6 +111,7 @@ class CapabilityStatementView(APIView):
     """
 
     permission_classes = [AllowAny]
+    renderer_classes = FHIR_RENDERER_CLASSES
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def get(self, request) -> Response:
@@ -153,7 +155,7 @@ class CapabilityStatementView(APIView):
             ],
             "kind": "instance",
             "fhirVersion": "4.0.1",
-            "format": ["json"],
+            "format": ["json", "application/fhir+json", "application/json+fhir"],
             "implementationGuide": [
                 # Kenya SHA implementation guide (when published)
                 "http://fhir.health.go.ke/ImplementationGuide/kenya-sha",
@@ -320,6 +322,25 @@ class CapabilityStatementView(APIView):
                     {"name": "patient", "type": "reference"},
                     {"name": "code", "type": "token"},
                     {"name": "clinical-status", "type": "token"},
+                ],
+            },
+            {
+                "type": "Composition",
+                "profile": "http://hl7.org/fhir/StructureDefinition/Composition",
+                "interaction": [
+                    {"code": "read"},
+                ],
+                "operation": [
+                    {
+                        "name": "document",
+                        "definition": "http://hl7.org/fhir/OperationDefinition/Composition-document",
+                        "documentation": "Generate a fully bundled IPS document for a Composition.",
+                    }
+                ],
+                "searchParam": [
+                    {"name": "subject", "type": "reference"},
+                    {"name": "type", "type": "token"},
+                    {"name": "date", "type": "date"},
                 ],
             },
             {

@@ -26,10 +26,28 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
+
+
+class FHIRJSONRenderer(JSONRenderer):
+    """Renderer for the canonical FHIR JSON media type."""
+
+    media_type = "application/fhir+json"
+    format = "fhir+json"
+
+
+class FHIRAltJSONRenderer(JSONRenderer):
+    """Renderer for alternate FHIR JSON media types used by some clients."""
+
+    media_type = "application/json+fhir"
+    format = "json+fhir"
+
+
+FHIR_RENDERER_CLASSES = [FHIRJSONRenderer, FHIRAltJSONRenderer, JSONRenderer]
 
 
 def format_date(d) -> str | None:
@@ -54,6 +72,7 @@ class FHIRPatientView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    renderer_classes = FHIR_RENDERER_CLASSES
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -1014,6 +1033,7 @@ class FHIRCompositionView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    renderer_classes = FHIR_RENDERER_CLASSES
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -2621,6 +2641,7 @@ class FHIRPatientSummaryView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    renderer_classes = FHIR_RENDERER_CLASSES
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -2751,6 +2772,10 @@ class FHIRPatientSummaryView(APIView):
         )
 
         return Response(ips_bundle, status=status.HTTP_200_OK)
+
+    def post(self, request, pk: int) -> Response:
+        """Allow operation-style POST invocation for Patient/$summary."""
+        return self.get(request, pk)
 
     def _build_ips_bundle(
         self,
@@ -2978,3 +3003,21 @@ class FHIRPatientSummaryView(APIView):
         }
 
         return ips_bundle
+
+
+class FHIRCompositionDocumentView(FHIRPatientSummaryView):
+    """FHIR Composition $document operation endpoint."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Execute the FHIR Composition $document operation by ID",
+    )
+    def get(self, request, pk: int) -> Response:
+        """Execute Composition/$document using the patient-backed composition ID."""
+        return super().get(request, pk)
+
+    def post(self, request, pk: int) -> Response:
+        """Allow operation-style POST invocation for Composition/$document."""
+        return self.get(request, pk)

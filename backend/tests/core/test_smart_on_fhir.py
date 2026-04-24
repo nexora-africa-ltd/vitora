@@ -480,6 +480,27 @@ class TestSMARTEndpoints:
         assert "Patient" in resource_types
         assert "Encounter" in resource_types
         assert "Observation" in resource_types
+        assert "Composition" in resource_types
+
+        composition_resource = next(r for r in rest["resource"] if r["type"] == "Composition")
+        assert {interaction["code"] for interaction in composition_resource["interaction"]} == {
+            "read"
+        }
+        document_operation = next(
+            operation
+            for operation in composition_resource["operation"]
+            if operation["name"] == "document"
+        )
+        assert document_operation["definition"] == (
+            "http://hl7.org/fhir/OperationDefinition/Composition-document"
+        )
+
+    def test_capability_statement_accepts_fhir_json_accept_header(self, api_client):
+        """Metadata should negotiate application/fhir+json."""
+        response = api_client.get("/fhir/metadata", HTTP_ACCEPT="application/fhir+json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"].startswith("application/fhir+json")
 
     def test_smart_launch_missing_params(self, api_client):
         """Should return error when launch params missing."""

@@ -22,6 +22,7 @@ from django.urls import path
 from hmis.apps.core.fhir.views import (
     FHIRAllergyIntoleranceView,
     FHIRCarePlanView,
+    FHIRCompositionDocumentView,
     FHIRCompositionView,
     FHIRConditionView,
     FHIRDeviceUseStatementView,
@@ -90,6 +91,11 @@ urlpatterns = [
         "Composition/<int:pk>",
         FHIRCompositionView.as_view(),
         name="composition-read",
+    ),
+    path(
+        "Composition/<int:pk>/$document",
+        FHIRCompositionDocumentView.as_view(),
+        name="composition-document",
     ),
     # AllergyIntolerance resources
     path(
