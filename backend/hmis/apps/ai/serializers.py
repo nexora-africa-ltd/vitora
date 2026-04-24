@@ -187,6 +187,12 @@ class AIEncounterContextSerializer(serializers.Serializer):
     """
 
     chief_complaint = serializers.CharField(required=False, allow_null=True)
+    clinical_notes = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        help_text="Compact clinical summary for source encounter and ward-round progression.",
+    )
     vitals = AIVitalsSerializer(required=False, allow_null=True)
 
     # Inpatient fields (optional — only set on admission/ward round pages)
@@ -1832,6 +1838,12 @@ class ClinicalDocEncounterContextSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
         max_length=2000,
+    )
+    clinical_notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=10000,
+        help_text="Compact clinical summary for source encounter and ward-round progression.",
     )
     vitals = ClinicalDocVitalsSerializer(required=False)
     hpi = serializers.CharField(

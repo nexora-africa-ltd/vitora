@@ -21,6 +21,7 @@ from datetime import date, time, timedelta
 import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from rest_framework import status
 
 from hmis.apps.inpatient.models import WardRound
 
@@ -131,6 +132,33 @@ class TestWardRoundValidation:
                 condition_status="INVALID_STATUS",
             )
             ward_round.full_clean()
+
+    def test_api_rejects_placeholder_soap_values(
+        self,
+        authenticated_client,
+        sample_admission,
+        test_user,
+    ):
+        """Should reject placeholder SOAP values from stale clients."""
+        payload = {
+            "admission": sample_admission.id,
+            "round_date": date.today().isoformat(),
+            "round_time": "09:00",
+            "conducted_by": test_user.id,
+            "review_type": "WARD_ROUND",
+            "subjective": "Patient feels better today.",
+            "objective": "See clinical notes",
+            "assessment": "See clinical notes",
+            "plan": "See clinical notes",
+            "condition_status": "IMPROVING",
+        }
+
+        response = authenticated_client.post("/api/inpatient/ward-rounds/", payload, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "objective" in response.data
+        assert "assessment" in response.data
+        assert "plan" in response.data
 
 
 @pytest.mark.django_db

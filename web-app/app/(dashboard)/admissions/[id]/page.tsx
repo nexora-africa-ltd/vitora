@@ -56,6 +56,7 @@ import {
   useSetExpectedDischarge,
   useAddCarePlanEntry,
 } from '@/lib/hooks/use-inpatient';
+import { useEncounter } from '@/lib/hooks/use-encounters';
 import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel, ConsumableUsagePanel } from '@/components/inpatient';
 import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
 import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
@@ -72,6 +73,7 @@ import { useMCHRegistration } from '@/lib/hooks/use-mch';
 import { PartographTab } from '@/components/mch/partograph-tab';
 import { DeliveryTab } from '@/components/mch/delivery-tab';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
+import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/inpatient-ai-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
@@ -163,6 +165,8 @@ export default function AdmissionDetailPage() {
 
   const { data: admission, isLoading, error } = useAdmission(admissionId);
   const { data: wardRounds, isLoading: wardRoundsLoading } = useAdmissionWardRounds(admissionId);
+  const sourceEncounterId = admission?.source_encounter ?? admission?.opd_encounter ?? 0;
+  const { data: sourceEncounter } = useEncounter(sourceEncounterId);
   const { data: kardex, isLoading: kardexLoading } = useKardexByAdmission(admissionId);
   const { data: reviewRequests, isLoading: reviewRequestsLoading } = useAdmissionReviewRequests(admissionId);
   const { data: availableBeds } = useBeds({ ward: admission?.ward, status: 'AVAILABLE' });
@@ -226,12 +230,16 @@ export default function AdmissionDetailPage() {
 
   // Derive the latest ward round (most recent by date) for vitals + condition
   const latestWardRound = useMemo(() => {
-    const rounds = wardRounds?.results;
-    if (!rounds || rounds.length === 0) return null;
-    return [...rounds].sort(
-      (a, b) => new Date(b.round_date).getTime() - new Date(a.round_date).getTime()
-    )[0] ?? null;
-  }, [wardRounds]);
+    return getLatestWardRound(wardRounds?.results ?? []);
+  }, [wardRounds?.results]);
+
+  const admissionClinicalNotes = useMemo(() => {
+    return buildAdmissionAIClinicalNotes({
+      sourceEncounter,
+      wardRounds: wardRounds?.results ?? [],
+      wardRoundLimit: 5,
+    });
+  }, [sourceEncounter, wardRounds?.results]);
 
   // Compute latest vitals for ICU Risk Assessment panel.
   // Nursing vitals are split across separate records (TemperatureReading vs
@@ -339,13 +347,33 @@ export default function AdmissionDetailPage() {
         {
           patient_age: admission.patient_age ?? 0,
           patient_sex: admission.patient_gender ?? 'O',
+          allergies: Array.from(new Set([
+            ...(admission.clinical_context?.allergies_structured ?? []),
+            ...(sourceEncounter?.allergies
+              ? sourceEncounter.allergies.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
+              : []),
+          ])),
+          comorbidities: Array.from(new Set([
+            ...(admission.clinical_context?.comorbidities ?? []),
+            ...(sourceEncounter?.chronic_conditions
+              ? sourceEncounter.chronic_conditions.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
+              : []),
+          ])),
+          current_medications: Array.from(new Set([
+            ...(admission.clinical_context?.current_medications ?? []),
+            ...(sourceEncounter?.current_medications
+              ? sourceEncounter.current_medications.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
+              : []),
+          ])),
         },
         // Encounter context — enriched with inpatient fields
         {
           chief_complaint:
-            admission.admitting_diagnosis_text
+            sourceEncounter?.chief_complaint
+            || admission.admitting_diagnosis_text
             || admission.admitting_diagnosis
             || undefined,
+          clinical_notes: admissionClinicalNotes || undefined,
           vitals: vitalSource
             ? {
                 spo2: vitalSource.spo2 != null ? Number(vitalSource.spo2) : undefined,
@@ -376,7 +404,7 @@ export default function AdmissionDetailPage() {
     return () => {
       setEncounterAwareContext(null, null);
     };
-  }, [admission, latestWardRound, setEncounterAwareContext]);
+  }, [admission, latestWardRound, sourceEncounter, admissionClinicalNotes, setEncounterAwareContext]);
 
   // Register inpatient-specific quick actions
   useEffect(() => {

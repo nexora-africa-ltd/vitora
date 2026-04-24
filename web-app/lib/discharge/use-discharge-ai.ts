@@ -2,10 +2,12 @@ import { useCallback } from 'react';
 import { useAIClinicalDocument } from '@/lib/hooks/use-ai';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, AIPatientContext, ClinicalDocSection, ClinicalDocEncounterContext } from '@/lib/types/ai';
+import type { Encounter } from '@/lib/types/encounter';
 import type { DischargeType, DischargeTemplateLayout, DischargeTemplateSectionConfig, DischargeMedication, AdmissionOrdersResponse, WardRound } from '@/lib/types/inpatient';
 import type { DiagnosisEntry } from '@/components/shared';
 import type { DischargeSummarySection, ParsedSection, SuggestedMedication } from './types';
 import { ROUTED_SECTION_IDS, HIDDEN_SECTION_IDS } from './types';
+import { buildSourceEncounterClinicalSummary } from '@/lib/utils/inpatient-ai-context';
 import {
   parseAdvisories,
   createSectionId,
@@ -49,6 +51,7 @@ interface UseDischargeAIParams {
   lengthOfStay: number;
   dischargeType: DischargeType;
   patientCtx: AIPatientContext;
+  sourceEncounter?: Encounter | null;
   clinicalHistoryText: string;
   generationMode: ClinicalDocGenerationMode;
   /** Admission orders (labs, imaging, prescriptions) for context enrichment */
@@ -86,6 +89,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     lengthOfStay,
     dischargeType,
     patientCtx,
+    sourceEncounter,
     clinicalHistoryText,
     generationMode,
     orders,
@@ -118,7 +122,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
     const primaryDisplay = primaryEntry?.code.icd11Display || primaryEntry?.code.icd10Display || '';
     const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
-    const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency}`);
+    const sourceEncounterSummary = buildSourceEncounterClinicalSummary(sourceEncounter);
 
     // Extract ICD-10 code from the primary diagnosis entry
     const icd10Code = primaryEntry?.code.icd10Code
@@ -190,6 +194,9 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         if (parts.length) clinicalNotes.push(parts.join('\n'));
       }
     }
+    if (sourceEncounterSummary) {
+      clinicalNotes.unshift(sourceEncounterSummary);
+    }
 
     const docPatientCtx: ClinicalDocPatientContext = {
       patient_age: admission.patient_age ?? 0,
@@ -227,17 +234,25 @@ export function useDischargeAI(params: UseDischargeAIParams) {
 
     // Encounter context — enrich with ward round data for Complaints & Physical Findings
     const encounterCtx: ClinicalDocEncounterContext = {
-      chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+      chief_complaint:
+        sourceEncounter?.chief_complaint
+        || admission.admitting_diagnosis_text
+        || admission.admitting_diagnosis
+        || '',
     };
 
     // HPI from the earliest ward round's subjective (presenting complaint detail)
-    if (wardRounds?.results?.length) {
+    if (sourceEncounter?.history_of_present_illness) {
+      encounterCtx.hpi = sourceEncounter.history_of_present_illness;
+    } else if (wardRounds?.results?.length) {
       const earliest = wardRounds.results[wardRounds.results.length - 1];
       if (earliest?.subjective) encounterCtx.hpi = earliest.subjective;
     }
 
     // Examination findings from ward round objectives (most recent)
-    if (wardRounds?.results?.length) {
+    if (sourceEncounter?.physical_examination) {
+      encounterCtx.examination_findings = sourceEncounter.physical_examination;
+    } else if (wardRounds?.results?.length) {
       const objectiveFindings = wardRounds.results
         .filter((r) => r.objective)
         .map((r) => r.objective!)
@@ -248,7 +263,7 @@ export function useDischargeAI(params: UseDischargeAIParams) {
     }
 
     return { docPatientCtx, admissionCtx, encounterCtx };
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, orders, wardRounds, followUpInstructions]);
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx, sourceEncounter, orders, wardRounds, followUpInstructions]);
 
   // Build template-alignment fields for TibaBot requests
   const templateFields = useCallback(() => {

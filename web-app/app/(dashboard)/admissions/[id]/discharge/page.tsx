@@ -46,7 +46,7 @@ import { AdmissionPrescriptionsPicker } from '@/components/discharge/admission-p
 import { ClinicalReferenceCard } from '@/components/discharge/clinical-reference-card';
 import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus, useKardexByAdmission, useTemperatureReadings, useFluidBalanceSheets, useBPReadings, useBloodTransfusions, useDefaultDischargeTemplate } from '@/lib/hooks/use-inpatient';
 import { useAdmissionPrescriptions, useUpdatePrescription } from '@/lib/hooks/use-pharmacy';
-import { useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
+import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans, useAISuggestionAudit } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
@@ -62,6 +62,7 @@ import { DEFAULT_SECTION_TEMPLATES, DEDICATED_FIELD_KEYS, DISCHARGE_TYPES, MATER
 import { createSectionId, assembleSectionsText, buildTemplateAlignedContent } from '@/lib/discharge/utils';
 import { useDischargeAI } from '@/lib/discharge/use-discharge-ai';
 import { useDischargeDraft } from '@/lib/discharge/use-discharge-draft';
+import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/inpatient-ai-context';
 
 export default function DischargePage() {
   const params = useParams();
@@ -91,6 +92,7 @@ export default function DischargePage() {
 
   // Fetch encounter diagnoses for pre-population suggestions
   const sourceEncounterId = admission?.source_encounter || admission?.opd_encounter || 0;
+  const { data: sourceEncounter } = useEncounter(sourceEncounterId);
   const { data: encounterDiagnoses } = useEncounterDiagnoses(sourceEncounterId);
   const { data: storedCarePlans } = useStoredCarePlans({ encounter_id: sourceEncounterId || undefined, admission_id: admissionId });
   const chatCtx = useOptionalAIChatContext();
@@ -379,6 +381,16 @@ export default function DischargePage() {
         ...fullPatient.chronic_conditions_summary.split(',').map((c: string) => c.trim()).filter(Boolean)
       );
     }
+    if (sourceEncounter?.allergies) {
+      allergies.push(
+        ...sourceEncounter.allergies.split(/[\n,]/).map((item: string) => item.trim()).filter(Boolean)
+      );
+    }
+    if (sourceEncounter?.chronic_conditions) {
+      comorbidities.push(
+        ...sourceEncounter.chronic_conditions.split(/[\n,]/).map((item: string) => item.trim()).filter(Boolean)
+      );
+    }
 
     // Gather current medications from prescriptions
     if (orders?.prescriptions) {
@@ -390,22 +402,38 @@ export default function DischargePage() {
         }
       }
     }
+    if (sourceEncounter?.current_medications) {
+      currentMeds.push(
+        ...sourceEncounter.current_medications.split(/[\n,]/).map((item: string) => item.trim()).filter(Boolean)
+      );
+    }
 
     return {
       patient_age: admission?.patient_age ?? 0,
       patient_sex: admission?.patient_gender === 'M' ? 'male' : 'female',
-      allergies,
-      comorbidities,
-      current_medications: currentMeds,
+      allergies: Array.from(new Set(allergies)),
+      comorbidities: Array.from(new Set(comorbidities)),
+      current_medications: Array.from(new Set(currentMeds)),
     };
-  }, [admission, orders, patientContext?.patient]);
+  }, [admission, orders, patientContext?.patient, sourceEncounter]);
+
+  const latestWardRound = useMemo(() => getLatestWardRound(wardRounds?.results ?? []), [wardRounds?.results]);
+
+  const admissionClinicalNotes = useMemo(() => {
+    return buildAdmissionAIClinicalNotes({
+      sourceEncounter,
+      wardRounds: wardRounds?.results ?? [],
+      wardRoundLimit: 5,
+    });
+  }, [sourceEncounter, wardRounds?.results]);
 
   const encounterCtx = useMemo((): AIEncounterContext => {
-    const latestRound = wardRounds?.results?.[0];
+    const latestRound = latestWardRound;
     const vitals = latestRound?.vital_signs;
 
     return {
-      chief_complaint: admission?.admitting_diagnosis_text || admission?.admitting_diagnosis || undefined,
+      chief_complaint: sourceEncounter?.chief_complaint || admission?.admitting_diagnosis_text || admission?.admitting_diagnosis || undefined,
+      clinical_notes: admissionClinicalNotes || undefined,
       admission_diagnosis: admission?.admitting_diagnosis_text || admission?.admitting_diagnosis || undefined,
       ward_name: admission?.ward_name || undefined,
       bed_number: admission?.bed_number || undefined,
@@ -421,11 +449,22 @@ export default function DischargePage() {
         rr: vitals.respiratory_rate ?? undefined,
       } : undefined,
     };
-  }, [admission, wardRounds, lengthOfStay]);
+  }, [admission, latestWardRound, lengthOfStay, sourceEncounter, admissionClinicalNotes]);
 
   // Build supplementary text for AI prompts with investigations, prescriptions, ward round progress
   const clinicalHistoryText = useMemo(() => {
     const parts: string[] = [];
+
+    if (sourceEncounter) {
+      const sourceParts = [
+        sourceEncounter.chief_complaint ? `Chief complaint: ${sourceEncounter.chief_complaint}` : null,
+        sourceEncounter.history_of_present_illness ? `HPI: ${sourceEncounter.history_of_present_illness}` : null,
+        sourceEncounter.assessment ? `Assessment: ${sourceEncounter.assessment}` : null,
+      ].filter(Boolean);
+      if (sourceParts.length > 0) {
+        parts.push(`Source OPD encounter: ${sourceParts.join('. ')}`);
+      }
+    }
 
     // Ward rounds summary (last 3)
     if (wardRounds?.results && wardRounds.results.length > 0) {
@@ -525,7 +564,7 @@ export default function DischargePage() {
     }
 
     return parts.join(' \n');
-  }, [wardRounds, orders, kardex, temperatureData, bpData, fluidBalanceData, transfusionData]);
+  }, [sourceEncounter, wardRounds, orders, kardex, temperatureData, bpData, fluidBalanceData, transfusionData]);
 
   // Build suggested diagnoses from admission data + encounter + AI care plans
   const suggestedDiagnoses = useMemo(() => {
@@ -681,6 +720,7 @@ export default function DischargePage() {
     lengthOfStay,
     dischargeType,
     patientCtx,
+    sourceEncounter,
     clinicalHistoryText,
     generationMode,
     orders,
