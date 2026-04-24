@@ -106,6 +106,59 @@ def build_fhir_organization_resource(organization, request) -> dict:
     return fhir_resource
 
 
+def build_fallback_ips_organization_resource(request) -> dict:
+    """Build a stable fallback Organization for IPS author/custodian references."""
+    base_url = get_base_url(request)
+    return {
+        "resourceType": "Organization",
+        "id": "vitora-hmis",
+        "meta": {
+            "versionId": "1",
+            "lastUpdated": format_date(datetime.now()),
+        },
+        "identifier": [
+            {
+                "use": "official",
+                "system": f"{base_url}/identifier/organization",
+                "value": "vitora-hmis",
+            }
+        ],
+        "active": True,
+        "name": "Vitora HMIS",
+    }
+
+
+def resolve_ips_author_organization(
+    patient, diagnoses=None, prescriptions=None, treatment_plans=None
+):
+    """Resolve the best available organization for IPS author/custodian references."""
+    if getattr(patient, "organization", None):
+        return patient.organization
+
+    registered_facility = getattr(patient, "registered_at_facility", None)
+    if registered_facility and getattr(registered_facility, "organization", None):
+        return registered_facility.organization
+
+    for diagnosis in diagnoses or []:
+        encounter = getattr(diagnosis, "encounter", None)
+        if encounter and getattr(encounter, "organization", None):
+            return encounter.organization
+
+    for prescription in prescriptions or []:
+        if getattr(prescription, "organization", None):
+            return prescription.organization
+        encounter = getattr(prescription, "encounter", None)
+        if encounter and getattr(encounter, "organization", None):
+            return encounter.organization
+
+    for treatment_plan in treatment_plans or []:
+        encounter = getattr(treatment_plan, "encounter", None)
+        if encounter and getattr(encounter, "organization", None):
+            return encounter.organization
+
+    return None
+
+
 class FHIRPatientView(APIView):
     """
     FHIR Patient resource endpoint.
@@ -951,14 +1004,8 @@ class FHIRConditionView(APIView):
 
     def _to_fhir_condition(self, diagnosis, request) -> dict:
         """Convert Django Diagnosis to FHIR Condition resource."""
-        base_url = get_base_url(request)
-
-        # Map diagnosis type to category
-        category_map = {
-            "PRIMARY": {"code": "encounter-diagnosis", "display": "Encounter Diagnosis"},
-            "SECONDARY": {"code": "encounter-diagnosis", "display": "Encounter Diagnosis"},
-            "CHRONIC": {"code": "problem-list-item", "display": "Problem List Item"},
-        }
+        codeable_concept = self._build_condition_code(diagnosis)
+        condition_text = codeable_concept.get("text", "Condition")
         fhir_resource = {
             "resourceType": "Condition",
             "id": str(diagnosis.id),
@@ -989,18 +1036,34 @@ class FHIRConditionView(APIView):
                 {
                     "coding": [
                         {
-                            "system": "http://terminology.hl7.org/CodeSystem/condition-category",
-                            "code": "problem-list-item",
-                            "display": "Problem List Item",
+                            "system": "http://loinc.org",
+                            "code": "75326-9",
+                            "display": "Problem",
                         }
-                    ]
+                    ],
+                    "text": "Problem",
                 }
             ],
-            "code": self._build_condition_code(diagnosis),
-            "subject": {"reference": f"Patient/{diagnosis.encounter.patient.id}"},
+            "code": codeable_concept,
+            "subject": {
+                "reference": f"Patient/{diagnosis.encounter.patient.id}",
+                "display": f"{diagnosis.encounter.patient.first_name} {diagnosis.encounter.patient.last_name}",
+            },
             "recordedDate": format_date(diagnosis.encounter.encounter_date),
             "onsetDateTime": format_date(diagnosis.encounter.encounter_date),
+            "text": {
+                "status": "generated",
+                "div": (
+                    '<div xmlns="http://www.w3.org/1999/xhtml">'
+                    f"<p><b>Condition</b>: {condition_text}</p>"
+                    "<p><b>Status</b>: Active</p>"
+                    "</div>"
+                ),
+            },
         }
+
+        if diagnosis.diagnosed_by_id:
+            fhir_resource["asserter"] = {"reference": f"Practitioner/{diagnosis.diagnosed_by_id}"}
 
         return fhir_resource
 
@@ -1120,6 +1183,7 @@ class FHIRCompositionView(APIView):
         media_items=None,
         social_history_observations=None,
         pregnancy_observations=None,
+        author_organization=None,
     ) -> dict:
         """
         Create an IPS Composition for a patient.
@@ -1130,7 +1194,7 @@ class FHIRCompositionView(APIView):
             allergies: Optional list of Allergy instances
             medication_items: Optional list of PrescriptionItem instances
             treatment_plans: Optional list of TreatmentPlan instances
-
+            author_organization: Optional Organization for author/custodian references
         Returns:
             dict: FHIR R4 Composition resource
         """
@@ -1455,13 +1519,34 @@ class FHIRCompositionView(APIView):
             }
             sections.append(care_section)
 
+        resolved_author_org = author_organization or resolve_ips_author_organization(patient)
+        author_reference = (
+            f"Organization/{resolved_author_org.id}"
+            if resolved_author_org
+            else "Organization/vitora-hmis"
+        )
+        author_display = resolved_author_org.name if resolved_author_org else "Vitora HMIS"
+        composed_at = datetime.now()
+
         fhir_resource = {
             "resourceType": "Composition",
             "id": str(patient.id),
             "meta": {
                 "versionId": "1",
-                "lastUpdated": format_date(datetime.now()),
+                "lastUpdated": format_date(composed_at),
                 "profile": ["http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips"],
+            },
+            "text": {
+                "status": "generated",
+                "div": (
+                    '<div xmlns="http://www.w3.org/1999/xhtml">'
+                    f"<p><b>IPS Composition</b> for {patient.first_name} {patient.last_name}</p>"
+                    "</div>"
+                ),
+            },
+            "identifier": {
+                "system": f"{base_url}/identifier/ips-composition",
+                "value": f"ips-composition-{patient.id}",
             },
             "status": "final",
             "type": {
@@ -1474,22 +1559,39 @@ class FHIRCompositionView(APIView):
                 ]
             },
             "subject": {"reference": f"Patient/{patient.id}"},
-            "date": format_date(datetime.now()),
+            "date": format_date(composed_at),
             "author": [
                 {
-                    "reference": (
-                        f"Organization/{patient.organization.id}"
-                        if getattr(patient, "organization", None)
-                        else "Organization/vitora-hmis"
-                    ),
-                    "display": (
-                        patient.organization.name
-                        if getattr(patient, "organization", None)
-                        else "Vitora HMIS"
-                    ),
+                    "reference": author_reference,
+                    "display": author_display,
                 }
             ],
             "title": f"International Patient Summary for {patient.first_name} {patient.last_name}",
+            "confidentiality": "N",
+            "attester": [
+                {
+                    "mode": "legal",
+                    "time": format_date(composed_at),
+                    "party": {"reference": author_reference, "display": author_display},
+                }
+            ],
+            "custodian": {"reference": author_reference, "display": author_display},
+            "event": [
+                {
+                    "code": [
+                        {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActClass",
+                                    "code": "PCPR",
+                                    "display": "care provision",
+                                }
+                            ]
+                        }
+                    ],
+                    "period": {"end": format_date(composed_at)},
+                }
+            ],
             "section": sections,
         }
 
@@ -1775,6 +1877,7 @@ class FHIRMedicationStatementView(APIView):
         if item.is_cancelled:
             fhir_status = "stopped"
 
+        medication_text = f"{drug.generic_name} {drug.strength} {drug.form}"
         fhir_resource = {
             "resourceType": "MedicationStatement",
             "id": str(item.id),
@@ -1785,6 +1888,16 @@ class FHIRMedicationStatementView(APIView):
                     "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationStatement-uv-ips"
                 ],
             },
+            "text": {
+                "status": "generated",
+                "div": (
+                    '<div xmlns="http://www.w3.org/1999/xhtml">'
+                    f"<p><b>MedicationStatement</b>: {medication_text}</p>"
+                    f"<p><b>Status</b>: {fhir_status}</p>"
+                    f"<p><b>Instructions</b>: {item.dosage} {item.frequency} for {item.duration}</p>"
+                    "</div>"
+                ),
+            },
             "identifier": [
                 {
                     "system": f"{base_url}/identifier/prescription-item",
@@ -1793,16 +1906,12 @@ class FHIRMedicationStatementView(APIView):
             ],
             "status": fhir_status,
             "medicationCodeableConcept": {
-                "coding": [
-                    {
-                        "system": f"{base_url}/CodeSystem/drug",
-                        "code": drug.code,
-                        "display": drug.generic_name,
-                    }
-                ],
-                "text": f"{drug.generic_name} {drug.strength} {drug.form}",
+                "text": medication_text,
             },
-            "subject": {"reference": f"Patient/{prescription.patient.id}"},
+            "subject": {
+                "reference": f"Patient/{prescription.patient.id}",
+                "display": f"{prescription.patient.first_name} {prescription.patient.last_name}",
+            },
             "effectivePeriod": {
                 "start": format_date(prescription.prescribed_at),
             },
@@ -1868,16 +1977,6 @@ class FHIRMedicationStatementView(APIView):
         # Add instructions as patientInstruction
         if item.instructions:
             fhir_resource["dosage"][0]["patientInstruction"] = item.instructions
-
-        # Add KEML code if available (Kenya Essential Medicines List)
-        if drug.keml_code:
-            fhir_resource["medicationCodeableConcept"]["coding"].append(
-                {
-                    "system": "urn:kenya:keml",
-                    "code": drug.keml_code,
-                    "display": drug.generic_name,
-                }
-            )
 
         return fhir_resource
 
@@ -3017,6 +3116,13 @@ class FHIRPatientSummaryView(APIView):
                 }
             )
 
+        resolved_author_organization = resolve_ips_author_organization(
+            patient,
+            diagnoses=diagnoses,
+            prescriptions=prescriptions,
+            treatment_plans=treatment_plans,
+        )
+
         # Build composition with all section references
         composition_view = FHIRCompositionView()
         fhir_composition = composition_view._to_fhir_composition(
@@ -3034,6 +3140,7 @@ class FHIRPatientSummaryView(APIView):
             media_items=media_items,
             social_history_observations=social_history_observations,
             pregnancy_observations=pregnancy_observations,
+            author_organization=resolved_author_organization,
         )
 
         # Update composition with condition references
@@ -3058,11 +3165,21 @@ class FHIRPatientSummaryView(APIView):
                 }
 
         organization_entries = []
-        if getattr(patient, "organization", None):
+        if resolved_author_organization:
             organization_entries.append(
                 {
-                    "fullUrl": f"{base_url}/Organization/{patient.organization.id}",
-                    "resource": build_fhir_organization_resource(patient.organization, request),
+                    "fullUrl": f"{base_url}/Organization/{resolved_author_organization.id}",
+                    "resource": build_fhir_organization_resource(
+                        resolved_author_organization, request
+                    ),
+                }
+            )
+        else:
+            fallback_organization = build_fallback_ips_organization_resource(request)
+            organization_entries.append(
+                {
+                    "fullUrl": f"{base_url}/Organization/{fallback_organization['id']}",
+                    "resource": fallback_organization,
                 }
             )
 

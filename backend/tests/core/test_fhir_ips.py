@@ -939,6 +939,25 @@ class TestFHIRIPSMedicationStatement:
         assert "1 tablet" in med["dosage"][0]["text"]
         assert "route" in med["dosage"][0]
 
+    def test_medication_statement_has_ips_profile_narrative(
+        self, authenticated_client, sample_patient, sample_prescription_with_items
+    ):
+        """MedicationStatement should include IPS profile and generated narrative."""
+        url = reverse("fhir:patient-summary", args=[sample_patient.id])
+        response = authenticated_client.get(url)
+
+        med_statement = next(
+            e["resource"]
+            for e in response.data["entry"]
+            if e["resource"]["resourceType"] == "MedicationStatement"
+        )
+
+        assert med_statement["meta"]["profile"] == [
+            "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationStatement-uv-ips"
+        ]
+        assert med_statement["text"]["status"] == "generated"
+        assert "MedicationStatement" in med_statement["text"]["div"]
+
     def test_multiple_medications_in_ips(
         self, authenticated_client, sample_patient, sample_prescription_multiple_items
     ):
@@ -1162,6 +1181,104 @@ class TestFHIRIPSAllergies:
 
 class TestFHIRIPSComplete:
     """Tests for complete IPS Bundle with all resource types."""
+
+    def test_ips_bundle_infers_author_organization_from_facility_when_patient_org_missing(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_facility,
+        sample_organization,
+    ):
+        """IPS bundle should still include the author organization when patient.organization is empty."""
+        sample_patient.organization = None
+        sample_patient.registered_at_facility = sample_facility
+        sample_patient.save(update_fields=["organization", "registered_at_facility"])
+
+        response = authenticated_client.get(
+            reverse("fhir:patient-summary", args=[sample_patient.id])
+        )
+
+        composition = response.data["entry"][0]["resource"]
+        organization_entries = [
+            entry["resource"]
+            for entry in response.data["entry"]
+            if entry["resource"]["resourceType"] == "Organization"
+        ]
+
+        assert composition["author"][0]["reference"] == f"Organization/{sample_organization.id}"
+        assert any(org["id"] == str(sample_organization.id) for org in organization_entries)
+
+    def test_ips_bundle_contains_author_organization_entry(
+        self,
+        authenticated_client,
+        sample_patient,
+    ):
+        """IPS bundle should include the organization referenced by Composition author/custodian."""
+        response = authenticated_client.get(
+            reverse("fhir:patient-summary", args=[sample_patient.id])
+        )
+
+        composition = response.data["entry"][0]["resource"]
+        organization_entries = [
+            entry["resource"]
+            for entry in response.data["entry"]
+            if entry["resource"]["resourceType"] == "Organization"
+        ]
+
+        assert (
+            composition["author"][0]["reference"]
+            == f"Organization/{sample_patient.organization_id}"
+        )
+        assert (
+            composition["custodian"]["reference"]
+            == f"Organization/{sample_patient.organization_id}"
+        )
+        assert any(org["id"] == str(sample_patient.organization_id) for org in organization_entries)
+
+    def test_ips_composition_has_required_document_metadata(
+        self,
+        authenticated_client,
+        sample_patient,
+    ):
+        """IPS Composition should include narrative and core document metadata used by Inferno validation."""
+        response = authenticated_client.get(
+            reverse("fhir:patient-summary", args=[sample_patient.id])
+        )
+        composition = response.data["entry"][0]["resource"]
+
+        assert composition["meta"]["profile"] == [
+            "http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips"
+        ]
+        assert composition["text"]["status"] == "generated"
+        assert composition["identifier"]["value"].startswith("ips-composition-")
+        assert composition["confidentiality"] == "N"
+        assert composition["attester"][0]["mode"] == "legal"
+        assert composition["event"][0]["code"][0]["coding"][0]["code"] == "PCPR"
+
+    def test_ips_conditions_use_problem_category_and_narrative(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        sample_diagnosis,
+    ):
+        """IPS Conditions should use the IPS problem category pattern and generated narrative."""
+        response = authenticated_client.get(
+            reverse("fhir:patient-summary", args=[sample_patient.id])
+        )
+
+        conditions = [
+            entry["resource"]
+            for entry in response.data["entry"]
+            if entry["resource"]["resourceType"] == "Condition"
+        ]
+
+        assert conditions
+        condition = conditions[0]
+        assert condition["category"][0]["coding"][0]["system"] == "http://loinc.org"
+        assert condition["category"][0]["coding"][0]["code"] == "75326-9"
+        assert condition["text"]["status"] == "generated"
+        assert "Condition" in condition["text"]["div"]
 
     def test_complete_ips_bundle(
         self,
