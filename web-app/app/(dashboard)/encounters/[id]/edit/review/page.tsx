@@ -163,7 +163,7 @@ export default function EncounterEditReviewPage() {
       return;
     }
     handleFinalize();
-  }, [hasUnresolvedCritical]);
+  }, [hasUnresolvedCritical, handleFinalize]);
 
   // Actual finalize logic
   const handleFinalize = useCallback(async () => {

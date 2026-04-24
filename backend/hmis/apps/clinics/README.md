@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD040 MD058 MD060 -->
+
 # Clinics Module
 
 The Clinics module manages outpatient clinic operations, patient queues, staff assignments, and chronic care enrollment tracking for Vitora HMIS.
@@ -5,6 +7,7 @@ The Clinics module manages outpatient clinic operations, patient queues, staff a
 ## Overview
 
 This module provides functionality for:
+
 - **Clinic Management** - Define clinic types (MCH, HIV, TB, Dental, etc.)
 - **Session Management** - Daily clinic sessions with open/close workflows
 - **Queue Management** - Patient queuing with priority-based ordering
@@ -16,18 +19,25 @@ This module provides functionality for:
 
 Clinical templates (from [backend/data/clinical_templates](backend/data/clinical_templates)) are used to pre-fill an encounter's structure when a clinician starts a consultation.
 
-**Where it happens**
-- When a `ClinicVisit` transitions to **IN_CONSULTATION**, the model method `ClinicVisit.start_consultation()` resolves a default template and creates/updates an `Encounter` with `clinical_template` set.
+### Where It Happens
 
-**Resolution order**
+- When a `ClinicVisit` transitions to **IN_CONSULTATION**, the model method
+    `ClinicVisit.start_consultation()` resolves a default template and creates or updates an
+    `Encounter` with `clinical_template` set.
+
+### Resolution Order
+
 1. `Clinic.default_clinical_template` (explicit per-clinic configuration)
 2. Code-based override (for seeded “special” clinics like `GBV-DEFAULT`)
 3. Clinic-type routing best-fit mapping
 4. If nothing matches, the encounter remains template-less
 
-**Operational notes**
-- Templates must be loaded into the DB (typically via `python manage.py load_clinical_templates`) for routing to return a `ClinicalTemplate`.
-- To backfill existing clinics that lack defaults, use `python manage.py populate_clinic_default_templates`.
+### Operational Notes
+
+- Templates must be loaded into the DB, typically via `python manage.py load_clinical_templates`,
+    for routing to return a `ClinicalTemplate`.
+- To backfill existing clinics that lack defaults, use
+    `python manage.py populate_clinic_default_templates`.
 
 ## MCH Flow Unification Operations
 
@@ -61,9 +71,12 @@ python manage.py mch_clinic_unification_metrics --json
 ```
 
 Notes:
+
 - Historical synthetic clinic visits are created as completed visits with synthetic timestamps and suppressed queue broadcasts.
 - Live routed visits carry the MCH registration id directly.
-- Live linked ANC and PNC payloads expose a stable `mch_registration_id` on clinic visit responses so the web app can open the correct MCH registration even after a canonical clinic visit is already attached to an ANC or PNC record.
+- Live linked ANC and PNC payloads expose a stable `mch_registration_id` on clinic visit
+    responses so the web app can open the correct MCH registration even after a canonical clinic
+    visit is already attached to an ANC or PNC record.
 
 ### Current Best-Fit Template Routing
 

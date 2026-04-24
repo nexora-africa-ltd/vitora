@@ -4,6 +4,7 @@
  */
 'use client';
 
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -124,9 +125,11 @@ export default function OrganizationDetailPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
           <div className="flex items-center gap-3 min-w-0">
             {org.logo ? (
-              <img
+              <Image
                 src={org.logo.startsWith('http') ? org.logo : `${API_BASE_URL}${org.logo}`}
                 alt={`${org.name} logo`}
+                width={40}
+                height={40}
                 className="h-10 w-10 rounded-md object-cover shrink-0"
               />
             ) : (
@@ -135,21 +138,21 @@ export default function OrganizationDetailPage() {
               </div>
             )}
             <div className="min-w-0">
-            <p className="text-sm font-medium truncate">
-              {org.slug}
-              {org.county_name && (
-                <span className="text-muted-foreground"> · {org.county_name}</span>
-              )}
-              {org.sub_county_name && (
-                <span className="text-muted-foreground"> / {org.sub_county_name}</span>
-              )}
-            </p>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Created {formatDate(org.created_at)}
-              {org.updated_at !== org.created_at && (
-                <> · Updated {formatDate(org.updated_at)}</>
-              )}
-            </p>
+              <p className="text-sm font-medium truncate">
+                {org.slug}
+                {org.county_name && (
+                  <span className="text-muted-foreground"> · {org.county_name}</span>
+                )}
+                {org.sub_county_name && (
+                  <span className="text-muted-foreground"> / {org.sub_county_name}</span>
+                )}
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Created {formatDate(org.created_at)}
+                {org.updated_at !== org.created_at && (
+                  <> · Updated {formatDate(org.updated_at)}</>
+                )}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">

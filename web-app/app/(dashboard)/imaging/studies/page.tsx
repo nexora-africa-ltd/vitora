@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
@@ -200,9 +201,11 @@ export default function DICOMStudiesPage() {
                         <TableCell>
                           <div className="w-12 h-12 rounded bg-black flex items-center justify-center overflow-hidden">
                             {study.thumbnail_path ? (
-                              <img
+                              <Image
                                 src={imagingApi.getThumbnailUrl(study.thumbnail_path) || ''}
                                 alt="Thumbnail"
+                                width={48}
+                                height={48}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
@@ -256,9 +259,11 @@ export default function DICOMStudiesPage() {
                         {/* Thumbnail */}
                         <div className="w-14 h-14 rounded bg-black flex-shrink-0 flex items-center justify-center overflow-hidden">
                           {study.thumbnail_path ? (
-                            <img
+                            <Image
                               src={imagingApi.getThumbnailUrl(study.thumbnail_path) || ''}
                               alt="Thumbnail"
+                              width={56}
+                              height={56}
                               className="w-full h-full object-cover"
                             />
                           ) : (

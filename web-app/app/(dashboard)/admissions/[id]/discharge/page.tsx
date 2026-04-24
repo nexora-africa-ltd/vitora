@@ -182,7 +182,7 @@ export default function DischargePage() {
     setMedications,
     setMaternityContinuityAction,
     setGenerationMode,
-  }), []);
+  }), [setGenerationMode]);
 
   const draftValues = useMemo(() => ({
     dischargeType,

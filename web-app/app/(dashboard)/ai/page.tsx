@@ -244,7 +244,7 @@ export default function AIPage() {
         true,
       );
     }
-  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext]);
+  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext, verbosity]);
 
   // Session management
   const handleSelectSession = useCallback(

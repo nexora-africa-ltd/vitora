@@ -7,6 +7,7 @@
 'use client';
 
 import { use } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
@@ -285,9 +286,11 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded bg-black flex items-center justify-center flex-shrink-0">
                           {series.thumbnail_path ? (
-                            <img
+                            <Image
                               src={imagingApi.getThumbnailUrl(series.thumbnail_path) || ''}
                               alt={`Series ${series.series_number}`}
+                              width={48}
+                              height={48}
                               className="w-full h-full object-cover rounded"
                             />
                           ) : (

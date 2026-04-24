@@ -35,7 +35,7 @@ export default function AdmissionDetailLayout({
         admission_id: admission.id,
       });
     }
-  }, [admission?.admission_status, admission?.patient, admission?.id, syncFromAdmission]);
+  }, [admission, syncFromAdmission]);
 
   return (
     <PatientProvider patientId={admission?.patient ?? null}>
