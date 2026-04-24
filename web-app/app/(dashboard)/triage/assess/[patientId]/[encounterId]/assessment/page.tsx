@@ -57,6 +57,7 @@ import { usePatientContext } from '@/lib/context/patient-context';
 import { calculateAge } from '@/lib/utils/format';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { useCalculateTriageCategory } from '@/lib/hooks/use-triage';
+import { useTriageAssessHistoryAvailability } from '@/lib/hooks/use-triage-assess-history-availability';
 import {
   ARRIVAL_MODE_CONFIG,
   CHIEF_COMPLAINT_CONFIG,
@@ -169,6 +170,9 @@ export default function TriageAssessmentPage() {
 
   const patientId = params.patientId as string;
   const encounterId = params.encounterId as string;
+  const patientIdNum = parseInt(patientId, 10);
+  const encounterIdNum = parseInt(encounterId, 10);
+  const { showHistoryStep } = useTriageAssessHistoryAvailability(patientIdNum, encounterIdNum);
 
   // Compute patient age group for ETAT conditional rendering
   const patientAge = patient ? calculateAge(patient.date_of_birth) : null;
@@ -185,7 +189,6 @@ export default function TriageAssessmentPage() {
   const calculateCategoryMutation = useCalculateTriageCategory();
 
   // Auto-save assessment to store when navigating away (e.g. via tab click)
-  const encounterIdNum = parseInt(encounterId, 10);
   const getValuesRef = useRef<(() => AssessmentFormData) | null>(null);
 
   useEffect(() => {
@@ -434,8 +437,8 @@ export default function TriageAssessmentPage() {
   );
 
   const handleBack = useCallback(() => {
-    router.push(`/triage/assess/${patientId}/${encounterId}/history`);
-  }, [router, patientId, encounterId]);
+    router.push(`/triage/assess/${patientId}/${encounterId}/${showHistoryStep ? 'history' : 'vitals'}`);
+  }, [router, patientId, encounterId, showHistoryStep]);
 
   return (
     <div className="space-y-6">
@@ -451,7 +454,7 @@ export default function TriageAssessmentPage() {
                 <CardTitle className="text-lg">Arrival & Presentation</CardTitle>
                 <HelpPopover content="Document how and when the patient arrived and their presenting complaint." />
               </div>
-              <Badge variant="secondary">Step 3 of 4</Badge>
+              <Badge variant="secondary">Step {showHistoryStep ? 3 : 2} of {showHistoryStep ? 4 : 3}</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -1050,7 +1053,7 @@ export default function TriageAssessmentPage() {
         {/* Navigation Buttons */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" onClick={handleBack}>
-            Back: History
+            {showHistoryStep ? 'Back: History' : 'Back: Vitals'}
           </Button>
           <Button
             type="submit"

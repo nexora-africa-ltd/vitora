@@ -48,6 +48,7 @@ import { usePatientContext } from '@/lib/context/patient-context';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { useCreateTriageAssessment, useCompleteTriageAssessment } from '@/lib/hooks/use-triage';
+import { useTriageAssessHistoryAvailability } from '@/lib/hooks/use-triage-assess-history-availability';
 import { triageApi } from '@/lib/api/triage';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { toast } from '@/lib/hooks/use-toast';
@@ -97,6 +98,9 @@ export default function TriageRoutePage() {
 
   const patientId = params.patientId as string;
   const encounterId = params.encounterId as string;
+  const patientIdNum = parseInt(patientId, 10);
+  const encounterIdNum = parseInt(encounterId, 10);
+  const { showHistoryStep } = useTriageAssessHistoryAvailability(patientIdNum, encounterIdNum);
 
   // Get triage store data
   const {
@@ -114,7 +118,6 @@ export default function TriageRoutePage() {
   const currentRouting = getRouting(parseInt(encounterId, 10));
 
   // Mark route as visited when leaving the tab
-  const encounterIdNum = parseInt(encounterId, 10);
   useEffect(() => {
     return () => {
       markSectionVisited(encounterIdNum, 'route');
@@ -374,7 +377,7 @@ export default function TriageRoutePage() {
                 <Stethoscope className="h-5 w-5 text-muted-foreground" />
                 Assessment Summary
               </CardTitle>
-              <Badge variant="secondary">Step 4 of 4</Badge>
+              <Badge variant="secondary">Step {showHistoryStep ? 4 : 3} of {showHistoryStep ? 4 : 3}</Badge>
             </div>
           </CardHeader>
           <CardContent className="pt-4">

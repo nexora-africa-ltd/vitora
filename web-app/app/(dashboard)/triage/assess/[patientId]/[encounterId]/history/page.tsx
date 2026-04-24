@@ -22,6 +22,7 @@ import { EncounterPeekContent } from '@/components/encounters/encounter-peek-con
 import { ClinicalSnapshotBanner } from '@/components/encounters/clinical-snapshot-banner';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { usePatientEncounters } from '@/lib/hooks/use-patients';
+import { useTriageAssessHistoryAvailability } from '@/lib/hooks/use-triage-assess-history-availability';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { formatDate } from '@/lib/utils/format';
 import type { PatientEncounter } from '@/lib/types/patient';
@@ -70,6 +71,9 @@ export default function TriageHistoryPage() {
 
   const patientId = params.patientId as string;
   const encounterId = params.encounterId as string;
+  const patientIdNum = parseInt(patientId, 10);
+  const encounterIdNum = parseInt(encounterId, 10);
+  const { showHistoryStep, isLoading: isHistoryAvailabilityLoading } = useTriageAssessHistoryAvailability(patientIdNum, encounterIdNum);
 
   const { markSectionComplete, markSectionVisited } = useTriageAssessStore();
 
@@ -83,7 +87,6 @@ export default function TriageHistoryPage() {
   }, []);
 
   // Mark history as visited when leaving the tab
-  const encounterIdNum = parseInt(encounterId, 10);
   useEffect(() => {
     return () => {
       markSectionVisited(encounterIdNum, 'history');
@@ -92,14 +95,18 @@ export default function TriageHistoryPage() {
   }, [encounterIdNum]);
 
   // Fetch patient's past encounters
-  const { data: encountersData, isLoading: isEncountersLoading } = usePatientEncounters(
-    parseInt(patientId, 10)
-  );
+  const { data: encountersData, isLoading: isEncountersLoading } = usePatientEncounters(patientIdNum);
 
   // Filter out current encounter from history (limit to 5 most recent)
   const pastEncounters = (encountersData || [])
-    .filter((e) => e.id !== parseInt(encounterId, 10))
+    .filter((e) => e.id !== encounterIdNum)
     .slice(0, 5);
+
+  useEffect(() => {
+    if (!isHistoryAvailabilityLoading && !showHistoryStep) {
+      router.replace(`/triage/assess/${patientId}/${encounterId}/assessment`);
+    }
+  }, [isHistoryAvailabilityLoading, showHistoryStep, router, patientId, encounterId]);
 
   const handleContinue = useCallback(() => {
     // History is read-only in triage — mark as reviewed when user proceeds
@@ -112,7 +119,7 @@ export default function TriageHistoryPage() {
   }, [router, patientId, encounterId]);
 
   // Loading state
-  if (isPatientLoading) {
+  if (isPatientLoading || isHistoryAvailabilityLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-32" />

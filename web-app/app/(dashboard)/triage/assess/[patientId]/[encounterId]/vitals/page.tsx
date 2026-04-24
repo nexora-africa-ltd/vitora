@@ -34,6 +34,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
+import { useTriageAssessHistoryAvailability } from '@/lib/hooks/use-triage-assess-history-availability';
 import { calculateBMI, getBMIColorClass } from '@/lib/utils/bmi';
 import {
   VitalAlertsPanel,
@@ -151,6 +152,9 @@ export default function TriageVitalsPage() {
   // Compute patient age group for age-adjusted vital thresholds
   const patientAgeGroup = patient ? getAgeGroup(patient.date_of_birth) : null;
   const ageThresholds = getAgeAdjustedInputThresholds(patientAgeGroup);
+  const patientIdNum = parseInt(patientId, 10);
+  const encounterIdNum = parseInt(encounterId, 10);
+  const { showHistoryStep } = useTriageAssessHistoryAvailability(patientIdNum, encounterIdNum);
 
   // Get triage store for persisting vitals across tabs
   const { setVitals, getVitals, markSectionComplete, markSectionVisited } = useTriageAssessStore();
@@ -159,7 +163,6 @@ export default function TriageVitalsPage() {
   const [alerts, setAlerts] = useState<TriageAlert[]>([]);
 
   // Auto-save vitals to store when navigating away (e.g. via tab click)
-  const encounterIdNum = parseInt(encounterId, 10);
   const getValuesRef = useRef<(() => VitalsFormData) | null>(null);
 
   useEffect(() => {
@@ -309,9 +312,11 @@ export default function TriageVitalsPage() {
       markSectionComplete(parseInt(encounterId, 10), 'vitals');
 
       // Navigate to next tab
-      router.push(`/triage/assess/${patientId}/${encounterId}/history`);
+      router.push(
+        `/triage/assess/${patientId}/${encounterId}/${showHistoryStep ? 'history' : 'assessment'}`
+      );
     },
-    [router, patientId, encounterId, setVitals, markSectionComplete]
+    [router, patientId, encounterId, setVitals, markSectionComplete, showHistoryStep]
   );
 
   // Parse number input helper
@@ -335,7 +340,7 @@ export default function TriageVitalsPage() {
                 <CardTitle className="text-lg">Vital Signs</CardTitle>
                 <HelpPopover content="Record the patient's vital signs. Critical values will trigger alerts." />
               </div>
-              <Badge variant="secondary">Step 1 of 4</Badge>
+              <Badge variant="secondary">Step 1 of {showHistoryStep ? 4 : 3}</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -613,7 +618,7 @@ export default function TriageVitalsPage() {
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            Next: History
+            {showHistoryStep ? 'Next: History' : 'Next: Assessment'}
           </Button>
         </div>
       </form>
