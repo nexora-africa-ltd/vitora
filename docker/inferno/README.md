@@ -81,7 +81,7 @@ When prompted in the Inferno UI, use these Vitora endpoints:
 | Authorization | \`http://host.docker.internal:9088/oauth/authorize/\` |
 | Token | \`http://host.docker.internal:9088/oauth/token/\` |
 
-> **Note**: Use \`host.docker.internal\` when Inferno (in Docker) needs to reach Vitora (on host).
+> **Note**: Use \`host.docker.internal\` when Inferno (in Docker) needs to reach Vitora (on host). On Linux, the Compose file must also provide \`host.docker.internal:host-gateway\`; this repo now does that for the Inferno container. For Snap-managed Docker hosts that show AppArmor signal denials when stopping Inferno, the Inferno service also runs with \`apparmor=unconfined\` to avoid the stop/kill deadlock.
 
 ### 7. Create Test OAuth2 Client (for SMART tests)
 
@@ -176,6 +176,20 @@ Ensure Vitora is bound to all interfaces:
 \`\`\`bash
 cd backend
 python manage.py runserver 0.0.0.0:9088
+\`\`\`
+
+If you're on Linux, recreate Inferno after Compose changes so Docker applies the host alias:
+
+\`\`\`bash
+docker compose -f docker/inferno/compose.yml down
+docker compose -f docker/inferno/compose.yml up -d
+\`\`\`
+
+If the existing container is already stuck with `permission denied` on stop, restart the Docker daemon first, then recreate Inferno:
+
+\`\`\`bash
+sudo snap restart docker
+sudo docker-compose -f docker/inferno/compose.yml up -d --force-recreate
 \`\`\`
 
 ### SMART Tests Fail on Authorization

@@ -29,6 +29,10 @@ services:
     container_name: vitora-inferno
     ports:
       - "4567:4567"  # Inferno Web UI
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    security_opt:
+      - "apparmor=unconfined"
     environment:
       # Base configuration
       - REDIS_URL=redis://redis:6379

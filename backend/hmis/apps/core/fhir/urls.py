@@ -24,13 +24,22 @@ from hmis.apps.core.fhir.views import (
     FHIRCarePlanView,
     FHIRCompositionView,
     FHIRConditionView,
+    FHIRDeviceUseStatementView,
     FHIRDeviceView,
+    FHIRDiagnosticReportView,
+    FHIRImagingStudyView,
+    FHIRImmunizationView,
+    FHIRMediaView,
     FHIRMedicationStatementView,
+    FHIRMedicationView,
     FHIRObservationView,
     FHIROrganizationView,
     FHIRPatientSummaryView,
     FHIRPatientView,
+    FHIRPractitionerRoleView,
     FHIRPractitionerView,
+    FHIRProcedureView,
+    FHIRSpecimenView,
 )
 
 app_name = "fhir"
@@ -52,6 +61,11 @@ urlpatterns = [
         "Practitioner/<int:pk>",
         FHIRPractitionerView.as_view(),
         name="practitioner-read",
+    ),
+    path(
+        "PractitionerRole/<int:pk>",
+        FHIRPractitionerRoleView.as_view(),
+        name="practitioner-role-read",
     ),
     # Organization resources
     path(
@@ -89,16 +103,56 @@ urlpatterns = [
         FHIRMedicationStatementView.as_view(),
         name="medication-statement-read",
     ),
+    path(
+        "Medication/<int:pk>",
+        FHIRMedicationView.as_view(),
+        name="medication-read",
+    ),
     # CarePlan resources (treatment plans)
     path(
         "CarePlan/<int:pk>",
         FHIRCarePlanView.as_view(),
         name="care-plan-read",
     ),
+    path(
+        "Specimen/<int:pk>",
+        FHIRSpecimenView.as_view(),
+        name="specimen-read",
+    ),
+    path(
+        "DiagnosticReport/<int:pk>",
+        FHIRDiagnosticReportView.as_view(),
+        name="diagnostic-report-read",
+    ),
+    path(
+        "Immunization/<int:pk>",
+        FHIRImmunizationView.as_view(),
+        name="immunization-read",
+    ),
+    path(
+        "Procedure/<int:pk>",
+        FHIRProcedureView.as_view(),
+        name="procedure-read",
+    ),
+    path(
+        "ImagingStudy/<int:pk>",
+        FHIRImagingStudyView.as_view(),
+        name="imaging-study-read",
+    ),
+    path(
+        "Media/<int:pk>",
+        FHIRMediaView.as_view(),
+        name="media-read",
+    ),
     # Device resources
     path(
         "Device/<int:pk>",
         FHIRDeviceView.as_view(),
         name="device-read",
+    ),
+    path(
+        "DeviceUseStatement/<int:pk>",
+        FHIRDeviceUseStatementView.as_view(),
+        name="device-use-statement-read",
     ),
 ]
