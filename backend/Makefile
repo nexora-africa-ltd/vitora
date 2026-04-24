@@ -1,7 +1,7 @@
 .PHONY: help install test lint format type-check security clean \
 	staging-status staging-logs staging-logs-100 staging-exec staging-seed \
 	staging-migrate staging-shell staging-restart staging-env staging-secrets \
-	staging-deploy staging-login-test
+	staging-deploy staging-login-test check-ilm
 
 help:
 	@echo "Vitora HMIS Backend - Make Commands"
@@ -9,6 +9,7 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  install       - Install dependencies with Poetry"
+	@echo "  check-ilm     - Run the temporary ILM middleware status checker"
 	@echo "  runserver     - Run the Django development server"
 	@echo "  api           - Start ASGI server on port 9088 with WebSocket support (background)"
 	@echo "  api-wsgi      - Start WSGI server on port 9088 without WebSocket (background)"
@@ -104,6 +105,9 @@ help:
 
 install:
 	poetry install
+
+check-ilm:
+	poetry run python scripts/check_ilm_status.py || true
 
 test:
 	poetry run pytest --migrations --cov=hmis --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=80
