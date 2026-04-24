@@ -10,8 +10,8 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework import filters, status, viewsets
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -1876,6 +1876,34 @@ class PublicTriageQueueView(viewsets.ViewSet):
     permission_classes = [AllowAny]
     authentication_classes = []
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("facility_id", OpenApiTypes.INT, required=True),
+        ],
+        responses={
+            200: inline_serializer(
+                name="PublicTriageQueueResponse",
+                fields={
+                    "facility_name": serializers.CharField(),
+                    "date": serializers.DateField(),
+                    "updated_at": serializers.DateTimeField(),
+                    "total_waiting": serializers.IntegerField(),
+                    "queue": serializers.ListField(
+                        child=inline_serializer(
+                            name="PublicTriageQueueItem",
+                            fields={
+                                "position": serializers.IntegerField(),
+                                "status": serializers.CharField(),
+                                "room_name": serializers.CharField(allow_null=True),
+                                "check_in_time": serializers.DateTimeField(),
+                                "priority_hint": serializers.CharField(allow_null=True),
+                            },
+                        )
+                    ),
+                },
+            )
+        },
+    )
     def list(self, request):
         """Get today's triage waiting queue for the specified facility."""
         from datetime import date as date_type

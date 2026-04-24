@@ -1,6 +1,8 @@
 """Views for the immunizations app."""
 
 import django_filters.rest_framework
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -450,6 +452,14 @@ class CoverageView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("vaccine_code", OpenApiTypes.STR, required=True),
+            OpenApiParameter("start_date", OpenApiTypes.DATE, required=False),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, required=False),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         vaccine_code = request.query_params.get("vaccine_code")
         if not vaccine_code:

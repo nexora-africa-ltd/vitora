@@ -412,21 +412,20 @@ class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "Uses WardCompatibilityService for constraint validation and AssignmentRule DSL "
             "for scoring. All decisions are logged to AssignmentDecision for audit."
         ),
-        request={
-            "type": "object",
-            "properties": {
-                "patient_id": {"type": "integer", "description": "Patient ID"},
-                "requires_isolation": {"type": "boolean", "default": False},
-                "requires_oxygen": {"type": "boolean", "default": False},
-                "requires_ventilator": {"type": "boolean", "default": False},
-                "admission_type": {
-                    "type": "string",
-                    "enum": ["ELECTIVE", "EMERGENCY", "TRANSFER"],
-                    "default": "ELECTIVE",
-                },
+        request=inline_serializer(
+            name="RuleBasedBedRecommendationRequest",
+            fields={
+                "patient_id": serializers.IntegerField(help_text="Patient ID"),
+                "requires_isolation": serializers.BooleanField(required=False, default=False),
+                "requires_oxygen": serializers.BooleanField(required=False, default=False),
+                "requires_ventilator": serializers.BooleanField(required=False, default=False),
+                "admission_type": serializers.ChoiceField(
+                    choices=["ELECTIVE", "EMERGENCY", "TRANSFER"],
+                    required=False,
+                    default="ELECTIVE",
+                ),
             },
-            "required": ["patient_id"],
-        },
+        ),
         responses={
             200: {
                 "type": "object",

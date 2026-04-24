@@ -20,6 +20,10 @@ class CoreConfig(AppConfig):
         with contextlib.suppress(ImportError):
             from hmis.apps.core import signals  # noqa: F401
 
+        # Import OpenAPI extensions so drf-spectacular can discover them.
+        with contextlib.suppress(ImportError):
+            from hmis.apps.core import openapi  # noqa: F401
+
         # Register and wire read-model projections to the EventBus
         with contextlib.suppress(ImportError):
             from hmis.apps.core.projections.setup import register_projections

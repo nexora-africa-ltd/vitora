@@ -10,6 +10,7 @@ from datetime import timedelta
 from django.db.models import Count, Q
 from django.utils import timezone
 from django_filters import rest_framework as filters
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -28,6 +29,7 @@ from .models import (
     SurveillanceAlert,
 )
 from .serializers import (
+    CountyReportSerializer,
     IHRCloseSerializer,
     IHREscalateToNationalSerializer,
     IHRNotificationCreateSerializer,
@@ -376,6 +378,7 @@ class SurveillanceDashboardView(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(responses={200: SurveillanceDashboardSerializer})
     def get(self, request):
         """Return dashboard statistics."""
         now = timezone.now()
@@ -470,6 +473,7 @@ class CountyReportView(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(responses={200: CountyReportSerializer})
     def get(self, request, county_id):
         """Generate county report."""
         from hmis.apps.core.models import County
