@@ -1,7 +1,8 @@
 from datetime import date, datetime, timedelta
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, status, viewsets
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -563,6 +564,19 @@ class ProcedureDashboardView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="ProcedureDashboardResponse",
+                fields={
+                    "scheduled_today": serializers.IntegerField(),
+                    "pending_consent": serializers.IntegerField(),
+                    "in_progress": serializers.IntegerField(),
+                    "completed_today": serializers.IntegerField(),
+                },
+            )
+        }
+    )
     def get(self, request):
         today = date.today()
         facility = getattr(request, "facility", None)

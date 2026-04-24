@@ -9,6 +9,8 @@ import logging
 import time
 
 from channels.layers import get_channel_layer
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -19,6 +21,19 @@ logger = logging.getLogger(__name__)
 _HEALTH_CHANNEL = "ws_health_probe"
 
 
+@extend_schema(
+    responses={
+        200: inline_serializer(
+            name="WebSocketHealthResponse",
+            fields={
+                "websocket": serializers.CharField(),
+                "channel_layer_backend": serializers.CharField(allow_null=True),
+                "latency_ms": serializers.FloatField(allow_null=True),
+                "detail": serializers.CharField(required=False),
+            },
+        )
+    }
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def websocket_health(request):

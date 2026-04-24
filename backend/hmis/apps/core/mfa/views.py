@@ -26,7 +26,8 @@ import qrcode
 from django.conf import settings as django_settings
 from django.db import transaction
 from django.utils import timezone
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -43,9 +44,11 @@ from hmis.apps.core.mfa.serializers import (
     TOTPConfirmResponseSerializer,
     TOTPConfirmSerializer,
     TOTPSetupSerializer,
+    WebAuthnAuthenticateBeginSerializer,
     WebAuthnAuthenticateCompleteSerializer,
     WebAuthnCredentialSerializer,
     WebAuthnDeleteSerializer,
+    WebAuthnRegisterBeginSerializer,
     WebAuthnRegisterCompleteSerializer,
 )
 from hmis.apps.core.mfa.utils import get_client_ip, get_mfa_status, is_mfa_required
@@ -59,6 +62,7 @@ class MFAStatusView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: MFAStatusSerializer})
     def get(self, request):
         """Return MFA status."""
         mfa_status = get_mfa_status(request.user)
@@ -71,6 +75,7 @@ class TOTPSetupView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=None, responses={200: TOTPSetupSerializer})
     @transaction.atomic
     def post(self, request):
         """Create new TOTP device and return QR code."""
@@ -120,6 +125,16 @@ class TOTPConfirmView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=TOTPConfirmSerializer,
+        responses={
+            200: TOTPConfirmResponseSerializer,
+            400: inline_serializer(
+                name="TOTPConfirmErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     @transaction.atomic
     def post(self, request):
         """Verify token and confirm device."""
@@ -175,6 +190,19 @@ class MFADisableView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=MFADisableSerializer,
+        responses={
+            200: inline_serializer(
+                name="MFADisableResponse",
+                fields={"message": serializers.CharField()},
+            ),
+            400: inline_serializer(
+                name="MFADisableErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     @transaction.atomic
     def post(self, request):
         """Disable MFA after password verification."""
@@ -221,6 +249,16 @@ class BackupCodesRegenerateView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=BackupCodesRegenerateSerializer,
+        responses={
+            200: BackupCodesResponseSerializer,
+            400: inline_serializer(
+                name="BackupCodesRegenerateErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     @transaction.atomic
     def post(self, request):
         """Regenerate backup codes after TOTP verification."""
@@ -276,6 +314,23 @@ class MFAVerifyView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "mfa_verify"
 
+    @extend_schema(
+        request=MFAVerifySerializer,
+        responses={
+            200: inline_serializer(
+                name="MFAVerifyResponse",
+                fields={
+                    "access": serializers.CharField(),
+                    "refresh": serializers.CharField(),
+                    "user": serializers.JSONField(),
+                },
+            ),
+            400: inline_serializer(
+                name="MFAVerifyErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     @transaction.atomic
     def post(self, request):
         """Verify TOTP or backup code and return JWT tokens."""
@@ -393,6 +448,19 @@ class BackupCodesDownloadView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="BackupCodesDownloadRequest",
+            fields={"token": serializers.CharField()},
+        ),
+        responses={
+            200: BackupCodesResponseSerializer,
+            400: inline_serializer(
+                name="BackupCodesDownloadErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     def post(self, request):
         """Return existing unused backup codes after TOTP verification."""
         user = request.user
@@ -469,6 +537,16 @@ class WebAuthnRegisterBeginView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: WebAuthnRegisterBeginSerializer,
+            400: inline_serializer(
+                name="WebAuthnRegisterBeginErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     def post(self, request):
         """Generate registration options and store challenge in session."""
         from webauthn import generate_registration_options
@@ -546,6 +624,16 @@ class WebAuthnRegisterCompleteView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=WebAuthnRegisterCompleteSerializer,
+        responses={
+            201: WebAuthnCredentialSerializer,
+            400: inline_serializer(
+                name="WebAuthnRegisterCompleteErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     @transaction.atomic
     def post(self, request):
         """Verify registration response and store credential."""
@@ -641,6 +729,7 @@ class WebAuthnCredentialsListView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: WebAuthnCredentialSerializer(many=True)})
     def get(self, request):
         """Return list of WebAuthn credentials."""
         credentials = UserWebAuthnCredential.objects.filter(user=request.user)
@@ -664,6 +753,19 @@ class WebAuthnCredentialDeleteView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=WebAuthnDeleteSerializer,
+        responses={
+            200: inline_serializer(
+                name="WebAuthnCredentialDeleteResponse",
+                fields={"message": serializers.CharField()},
+            ),
+            400: inline_serializer(
+                name="WebAuthnCredentialDeleteErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     @transaction.atomic
     def delete(self, request, credential_id):
         """Delete a WebAuthn credential after password verification."""
@@ -714,6 +816,19 @@ class WebAuthnAuthenticateBeginView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "mfa_verify"
 
+    @extend_schema(
+        request=inline_serializer(
+            name="WebAuthnAuthenticateBeginRequest",
+            fields={"mfa_token": serializers.CharField()},
+        ),
+        responses={
+            200: WebAuthnAuthenticateBeginSerializer,
+            400: inline_serializer(
+                name="WebAuthnAuthenticateBeginErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     def post(self, request):
         """Generate authentication options for the user identified by mfa_token."""
         from webauthn import generate_authentication_options
@@ -783,6 +898,23 @@ class WebAuthnAuthenticateCompleteView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "mfa_verify"
 
+    @extend_schema(
+        request=WebAuthnAuthenticateCompleteSerializer,
+        responses={
+            200: inline_serializer(
+                name="WebAuthnAuthenticateCompleteResponse",
+                fields={
+                    "access": serializers.CharField(),
+                    "refresh": serializers.CharField(),
+                    "user": serializers.JSONField(),
+                },
+            ),
+            400: inline_serializer(
+                name="WebAuthnAuthenticateCompleteErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     @transaction.atomic
     def post(self, request):
         """Verify authentication response and return JWT tokens."""
@@ -912,6 +1044,26 @@ class MFAAwareTokenRefreshView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="MFAAwareTokenRefreshRequest",
+            fields={"refresh": serializers.CharField()},
+        ),
+        responses={
+            200: inline_serializer(
+                name="MFAAwareTokenRefreshResponse",
+                fields={
+                    "access": serializers.CharField(),
+                    "refresh": serializers.CharField(),
+                    "user": serializers.JSONField(),
+                },
+            ),
+            400: inline_serializer(
+                name="MFAAwareTokenRefreshErrorResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        },
+    )
     def post(self, request):
         """Refresh token with MFA validation."""
         from datetime import datetime

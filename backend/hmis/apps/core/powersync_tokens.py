@@ -22,7 +22,8 @@ import time
 
 import jwt as pyjwt
 from django.conf import settings
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -100,6 +101,22 @@ class PowerSyncCredentialsView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="PowerSyncCredentialsResponse",
+                fields={
+                    "token": serializers.CharField(),
+                    "powersync_url": serializers.URLField(),
+                    "expires_at": serializers.IntegerField(),
+                },
+            ),
+            503: inline_serializer(
+                name="PowerSyncUnavailableResponse",
+                fields={"error": serializers.CharField()},
+            ),
+        }
+    )
     def get(self, request):
         ps = _get_powersync_settings()
 

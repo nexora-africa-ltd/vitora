@@ -69,7 +69,7 @@ class ClinicTypeQueueStatsSerializer(serializers.Serializer):
     total_today = serializers.IntegerField()
 
 
-class ClinicQueueStatsSerializer(serializers.Serializer):
+class AlliedHealthClinicQueueStatsSerializer(serializers.Serializer):
     """Queue stats for all allied health clinic types."""
 
     physio = ClinicTypeQueueStatsSerializer(required=False)
@@ -81,6 +81,11 @@ class ClinicQueueStatsSerializer(serializers.Serializer):
     totals = ClinicTypeQueueStatsSerializer(required=False)
 
 
+# Backwards-compatible import alias for existing code/tests while keeping a
+# distinct serializer class name for OpenAPI component generation.
+ClinicQueueStatsSerializer = AlliedHealthClinicQueueStatsSerializer
+
+
 class AlliedHealthDashboardSerializer(serializers.Serializer):
     """Combined dashboard stats for all allied health modules."""
 
@@ -90,4 +95,4 @@ class AlliedHealthDashboardSerializer(serializers.Serializer):
     social_work = SocialWorkStatsSerializer()
     counselling = CounsellingStatsSerializer()
     todays_sessions = TodaySessionSerializer(many=True)
-    clinic_queue_stats = ClinicQueueStatsSerializer(required=False)
+    clinic_queue_stats = AlliedHealthClinicQueueStatsSerializer(required=False)

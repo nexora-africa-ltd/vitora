@@ -1433,11 +1433,14 @@ class PushSubscriptionViewSet(viewsets.ModelViewSet):
     GET    /api/push-subscriptions/vapid-key/ — Get the VAPID public key
     """
 
+    queryset = PushSubscription.objects.none()
     serializer_class = PushSubscriptionSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "delete", "head", "options"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return self.queryset
         return PushSubscription.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):

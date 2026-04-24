@@ -5,6 +5,8 @@ These endpoints expose denormalized, pre-computed statistics for
 real-time dashboards. Data is updated asynchronously via domain events.
 """
 
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -112,6 +114,13 @@ class RoomUtilizationStatsSerializer(serializers.ModelSerializer):
 # =============================================================================
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("clinic_id", OpenApiTypes.INT, required=True),
+        OpenApiParameter("facility_id", OpenApiTypes.INT, required=False),
+    ],
+    responses={200: ClinicQueueStatsSerializer(many=True)},
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def clinic_queue_stats(request):
@@ -139,6 +148,13 @@ def clinic_queue_stats(request):
     return Response(serializer.data)
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("ward_id", OpenApiTypes.INT, required=False),
+        OpenApiParameter("facility_id", OpenApiTypes.INT, required=False),
+    ],
+    responses={200: WardOccupancyStatsSerializer(many=True)},
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def ward_occupancy_stats(request):
@@ -163,6 +179,10 @@ def ward_occupancy_stats(request):
     return Response(serializer.data)
 
 
+@extend_schema(
+    parameters=[OpenApiParameter("facility_id", OpenApiTypes.INT, required=False)],
+    responses={200: PharmacyQueueStatsSerializer(many=True)},
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def pharmacy_queue_stats(request):
@@ -193,6 +213,15 @@ def _get_request_facility_id(request):
     return None
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("date", OpenApiTypes.DATE, required=False),
+        OpenApiParameter("clinic_id", OpenApiTypes.INT, required=False),
+        OpenApiParameter("room_id", OpenApiTypes.INT, required=False),
+        OpenApiParameter("facility_id", OpenApiTypes.INT, required=False),
+    ],
+    responses={200: RoomUtilizationStatsSerializer(many=True)},
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def room_utilization_stats(request):
@@ -222,6 +251,27 @@ def room_utilization_stats(request):
     return Response(serializer.data)
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("date", OpenApiTypes.DATE, required=False),
+        OpenApiParameter("facility_id", OpenApiTypes.INT, required=False),
+    ],
+    responses={
+        200: inline_serializer(
+            name="RoomUtilizationSummaryResponse",
+            fields={
+                "total_rooms": serializers.IntegerField(),
+                "staffed_rooms": serializers.IntegerField(),
+                "active_rooms": serializers.IntegerField(),
+                "idle_rooms": serializers.IntegerField(),
+                "overloaded_rooms": serializers.IntegerField(),
+                "total_visits_completed": serializers.IntegerField(),
+                "avg_utilization_rate": serializers.FloatField(),
+                "avg_wait_to_room_minutes": serializers.FloatField(),
+            },
+        )
+    },
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def room_utilization_summary(request):
