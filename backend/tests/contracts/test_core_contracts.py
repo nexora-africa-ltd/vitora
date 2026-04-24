@@ -42,6 +42,7 @@ from hmis.apps.core.serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     PermissionSerializer,
+    PushSubscriptionSerializer,
     RevokeCertificateRequestSerializer,
     RoleSerializer,
     SetupWizardSerializer,
@@ -612,6 +613,18 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "id",
                 "model",
                 "name",
+            }
+        ),
+    ),
+    (
+        PushSubscriptionSerializer,
+        frozenset(
+            {
+                "auth",
+                "created_at",
+                "endpoint",
+                "id",
+                "p256dh",
             }
         ),
     ),
