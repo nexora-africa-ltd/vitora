@@ -693,6 +693,23 @@ class TestFHIRIPSBundle:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["resourceType"] == "Bundle"
 
+    def test_bundle_read_allows_unauthenticated_access(self, api_client, sample_patient):
+        """Persisted IPS bundle IDs should resolve without auth for Inferno IPS tests."""
+        url = reverse("fhir:bundle-read", args=[f"ips-{sample_patient.id}"])
+        response = api_client.get(url, HTTP_ACCEPT="application/fhir+json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Bundle"
+        assert response.data["id"] == f"ips-{sample_patient.id}"
+
+    def test_bundle_read_rejects_unknown_bundle_format(self, api_client):
+        """Only patient-backed IPS bundle IDs should resolve."""
+        url = reverse("fhir:bundle-read", args=["not-an-ips-bundle"])
+        response = api_client.get(url, HTTP_ACCEPT="application/fhir+json")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data["resourceType"] == "OperationOutcome"
+
 
 class TestFHIRObservation:
     """Tests for FHIR Observation endpoints."""
@@ -709,8 +726,12 @@ class TestFHIRObservation:
         assert response.data["subject"]["reference"] == (
             f"Patient/{sample_lab_result.order_item.lab_order.patient.id}"
         )
-        assert response.data["code"]["text"] == sample_lab_result.order_item.test.name
-        assert response.data["valueQuantity"]["value"] == float(sample_lab_result.numeric_value)
+        assert (
+            response.data["code"]["coding"][0]["display"] == sample_lab_result.order_item.test.name
+        )
+        assert response.data["valueString"] == "7.5"
+        assert response.data["performer"][0]["reference"].startswith("Practitioner/")
+        assert response.data["interpretation"][0]["coding"][0]["code"] == "N"
 
     def test_social_history_alcohol_observation_endpoint(
         self,
@@ -726,7 +747,9 @@ class TestFHIRObservation:
         assert response.data["id"] == str(sample_social_history_observation.fhir_id)
         assert response.data["category"][0]["coding"][0]["code"] == "social-history"
         assert response.data["code"]["text"] == "Alcohol use"
-        assert response.data["valueCodeableConcept"]["text"] == "Current use"
+        assert response.data["code"]["coding"][0]["display"] == "Alcoholic drinks per day"
+        assert response.data["valueQuantity"]["value"] == 1
+        assert response.data["valueQuantity"]["code"] == "/d"
 
     def test_social_history_tobacco_observation_endpoint(
         self,
@@ -787,12 +810,68 @@ class TestFHIRObservation:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["resourceType"] == "Observation"
         assert response.data["id"] == str(sample_pregnancy_outcome_observation.fhir_id)
-        assert response.data["code"]["text"] == "Pregnancy outcome"
-        assert response.data["valueCodeableConcept"]["text"] == "Live birth"
+        assert response.data["code"]["coding"][0]["code"] == "11636-8"
+        assert response.data["code"]["coding"][0]["display"] == "[#] Births.live"
+        assert response.data["valueQuantity"]["value"] == 1
+        assert response.data["valueQuantity"]["code"] == "{#}"
+
+    def test_observation_endpoint_allows_unauthenticated_fhir_json_access(
+        self,
+        api_client,
+        sample_social_history_observation,
+    ):
+        """Observation read should allow Inferno profile access without auth."""
+        response = api_client.get(
+            reverse("fhir:observation-read", args=[sample_social_history_observation.fhir_id]),
+            HTTP_ACCEPT="application/fhir+json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "Observation"
 
 
 class TestFHIRAdditionalResources:
     """Tests for additional FHIR resources needed by Inferno input fields."""
+
+    @pytest.mark.parametrize(
+        ("fixture_name", "route_name", "resource_type", "id_attr"),
+        [
+            ("sample_patient", "patient-read", "Patient", "id"),
+            ("test_staff_profile", "practitioner-read", "Practitioner", "id"),
+            ("anc_clinic", "organization-read", "Organization", "id"),
+            ("test_staff_profile", "practitioner-role-read", "PractitionerRole", "id"),
+            ("sample_allergy_active", "allergy-read", "AllergyIntolerance", "id"),
+            ("sample_drug", "medication-read", "Medication", "id"),
+            ("sample_specimen", "specimen-read", "Specimen", "id"),
+            ("sample_diagnostic_report", "diagnostic-report-read", "DiagnosticReport", "id"),
+            ("sample_immunization_record", "immunization-read", "Immunization", "id"),
+            ("sample_procedure_order", "procedure-read", "Procedure", "id"),
+            ("sample_dicom_study", "imaging-study-read", "ImagingStudy", "id"),
+            ("sample_dicom_instance", "media-read", "Media", "id"),
+            ("sample_implant_consumable", "device-read", "Device", "id"),
+            ("sample_implant_consumable", "device-use-statement-read", "DeviceUseStatement", "id"),
+        ],
+    )
+    def test_profile_read_endpoints_allow_unauthenticated_fhir_json_access(
+        self,
+        request,
+        api_client,
+        fixture_name,
+        route_name,
+        resource_type,
+        id_attr,
+    ):
+        """Inferno profile reads should work without auth using FHIR JSON."""
+        resource = request.getfixturevalue(fixture_name)
+        resource_id = getattr(resource, id_attr)
+
+        response = api_client.get(
+            reverse(f"fhir:{route_name}", args=[resource_id]),
+            HTTP_ACCEPT="application/fhir+json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == resource_type
 
     def test_practitioner_role_endpoint(self, authenticated_client, test_staff_profile):
         response = authenticated_client.get(
@@ -818,6 +897,7 @@ class TestFHIRAdditionalResources:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["resourceType"] == "Specimen"
         assert response.data["id"] == str(sample_specimen.id)
+        assert response.data["status"] == "available"
 
     def test_diagnostic_report_endpoint(
         self,
@@ -836,6 +916,8 @@ class TestFHIRAdditionalResources:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["resourceType"] == "DiagnosticReport"
         assert response.data["id"] == str(sample_diagnostic_report.id)
+        assert response.data["category"][0]["coding"][0]["code"] == "LAB"
+        assert response.data["performer"][0]["reference"].startswith("Practitioner/")
 
     def test_immunization_endpoint(self, authenticated_client, sample_immunization_record):
         response = authenticated_client.get(

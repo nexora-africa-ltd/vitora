@@ -21,6 +21,7 @@ from django.urls import path
 
 from hmis.apps.core.fhir.views import (
     FHIRAllergyIntoleranceView,
+    FHIRBundleView,
     FHIRCarePlanView,
     FHIRCompositionDocumentView,
     FHIRCompositionView,
@@ -56,6 +57,11 @@ urlpatterns = [
         "Patient/<int:pk>/$summary",
         FHIRPatientSummaryView.as_view(),
         name="patient-summary",
+    ),
+    path(
+        "Bundle/<str:pk>",
+        FHIRBundleView.as_view(),
+        name="bundle-read",
     ),
     # Practitioner resources
     path(

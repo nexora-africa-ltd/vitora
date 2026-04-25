@@ -33,6 +33,18 @@ class TestSeedFHIRTestDataCommand:
         ).exists()
         assert PregnancyObservation.objects.filter(observation_type="PREGNANCY_OUTCOME").exists()
 
+        assert "url:" in output
+        assert "patient_id:" in output
+        assert "bundle_id:" in output
+        assert "composition_id:" in output
+        assert "practitioner_id:" in output
+        assert "practitioner_role_id:" in output
+        assert "organization_id:" in output
+        assert "condition_id:" in output
+        assert "allergy_intolerance_id:" in output
+        assert "medication_id:" in output
+        assert "medication_statement_id:" in output
+        assert "observation_results_id:" in output
         assert "immunization_id:" in output
         assert "specimen_id:" in output
         assert "diagnostic_report_id:" in output
@@ -41,6 +53,9 @@ class TestSeedFHIRTestDataCommand:
         assert "media_id:" in output
         assert "device_id:" in output
         assert "device_use_statement_id:" in output
+        assert "observation_results_laboratory_id:" in output
+        assert "observation_results_pathology_id:" in output
+        assert "observation_results_radiology_id:" in output
         assert "observation_alcohol_use_id:" in output
         assert "observation_tobacco_use_id:" in output
         assert "observation_pregnancy_status_id:" in output

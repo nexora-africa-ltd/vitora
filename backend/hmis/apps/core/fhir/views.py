@@ -49,10 +49,82 @@ class FHIRAltJSONRenderer(JSONRenderer):
 
 FHIR_RENDERER_CLASSES = [FHIRJSONRenderer, FHIRAltJSONRenderer, JSONRenderer]
 
+
+class PublicFHIRReadAPIView(APIView):
+    """Shared Inferno-friendly config for unauthenticated FHIR read endpoints."""
+
+    permission_classes = [AllowAny]
+    renderer_classes = FHIR_RENDERER_CLASSES
+
+
 CANONICAL_ICD10_DISPLAYS = {
     "I10": "Essential (primary) hypertension",
     "J06.9": "Acute upper respiratory infection, unspecified",
 }
+
+CANONICAL_LOINC_DISPLAYS = {
+    "718-7": "Hemoglobin [Mass/volume] in Blood",
+    "74013-4": "Alcoholic drinks per day",
+    "11636-8": "[#] Births.live",
+    "11613-7": "[#] Abortions.induced",
+    "11614-5": "[#] Abortions.spontaneous",
+    "11638-4": "[#] Births.still living",
+    "33065-4": "[#] Ectopic pregnancy",
+}
+
+OBSERVATION_INTERPRETATION_MAP = {
+    "NORMAL": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        "code": "N",
+        "display": "Normal",
+    },
+    "LOW": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        "code": "L",
+        "display": "Low",
+    },
+    "HIGH": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        "code": "H",
+        "display": "High",
+    },
+    "CRITICAL_LOW": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        "code": "LL",
+        "display": "Critical low",
+    },
+    "CRITICAL_HIGH": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        "code": "HH",
+        "display": "Critical high",
+    },
+    "ABNORMAL": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        "code": "A",
+        "display": "Abnormal",
+    },
+    "POSITIVE": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        "code": "POS",
+        "display": "Positive",
+    },
+    "NEGATIVE": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        "code": "NEG",
+        "display": "Negative",
+    },
+}
+
+
+def build_generated_narrative(title: str, lines: list[str]) -> dict:
+    """Build a simple generated XHTML narrative block."""
+    rendered_lines = "".join(f"<p>{line}</p>" for line in lines if line)
+    return {
+        "status": "generated",
+        "div": (
+            f'<div xmlns="http://www.w3.org/1999/xhtml"><p><b>{title}</b></p>{rendered_lines}</div>'
+        ),
+    }
 
 
 def format_date(d) -> str | None:
@@ -180,15 +252,12 @@ def resolve_ips_author_organization(
     return None
 
 
-class FHIRPatientView(APIView):
+class FHIRPatientView(PublicFHIRReadAPIView):
     """
     FHIR Patient resource endpoint.
 
     GET /fhir/Patient/{id} - Returns Patient resource in FHIR R4 format.
     """
-
-    permission_classes = [IsAuthenticated]
-    renderer_classes = FHIR_RENDERER_CLASSES
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -344,14 +413,12 @@ class FHIRPatientView(APIView):
         return fhir_resource
 
 
-class FHIRPractitionerView(APIView):
+class FHIRPractitionerView(PublicFHIRReadAPIView):
     """
     FHIR Practitioner resource endpoint.
 
     GET /fhir/Practitioner/{id} - Returns Practitioner resource in FHIR R4 format.
     """
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -439,14 +506,12 @@ class FHIRPractitionerView(APIView):
         return fhir_resource
 
 
-class FHIROrganizationView(APIView):
+class FHIROrganizationView(PublicFHIRReadAPIView):
     """
     FHIR Organization resource endpoint.
 
     GET /fhir/Organization/{id} - Returns Organization resource in FHIR R4 format.
     """
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -513,10 +578,8 @@ class FHIROrganizationView(APIView):
         return fhir_resource
 
 
-class FHIRPractitionerRoleView(APIView):
+class FHIRPractitionerRoleView(PublicFHIRReadAPIView):
     """FHIR PractitionerRole resource endpoint."""
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -567,7 +630,7 @@ class FHIRPractitionerRoleView(APIView):
         }
 
 
-class FHIRObservationView(APIView):
+class FHIRObservationView(PublicFHIRReadAPIView):
     """
     FHIR Observation resource endpoint.
 
@@ -579,8 +642,6 @@ class FHIRObservationView(APIView):
     - Social history observations
     """
 
-    permission_classes = [IsAuthenticated]
-
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
         description="Get a FHIR R4 Observation resource by ID",
@@ -588,6 +649,7 @@ class FHIRObservationView(APIView):
     def get(self, request, pk: int) -> Response:
         """Get an Observation resource by ID."""
         from hmis.apps.encounters.models import PregnancyObservation, SocialHistoryObservation
+        from hmis.apps.imaging.models import DICOMStudy
 
         try:
             social_history_observation = SocialHistoryObservation.objects.select_related(
@@ -609,6 +671,15 @@ class FHIRObservationView(APIView):
                 status=status.HTTP_200_OK,
             )
         except PregnancyObservation.DoesNotExist:
+            pass
+
+        try:
+            study = DICOMStudy.objects.prefetch_related("reports").get(pk=pk)
+            return Response(
+                self._radiology_study_to_fhir(study, request),
+                status=status.HTTP_200_OK,
+            )
+        except DICOMStudy.DoesNotExist:
             pass
 
         # Check lab results first
@@ -658,18 +729,20 @@ class FHIRObservationView(APIView):
 
         value_field = {}
         if lab_result.numeric_value is not None:
-            value_field = {
-                "valueQuantity": {
-                    "value": float(lab_result.numeric_value),
-                    "unit": lab_result.result_unit or test.result_unit,
-                    "system": "http://unitsofmeasure.org",
-                    "code": lab_result.result_unit or test.result_unit,
-                }
-            }
+            numeric_unit = lab_result.result_unit or test.result_unit or ""
+            value_display = f"{float(lab_result.numeric_value):g} {numeric_unit}".strip()
+            value_field = {"valueString": value_display}
         elif lab_result.text_value:
             value_field = {"valueString": lab_result.text_value}
         elif lab_result.option_value:
             value_field = {"valueString": lab_result.option_value}
+
+        canonical_display = CANONICAL_LOINC_DISPLAYS.get(test.loinc_code or "", test.name)
+        performer_reference = None
+        if lab_order.ordered_by_id:
+            performer_reference = {"reference": f"Practitioner/{lab_order.ordered_by_id}"}
+        else:
+            performer_reference = {"reference": "Organization/vitora-hmis"}
 
         fhir_resource = {
             "resourceType": "Observation",
@@ -677,6 +750,10 @@ class FHIRObservationView(APIView):
             "meta": {
                 "versionId": "1",
                 "lastUpdated": format_date(lab_result.updated_at),
+                "profile": [
+                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-laboratory-pathology-uv-ips",
+                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-uv-ips",
+                ],
             },
             "status": "final",
             "category": [
@@ -695,13 +772,14 @@ class FHIRObservationView(APIView):
                     {
                         "system": "http://loinc.org",
                         "code": test.loinc_code or "unknown",
-                        "display": test.name,
+                        "display": canonical_display,
                     }
                 ],
-                "text": test.name,
+                "text": canonical_display,
             },
             "subject": {"reference": f"Patient/{lab_order.patient.id}"},
             "effectiveDateTime": format_date(lab_result.verified_at or lab_result.entered_at),
+            "performer": [performer_reference],
         }
 
         if lab_order.encounter_id:
@@ -711,25 +789,97 @@ class FHIRObservationView(APIView):
             fhir_resource["referenceRange"] = [{"text": lab_result.reference_range_text}]
 
         if lab_result.result_flag:
-            fhir_resource["interpretation"] = [
-                {
-                    "text": lab_result.get_result_flag_display(),
-                }
-            ]
+            interpretation = OBSERVATION_INTERPRETATION_MAP.get(lab_result.result_flag)
+            if interpretation:
+                fhir_resource["interpretation"] = [
+                    {
+                        "coding": [interpretation],
+                        "text": lab_result.get_result_flag_display(),
+                    }
+                ]
+            else:
+                fhir_resource["interpretation"] = [{"text": lab_result.get_result_flag_display()}]
 
         if lab_result.specimen_id:
             fhir_resource["specimen"] = {"reference": f"Specimen/{lab_result.specimen_id}"}
 
         fhir_resource.update(value_field)
+        fhir_resource["text"] = build_generated_narrative(
+            "Observation",
+            [
+                f"Test: {canonical_display}",
+                f"Result: {fhir_resource.get('valueString', 'Not recorded')}",
+            ],
+        )
 
         return fhir_resource
+
+    def _radiology_study_to_fhir(self, study, request) -> dict:
+        """Convert a DICOM study to a radiology-style Observation for Inferno read tests."""
+        series_descriptions = [
+            series.series_description
+            for series in study.series_set.all()
+            if series.series_description
+        ]
+        report = study.reports.first() if hasattr(study, "reports") else None
+        value_text = (
+            getattr(report, "impression", "")
+            or getattr(report, "findings", "")
+            or "; ".join(series_descriptions)
+            or "Radiology study available"
+        )
+        code_text = series_descriptions[0] if series_descriptions else "Radiology study result"
+        performer_reference = (
+            {"reference": f"Practitioner/{report.reported_by_id}"}
+            if report and getattr(report, "reported_by_id", None)
+            else {"reference": "Organization/vitora-hmis"}
+        )
+
+        return {
+            "resourceType": "Observation",
+            "id": str(study.id),
+            "meta": {
+                "versionId": "1",
+                "lastUpdated": format_date(getattr(study, "updated_at", None) or datetime.now()),
+                "profile": [
+                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-radiology-uv-ips"
+                ],
+            },
+            "text": build_generated_narrative(
+                "Observation",
+                [
+                    f"Procedure: {code_text}",
+                    f"Conclusion: {value_text}",
+                ],
+            ),
+            "status": "final",
+            "category": [
+                {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                            "code": "imaging",
+                            "display": "Imaging",
+                        }
+                    ]
+                }
+            ],
+            "code": {"text": code_text},
+            "subject": {"reference": f"Patient/{study.patient_id}"},
+            "effectiveDateTime": format_date(
+                datetime.combine(study.study_date, study.study_time or datetime.min.time())
+            ),
+            "performer": [performer_reference],
+            "partOf": [{"reference": f"ImagingStudy/{study.id}"}],
+            "valueString": value_text,
+        }
 
     def _social_history_to_fhir(self, observation, request) -> dict:
         """Convert a dedicated social-history observation to FHIR Observation."""
         code_map = {
             "ALCOHOL_USE": {
                 "code": "74013-4",
-                "display": "Alcohol use",
+                "display": "Alcoholic drinks per day",
                 "text": "Alcohol use",
             },
             "TOBACCO_USE": {
@@ -748,11 +898,17 @@ class FHIRObservationView(APIView):
                 "text": "Lifestyle",
             },
         }
+        alcohol_quantity_map = {
+            "CURRENT": 1,
+            "FORMER": 0,
+            "NEVER": 0,
+            "UNKNOWN": 0,
+        }
         status_text = {
-            "CURRENT": "Current use",
-            "FORMER": "Former use",
-            "NEVER": "Never used",
-            "UNKNOWN": "Unknown",
+            "CURRENT": "Current alcohol use",
+            "FORMER": "Former alcohol use",
+            "NEVER": "No alcohol use",
+            "UNKNOWN": "Alcohol use unknown",
         }
         code = code_map[observation.observation_type]
 
@@ -762,6 +918,11 @@ class FHIRObservationView(APIView):
             "meta": {
                 "versionId": "1",
                 "lastUpdated": format_date(observation.updated_at),
+                "profile": [
+                    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-alcoholuse-uv-ips"
+                    if observation.observation_type == "ALCOHOL_USE"
+                    else "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-tobaccouse-uv-ips"
+                ],
             },
             "status": "final",
             "category": [
@@ -787,10 +948,27 @@ class FHIRObservationView(APIView):
             },
             "subject": {"reference": f"Patient/{observation.patient_id}"},
             "effectiveDateTime": format_date(observation.effective_date),
-            "valueCodeableConcept": {
-                "text": status_text.get(observation.status, observation.status),
-            },
+            "text": build_generated_narrative(
+                "Observation",
+                [
+                    f"Type: {code['text']}",
+                    status_text.get(observation.status, observation.status),
+                ],
+            ),
+            "performer": [{"reference": "Organization/vitora-hmis"}],
         }
+
+        if observation.observation_type == "ALCOHOL_USE":
+            fhir_resource["valueQuantity"] = {
+                "value": alcohol_quantity_map.get(observation.status, 0),
+                "unit": "/d",
+                "system": "http://unitsofmeasure.org",
+                "code": "/d",
+            }
+        else:
+            fhir_resource["valueCodeableConcept"] = {
+                "text": status_text.get(observation.status, observation.status),
+            }
 
         if observation.encounter_id:
             fhir_resource["encounter"] = {"reference": f"Encounter/{observation.encounter_id}"}
@@ -815,11 +993,37 @@ class FHIRObservationView(APIView):
                 "display": "Delivery date Estimated",
                 "text": "Estimated delivery date",
             },
-            "PREGNANCY_OUTCOME": {
+        }
+        pregnancy_outcome_code_map = {
+            "LIVE_BIRTH": {
                 "system": "http://loinc.org",
                 "code": "11636-8",
-                "display": "Birth outcome",
-                "text": "Pregnancy outcome",
+                "display": "[#] Births.live",
+                "text": "Live birth",
+            },
+            "STILLBIRTH": {
+                "system": "http://loinc.org",
+                "code": "11638-4",
+                "display": "[#] Births.still living",
+                "text": "Stillbirth",
+            },
+            "MISCARRIAGE": {
+                "system": "http://loinc.org",
+                "code": "11614-5",
+                "display": "[#] Abortions.spontaneous",
+                "text": "Miscarriage",
+            },
+            "ABORTION": {
+                "system": "http://loinc.org",
+                "code": "11613-7",
+                "display": "[#] Abortions.induced",
+                "text": "Abortion",
+            },
+            "ECTOPIC": {
+                "system": "http://loinc.org",
+                "code": "33065-4",
+                "display": "[#] Ectopic pregnancy",
+                "text": "Ectopic pregnancy",
             },
         }
         value_text = {
@@ -833,7 +1037,13 @@ class FHIRObservationView(APIView):
             "ABORTION": "Abortion",
             "ECTOPIC": "Ectopic pregnancy",
         }
-        code = code_map[observation.observation_type]
+        code = (
+            pregnancy_outcome_code_map.get(
+                observation.status_value, pregnancy_outcome_code_map["LIVE_BIRTH"]
+            )
+            if observation.observation_type == "PREGNANCY_OUTCOME"
+            else code_map[observation.observation_type]
+        )
 
         fhir_resource = {
             "resourceType": "Observation",
@@ -841,6 +1051,13 @@ class FHIRObservationView(APIView):
             "meta": {
                 "versionId": "1",
                 "lastUpdated": format_date(observation.updated_at),
+                "profile": [
+                    {
+                        "PREGNANCY_STATUS": "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-status-uv-ips",
+                        "PREGNANCY_EXPECTED_DELIVERY_DATE": "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-edd-uv-ips",
+                        "PREGNANCY_OUTCOME": "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-outcome-uv-ips",
+                    }[observation.observation_type]
+                ],
             },
             "status": "final",
             "category": [
@@ -866,6 +1083,16 @@ class FHIRObservationView(APIView):
             },
             "subject": {"reference": f"Patient/{observation.patient_id}"},
             "effectiveDateTime": format_date(observation.effective_date),
+            "text": build_generated_narrative(
+                "Observation",
+                [
+                    f"Type: {code['text']}",
+                    value_text.get(
+                        observation.status_value, observation.status_value or "Recorded"
+                    ),
+                ],
+            ),
+            "performer": [{"reference": "Organization/vitora-hmis"}],
         }
 
         if observation.encounter_id:
@@ -873,6 +1100,13 @@ class FHIRObservationView(APIView):
 
         if observation.observation_type == "PREGNANCY_EXPECTED_DELIVERY_DATE":
             fhir_resource["valueDateTime"] = format_date(observation.value_date)
+        elif observation.observation_type == "PREGNANCY_OUTCOME":
+            fhir_resource["valueQuantity"] = {
+                "value": 1,
+                "unit": "1",
+                "system": "http://unitsofmeasure.org",
+                "code": "{#}",
+            }
         else:
             fhir_resource["valueCodeableConcept"] = {
                 "text": value_text.get(observation.status_value, observation.status_value),
@@ -992,14 +1226,12 @@ class FHIRObservationView(APIView):
         return fhir_resource
 
 
-class FHIRConditionView(APIView):
+class FHIRConditionView(PublicFHIRReadAPIView):
     """
     FHIR Condition resource endpoint.
 
     GET /fhir/Condition/{id} - Returns Condition resource in FHIR R4 format.
     """
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -1630,14 +1862,12 @@ class FHIRCompositionView(APIView):
         return fhir_resource
 
 
-class FHIRAllergyIntoleranceView(APIView):
+class FHIRAllergyIntoleranceView(PublicFHIRReadAPIView):
     """
     FHIR AllergyIntolerance resource endpoint.
 
     GET /fhir/AllergyIntolerance/{id} - Returns AllergyIntolerance in FHIR R4 format.
     """
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -1854,7 +2084,7 @@ class FHIRMedicationStatementView(APIView):
     STATUS_MAP = {
         "PENDING": "intended",
         "PARTIAL": "active",
-        "DISPENSED": "active",
+        "DISPENSED": "completed",
         "CANCELLED": "stopped",
         "EXPIRED": "stopped",
     }
@@ -1963,6 +2193,14 @@ class FHIRMedicationStatementView(APIView):
             ],
         }
 
+        fhir_resource["text"] = build_generated_narrative(
+            "MedicationStatement",
+            [
+                medication_text,
+                f"Status: {fhir_status}",
+            ],
+        )
+
         # Add route if available
         if item.route:
             route_map = {
@@ -2034,14 +2272,12 @@ class FHIRMedicationStatementView(APIView):
         return statements
 
 
-class FHIRDeviceView(APIView):
+class FHIRDeviceView(PublicFHIRReadAPIView):
     """
     FHIR Device resource endpoint.
 
     GET /fhir/Device/{id} - Returns Device resource in FHIR R4 format.
     """
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -2110,10 +2346,8 @@ class FHIRDeviceView(APIView):
         return fhir_resource
 
 
-class FHIRDeviceUseStatementView(APIView):
+class FHIRDeviceUseStatementView(PublicFHIRReadAPIView):
     """FHIR DeviceUseStatement resource endpoint."""
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -2173,10 +2407,8 @@ class FHIRDeviceUseStatementView(APIView):
         return statement
 
 
-class FHIRMedicationView(APIView):
+class FHIRMedicationView(PublicFHIRReadAPIView):
     """FHIR Medication resource endpoint."""
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -2235,10 +2467,8 @@ class FHIRMedicationView(APIView):
         }
 
 
-class FHIRSpecimenView(APIView):
+class FHIRSpecimenView(PublicFHIRReadAPIView):
     """FHIR Specimen resource endpoint."""
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -2269,13 +2499,30 @@ class FHIRSpecimenView(APIView):
 
     def _to_fhir_specimen(self, specimen) -> dict:
         """Convert Django Specimen to FHIR Specimen resource."""
+        status_map = {
+            "PENDING": "available",
+            "COLLECTED": "available",
+            "RECEIVED": "available",
+            "PROCESSING": "available",
+            "STORED": "available",
+            "REJECTED": "unsatisfactory",
+            "DISPOSED": "unavailable",
+        }
         fhir_resource = {
             "resourceType": "Specimen",
             "id": str(specimen.id),
+            "meta": {"profile": ["http://hl7.org/fhir/uv/ips/StructureDefinition/Specimen-uv-ips"]},
             "identifier": [{"value": specimen.barcode}],
-            "status": specimen.status.lower(),
+            "status": status_map.get(specimen.status, "available"),
             "type": {"text": specimen.get_specimen_type_display()},
             "subject": {"reference": f"Patient/{specimen.lab_order.patient_id}"},
+            "text": build_generated_narrative(
+                "Specimen",
+                [
+                    f"Barcode: {specimen.barcode}",
+                    f"Type: {specimen.get_specimen_type_display()}",
+                ],
+            ),
         }
         if specimen.collected_at or specimen.collection_site:
             fhir_resource["collection"] = {
@@ -2287,10 +2534,8 @@ class FHIRSpecimenView(APIView):
         return fhir_resource
 
 
-class FHIRDiagnosticReportView(APIView):
+class FHIRDiagnosticReportView(PublicFHIRReadAPIView):
     """FHIR DiagnosticReport resource endpoint."""
-
-    permission_classes = [IsAuthenticated]
 
     STATUS_MAP = {
         "DRAFT": "registered",
@@ -2340,12 +2585,34 @@ class FHIRDiagnosticReportView(APIView):
         fhir_resource = {
             "resourceType": "DiagnosticReport",
             "id": str(report.id),
+            "meta": {
+                "profile": [
+                    "http://hl7.org/fhir/uv/ips/StructureDefinition/DiagnosticReport-uv-ips"
+                ]
+            },
             "status": self.STATUS_MAP.get(report.status, "unknown"),
+            "category": [
+                {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code": "LAB",
+                            "display": "Laboratory",
+                        }
+                    ],
+                    "text": "Laboratory",
+                }
+            ],
             "code": {"text": "Laboratory Diagnostic Report"},
             "subject": {"reference": f"Patient/{report.lab_order.patient_id}"},
             "effectiveDateTime": format_date(report.issued_at or report.created_at),
             "issued": format_date(report.issued_at or report.created_at),
             "result": results,
+            "performer": [{"reference": f"Practitioner/{report.issued_by_id}"}],
+            "text": build_generated_narrative(
+                "DiagnosticReport",
+                [report.conclusion or "Laboratory diagnostic report"],
+            ),
         }
         if specimens:
             fhir_resource["specimen"] = specimens
@@ -2354,10 +2621,8 @@ class FHIRDiagnosticReportView(APIView):
         return fhir_resource
 
 
-class FHIRImmunizationView(APIView):
+class FHIRImmunizationView(PublicFHIRReadAPIView):
     """FHIR Immunization resource endpoint."""
-
-    permission_classes = [IsAuthenticated]
 
     STATUS_MAP = {
         "SCHEDULED": "completed",
@@ -2415,10 +2680,8 @@ class FHIRImmunizationView(APIView):
         return fhir_resource
 
 
-class FHIRProcedureView(APIView):
+class FHIRProcedureView(PublicFHIRReadAPIView):
     """FHIR Procedure resource endpoint."""
-
-    permission_classes = [IsAuthenticated]
 
     STATUS_MAP = {
         "ORDERED": "preparation",
@@ -2482,10 +2745,8 @@ class FHIRProcedureView(APIView):
         return fhir_resource
 
 
-class FHIRImagingStudyView(APIView):
+class FHIRImagingStudyView(PublicFHIRReadAPIView):
     """FHIR ImagingStudy resource endpoint."""
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -2548,10 +2809,8 @@ class FHIRImagingStudyView(APIView):
         }
 
 
-class FHIRMediaView(APIView):
+class FHIRMediaView(PublicFHIRReadAPIView):
     """FHIR Media resource endpoint."""
-
-    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
@@ -3272,6 +3531,49 @@ class FHIRPatientSummaryView(APIView):
         }
 
         return ips_bundle
+
+
+class FHIRBundleView(FHIRPatientSummaryView):
+    """Resolve persisted IPS bundle IDs back to the generated patient bundle."""
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        description="Get a persisted IPS Bundle resource by bundle ID",
+    )
+    def get(self, request, pk: str) -> Response:
+        """Serve the patient-backed IPS bundle for Inferno Bundle profile reads."""
+        if not pk.startswith("ips-"):
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"Bundle with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        patient_id = pk.removeprefix("ips-")
+        if not patient_id.isdigit():
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"Bundle with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return super().get(request, int(patient_id))
 
 
 class FHIRCompositionDocumentView(FHIRPatientSummaryView):
