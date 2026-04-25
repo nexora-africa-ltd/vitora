@@ -2962,3 +2962,238 @@ class PregnancyObservation(FacilityScopedModel, TimeStampedModel):
         if not self.fhir_id:
             self.fhir_id = _next_reserved_fhir_id(self.__class__, self.FHIR_ID_FLOOR)
         super().save(*args, **kwargs)
+
+
+# =============================================================================
+# Structured History Models (FHIR-aligned)
+# =============================================================================
+
+
+class ChronicCondition(FacilityScopedModel, TimeStampedModel):
+    """Structured chronic/ongoing condition for a patient (FHIR Condition)."""
+
+    class ConditionStatus(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        REMISSION = "REMISSION", "In remission"
+        RESOLVED = "RESOLVED", "Resolved"
+        UNKNOWN = "UNKNOWN", "Unknown"
+
+    FHIR_ID_FLOOR = 720000000
+
+    fhir_id = models.PositiveIntegerField(unique=True, editable=False, db_index=True)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="chronic_conditions_structured",
+    )
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="chronic_conditions_structured",
+    )
+    condition_name = models.CharField(max_length=255)
+    icd10_code = models.CharField(max_length=20, blank=True, default="")
+    status = models.CharField(
+        max_length=20, choices=ConditionStatus.choices, default=ConditionStatus.ACTIVE
+    )
+    onset_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+    recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_chronic_conditions",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["fhir_id"]),
+            models.Index(fields=["patient", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.condition_name} ({self.get_status_display()}) - {self.patient}"
+
+    def save(self, *args, **kwargs):
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        if not self.fhir_id:
+            self.fhir_id = _next_reserved_fhir_id(self.__class__, self.FHIR_ID_FLOOR)
+        super().save(*args, **kwargs)
+
+
+class CurrentMedication(FacilityScopedModel, TimeStampedModel):
+    """Structured current medication statement for patient intake (FHIR MedicationStatement)."""
+
+    class MedicationStatus(models.TextChoices):
+        ACTIVE = "ACTIVE", "Currently taking"
+        ON_HOLD = "ON_HOLD", "On hold"
+        STOPPED = "STOPPED", "Stopped"
+        UNKNOWN = "UNKNOWN", "Unknown"
+
+    FHIR_ID_FLOOR = 730000000
+
+    fhir_id = models.PositiveIntegerField(unique=True, editable=False, db_index=True)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="current_medications_structured",
+    )
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="current_medications_structured",
+    )
+    medication_name = models.CharField(max_length=255)
+    dosage = models.CharField(max_length=100, blank=True, default="")
+    frequency = models.CharField(max_length=100, blank=True, default="")
+    route = models.CharField(max_length=50, blank=True, default="")
+    status = models.CharField(
+        max_length=20, choices=MedicationStatus.choices, default=MedicationStatus.ACTIVE
+    )
+    start_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+    recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_current_medications",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["fhir_id"]),
+            models.Index(fields=["patient", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        dosage_str = f" {self.dosage}" if self.dosage else ""
+        return f"{self.medication_name}{dosage_str} ({self.get_status_display()}) - {self.patient}"
+
+    def save(self, *args, **kwargs):
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        if not self.fhir_id:
+            self.fhir_id = _next_reserved_fhir_id(self.__class__, self.FHIR_ID_FLOOR)
+        super().save(*args, **kwargs)
+
+
+class PastSurgery(FacilityScopedModel, TimeStampedModel):
+    """Structured past surgery/procedure record for a patient (FHIR Procedure)."""
+
+    class SurgeryOutcome(models.TextChoices):
+        SUCCESSFUL = "SUCCESSFUL", "Successful"
+        COMPLICATED = "COMPLICATED", "Complicated"
+        UNKNOWN = "UNKNOWN", "Unknown"
+
+    FHIR_ID_FLOOR = 740000000
+
+    fhir_id = models.PositiveIntegerField(unique=True, editable=False, db_index=True)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="past_surgeries_structured",
+    )
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="past_surgeries_structured",
+    )
+    procedure_name = models.CharField(max_length=255)
+    procedure_date = models.DateField(null=True, blank=True)
+    outcome = models.CharField(
+        max_length=20, choices=SurgeryOutcome.choices, default=SurgeryOutcome.UNKNOWN
+    )
+    notes = models.TextField(blank=True, default="")
+    recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_past_surgeries",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-procedure_date", "-created_at"]
+        verbose_name_plural = "past surgeries"
+        indexes = [
+            models.Index(fields=["fhir_id"]),
+            models.Index(fields=["patient"]),
+        ]
+
+    def __str__(self) -> str:
+        date_str = f" ({self.procedure_date})" if self.procedure_date else ""
+        return f"{self.procedure_name}{date_str} - {self.patient}"
+
+    def save(self, *args, **kwargs):
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        if not self.fhir_id:
+            self.fhir_id = _next_reserved_fhir_id(self.__class__, self.FHIR_ID_FLOOR)
+        super().save(*args, **kwargs)
+
+
+class FamilyHistory(FacilityScopedModel, TimeStampedModel):
+    """Structured family history record for a patient (FHIR FamilyMemberHistory)."""
+
+    class Relationship(models.TextChoices):
+        FATHER = "FATHER", "Father"
+        MOTHER = "MOTHER", "Mother"
+        SIBLING = "SIBLING", "Sibling"
+        GRANDPARENT = "GRANDPARENT", "Grandparent"
+        CHILD = "CHILD", "Child"
+        UNCLE_AUNT = "UNCLE_AUNT", "Uncle/Aunt"
+        COUSIN = "COUSIN", "Cousin"
+        OTHER = "OTHER", "Other"
+
+    FHIR_ID_FLOOR = 750000000
+
+    fhir_id = models.PositiveIntegerField(unique=True, editable=False, db_index=True)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="family_history_structured",
+    )
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="family_history_structured",
+    )
+    relationship = models.CharField(max_length=20, choices=Relationship.choices)
+    condition_name = models.CharField(max_length=255)
+    deceased = models.BooleanField(default=False)
+    age_at_onset = models.CharField(max_length=50, blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+    recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_family_history",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-created_at"]
+        verbose_name_plural = "family histories"
+        indexes = [
+            models.Index(fields=["fhir_id"]),
+            models.Index(fields=["patient", "relationship"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_relationship_display()}: {self.condition_name} - {self.patient}"
+
+    def save(self, *args, **kwargs):
+        resolve_tenant_from_related(self, encounter_field="encounter", patient_field="patient")
+        if not self.fhir_id:
+            self.fhir_id = _next_reserved_fhir_id(self.__class__, self.FHIR_ID_FLOOR)
+        super().save(*args, **kwargs)

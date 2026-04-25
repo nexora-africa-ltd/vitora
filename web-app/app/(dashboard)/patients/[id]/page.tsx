@@ -26,6 +26,8 @@ import {
   Eye,
   Activity,
   HeartPulse,
+  Heart,
+  Scissors,
   MoreHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,6 +56,11 @@ import { QuickCheckinDialog } from '@/components/patients/quick-checkin-dialog';
 import { PatientQRCode } from '@/components/patients/patient-qr-code';
 import { PatientImagingSection } from '@/components/patients/patient-imaging-section';
 import { PatientAllergiesTab } from '@/components/patients/allergies';
+import { PatientSocialHistoryTab } from '@/components/patients/social-history';
+import { PatientChronicConditionsTab } from '@/components/patients/chronic-conditions';
+import { PatientCurrentMedicationsTab } from '@/components/patients/current-medications';
+import { PatientPastSurgeriesTab } from '@/components/patients/past-surgeries';
+import { PatientFamilyHistoryTab } from '@/components/patients/family-history';
 import { PatientAlliedHealthTab } from '@/components/patients/allied-health';
 import { PatientAuditTrail } from '@/components/patients/patient-audit-trail';
 import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
@@ -423,7 +430,7 @@ export default function PatientDetailPage() {
 
           {/* Clinical — Vitals | Allergies | Emergency Contacts */}
           <TabsContent value="clinical">
-            <Accordion type="multiple" defaultValue={['vitals', 'allergies', 'emergency-contacts']}>
+            <Accordion type="multiple" defaultValue={['vitals', 'allergies', 'social-history', 'chronic-conditions', 'current-medications', 'past-surgeries', 'family-history', 'emergency-contacts']}>
               <AccordionItem value="vitals">
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
@@ -451,6 +458,66 @@ export default function PatientDetailPage() {
                 </AccordionTrigger>
                 <AccordionContent>
                   <PatientAllergiesTab patientId={patientId} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="social-history">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <HeartPulse className="h-4 w-4 text-muted-foreground" />
+                    <span>Social History</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientSocialHistoryTab patientId={patientId} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="chronic-conditions">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-muted-foreground" />
+                    <span>Chronic Conditions</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientChronicConditionsTab patientId={patientId} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="current-medications">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Pill className="h-4 w-4 text-muted-foreground" />
+                    <span>Current Medications</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientCurrentMedicationsTab patientId={patientId} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="past-surgeries">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Scissors className="h-4 w-4 text-muted-foreground" />
+                    <span>Past Surgeries</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientPastSurgeriesTab patientId={patientId} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="family-history">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span>Family History</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <PatientFamilyHistoryTab patientId={patientId} />
                 </AccordionContent>
               </AccordionItem>
 

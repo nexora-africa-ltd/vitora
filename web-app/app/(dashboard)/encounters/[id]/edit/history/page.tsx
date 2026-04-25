@@ -197,8 +197,8 @@ export default function EncounterEditHistoryPage() {
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handlePrev}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
+                <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Back</span>
               </Button>
               <Button
                 variant="outline"
@@ -206,15 +206,15 @@ export default function EncounterEditHistoryPage() {
                 disabled={updateEncounter.isPending || !isEditable}
               >
                 {updateEncounter.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4 sm:mr-2" />
                 )}
-                Save
+                <span className="hidden sm:inline">Save</span>
               </Button>
               <Button onClick={handleNext}>
-                Next: Notes
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <span className="hidden sm:inline">Next: Notes</span>
+                <ArrowRight className="h-4 w-4 sm:ml-2" />
               </Button>
             </div>
           </div>
