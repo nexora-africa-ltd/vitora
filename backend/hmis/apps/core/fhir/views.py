@@ -1847,13 +1847,14 @@ class FHIRMedicationStatementView(APIView):
     Each PrescriptionItem generates a separate MedicationStatement for IPS compliance.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+    renderer_classes = FHIR_RENDERER_CLASSES
 
     # Status mapping from Django to FHIR MedicationStatement status
     STATUS_MAP = {
-        "PENDING": "completed",
+        "PENDING": "intended",
         "PARTIAL": "active",
-        "DISPENSED": "completed",
+        "DISPENSED": "active",
         "CANCELLED": "stopped",
         "EXPIRED": "stopped",
     }
@@ -2896,11 +2897,11 @@ class FHIRPatientSummaryView(APIView):
             "recorded_by"
         )[:20]
 
-        # Get patient's active/pending prescriptions with items
+        # Get patient prescriptions that represent actual medication use.
         prescriptions = (
             Prescription.objects.filter(
                 patient=patient,
-                status__in=["PENDING", "PARTIAL", "DISPENSED"],
+                status__in=["PARTIAL", "DISPENSED"],
             )
             .select_related("patient", "prescribed_by", "encounter")
             .prefetch_related("items__drug")
@@ -2917,47 +2918,68 @@ class FHIRPatientSummaryView(APIView):
             .order_by("-created_at")[:5]
         )
 
-        social_history_observations = SocialHistoryObservation.objects.filter(
-            patient=patient
-        ).select_related("encounter")[:10]
+        include_extended_resources = request.query_params.get("extended", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
 
-        pregnancy_observations = PregnancyObservation.objects.filter(
-            patient=patient
-        ).select_related("encounter", "mch_registration", "delivery")[:10]
+        social_history_observations = []
+        pregnancy_observations = []
+        lab_results = []
+        diagnostic_reports = []
+        specimens = []
+        immunizations = []
+        procedures = []
+        imaging_studies = []
+        media_items = []
 
-        lab_results = LabResult.objects.filter(
-            order_item__lab_order__patient=patient
-        ).select_related(
-            "order_item__lab_order__patient",
-            "order_item__test",
-            "specimen",
-        )[:20]
+        if include_extended_resources:
+            social_history_observations = SocialHistoryObservation.objects.filter(
+                patient=patient
+            ).select_related("encounter")[:10]
 
-        diagnostic_reports = DiagnosticReport.objects.filter(
-            lab_order__patient=patient
-        ).select_related("lab_order__patient")[:10]
+            pregnancy_observations = PregnancyObservation.objects.filter(
+                patient=patient
+            ).select_related("encounter", "mch_registration", "delivery")[:10]
 
-        specimen_ids = set(
-            Specimen.objects.filter(lab_order__patient=patient).values_list("id", flat=True)[:20]
-        )
-        for report in diagnostic_reports:
-            for order_item in report.lab_order.items.select_related("result").all():
-                if hasattr(order_item, "result") and order_item.result.specimen_id:
-                    specimen_ids.add(order_item.result.specimen_id)
-        specimens = Specimen.objects.filter(id__in=specimen_ids)
+            lab_results = LabResult.objects.filter(
+                order_item__lab_order__patient=patient
+            ).select_related(
+                "order_item__lab_order__patient",
+                "order_item__test",
+                "specimen",
+            )[:20]
 
-        immunizations = ImmunizationRecord.objects.filter(patient=patient).select_related(
-            "vaccine"
-        )[:10]
+            diagnostic_reports = DiagnosticReport.objects.filter(
+                lab_order__patient=patient
+            ).select_related("lab_order__patient")[:10]
 
-        procedures = ProcedureOrder.objects.filter(patient=patient).select_related("procedure")[:10]
+            specimen_ids = set(
+                Specimen.objects.filter(lab_order__patient=patient).values_list("id", flat=True)[
+                    :20
+                ]
+            )
+            for report in diagnostic_reports:
+                for order_item in report.lab_order.items.select_related("result").all():
+                    if hasattr(order_item, "result") and order_item.result.specimen_id:
+                        specimen_ids.add(order_item.result.specimen_id)
+            specimens = Specimen.objects.filter(id__in=specimen_ids)
 
-        imaging_studies = DICOMStudy.objects.filter(patient=patient).prefetch_related(
-            "series_set__instances"
-        )[:10]
-        media_items = DICOMInstance.objects.filter(series__study__patient=patient).select_related(
-            "series__study__patient"
-        )[:10]
+            immunizations = ImmunizationRecord.objects.filter(patient=patient).select_related(
+                "vaccine"
+            )[:10]
+
+            procedures = ProcedureOrder.objects.filter(patient=patient).select_related("procedure")[
+                :10
+            ]
+
+            imaging_studies = DICOMStudy.objects.filter(patient=patient).prefetch_related(
+                "series_set__instances"
+            )[:10]
+            media_items = DICOMInstance.objects.filter(
+                series__study__patient=patient
+            ).select_related("series__study__patient")[:10]
 
         # Build IPS Bundle
         ips_bundle = self._build_ips_bundle(

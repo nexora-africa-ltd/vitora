@@ -467,7 +467,7 @@ def sample_prescription_with_items(
         patient=sample_patient,
         prescribed_by=test_user,
         valid_until=date.today() + timedelta(days=30),
-        status="PENDING",
+        status="DISPENSED",
         clinical_notes="For fever and pain management",
         facility=sample_facility,
         organization=sample_organization,
@@ -506,7 +506,7 @@ def sample_prescription_multiple_items(
         patient=sample_patient,
         prescribed_by=test_user,
         valid_until=date.today() + timedelta(days=30),
-        status="PENDING",
+        status="DISPENSED",
         facility=sample_facility,
         organization=sample_organization,
     )
@@ -897,6 +897,50 @@ class TestFHIRAdditionalResources:
 class TestFHIRIPSMedicationStatement:
     """Tests for MedicationStatement in IPS Bundle."""
 
+    def test_pending_prescriptions_are_not_included_in_ips_bundle(
+        self,
+        authenticated_client,
+        sample_patient,
+        sample_encounter,
+        test_user,
+        sample_drug,
+        sample_facility,
+        sample_organization,
+    ):
+        """Pending prescriptions should not be exposed as IPS MedicationStatements."""
+        from hmis.apps.pharmacy.models import Prescription, PrescriptionItem
+
+        pending_prescription = Prescription.objects.create(
+            encounter=sample_encounter,
+            patient=sample_patient,
+            prescribed_by=test_user,
+            valid_until=date.today() + timedelta(days=30),
+            status="PENDING",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        pending_item = PrescriptionItem.objects.create(
+            prescription=pending_prescription,
+            drug=sample_drug,
+            quantity=10,
+            dosage="1 tablet",
+            frequency="3 times daily",
+            duration="7 days",
+            route="Oral",
+        )
+
+        response = authenticated_client.get(
+            reverse("fhir:patient-summary", args=[sample_patient.id])
+        )
+
+        medication_ids = {
+            entry["resource"]["id"]
+            for entry in response.data["entry"]
+            if entry["resource"]["resourceType"] == "MedicationStatement"
+        }
+
+        assert str(pending_item.id) not in medication_ids
+
     def test_ips_includes_medication_statement(
         self, authenticated_client, sample_patient, sample_prescription_with_items
     ):
@@ -989,6 +1033,31 @@ class TestFHIRIPSMedicationStatement:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["resourceType"] == "MedicationStatement"
         assert response.data["id"] == str(item.id)
+
+    def test_medication_statement_endpoint_allows_unauthenticated_access(
+        self, api_client, sample_prescription_with_items
+    ):
+        """MedicationStatement read should allow unauthenticated Inferno access."""
+        item = sample_prescription_with_items.items.first()
+
+        response = api_client.get(reverse("fhir:medication-statement-read", args=[item.id]))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "MedicationStatement"
+
+    def test_medication_statement_endpoint_supports_fhir_json_accept(
+        self, api_client, sample_prescription_with_items
+    ):
+        """MedicationStatement read should negotiate the FHIR JSON media type."""
+        item = sample_prescription_with_items.items.first()
+
+        response = api_client.get(
+            reverse("fhir:medication-statement-read", args=[item.id]),
+            HTTP_ACCEPT="application/fhir+json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resourceType"] == "MedicationStatement"
 
     def test_composition_medication_section_populated(
         self, authenticated_client, sample_patient, sample_prescription_with_items
