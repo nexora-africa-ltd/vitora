@@ -46,6 +46,43 @@ class ServiceCategory(models.Model):
         return self.name
 
 
+class ICD11CodeReference(models.Model):
+    """Local ICD-11 reference catalog for offline terminology fallback."""
+
+    code = models.CharField(max_length=20, unique=True)
+    title = models.CharField(max_length=500)
+    description = models.TextField(blank=True, default="")
+    chapter = models.CharField(max_length=50, blank=True, default="")
+    chapter_no = models.CharField(max_length=20, blank=True, default="")
+    class_kind = models.CharField(max_length=20, default="category")
+    depth_in_kind = models.PositiveIntegerField(default=0)
+    entity_id = models.CharField(max_length=50, blank=True, default="")
+    foundation_uri = models.CharField(max_length=500, blank=True, default="")
+    linearization_uri = models.CharField(max_length=500, blank=True, default="")
+    is_leaf = models.BooleanField(default=True)
+    is_residual = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["code"]
+        verbose_name = "ICD-11 Code Reference"
+        verbose_name_plural = "ICD-11 Code References"
+        indexes = [
+            models.Index(fields=["code"]),
+            models.Index(fields=["chapter_no"]),
+            models.Index(fields=["title"]),
+        ]
+
+    def __str__(self):
+        return f"{self.code} - {self.title}"
+
+    def save(self, *args, **kwargs):
+        """Normalize code casing before save."""
+        if self.code:
+            self.code = self.code.upper()
+        super().save(*args, **kwargs)
+
+
 class Service(models.Model):
     """Billable service with pricing."""
 

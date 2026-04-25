@@ -70,6 +70,8 @@ def health_check(request):
     """Simple health check endpoint for monitoring."""
     from django.conf import settings
 
+    from hmis.apps.billing.services.icd11_status import get_icd11_local_fallback_status
+
     # Check if WebSocket/Channels is configured
     websocket_enabled = False
     try:
@@ -90,6 +92,7 @@ def health_check(request):
             "service": "vitora-hmis",
             "version": "0.1.0",
             "websocket_enabled": websocket_enabled,
+            "icd11_local_fallback": get_icd11_local_fallback_status(),
         }
     )
 

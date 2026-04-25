@@ -712,6 +712,28 @@ class TerminologyService:
         """
         logger.info(f"Searching ICD-11: query='{query}'")
 
+        try:
+            return self._search_icd11_remote(query, chapter, limit)
+        except TerminologyError as e:
+            logger.warning(f"Remote ICD-11 search failed: {e}")
+
+        if self.use_local_fallback:
+            logger.info("Using local database fallback for ICD-11")
+            return self._search_icd11_local(query, limit)
+
+        raise TerminologyError(
+            "All ICD-11 sources unavailable",
+            terminology_type="ICD11",
+        )
+
+    def _search_icd11_remote(
+        self,
+        query: str,
+        chapter: str | None,
+        limit: int,
+    ) -> list[ICD11Code]:
+        """Search ICD-11 via remote DHA API."""
+
         params = {
             "search": query,
             "limit": limit,
@@ -754,6 +776,41 @@ class TerminologyService:
                 terminology_type="ICD11",
             )
 
+    def _search_icd11_local(
+        self,
+        query: str,
+        limit: int,
+    ) -> list[ICD11Code]:
+        """Search ICD-11 in the local database fallback."""
+        try:
+            from hmis.apps.billing.models import ICD11CodeReference
+
+            local_codes = ICD11CodeReference.objects.filter(
+                Q(code__icontains=query)
+                | Q(title__icontains=query)
+                | Q(description__icontains=query),
+                is_active=True,
+            ).order_by("code")[:limit]
+
+            return [
+                ICD11Code(
+                    code=code.code,
+                    title=code.title,
+                    description=code.description or code.title,
+                    chapter=code.chapter or code.chapter_no,
+                    is_leaf=code.is_leaf,
+                    raw_data={
+                        "source": "local_icd11_database",
+                        "entity_id": code.entity_id,
+                        "class_kind": code.class_kind,
+                    },
+                )
+                for code in local_codes
+            ]
+        except Exception as e:
+            logger.error(f"Local ICD-11 fallback failed: {e}")
+            return []
+
     def get_icd11(self, code: str) -> ICD11Code:
         """
         Get a specific ICD-11 code.
@@ -768,6 +825,24 @@ class TerminologyService:
             CodeNotFoundError: If code not found
         """
         logger.info(f"Fetching ICD-11 code: {code}")
+
+        try:
+            return self._get_icd11_remote(code)
+        except CodeNotFoundError:
+            pass
+        except TerminologyError as e:
+            logger.warning(f"Remote ICD-11 fetch failed: {e}")
+
+        if self.use_local_fallback:
+            try:
+                return self._get_icd11_local(code)
+            except CodeNotFoundError:
+                pass
+
+        raise CodeNotFoundError(code, "ICD11")
+
+    def _get_icd11_remote(self, code: str) -> ICD11Code:
+        """Get a specific ICD-11 code via remote DHA API."""
 
         try:
             headers = self.auth_service.get_terminology_headers()
@@ -793,6 +868,28 @@ class TerminologyService:
                 f"Failed to fetch ICD-11 code: {str(e)}",
                 terminology_type="ICD11",
             )
+
+    def _get_icd11_local(self, code: str) -> ICD11Code:
+        """Get ICD-11 from the local database fallback."""
+        from hmis.apps.billing.models import ICD11CodeReference
+
+        try:
+            local_code = ICD11CodeReference.objects.get(code=code.upper(), is_active=True)
+        except ICD11CodeReference.DoesNotExist as exc:
+            raise CodeNotFoundError(code, "ICD11") from exc
+
+        return ICD11Code(
+            code=local_code.code,
+            title=local_code.title,
+            description=local_code.description or local_code.title,
+            chapter=local_code.chapter or local_code.chapter_no,
+            is_leaf=local_code.is_leaf,
+            raw_data={
+                "source": "local_icd11_database",
+                "entity_id": local_code.entity_id,
+                "class_kind": local_code.class_kind,
+            },
+        )
 
     # =========================================================================
     # Drug Products

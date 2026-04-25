@@ -8,6 +8,7 @@ from django.utils.html import format_html
 from .models import (
     CreditNote,
     FacilityBillingConfig,
+    ICD11CodeReference,
     Invoice,
     InvoiceItem,
     Payment,
@@ -80,6 +81,16 @@ class ServiceAdmin(admin.ModelAdmin):
             {"fields": ("is_active",)},
         ),
     )
+
+
+@admin.register(ICD11CodeReference)
+class ICD11CodeReferenceAdmin(admin.ModelAdmin):
+    """Admin configuration for the local ICD-11 fallback catalog."""
+
+    list_display = ["code", "title", "chapter_no", "class_kind", "is_leaf", "is_active"]
+    list_filter = ["chapter_no", "class_kind", "is_leaf", "is_residual", "is_active"]
+    search_fields = ["code", "title", "description"]
+    ordering = ["code"]
 
 
 @admin.register(Invoice)

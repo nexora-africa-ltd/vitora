@@ -904,13 +904,24 @@ class FHIRObservationView(PublicFHIRReadAPIView):
             "NEVER": 0,
             "UNKNOWN": 0,
         }
-        status_text = {
+        alcohol_status_text = {
             "CURRENT": "Current alcohol use",
-            "FORMER": "Former alcohol use",
+            "FORMER": "Former use",
             "NEVER": "No alcohol use",
             "UNKNOWN": "Alcohol use unknown",
         }
+        generic_status_text = {
+            "CURRENT": "Current use",
+            "FORMER": "Former use",
+            "NEVER": "Never used",
+            "UNKNOWN": "Unknown",
+        }
         code = code_map[observation.observation_type]
+        status_text = (
+            alcohol_status_text
+            if observation.observation_type == "ALCOHOL_USE"
+            else generic_status_text
+        )
 
         fhir_resource = {
             "resourceType": "Observation",
@@ -3177,12 +3188,6 @@ class FHIRPatientSummaryView(APIView):
             .order_by("-created_at")[:5]
         )
 
-        include_extended_resources = request.query_params.get("extended", "").lower() in {
-            "1",
-            "true",
-            "yes",
-        }
-
         social_history_observations = []
         pregnancy_observations = []
         lab_results = []
@@ -3193,52 +3198,47 @@ class FHIRPatientSummaryView(APIView):
         imaging_studies = []
         media_items = []
 
-        if include_extended_resources:
-            social_history_observations = SocialHistoryObservation.objects.filter(
-                patient=patient
-            ).select_related("encounter")[:10]
+        social_history_observations = SocialHistoryObservation.objects.filter(
+            patient=patient
+        ).select_related("encounter")[:10]
 
-            pregnancy_observations = PregnancyObservation.objects.filter(
-                patient=patient
-            ).select_related("encounter", "mch_registration", "delivery")[:10]
+        pregnancy_observations = PregnancyObservation.objects.filter(
+            patient=patient
+        ).select_related("encounter", "mch_registration", "delivery")[:10]
 
-            lab_results = LabResult.objects.filter(
-                order_item__lab_order__patient=patient
-            ).select_related(
-                "order_item__lab_order__patient",
-                "order_item__test",
-                "specimen",
-            )[:20]
+        lab_results = LabResult.objects.filter(
+            order_item__lab_order__patient=patient
+        ).select_related(
+            "order_item__lab_order__patient",
+            "order_item__test",
+            "specimen",
+        )[:20]
 
-            diagnostic_reports = DiagnosticReport.objects.filter(
-                lab_order__patient=patient
-            ).select_related("lab_order__patient")[:10]
+        diagnostic_reports = DiagnosticReport.objects.filter(
+            lab_order__patient=patient
+        ).select_related("lab_order__patient")[:10]
 
-            specimen_ids = set(
-                Specimen.objects.filter(lab_order__patient=patient).values_list("id", flat=True)[
-                    :20
-                ]
-            )
-            for report in diagnostic_reports:
-                for order_item in report.lab_order.items.select_related("result").all():
-                    if hasattr(order_item, "result") and order_item.result.specimen_id:
-                        specimen_ids.add(order_item.result.specimen_id)
-            specimens = Specimen.objects.filter(id__in=specimen_ids)
+        specimen_ids = set(
+            Specimen.objects.filter(lab_order__patient=patient).values_list("id", flat=True)[:20]
+        )
+        for report in diagnostic_reports:
+            for order_item in report.lab_order.items.select_related("result").all():
+                if hasattr(order_item, "result") and order_item.result.specimen_id:
+                    specimen_ids.add(order_item.result.specimen_id)
+        specimens = Specimen.objects.filter(id__in=specimen_ids)
 
-            immunizations = ImmunizationRecord.objects.filter(patient=patient).select_related(
-                "vaccine"
-            )[:10]
+        immunizations = ImmunizationRecord.objects.filter(patient=patient).select_related(
+            "vaccine"
+        )[:10]
 
-            procedures = ProcedureOrder.objects.filter(patient=patient).select_related("procedure")[
-                :10
-            ]
+        procedures = ProcedureOrder.objects.filter(patient=patient).select_related("procedure")[:10]
 
-            imaging_studies = DICOMStudy.objects.filter(patient=patient).prefetch_related(
-                "series_set__instances"
-            )[:10]
-            media_items = DICOMInstance.objects.filter(
-                series__study__patient=patient
-            ).select_related("series__study__patient")[:10]
+        imaging_studies = DICOMStudy.objects.filter(patient=patient).prefetch_related(
+            "series_set__instances"
+        )[:10]
+        media_items = DICOMInstance.objects.filter(series__study__patient=patient).select_related(
+            "series__study__patient"
+        )[:10]
 
         # Build IPS Bundle
         ips_bundle = self._build_ips_bundle(

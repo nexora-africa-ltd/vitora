@@ -187,6 +187,33 @@ class TestICD11Codes:
         with pytest.raises(CodeNotFoundError):
             service.get_icd11("INVALID")
 
+    def test_search_icd11_local_fallback(self, service, mocker):
+        """Should fall back to the local ICD-11 database when remote search fails."""
+        mocker.patch.object(
+            service,
+            "_search_icd11_remote",
+            side_effect=TerminologyError("Remote API failed", terminology_type="ICD11"),
+        )
+        mocker.patch.object(
+            service,
+            "_search_icd11_local",
+            return_value=[
+                ICD11Code(
+                    code="1A00",
+                    title="Cholera",
+                    chapter="1",
+                    is_leaf=True,
+                )
+            ],
+        )
+
+        results = service.search_icd11(query="cholera")
+
+        assert len(results) == 1
+        assert results[0].code == "1A00"
+        service._search_icd11_remote.assert_called_once_with("cholera", None, 50)
+        service._search_icd11_local.assert_called_once_with("cholera", 50)
+
 
 # =============================================================================
 # Drug Products Tests
