@@ -77,8 +77,8 @@ class Command(BaseCommand):
             TestCatalog,
         )
         from hmis.apps.mch.models import Delivery, MCHRegistration
-        from hmis.apps.patients.models import Patient
-        from hmis.apps.pharmacy.models import Drug
+        from hmis.apps.patients.models import Allergy, Patient
+        from hmis.apps.pharmacy.models import Drug, Prescription, PrescriptionItem
         from hmis.apps.procedures.models import ProcedureCatalog, ProcedureOrder
         from hmis.apps.theatre.models import OperatingTheatre, SurgeryCase, TheatreConsumable
 
@@ -314,6 +314,25 @@ class Command(BaseCommand):
             f"  ✓ Diagnosis (Condition ID={diagnosis2.id}): {diagnosis2.icd10_code.code}"
         )
 
+        allergy, _ = Allergy.objects.get_or_create(
+            patient=patient,
+            substance="Penicillin",
+            defaults={
+                "organization": organization,
+                "substance_type": "medication",
+                "reaction_type": "rash",
+                "reaction_description": "Diffuse rash after penicillin exposure",
+                "severity": "moderate",
+                "status": "active",
+                "verification_status": "confirmed",
+                "criticality": "high",
+                "notes": "FHIR IPS allergy seed data",
+                "recorded_by": test_user,
+                "source_encounter": encounter,
+            },
+        )
+        self.stdout.write(f"  ✓ Allergy (ID={allergy.id}): {allergy.substance}")
+
         test_catalog, _ = TestCatalog.objects.get_or_create(
             code="HB-FHIR",
             defaults={
@@ -436,6 +455,45 @@ class Command(BaseCommand):
             },
         )
         self.stdout.write(f"  ✓ Procedure (ID={procedure_order.id}): {procedure_catalog.name}")
+
+        medication_drug, _ = Drug.objects.get_or_create(
+            code="PARA-FHIR-500",
+            defaults={
+                "generic_name": "Paracetamol",
+                "form": "TABLET",
+                "strength": "500mg",
+                "unit": "tablet",
+                "schedule": "OTC",
+                "requires_prescription": False,
+            },
+        )
+        prescription, _ = Prescription.objects.get_or_create(
+            patient=patient,
+            encounter=encounter,
+            prescribed_by=test_user,
+            status="DISPENSED",
+            defaults={
+                "valid_until": date.today() + timedelta(days=30),
+                "clinical_notes": "FHIR IPS dispensed medication seed data",
+                "facility": facility,
+                "organization": organization,
+            },
+        )
+        prescription_item, _ = PrescriptionItem.objects.get_or_create(
+            prescription=prescription,
+            drug=medication_drug,
+            defaults={
+                "quantity": 10,
+                "dosage": "1 tablet",
+                "frequency": "3 times daily",
+                "duration": "7 days",
+                "route": "Oral",
+                "instructions": "Take after meals",
+            },
+        )
+        self.stdout.write(
+            f"  ✓ Medication Statement seed (PrescriptionItem ID={prescription_item.id}): {medication_drug.generic_name}"
+        )
 
         implant_drug, _ = Drug.objects.get_or_create(
             code="IMPLANT-FHIR-001",
