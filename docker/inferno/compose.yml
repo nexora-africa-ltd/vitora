@@ -27,6 +27,7 @@ services:
   inferno:
     image: infernocommunity/inferno-core:latest
     container_name: vitora-inferno
+    command: ["/bin/sh", "/opt/inferno/patches/start-with-local-patches.sh"]
     ports:
       - "4567:4567"  # Inferno Web UI
     extra_hosts:
@@ -44,6 +45,7 @@ services:
       - LOG_LEVEL=info
     volumes:
       - inferno-data:/opt/inferno/data
+      - ./start-with-local-patches.sh:/opt/inferno/patches/start-with-local-patches.sh:ro
     depends_on:
       postgres:
         condition: service_healthy
