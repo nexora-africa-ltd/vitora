@@ -43,11 +43,16 @@ from hmis.apps.core.views import (
 )
 from hmis.apps.encounters.views import (
     ApplyTemplateView,
+    ChronicConditionViewSet,
+    CurrentMedicationViewSet,
     DiagnosisViewSet,
     EncounterViewSet,
+    FamilyHistoryViewSet,
     ICD10CodeViewSet,
     MedicationViewSet,
+    PastSurgeryViewSet,
     SNOMEDSearchView,
+    SocialHistoryObservationViewSet,
     TreatmentPlanTemplateViewSet,
     TreatmentPlanView,
 )
@@ -200,6 +205,71 @@ urlpatterns = [
             {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
         ),
         name="patient-allergies-detail",
+    ),
+    # Nested route for social history observations under patients
+    path(
+        "api/patients/<int:patient_pk>/social-history/",
+        SocialHistoryObservationViewSet.as_view({"get": "list", "post": "create"}),
+        name="patient-social-history-list",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/social-history/<int:pk>/",
+        SocialHistoryObservationViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="patient-social-history-detail",
+    ),
+    # Nested route for chronic conditions under patients
+    path(
+        "api/patients/<int:patient_pk>/chronic-conditions/",
+        ChronicConditionViewSet.as_view({"get": "list", "post": "create"}),
+        name="patient-chronic-conditions-list",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/chronic-conditions/<int:pk>/",
+        ChronicConditionViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="patient-chronic-conditions-detail",
+    ),
+    # Nested route for current medications under patients
+    path(
+        "api/patients/<int:patient_pk>/current-medications/",
+        CurrentMedicationViewSet.as_view({"get": "list", "post": "create"}),
+        name="patient-current-medications-list",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/current-medications/<int:pk>/",
+        CurrentMedicationViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="patient-current-medications-detail",
+    ),
+    # Nested route for past surgeries under patients
+    path(
+        "api/patients/<int:patient_pk>/past-surgeries/",
+        PastSurgeryViewSet.as_view({"get": "list", "post": "create"}),
+        name="patient-past-surgeries-list",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/past-surgeries/<int:pk>/",
+        PastSurgeryViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="patient-past-surgeries-detail",
+    ),
+    # Nested route for family history under patients
+    path(
+        "api/patients/<int:patient_pk>/family-history/",
+        FamilyHistoryViewSet.as_view({"get": "list", "post": "create"}),
+        name="patient-family-history-list",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/family-history/<int:pk>/",
+        FamilyHistoryViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="patient-family-history-detail",
     ),
     # Nested route for diagnoses under encounters
     path(

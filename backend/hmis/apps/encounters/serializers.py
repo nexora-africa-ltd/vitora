@@ -7,10 +7,15 @@ from rest_framework import serializers
 from hmis.apps.cds.models import CDSAlert, CDSAlertStatus
 
 from .models import (
+    ChronicCondition,
+    CurrentMedication,
     Diagnosis,
     Encounter,
+    FamilyHistory,
     ICD10Code,
     Medication,
+    PastSurgery,
+    SocialHistoryObservation,
     TreatmentPlan,
     TreatmentPlanTemplate,
 )
@@ -831,3 +836,313 @@ class ClaimedEncounterSerializer(EncounterListSerializer):
         if obj.assigned_clinician:
             return obj.assigned_clinician.get_full_name() or obj.assigned_clinician.username
         return None
+
+
+# =============================================================================
+# Social History Observation Serializers
+# =============================================================================
+
+
+class SocialHistoryObservationSerializer(serializers.ModelSerializer):
+    """Read serializer for SocialHistoryObservation."""
+
+    observation_type_display = serializers.CharField(
+        source="get_observation_type_display", read_only=True
+    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = SocialHistoryObservation
+        fields = [
+            "id",
+            "patient",
+            "encounter",
+            "observation_type",
+            "observation_type_display",
+            "status",
+            "status_display",
+            "value_text",
+            "effective_date",
+            "recorded_by",
+            "recorded_by_username",
+            "patient_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "patient",
+            "recorded_by",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj: SocialHistoryObservation) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+
+class SocialHistoryObservationCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for creating/updating SocialHistoryObservation."""
+
+    class Meta:
+        model = SocialHistoryObservation
+        fields = [
+            "observation_type",
+            "status",
+            "value_text",
+            "effective_date",
+            "encounter",
+        ]
+
+    def validate_observation_type(self, value: str) -> str:
+        valid = {c[0] for c in SocialHistoryObservation.ObservationType.choices}
+        if value not in valid:
+            raise serializers.ValidationError(
+                f"Invalid observation type. Must be one of: {', '.join(sorted(valid))}"
+            )
+        return value
+
+    def validate_status(self, value: str) -> str:
+        valid = {c[0] for c in SocialHistoryObservation.UsageStatus.choices}
+        if value not in valid:
+            raise serializers.ValidationError(
+                f"Invalid status. Must be one of: {', '.join(sorted(valid))}"
+            )
+        return value
+
+
+# =============================================================================
+# Chronic Condition Serializers
+# =============================================================================
+
+
+class ChronicConditionSerializer(serializers.ModelSerializer):
+    """Read serializer for ChronicCondition."""
+
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = ChronicCondition
+        fields = [
+            "id",
+            "patient",
+            "encounter",
+            "condition_name",
+            "icd10_code",
+            "status",
+            "status_display",
+            "onset_date",
+            "notes",
+            "recorded_by",
+            "recorded_by_username",
+            "patient_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "patient", "recorded_by", "created_at", "updated_at"]
+
+    def get_patient_name(self, obj: ChronicCondition) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+
+class ChronicConditionCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for ChronicCondition."""
+
+    class Meta:
+        model = ChronicCondition
+        fields = ["condition_name", "icd10_code", "status", "onset_date", "notes", "encounter"]
+
+    def validate_status(self, value: str) -> str:
+        valid = {c[0] for c in ChronicCondition.ConditionStatus.choices}
+        if value not in valid:
+            raise serializers.ValidationError(
+                f"Invalid status. Must be one of: {', '.join(sorted(valid))}"
+            )
+        return value
+
+
+# =============================================================================
+# Current Medication Serializers
+# =============================================================================
+
+
+class CurrentMedicationSerializer(serializers.ModelSerializer):
+    """Read serializer for CurrentMedication."""
+
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = CurrentMedication
+        fields = [
+            "id",
+            "patient",
+            "encounter",
+            "medication_name",
+            "dosage",
+            "frequency",
+            "route",
+            "status",
+            "status_display",
+            "start_date",
+            "notes",
+            "recorded_by",
+            "recorded_by_username",
+            "patient_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "patient", "recorded_by", "created_at", "updated_at"]
+
+    def get_patient_name(self, obj: CurrentMedication) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+
+class CurrentMedicationCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for CurrentMedication."""
+
+    class Meta:
+        model = CurrentMedication
+        fields = [
+            "medication_name",
+            "dosage",
+            "frequency",
+            "route",
+            "status",
+            "start_date",
+            "notes",
+            "encounter",
+        ]
+
+    def validate_status(self, value: str) -> str:
+        valid = {c[0] for c in CurrentMedication.MedicationStatus.choices}
+        if value not in valid:
+            raise serializers.ValidationError(
+                f"Invalid status. Must be one of: {', '.join(sorted(valid))}"
+            )
+        return value
+
+
+# =============================================================================
+# Past Surgery Serializers
+# =============================================================================
+
+
+class PastSurgerySerializer(serializers.ModelSerializer):
+    """Read serializer for PastSurgery."""
+
+    outcome_display = serializers.CharField(source="get_outcome_display", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = PastSurgery
+        fields = [
+            "id",
+            "patient",
+            "encounter",
+            "procedure_name",
+            "procedure_date",
+            "outcome",
+            "outcome_display",
+            "notes",
+            "recorded_by",
+            "recorded_by_username",
+            "patient_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "patient", "recorded_by", "created_at", "updated_at"]
+
+    def get_patient_name(self, obj: PastSurgery) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+
+class PastSurgeryCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for PastSurgery."""
+
+    class Meta:
+        model = PastSurgery
+        fields = ["procedure_name", "procedure_date", "outcome", "notes", "encounter"]
+
+    def validate_outcome(self, value: str) -> str:
+        valid = {c[0] for c in PastSurgery.SurgeryOutcome.choices}
+        if value not in valid:
+            raise serializers.ValidationError(
+                f"Invalid outcome. Must be one of: {', '.join(sorted(valid))}"
+            )
+        return value
+
+
+# =============================================================================
+# Family History Serializers
+# =============================================================================
+
+
+class FamilyHistorySerializer(serializers.ModelSerializer):
+    """Read serializer for FamilyHistory."""
+
+    relationship_display = serializers.CharField(source="get_relationship_display", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = FamilyHistory
+        fields = [
+            "id",
+            "patient",
+            "encounter",
+            "relationship",
+            "relationship_display",
+            "condition_name",
+            "deceased",
+            "age_at_onset",
+            "notes",
+            "recorded_by",
+            "recorded_by_username",
+            "patient_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "patient", "recorded_by", "created_at", "updated_at"]
+
+    def get_patient_name(self, obj: FamilyHistory) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+
+class FamilyHistoryCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for FamilyHistory."""
+
+    class Meta:
+        model = FamilyHistory
+        fields = [
+            "relationship",
+            "condition_name",
+            "deceased",
+            "age_at_onset",
+            "notes",
+            "encounter",
+        ]
+
+    def validate_relationship(self, value: str) -> str:
+        valid = {c[0] for c in FamilyHistory.Relationship.choices}
+        if value not in valid:
+            raise serializers.ValidationError(
+                f"Invalid relationship. Must be one of: {', '.join(sorted(valid))}"
+            )
+        return value

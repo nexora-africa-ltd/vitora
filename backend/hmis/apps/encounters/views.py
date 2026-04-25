@@ -14,26 +14,41 @@ from rest_framework.views import APIView
 
 from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
 from hmis.apps.core.history_views import ModelHistoryMixin
-from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import RequiresActiveShiftPermission, get_client_ip
 
 from .filters import EncounterFilter
 from .models import (
+    ChronicCondition,
+    CurrentMedication,
     Diagnosis,
     Encounter,
+    FamilyHistory,
     ICD10Code,
     Medication,
+    PastSurgery,
+    SocialHistoryObservation,
     TreatmentPlan,
     TreatmentPlanTemplate,
 )
 from .serializers import (
+    ChronicConditionCreateSerializer,
+    ChronicConditionSerializer,
     ClaimedEncounterSerializer,
+    CurrentMedicationCreateSerializer,
+    CurrentMedicationSerializer,
     DiagnosisSerializer,
     EncounterListSerializer,
     EncounterSerializer,
+    FamilyHistoryCreateSerializer,
+    FamilyHistorySerializer,
     ICD10CodeSerializer,
     MedicationSerializer,
+    PastSurgeryCreateSerializer,
+    PastSurgerySerializer,
+    SocialHistoryObservationCreateSerializer,
+    SocialHistoryObservationSerializer,
     TreatmentPlanSerializer,
     TreatmentPlanTemplateSerializer,
 )
@@ -1964,4 +1979,367 @@ class SNOMEDSearchView(APIView):
                 ],
                 "count": len(results),
             }
+        )
+
+
+class SocialHistoryObservationViewSet(
+    ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet
+):
+    """
+    ViewSet for SocialHistoryObservation.
+
+    Provides CRUD for structured social-history observations scoped by patient.
+
+    Endpoints:
+    - GET  /api/patients/{patient_id}/social-history/        List observations
+    - POST /api/patients/{patient_id}/social-history/        Create observation
+    - GET  /api/patients/{patient_id}/social-history/{id}/   Retrieve
+    - PATCH /api/patients/{patient_id}/social-history/{id}/  Update
+    - DELETE /api/patients/{patient_id}/social-history/{id}/ Delete
+    """
+
+    queryset = SocialHistoryObservation.objects.select_related(
+        "patient", "encounter", "recorded_by"
+    )
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["observation_type", "status"]
+    ordering_fields = ["effective_date", "created_at"]
+    ordering = ["-effective_date", "-created_at"]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return SocialHistoryObservationCreateSerializer
+        return SocialHistoryObservationSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        patient_pk = self.kwargs.get("patient_pk")
+        if patient_pk:
+            qs = qs.filter(patient_id=patient_pk)
+        return qs
+
+    def perform_create(self, serializer):
+        patient_pk = self.kwargs.get("patient_pk")
+        instance = serializer.save(
+            patient_id=patient_pk,
+            recorded_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
+        AuditLog.log(
+            action="social_history_create",
+            user=self.request.user,
+            resource_type="SocialHistoryObservation",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_pk,
+            details={"observation_type": instance.observation_type, "status": instance.status},
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="social_history_update",
+            user=self.request.user,
+            resource_type="SocialHistoryObservation",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=instance.patient_id,
+            details={"observation_type": instance.observation_type, "status": instance.status},
+        )
+
+    def perform_destroy(self, instance):
+        obs_id = instance.pk
+        patient_id = instance.patient_id
+        obs_type = instance.observation_type
+        super().perform_destroy(instance)
+        AuditLog.log(
+            action="social_history_delete",
+            user=self.request.user,
+            resource_type="SocialHistoryObservation",
+            resource_id=obs_id,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_id,
+            details={"observation_type": obs_type},
+        )
+
+
+class ChronicConditionViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD for structured chronic conditions scoped by patient."""
+
+    queryset = ChronicCondition.objects.select_related("patient", "encounter", "recorded_by")
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["status"]
+    ordering_fields = ["onset_date", "created_at"]
+    ordering = ["-created_at"]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return ChronicConditionCreateSerializer
+        return ChronicConditionSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        patient_pk = self.kwargs.get("patient_pk")
+        if patient_pk:
+            qs = qs.filter(patient_id=patient_pk)
+        return qs
+
+    def perform_create(self, serializer):
+        patient_pk = self.kwargs.get("patient_pk")
+        instance = serializer.save(
+            patient_id=patient_pk,
+            recorded_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
+        AuditLog.log(
+            action="chronic_condition_create",
+            user=self.request.user,
+            resource_type="ChronicCondition",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_pk,
+            details={"condition_name": instance.condition_name, "status": instance.status},
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="chronic_condition_update",
+            user=self.request.user,
+            resource_type="ChronicCondition",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=instance.patient_id,
+            details={"condition_name": instance.condition_name, "status": instance.status},
+        )
+
+    def perform_destroy(self, instance):
+        pk, patient_id, name = instance.pk, instance.patient_id, instance.condition_name
+        super().perform_destroy(instance)
+        AuditLog.log(
+            action="chronic_condition_delete",
+            user=self.request.user,
+            resource_type="ChronicCondition",
+            resource_id=pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_id,
+            details={"condition_name": name},
+        )
+
+
+class CurrentMedicationViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD for structured current medication statements scoped by patient."""
+
+    queryset = CurrentMedication.objects.select_related("patient", "encounter", "recorded_by")
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["status"]
+    ordering_fields = ["start_date", "created_at"]
+    ordering = ["-created_at"]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return CurrentMedicationCreateSerializer
+        return CurrentMedicationSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        patient_pk = self.kwargs.get("patient_pk")
+        if patient_pk:
+            qs = qs.filter(patient_id=patient_pk)
+        return qs
+
+    def perform_create(self, serializer):
+        patient_pk = self.kwargs.get("patient_pk")
+        instance = serializer.save(
+            patient_id=patient_pk,
+            recorded_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
+        AuditLog.log(
+            action="current_medication_create",
+            user=self.request.user,
+            resource_type="CurrentMedication",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_pk,
+            details={"medication_name": instance.medication_name, "status": instance.status},
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="current_medication_update",
+            user=self.request.user,
+            resource_type="CurrentMedication",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=instance.patient_id,
+            details={"medication_name": instance.medication_name, "status": instance.status},
+        )
+
+    def perform_destroy(self, instance):
+        pk, patient_id, name = instance.pk, instance.patient_id, instance.medication_name
+        super().perform_destroy(instance)
+        AuditLog.log(
+            action="current_medication_delete",
+            user=self.request.user,
+            resource_type="CurrentMedication",
+            resource_id=pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_id,
+            details={"medication_name": name},
+        )
+
+
+class PastSurgeryViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD for structured past surgeries/procedures scoped by patient."""
+
+    queryset = PastSurgery.objects.select_related("patient", "encounter", "recorded_by")
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["outcome"]
+    ordering_fields = ["procedure_date", "created_at"]
+    ordering = ["-procedure_date", "-created_at"]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return PastSurgeryCreateSerializer
+        return PastSurgerySerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        patient_pk = self.kwargs.get("patient_pk")
+        if patient_pk:
+            qs = qs.filter(patient_id=patient_pk)
+        return qs
+
+    def perform_create(self, serializer):
+        patient_pk = self.kwargs.get("patient_pk")
+        instance = serializer.save(
+            patient_id=patient_pk,
+            recorded_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
+        AuditLog.log(
+            action="past_surgery_create",
+            user=self.request.user,
+            resource_type="PastSurgery",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_pk,
+            details={"procedure_name": instance.procedure_name},
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="past_surgery_update",
+            user=self.request.user,
+            resource_type="PastSurgery",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=instance.patient_id,
+            details={"procedure_name": instance.procedure_name},
+        )
+
+    def perform_destroy(self, instance):
+        pk, patient_id, name = instance.pk, instance.patient_id, instance.procedure_name
+        super().perform_destroy(instance)
+        AuditLog.log(
+            action="past_surgery_delete",
+            user=self.request.user,
+            resource_type="PastSurgery",
+            resource_id=pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_id,
+            details={"procedure_name": name},
+        )
+
+
+class FamilyHistoryViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD for structured family history scoped by patient."""
+
+    queryset = FamilyHistory.objects.select_related("patient", "encounter", "recorded_by")
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["relationship"]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return FamilyHistoryCreateSerializer
+        return FamilyHistorySerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        patient_pk = self.kwargs.get("patient_pk")
+        if patient_pk:
+            qs = qs.filter(patient_id=patient_pk)
+        return qs
+
+    def perform_create(self, serializer):
+        patient_pk = self.kwargs.get("patient_pk")
+        instance = serializer.save(
+            patient_id=patient_pk,
+            recorded_by=self.request.user,
+            **self.get_tenant_save_kwargs(),
+        )
+        AuditLog.log(
+            action="family_history_create",
+            user=self.request.user,
+            resource_type="FamilyHistory",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_pk,
+            details={"relationship": instance.relationship, "condition": instance.condition_name},
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="family_history_update",
+            user=self.request.user,
+            resource_type="FamilyHistory",
+            resource_id=instance.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=instance.patient_id,
+            details={"relationship": instance.relationship, "condition": instance.condition_name},
+        )
+
+    def perform_destroy(self, instance):
+        pk, patient_id = instance.pk, instance.patient_id
+        relationship, condition = instance.relationship, instance.condition_name
+        super().perform_destroy(instance)
+        AuditLog.log(
+            action="family_history_delete",
+            user=self.request.user,
+            resource_type="FamilyHistory",
+            resource_id=pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=patient_id,
+            details={"relationship": relationship, "condition": condition},
         )

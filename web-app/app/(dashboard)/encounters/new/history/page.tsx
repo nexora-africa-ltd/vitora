@@ -147,12 +147,12 @@ export default function NewEncounterHistoryPage() {
         {/* Navigation */}
         <div className="flex justify-between">
           <Button variant="outline" onClick={handlePrevious}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            <ArrowLeft className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Back</span>
           </Button>
           <Button onClick={handleNext}>
-            Next: Notes
-            <ArrowRight className="h-4 w-4 ml-2" />
+            <span className="hidden sm:inline">Next: Notes</span>
+            <ArrowRight className="h-4 w-4 sm:ml-2" />
           </Button>
         </div>
     </div>
