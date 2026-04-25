@@ -63,6 +63,8 @@ python manage.py runserver 0.0.0.0:9088
 ./docker/inferno/run-tests.sh --onc
 \`\`\`
 
+When Inferno Core starts through this Compose file, it reapplies a small local IPS compatibility patch on boot. That keeps the known IPS validator workaround in place across container recreates and restarts.
+
 ### 5. Access Test UIs
 
 | Test Kit | URL | How to Start |
@@ -168,6 +170,10 @@ docker compose -f docker/inferno/compose.yml logs -f
 docker compose -f docker/inferno/compose.yml down -v
 docker compose -f docker/inferno/compose.yml up -d
 \`\`\`
+
+### IPS Tests Regress After Recreate
+
+The Inferno service starts through [docker/inferno/start-with-local-patches.sh](/home/azureuser/vitora/docker/inferno/start-with-local-patches.sh), which reapplies the local IPS suite workaround on every boot. If IPS document or summary tests start failing again after a recreate, verify you started Inferno from [docker/inferno/compose.yml](/home/azureuser/vitora/docker/inferno/compose.yml) rather than from a separate ad hoc Docker command.
 
 ### Can't Reach Vitora from Inferno
 
