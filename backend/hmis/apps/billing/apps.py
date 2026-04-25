@@ -12,6 +12,7 @@ class BillingConfig(AppConfig):
         """Import signals and connect cross-app billing signals."""
         from django.db.models.signals import post_save
 
+        import hmis.apps.billing.metrics  # noqa: F401
         import hmis.apps.billing.signals  # noqa: F401
         from hmis.apps.billing.signals import (
             handle_admission_billing,

@@ -55,6 +55,7 @@ help:
 	@echo "Data Import:"
 	@echo "  import-locations - Import Kenya locations (counties, sub-counties, wards)"
 	@echo "  import-icd10    - Import ICD-10 diagnosis codes"
+	@echo "  import-icd11    - Import ICD-11 diagnosis codes"
 	@echo "  import-loinc    - Import LOINC laboratory codes"
 	@echo "  import-drugs    - Import drug catalog"
 	@echo "  load-roles      - Load default roles and permissions"
@@ -303,6 +304,10 @@ import-locations:
 import-icd10:
 	@echo "Importing ICD-10 diagnosis codes..."
 	poetry run python manage.py import_icd10 data/icd10_kenya_common.csv
+
+import-icd11:
+	@echo "Importing ICD-11 diagnosis codes..."
+	poetry run python manage.py import_icd11 data/ICD-11.csv
 
 import-loinc:
 	@echo "Importing LOINC laboratory codes..."
