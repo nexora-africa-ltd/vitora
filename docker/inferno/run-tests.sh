@@ -10,9 +10,9 @@
 #   ./docker/inferno/run-tests.sh [options]
 #
 # Options:
-#   --setup         Start Inferno Core infrastructure
-#   --onc           Start ONC Inferno Program (SMART + US Core tests)
-#   --ips           Setup IPS test kit (clones from source)
+#   --setup         Start the local Inferno infrastructure
+#   --ips           Start the local patched IPS workflow in Inferno UI
+#   --smoke         Seed local FHIR data and start the Inferno IPS smoke workflow
 #   --teardown      Stop and remove all Inferno containers
 #   --status        Check status of Inferno services
 #   --help          Show this help message
@@ -30,8 +30,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_FILE="${SCRIPT_DIR}/compose.yml"
 ENV_FILE="${SCRIPT_DIR}/.env"
-IPS_DIR="${SCRIPT_DIR}/ips-test-kit"
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -40,7 +38,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default configuration
-VITORA_URL="${VITORA_FHIR_URL:-http://host.docker.internal:9088}"
+VITORA_URL="${VITORA_FHIR_URL:-http://host.docker.internal:9088/fhir}"
 
 # =============================================================================
 # Helper Functions
@@ -69,25 +67,29 @@ Inferno FHIR Compliance Test Runner
 Usage: ./docker/inferno/run-tests.sh [options]
 
 Options:
-  --setup         Start Inferno Core infrastructure (PostgreSQL, Redis, Inferno)
-  --ips           Setup and start IPS test kit (clones from GitHub)
+    --setup         Start the local Inferno infrastructure (PostgreSQL, Redis, Inferno)
+    --ips           Start the local patched IPS workflow in Inferno UI
+    --smoke         Seed local FHIR data and start the Inferno IPS smoke workflow
   --teardown      Stop and remove all Inferno containers
   --status        Check status of Inferno services
   --help          Show this help message
 
 Test Suite URLs:
-  - Inferno Core:    http://localhost:4567 (FHIR validation & testing)
-  - IPS Test Kit:    http://localhost:80 (when running from source)
+    - Inferno UI:      http://localhost:4567
 
 NOTE: The ONC Inferno Program v1.9 has been deprecated (retired June 2022).
-      Use Inferno Core or IPS Test Kit for compliance testing.
+            This repo uses the compose-backed Inferno instance plus local startup
+            patches for IPS validation.
 
 Example:
-  # Start Inferno Core
+    # Start the local Inferno instance
   ./docker/inferno/run-tests.sh --setup
 
-  # Setup IPS test kit (for International Patient Summary)
+    # Start the local IPS workflow
   ./docker/inferno/run-tests.sh --ips
+
+    # Seed data and prepare the repeatable local IPS smoke flow
+    ./docker/inferno/run-tests.sh --smoke
 EOF
     exit 0
 }
@@ -187,54 +189,37 @@ start_onc_program() {
     log_warning "ONC Program may still be starting. Check: docker compose -f $COMPOSE_FILE logs onc-program"
 }
 
-setup_ips_test_kit() {
-    log_info "Setting up IPS Test Kit from source..."
+start_ips_workflow() {
+    log_info "Starting local IPS workflow in the patched Inferno UI..."
+    start_inferno_core
+    show_status
+    print_ips_instructions
+}
 
-    if [ -d "$IPS_DIR" ]; then
-        log_info "IPS test kit directory exists, updating..."
-        cd "$IPS_DIR"
-        git pull
-    else
-        log_info "Cloning IPS test kit repository..."
-        git clone https://github.com/inferno-framework/ips-test-kit.git "$IPS_DIR"
-        cd "$IPS_DIR"
-    fi
+seed_inferno_test_data() {
+    log_info "Seeding local FHIR test data for Inferno..."
 
-    log_info "Running IPS test kit setup..."
-    log_warning "This requires at least 10GB of memory available to Docker!"
-
-    if [ -f "setup.sh" ]; then
-        chmod +x setup.sh run.sh
-        ./setup.sh
-
-        echo ""
-        log_success "IPS Test Kit setup complete!"
-        echo ""
-        echo "To start the IPS test kit:"
-        echo "  cd ${IPS_DIR}"
-        echo "  ./run.sh"
-        echo ""
-        echo "Then navigate to http://localhost (port 80)"
-        echo ""
-        echo "Configure with:"
-        echo "  FHIR Server: http://host.docker.internal:9088/fhir"
-        echo ""
-    else
-        log_error "setup.sh not found in IPS test kit"
+    if ! command -v poetry &> /dev/null; then
+        log_error "Poetry is required to seed Inferno test data. Install Poetry first."
         exit 1
     fi
+
+    (
+        cd "${PROJECT_ROOT}/backend"
+        poetry run python manage.py seed_fhir_test_data
+    )
+
+    log_success "FHIR test data seeded. Use the printed values for Inferno inputs."
+}
+
+start_ips_smoke_workflow() {
+    seed_inferno_test_data
+    start_ips_workflow
 }
 
 teardown() {
     log_info "Stopping and removing all Inferno containers..."
     docker compose -f "$COMPOSE_FILE" down -v
-
-    # Also stop IPS if running
-    if [ -d "$IPS_DIR" ] && [ -f "$IPS_DIR/docker-compose.yml" ]; then
-        log_info "Stopping IPS test kit..."
-        cd "$IPS_DIR"
-        docker compose down -v 2>/dev/null || true
-    fi
 
     log_success "Inferno services stopped and removed"
 }
@@ -246,8 +231,7 @@ show_status() {
     echo ""
 
     log_info "Service URLs:"
-    echo "  - Inferno Core:     http://localhost:4567"
-    echo "  - IPS Test Kit:     http://localhost:80 (if started separately)"
+    echo "  - Inferno UI:       http://localhost:4567"
     echo ""
 
     log_info "Vitora Endpoints (under test):"
@@ -256,6 +240,28 @@ show_status() {
     echo "  - SMART Config:     http://localhost:9088/.well-known/smart-configuration"
     echo "  - OAuth Authorize:  http://localhost:9088/oauth/authorize/"
     echo "  - OAuth Token:      http://localhost:9088/oauth/token/"
+}
+
+print_ips_instructions() {
+    echo ""
+    echo "============================================================================="
+    echo "                     INFERNO IPS WORKFLOW"
+    echo "============================================================================="
+    echo ""
+    echo "1. Open http://localhost:4567 in your browser"
+    echo ""
+    echo "2. Choose the International Patient Summary (IPS) suite"
+    echo ""
+    echo "3. Use the local FHIR server base when prompted:"
+    echo "   ${VITORA_URL}"
+    echo ""
+    echo "4. Seed or refresh the local Inferno IDs before running profile groups:"
+    echo "   cd backend && poetry run python manage.py seed_fhir_test_data"
+    echo ""
+    echo "5. This local workflow depends on the startup patches mounted into the"
+    echo "   Inferno container from docker/inferno/start-with-local-patches.sh"
+    echo ""
+    echo "============================================================================="
 }
 
 print_onc_instructions() {
@@ -301,18 +307,17 @@ print_core_instructions() {
     echo "                     INFERNO CORE INSTRUCTIONS"
     echo "============================================================================="
     echo ""
-    echo "Inferno Core provides a general FHIR testing interface."
+    echo "Inferno provides the local FHIR testing interface for this repo."
     echo ""
     echo "1. Open http://localhost:4567 in your browser"
     echo ""
-    echo "2. The core instance allows you to:"
+    echo "2. The local instance allows you to:"
     echo "   - Validate FHIR resources"
     echo "   - Test FHIR server capabilities"
-    echo "   - Run basic conformance checks"
+    echo "   - Run the patched IPS workflow used in local validation"
     echo ""
-    echo "For specialized testing:"
-    echo "  --onc    ONC Inferno Program (SMART App Launch + US Core)"
-    echo "  --ips    International Patient Summary test kit"
+    echo "For IPS-specific guidance:"
+    echo "  ./docker/inferno/run-tests.sh --ips"
     echo ""
     echo "============================================================================="
 }
@@ -341,7 +346,13 @@ main() {
             ;;
         --ips)
             check_prerequisites
-            setup_ips_test_kit
+            setup_env_file
+            start_ips_workflow
+            ;;
+        --smoke)
+            check_prerequisites
+            setup_env_file
+            start_ips_smoke_workflow
             ;;
         --onc|--smart|--us-core)
             log_warning "ONC Inferno Program v1.9 has been DEPRECATED (retired June 2022)"
@@ -359,7 +370,7 @@ main() {
             show_status
             print_core_instructions
             echo ""
-            log_info "Use --onc for SMART/US Core tests, --ips for IPS tests, or --help for options"
+            log_info "Use --ips for the local patched IPS workflow, or --help for options"
             ;;
     esac
 }

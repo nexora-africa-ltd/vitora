@@ -27,6 +27,8 @@ help:
 	@echo "  test-fhir-integration - Run FHIR server integration tests"
 	@echo "  test-fhir-all - Run all FHIR tests (schema + integration)"
 	@echo "  test-fhir-full - Full cycle: start server, test, stop"
+	@echo "  inferno-smoke - Seed FHIR test data and start the local Inferno IPS smoke flow"
+	@echo "  test-fhir-release - Prepare Inferno smoke flow and run live HAPI integration validation"
 	@echo ""
 	@echo "Per-app tests (fast, no coverage):"
 	@echo "  test-encounters  test-patients    test-triage"
@@ -457,6 +459,26 @@ test-fhir-full:
 	$(MAKE) test-fhir-integration
 	$(MAKE) fhir-server-down
 	@echo "=== FHIR Test Cycle Complete ==="
+
+inferno-smoke:
+	@echo "=== Inferno IPS Smoke Preparation ==="
+	cd .. && ./docker/inferno/run-tests.sh --smoke
+
+test-fhir-release:
+	@echo "=== FHIR Release Validation ==="
+	$(MAKE) test-fhir
+	$(MAKE) inferno-smoke
+	$(MAKE) fhir-server-up
+	$(MAKE) test-fhir-integration
+	@echo ""
+	@echo "Release validation environment is ready:"
+	@echo "  - Inferno UI: http://localhost:4567"
+	@echo "  - HAPI FHIR:  http://localhost:8090/fhir/metadata"
+	@echo "  - Seeded Inferno input fields: ../docs/ips-bundle-implementation.md"
+	@echo ""
+	@echo "When finished, stop services with:"
+	@echo "  - make fhir-server-down"
+	@echo "  - cd .. && ./docker/inferno/run-tests.sh --teardown"
 
 # ============================================================================
 # Git Workflow Commands

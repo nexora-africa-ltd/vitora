@@ -6,6 +6,11 @@
 #   # Wait for health check to pass (~60 seconds)
 #   docker compose -f docker/hapi-fhir/compose.yml logs -f
 #
+# Release validation:
+#   cd backend && make fhir-server-up
+#   cd backend && make test-fhir-integration
+#   cd backend && make test-fhir-release
+#
 # Test server availability:
 #   curl http://localhost:8090/fhir/metadata
 #

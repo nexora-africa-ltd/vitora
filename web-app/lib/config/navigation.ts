@@ -74,6 +74,7 @@ import {
   Package,
   Monitor,
   UserPlus,
+  BotIcon,
 } from 'lucide-react';
 
 import {
@@ -416,9 +417,9 @@ const _allNavItems: NavItemType[] = [
     ],
   },
   {
-    label: 'AI Assistant',
+    label: 'TibaBot®',
     href: '/ai',
-    icon: BrainCircuit,
+    icon: BotIcon,
     moduleKey: 'ai',
     actionKey: 'ai.use_chat',
     featureFlag: ENABLE_AI,

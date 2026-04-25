@@ -4,7 +4,7 @@
 >
 > Version: 1.1
 > Implemented: February 23, 2026
-> Updated: April 24, 2026
+> Updated: April 25, 2026
 > Status: ✅ Active
 
 ---
@@ -346,6 +346,76 @@ The command now prints IDs for:
 - Media
 - Device
 - DeviceUseStatement
+
+### Inferno UI Input Fields And Current Seeded Values
+
+The local Inferno IPS UI prompts for the following input fields. These are the current seeded values produced by `seed_fhir_test_data` and used in the active local Inferno workflow.
+
+| Inferno input field | Current value | Notes |
+|---------------------|---------------|-------|
+| `url` | `http://host.docker.internal:9088/fhir` | Base URL for all Inferno read interactions from the container |
+| `patient_id` | `160` | Used for Patient read and as the source patient for the IPS summary |
+| `bundle_id` | `ips-160` | Persisted IPS bundle ID returned by `GET /fhir/Patient/160/$summary` |
+| `composition_id` | `160` | Same as `patient_id`; used for `GET /fhir/Composition/160` and `$document` |
+| `practitioner_id` | `26` | Seeded practitioner / author resource |
+| `practitioner_role_id` | `26` | PractitionerRole endpoint is currently keyed off the same seeded `StaffProfile` ID |
+| `organization_id` | `36` | Seeded clinic-backed Organization resource |
+| `condition_id` | `35` | Seeded diagnosis exposed via `GET /fhir/Condition/35` |
+| `allergy_intolerance_id` | `9` | Seeded active allergy exposed via `GET /fhir/AllergyIntolerance/9` |
+| `medication_id` | `3260` | Seeded Medication resource for the Paracetamol test drug |
+| `observation_results_laboratory_id` | `47` | Seeded laboratory Observation |
+| `observation_results_id` | `47` | General Observation Results profile currently uses the seeded lab Observation |
+| `observation_results_pathology_id` | `47` | Pathology profile currently uses the seeded lab Observation |
+| `observation_results_radiology_id` | `1` | Current local support uses the seeded `ImagingStudy/1`-backed radiology observation read path |
+| `observation_alcohol_use_id` | `700000002` | Seeded alcohol-use Observation |
+| `observation_tobacco_use_id` | `700000003` | Seeded tobacco-use Observation |
+| `observation_pregnancy_status_id` | `710000003` | Seeded pregnancy status Observation |
+| `observation_pregnancy_edd_id` | `710000004` | Seeded pregnancy expected delivery date Observation |
+| `observation_pregnancy_outcome_id` | `710000005` | Seeded pregnancy outcome Observation |
+| `medication_statement_id` | `32` | Seeded `PrescriptionItem` exposed via `GET /fhir/MedicationStatement/32` |
+| `immunization_id` | `1` | Seeded Immunization resource |
+| `specimen_id` | `20` | Seeded Specimen resource |
+| `diagnostic_report_id` | `2` | Seeded DiagnosticReport resource |
+| `procedure_id` | `2` | Seeded Procedure resource |
+| `imaging_study_id` | `1` | Seeded ImagingStudy resource |
+| `media_id` | `1` | Seeded Media resource |
+| `device_id` | `5` | Seeded implant-backed Device resource |
+| `device_use_statement_id` | `5` | Seeded implant-backed DeviceUseStatement resource |
+
+#### Recommended Local Inferno Input Set
+
+Use the following values when the IPS test groups prompt for manual input in the local Inferno UI:
+
+```text
+url=http://host.docker.internal:9088/fhir
+patient_id=160
+bundle_id=ips-160
+composition_id=160
+practitioner_id=26
+practitioner_role_id=26
+organization_id=36
+condition_id=35
+allergy_intolerance_id=9
+medication_id=3260
+observation_results_laboratory_id=47
+observation_results_id=47
+observation_results_pathology_id=47
+observation_results_radiology_id=1
+observation_alcohol_use_id=700000002
+observation_tobacco_use_id=700000003
+observation_pregnancy_status_id=710000003
+observation_pregnancy_edd_id=710000004
+observation_pregnancy_outcome_id=710000005
+medication_statement_id=32
+immunization_id=1
+specimen_id=20
+diagnostic_report_id=2
+procedure_id=2
+imaging_study_id=1
+media_id=1
+device_id=5
+device_use_statement_id=5
+```
 
 ### Query Limits
 

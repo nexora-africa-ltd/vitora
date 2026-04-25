@@ -2,8 +2,8 @@
 
 > **Document Version**: 1.2
 > **Created**: January 31, 2026
-> **Last Updated**: January 31, 2026
-> **Status**: Phase 1-3 Complete, Phase 4 In Progress, Phase 5 Complete
+> **Last Updated**: April 25, 2026
+> **Status**: Phase 1-3 Complete, Phase 4 In Progress, Phase 5-6 Active
 > **Owner**: Engineering Team
 
 ---
@@ -305,24 +305,38 @@ FHIR_BASE_URL = os.getenv("FHIR_BASE_URL", "http://localhost:9088")
 #### Quick Start
 
 ```bash
-# Start Inferno test suite
-./docker/inferno/run-tests.sh --all
+# Full release-validation preparation (Inferno + HAPI)
+cd backend
+make test-fhir-release
 
-# Access test UIs
-# - Inferno Core:  http://localhost:4567
-# - US Core:       http://localhost:4568
-# - SMART:         http://localhost:4569
-# - IPS:           http://localhost:4570
+# Or prepare the local Inferno IPS smoke only
+cd ..
+./docker/inferno/run-tests.sh --smoke
 
-# Teardown
-./docker/inferno/run-tests.sh --teardown
+# Teardown when finished
+make fhir-server-down
+cd .. && ./docker/inferno/run-tests.sh --teardown
 ```
+
+#### Team Workflow
+
+1. Keep the backend running on `http://localhost:9088`
+2. Run `make test-fhir-release` from `backend/`
+3. Use the seeded Inferno field map from `docs/ips-bundle-implementation.md`
+4. Complete the manual IPS smoke in Inferno UI at `http://localhost:4567`
+5. Use the live HAPI FHIR server at `http://localhost:8090/fhir` for `tests/integration/test_fhir_server.py`
+
+The release-validation path intentionally combines:
+
+- seeded Inferno IDs from `seed_fhir_test_data`
+- the patched local Inferno container from `docker/inferno/compose.yml`
+- live HAPI FHIR validation from `docker/hapi-fhir/compose.yml`
 
 #### Exit Criteria
 
 - [x] Inferno test suite runs against Vitora
 - [ ] US Core Profile tests: ≥80% pass rate
-- [ ] IPS tests: ≥90% pass rate (critical for SHA)
+- [x] IPS local suite exercised successfully with all leaf groups passing in the patched local Inferno workflow
 - [ ] SMART App Launch tests: ≥90% pass rate
 - [ ] All critical failures documented with remediation plan
 - [ ] Compliance report generated and reviewed

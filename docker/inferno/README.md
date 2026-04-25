@@ -42,8 +42,7 @@ No external FHIR server is required - Vitora handles all FHIR operations directl
 
 \`\`\`bash
 cd backend
-poetry shell
-python manage.py seed_fhir_test_data
+poetry run python manage.py seed_fhir_test_data
 \`\`\`
 
 ### 3. Start Vitora Backend
@@ -56,21 +55,20 @@ python manage.py runserver 0.0.0.0:9088
 ### 4. Start Inferno
 
 \`\`\`bash
-# Start Inferno Core (IPS testing)
+# Start the patched Inferno UI
 ./docker/inferno/run-tests.sh --setup
 
-# Or for ONC Program (SMART + US Core tests)
-./docker/inferno/run-tests.sh --onc
+# Or seed data and prepare the repeatable local IPS smoke flow
+./docker/inferno/run-tests.sh --smoke
 \`\`\`
 
 When Inferno Core starts through this Compose file, it reapplies a small local IPS compatibility patch on boot. That keeps the known IPS validator workaround in place across container recreates and restarts.
 
-### 5. Access Test UIs
+### 5. Access Test UI
 
 | Test Kit | URL | How to Start |
 |----------|-----|--------------|
-| Inferno Core | http://localhost:4567 | \`--setup\` (default) |
-| ONC Program | http://localhost:4568 | \`--onc\` |
+| Inferno UI | http://localhost:4567 | \`--setup\` or \`--smoke\` |
 
 ### 6. Configure Tests
 
@@ -84,6 +82,27 @@ When prompted in the Inferno UI, use these Vitora endpoints:
 | Token | \`http://host.docker.internal:9088/oauth/token/\` |
 
 > **Note**: Use \`host.docker.internal\` when Inferno (in Docker) needs to reach Vitora (on host). On Linux, the Compose file must also provide \`host.docker.internal:host-gateway\`; this repo now does that for the Inferno container. For Snap-managed Docker hosts that show AppArmor signal denials when stopping Inferno, the Inferno service also runs with \`apparmor=unconfined\` to avoid the stop/kill deadlock.
+
+For the current seeded Inferno input field names and values, see `docs/ips-bundle-implementation.md` under **Inferno UI Input Fields And Current Seeded Values**.
+
+## Release Validation Workflow
+
+Use the backend Make target below to prepare the local Inferno smoke flow and run live HAPI FHIR integration tests in one repeatable sequence:
+
+```bash
+cd backend
+make test-fhir-release
+```
+
+This workflow will:
+
+1. Run the local FHIR validator and SHR test suite
+2. Seed fresh Inferno test data and print the current input IDs
+3. Start the patched Inferno UI on `http://localhost:4567`
+4. Start the live HAPI FHIR R4 server from `docker/hapi-fhir/compose.yml`
+5. Run `tests/integration/test_fhir_server.py` against the live HAPI server
+
+After the command completes, finish the manual Inferno IPS smoke in the browser using the seeded IDs printed by `seed_fhir_test_data`.
 
 ### 7. Create Test OAuth2 Client (for SMART tests)
 
