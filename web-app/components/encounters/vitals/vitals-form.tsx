@@ -36,6 +36,7 @@ import { VitalsDisplay } from './vitals-display';
 import { VitalsAlerts } from './vitals-alerts';
 import { vitalsSchema, type VitalsFormValues } from './vitals-schema';
 import { useVitalThresholds, type VitalAlert } from '@/lib/hooks/use-vital-thresholds';
+import { isPediatric } from '@/lib/vitals';
 import { calculateBMI, getBMIColorClass } from '@/lib/utils/bmi';
 import type { EncounterFormData } from '@/lib/types/encounter-form';
 import type { Patient } from '@/lib/types/patient';
@@ -51,6 +52,10 @@ interface VitalsFormProps {
   errors?: Record<string, string>;
   /** Patient info for BMI calculation */
   patient?: Patient | null;
+  /** Patient DOB string (alternative to full patient object for age-adjusted vitals) */
+  patientDob?: string | null;
+  /** Patient gender (alternative to full patient object for BMI calculation) */
+  patientGender?: 'M' | 'F' | 'O' | null;
   /** Callback to navigate to next section */
   onNext?: () => void;
   /** Whether vitals came from triage (shows read-only view first) */
@@ -65,6 +70,8 @@ export function VitalsForm({
   disabled = false,
   errors = {},
   patient,
+  patientDob: patientDobProp,
+  patientGender: patientGenderProp,
   onNext,
   fromTriage = false,
   vitalsSource,
@@ -72,8 +79,11 @@ export function VitalsForm({
   // Edit mode toggle - starts locked when from triage
   const [isEditMode, setIsEditMode] = React.useState(!fromTriage);
 
-  // Use shared vital thresholds hook (fetches from backend)
-  const { getAlerts, getFieldStatus, isUsingDefaults } = useVitalThresholds();
+  // Use shared vital thresholds hook (fetches from backend, age-aware)
+  // Prefer patient.date_of_birth, fall back to explicit patientDob prop
+  const { getAlerts, getFieldStatus, getRangeHint, getPlaceholder, ageGroup, isUsingDefaults } = useVitalThresholds({
+    patientDob: patient?.date_of_birth ?? patientDobProp ?? null,
+  });
 
   // Initialize form with current data
   const form = useForm<VitalsFormValues>({
@@ -150,12 +160,12 @@ export function VitalsForm({
     requestAnimationFrame(() => { isResettingRef.current = false; });
   }, [data, form]);
 
-  // Calculate BMI
+  // Calculate BMI (use patient object, fall back to explicit props)
   const bmiResult = calculateBMI(
     watchedValues.weight ?? null,
     watchedValues.height ?? null,
-    patient?.date_of_birth,
-    patient?.gender
+    patient?.date_of_birth ?? patientDobProp ?? null,
+    patient?.gender ?? patientGenderProp ?? undefined
   );
 
   // Determine if form should be editable
@@ -186,6 +196,11 @@ export function VitalsForm({
             {isUsingDefaults && (
               <Badge variant="secondary" className="text-xs">
                 Default thresholds
+              </Badge>
+            )}
+            {ageGroup && isPediatric(ageGroup) && (
+              <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:text-blue-400">
+                Paediatric ranges
               </Badge>
             )}
             {criticalAlerts.length > 0 && (
@@ -236,6 +251,7 @@ export function VitalsForm({
             values={watchedValues}
             alerts={alerts}
             patient={patient}
+            ageGroup={ageGroup}
           />
         ) : (
           /* Editable Form View */
@@ -245,8 +261,8 @@ export function VitalsForm({
                 name="temperature"
                 label="Temperature"
                 icon={Thermometer}
-                placeholder="36.5"
-                normalRange="36.5-37.5°C"
+                placeholder={getPlaceholder('temperature')}
+                normalRange={getRangeHint('temperature')}
                 status={getFieldStatus('temperature', alerts)}
                 disabled={!canEdit}
                 step="0.1"
@@ -256,8 +272,8 @@ export function VitalsForm({
                 name="pulse"
                 label="Pulse"
                 icon={Heart}
-                placeholder="72"
-                normalRange="60-100 bpm"
+                placeholder={getPlaceholder('pulse')}
+                normalRange={getRangeHint('pulse')}
                 status={getFieldStatus('pulse', alerts)}
                 disabled={!canEdit}
               />
@@ -271,8 +287,8 @@ export function VitalsForm({
                 name="respiratory_rate"
                 label="Respiratory Rate"
                 icon={Wind}
-                placeholder="16"
-                normalRange="12-20/min"
+                placeholder={getPlaceholder('respiratory_rate')}
+                normalRange={getRangeHint('respiratory_rate')}
                 status={getFieldStatus('respiratory_rate', alerts)}
                 disabled={!canEdit}
               />
@@ -281,8 +297,8 @@ export function VitalsForm({
                 name="spo2"
                 label="SpO₂"
                 icon={Droplets}
-                placeholder="98"
-                normalRange="95-100%"
+                placeholder={getPlaceholder('spo2')}
+                normalRange={getRangeHint('spo2')}
                 status={getFieldStatus('spo2', alerts)}
                 disabled={!canEdit}
               />
@@ -291,7 +307,7 @@ export function VitalsForm({
                 name="weight"
                 label="Weight"
                 icon={Scale}
-                placeholder="70"
+                placeholder={getPlaceholder('weight')}
                 disabled={!canEdit}
                 step="0.1"
               />
@@ -300,7 +316,7 @@ export function VitalsForm({
                 name="height"
                 label="Height"
                 icon={Ruler}
-                placeholder="170"
+                placeholder={getPlaceholder('height')}
                 disabled={!canEdit}
                 step="0.1"
               />
@@ -339,6 +355,17 @@ export function VitalsForm({
                   {bmiResult.message && (
                     <p className="text-xs text-muted-foreground">{bmiResult.message}</p>
                   )}
+                </FormItem>
+              )}
+
+              {/* Under-2 guidance: BMI not appropriate */}
+              {!bmiResult.isAgeAppropriate && bmiResult.message && (watchedValues.weight || watchedValues.height) && (
+                <FormItem className="space-y-2">
+                  <Label className="flex items-center gap-2 text-muted-foreground">
+                    <Info className="h-4 w-4" />
+                    BMI
+                  </Label>
+                  <p className="text-xs text-muted-foreground italic">{bmiResult.message}</p>
                 </FormItem>
               )}
             </div>

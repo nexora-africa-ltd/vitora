@@ -42,6 +42,15 @@ export type {
   VitalRanges,
 } from './types';
 
+// Age Groups
+export type { AgeGroup } from './age-groups';
+export {
+  getAgeGroup,
+  getAgeGroupFromYears,
+  isPediatric,
+  isNeonateOrInfant,
+} from './age-groups';
+
 // Thresholds
 export {
   DEFAULT_THRESHOLDS,
@@ -49,6 +58,7 @@ export {
   VITAL_RANGES,
   getAgeAdjustedInputThresholds,
   getVitalRangeHint,
+  getVitalPlaceholder,
 } from './thresholds';
 
 // Schemas

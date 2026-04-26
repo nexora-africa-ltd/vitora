@@ -48,6 +48,7 @@ import {
   generateVitalAlerts as generateVitalAlertsShared,
   getAgeAdjustedInputThresholds,
   getVitalRangeHint,
+  getVitalPlaceholder,
   type TriageVitalsFormValues,
   type VitalAlert,
 } from '@/lib/vitals';
@@ -362,7 +363,7 @@ export default function TriageVitalsPage() {
                     id="temperature"
                     type="number"
                     step="0.1"
-                    placeholder="36.5"
+                    placeholder={getVitalPlaceholder('temperature', patientAgeGroup)}
                     {...register('temperature', {
                       setValueAs: parseNumberInput,
                     })}
@@ -391,7 +392,7 @@ export default function TriageVitalsPage() {
                   <InputGroupInput
                     id="heart_rate"
                     type="number"
-                    placeholder="72"
+                    placeholder={getVitalPlaceholder('heart_rate', patientAgeGroup)}
                     {...register('heart_rate', {
                       setValueAs: parseNumberInput,
                     })}
@@ -420,7 +421,7 @@ export default function TriageVitalsPage() {
                   <InputGroupInput
                     id="spo2"
                     type="number"
-                    placeholder="98"
+                    placeholder={getVitalPlaceholder('spo2', patientAgeGroup)}
                     {...register('spo2', {
                       setValueAs: parseNumberInput,
                     })}
@@ -451,7 +452,7 @@ export default function TriageVitalsPage() {
                   <InputGroupInput
                     id="systolic_bp"
                     type="number"
-                    placeholder="120"
+                    placeholder={getVitalPlaceholder('systolic_bp', patientAgeGroup)}
                     {...register('systolic_bp', {
                       setValueAs: parseNumberInput,
                     })}
@@ -479,7 +480,7 @@ export default function TriageVitalsPage() {
                   <InputGroupInput
                     id="diastolic_bp"
                     type="number"
-                    placeholder="80"
+                    placeholder={getVitalPlaceholder('diastolic_bp', patientAgeGroup)}
                     {...register('diastolic_bp', {
                       setValueAs: parseNumberInput,
                     })}
@@ -508,7 +509,7 @@ export default function TriageVitalsPage() {
                   <InputGroupInput
                     id="respiratory_rate"
                     type="number"
-                    placeholder="16"
+                    placeholder={getVitalPlaceholder('respiratory_rate', patientAgeGroup)}
                     {...register('respiratory_rate', {
                       setValueAs: parseNumberInput,
                     })}

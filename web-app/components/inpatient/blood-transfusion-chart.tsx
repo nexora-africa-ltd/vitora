@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Droplets, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,7 @@ import {
 } from '@/lib/hooks/use-inpatient';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
+import { getAgeGroupFromYears, getVitalPlaceholder } from '@/lib/vitals';
 import type {
   BloodProduct,
   BloodTransfusion,
@@ -161,10 +162,13 @@ function buildATRQueryParams(transfusionId: number, reactionType: string): strin
 interface BloodTransfusionChartProps {
   admissionId: number;
   isActive: boolean;
+  /** Patient age in years for age-adjusted placeholders */
+  patientAge?: number | null;
 }
 
-export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusionChartProps) {
+export function BloodTransfusionChart({ admissionId, isActive, patientAge }: BloodTransfusionChartProps) {
   const { toast } = useToast();
+  const ageGroup = useMemo(() => (patientAge != null ? getAgeGroupFromYears(patientAge) : null), [patientAge]);
   const { data, isLoading } = useBloodTransfusions(admissionId);
   const { data: atrReports } = useATRReports(admissionId);
   const createTransfusion = useCreateBloodTransfusion();
@@ -436,24 +440,24 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
                     <div className="space-y-1">
                       <Label className="text-xs">BP (mmHg) *</Label>
                       <div className="flex items-center gap-1">
-                        <Input type="number" placeholder="120" value={preBPSys} onChange={(e) => setPreBPSys(e.target.value)} className="w-20" aria-label="Systolic BP" />
+                        <Input type="number" placeholder={getVitalPlaceholder('blood_pressure_systolic', ageGroup)} value={preBPSys} onChange={(e) => setPreBPSys(e.target.value)} className="w-20" aria-label="Systolic BP" />
                         <span className="text-muted-foreground">/</span>
-                        <Input type="number" placeholder="80" value={preBPDia} onChange={(e) => setPreBPDia(e.target.value)} className="w-20" aria-label="Diastolic BP" />
+                        <Input type="number" placeholder={getVitalPlaceholder('blood_pressure_diastolic', ageGroup)} value={preBPDia} onChange={(e) => setPreBPDia(e.target.value)} className="w-20" aria-label="Diastolic BP" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Temp (°C) *</Label>
-                      <Input type="number" step="0.1" placeholder="36.5" value={preTemp} onChange={(e) => setPreTemp(e.target.value)} />
+                      <Input type="number" step="0.1" placeholder={getVitalPlaceholder('temperature', ageGroup)} value={preTemp} onChange={(e) => setPreTemp(e.target.value)} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Pulse *</Label>
-                      <Input type="number" placeholder="72" value={prePulse} onChange={(e) => setPrePulse(e.target.value)} />
+                      <Input type="number" placeholder={getVitalPlaceholder('pulse', ageGroup)} value={prePulse} onChange={(e) => setPrePulse(e.target.value)} />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Resp Rate</Label>
-                      <Input type="number" placeholder="16" value={preRR} onChange={(e) => setPreRR(e.target.value)} />
+                      <Input type="number" placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)} value={preRR} onChange={(e) => setPreRR(e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -531,24 +535,24 @@ export function BloodTransfusionChart({ admissionId, isActive }: BloodTransfusio
               <div className="space-y-2">
                 <Label>BP (mmHg)</Label>
                 <div className="flex items-center gap-1">
-                  <Input type="number" placeholder="120" value={obsBPSys} onChange={(e) => setObsBPSys(e.target.value)} className="w-20" aria-label="Systolic blood pressure" />
+                  <Input type="number" placeholder={getVitalPlaceholder('blood_pressure_systolic', ageGroup)} value={obsBPSys} onChange={(e) => setObsBPSys(e.target.value)} className="w-20" aria-label="Systolic blood pressure" />
                   <span className="text-muted-foreground">/</span>
-                  <Input type="number" placeholder="80" value={obsBPDia} onChange={(e) => setObsBPDia(e.target.value)} className="w-20" aria-label="Diastolic blood pressure" />
+                  <Input type="number" placeholder={getVitalPlaceholder('blood_pressure_diastolic', ageGroup)} value={obsBPDia} onChange={(e) => setObsBPDia(e.target.value)} className="w-20" aria-label="Diastolic blood pressure" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Temp (°C)</Label>
-                <Input type="number" step="0.1" placeholder="36.5" value={obsTemp} onChange={(e) => setObsTemp(e.target.value)} />
+                <Input type="number" step="0.1" placeholder={getVitalPlaceholder('temperature', ageGroup)} value={obsTemp} onChange={(e) => setObsTemp(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Pulse</Label>
-                <Input type="number" placeholder="72" value={obsPulse} onChange={(e) => setObsPulse(e.target.value)} />
+                <Input type="number" placeholder={getVitalPlaceholder('pulse', ageGroup)} value={obsPulse} onChange={(e) => setObsPulse(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Resp Rate</Label>
-                <Input type="number" placeholder="16" value={obsRR} onChange={(e) => setObsRR(e.target.value)} />
+                <Input type="number" placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)} value={obsRR} onChange={(e) => setObsRR(e.target.value)} />
               </div>
             </div>
             <div className="space-y-2">

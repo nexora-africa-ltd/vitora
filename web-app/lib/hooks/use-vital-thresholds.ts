@@ -22,6 +22,10 @@ import {
   DEFAULT_THRESHOLDS,
   evaluateVitals,
   getFieldStatus as getFieldStatusUtil,
+  getAgeGroup,
+  getVitalRangeHint,
+  getVitalPlaceholder,
+  type AgeGroup,
   type VitalType,
   type VitalAlert,
   type VitalValues,
@@ -49,6 +53,8 @@ interface UseVitalThresholdsOptions {
   enabled?: boolean;
   /** Stale time in ms (default: 5 minutes) */
   staleTime?: number;
+  /** Patient date of birth — enables age-adjusted thresholds for paediatric patients */
+  patientDob?: string | null;
 }
 
 /**
@@ -66,7 +72,13 @@ interface UseVitalThresholdsOptions {
  * ```
  */
 export function useVitalThresholds(options: UseVitalThresholdsOptions = {}) {
-  const { enabled = true, staleTime = 5 * 60 * 1000 } = options;
+  const { enabled = true, staleTime = 5 * 60 * 1000, patientDob } = options;
+
+  // Compute age group from DOB (null for adults/unknown)
+  const ageGroup: AgeGroup | null = React.useMemo(
+    () => (patientDob ? getAgeGroup(patientDob) : null),
+    [patientDob]
+  );
 
   const query = useQuery({
     queryKey: ['vital-thresholds'],
@@ -107,10 +119,10 @@ export function useVitalThresholds(options: UseVitalThresholdsOptions = {}) {
     return result;
   }, [query.data]);
 
-  // Helper to get alerts for vital values
+  // Helper to get alerts for vital values (age-aware)
   const getAlerts = React.useCallback(
-    (values: VitalValues): VitalAlert[] => evaluateVitals(values, thresholds),
-    [thresholds]
+    (values: VitalValues): VitalAlert[] => evaluateVitals(values, thresholds, ageGroup),
+    [thresholds, ageGroup]
   );
 
   // Helper to get field status
@@ -119,13 +131,31 @@ export function useVitalThresholds(options: UseVitalThresholdsOptions = {}) {
     []
   );
 
+  // Helper to get age-specific range hint for a vital
+  const getRangeHint = React.useCallback(
+    (vitalKey: string): string => getVitalRangeHint(vitalKey, ageGroup),
+    [ageGroup]
+  );
+
+  // Helper to get age-appropriate placeholder for a vital input
+  const getPlaceholder = React.useCallback(
+    (vitalKey: string): string => getVitalPlaceholder(vitalKey, ageGroup),
+    [ageGroup]
+  );
+
   return {
     /** Threshold records by vital type */
     thresholds,
+    /** Computed age group (null for adults) */
+    ageGroup,
     /** Get alerts for vital values */
     getAlerts,
     /** Get field status for styling */
     getFieldStatus: getStatus,
+    /** Get age-specific normal range hint string */
+    getRangeHint,
+    /** Get age-appropriate placeholder value for a vital input */
+    getPlaceholder,
     /** Whether thresholds are loading from backend */
     isLoading: query.isLoading,
     /** Whether backend fetch failed (using defaults) */

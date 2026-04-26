@@ -1330,6 +1330,7 @@ export default function AdmissionDetailPage() {
           <TPRChart
             admissionId={admission.id}
             isActive={admission.admission_status === 'ACTIVE'}
+            patientAge={admission.patient_age}
           />
           <Separator />
           <FluidBalanceSheet
@@ -1340,11 +1341,13 @@ export default function AdmissionDetailPage() {
           <BPMonitoringChart
             admissionId={admission.id}
             isActive={admission.admission_status === 'ACTIVE'}
+            patientAge={admission.patient_age}
           />
           <Separator />
           <BloodTransfusionChart
             admissionId={admission.id}
             isActive={admission.admission_status === 'ACTIVE'}
+            patientAge={admission.patient_age}
           />
         </TabsContent>
 

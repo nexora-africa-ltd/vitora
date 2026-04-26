@@ -188,6 +188,8 @@ export default function EncounterEditVitalsPage() {
         disabled={!isEditable}
         fromTriage={wasTriaged}
         vitalsSource={encounter?.vitals_source || (wasTriaged ? 'TRIAGE' : undefined)}
+        patientDob={encounter?.patient_date_of_birth}
+        patientGender={encounter?.patient_gender}
       />
 
       {/* Navigation */}

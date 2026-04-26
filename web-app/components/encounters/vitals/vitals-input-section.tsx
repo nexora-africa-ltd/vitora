@@ -21,6 +21,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { FormItem, FormMessage } from '@/components/ui/form';
 import { VITAL_RANGES } from './vitals-schema';
 import type { VitalAlert } from '@/lib/hooks/use-vital-thresholds';
+import { getVitalRangeHint, getVitalPlaceholder, type AgeGroup } from '@/lib/vitals';
 
 type FieldStatus = 'normal' | 'warning' | 'critical';
 
@@ -33,6 +34,8 @@ interface VitalsInputSectionProps {
   disabled?: boolean;
   /** Whether to show weight/height fields */
   showWeightHeight?: boolean;
+  /** Age group for paediatric-adjusted normal range hints */
+  ageGroup?: AgeGroup | null;
   /** Additional class names for the grid */
   className?: string;
 }
@@ -46,6 +49,7 @@ export function VitalsInputSection({
   alerts,
   disabled = false,
   showWeightHeight = true,
+  ageGroup,
   className,
 }: VitalsInputSectionProps) {
   const { control, formState } = useFormContext();
@@ -80,7 +84,7 @@ export function VitalsInputSection({
                 step="0.1"
                 min={VITAL_RANGES.temperature.min}
                 max={VITAL_RANGES.temperature.max}
-                placeholder="36.5"
+                placeholder={getVitalPlaceholder('temperature', ageGroup)}
                 value={field.value ?? ''}
                 onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
                 disabled={disabled}
@@ -90,7 +94,7 @@ export function VitalsInputSection({
             {fieldState.error ? (
               <FormMessage>{fieldState.error.message}</FormMessage>
             ) : (
-              <p className="text-xs text-muted-foreground">Normal: 36.5-37.5°C</p>
+              <p className="text-xs text-muted-foreground">{getVitalRangeHint('temperature', ageGroup)}</p>
             )}
           </FormItem>
         )}
@@ -115,7 +119,7 @@ export function VitalsInputSection({
                 type="number"
                 min={VITAL_RANGES.pulse.min}
                 max={VITAL_RANGES.pulse.max}
-                placeholder="72"
+                placeholder={getVitalPlaceholder('pulse', ageGroup)}
                 value={field.value ?? ''}
                 onChange={(e) => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))}
                 disabled={disabled}
@@ -125,7 +129,7 @@ export function VitalsInputSection({
             {fieldState.error ? (
               <FormMessage>{fieldState.error.message}</FormMessage>
             ) : (
-              <p className="text-xs text-muted-foreground">Normal: 60-100 bpm</p>
+              <p className="text-xs text-muted-foreground">{getVitalRangeHint('pulse', ageGroup)}</p>
             )}
           </FormItem>
         )}
@@ -151,7 +155,7 @@ export function VitalsInputSection({
                 type="number"
                 min={VITAL_RANGES.blood_pressure_systolic.min}
                 max={VITAL_RANGES.blood_pressure_systolic.max}
-                placeholder="120"
+                placeholder={getVitalPlaceholder('blood_pressure_systolic', ageGroup)}
                 value={field.value ?? ''}
                 onChange={(e) => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))}
                 className="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -168,7 +172,7 @@ export function VitalsInputSection({
                 type="number"
                 min={VITAL_RANGES.blood_pressure_diastolic.min}
                 max={VITAL_RANGES.blood_pressure_diastolic.max}
-                placeholder="80"
+                placeholder={getVitalPlaceholder('blood_pressure_diastolic', ageGroup)}
                 value={field.value ?? ''}
                 onChange={(e) => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))}
                 className="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -206,7 +210,7 @@ export function VitalsInputSection({
                 type="number"
                 min={VITAL_RANGES.respiratory_rate.min}
                 max={VITAL_RANGES.respiratory_rate.max}
-                placeholder="16"
+                placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)}
                 value={field.value ?? ''}
                 onChange={(e) => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))}
                 disabled={disabled}
@@ -216,7 +220,7 @@ export function VitalsInputSection({
             {fieldState.error ? (
               <FormMessage>{fieldState.error.message}</FormMessage>
             ) : (
-              <p className="text-xs text-muted-foreground">Normal: 12-20/min</p>
+              <p className="text-xs text-muted-foreground">{getVitalRangeHint('respiratory_rate', ageGroup)}</p>
             )}
           </FormItem>
         )}
@@ -241,7 +245,7 @@ export function VitalsInputSection({
                 type="number"
                 min={VITAL_RANGES.spo2.min}
                 max={VITAL_RANGES.spo2.max}
-                placeholder="98"
+                placeholder={getVitalPlaceholder('spo2', ageGroup)}
                 value={field.value ?? ''}
                 onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
                 disabled={disabled}
@@ -251,7 +255,7 @@ export function VitalsInputSection({
             {fieldState.error ? (
               <FormMessage>{fieldState.error.message}</FormMessage>
             ) : (
-              <p className="text-xs text-muted-foreground">Normal: 95-100%</p>
+              <p className="text-xs text-muted-foreground">{getVitalRangeHint('spo2', ageGroup)}</p>
             )}
           </FormItem>
         )}
@@ -275,7 +279,7 @@ export function VitalsInputSection({
                   step="0.1"
                   min={VITAL_RANGES.weight.min}
                   max={VITAL_RANGES.weight.max}
-                  placeholder="70"
+                  placeholder={getVitalPlaceholder('weight', ageGroup)}
                   value={field.value ?? ''}
                   onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
                   disabled={disabled}
@@ -306,7 +310,7 @@ export function VitalsInputSection({
                   step="0.1"
                   min={VITAL_RANGES.height.min}
                   max={VITAL_RANGES.height.max}
-                  placeholder="170"
+                  placeholder={getVitalPlaceholder('height', ageGroup)}
                   value={field.value ?? ''}
                   onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
                   disabled={disabled}
