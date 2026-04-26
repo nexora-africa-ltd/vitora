@@ -221,6 +221,11 @@ def _provision_single_key(fk: "TibaBotFacilityKey", admin_key: str) -> dict[str,
         "jwt_issuer": getattr(settings, "TIBABOT_JWT_ISSUER", "vitora.nexora.africa"),
     }
 
+    # Include JWKS URI so TibaBot can verify RS256 user-identity JWTs
+    jwks_url = getattr(settings, "TIBABOT_JWKS_URL", "") or ""
+    if jwks_url:
+        payload["jwks_uri"] = jwks_url
+
     resp = requests.post(
         _tibabot_admin_url(),
         json=payload,
