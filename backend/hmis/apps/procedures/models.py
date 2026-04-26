@@ -238,6 +238,56 @@ class ProcedureCatalog(FacilityScopedModel, TimeStampedModel):
     def __str__(self) -> str:
         return f"{self.code} - {self.name}"
 
+    def save(self, *args, **kwargs):
+        if not self.tibabot_procedure_key:
+            self.tibabot_procedure_key = self._infer_tibabot_key()
+        super().save(*args, **kwargs)
+
+    # ------------------------------------------------------------------
+    # TibaBot auto-mapping
+    # ------------------------------------------------------------------
+    # Maps lowercased keyword fragments to the 10 TibaBot procedure keys.
+    # Checked in order; first match wins.
+    TIBABOT_KEYWORD_MAP: list[tuple[list[str], str]] = [
+        (["appendectomy", "appendicectomy", "appendix"], "appendectomy"),
+        (["cholecystectomy", "gallbladder"], "cholecystectomy"),
+        (["hernia repair", "herniorrhaphy", "hernioplasty", "hernia"], "hernia_repair"),
+        (["bowel obstruction", "intestinal obstruction"], "bowel_obstruction"),
+        (
+            [
+                "caesarean",
+                "cesarean",
+                "c-section",
+                "c section",
+                "cs delivery",
+                "lscs",
+            ],
+            "caesarean_section",
+        ),
+        (["ectopic pregnancy", "ectopic"], "ectopic_pregnancy"),
+        (
+            [
+                "open reduction",
+                "orif",
+                "fracture fixation",
+                "fracture repair",
+                "internal fixation",
+            ],
+            "fracture_fixation_open",
+        ),
+        (["amputation"], "amputation"),
+        (["trauma laparotomy", "exploratory laparotomy", "laparotomy"], "trauma_laparotomy"),
+        (["chest drain", "chest tube", "intercostal drain", "icd insertion"], "chest_drain"),
+    ]
+
+    def _infer_tibabot_key(self) -> str:
+        """Return a TibaBot procedure key if the catalog name fuzzy-matches a known procedure."""
+        name_lower = self.name.lower()
+        for keywords, key in self.TIBABOT_KEYWORD_MAP:
+            if any(kw in name_lower for kw in keywords):
+                return key
+        return ""
+
     @property
     def billing_price(self):
         """Resolve the billable price: billing_service.unit_price → base_fee → None."""

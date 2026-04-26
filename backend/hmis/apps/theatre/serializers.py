@@ -238,6 +238,8 @@ class SurgeryCaseCreateSerializer(serializers.ModelSerializer):
 class SurgeryCaseDetailSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
+    patient_date_of_birth = serializers.DateField(source="patient.date_of_birth", read_only=True)
+    patient_gender = serializers.CharField(source="patient.gender", read_only=True)
     theatre_name = serializers.CharField(source="theatre.name", read_only=True)
     theatre_code = serializers.CharField(source="theatre.code", read_only=True)
     primary_procedure_name = serializers.CharField(source="primary_procedure.name", read_only=True)

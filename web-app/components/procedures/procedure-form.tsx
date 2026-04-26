@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { HelpPopover } from '@/components/shared/help-popover';
 import {
   Form,
   FormControl,
@@ -72,6 +73,20 @@ const RISK_LEVELS = [
   { value: 'HIGH', label: 'High' },
 ];
 
+const TIBABOT_PROCEDURE_KEYS = [
+  { value: '', label: 'None (auto-detect on save)' },
+  { value: 'appendectomy', label: 'Appendectomy' },
+  { value: 'cholecystectomy', label: 'Cholecystectomy' },
+  { value: 'hernia_repair', label: 'Hernia Repair' },
+  { value: 'bowel_obstruction', label: 'Bowel Obstruction' },
+  { value: 'caesarean_section', label: 'Caesarean Section' },
+  { value: 'ectopic_pregnancy', label: 'Ectopic Pregnancy' },
+  { value: 'fracture_fixation_open', label: 'Open Fracture Fixation (ORIF)' },
+  { value: 'amputation', label: 'Amputation' },
+  { value: 'trauma_laparotomy', label: 'Trauma Laparotomy' },
+  { value: 'chest_drain', label: 'Chest Drain / Intercostal Drain' },
+];
+
 const procedureFormSchema = z.object({
   code: z.string().min(1, 'Code is required'),
   name: z.string().min(1, 'Name is required'),
@@ -83,6 +98,7 @@ const procedureFormSchema = z.object({
   ichi_code: z.string().optional().default(''),
   cpt_code: z.string().optional().default(''),
   icd10_pcs_code: z.string().optional().default(''),
+  tibabot_procedure_key: z.string().optional().default(''),
   // Consent
   consent_required: z.boolean().default(true),
   guardian_consent_required: z.boolean().default(false),
@@ -136,6 +152,7 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
           ichi_code: procedure.ichi_code || '',
           cpt_code: procedure.cpt_code || '',
           icd10_pcs_code: procedure.icd10_pcs_code || '',
+          tibabot_procedure_key: procedure.tibabot_procedure_key || '',
           consent_required: procedure.consent_required,
           guardian_consent_required: procedure.guardian_consent_required,
           witness_required: procedure.witness_required,
@@ -166,6 +183,7 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
           ichi_code: '',
           cpt_code: '',
           icd10_pcs_code: '',
+          tibabot_procedure_key: '',
           consent_required: true,
           guardian_consent_required: false,
           witness_required: false,
@@ -190,13 +208,18 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
 
   const onSubmit = async (data: ProcedureFormValues) => {
     setIsSubmitting(true);
+    // Normalize __none__ sentinel back to empty string for the API
+    const payload = {
+      ...data,
+      tibabot_procedure_key: data.tibabot_procedure_key === '__none__' ? '' : (data.tibabot_procedure_key || ''),
+    };
     try {
       if (isEdit && procedure) {
-        await proceduresApi.updateCatalogEntry(procedure.id, data);
+        await proceduresApi.updateCatalogEntry(procedure.id, payload);
         toast({ title: 'Procedure updated' });
         router.push(`/procedures/catalog/${procedure.id}`);
       } else {
-        const created = await proceduresApi.createCatalogEntry(data);
+        const created = await proceduresApi.createCatalogEntry(payload);
         toast({ title: 'Procedure created' });
         router.push(`/procedures/catalog/${created.id}`);
       }
@@ -339,7 +362,7 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
           <CardHeader>
             <CardTitle className="text-base">Standard Coding</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-3">
+          <CardContent className="grid gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="ichi_code"
@@ -367,6 +390,28 @@ export function ProcedureForm({ procedure }: ProcedureFormProps) {
                 <FormItem>
                   <FormLabel>ICD-10-PCS</FormLabel>
                   <FormControl><Input placeholder="e.g., 0W9F0ZZ" {...field} /></FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="tibabot_procedure_key"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    AI Procedure Key
+                    <HelpPopover content="Maps this procedure to a TibaBot AI model for pre-op risk assessments, WHO checklists, and post-op care plans. If left empty, the system will attempt to auto-detect from the procedure name on save." />
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="None (auto-detect on save)" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TIBABOT_PROCEDURE_KEYS.map((k) => (
+                        <SelectItem key={k.value || '__none__'} value={k.value || '__none__'}>{k.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FormItem>
               )}
             />

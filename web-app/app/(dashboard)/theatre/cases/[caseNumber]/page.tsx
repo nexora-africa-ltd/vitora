@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   ClipboardCheck,
   Clock,
@@ -319,15 +318,6 @@ export default function CaseDetailPage() {
               {nextStep.label}
             </Button>
           )}
-          <Button variant="outline" asChild>
-            <Link href={`/theatre/cases/${surgeryCase.case_number}/pre-op`}>Pre-Op Workspace</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/theatre/cases/${surgeryCase.case_number}/intra-op`}>Intra-Op Workspace</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/theatre/cases/${surgeryCase.case_number}/post-op`}>Post-Op Workspace</Link>
-          </Button>
           {canCancel && (
             <Button variant="destructive" onClick={() => setCancelDialog(true)} disabled={actionLoading}>
               <Ban className="h-4 w-4 mr-2" />
@@ -351,7 +341,7 @@ export default function CaseDetailPage() {
           router.replace(query ? `/theatre/cases/${surgeryCase.case_number}?${query}` : `/theatre/cases/${surgeryCase.case_number}`);
         }}
       >
-        <TabsList className="w-full justify-start overflow-x-auto rounded-lg border bg-muted/30 p-1">
+        <TabsList className="grid w-full grid-cols-4 rounded-lg border bg-muted/30 p-1">
           <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
           <TabsTrigger value="pre-op" className="text-sm">Pre-Op</TabsTrigger>
           <TabsTrigger value="intra-op" className="text-sm">Intra-Op</TabsTrigger>

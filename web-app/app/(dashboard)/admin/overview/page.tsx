@@ -6,9 +6,11 @@ import {
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
+  Bot,
   Building,
   Building2,
   FolderTree,
+  HeartPulse,
   Hospital,
   Network,
   ScrollText,
@@ -32,8 +34,10 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDepartmentOrgChart, useRoles } from '@/lib/hooks/use-rbac';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { organizationsApi } from '@/lib/api/organizations';
 import { facilitiesApi } from '@/lib/api/facilities';
+import { proceduresApi } from '@/lib/api/procedures';
 import { useQuery } from '@tanstack/react-query';
 import type { OrganizationListItem } from '@/lib/types/organization';
 import type { FacilityListItem } from '@/lib/types/facility';
@@ -86,6 +90,7 @@ const QUICK_LINKS = [
 
 export default function AdminOverviewPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+  const { isSuperuser } = usePermissions();
   const {
     data: rolesData,
     isLoading: rolesLoading,
@@ -117,6 +122,16 @@ export default function AdminOverviewPage() {
   } = useQuery({
     queryKey: ['facilities', { page_size: 200 }],
     queryFn: () => facilitiesApi.list({ page_size: 200 }),
+  });
+
+  const {
+    data: catalogData,
+    isLoading: catalogLoading,
+    refetch: refetchCatalog,
+  } = useQuery({
+    queryKey: ['procedure-catalog-health', { page_size: 500, is_active: 'true' }],
+    queryFn: () => proceduresApi.listCatalog({ page_size: '500', is_active: 'true' }),
+    enabled: isSuperuser,
   });
 
   const departments = orgChartData?.departments ?? [];
@@ -187,9 +202,20 @@ export default function AdminOverviewPage() {
     },
   ] as const;
 
+  const catalogEntries = catalogData?.results ?? [];
+  const surgicalEntries = catalogEntries.filter((e) => e.category === 'SURGICAL');
+  const unmappedSurgical = surgicalEntries.filter((e) => !e.tibabot_procedure_key);
+  const totalMapped = catalogEntries.filter((e) => e.tibabot_procedure_key).length;
+
   const handleRefresh = async () => {
     await refresh();
-    await Promise.all([refetchOrgChart(), refetchRoles(), refetchOrgs(), refetchFacilities()]);
+    await Promise.all([
+      refetchOrgChart(),
+      refetchRoles(),
+      refetchOrgs(),
+      refetchFacilities(),
+      ...(isSuperuser ? [refetchCatalog()] : []),
+    ]);
   };
 
   return (
@@ -537,6 +563,82 @@ export default function AdminOverviewPage() {
             </Card>
           </div>
         </div>
+        {/* System Health — Superuser only */}
+        {isSuperuser && (
+          <Card variant="secondary" className="border-border/70">
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <HeartPulse className="h-5 w-5" />
+                    System Health
+                  </CardTitle>
+                  <CardDescription>
+                    Configuration gaps that affect AI features and clinical workflows.
+                  </CardDescription>
+                </div>
+                <Badge variant="outline">Superadmin</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Link href="/procedures/catalog" className="block">
+                <div className="rounded-2xl border border-border/70 bg-background/80 p-4 transition-colors hover:border-primary/30 hover:bg-background">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 gap-3">
+                      <div className="rounded-xl bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400">
+                        <Bot className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">Unmapped Surgical Procedures</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {unmappedSurgical.length > 0
+                            ? `${unmappedSurgical.length} surgical catalog ${unmappedSurgical.length === 1 ? 'entry has' : 'entries have'} no AI procedure key. AI pre-op assessments, WHO checklists, and post-op care plans are unavailable for these.`
+                            : 'All surgical catalog entries have an AI procedure key configured.'}
+                        </p>
+                        {unmappedSurgical.length > 0 && (
+                          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                            {unmappedSurgical.slice(0, 5).map((entry) => (
+                              <li key={entry.id} className="truncate">
+                                <span className="font-medium text-foreground">{entry.code}</span> &middot; {entry.name}
+                              </li>
+                            ))}
+                            {unmappedSurgical.length > 5 && (
+                              <li className="text-muted-foreground">and {unmappedSurgical.length - 5} more&hellip;</li>
+                            )}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge variant={unmappedSurgical.length > 0 ? 'default' : 'secondary'} className={unmappedSurgical.length > 0 ? 'bg-amber-600 text-white' : ''}>
+                        {catalogLoading ? '...' : unmappedSurgical.length}
+                      </Badge>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-border/60 bg-background/75 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Total Catalog</p>
+                  <p className="mt-2 text-2xl font-semibold">{catalogLoading ? '...' : catalogEntries.length}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Active procedure entries</p>
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-background/75 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Surgical</p>
+                  <p className="mt-2 text-2xl font-semibold">{catalogLoading ? '...' : surgicalEntries.length}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Entries in SURGICAL category</p>
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-background/75 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">AI Mapped</p>
+                  <p className="mt-2 text-2xl font-semibold">{catalogLoading ? '...' : totalMapped}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Entries with AI procedure key</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </PullToRefresh>
   );

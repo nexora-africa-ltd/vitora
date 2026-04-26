@@ -321,9 +321,8 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
   const generatePostOpCarePlan = async () => {
     if (!mappedProcedureKey) {
       toast({
-        title: 'Procedure mapping required',
-        description: 'Set a TibaBot procedure key on the linked procedure catalog entry first.',
-        variant: 'destructive',
+        title: 'AI care plan unavailable',
+        description: 'This procedure does not have an AI mapping configured.',
       });
       return;
     }
@@ -386,17 +385,13 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
         </CardHeader>
         <CardContent className="relative space-y-4">
           {!mappedProcedureKey ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No TibaBot procedure mapping</AlertTitle>
-              <AlertDescription>Add a TibaBot procedure key to the linked procedure catalog entry to enable post-op care plan generation.</AlertDescription>
-            </Alert>
+            <p className="text-sm text-muted-foreground">AI care plan generation is not available for this procedure.</p>
           ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <div className="rounded-lg border p-3 text-sm xl:col-span-1">
-              <p className="text-muted-foreground">Procedure key</p>
-              <p className="mt-1 font-medium">{mappedProcedureKey || 'Not mapped'}</p>
+            <div className="xl:col-span-1">
+              <FormLabel>AI procedure key</FormLabel>
+              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">{mappedProcedureKey || 'Not mapped'}</div>
             </div>
             <div>
               <FormLabel>Blood loss (mL)</FormLabel>

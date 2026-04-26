@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
   AlertCircle,
+  BrainCircuit,
   CheckCircle2,
   ClipboardCheck,
   FileSignature,
@@ -16,6 +17,7 @@ import {
   ShieldCheck,
   Syringe,
   Trash2,
+  BrainCircuitIcon,
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +34,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -262,15 +265,30 @@ export function PreOpWorkspace({
   const [whoChecklist, setWhoChecklist] = useState<WHOChecklist | null>(null);
   const [anesthesiaRecord, setAnesthesiaRecord] = useState<AnesthesiaRecord | null>(null);
   const [schedulingContext, setSchedulingContext] = useState<CaseSchedulingContext | null>(null);
-  const [creatingLinkedOrder, setCreatingLinkedOrder] = useState(false);
   const [savingConsent, setSavingConsent] = useState(false);
   const [signingConsent, setSigningConsent] = useState(false);
   const [savingWho, setSavingWho] = useState(false);
   const [savingAnesthesia, setSavingAnesthesia] = useState(false);
   const [runningSurgicalAssessment, setRunningSurgicalAssessment] = useState(false);
   const [storedPreOpAssessments, setStoredPreOpAssessments] = useState<StoredSurgicalPreOpAssessResult[]>([]);
-  const [surgicalPatientAge, setSurgicalPatientAge] = useState<number | ''>('');
-  const [surgicalPatientSex, setSurgicalPatientSex] = useState<'male' | 'female'>('female');
+
+  // Auto-populate patient age and sex from biodata
+  const computedAge = (() => {
+    if (!surgeryCase.patient_date_of_birth) return '';
+    const dob = new Date(surgeryCase.patient_date_of_birth);
+    if (Number.isNaN(dob.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age;
+  })();
+  const computedSex: 'male' | 'female' = surgeryCase.patient_gender === 'M' ? 'male' : 'female';
+
+  const [surgicalPatientAge, setSurgicalPatientAge] = useState<number | ''>(computedAge);
+  const [surgicalPatientSex, setSurgicalPatientSex] = useState<'male' | 'female'>(computedSex);
   const [assignmentDialog, setAssignmentDialog] = useState(false);
   const [staffSearch, setStaffSearch] = useState('');
   const [staffResults, setStaffResults] = useState<StaffProfile[]>([]);
@@ -371,7 +389,26 @@ export function PreOpWorkspace({
       ]);
 
       const linkedOrderList = orderListing?.results ?? [];
-      const linkedOrderListItem = getLinkedProcedureOrder(surgeryCase, linkedOrderList);
+      let linkedOrderListItem = getLinkedProcedureOrder(surgeryCase, linkedOrderList);
+
+      // Auto-create a linked procedure order if none exists
+      if (!linkedOrderListItem) {
+        try {
+          const created = await proceduresApi.createOrder({
+            patient: surgeryCase.patient,
+            procedure: surgeryCase.primary_procedure,
+            encounter: surgeryCase.encounter ?? undefined,
+            indication: surgeryCase.diagnosis,
+            clinical_notes: surgeryCase.procedure_notes,
+            laterality: surgeryCase.laterality,
+            priority: surgeryCase.priority,
+          });
+          linkedOrderListItem = { id: created.id, procedure: created.procedure, scheduled_date: created.scheduled_date ?? null };
+        } catch {
+          // Silently fall back — consent card will show "Not linked"
+        }
+      }
+
       const linkedOrder = linkedOrderListItem
         ? await proceduresApi.getOrder(linkedOrderListItem.id).catch(() => null)
         : null;
@@ -565,34 +602,6 @@ export function PreOpWorkspace({
     }
   };
 
-  const handleCreateLinkedOrder = async () => {
-    try {
-      setCreatingLinkedOrder(true);
-      await proceduresApi.createOrder({
-        patient: surgeryCase.patient,
-        procedure: surgeryCase.primary_procedure,
-        encounter: surgeryCase.encounter ?? undefined,
-        indication: surgeryCase.diagnosis,
-        clinical_notes: surgeryCase.procedure_notes,
-        laterality: surgeryCase.laterality,
-        priority: surgeryCase.priority,
-      });
-      toast({
-        title: 'Procedure order linked',
-        description: 'A linked procedure order was created for consent tracking.',
-      });
-      await refreshEverything();
-    } catch (error) {
-      toast({
-        title: 'Unable to create linked procedure order',
-        description: getApiErrorMessage(error),
-        variant: 'destructive',
-      });
-    } finally {
-      setCreatingLinkedOrder(false);
-    }
-  };
-
   const handleCreateConsent = async (values: ConsentFormValues) => {
     if (!procedureOrder) {
       toast({
@@ -698,9 +707,8 @@ export function PreOpWorkspace({
   const handleRunSurgicalAssessment = async () => {
     if (!mappedProcedureKey) {
       toast({
-        title: 'Procedure mapping required',
-        description: 'Set a TibaBot procedure key on the linked procedure catalog entry first.',
-        variant: 'destructive',
+        title: 'AI assessment unavailable',
+        description: 'This procedure does not have an AI mapping configured.',
       });
       return;
     }
@@ -792,22 +800,16 @@ export function PreOpWorkspace({
         </CardHeader>
         <CardContent className="relative space-y-4">
           {!mappedProcedureKey ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No TibaBot procedure mapping</AlertTitle>
-              <AlertDescription>
-                Add a TibaBot procedure key to the linked procedure catalog entry to enable the surgical assistant.
-              </AlertDescription>
-            </Alert>
+            <p className="text-sm text-muted-foreground">AI assessment is not available for this procedure.</p>
           ) : null}
 
           <div className="grid gap-4 sm:grid-cols-4">
-            <div className="rounded-lg border p-3 text-sm">
-              <p className="text-muted-foreground">Mapped procedure key</p>
-              <p className="mt-1 font-medium">{mappedProcedureKey || 'Not mapped'}</p>
+            <div>
+              <Label>AI procedure key</Label>
+              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">{mappedProcedureKey || 'Not mapped'}</div>
             </div>
             <div>
-              <FormLabel>Patient age</FormLabel>
+              <Label>Patient age</Label>
               <Input
                 type="number"
                 min={0}
@@ -816,7 +818,7 @@ export function PreOpWorkspace({
               />
             </div>
             <div>
-              <FormLabel>Patient sex</FormLabel>
+              <Label>Patient sex</Label>
               <Select value={surgicalPatientSex} onValueChange={(value) => setSurgicalPatientSex(value as 'male' | 'female')}>
                 <SelectTrigger>
                   <SelectValue />
@@ -834,7 +836,7 @@ export function PreOpWorkspace({
                 onClick={() => void handleRunSurgicalAssessment()}
                 disabled={runningSurgicalAssessment || !mappedProcedureKey}
               >
-                {runningSurgicalAssessment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                {runningSurgicalAssessment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
                 Run assessment
               </Button>
             </div>
@@ -961,10 +963,13 @@ export function PreOpWorkspace({
             </div>
 
             {!procedureOrder && (
-              <Button onClick={handleCreateLinkedOrder} disabled={creatingLinkedOrder}>
-                {creatingLinkedOrder && <Loader2 className="h-4 w-4 animate-spin" />}
-                Create linked procedure order
-              </Button>
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No linked procedure order</AlertTitle>
+                <AlertDescription>
+                  The linked order could not be created automatically. Try refreshing the page.
+                </AlertDescription>
+              </Alert>
             )}
 
             {procedureOrder && procedureOrder.consent?.status !== 'SIGNED' && (

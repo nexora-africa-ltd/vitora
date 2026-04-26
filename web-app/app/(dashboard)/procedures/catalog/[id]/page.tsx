@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  Bot,
   Clock,
   Edit,
   FileText,
@@ -141,6 +142,16 @@ export default function ProcedureCatalogDetailPage() {
             {procedure.ichi_code && <InfoRow label="ICHI">{procedure.ichi_code}</InfoRow>}
             {procedure.cpt_code && <InfoRow label="CPT">{procedure.cpt_code}</InfoRow>}
             {procedure.icd10_pcs_code && <InfoRow label="ICD-10-PCS">{procedure.icd10_pcs_code}</InfoRow>}
+            <InfoRow label="AI Procedure Key">
+              {procedure.tibabot_procedure_key ? (
+                <Badge variant="info" className="w-fit gap-1">
+                  <Bot className="h-3 w-3" />
+                  {procedure.tibabot_procedure_key}
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground">Not mapped</span>
+              )}
+            </InfoRow>
             <InfoRow label="Category">{CATEGORY_LABELS[procedure.category] || procedure.category}</InfoRow>
             <InfoRow label="Body System">{BODY_SYSTEM_LABELS[procedure.body_system] || procedure.body_system}</InfoRow>
             <InfoRow label="Risk Level">
