@@ -15,7 +15,8 @@ import type {
   VitalInputThresholds,
   AlertSeverity,
 } from './types';
-import { DEFAULT_THRESHOLDS } from './thresholds';
+import { DEFAULT_THRESHOLDS, getAgeAdjustedInputThresholds } from './thresholds';
+import type { AgeGroup } from './age-groups';
 
 // =============================================================================
 // THRESHOLD EVALUATION
@@ -270,21 +271,34 @@ export function parseBPAndCalculateMAP(bp: string | null | undefined): number | 
   return calculateMAP(systolic, diastolic);
 }
 
+// Age-adjusted MAP thresholds (mirrors backend triage/services.py MAP_THRESHOLDS)
+const MAP_AGE_THRESHOLDS: Record<string, { criticalLow: number; warningLow: number; warningHigh: number; criticalHigh: number }> = {
+  neonate:     { criticalLow: 30, warningLow: 40, warningHigh: 55, criticalHigh: 65 },
+  infant:      { criticalLow: 40, warningLow: 50, warningHigh: 70, criticalHigh: 85 },
+  young_child: { criticalLow: 45, warningLow: 55, warningHigh: 80, criticalHigh: 95 },
+  school_age:  { criticalLow: 50, warningLow: 60, warningHigh: 85, criticalHigh: 100 },
+  adolescent:  { criticalLow: 55, warningLow: 65, warningHigh: 95, criticalHigh: 105 },
+  adult:       { criticalLow: 65, warningLow: 70, warningHigh: 100, criticalHigh: 105 },
+};
+
 /**
  * Get MAP status and alert
  */
 function getMAPAlert(
   systolic: number | null | undefined,
-  diastolic: number | null | undefined
+  diastolic: number | null | undefined,
+  ageGroup?: AgeGroup | null,
 ): VitalAlert | null {
   const map = calculateMAP(systolic, diastolic);
   if (map === null) return null;
 
-  // MAP thresholds (adult defaults)
-  const CRITICAL_LOW = 65;
-  const WARNING_LOW = 70;
-  const WARNING_HIGH = 100;
-  const CRITICAL_HIGH = 105;
+  const group = ageGroup ?? 'adult';
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const t = MAP_AGE_THRESHOLDS[group] ?? MAP_AGE_THRESHOLDS['adult']!;
+  const CRITICAL_LOW = t!.criticalLow;
+  const WARNING_LOW = t!.warningLow;
+  const WARNING_HIGH = t!.warningHigh;
+  const CRITICAL_HIGH = t!.criticalHigh;
 
   if (map < CRITICAL_LOW) {
     return {
@@ -342,12 +356,14 @@ function getMAPAlert(
 // =============================================================================
 
 /**
- * Generate alerts for vital values using provided thresholds
- * Includes MAP (Mean Arterial Pressure) calculation
+ * Generate alerts for vital values using provided thresholds.
+ * When ageGroup is provided, age-adjusted thresholds override adult defaults
+ * for heart rate, respiratory rate, and temperature.
  */
 export function evaluateVitals(
   values: VitalValues,
-  thresholds: Record<VitalType, Pick<VitalThreshold, 'vital_type' | 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'>> = DEFAULT_THRESHOLDS
+  thresholds: Record<VitalType, Pick<VitalThreshold, 'vital_type' | 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'>> = DEFAULT_THRESHOLDS,
+  ageGroup?: AgeGroup | null,
 ): VitalAlert[] {
   const alerts: VitalAlert[] = [];
 
@@ -360,12 +376,30 @@ export function evaluateVitals(
     { field: 'pain_score', vitalType: 'PAIN_SCORE', getValue: () => values.pain_score },
   ];
 
+  // Build age-adjusted thresholds when paediatric age group is provided
+  const ageInputThresholds = ageGroup ? getAgeAdjustedInputThresholds(ageGroup) : null;
+
   for (const { field, vitalType, getValue } of fieldMapping) {
     const value = getValue();
-    const threshold = thresholds[vitalType];
+    let threshold = thresholds[vitalType];
 
     if (value === null || value === undefined || !threshold?.is_active) {
       continue;
+    }
+
+    // Override with age-adjusted thresholds for paediatric patients
+    if (ageInputThresholds) {
+      const fieldKey = field === 'pulse' ? 'heart_rate' : field;
+      const ageThreshold = ageInputThresholds[fieldKey];
+      if (ageThreshold && (ageThreshold.criticalLow !== undefined || ageThreshold.warningLow !== undefined)) {
+        threshold = {
+          ...threshold,
+          critical_low: ageThreshold.criticalLow ?? threshold.critical_low,
+          warning_low: ageThreshold.warningLow ?? threshold.warning_low,
+          warning_high: ageThreshold.warningHigh ?? threshold.warning_high,
+          critical_high: ageThreshold.criticalHigh ?? threshold.critical_high,
+        };
+      }
     }
 
     const status = checkValueAgainstThreshold(value, threshold);
@@ -387,7 +421,7 @@ export function evaluateVitals(
   // Check MAP (Mean Arterial Pressure) for blood pressure
   const systolic = values.blood_pressure_systolic ?? values.systolic_bp;
   const diastolic = values.blood_pressure_diastolic ?? values.diastolic_bp;
-  const mapAlert = getMAPAlert(systolic, diastolic);
+  const mapAlert = getMAPAlert(systolic, diastolic, ageGroup);
   if (mapAlert) {
     alerts.push(mapAlert);
   }
@@ -405,8 +439,9 @@ export function evaluateVitals(
 export function generateVitalAlerts(
   vitals: VitalValues,
   customThresholds?: Record<VitalType, Pick<VitalThreshold, 'vital_type' | 'critical_low' | 'warning_low' | 'warning_high' | 'critical_high' | 'is_active'>>,
+  ageGroup?: AgeGroup | null,
 ): VitalAlert[] {
-  return evaluateVitals(vitals, customThresholds ?? DEFAULT_THRESHOLDS);
+  return evaluateVitals(vitals, customThresholds ?? DEFAULT_THRESHOLDS, ageGroup);
 }
 
 // =============================================================================

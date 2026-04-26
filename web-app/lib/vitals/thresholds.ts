@@ -259,7 +259,7 @@ export function getAgeAdjustedInputThresholds(ageGroup: string | null): Record<s
  */
 export function getVitalRangeHint(
   vitalKey: string,
-  ageGroup: string | null,
+  ageGroup?: string | null,
 ): string {
   const adultThreshold = INPUT_THRESHOLDS[vitalKey];
   if (!ageGroup || ageGroup === 'adult' || ageGroup === 'adolescent') {
@@ -270,4 +270,50 @@ export function getVitalRangeHint(
     return `Normal (${ageGroup}): ${override.normalRange}`;
   }
   return adultThreshold ? `Normal: ${adultThreshold.normalRange}` : '';
+}
+
+/**
+ * Age-appropriate placeholder values for vital sign inputs.
+ * Returns a typical mid-normal value for the given age group so that
+ * input fields show clinically relevant examples.
+ *
+ * Keys use the standard vital field names:
+ * temperature, pulse (heart_rate), respiratory_rate, spo2,
+ * blood_pressure_systolic, blood_pressure_diastolic, weight, height
+ */
+const AGE_PLACEHOLDERS: Record<AgeGroupKey, Record<string, string>> = {
+  neonate:     { temperature: '36.8', pulse: '130', respiratory_rate: '40', spo2: '97', blood_pressure_systolic: '70',  blood_pressure_diastolic: '45', weight: '3.5',  height: '50' },
+  infant:      { temperature: '37.0', pulse: '120', respiratory_rate: '35', spo2: '97', blood_pressure_systolic: '85',  blood_pressure_diastolic: '55', weight: '8',    height: '70' },
+  young_child: { temperature: '37.0', pulse: '100', respiratory_rate: '25', spo2: '98', blood_pressure_systolic: '95',  blood_pressure_diastolic: '60', weight: '15',   height: '95' },
+  school_age:  { temperature: '36.8', pulse: '90',  respiratory_rate: '20', spo2: '98', blood_pressure_systolic: '105', blood_pressure_diastolic: '65', weight: '30',   height: '130' },
+  adolescent:  { temperature: '36.5', pulse: '75',  respiratory_rate: '16', spo2: '98', blood_pressure_systolic: '115', blood_pressure_diastolic: '70', weight: '55',   height: '165' },
+  adult:       { temperature: '36.5', pulse: '72',  respiratory_rate: '16', spo2: '98', blood_pressure_systolic: '120', blood_pressure_diastolic: '80', weight: '70',   height: '170' },
+};
+
+/**
+ * Alias map for vital field names across modules.
+ * Triage uses heart_rate / systolic_bp / diastolic_bp;
+ * encounter and inpatient use pulse / blood_pressure_systolic / blood_pressure_diastolic.
+ */
+const VITAL_KEY_ALIASES: Record<string, string> = {
+  heart_rate: 'pulse',
+  systolic_bp: 'blood_pressure_systolic',
+  diastolic_bp: 'blood_pressure_diastolic',
+};
+
+/**
+ * Get an age-appropriate placeholder value for a vital sign input field.
+ *
+ * @param vitalKey - The vital field name (e.g. 'temperature', 'pulse', 'heart_rate', 'respiratory_rate')
+ * @param ageGroup - The patient's age group, or null/undefined for adult defaults
+ * @returns A placeholder string (e.g. "130" for neonate pulse)
+ */
+export function getVitalPlaceholder(
+  vitalKey: string,
+  ageGroup?: string | null,
+): string {
+  const key = VITAL_KEY_ALIASES[vitalKey] ?? vitalKey;
+  const group: AgeGroupKey = (ageGroup as AgeGroupKey) || 'adult';
+  const placeholders = AGE_PLACEHOLDERS[group] ?? AGE_PLACEHOLDERS.adult;
+  return placeholders[key] ?? AGE_PLACEHOLDERS.adult[key] ?? '';
 }

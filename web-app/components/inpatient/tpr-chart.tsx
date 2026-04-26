@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Plus, Thermometer } from 'lucide-react';
 import {
   Line,
@@ -40,6 +40,7 @@ import {
 } from '@/lib/hooks/use-inpatient';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
+import { getAgeGroupFromYears, getVitalRangeHint, getVitalPlaceholder, isPediatric, type AgeGroup } from '@/lib/vitals';
 import type { TemperatureReading } from '@/lib/types/inpatient';
 
 const chartConfig: ChartConfig = {
@@ -51,13 +52,31 @@ const chartConfig: ChartConfig = {
 interface TPRChartProps {
   admissionId: number;
   isActive: boolean;
+  /** Patient age in years for age-adjusted reference lines */
+  patientAge?: number | null;
 }
 
-export function TPRChart({ admissionId, isActive }: TPRChartProps) {
+/** Get temperature reference lines adjusted for age group */
+function getTempReferenceLines(ageGroup: AgeGroup | null) {
+  if (ageGroup === 'neonate') {
+    return { febrile: 37.5, low: 36.0 };
+  }
+  if (ageGroup === 'infant') {
+    return { febrile: 37.5, low: 36.0 };
+  }
+  // Default (adult/older children)
+  return { febrile: 37.5, low: 36.1 };
+}
+
+export function TPRChart({ admissionId, isActive, patientAge }: TPRChartProps) {
   const { toast } = useToast();
   const { data, isLoading } = useTemperatureReadings(admissionId);
   const createReading = useCreateTemperatureReading();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Age group for paediatric-adjusted ranges
+  const ageGroup = useMemo(() => (patientAge != null ? getAgeGroupFromYears(patientAge) : null), [patientAge]);
+  const tempRefLines = useMemo(() => getTempReferenceLines(ageGroup), [ageGroup]);
 
   // Form state
   const [temperature, setTemperature] = useState('');
@@ -140,7 +159,14 @@ export function TPRChart({ admissionId, isActive }: TPRChartProps) {
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Record TPR Reading</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Record TPR Reading</DialogTitle>
+                  {ageGroup && isPediatric(ageGroup) && (
+                    <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:text-blue-400">
+                      Paediatric
+                    </Badge>
+                  )}
+                </div>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -152,10 +178,11 @@ export function TPRChart({ admissionId, isActive }: TPRChartProps) {
                       step="0.1"
                       min="30"
                       max="45"
-                      placeholder="36.5"
+                      placeholder={getVitalPlaceholder('temperature', ageGroup)}
                       value={temperature}
                       onChange={(e) => setTemperature(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">{getVitalRangeHint('temperature', ageGroup)}</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pulse">Pulse (BPM)</Label>
@@ -164,10 +191,11 @@ export function TPRChart({ admissionId, isActive }: TPRChartProps) {
                       type="number"
                       min="0"
                       max="250"
-                      placeholder="72"
+                      placeholder={getVitalPlaceholder('pulse', ageGroup)}
                       value={pulse}
                       onChange={(e) => setPulse(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">{getVitalRangeHint('pulse', ageGroup)}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -178,10 +206,11 @@ export function TPRChart({ admissionId, isActive }: TPRChartProps) {
                       type="number"
                       min="0"
                       max="80"
-                      placeholder="16"
+                      placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)}
                       value={respiratoryRate}
                       onChange={(e) => setRespiratoryRate(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">{getVitalRangeHint('respiratory_rate', ageGroup)}</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes</Label>
@@ -252,8 +281,8 @@ export function TPRChart({ admissionId, isActive }: TPRChartProps) {
                     className="text-xs fill-muted-foreground"
                     width={40}
                   />
-                  <ReferenceLine yAxisId="temp" y={37.5} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Febrile" />
-                  <ReferenceLine yAxisId="temp" y={36.1} stroke="hsl(var(--chart-4))" strokeDasharray="3 3" label="Low" />
+                  <ReferenceLine yAxisId="temp" y={tempRefLines.febrile} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Febrile" />
+                  <ReferenceLine yAxisId="temp" y={tempRefLines.low} stroke="hsl(var(--chart-4))" strokeDasharray="3 3" label="Low" />
                   <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
                   <ChartLegend content={<ChartLegendContent />} />
                   <Line

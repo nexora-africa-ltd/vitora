@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Plus, HeartPulse } from 'lucide-react';
 import {
   Line,
@@ -46,6 +46,7 @@ import {
 } from '@/lib/hooks/use-inpatient';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
+import { getAgeGroupFromYears, getVitalPlaceholder, isPediatric } from '@/lib/vitals';
 import type { BPPosition } from '@/lib/types/inpatient';
 
 const chartConfig: ChartConfig = {
@@ -65,13 +66,19 @@ const POSITIONS: { value: BPPosition; label: string }[] = [
 interface BPMonitoringChartProps {
   admissionId: number;
   isActive: boolean;
+  /** Patient age in years for age-adjusted reference lines */
+  patientAge?: number | null;
 }
 
-export function BPMonitoringChart({ admissionId, isActive }: BPMonitoringChartProps) {
+export function BPMonitoringChart({ admissionId, isActive, patientAge }: BPMonitoringChartProps) {
   const { toast } = useToast();
   const { data, isLoading } = useBPReadings(admissionId);
   const createReading = useCreateBPReading();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Age group for paediatric awareness
+  const ageGroup = useMemo(() => (patientAge != null ? getAgeGroupFromYears(patientAge) : null), [patientAge]);
+  const isPaediatric = ageGroup ? isPediatric(ageGroup) : false;
 
   // Form state
   const [systolic, setSystolic] = useState('');
@@ -140,6 +147,11 @@ export function BPMonitoringChart({ admissionId, isActive }: BPMonitoringChartPr
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">BP Monitoring Chart</h3>
           <HelpPopover content="Track blood pressure trends over time. Useful for patients with hypertension, pre-eclampsia, or post-operative BP monitoring. Shows systolic, diastolic, MAP, and pulse." />
+          {isPaediatric && (
+            <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:text-blue-400">
+              Paediatric
+            </Badge>
+          )}
         </div>
         {isActive && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -151,7 +163,14 @@ export function BPMonitoringChart({ admissionId, isActive }: BPMonitoringChartPr
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Record Blood Pressure</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Record Blood Pressure</DialogTitle>
+                  {isPaediatric && (
+                    <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:text-blue-400">
+                      Paediatric
+                    </Badge>
+                  )}
+                </div>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -162,7 +181,7 @@ export function BPMonitoringChart({ admissionId, isActive }: BPMonitoringChartPr
                       type="number"
                       min="0"
                       max="300"
-                      placeholder="120"
+                      placeholder={getVitalPlaceholder('blood_pressure_systolic', ageGroup)}
                       value={systolic}
                       onChange={(e) => setSystolic(e.target.value)}
                     />
@@ -174,7 +193,7 @@ export function BPMonitoringChart({ admissionId, isActive }: BPMonitoringChartPr
                       type="number"
                       min="0"
                       max="200"
-                      placeholder="80"
+                      placeholder={getVitalPlaceholder('blood_pressure_diastolic', ageGroup)}
                       value={diastolic}
                       onChange={(e) => setDiastolic(e.target.value)}
                     />
@@ -188,7 +207,7 @@ export function BPMonitoringChart({ admissionId, isActive }: BPMonitoringChartPr
                       type="number"
                       min="0"
                       max="250"
-                      placeholder="72"
+                      placeholder={getVitalPlaceholder('pulse', ageGroup)}
                       value={pulse}
                       onChange={(e) => setPulse(e.target.value)}
                     />

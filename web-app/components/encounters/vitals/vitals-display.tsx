@@ -24,8 +24,8 @@ import {
   ItemDescription,
 } from '@/components/ui/item';
 import type { VitalsFormValues } from './vitals-schema';
-import { VITAL_RANGES } from './vitals-schema';
 import { getFieldStatus, type VitalAlert } from '@/lib/hooks/use-vital-thresholds';
+import { getVitalRangeHint, type AgeGroup } from '@/lib/vitals';
 import { calculateBMI, getBMIColorClass } from '@/lib/utils/bmi';
 import type { Patient } from '@/lib/types/patient';
 
@@ -36,6 +36,8 @@ interface VitalsDisplayProps {
   alerts: VitalAlert[];
   /** Patient info for BMI calculation */
   patient?: Patient | null;
+  /** Age group for paediatric-adjusted normal ranges */
+  ageGroup?: AgeGroup | null;
   /** Additional class names */
   className?: string;
 }
@@ -94,7 +96,7 @@ function VitalItem({
   );
 }
 
-export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisplayProps) {
+export function VitalsDisplay({ values, alerts, patient, ageGroup, className }: VitalsDisplayProps) {
   // Calculate BMI
   const bmiResult = calculateBMI(
     values.weight ?? null,
@@ -116,7 +118,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
         label="Temperature"
         value={values.temperature}
         unit="°C"
-        normalRange={`${VITAL_RANGES.temperature.normalMin}-${VITAL_RANGES.temperature.normalMax}°C`}
+        normalRange={getVitalRangeHint('temperature', ageGroup)}
         status={getFieldStatus('temperature', alerts)}
       />
 
@@ -125,7 +127,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
         label="Pulse"
         value={values.pulse}
         unit="bpm"
-        normalRange={`${VITAL_RANGES.pulse.normalMin}-${VITAL_RANGES.pulse.normalMax} bpm`}
+        normalRange={getVitalRangeHint('pulse', ageGroup)}
         status={getFieldStatus('pulse', alerts)}
       />
 
@@ -143,7 +145,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
         label="Resp. Rate"
         value={values.respiratory_rate}
         unit="/min"
-        normalRange={`${VITAL_RANGES.respiratory_rate.normalMin}-${VITAL_RANGES.respiratory_rate.normalMax}/min`}
+        normalRange={getVitalRangeHint('respiratory_rate', ageGroup)}
         status={getFieldStatus('respiratory_rate', alerts)}
       />
 
@@ -152,7 +154,7 @@ export function VitalsDisplay({ values, alerts, patient, className }: VitalsDisp
         label="SpO₂"
         value={values.spo2}
         unit="%"
-        normalRange={`${VITAL_RANGES.spo2.normalMin}-${VITAL_RANGES.spo2.normalMax}%`}
+        normalRange={getVitalRangeHint('spo2', ageGroup)}
         status={getFieldStatus('spo2', alerts)}
       />
 

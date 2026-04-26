@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAdmission, useCreateWardRound } from '@/lib/hooks/use-inpatient';
+import { getAgeGroupFromYears, getVitalPlaceholder } from '@/lib/vitals';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -74,6 +75,7 @@ export default function NewWardRoundPage() {
 
   const { data: admission, isLoading } = useAdmission(admissionId);
   const createWardRound = useCreateWardRound();
+  const ageGroup = useMemo(() => (admission?.patient_age != null ? getAgeGroupFromYears(admission.patient_age) : null), [admission?.patient_age]);
 
   const [conditionStatus, setConditionStatus] = useState<ConditionStatus>('STABLE');
   const [reviewType, setReviewType] = useState<ReviewType>(
@@ -469,7 +471,7 @@ export default function NewWardRoundPage() {
                 step="0.1"
                 value={temperature}
                 onChange={(e) => setTemperature(e.target.value)}
-                placeholder="36.5"
+                placeholder={getVitalPlaceholder('temperature', ageGroup)}
               />
             </div>
             <div className="space-y-2">
@@ -479,7 +481,7 @@ export default function NewWardRoundPage() {
                 type="number"
                 value={pulse}
                 onChange={(e) => setPulse(e.target.value)}
-                placeholder="80"
+                placeholder={getVitalPlaceholder('pulse', ageGroup)}
               />
             </div>
             <div className="space-y-2">
@@ -498,7 +500,7 @@ export default function NewWardRoundPage() {
                 type="number"
                 value={respiratoryRate}
                 onChange={(e) => setRespiratoryRate(e.target.value)}
-                placeholder="18"
+                placeholder={getVitalPlaceholder('respiratory_rate', ageGroup)}
               />
             </div>
             <div className="space-y-2">
@@ -509,7 +511,7 @@ export default function NewWardRoundPage() {
                 step="0.1"
                 value={spo2}
                 onChange={(e) => setSpo2(e.target.value)}
-                placeholder="98"
+                placeholder={getVitalPlaceholder('spo2', ageGroup)}
               />
             </div>
           </div>
