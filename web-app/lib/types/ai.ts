@@ -1091,6 +1091,7 @@ export interface AISurgicalPreOpAssessRequest {
 
 export interface AISurgicalPreOpAssessResponse {
   risk_scores: AISurgicalRiskScores;
+  procedure_template?: Record<string, unknown> | null;
   facility_capable?: boolean | null;
   facility_alert?: string | null;
   cds_alerts?: Record<string, unknown>[];

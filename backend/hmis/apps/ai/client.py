@@ -6,19 +6,78 @@ Handles communication with the TibaBot AI service, including:
 - Timeout management
 - Error handling with graceful degradation
 - Request sanitization (PII stripping)
+- Dual-layer auth: X-API-Key (facility) + Authorization: Bearer (user identity)
 """
 
 import logging
+import threading
+from contextlib import contextmanager
 from typing import Any, ClassVar
 
 import requests
 from django.conf import settings
+from django.contrib.auth.models import AbstractBaseUser
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from .sanitizer import sanitize_clinical_text
+from .tokens import mint_tibabot_jwt
 
 logger = logging.getLogger(__name__)
+
+# Thread-local storage for per-request user identity
+_thread_local = threading.local()
+
+
+@contextmanager
+def tibabot_user_context(user: AbstractBaseUser):
+    """
+    Context manager that sets the current user for TibaBot JWT auth.
+
+    Usage in views::
+
+        with tibabot_user_context(request.user):
+            client = get_tibabot_client()
+            result = client.clinical_chat(data)
+
+    The ``TibaBotClient._request`` method will automatically mint a JWT
+    and include it as ``Authorization: Bearer <jwt>`` on the request.
+    """
+    _thread_local.tibabot_user = user
+    try:
+        yield
+    finally:
+        _thread_local.tibabot_user = None
+
+
+def _get_current_user() -> AbstractBaseUser | None:
+    """Get the user set by the nearest ``tibabot_user_context``."""
+    return getattr(_thread_local, "tibabot_user", None)
+
+
+def _resolve_facility_api_key(user: AbstractBaseUser) -> str | None:
+    """
+    Look up a per-facility TibaBot API key for the user's primary facility.
+
+    Returns the key string if found and active, otherwise ``None``
+    (caller falls back to the session-level default from settings).
+    """
+    try:
+        profile = getattr(user, "staff_profile", None)
+        if profile is None:
+            return None
+        facility = getattr(profile, "primary_facility", None)
+        if facility is None:
+            return None
+        fk = getattr(facility, "tibabot_key", None)
+        if fk is None:
+            return None
+        if fk.is_active and fk.api_key:
+            return fk.api_key
+    except Exception:
+        # DB not migrated yet, relation missing, etc. — fall back silently.
+        logger.debug("Could not resolve per-facility TibaBot key", exc_info=True)
+    return None
 
 
 class TibaBotError(Exception):
@@ -88,6 +147,10 @@ class TibaBotClient:
         """
         Make an HTTP request to TibaBot.
 
+        If a user is set via ``tibabot_user_context``, a short-lived JWT is
+        minted and sent as ``Authorization: Bearer <jwt>`` alongside the
+        facility ``X-API-Key`` header (dual-layer auth).
+
         Args:
             method: HTTP method (GET, POST)
             endpoint: API endpoint path (e.g., '/icd10/code')
@@ -103,6 +166,20 @@ class TibaBotClient:
         """
         url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
 
+        # Per-request headers (user identity JWT + per-facility API key)
+        headers: dict[str, str] = {}
+        user = _get_current_user()
+        if user is not None:
+            # User-identity JWT (dual-layer auth layer 2)
+            token = mint_tibabot_jwt(user)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+
+            # Per-facility API key override (dual-layer auth layer 1)
+            facility_key = _resolve_facility_api_key(user)
+            if facility_key:
+                headers["X-API-Key"] = facility_key
+
         try:
             response = self.session.request(
                 method=method,
@@ -110,6 +187,7 @@ class TibaBotClient:
                 json=data,
                 params=params,
                 timeout=self.timeout,
+                headers=headers,
             )
             response.raise_for_status()
             return response.json()  # type: ignore[no-any-return]

@@ -527,6 +527,7 @@ export const AISurgicalRiskScoresSchema = z.object({
 
 export const AISurgicalPreOpAssessResponseSchema = z.object({
   risk_scores: AISurgicalRiskScoresSchema,
+  procedure_template: z.record(z.unknown()).nullable().optional(),
   facility_capable: z.boolean().nullable().optional(),
   facility_alert: z.string().nullable().optional(),
   cds_alerts: z.array(z.record(z.unknown())).optional(),

@@ -850,6 +850,7 @@ class OrganizationAdmin(admin.ModelAdmin):
         "is_active",
         "onboarding_completed_at",
         "facility_count",
+        "tibabot_keys_count",
         "created_at",
     ]
     list_filter = ["subscription_tier", "is_active", "is_verified", "onboarding_completed_at"]
@@ -921,6 +922,13 @@ class OrganizationAdmin(admin.ModelAdmin):
             },
         ),
         (
+            "TibaBot AI Integration",
+            {
+                "fields": ("tibabot_keys_summary",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
             "Timestamps",
             {
                 "fields": (
@@ -931,6 +939,67 @@ class OrganizationAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    @admin.display(description="AI Keys")
+    def tibabot_keys_count(self, obj: Organization) -> str:
+        """Show active/total TibaBot key count in list view."""
+        from hmis.apps.ai.models import TibaBotFacilityKey
+
+        qs = TibaBotFacilityKey.objects.filter(facility__organization=obj)
+        total = qs.count()
+        if total == 0:
+            return "—"
+        active = qs.filter(is_active=True).count()
+        return f"{active}/{total}"
+
+    @admin.display(description="TibaBot Facility Keys")
+    def tibabot_keys_summary(self, obj: Organization) -> str:
+        """
+        Read-only detail field showing which facilities have TibaBot keys.
+
+        Displays a compact HTML table with facility name, MFL code, masked key,
+        and status for every key under this organization's facilities.
+        """
+        from django.utils.html import format_html, format_html_join
+
+        from hmis.apps.ai.models import TibaBotFacilityKey
+
+        keys = (
+            TibaBotFacilityKey.objects.filter(facility__organization=obj)
+            .select_related("facility")
+            .order_by("facility__name")
+        )
+        if not keys.exists():
+            return "No TibaBot API keys provisioned for this organization's facilities."
+
+        rows = format_html_join(
+            "\n",
+            "<tr><td style='padding:4px 8px'>{}</td>"
+            "<td style='padding:4px 8px'>{}</td>"
+            "<td style='padding:4px 8px'><code>{}</code></td>"
+            "<td style='padding:4px 8px'>{}</td></tr>",
+            (
+                (
+                    fk.facility.name,
+                    fk.facility.mfl_code,
+                    fk.masked_key,
+                    "✅ Active" if fk.is_active else "❌ Revoked",
+                )
+                for fk in keys
+            ),
+        )
+
+        return format_html(
+            "<table style='border-collapse:collapse'>"
+            "<thead><tr>"
+            "<th style='padding:4px 8px;text-align:left'>Facility</th>"
+            "<th style='padding:4px 8px;text-align:left'>MFL Code</th>"
+            "<th style='padding:4px 8px;text-align:left'>Key</th>"
+            "<th style='padding:4px 8px;text-align:left'>Status</th>"
+            "</tr></thead>"
+            "<tbody>{}</tbody></table>",
+            rows,
+        )
 
 
 # ============================================================================

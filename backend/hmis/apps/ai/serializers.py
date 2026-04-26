@@ -2225,6 +2225,7 @@ class SurgicalPreOpAssessResponseSerializer(serializers.Serializer):
     """Response from POST /api/ai/surgical/pre-op/assess/."""
 
     risk_scores = serializers.DictField()
+    procedure_template = serializers.DictField(required=False, allow_null=True)
     facility_capable = serializers.BooleanField(required=False, allow_null=True)
     facility_alert = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     cds_alerts = serializers.ListField(child=serializers.DictField(), required=False)

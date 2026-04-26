@@ -42,6 +42,8 @@ import type { StaffProfile } from '@/lib/types/rbac';
 import { TEAM_ROLES } from '@/lib/schemas/theatre.schema';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import type { AIQuickAction } from '@/lib/types/ai';
 import {
   getTeamAssignmentErrorMessage,
   TeamAssignmentDialog,
@@ -62,6 +64,37 @@ const STATUS_FLOW: Record<string, { label: string; action: string; icon: React.E
   IN_THEATRE: { label: 'Start Surgery', action: 'startSurgery', icon: Scissors },
   IN_SURGERY: { label: 'End Surgery', action: 'endSurgery', icon: Square },
 };
+
+const THEATRE_QUICK_ACTIONS: AIQuickAction[] = [
+  {
+    id: 'theatre-pre-op-risk',
+    label: 'Pre-op risk summary',
+    query:
+      'Summarise the pre-operative risk profile for this surgical case. Consider ASA class, RCRI factors, patient age, comorbidities, and any flagged alerts. What are the key concerns?',
+    userMessage: '🔍 Analysing pre-operative risk...',
+  },
+  {
+    id: 'theatre-anaesthesia-plan',
+    label: 'Anaesthesia considerations',
+    query:
+      'Based on this patient\'s profile, procedure type, and risk factors, what anaesthesia approach do you recommend? Note any airway concerns, fasting status, and special precautions.',
+    userMessage: '💉 Reviewing anaesthesia considerations...',
+  },
+  {
+    id: 'theatre-post-op-plan',
+    label: 'Post-op care plan',
+    query:
+      'Outline a post-operative care plan for this surgical case. Include monitoring, pain management, early mobilisation, nutrition, wound care, and discharge criteria.',
+    userMessage: '📋 Generating post-op care plan...',
+  },
+  {
+    id: 'theatre-complication-watch',
+    label: 'Complications to watch',
+    query:
+      'What are the most likely post-operative complications for this procedure? Include incidence, early signs, and recommended actions for each.',
+    userMessage: '⚠️ Reviewing potential complications...',
+  },
+];
 
 export default function CaseDetailPage() {
   const { caseNumber } = useParams<{ caseNumber: string }>();
@@ -121,6 +154,55 @@ export default function CaseDetailPage() {
   }, [caseNumber]);
 
   useEffect(() => { fetchCase(); }, [fetchCase]);
+
+  // =========================================================================
+  // AI Chat Widget — theatre-aware context wiring
+  // =========================================================================
+
+  const chatCtx = useOptionalAIChatContext();
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
+  const setQuickActions = chatCtx?.setQuickActions;
+
+  useEffect(() => {
+    if (!setEncounterAwareContext || !surgeryCase) return;
+
+    const age = (() => {
+      if (!surgeryCase.patient_date_of_birth) return 0;
+      const dob = new Date(surgeryCase.patient_date_of_birth);
+      if (Number.isNaN(dob.getTime())) return 0;
+      const today = new Date();
+      let a = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
+      return a;
+    })();
+
+    setEncounterAwareContext(
+      {
+        patient_age: age,
+        patient_sex: surgeryCase.patient_gender === 'M' ? 'male' : 'female',
+      },
+      {
+        chief_complaint: `Surgical case: ${surgeryCase.primary_procedure_name}${surgeryCase.diagnosis ? ` — ${surgeryCase.diagnosis}` : ''}`,
+        clinical_notes: [
+          `Procedure: ${surgeryCase.primary_procedure_name}`,
+          `Priority: ${surgeryCase.priority}`,
+          `ASA Class: ${surgeryCase.asa_class}`,
+          `Anesthesia: ${surgeryCase.anesthesia_type}`,
+          surgeryCase.laterality !== 'NA' ? `Laterality: ${surgeryCase.laterality}` : '',
+          surgeryCase.procedure_notes ? `Notes: ${surgeryCase.procedure_notes}` : '',
+        ].filter(Boolean).join('. '),
+      },
+    );
+
+    return () => { setEncounterAwareContext(null, null); };
+  }, [surgeryCase, setEncounterAwareContext]);
+
+  useEffect(() => {
+    if (!setQuickActions) return;
+    setQuickActions(THEATRE_QUICK_ACTIONS);
+    return () => { setQuickActions([]); };
+  }, [setQuickActions]);
 
   const loadStaffOptions = useCallback(async (searchValue: string) => {
     try {

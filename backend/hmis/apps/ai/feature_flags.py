@@ -10,6 +10,8 @@ When disabled, endpoints return 404 — no endpoint discovery or partial behavio
 from django.conf import settings
 from rest_framework.exceptions import NotFound
 
+from .client import tibabot_user_context
+
 
 def is_ai_enabled() -> bool:
     """Check whether the TibaBot AI feature flag is enabled."""
@@ -39,9 +41,20 @@ class AIFeatureGatedMixin:
 
     Subclasses can set ``ai_feature_flag`` to gate behind an additional
     per-feature setting (e.g. ``"TIBABOT_ENABLE_LAB_ASSIST"``).
+
+    Additionally sets ``tibabot_user_context`` for the request lifecycle
+    so that all ``TibaBotClient`` calls within the view automatically
+    include the user-identity JWT in the ``Authorization: Bearer`` header.
     """
 
     ai_feature_flag: str | None = None
+
+    def dispatch(self, request, *args, **kwargs):  # type: ignore[override]
+        user = getattr(request, "user", None)
+        if user is not None and getattr(user, "is_authenticated", False):
+            with tibabot_user_context(user):
+                return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]
+        return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]
 
     def initial(self, request, *args, **kwargs):  # type: ignore[override]
         if not is_ai_enabled():

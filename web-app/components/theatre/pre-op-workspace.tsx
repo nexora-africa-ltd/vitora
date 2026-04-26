@@ -15,10 +15,17 @@ import {
   Plus,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Syringe,
   Trash2,
   BrainCircuitIcon,
 } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -270,6 +277,7 @@ export function PreOpWorkspace({
   const [savingWho, setSavingWho] = useState(false);
   const [savingAnesthesia, setSavingAnesthesia] = useState(false);
   const [runningSurgicalAssessment, setRunningSurgicalAssessment] = useState(false);
+  const [freshInsight, setFreshInsight] = useState(false);
   const [storedPreOpAssessments, setStoredPreOpAssessments] = useState<StoredSurgicalPreOpAssessResult[]>([]);
 
   // Auto-populate patient age and sex from biodata
@@ -524,6 +532,7 @@ export function PreOpWorkspace({
   const latestStoredPreOp = storedPreOpAssessments[0] ?? null;
   const latestStoredPreOpData = latestStoredPreOp?.result_data as Record<string, unknown> | undefined;
   const latestStoredRiskScores = latestStoredPreOpData?.risk_scores as Record<string, unknown> | undefined;
+  const latestProcedureTemplate = latestStoredPreOpData?.procedure_template as Record<string, unknown> | undefined;
   const aiAsaClass = ['I', 'II', 'III', 'IV', 'V', 'VI'].includes(surgeryCase.asa_class)
     ? (surgeryCase.asa_class as 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI')
     : 'II';
@@ -724,7 +733,7 @@ export function PreOpWorkspace({
 
     try {
       setRunningSurgicalAssessment(true);
-      await aiApi.assessSurgicalPreOp({
+      const result = await aiApi.assessSurgicalPreOp({
         surgery_case_id: surgeryCase.id,
         procedure_key: mappedProcedureKey,
         age: Number(surgicalPatientAge),
@@ -736,11 +745,29 @@ export function PreOpWorkspace({
         high_risk_surgery: false,
         caprini_factors: [],
       });
+
+      // Build a synthetic stored result from the live response so we can
+      // populate the UI immediately without a full page refresh.
+      const syntheticStored: StoredSurgicalPreOpAssessResult = {
+        id: result.stored_id || crypto.randomUUID(),
+        surgery_case_id: surgeryCase.id,
+        overall_risk_level: result.risk_scores?.overall_risk_level || '',
+        facility_capable: result.facility_capable ?? null,
+        result_data: result as unknown as Record<string, unknown>,
+        service_mode: result.mode || 'tibabot',
+        created_at: new Date().toISOString(),
+        created_by: '',
+      };
+      setStoredPreOpAssessments((prev) => [syntheticStored, ...prev]);
+
+      // Pulse the card border to draw attention to the new results
+      setFreshInsight(true);
+      setTimeout(() => setFreshInsight(false), 4000);
+
       toast({
         title: 'Surgical AI assessment complete',
-        description: 'The advisory pre-op risk assessment has been persisted for this case.',
+        description: 'Pre-op risk assessment and procedure advisory are now available below.',
       });
-      await refreshEverything();
     } catch (error) {
       toast({
         title: 'Unable to run surgical assessment',
@@ -784,7 +811,17 @@ export function PreOpWorkspace({
         labOrders={labOrders}
       />
 
-      <Card className="relative overflow-hidden">
+      <Card className={`relative overflow-hidden transition-all duration-700 ${
+        freshInsight
+          ? 'border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.35)]'
+          : latestStoredPreOp
+            ? 'border-emerald-500/40'
+            : ''
+      }`}
+        style={freshInsight ? {
+          animation: 'border-glow 1.5s ease-in-out infinite',
+        } : undefined}
+      >
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
           aria-hidden="true"
@@ -793,6 +830,7 @@ export function PreOpWorkspace({
           <CardTitle className="text-base flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4" />
             Surgical AI Pre-Op Advisory
+            {latestStoredPreOp ? <Sparkles className="h-4 w-4 text-teal-400" /> : null}
             <Badge variant={surgeryCase.ai_surgical_summary.pre_op.has_result ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
               {surgeryCase.ai_surgical_summary.pre_op.has_result ? 'Result available' : 'Not run'}
             </Badge>
@@ -837,29 +875,338 @@ export function PreOpWorkspace({
                 disabled={runningSurgicalAssessment || !mappedProcedureKey}
               >
                 {runningSurgicalAssessment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
-                Run assessment
+                {latestStoredPreOp ? 'Ask again' : 'Ask TibaBot®'}
               </Button>
             </div>
           </div>
 
           {latestStoredPreOp ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-lg border p-3 text-sm">
-                <p className="text-muted-foreground">Overall risk</p>
-                <p className="mt-1 font-medium">{latestStoredPreOp.overall_risk_level || 'Unavailable'}</p>
+            <div className="space-y-4">
+              {/* ── Risk score summary cards ── */}
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-lg border p-3 text-sm">
+                  <p className="text-muted-foreground">Overall risk</p>
+                  <p className="mt-1 font-semibold">{latestStoredPreOp.overall_risk_level || 'Unavailable'}</p>
+                </div>
+                <div className="rounded-lg border p-3 text-sm">
+                  <p className="text-muted-foreground">Facility capable</p>
+                  <p className="mt-1 font-semibold">{latestStoredPreOp.facility_capable == null ? 'Unknown' : latestStoredPreOp.facility_capable ? 'Yes' : 'No'}</p>
+                </div>
+                {(() => {
+                  const asa = latestStoredRiskScores?.asa as Record<string, unknown> | undefined;
+                  if (!asa) return null;
+                  return (
+                    <div className="rounded-lg border p-3 text-sm">
+                      <p className="text-muted-foreground">ASA {asa.classification as string}</p>
+                      <p className="mt-1 font-semibold">{asa.label as string}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Mortality {asa.mortality_range as string}</p>
+                    </div>
+                  );
+                })()}
+                {(() => {
+                  const rcri = latestStoredRiskScores?.rcri as Record<string, unknown> | undefined;
+                  if (!rcri) return null;
+                  return (
+                    <div className="rounded-lg border p-3 text-sm">
+                      <p className="text-muted-foreground">RCRI Class {rcri.risk_class as string}</p>
+                      <p className="mt-1 font-semibold">Cardiac risk {rcri.cardiac_risk_percent as string}</p>
+                    </div>
+                  );
+                })()}
               </div>
-              <div className="rounded-lg border p-3 text-sm">
-                <p className="text-muted-foreground">Facility capable</p>
-                <p className="mt-1 font-medium">{latestStoredPreOp.facility_capable == null ? 'Unknown' : latestStoredPreOp.facility_capable ? 'Yes' : 'No'}</p>
-              </div>
-              <div className="rounded-lg border p-3 text-sm sm:col-span-2 xl:col-span-2">
-                <p className="text-muted-foreground">Alerts</p>
-                <p className="mt-1 font-medium">
-                  {Array.isArray(latestStoredRiskScores?.alerts) && latestStoredRiskScores.alerts.length > 0
-                    ? latestStoredRiskScores.alerts.join(', ')
-                    : 'No alerts recorded'}
-                </p>
-              </div>
+
+              {/* ── Alerts ── */}
+              {(() => {
+                const alerts = latestStoredRiskScores?.alerts;
+                if (!Array.isArray(alerts) || alerts.length === 0) return null;
+                return (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Risk Alerts</AlertTitle>
+                    <AlertDescription>{(alerts as string[]).join(' • ')}</AlertDescription>
+                  </Alert>
+                );
+              })()}
+
+              {latestStoredPreOpData?.facility_alert ? (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Facility Alert</AlertTitle>
+                  <AlertDescription>{latestStoredPreOpData.facility_alert as string}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              {/* ── Procedure template details (collapsible) ── */}
+              {latestProcedureTemplate ? (
+                <Accordion type="multiple" className="w-full">
+                  {/* Procedure Identity */}
+                  <AccordionItem value="procedure-info">
+                    <AccordionTrigger className="text-sm font-medium">
+                      Procedure — {(latestProcedureTemplate.display_name as string) || (latestProcedureTemplate.procedure_key as string)}
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid gap-2 sm:grid-cols-3 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">ICD-10</p>
+                          <p className="font-medium">{(latestProcedureTemplate.icd10_code as string) || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">CPT Code</p>
+                          <p className="font-medium">{(latestProcedureTemplate.cpt_code as string) || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Specialty</p>
+                          <p className="font-medium capitalize">{((latestProcedureTemplate.specialty as string) || '—').replace(/_/g, ' ')}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Min Facility Level</p>
+                          <p className="font-medium">{(latestProcedureTemplate.min_facility_level as string) || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Urgency Categories</p>
+                          <p className="font-medium capitalize">{Array.isArray(latestProcedureTemplate.urgency_categories) ? (latestProcedureTemplate.urgency_categories as string[]).join(', ') : '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">MOH Reference</p>
+                          <p className="font-medium text-xs">{(latestProcedureTemplate.kenya_moh_reference as string) || '—'}</p>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Pre-Op Checklist */}
+                  {(latestProcedureTemplate.pre_op_checklist as Record<string, unknown> | undefined) ? (
+                    <AccordionItem value="pre-op-checklist">
+                      <AccordionTrigger className="text-sm font-medium">Pre-Op Checklist</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 text-sm">
+                          {(() => {
+                            const checklist = latestProcedureTemplate.pre_op_checklist as Record<string, unknown>;
+                            return (
+                              <>
+                                {checklist.consent ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Consent</p>
+                                    <p>{checklist.consent as string}</p>
+                                  </div>
+                                ) : null}
+                                {Array.isArray(checklist.investigations) ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Investigations</p>
+                                    <ul className="ml-4 mt-1 list-disc space-y-0.5">
+                                      {(checklist.investigations as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                                    </ul>
+                                  </div>
+                                ) : null}
+                                {Array.isArray(checklist.preparation) ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Preparation</p>
+                                    <ul className="ml-4 mt-1 list-disc space-y-0.5">
+                                      {(checklist.preparation as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                                    </ul>
+                                  </div>
+                                ) : null}
+                                {checklist.site_marking ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Site Marking</p>
+                                    <p>{checklist.site_marking as string}</p>
+                                  </div>
+                                ) : null}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ) : null}
+
+                  {/* Anaesthesia Options */}
+                  {Array.isArray(latestProcedureTemplate.anaesthesia_options) ? (
+                    <AccordionItem value="anaesthesia">
+                      <AccordionTrigger className="text-sm font-medium">Anaesthesia Options</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-2 text-sm">
+                          {(latestProcedureTemplate.anaesthesia_options as Record<string, unknown>[]).map((option, i) => (
+                            <div key={i} className="flex items-start gap-2 rounded-md border p-2">
+                              <Badge variant={option.preferred ? 'default' : 'secondary'} className="mt-0.5 shrink-0">
+                                {option.preferred ? 'Preferred' : 'Alternative'}
+                              </Badge>
+                              <div>
+                                <p className="font-medium capitalize">{(option.type as string) || 'Unknown'}</p>
+                                <p className="text-muted-foreground">{option.notes as string}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ) : null}
+
+                  {/* Required Equipment & Personnel */}
+                  {(Array.isArray(latestProcedureTemplate.required_equipment) || Array.isArray(latestProcedureTemplate.required_personnel)) ? (
+                    <AccordionItem value="equipment-personnel">
+                      <AccordionTrigger className="text-sm font-medium">Equipment &amp; Personnel</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid gap-4 sm:grid-cols-2 text-sm">
+                          {Array.isArray(latestProcedureTemplate.required_equipment) ? (
+                            <div>
+                              <p className="mb-1 font-medium text-muted-foreground">Equipment</p>
+                              <ul className="ml-4 list-disc space-y-0.5">
+                                {(latestProcedureTemplate.required_equipment as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                              </ul>
+                            </div>
+                          ) : null}
+                          {Array.isArray(latestProcedureTemplate.required_personnel) ? (
+                            <div>
+                              <p className="mb-1 font-medium text-muted-foreground">Personnel</p>
+                              <ul className="ml-4 list-disc space-y-0.5">
+                                {(latestProcedureTemplate.required_personnel as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                              </ul>
+                            </div>
+                          ) : null}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ) : null}
+
+                  {/* Procedure Steps */}
+                  {(latestProcedureTemplate.procedure_steps as Record<string, unknown> | undefined) ? (
+                    <AccordionItem value="procedure-steps">
+                      <AccordionTrigger className="text-sm font-medium">Procedure Steps</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 text-sm">
+                          {Object.entries(latestProcedureTemplate.procedure_steps as Record<string, string[]>).map(([approach, steps]) => (
+                            <div key={approach}>
+                              <p className="mb-1 font-medium capitalize">{approach.replace(/_/g, ' ')}</p>
+                              <ol className="ml-4 list-decimal space-y-0.5">
+                                {steps.map((step, i) => <li key={i}>{step}</li>)}
+                              </ol>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ) : null}
+
+                  {/* Post-Op Care */}
+                  {(latestProcedureTemplate.post_op_care as Record<string, unknown> | undefined) ? (
+                    <AccordionItem value="post-op-care">
+                      <AccordionTrigger className="text-sm font-medium">Post-Op Care</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 text-sm">
+                          {(() => {
+                            const postOp = latestProcedureTemplate.post_op_care as Record<string, unknown>;
+                            return (
+                              <>
+                                {postOp.monitoring ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Monitoring</p>
+                                    <p>{postOp.monitoring as string}</p>
+                                  </div>
+                                ) : null}
+                                {Array.isArray(postOp.medications) ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Medications</p>
+                                    <ul className="ml-4 mt-1 list-disc space-y-0.5">
+                                      {(postOp.medications as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                                    </ul>
+                                  </div>
+                                ) : null}
+                                {postOp.activity ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Activity</p>
+                                    <p>{postOp.activity as string}</p>
+                                  </div>
+                                ) : null}
+                                {postOp.nutrition ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Nutrition</p>
+                                    <p>{postOp.nutrition as string}</p>
+                                  </div>
+                                ) : null}
+                                {postOp.wound_care ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Wound Care</p>
+                                    <p>{postOp.wound_care as string}</p>
+                                  </div>
+                                ) : null}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ) : null}
+
+                  {/* Complications Watchlist */}
+                  {Array.isArray(latestProcedureTemplate.complications_watchlist) ? (
+                    <AccordionItem value="complications">
+                      <AccordionTrigger className="text-sm font-medium">Complications Watchlist</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 text-sm">
+                          {(latestProcedureTemplate.complications_watchlist as Record<string, unknown>[]).map((comp, i) => (
+                            <div key={i} className="rounded-md border p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="font-medium">{comp.complication as string}</p>
+                                <Badge variant="secondary" className="shrink-0 text-xs">{comp.incidence as string}</Badge>
+                              </div>
+                              <p className="mt-1 text-muted-foreground"><span className="font-medium">Signs:</span> {comp.signs as string}</p>
+                              <p className="mt-0.5 text-muted-foreground"><span className="font-medium">Action:</span> {comp.action as string}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ) : null}
+
+                  {/* Discharge Criteria & Follow-up */}
+                  {(Array.isArray(latestProcedureTemplate.discharge_criteria) || latestProcedureTemplate.follow_up) ? (
+                    <AccordionItem value="discharge-followup">
+                      <AccordionTrigger className="text-sm font-medium">Discharge &amp; Follow-up</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 text-sm">
+                          {Array.isArray(latestProcedureTemplate.discharge_criteria) ? (
+                            <div>
+                              <p className="mb-1 font-medium text-muted-foreground">Discharge Criteria</p>
+                              <ul className="ml-4 list-disc space-y-0.5">
+                                {(latestProcedureTemplate.discharge_criteria as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                              </ul>
+                            </div>
+                          ) : null}
+                          {(() => {
+                            const followUp = latestProcedureTemplate.follow_up as Record<string, unknown> | undefined;
+                            if (!followUp) return null;
+                            return (
+                              <div className="space-y-2">
+                                {followUp.appointment ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Follow-up Appointment</p>
+                                    <p>{followUp.appointment as string}</p>
+                                  </div>
+                                ) : null}
+                                {followUp.investigations ? (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">Investigations</p>
+                                    <p>{followUp.investigations as string}</p>
+                                  </div>
+                                ) : null}
+                                {Array.isArray(followUp.red_flags) ? (
+                                  <div>
+                                    <p className="font-medium text-destructive">Red Flags — Advise patient</p>
+                                    <ul className="ml-4 mt-1 list-disc space-y-0.5">
+                                      {(followUp.red_flags as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                                    </ul>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ) : null}
+                </Accordion>
+              ) : null}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No advisory pre-op assessment has been saved for this case yet.</p>
