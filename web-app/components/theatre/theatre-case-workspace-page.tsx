@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { AlertCircle, ClipboardCheck, Loader2, MonitorPlay, Stethoscope, TimerReset } from 'lucide-react';
+import { AlertCircle, ClipboardCheck, Loader2, MonitorPlay, TimerReset } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -130,24 +130,6 @@ export function TheatreCaseWorkspacePage({ workspace }: { workspace: TheatreWork
           <TheatreCasePriorityBadge priority={surgeryCase.priority} hideElective />
           <TheatreCaseStatusBadge status={surgeryCase.status} />
         </div>
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Button variant="outline" asChild>
-          <Link href={`/theatre/cases/${surgeryCase.case_number}`}>
-            <Stethoscope className="mr-2 h-4 w-4" />
-            Overview
-          </Link>
-        </Button>
-        <Button variant={workspace === 'pre-op' ? 'default' : 'outline'} asChild>
-          <Link href={`/theatre/cases/${surgeryCase.case_number}/pre-op`}>Pre-Op</Link>
-        </Button>
-        <Button variant={workspace === 'intra-op' ? 'default' : 'outline'} asChild>
-          <Link href={`/theatre/cases/${surgeryCase.case_number}/intra-op`}>Intra-Op</Link>
-        </Button>
-        <Button variant={workspace === 'post-op' ? 'default' : 'outline'} asChild>
-          <Link href={`/theatre/cases/${surgeryCase.case_number}/post-op`}>Post-Op</Link>
-        </Button>
       </div>
 
       {!statusAligned ? (

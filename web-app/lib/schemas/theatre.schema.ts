@@ -153,6 +153,8 @@ export const SurgeryCaseListSchema = z.object({
   patient: z.number(),
   patient_name: z.string(),
   patient_mrn: z.string(),
+  patient_date_of_birth: z.string().optional().default(''),
+  patient_gender: z.string().optional().default(''),
   primary_procedure: z.number(),
   primary_procedure_name: z.string(),
   primary_procedure_tibabot_key: z.string().optional().default(''),

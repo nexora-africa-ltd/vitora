@@ -42,6 +42,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -528,9 +529,8 @@ export function IntraOpWorkspace({
   const startSurgicalChecklist = async () => {
     if (!mappedProcedureKey) {
       toast({
-        title: 'Procedure mapping required',
-        description: 'Set a TibaBot procedure key on the procedure catalog entry first.',
-        variant: 'destructive',
+        title: 'AI checklist unavailable',
+        description: 'This procedure does not have an AI mapping configured.',
       });
       return;
     }
@@ -959,17 +959,13 @@ export function IntraOpWorkspace({
         </CardHeader>
         <CardContent className="relative space-y-4">
           {!mappedProcedureKey ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No TibaBot procedure mapping</AlertTitle>
-              <AlertDescription>Add a TibaBot procedure key to the linked procedure catalog entry to use the advisory checklist session.</AlertDescription>
-            </Alert>
+            <p className="text-sm text-muted-foreground">AI checklist advisory is not available for this procedure.</p>
           ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-lg border p-3 text-sm">
-              <p className="text-muted-foreground">Procedure key</p>
-              <p className="mt-1 font-medium">{mappedProcedureKey || 'Not mapped'}</p>
+            <div>
+              <Label>AI procedure key</Label>
+              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">{mappedProcedureKey || 'Not mapped'}</div>
             </div>
             <div className="rounded-lg border p-3 text-sm">
               <p className="text-muted-foreground">Current phase</p>
