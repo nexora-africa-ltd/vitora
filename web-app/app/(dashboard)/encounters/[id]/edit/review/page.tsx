@@ -156,15 +156,6 @@ export default function EncounterEditReviewPage() {
     }
   }, [formData, encounterId, updateEncounter, toast]);
 
-  // Finalize encounter — if unresolved critical alerts exist, show dialog first
-  const handleFinalizeClick = useCallback(() => {
-    if (hasUnresolvedCritical) {
-      setShowCDSDialog(true);
-      return;
-    }
-    handleFinalize();
-  }, [hasUnresolvedCritical, handleFinalize]);
-
   // Actual finalize logic
   const handleFinalize = useCallback(async () => {
     if (!formData) return;
@@ -226,6 +217,15 @@ export default function EncounterEditReviewPage() {
       });
     }
   }, [formData, encounterId, updateEncounter, clearSession, toast, router]);
+
+  // Finalize encounter — if unresolved critical alerts exist, show dialog first
+  const handleFinalizeClick = useCallback(() => {
+    if (hasUnresolvedCritical) {
+      setShowCDSDialog(true);
+      return;
+    }
+    handleFinalize();
+  }, [hasUnresolvedCritical, handleFinalize]);
 
   if (isLoading || !session || !formData) {
     return null;
