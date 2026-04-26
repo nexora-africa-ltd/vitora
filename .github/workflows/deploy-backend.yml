@@ -115,9 +115,11 @@ jobs:
             TIBABOT_API_URL=https://tibabot.vitora.nexora.africa
             TIBABOT_TIMEOUT=30
             TIBABOT_JWT_SECRET=secretref:tibabot-jwt-secret
+            TIBABOT_JWT_PRIVATE_KEY=secretref:tibabot-jwt-private-key
             TIBABOT_JWT_ISSUER=vitora.nexora.africa
             TIBABOT_JWT_AUDIENCE=tibabot-api
             TIBABOT_JWT_EXPIRY_SECONDS=300
+            TIBABOT_JWKS_URL=${{ vars.TIBABOT_JWKS_URL }}
             TIBABOT_ADMIN_KEY=secretref:tibabot-admin-key
             TIBABOT_ENABLE_LAB_ASSIST=true
             TIBABOT_ENABLE_DISCHARGE_READINESS=true

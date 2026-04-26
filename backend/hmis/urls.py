@@ -430,6 +430,8 @@ urlpatterns = [
     path("", include("hmis.apps.core.oauth.urls")),
     # FHIR R4 Resource endpoints (for IPS testing)
     path("fhir/", include("hmis.apps.core.fhir.urls", namespace="fhir")),
+    # JWKS endpoint — public, no auth, cacheable (TibaBot fetches this to verify user JWTs)
+    path(".well-known/jwks.json", include("hmis.apps.ai.jwks_urls")),
 ]
 
 # Serve media files in development

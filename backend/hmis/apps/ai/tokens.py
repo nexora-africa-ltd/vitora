@@ -1,7 +1,7 @@
 """
 TibaBot user-identity JWT minting.
 
-Generates short-lived JWTs (HS256) that the Django backend sends to TibaBot
+Generates short-lived JWTs that the Django backend sends to TibaBot
 alongside the facility API key.  This implements the "user identity" layer
 of TibaBot's dual-layer authentication model:
 
@@ -11,9 +11,10 @@ of TibaBot's dual-layer authentication model:
 The JWT carries ``tibabot/*`` namespaced claims so TibaBot can log which
 clinician triggered each request and tailor responses by role/facility level.
 
-When ``TIBABOT_JWT_SECRET`` is empty (dev/test default), no JWT is minted
-and requests fall back to facility-level-only identity — TibaBot treats
-this as an anonymous facility call.
+Signing hierarchy:
+  1. RS256 (``TIBABOT_JWT_PRIVATE_KEY``) — production, verified via JWKS endpoint
+  2. HS256 (``TIBABOT_JWT_SECRET``)      — dev/test fallback
+  3. Neither configured                   → ``None`` (anonymous facility call)
 """
 
 import logging
@@ -24,22 +25,30 @@ import jwt
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
 
+from .jwks import TIBABOT_JWT_KID, get_private_key
+
 logger = logging.getLogger(__name__)
 
 
 def mint_tibabot_jwt(user: AbstractBaseUser) -> str | None:
     """
-    Mint a short-lived HS256 JWT for TibaBot user-identity auth.
+    Mint a short-lived JWT for TibaBot user-identity auth.
+
+    Signing hierarchy:
+      1. RS256 with ``TIBABOT_JWT_PRIVATE_KEY`` (production)
+      2. HS256 with ``TIBABOT_JWT_SECRET`` (dev/test fallback)
+      3. Neither → return ``None``
 
     Args:
         user: The authenticated Django user making the AI request.
 
     Returns:
-        Encoded JWT string, or ``None`` if ``TIBABOT_JWT_SECRET`` is not
-        configured (graceful opt-out for dev/test).
+        Encoded JWT string, or ``None`` if no signing key is configured.
     """
+    private_key = get_private_key()
     secret: str = getattr(settings, "TIBABOT_JWT_SECRET", "")
-    if not secret:
+
+    if private_key is None and not secret:
         return None
 
     issuer: str = getattr(settings, "TIBABOT_JWT_ISSUER", "vitora.nexora.africa")
@@ -62,6 +71,15 @@ def mint_tibabot_jwt(user: AbstractBaseUser) -> str | None:
     claims.update(_build_tibabot_claims(user))
 
     try:
+        if private_key is not None:
+            # RS256 — include kid header so TibaBot resolves the JWKS key
+            return jwt.encode(
+                claims,
+                private_key,
+                algorithm="RS256",
+                headers={"kid": TIBABOT_JWT_KID},
+            )
+        # HS256 fallback (dev/test)
         return jwt.encode(claims, secret, algorithm="HS256")
     except Exception:
         logger.warning("Failed to mint TibaBot JWT for user %s", user.pk, exc_info=True)
