@@ -657,6 +657,18 @@
   animation: pulse-slow 2s ease-in-out infinite;
 }
 
+/* AI insight freshly-generated border glow */
+@keyframes border-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.25);
+    border-color: rgba(52, 211, 153, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(52, 211, 153, 0.45);
+    border-color: rgba(52, 211, 153, 1);
+  }
+}
+
 /* =============================================================================
  * TibaBot Chat — Markdown Prose
  * Scoped under .tibabot-markdown so it won't leak into the rest of the app.

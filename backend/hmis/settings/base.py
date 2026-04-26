@@ -849,6 +849,18 @@ TIBABOT_API_URL = os.getenv("TIBABOT_API_URL", "https://tibabot.vitora.nexora.af
 TIBABOT_API_KEY = os.getenv("TIBABOT_API_KEY", "")
 TIBABOT_TIMEOUT = int(os.getenv("TIBABOT_TIMEOUT", "30"))
 
+# User-identity JWT sent alongside the API key (dual-layer auth).
+# TibaBot uses this for per-user audit trails and role-based behavior.
+# HS256 shared secret — set the same value in TibaBot's facility key config.
+TIBABOT_JWT_SECRET = os.getenv("TIBABOT_JWT_SECRET", "")
+TIBABOT_JWT_ISSUER = os.getenv("TIBABOT_JWT_ISSUER", "vitora.nexora.africa")
+TIBABOT_JWT_AUDIENCE = os.getenv("TIBABOT_JWT_AUDIENCE", "tibabot-api")
+TIBABOT_JWT_EXPIRY_SECONDS = int(os.getenv("TIBABOT_JWT_EXPIRY_SECONDS", "300"))
+
+# Admin key for provisioning/rotating/revoking per-facility keys via
+# the TibaBot admin API.  Only needed by platform operators (Nexora staff).
+TIBABOT_ADMIN_KEY = os.getenv("TIBABOT_ADMIN_KEY", "")
+
 # Per-feature flags (all default to True — opt-out, not opt-in).
 # Each requires TIBABOT_ENABLED=true as a prerequisite.
 TIBABOT_ENABLE_LAB_ASSIST = os.getenv("TIBABOT_ENABLE_LAB_ASSIST", "true").lower() == "true"

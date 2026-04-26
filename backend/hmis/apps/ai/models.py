@@ -2,6 +2,7 @@
 Models for AI integration persistence.
 
 Stores:
+- TibaBot facility API key management (TibaBotFacilityKey)
 - Clinical chat sessions and messages (ChatSession, ChatMessage)
 - AI panel results for encounters and admissions (AIResultBase subclasses)
 
@@ -13,8 +14,90 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from hmis.apps.core.mixins import FacilityScopedModel
+
+# =============================================================================
+# TibaBot facility key management
+# =============================================================================
+
+
+class TibaBotFacilityKey(models.Model):
+    """
+    Per-facility TibaBot API key for dual-layer authentication.
+
+    Each facility in a multi-tenant deployment can have its own TibaBot
+    API key (one billing seat per facility).  Keys are provisioned via
+    the TibaBot admin API and stored here for the Django proxy to use
+    when forwarding requests on behalf of users at that facility.
+
+    When no per-facility key exists, the client falls back to the
+    ``TIBABOT_API_KEY`` environment variable (deployment-wide default).
+    """
+
+    facility = models.OneToOneField(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="tibabot_key",
+        help_text="Facility this API key belongs to.",
+    )
+    api_key = models.CharField(
+        max_length=255,
+        help_text="TibaBot API key (tb_...). Shown only once when provisioned.",
+    )
+    key_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="First 16 hex chars of the key hash (returned by TibaBot on provisioning).",
+    )
+    tibabot_facility_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Facility ID registered with TibaBot (e.g. 'knh-001').",
+    )
+    scopes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Permitted API scopes (e.g. ["chat", "triage", "icd10", "clinical", "predict"]).',
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this key is currently active. Deactivate instead of deleting.",
+    )
+    provisioned_at = models.DateTimeField(
+        default=timezone.now,
+        help_text="When the key was provisioned from TibaBot.",
+    )
+    last_rotated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the key was last rotated.",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Admin notes (rotation reason, etc.).",
+    )
+
+    class Meta:
+        verbose_name = "TibaBot Facility Key"
+        verbose_name_plural = "TibaBot Facility Keys"
+        ordering = ["-provisioned_at"]
+
+    def __str__(self) -> str:
+        return f"{self.facility.name} — {'active' if self.is_active else 'revoked'}"
+
+    @property
+    def masked_key(self) -> str:
+        """Return the key with middle portion masked for display."""
+        key = self.api_key
+        if len(key) <= 10:
+            return "****"
+        return f"{key[:6]}…{key[-4:]}"
+
 
 # =============================================================================
 # Chat persistence (Phase 2)
