@@ -66,6 +66,7 @@ class ICD11LocalService:
         self.timeout = getattr(settings, "ICD11_API_TIMEOUT", 10)
         self.api_version = "v2"
         self.language = "en"
+        self._mms_release: str | None = None
 
     def _get_headers(self) -> dict:
         """Get required headers for WHO ICD-11 API."""
@@ -79,10 +80,26 @@ class ICD11LocalService:
         """Remove HTML tags from text (e.g., <em class='found'>)."""
         return re.sub(r"<[^>]+>", "", text)
 
-    def _extract_code_from_url(self, url: str) -> str | None:
-        """Extract ICD-11 code from entity URL by fetching the entity."""
-        # The code is not in the URL, we need to fetch the entity
-        # For performance, we'll return None and let the caller fetch if needed
+    def _get_mms_release(self) -> str | None:
+        """Auto-detect the latest MMS release version from the container."""
+        if self._mms_release is not None:
+            return self._mms_release
+        try:
+            resp = requests.get(
+                f"{self.base_url}/icd/release/11/mms",
+                headers=self._get_headers(),
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                latest = data.get("latestRelease", "")
+                # Extract version from URL like .../release/11/2026-01/mms
+                match = re.search(r"/release/11/([\d]{4}-[\d]{2})/mms", latest)
+                if match:
+                    self._mms_release = match.group(1)
+                    return self._mms_release
+        except Exception as exc:
+            logger.debug(f"Failed to detect MMS release version: {exc}")
         return None
 
     def search(
@@ -106,18 +123,25 @@ class ICD11LocalService:
             return []
 
         try:
-            # Use the search endpoint
+            # Use the MMS linearization search (returns theCode directly)
+            release = self._get_mms_release()
+            if release:
+                search_url = f"{self.base_url}/icd/release/11/{release}/mms/search"
+            else:
+                # Fallback to foundation search (codes may be missing)
+                search_url = f"{self.base_url}/icd/entity/search"
+
             params = {
                 "q": query,
                 "subtreeFilterUsesFoundationDescendants": "false",
                 "includeKeywordResult": "true",
                 "useFlexisearch": str(use_flexisearch).lower(),
                 "flatResults": "true",
-                "highlightingEnabled": "false",  # Disable HTML highlighting
+                "highlightingEnabled": "false",
             }
 
             response = requests.get(
-                f"{self.base_url}/icd/entity/search",
+                search_url,
                 headers=self._get_headers(),
                 params=params,
                 timeout=self.timeout,
@@ -129,46 +153,21 @@ class ICD11LocalService:
             entities = data.get("destinationEntities", [])
 
             for entity in entities[:limit]:
-                # Get the ICD code - need to fetch from linearization
                 entity_id = entity.get("id", "")
                 title = self._strip_html(entity.get("title", ""))
                 chapter = entity.get("chapter", "")
-                the_code = entity.get("theCode")  # May be null
+                the_code = entity.get("theCode")
                 is_leaf = entity.get("isLeaf", False)
 
-                # If no code, try to get from MMS linearization
-                code = the_code
-                browser_url = None
-
-                if entity_id:
-                    # Convert foundation URI to MMS URI for code lookup
-                    entity_num = entity_id.split("/")[-1]
-                    mms_url = f"{self.base_url}/icd/release/11/2025-01/mms/{entity_num}"
-
-                    try:
-                        mms_response = requests.get(
-                            mms_url,
-                            headers=self._get_headers(),
-                            timeout=5,
-                        )
-                        if mms_response.status_code == 200:
-                            mms_data = mms_response.json()
-                            code = mms_data.get("code", code)
-                            browser_url = mms_data.get("browserUrl")
-                    except Exception as exc:
-                        logger.debug(f"ICD-11 MMS lookup failed, using fallback data: {exc}")
-
-                if not code:
-                    # Skip entries without codes
+                if not the_code:
                     continue
 
                 results.append(
                     ICD11Code(
-                        code=code,
+                        code=the_code,
                         title=title,
                         entity_id=entity_id,
                         chapter=chapter,
-                        browser_url=browser_url,
                         is_leaf=is_leaf,
                     )
                 )
@@ -193,9 +192,10 @@ class ICD11LocalService:
             ICD11Code if found, None otherwise
         """
         try:
+            release = self._get_mms_release() or "2026-01"
             # Search in MMS linearization by code
             response = requests.get(
-                f"{self.base_url}/icd/release/11/2025-01/mms/codeinfo/{code}",
+                f"{self.base_url}/icd/release/11/{release}/mms/codeinfo/{code}",
                 headers=self._get_headers(),
                 timeout=self.timeout,
             )
