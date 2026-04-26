@@ -11,24 +11,41 @@ A comprehensive guide for developers integrating with the TibaBot API — coveri
 
 ## Authentication
 
-### API Key Methods
+### Dual-Layer Authentication
 
-Pass your API key using one of:
+TibaBot uses **facility API keys** (system identity) with **optional JWTs** (user identity). See the full [Facility Auth Guide](facility-auth-guide.md) for provisioning, JWT claims schema, key rotation, and admin API reference.
+
+#### API Key (Facility Identity)
+
+Each facility gets one API key (one billing seat). Pass it on every request:
 
 ```bash
 # Header (recommended)
-curl -H "X-API-Key: your-api-key" https://tibabot.vitora.nexora.africa/chat
+curl -H "X-API-Key: tb_your-key" https://tibabot.vitora.nexora.africa/chat
 
-# Query parameter
-curl "https://tibabot.vitora.nexora.africa/chat?api_key=your-api-key"
+# Query parameter (testing only)
+curl "https://tibabot.vitora.nexora.africa/chat?api_key=tb_your-key"
 ```
+
+#### JWT (User Identity — Optional)
+
+For per-user audit trails and role-based behavior, include a JWT issued by your host app:
+
+```bash
+curl -H "X-API-Key: tb_your-key" \
+     -H "Authorization: Bearer eyJhbG..." \
+     https://tibabot.vitora.nexora.africa/chat
+```
+
+JWT must include `sub`, `iss`, `exp`, `aud: "tibabot-api"`. Custom claims (`tibabot/role`, `tibabot/facility_id`, etc.) enable role-aware retrieval and facility-level tailoring.
 
 ### Rate Limits
 
 | Client Type | Requests/Minute |
 |-------------|-----------------|
 | Anonymous | 30 |
-| Authenticated | 60 |
+| Authenticated (API key) | 60 |
+| Facility-specific override | Custom (set per key) |
 
 Check your status: `GET /rate-limit`
 
@@ -233,6 +250,17 @@ Rate limit headers returned on `429`:
 | `/webhooks/whatsapp` | POST | No | Incoming message handler |
 | `/webhooks/whatsapp/status` | POST | No | Delivery status callbacks |
 | `/webhooks/whatsapp/stats` | GET | No | Rate limiting & delivery stats |
+
+### Admin (Key Provisioning)
+
+> Full guide: [facility-auth-guide.md](facility-auth-guide.md)
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/admin/facility-keys` | POST | Admin Key | Provision new facility API key |
+| `/admin/facility-keys` | GET | Admin Key | List active facility keys |
+| `/admin/facility-keys/{facility_id}` | DELETE | Admin Key | Revoke facility key |
+| `/admin/facility-keys/rotate` | POST | Admin Key | Rotate facility key |
 
 ---
 
