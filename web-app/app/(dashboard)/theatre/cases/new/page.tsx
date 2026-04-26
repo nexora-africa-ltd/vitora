@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PatientSelector } from '@/components/encounters/patient-selector';
+import { DiagnosisCodeInput, type DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
@@ -64,7 +66,7 @@ const bookingSchema = z.object({
     .enum(['GENERAL', 'SPINAL', 'EPIDURAL', 'REGIONAL', 'LOCAL', 'SEDATION', 'COMBINED', ''])
     .default(''),
   laterality: z.enum(['LEFT', 'RIGHT', 'BILATERAL', 'NA']).default('NA'),
-  diagnosis: z.string().default(''),
+  diagnosis: z.string().min(1, 'Diagnosis is required'),
   procedure_notes: z.string().default(''),
 });
 
@@ -82,6 +84,12 @@ export default function NewSurgeryCasePage() {
   const [procedureSearch, setProcedureSearch] = useState('');
   const [procedureOpen, setProcedureOpen] = useState(false);
   const [selectedProcedure, setSelectedProcedure] = useState<ProcedureCatalogEntry | null>(null);
+  const [diagnosisValue, setDiagnosisValue] = useState<DiagnosisCodeValue>({
+    icd10Code: null,
+    icd10Display: '',
+    icd11Code: '',
+    icd11Display: '',
+  });
   const debouncedProcedureSearch = useDebounce(procedureSearch, 300);
 
   const form = useForm<BookingFormData>({
@@ -95,6 +103,7 @@ export default function NewSurgeryCasePage() {
       diagnosis: '',
       procedure_notes: '',
     },
+    mode: 'onChange',
   });
 
   useEffect(() => {
@@ -102,6 +111,18 @@ export default function NewSurgeryCasePage() {
   }, []);
 
   const selectedPatientId = form.watch('patient');
+  const { isValid, errors } = form.formState;
+
+  // Build list of missing required fields for user feedback
+  const missingFields: string[] = [];
+  if (!selectedPatientId) missingFields.push('Patient');
+  if (!selectedProcedure) missingFields.push('Procedure');
+  if (errors.diagnosis || !form.watch('diagnosis')) missingFields.push('Diagnosis');
+  if (errors.theatre || !form.watch('theatre')) missingFields.push('Theatre');
+  if (errors.scheduled_date || !form.watch('scheduled_date')) missingFields.push('Date');
+  if (errors.scheduled_start_time || !form.watch('scheduled_start_time')) missingFields.push('Start Time');
+
+  const canSubmit = isValid && !!selectedPatientId && !!selectedProcedure;
 
   const { data: procedureResults, isLoading: isLoadingProcedures } = useQuery({
     queryKey: ['theatre-booking-procedure-search', debouncedProcedureSearch],
@@ -157,7 +178,7 @@ export default function NewSurgeryCasePage() {
                 name="patient"
                   render={({ field, fieldState }) => (
                   <FormItem>
-                      <FormLabel>Patient</FormLabel>
+                      <FormLabel>Patient <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                         <PatientSelector
                           value={field.value ?? null}
@@ -177,7 +198,7 @@ export default function NewSurgeryCasePage() {
                 name="primary_procedure"
                   render={({ field }) => (
                   <FormItem>
-                      <FormLabel>Procedure</FormLabel>
+                      <FormLabel>Procedure <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                         <Popover open={procedureOpen} onOpenChange={setProcedureOpen}>
                           <PopoverTrigger asChild>
@@ -303,9 +324,19 @@ export default function NewSurgeryCasePage() {
                 name="diagnosis"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>Diagnosis</FormLabel>
                     <FormControl>
-                      <Input placeholder="Pre-operative diagnosis" {...field} />
+                      <DiagnosisCodeInput
+                        label="Pre-operative Diagnosis *"
+                        value={diagnosisValue}
+                        onChange={(val) => {
+                          setDiagnosisValue(val);
+                          // Serialize to string for the form field
+                          const display =
+                            val.icd11Display || val.icd10Display || val.snomedDisplay || '';
+                          field.onChange(display);
+                        }}
+                        placeholder="Search ICD-10, ICD-11, or SNOMED CT codes..."
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -325,7 +356,7 @@ export default function NewSurgeryCasePage() {
                 name="theatre"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Theatre</FormLabel>
+                    <FormLabel>Theatre <span className="text-destructive">*</span></FormLabel>
                     <Select
                       value={field.value?.toString() ?? ''}
                       onValueChange={v => field.onChange(Number(v))}
@@ -350,7 +381,7 @@ export default function NewSurgeryCasePage() {
                 name="scheduled_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel>Date <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -363,7 +394,7 @@ export default function NewSurgeryCasePage() {
                 name="scheduled_start_time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Time</FormLabel>
+                    <FormLabel>Start Time <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input type="time" {...field} />
                     </FormControl>
@@ -376,7 +407,7 @@ export default function NewSurgeryCasePage() {
                 name="estimated_duration_minutes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duration (min)</FormLabel>
+                    <FormLabel>Duration (min) <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input type="number" min={5} max={1440} {...field} />
                     </FormControl>
@@ -507,12 +538,21 @@ export default function NewSurgeryCasePage() {
             </CardContent>
           </Card>
 
+          {/* Missing fields message */}
+          {missingFields.length > 0 && (
+            <Alert variant="default" className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+              <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
+                Please fill in the required fields: {missingFields.join(', ')}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Actions */}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancel
             </Button>
-              <Button type="submit" disabled={submitting || !selectedPatientId || !selectedProcedure}>
+            <Button type="submit" disabled={submitting || !canSubmit}>
               {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Book Surgery
             </Button>
