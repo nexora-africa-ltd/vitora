@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Check, ChevronsUpDown, Loader2, Search, Syringe } from 'lucide-react';
+import { AlertCircle, Check, ChevronsUpDown, Clock, Loader2, Search, Syringe } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -95,6 +95,8 @@ export default function NewSurgeryCasePage() {
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
+      scheduled_date: '',
+      scheduled_start_time: '',
       priority: 'ELECTIVE',
       laterality: 'NA',
       estimated_duration_minutes: 60,
@@ -111,7 +113,23 @@ export default function NewSurgeryCasePage() {
   }, []);
 
   const selectedPatientId = form.watch('patient');
+  const selectedTheatreId = form.watch('theatre');
   const { isValid, errors } = form.formState;
+
+  // Derive operating hours from selected theatre
+  const selectedTheatre = useMemo(
+    () => theatres.find((t) => t.id === selectedTheatreId) ?? null,
+    [theatres, selectedTheatreId]
+  );
+  const hoursStart = selectedTheatre?.operating_hours_start?.slice(0, 5) ?? '';
+  const hoursEnd = selectedTheatre?.operating_hours_end?.slice(0, 5) ?? '';
+
+  // Check if selected time is outside operating hours
+  const selectedTime = form.watch('scheduled_start_time');
+  const timeOutsideHours =
+    selectedTheatre && selectedTime && hoursStart && hoursEnd
+      ? selectedTime < hoursStart || selectedTime >= hoursEnd
+      : false;
 
   // Build list of missing required fields for user feedback
   const missingFields: string[] = [];
@@ -121,8 +139,9 @@ export default function NewSurgeryCasePage() {
   if (errors.theatre || !form.watch('theatre')) missingFields.push('Theatre');
   if (errors.scheduled_date || !form.watch('scheduled_date')) missingFields.push('Date');
   if (errors.scheduled_start_time || !form.watch('scheduled_start_time')) missingFields.push('Start Time');
+  if (timeOutsideHours) missingFields.push('Start Time is outside operating hours');
 
-  const canSubmit = isValid && !!selectedPatientId && !!selectedProcedure;
+  const canSubmit = isValid && !!selectedPatientId && !!selectedProcedure && !timeOutsideHours;
 
   const { data: procedureResults, isLoading: isLoadingProcedures } = useQuery({
     queryKey: ['theatre-booking-procedure-search', debouncedProcedureSearch],
@@ -151,8 +170,48 @@ export default function NewSurgeryCasePage() {
       });
       toast({ title: 'Surgery booked', description: `Case ${created.case_number} created.` });
       router.push(`/theatre/cases/${created.case_number}`);
-    } catch {
-      toast({ title: 'Failed to book surgery', variant: 'destructive' });
+    } catch (err: unknown) {
+      // Parse backend validation errors into user-friendly messages
+      const responseData =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response: { data: Record<string, unknown> } }).response.data
+          : null;
+
+      const messages: string[] = [];
+      if (responseData && typeof responseData === 'object') {
+        for (const [key, value] of Object.entries(responseData)) {
+          if (key === 'conflicts') continue; // handled separately
+          const fieldLabel =
+            key === 'scheduled_start_time' ? 'Start Time'
+            : key === 'primary_procedure' ? 'Procedure'
+            : key === 'scheduled_date' ? 'Date'
+            : key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+          const msg = Array.isArray(value) ? value.join(', ') : String(value);
+          messages.push(`${fieldLabel}: ${msg}`);
+        }
+        // Show conflict details
+        const conflicts = responseData.conflicts as Array<{
+          case_number?: string;
+          start_time?: string;
+          duration?: number;
+          patient_name?: string;
+        }> | undefined;
+        if (conflicts?.length) {
+          for (const c of conflicts) {
+            messages.push(
+              `Conflict: Case ${c.case_number ?? '?'} (${c.patient_name ?? 'Unknown'}) at ${c.start_time ?? '?'} for ${c.duration ?? '?'} min`
+            );
+          }
+        }
+      }
+
+      toast({
+        title: 'Unable to book surgery',
+        description: messages.length
+          ? messages.join('\n')
+          : 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -396,8 +455,25 @@ export default function NewSurgeryCasePage() {
                   <FormItem>
                     <FormLabel>Start Time <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Input
+                        type="time"
+                        min={hoursStart || undefined}
+                        max={hoursEnd || undefined}
+                        {...field}
+                      />
                     </FormControl>
+                    {selectedTheatre && (
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        Operating hours: {hoursStart} – {hoursEnd}
+                      </p>
+                    )}
+                    {timeOutsideHours && (
+                      <p className="flex items-center gap-1 text-xs text-destructive">
+                        <AlertCircle className="h-3 w-3" />
+                        Selected time is outside operating hours ({hoursStart} – {hoursEnd})
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

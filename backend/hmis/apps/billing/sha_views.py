@@ -924,6 +924,12 @@ class TerminologySearchView(APIView):
             logger.debug("ICD11_USE_LOCAL=True, using local container only")
             return self._search_icd11_local(search, limit)
 
+        # If DHA API is not configured, skip straight to local fallback
+        sha_base = getattr(django_settings, "SHA_API_BASE_URL", "")
+        if not sha_base or sha_base == "https://example.com":
+            logger.debug("SHA_API_BASE_URL not configured, using local fallback")
+            return self._search_icd11_local(search, limit, "DHA API not configured")
+
         # Try DHA Terminology API first
         try:
             logger.debug("Attempting DHA Terminology API for ICD-11 search")
@@ -986,6 +992,15 @@ class TerminologySearchView(APIView):
             # Convert to dict format
             data = [code.to_dict() for code in results]
 
+            # If container returned empty results, fall back to local DB
+            if not data:
+                logger.info("Local ICD-11 container returned empty results, trying database")
+                return self._search_icd11_database_fallback(
+                    search,
+                    limit,
+                    fallback_reason or "Local ICD-11 container returned no results",
+                )
+
             return Response(
                 {
                     "results": data,
@@ -1018,11 +1033,13 @@ class TerminologySearchView(APIView):
 
             data = [
                 {
+                    "id": code.pk,
                     "code": code.code,
                     "title": code.title,
                     "chapter": code.chapter or code.chapter_no,
                     "chapter_no": code.chapter_no,
                     "is_leaf": code.is_leaf,
+                    "is_active": code.is_active,
                     "class_kind": code.class_kind,
                     "entity_id": code.entity_id,
                 }

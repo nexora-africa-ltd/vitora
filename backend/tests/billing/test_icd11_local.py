@@ -140,13 +140,6 @@ class TestICD11LocalService:
         result = service._strip_html("")
         assert result == ""
 
-    def test_extract_code_from_url(self):
-        """Should return None (extraction requires API call)."""
-        service = ICD11LocalService()
-
-        result = service._extract_code_from_url("http://id.who.int/icd/entity/123")
-        assert result is None
-
     def test_search_empty_query_returns_empty(self):
         """Should return empty list for empty query."""
         service = ICD11LocalService()
@@ -175,14 +168,22 @@ class TestICD11LocalService:
 
     @mock.patch("hmis.apps.billing.services.icd11_local.requests.get")
     def test_search_success(self, mock_get):
-        """Should parse search results correctly."""
-        mock_response = mock.Mock()
-        mock_response.status_code = 200
-        mock_response.raise_for_status = mock.Mock()
-        mock_response.json.return_value = {
+        """Should parse MMS search results correctly."""
+        # First call: _get_mms_release fetches release version
+        release_response = mock.Mock()
+        release_response.status_code = 200
+        release_response.json.return_value = {
+            "latestRelease": "http://id.who.int/icd/release/11/2026-01/mms",
+            "release": ["http://id.who.int/icd/release/11/2026-01/mms"],
+        }
+        # Second call: actual MMS search
+        search_response = mock.Mock()
+        search_response.status_code = 200
+        search_response.raise_for_status = mock.Mock()
+        search_response.json.return_value = {
             "destinationEntities": [
                 {
-                    "id": "http://id.who.int/icd/entity/123",
+                    "id": "http://id.who.int/icd/release/11/2026-01/mms/123",
                     "title": "Malaria",
                     "chapter": "Infectious diseases",
                     "theCode": "1F40",
@@ -190,7 +191,7 @@ class TestICD11LocalService:
                 },
             ]
         }
-        mock_get.return_value = mock_response
+        mock_get.side_effect = [release_response, search_response]
 
         service = ICD11LocalService()
         results = service.search("malaria", limit=10)
@@ -202,9 +203,16 @@ class TestICD11LocalService:
     @mock.patch("hmis.apps.billing.services.icd11_local.requests.get")
     def test_get_by_code_not_found(self, mock_get):
         """Should return None for 404 response."""
-        mock_response = mock.Mock()
-        mock_response.status_code = 404
-        mock_get.return_value = mock_response
+        # First call: _get_mms_release
+        release_response = mock.Mock()
+        release_response.status_code = 200
+        release_response.json.return_value = {
+            "latestRelease": "http://id.who.int/icd/release/11/2026-01/mms",
+        }
+        # Second call: codeinfo lookup returns 404
+        code_response = mock.Mock()
+        code_response.status_code = 404
+        mock_get.side_effect = [release_response, code_response]
 
         service = ICD11LocalService()
         result = service.get_by_code("INVALID")
@@ -226,15 +234,22 @@ class TestICD11LocalService:
     @mock.patch("hmis.apps.billing.services.icd11_local.requests.get")
     def test_get_by_code_success(self, mock_get):
         """Should return ICD11Code for valid code."""
-        mock_response = mock.Mock()
-        mock_response.status_code = 200
-        mock_response.raise_for_status = mock.Mock()
-        mock_response.json.return_value = {
+        # First call: _get_mms_release
+        release_response = mock.Mock()
+        release_response.status_code = 200
+        release_response.json.return_value = {
+            "latestRelease": "http://id.who.int/icd/release/11/2026-01/mms",
+        }
+        # Second call: codeinfo lookup
+        code_response = mock.Mock()
+        code_response.status_code = 200
+        code_response.raise_for_status = mock.Mock()
+        code_response.json.return_value = {
             "stemId": "http://id.who.int/icd/entity/123",
             "title": {"@value": "Cholera"},
             "browserUrl": "https://icd.who.int/browse/1A00",
         }
-        mock_get.return_value = mock_response
+        mock_get.side_effect = [release_response, code_response]
 
         service = ICD11LocalService()
         result = service.get_by_code("1A00")
