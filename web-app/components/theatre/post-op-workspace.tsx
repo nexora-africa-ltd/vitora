@@ -52,6 +52,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { aiApi } from '@/lib/api/ai';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { theatreApi } from '@/lib/api/theatre';
@@ -381,8 +382,10 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Post-Operative & PACU Workflow</h2>
-          <p className="text-sm text-muted-foreground">Capture PACU arrival, monitor recovery vitals, and complete discharge from recovery.</p>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            Post-Operative & PACU Workflow
+            <HelpPopover content="Manage post-operative care: document PACU arrival, monitor recovery vitals (Aldrete score, pain, sedation), handle complications, and complete discharge from recovery." />
+          </h2>
         </div>
         <div className="flex gap-2">
           {pacuRecord ? (
@@ -414,6 +417,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
           <CardTitle className="text-base flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4" />
             Surgical AI Post-Op Advisory
+            <HelpPopover content="AI-powered post-operative care recommendations. Evaluates recovery risks and suggests monitoring protocols specific to the procedure performed." />
             {latestStoredPostOp ? <Sparkles className="h-4 w-4 text-teal-400" /> : null}
             <Badge variant={surgeryCase.ai_surgical_summary.post_op.has_result ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
               {surgeryCase.ai_surgical_summary.post_op.has_result ? 'Result available' : 'Not run'}
@@ -693,7 +697,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
 
       {!pacuRecord ? (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><MoveRight className="h-4 w-4" />PACU Arrival</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><MoveRight className="h-4 w-4" />PACU Arrival<HelpPopover content="Document patient arrival in the Post-Anesthesia Care Unit. Records arrival time, receiving nurse, initial Aldrete score, and handover details from the anesthesia team." /></CardTitle></CardHeader>
           <CardContent>
             {surgeryCase.status !== 'IN_PACU' ? (
               <Alert>
@@ -720,7 +724,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
           <div className="grid gap-4 xl:grid-cols-2">
             <Card className="relative overflow-hidden">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
-              <CardHeader className="relative pb-3"><CardTitle className="text-base flex items-center gap-2"><HeartPulse className="h-4 w-4" />Recovery Status</CardTitle></CardHeader>
+              <CardHeader className="relative pb-3"><CardTitle className="text-base flex items-center gap-2"><HeartPulse className="h-4 w-4" />Recovery Status<HelpPopover content="At-a-glance recovery metrics: Aldrete scores, vital count, complication flags, and discharge readiness." /></CardTitle></CardHeader>
               <CardContent className="relative space-y-3">
                 <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Arrival documented</span><Badge variant="success" size="sm" className="w-fit">{new Date(pacuRecord.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Badge></div>
                 <div className="flex items-center justify-between rounded-lg border p-3"><span className="text-sm font-medium">Initial Aldrete</span><Badge variant={(pacuRecord.initial_aldrete_score ?? 0) >= 8 ? 'success' : 'warning'} size="sm" className="w-fit">{pacuRecord.initial_aldrete_score ?? 'N/A'}/10</Badge></div>
@@ -731,7 +735,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Siren className="h-4 w-4" />PACU Monitoring Trend</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Siren className="h-4 w-4" />PACU Monitoring Trend<HelpPopover content="Time-series chart of recovery vitals: heart rate, SpO2, Aldrete score, and pain score. Helps identify deterioration early." /></CardTitle></CardHeader>
               <CardContent>
                 {pacuRecord.vital_readings.length === 0 ? (
                   <Alert><AlertCircle className="h-4 w-4" /><AlertTitle>No PACU vitals yet</AlertTitle><AlertDescription>Add the first recovery observation below.</AlertDescription></Alert>
@@ -777,7 +781,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
 
           <div className="grid gap-4 xl:grid-cols-2">
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><HeartPulse className="h-4 w-4" />Add PACU Vital</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><HeartPulse className="h-4 w-4" />Add PACU Vital<HelpPopover content="Record a new recovery observation: heart rate, SpO2, blood pressure, Aldrete score (0-10), pain score, sedation level, and temperature." /></CardTitle></CardHeader>
               <CardContent>
                 <Form {...vitalForm}>
                   <form className="space-y-4" onSubmit={vitalForm.handleSubmit(addVital)}>
@@ -803,7 +807,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
             </Card>
 
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />Recovery Documentation & Handover</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />Recovery Documentation & Handover<HelpPopover content="Document post-operative complications (nausea, shivering, respiratory/cardiovascular issues), medications given in PACU, and the nursing handover for ward transfer." /></CardTitle></CardHeader>
               <CardContent>
                 <Form {...documentationForm}>
                   <form className="space-y-4" onSubmit={documentationForm.handleSubmit(saveDocumentation)}>
@@ -835,7 +839,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
           </div>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><MoveRight className="h-4 w-4" />Discharge Workflow</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><MoveRight className="h-4 w-4" />Discharge Workflow<HelpPopover content="Complete PACU discharge: record final Aldrete score, select discharge destination (ward, ICU, day case), and add discharge notes. Blocked until discharge criteria are met." /></CardTitle></CardHeader>
             <CardContent>
               {pacuRecord.discharge_time ? (
                 <Alert><CheckCircle2 className="h-4 w-4" /><AlertTitle>Discharge already completed</AlertTitle><AlertDescription>{pacuRecord.discharge_destination ? `Destination: ${pacuRecord.discharge_destination.replace(/_/g, ' ')}` : 'Recovery discharge has already been documented.'}</AlertDescription></Alert>

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { theatreApi } from '@/lib/api/theatre';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -192,6 +193,7 @@ export function VitalsEntryForm({ caseNumber, onVitalAdded }: VitalsEntryFormPro
         <CardTitle className="text-base flex items-center gap-2">
           <Syringe className="h-4 w-4" />
           Record Vital Reading
+          <HelpPopover content="Enter a new intra-operative vital observation. Fields with clinical thresholds show real-time warnings (amber) and critical alerts (red) as you type. The backend validates ranges before saving." />
         </CardTitle>
       </CardHeader>
       <CardContent>

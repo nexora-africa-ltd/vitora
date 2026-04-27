@@ -16,6 +16,7 @@ import {
 import { getApiErrorMessage } from '@/lib/api/client';
 import { theatreApi } from '@/lib/api/theatre';
 import { useToast } from '@/lib/hooks/use-toast';
+import { HelpPopover } from '@/components/shared/help-popover';
 import type { IntraOpVital } from '@/lib/types/theatre';
 import { vitalCellClass } from '@/lib/vitals-thresholds';
 
@@ -53,6 +54,7 @@ export function VitalsTable({ vitals, caseNumber, onVitalDeleted }: VitalsTableP
           <CardTitle className="text-base flex items-center gap-2">
             <Table2 className="h-4 w-4" />
             Vitals Timeline
+            <HelpPopover content="Tabular view of all recorded intra-operative vitals. Cells are highlighted amber (warning) or red (critical) when values exceed clinical thresholds. Delete individual readings with the trash icon." />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -70,6 +72,7 @@ export function VitalsTable({ vitals, caseNumber, onVitalDeleted }: VitalsTableP
         <CardTitle className="text-base flex items-center gap-2">
           <Table2 className="h-4 w-4" />
           Vitals Timeline
+          <HelpPopover content="Tabular view of all recorded intra-operative vitals. Cells are highlighted amber (warning) or red (critical) when values exceed clinical thresholds. Delete individual readings with the trash icon." />
           <Badge variant="outline" size="sm" className="ml-auto">
             {vitals.length} reading{vitals.length !== 1 ? 's' : ''}
           </Badge>

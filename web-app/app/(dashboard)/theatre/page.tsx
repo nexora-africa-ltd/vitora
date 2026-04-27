@@ -17,6 +17,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { PermissionGate } from '@/components/shared/permission-gate';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
@@ -112,6 +113,7 @@ export default function TheatrePage() {
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
               <Scissors className="h-5 w-5" />
               Today&apos;s Theatre List
+              <HelpPopover content="Live board of today's scheduled surgeries. Shows case status progression from scheduling through recovery. Click a case row to open its workspace." />
             </CardTitle>
             <Button variant="outline" size="sm" asChild>
               <Link href={`/theatre/schedule`}>View Full Schedule</Link>

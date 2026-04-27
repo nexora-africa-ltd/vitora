@@ -37,6 +37,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { VitalsChartCard } from '@/components/theatre/vitals-chart-card';
 import { VitalsEntryForm } from '@/components/theatre/vitals-entry-form';
 import { VitalsTable } from '@/components/theatre/vitals-table';
@@ -581,6 +582,7 @@ export function IntraOpWorkspace({
             <CardTitle className="text-base flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" />
               Intra-Op Readiness
+              <HelpPopover content="Overview of intra-operative safety checks. Tracks completion of WHO Time-Out, Sign-Out, and overall surgical readiness before proceeding." />
             </CardTitle>
           </CardHeader>
           <CardContent className="relative space-y-3">
@@ -640,7 +642,7 @@ export function IntraOpWorkspace({
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><ClipboardCheck className="h-4 w-4" />WHO Time-Out</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><ClipboardCheck className="h-4 w-4" />WHO Time-Out<HelpPopover content="The WHO Surgical Safety Checklist Time-Out: a mandatory pause before the first incision. Confirms patient identity, procedure, site, and team readiness." /></CardTitle></CardHeader>
           <CardContent>
             <Form {...timeOutForm}>
               <form className="space-y-4" onSubmit={timeOutForm.handleSubmit(saveTimeOut)}>
@@ -669,7 +671,7 @@ export function IntraOpWorkspace({
         </Card>
 
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><ClipboardCheck className="h-4 w-4" />WHO Sign-Out</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><ClipboardCheck className="h-4 w-4" />WHO Sign-Out<HelpPopover content="The WHO Surgical Safety Checklist Sign-Out: completed before the patient leaves the operating room. Verifies instrument, sponge, and needle counts; specimen labelling; and key recovery concerns." /></CardTitle></CardHeader>
           <CardContent>
             <Form {...signOutForm}>
               <form className="space-y-4" onSubmit={signOutForm.handleSubmit(saveSignOut)}>
@@ -699,7 +701,7 @@ export function IntraOpWorkspace({
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Syringe className="h-4 w-4" />Anesthesia Intra-Op Record</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Syringe className="h-4 w-4" />Anesthesia Intra-Op Record<HelpPopover content="Documents intra-operative anesthesia details: induction/intubation times, agents used, fluid management, blood loss, and post-op orders." /></CardTitle></CardHeader>
           <CardContent>
             {!anesthesiaRecord ? (
               <Alert>
@@ -748,7 +750,7 @@ export function IntraOpWorkspace({
         </Card>
 
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />Operative Note</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />Operative Note<HelpPopover content="The surgeon's operative note documenting findings, technique, implants, drains, specimens, and post-operative plan. Can be digitally signed and exported as PDF." /></CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {operativeNote?.signed_at ? (
               <Alert>
@@ -794,7 +796,7 @@ export function IntraOpWorkspace({
       </div>
 
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Package className="h-4 w-4" />Consumables & Implants</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Package className="h-4 w-4" />Consumables & Implants<HelpPopover content="Track surgical consumables, implants, and materials used during the procedure. Records lot numbers, expiry dates, and costs for billing and auditing." /></CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <Form {...consumableForm}>
             <form className="space-y-4" onSubmit={consumableForm.handleSubmit(saveConsumable)}>
@@ -885,6 +887,7 @@ export function IntraOpWorkspace({
           <CardTitle className="text-base flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4" />
             Surgical AI Checklist Advisory
+            <HelpPopover content="AI-powered surgical safety checklist. Evaluates procedure-specific safety steps and provides real-time compliance guidance during the operation." />
             {currentChecklistSessionId ? <Sparkles className="h-4 w-4 text-teal-400" /> : null}
             <Badge variant={currentChecklistSessionId ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
               {currentChecklistSessionId ? 'Session active' : 'Not started'}
