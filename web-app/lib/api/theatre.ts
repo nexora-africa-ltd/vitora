@@ -144,6 +144,13 @@ export const theatreApi = {
     });
   },
 
+  async linkEncounter(caseNumber: string): Promise<SurgeryCaseDetail> {
+    const response = await apiClient.post(`/api/theatre/cases/${caseNumber}/link-encounter/`);
+    return parseResponse(SurgeryCaseDetailSchema, response.data, {
+      context: 'theatreApi.linkEncounter',
+    });
+  },
+
   async getDailyList(date: string): Promise<SurgeryCaseList[]> {
     const response = await apiClient.get('/api/theatre/cases/daily-list/', {
       params: { date },

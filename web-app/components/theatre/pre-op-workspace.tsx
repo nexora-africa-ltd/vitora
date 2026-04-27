@@ -13,6 +13,7 @@ import {
   FlaskConical,
   Loader2,
   Plus,
+  ScanLine,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
@@ -49,6 +50,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { aiApi } from '@/lib/api/ai';
 import { staffApi } from '@/lib/api/rbac';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { imagingApi } from '@/lib/api/imaging';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { proceduresApi } from '@/lib/api/procedures';
 import { theatreApi } from '@/lib/api/theatre';
@@ -60,6 +62,7 @@ import {
   TEAM_ROLE_LABELS,
 } from '@/components/theatre/team-assignment-dialog';
 import { useToast } from '@/lib/hooks/use-toast';
+import type { ImagingOrder } from '@/lib/types/imaging';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { StoredSurgicalPreOpAssessResult } from '@/lib/types/ai';
 import type { ProcedureCatalogDetail, ProcedureOrder } from '@/lib/types/procedure';
@@ -184,15 +187,19 @@ function getLinkedProcedureOrder(
 export function PreOpReadinessCard({
   consentReady,
   labsReady,
+  imagingReady,
   whoReady,
   anesthesiaReady,
   labOrders,
+  imagingOrders,
 }: {
   consentReady: boolean;
   labsReady: boolean;
+  imagingReady: boolean;
   whoReady: boolean;
   anesthesiaReady: boolean;
   labOrders: LabOrder[];
+  imagingOrders: ImagingOrder[];
 }) {
   const checks: PreOpCheck[] = [
     {
@@ -209,6 +216,16 @@ export function PreOpReadinessCard({
           : labsReady
             ? 'All linked lab orders are completed.'
             : 'Some linked lab orders are still pending.',
+    },
+    {
+      label: 'Pre-op imaging',
+      complete: imagingReady,
+      detail:
+        imagingOrders.length === 0
+          ? 'No imaging orders are linked to this case.'
+          : imagingReady
+            ? 'All linked imaging orders are reported.'
+            : 'Some imaging orders are still pending results or reporting.',
     },
     {
       label: 'WHO Sign-In',
@@ -269,6 +286,7 @@ export function PreOpWorkspace({
   const [procedureOrder, setProcedureOrder] = useState<ProcedureOrder | null>(null);
   const [procedureCatalog, setProcedureCatalog] = useState<ProcedureCatalogDetail | null>(null);
   const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
+  const [imagingOrders, setImagingOrders] = useState<ImagingOrder[]>([]);
   const [whoChecklist, setWhoChecklist] = useState<WHOChecklist | null>(null);
   const [anesthesiaRecord, setAnesthesiaRecord] = useState<AnesthesiaRecord | null>(null);
   const [schedulingContext, setSchedulingContext] = useState<CaseSchedulingContext | null>(null);
@@ -383,12 +401,16 @@ export function PreOpWorkspace({
             }
       );
 
-      const [catalogEntry, orderListing, linkedLabOrders, checklist, anesthesia, caseSchedulingContext, preOpAssessments] = await Promise.all([
+      const [catalogEntry, orderListing, linkedLabOrders, linkedImagingOrders, checklist, anesthesia, caseSchedulingContext, preOpAssessments] = await Promise.all([
         proceduresApi.getCatalogEntry(surgeryCase.primary_procedure).catch(() => null),
         procedureOrderPromise.catch(() => null),
         (surgeryCase.encounter != null
           ? laboratoryApi.getEncounterOrders(surgeryCase.encounter)
           : laboratoryApi.getPatientOrders(surgeryCase.patient)
+        ).catch(() => []),
+        (surgeryCase.encounter != null
+          ? imagingApi.getEncounterOrders(surgeryCase.encounter)
+          : imagingApi.getPatientOrders(surgeryCase.patient)
         ).catch(() => []),
         theatreApi.getWHOChecklist(surgeryCase.case_number).catch(() => null),
         theatreApi.getAnesthesiaRecord(surgeryCase.case_number).catch(() => null),
@@ -424,6 +446,7 @@ export function PreOpWorkspace({
       setProcedureCatalog((catalogEntry as ProcedureCatalogDetail | null) ?? null);
       setProcedureOrder(linkedOrder as ProcedureOrder | null);
       setLabOrders(linkedLabOrders);
+      setImagingOrders(linkedImagingOrders);
       setWhoChecklist(checklist);
       setAnesthesiaRecord(anesthesia);
       setSchedulingContext(caseSchedulingContext);
@@ -521,6 +544,11 @@ export function PreOpWorkspace({
     [labOrders]
   );
   const labsReady = pendingLabOrders.length === 0;
+  const pendingImagingOrders = useMemo(
+    () => imagingOrders.filter((order) => order.status !== 'REPORTED' && order.status !== 'CANCELLED'),
+    [imagingOrders]
+  );
+  const imagingReady = pendingImagingOrders.length === 0;
   const consentReady =
     !(procedureCatalog?.consent_required ?? true) || procedureOrder?.consent?.status === 'SIGNED';
   const whoReady = Boolean(whoChecklist?.sign_in_complete);
@@ -806,9 +834,11 @@ export function PreOpWorkspace({
       <PreOpReadinessCard
         consentReady={consentReady}
         labsReady={labsReady}
+        imagingReady={imagingReady}
         whoReady={whoReady}
         anesthesiaReady={anesthesiaReady}
         labOrders={labOrders}
+        imagingOrders={imagingOrders}
       />
 
       <Card className={`relative overflow-hidden transition-all duration-700 ${
@@ -1507,6 +1537,58 @@ export function PreOpWorkspace({
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
                         Results ready for {completedItems} of {order.items.length} test{order.items.length === 1 ? '' : 's'}.
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ScanLine className="h-4 w-4" />
+              Pre-Op Imaging
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Alert>
+              {imagingReady ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+              <AlertTitle>{imagingReady ? 'Imaging checks clear' : 'Imaging review pending'}</AlertTitle>
+              <AlertDescription>
+                {imagingOrders.length === 0
+                  ? 'No imaging orders were found for the linked encounter or patient.'
+                  : imagingReady
+                    ? 'All linked imaging orders are reported and ready for review.'
+                    : `${pendingImagingOrders.length} imaging order${pendingImagingOrders.length === 1 ? '' : 's'} still need reporting.`}
+              </AlertDescription>
+            </Alert>
+
+            {imagingOrders.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                No encounter imaging orders found. If pre-op imaging is required, create orders from the patient encounter before proceeding.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {imagingOrders.map((order) => {
+                  const completedItems = order.items.filter((item) => item.is_completed).length;
+                  return (
+                    <div key={order.id} className="rounded-lg border p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{order.order_number}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {order.items.map((item) => item.procedure_name).join(', ') || 'No procedures listed'}
+                          </p>
+                        </div>
+                        <Badge variant={order.status === 'REPORTED' ? 'success' : 'warning'} size="sm" className="w-fit shrink-0">
+                          {order.status.replace(/_/g, ' ')}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {completedItems} of {order.items.length} procedure{order.items.length === 1 ? '' : 's'} completed.
                       </p>
                     </div>
                   );
