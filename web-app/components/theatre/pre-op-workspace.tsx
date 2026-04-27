@@ -54,7 +54,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { LabOrderForm } from '@/components/laboratory/lab-order-form';
 import { ImagingOrderForm } from '@/components/imaging/imaging-order-form';
 import { aiApi } from '@/lib/api/ai';
-import { staffApi } from '@/lib/api/rbac';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { imagingApi } from '@/lib/api/imaging';
 import { laboratoryApi } from '@/lib/api/laboratory';
@@ -72,7 +71,6 @@ import type { ImagingOrder } from '@/lib/types/imaging';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { StoredSurgicalPreOpAssessResult } from '@/lib/types/ai';
 import type { ProcedureCatalogDetail, ProcedureOrder } from '@/lib/types/procedure';
-import type { StaffProfile } from '@/lib/types/rbac';
 import type {
   AnesthesiaRecord,
   CaseSchedulingContext,
@@ -334,13 +332,6 @@ export function PreOpWorkspace({
   const [surgicalPatientAge, setSurgicalPatientAge] = useState<number | ''>(computedAge);
   const [surgicalPatientSex, setSurgicalPatientSex] = useState<'male' | 'female'>(computedSex);
   const [assignmentDialog, setAssignmentDialog] = useState(false);
-  const [staffSearch, setStaffSearch] = useState('');
-  const [staffResults, setStaffResults] = useState<StaffProfile[]>([]);
-  const [staffResultsLoading, setStaffResultsLoading] = useState(false);
-  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
-  const [selectedRole, setSelectedRole] = useState<(typeof TEAM_ROLES)[number] | ''>('');
-  const [teamNotes, setTeamNotes] = useState('');
-  const [staffPickerOpen, setStaffPickerOpen] = useState(false);
   const [teamMutationLoading, setTeamMutationLoading] = useState(false);
 
   const consentForm = useForm<ConsentFormValues>({
@@ -530,33 +521,6 @@ export function PreOpWorkspace({
     void loadPreOpData(true);
   }, [loadPreOpData]);
 
-  const loadStaffOptions = useCallback(async (searchValue: string) => {
-    try {
-      setStaffResultsLoading(true);
-      const response = await staffApi.list({
-        search: searchValue || undefined,
-        page_size: 50,
-        employment_status: 'ACTIVE',
-      });
-      setStaffResults(response.results ?? []);
-    } catch {
-      toast({
-        title: 'Unable to load staff',
-        description: 'Staff candidates could not be loaded for team assignment.',
-        variant: 'destructive',
-      });
-    } finally {
-      setStaffResultsLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    if (!assignmentDialog) {
-      return;
-    }
-    void loadStaffOptions(staffSearch);
-  }, [assignmentDialog, loadStaffOptions, staffSearch]);
-
   const pendingLabOrders = useMemo(
     () => labOrders.filter((order) => order.status !== 'COMPLETED'),
     [labOrders]
@@ -607,32 +571,19 @@ export function PreOpWorkspace({
     }
   }, [loadPreOpData, onCaseRefresh]);
 
-  const resetTeamAssignmentForm = () => {
-    setSelectedStaffId(null);
-    setSelectedRole('');
-    setTeamNotes('');
-    setStaffSearch('');
-    setStaffPickerOpen(false);
-  };
-
-  const handleAssignTeamMember = async () => {
-    if (!selectedStaffId || !selectedRole) {
-      return;
-    }
-
+  const handleAssignTeamMember = async (data: { staffUserId: number; role: string; notes: string }) => {
     try {
       setTeamMutationLoading(true);
       await theatreApi.addTeamMember(surgeryCase.case_number, {
-        staff_member: selectedStaffId,
-        role: selectedRole,
-        notes: teamNotes.trim() || undefined,
+        staff_member: data.staffUserId,
+        role: data.role,
+        notes: data.notes || undefined,
       });
       toast({
         title: 'Team member assigned',
         description: 'The surgical team roster has been updated.',
       });
       setAssignmentDialog(false);
-      resetTeamAssignmentForm();
       await refreshEverything();
     } catch (error) {
       toast({
@@ -2016,24 +1967,8 @@ export function PreOpWorkspace({
 
       <TeamAssignmentDialog
         open={assignmentDialog}
-        onOpenChange={(open) => {
-          setAssignmentDialog(open);
-          if (!open) {
-            resetTeamAssignmentForm();
-          }
-        }}
-        staffPickerOpen={staffPickerOpen}
-        onStaffPickerOpenChange={setStaffPickerOpen}
-        staffSearch={staffSearch}
-        onStaffSearchChange={setStaffSearch}
-        staffResults={staffResults}
-        staffResultsLoading={staffResultsLoading}
-        selectedStaffId={selectedStaffId}
-        onSelectedStaffIdChange={setSelectedStaffId}
-        selectedRole={selectedRole}
-        onSelectedRoleChange={setSelectedRole}
-        teamNotes={teamNotes}
-        onTeamNotesChange={setTeamNotes}
+        onOpenChange={setAssignmentDialog}
+        excludeUserIds={surgeryCase.team_members.map((m) => m.staff_member)}
         onSubmit={handleAssignTeamMember}
         submitting={teamMutationLoading}
       />

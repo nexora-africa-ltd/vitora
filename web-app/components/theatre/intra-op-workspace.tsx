@@ -263,7 +263,7 @@ export function IntraOpWorkspace({
       post_operative_plan: '',
     },
   });
-  const consumableForm = useForm<ConsumableValues>({ resolver: zodResolver(consumableSchema), defaultValues: consumableSchema.parse({ quantity_used: 1 }) });
+  const consumableForm = useForm<ConsumableValues>({ resolver: zodResolver(consumableSchema), defaultValues: { item: 0, quantity_used: 1, unit_cost: 0, lot_number: '', expiry_date: '', is_implant: false, implant_serial_number: '' } });
 
   const loadWorkspace = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true); else setRefreshing(true);
