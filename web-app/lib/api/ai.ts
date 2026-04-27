@@ -43,6 +43,9 @@ import {
   StoredSurgicalPreOpAssessResultSchema,
   AIInvestigationSuggestResponseSchema,
   StoredInvestigationSuggestResultSchema,
+  AIAdvisoryOrderLinkSchema,
+  AIAdvisoryBulkSeedResponseSchema,
+  AIAdvisoryHasOrdersResponseSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -101,6 +104,11 @@ import type {
   AIInvestigationSuggestRequest,
   AIInvestigationSuggestResponse,
   StoredInvestigationSuggestResult,
+  AIAdvisoryOrderLink,
+  AIAdvisoryBulkSeedRequest,
+  AIAdvisoryBulkSeedResponse,
+  AIAdvisoryOrderLinkActionRequest,
+  AIAdvisoryHasOrdersResponse,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -668,6 +676,46 @@ export const aiApi = {
     const response = await apiClient.get('/api/ai/results/investigation-suggestions/', { params });
     return parseResponse(StoredInvestigationSuggestResultSchema.array(), response.data, {
       context: 'aiApi.getStoredInvestigationSuggestions',
+    });
+  },
+
+  // ===========================================================================
+  // Advisory → Order Links
+  // ===========================================================================
+
+  /** List advisory links for an AI result. */
+  getAdvisoryLinks: async (aiResultId: string): Promise<AIAdvisoryOrderLink[]> => {
+    const response = await apiClient.get('/api/ai/advisory-links/', {
+      params: { ai_result_id: aiResultId },
+    });
+    return parseResponse(AIAdvisoryOrderLinkSchema.array(), response.data, {
+      context: 'aiApi.getAdvisoryLinks',
+    });
+  },
+
+  /** Seed advisory suggestion rows from an AI result. */
+  seedAdvisoryLinks: async (data: AIAdvisoryBulkSeedRequest): Promise<AIAdvisoryBulkSeedResponse> => {
+    const response = await apiClient.post('/api/ai/advisory-links/', data);
+    return parseResponse(AIAdvisoryBulkSeedResponseSchema, response.data, {
+      context: 'aiApi.seedAdvisoryLinks',
+    });
+  },
+
+  /** Mark an advisory link as ORDERED / DECLINED / NOT_APPLICABLE. */
+  actionAdvisoryLink: async (id: number, data: AIAdvisoryOrderLinkActionRequest): Promise<AIAdvisoryOrderLink> => {
+    const response = await apiClient.patch(`/api/ai/advisory-links/${id}/action/`, data);
+    return parseResponse(AIAdvisoryOrderLinkSchema, response.data, {
+      context: 'aiApi.actionAdvisoryLink',
+    });
+  },
+
+  /** Check if an AI result has non-draft orders linked (to disable Ask again). */
+  advisoryHasOrders: async (aiResultId: string): Promise<AIAdvisoryHasOrdersResponse> => {
+    const response = await apiClient.get('/api/ai/advisory-links/has-orders/', {
+      params: { ai_result_id: aiResultId },
+    });
+    return parseResponse(AIAdvisoryHasOrdersResponseSchema, response.data, {
+      context: 'aiApi.advisoryHasOrders',
     });
   },
 };

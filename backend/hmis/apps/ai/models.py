@@ -13,6 +13,8 @@ serves as a history/cache rather than the source of truth for the AI response.
 import uuid
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
 
@@ -422,3 +424,112 @@ class AISurgicalPostOpCarePlanResult(AIResultBase):
 
     def __str__(self) -> str:
         return f"SurgicalPostOp {self.id} — {self.procedure_key or 'unknown procedure'}"
+
+
+# =============================================================================
+# AI Advisory ↔ Order link (junction table)
+# =============================================================================
+
+
+class AIAdvisoryOrderLinkStatus(models.TextChoices):
+    SUGGESTED = "SUGGESTED", "Suggested"
+    ORDERED = "ORDERED", "Ordered"
+    DECLINED = "DECLINED", "Declined"
+    NOT_APPLICABLE = "NOT_APPLICABLE", "Not applicable"
+
+
+class AIAdvisoryOrderLink(FacilityScopedModel):
+    """
+    Links an individual AI advisory suggestion to a clinical order.
+
+    Each row represents one suggestion line from a stored AI result (identified
+    by ``ai_result_content_type`` + ``ai_result_id``) at a specific path within
+    the result JSON (``suggestion_category`` + ``suggestion_index``).
+
+    Exactly one of ``lab_order``, ``imaging_order``, or ``prescription`` is set
+    when ``status`` is ORDERED.
+    """
+
+    # ── AI result (polymorphic via ContentType) ──────────────────────────
+    ai_result_content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name="advisory_order_links",
+    )
+    ai_result_id = models.UUIDField(
+        help_text="PK of the AI result row (all AI results use UUID PKs).",
+    )
+    ai_result = GenericForeignKey("ai_result_content_type", "ai_result_id")
+
+    # ── Suggestion identification ────────────────────────────────────────
+    suggestion_category = models.CharField(
+        max_length=60,
+        help_text=(
+            "Category within result_data, e.g. 'medications', "
+            "'pre_op_checklist.investigations', 'complications_to_watch'."
+        ),
+    )
+    suggestion_index = models.PositiveIntegerField(
+        help_text="Zero-based index of the suggestion within its category array.",
+    )
+    suggestion_text = models.TextField(
+        help_text="Snapshot of the suggestion text at link-creation time.",
+    )
+
+    # ── Target order (exactly one is set when ORDERED) ───────────────────
+    lab_order = models.ForeignKey(
+        "laboratory.LabOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_advisory_links",
+    )
+    imaging_order = models.ForeignKey(
+        "imaging.ImagingOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_advisory_links",
+    )
+    prescription = models.ForeignKey(
+        "pharmacy.Prescription",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_advisory_links",
+    )
+
+    # ── Status & audit ───────────────────────────────────────────────────
+    status = models.CharField(
+        max_length=20,
+        choices=AIAdvisoryOrderLinkStatus.choices,
+        default=AIAdvisoryOrderLinkStatus.SUGGESTED,
+    )
+    actioned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_advisory_actions",
+    )
+    actioned_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["suggestion_category", "suggestion_index"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "ai_result_content_type",
+                    "ai_result_id",
+                    "suggestion_category",
+                    "suggestion_index",
+                ],
+                name="unique_advisory_suggestion",
+            ),
+        ]
+        verbose_name = "AI Advisory Order Link"
+        verbose_name_plural = "AI Advisory Order Links"
+
+    def __str__(self) -> str:
+        return f"{self.suggestion_category}[{self.suggestion_index}] → {self.get_status_display()}"

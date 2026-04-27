@@ -10,6 +10,7 @@ from django.contrib import admin, messages
 from django.utils import timezone
 
 from .models import (
+    AIAdvisoryOrderLink,
     AICarePlanResult,
     AICDSResult,
     AIDischargeResult,
@@ -564,3 +565,27 @@ def _parse_level(level: str | int | None) -> int | None:
         return val if 1 <= val <= 6 else None
     except (ValueError, TypeError):
         return None
+
+
+@admin.register(AIAdvisoryOrderLink)
+class AIAdvisoryOrderLinkAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "suggestion_category",
+        "suggestion_index",
+        "status",
+        "actioned_by",
+        "actioned_at",
+        "facility",
+    )
+    list_filter = ("status", "suggestion_category", "facility")
+    search_fields = ("suggestion_text",)
+    raw_id_fields = (
+        "lab_order",
+        "imaging_order",
+        "prescription",
+        "actioned_by",
+        "facility",
+        "organization",
+    )
+    readonly_fields = ("ai_result_content_type", "ai_result_id", "created_at")

@@ -1276,3 +1276,56 @@ export interface StoredInvestigationSuggestResult extends StoredAIResultBase {
   matched_conditions: string[];
   suggestion_count: number;
 }
+
+// =============================================================================
+// AI Advisory → Order Links
+// =============================================================================
+
+/** Status of an advisory suggestion link */
+export type AIAdvisoryOrderLinkStatus = 'SUGGESTED' | 'ORDERED' | 'DECLINED' | 'NOT_APPLICABLE';
+
+/** AI result type identifier for seeding */
+export type AIAdvisoryResultType = 'pre_op_assessment' | 'post_op_care_plan';
+
+/** A single advisory suggestion linked (or not yet) to a clinical order */
+export interface AIAdvisoryOrderLink {
+  id: number;
+  ai_result_id: string;
+  suggestion_category: string;
+  suggestion_index: number;
+  suggestion_text: string;
+  status: AIAdvisoryOrderLinkStatus;
+  lab_order_id: number | null;
+  imaging_order_id: number | null;
+  prescription_id: number | null;
+  order_number: string | null;
+  actioned_by: number | null;
+  actioned_at: string | null;
+  created_at: string;
+}
+
+/** Request body for POST /api/ai/advisory-links/ (seed suggestions) */
+export interface AIAdvisoryBulkSeedRequest {
+  ai_result_id: string;
+  ai_result_type: AIAdvisoryResultType;
+}
+
+/** Response from POST /api/ai/advisory-links/ (seed) */
+export interface AIAdvisoryBulkSeedResponse {
+  created: number;
+  total: number;
+  links: AIAdvisoryOrderLink[];
+}
+
+/** Request body for PATCH /api/ai/advisory-links/<id>/action/ */
+export interface AIAdvisoryOrderLinkActionRequest {
+  status: 'ORDERED' | 'DECLINED' | 'NOT_APPLICABLE';
+  lab_order_id?: number;
+  imaging_order_id?: number;
+  prescription_id?: number;
+}
+
+/** Response from GET /api/ai/advisory-links/has-orders/ */
+export interface AIAdvisoryHasOrdersResponse {
+  has_orders: boolean;
+}

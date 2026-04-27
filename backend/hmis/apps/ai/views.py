@@ -16,6 +16,7 @@ ClinicalChatSessionDetailView) provide local session history.
 import json
 import logging
 
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
@@ -29,6 +30,8 @@ from .client import TibaBotError, TibaBotUnavailableError, get_tibabot_client
 from .context import build_facility_context, build_user_context
 from .feature_flags import AIFeatureGatedMixin, is_ai_enabled
 from .models import (
+    AIAdvisoryOrderLink,
+    AIAdvisoryOrderLinkStatus,
     AICarePlanResult,
     AICDSResult,
     AIDischargeResult,
@@ -42,7 +45,10 @@ from .models import (
     ChatSession,
 )
 from .sanitizer import sanitize_clinical_text
-from .serializers import (
+from .serializers import (  # Advisory link serializers
+    AIAdvisoryBulkSeedSerializer,
+    AIAdvisoryOrderLinkActionSerializer,
+    AIAdvisoryOrderLinkSerializer,
     AIClinicalAssistResponseSerializer,
     AIFeedbackRequestSerializer,
     AIFeedbackResponseSerializer,
@@ -2857,3 +2863,251 @@ class StoredSurgicalPostOpCarePlanListView(AIFeatureGatedMixin, APIView):
         if facility:
             qs = qs.filter(facility=facility)
         return Response(StoredSurgicalPostOpCarePlanSerializer(qs[:10], many=True).data)
+
+
+# =============================================================================
+# AI Advisory → Order link views
+# =============================================================================
+
+_AI_RESULT_MODEL_MAP: dict[str, type] = {
+    "pre_op_assessment": AISurgicalPreOpAssessResult,
+    "post_op_care_plan": AISurgicalPostOpCarePlanResult,
+}
+
+# Category → extraction function that returns list[(category, index, text)].
+_SUGGESTION_EXTRACTORS: dict[
+    str,
+    # callable(result_data) -> list[(category, index, text)]
+    type[None],  # placeholder for type hint, actual callables below
+] = {}  # type: ignore[assignment]
+
+
+def _extract_suggestions(
+    result_data: dict,
+) -> list[tuple[str, int, str]]:
+    """Extract all actionable suggestion lines from a result_data dict."""
+    suggestions: list[tuple[str, int, str]] = []
+
+    # ── Medications ──────────────────────────────────────────────────────
+    meds = result_data.get("medications")
+    if isinstance(meds, list):
+        for i, med in enumerate(meds):
+            if isinstance(med, str) and med.strip():
+                suggestions.append(("medications", i, med.strip()))
+
+    # ── Pre-op checklist investigations ──────────────────────────────────
+    checklist = result_data.get("pre_op_checklist")
+    if isinstance(checklist, dict):
+        invs = checklist.get("investigations")
+        if isinstance(invs, list):
+            for i, inv in enumerate(invs):
+                if isinstance(inv, str) and inv.strip():
+                    suggestions.append(("pre_op_checklist.investigations", i, inv.strip()))
+
+    # ── Anaesthesia options (display-only, usually not orderable) ────────
+    # Skipped intentionally — clinical workflow doesn't produce "orders".
+
+    # ── Required equipment ───────────────────────────────────────────────
+    equip = result_data.get("required_equipment")
+    if isinstance(equip, list):
+        for i, item in enumerate(equip):
+            if isinstance(item, str) and item.strip():
+                suggestions.append(("required_equipment", i, item.strip()))
+
+    # ── Complications to watch ───────────────────────────────────────────
+    complications = result_data.get("complications_to_watch") or result_data.get(
+        "complications_watchlist"
+    )
+    if isinstance(complications, list):
+        for i, comp in enumerate(complications):
+            text = comp.get("complication", "") if isinstance(comp, dict) else str(comp)
+            if text.strip():
+                suggestions.append(("complications_to_watch", i, text.strip()))
+
+    # ── Discharge criteria ───────────────────────────────────────────────
+    discharge = result_data.get("discharge_criteria")
+    if isinstance(discharge, list):
+        for i, crit in enumerate(discharge):
+            if isinstance(crit, str) and crit.strip():
+                suggestions.append(("discharge_criteria", i, crit.strip()))
+
+    # ── Follow-up red flags ──────────────────────────────────────────────
+    follow_up = result_data.get("follow_up")
+    if isinstance(follow_up, dict):
+        red_flags = follow_up.get("red_flags")
+        if isinstance(red_flags, list):
+            for i, flag in enumerate(red_flags):
+                if isinstance(flag, str) and flag.strip():
+                    suggestions.append(("follow_up.red_flags", i, flag.strip()))
+
+    # ── Post-op care sub-fields ──────────────────────────────────────────
+    post_op_care = result_data.get("post_op_care")
+    if isinstance(post_op_care, dict):
+        post_op_meds = post_op_care.get("medications")
+        if isinstance(post_op_meds, list):
+            for i, med in enumerate(post_op_meds):
+                if isinstance(med, str) and med.strip():
+                    suggestions.append(("post_op_care.medications", i, med.strip()))
+
+    # ── Monitoring (single text → index 0) ───────────────────────────────
+    monitoring = result_data.get("monitoring")
+    if isinstance(monitoring, str) and monitoring.strip():
+        suggestions.append(("monitoring", 0, monitoring.strip()))
+
+    # ── Activity (single text → index 0) ─────────────────────────────────
+    activity = result_data.get("activity")
+    if isinstance(activity, str) and activity.strip():
+        suggestions.append(("activity", 0, activity.strip()))
+
+    # ── Nutrition (single text → index 0) ────────────────────────────────
+    nutrition = result_data.get("nutrition")
+    if isinstance(nutrition, str) and nutrition.strip():
+        suggestions.append(("nutrition", 0, nutrition.strip()))
+
+    # ── Wound care (single text → index 0) ───────────────────────────────
+    wound_care = result_data.get("wound_care")
+    if isinstance(wound_care, str) and wound_care.strip():
+        suggestions.append(("wound_care", 0, wound_care.strip()))
+
+    return suggestions
+
+
+class AIAdvisoryOrderLinkListView(APIView):
+    """List links for a given AI result or seed them from result_data."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        """GET /api/ai/advisory-links/?ai_result_id=<uuid>"""
+        ai_result_id = request.query_params.get("ai_result_id")
+        if not ai_result_id:
+            return Response([], status=status.HTTP_200_OK)
+
+        qs = AIAdvisoryOrderLink.objects.filter(ai_result_id=ai_result_id).select_related(
+            "lab_order", "imaging_order", "prescription"
+        )
+        return Response(AIAdvisoryOrderLinkSerializer(qs, many=True).data)
+
+    def post(self, request: Request) -> Response:
+        """POST /api/ai/advisory-links/ — seed suggestion rows from result_data."""
+        from django.contrib.contenttypes.models import ContentType
+
+        serializer = AIAdvisoryBulkSeedSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        model_cls = _AI_RESULT_MODEL_MAP.get(data["ai_result_type"])
+        if not model_cls:
+            return Response(
+                {"error": f"Unknown ai_result_type: {data['ai_result_type']}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            ai_result = model_cls.objects.get(pk=data["ai_result_id"])
+        except model_cls.DoesNotExist:
+            return Response(
+                {"error": "AI result not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        ct = ContentType.objects.get_for_model(model_cls)
+        result_data = ai_result.result_data or {}
+        suggestions = _extract_suggestions(result_data)
+
+        created = 0
+        for category, index, text in suggestions:
+            _, was_created = AIAdvisoryOrderLink.objects.get_or_create(
+                ai_result_content_type=ct,
+                ai_result_id=ai_result.pk,
+                suggestion_category=category,
+                suggestion_index=index,
+                defaults={
+                    "suggestion_text": text,
+                    "facility": ai_result.facility,
+                    "organization": ai_result.organization,
+                },
+            )
+            if was_created:
+                created += 1
+
+        qs = AIAdvisoryOrderLink.objects.filter(
+            ai_result_content_type=ct, ai_result_id=ai_result.pk
+        ).select_related("lab_order", "imaging_order", "prescription")
+        return Response(
+            {
+                "created": created,
+                "total": qs.count(),
+                "links": AIAdvisoryOrderLinkSerializer(qs, many=True).data,
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class AIAdvisoryOrderLinkActionView(APIView):
+    """Action a single suggestion: mark as ORDERED / DECLINED / NOT_APPLICABLE."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request: Request, pk: int) -> Response:
+        """PATCH /api/ai/advisory-links/<id>/action/"""
+        try:
+            link = AIAdvisoryOrderLink.objects.select_related(
+                "lab_order", "imaging_order", "prescription"
+            ).get(pk=pk)
+        except AIAdvisoryOrderLink.DoesNotExist:
+            return Response(
+                {"error": "Link not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = AIAdvisoryOrderLinkActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        link.status = data["status"]
+        link.actioned_by = request.user
+        link.actioned_at = timezone.now()
+
+        if data["status"] == "ORDERED":
+            link.lab_order_id = data.get("lab_order_id")
+            link.imaging_order_id = data.get("imaging_order_id")
+            link.prescription_id = data.get("prescription_id")
+        else:
+            link.lab_order = None
+            link.imaging_order = None
+            link.prescription = None
+
+        link.save()
+        return Response(AIAdvisoryOrderLinkSerializer(link).data)
+
+
+class AIAdvisoryHasOrdersView(APIView):
+    """Check whether an AI result has non-draft orders linked.
+
+    Used by the frontend to disable 'Ask again' when live orders exist.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        """GET /api/ai/advisory-links/has-orders/?ai_result_id=<uuid>"""
+        ai_result_id = request.query_params.get("ai_result_id")
+        if not ai_result_id:
+            return Response({"has_orders": False})
+
+        qs = AIAdvisoryOrderLink.objects.filter(
+            ai_result_id=ai_result_id,
+            status=AIAdvisoryOrderLinkStatus.ORDERED,
+        )
+
+        # Check that the linked orders are not drafts
+        for link in qs.select_related("lab_order", "imaging_order", "prescription"):
+            if link.lab_order and link.lab_order.status != "DRAFT":
+                return Response({"has_orders": True})
+            if link.imaging_order and link.imaging_order.status != "DRAFT":
+                return Response({"has_orders": True})
+            if link.prescription and link.prescription.status not in ("DRAFT", ""):
+                return Response({"has_orders": True})
+
+        return Response({"has_orders": False})

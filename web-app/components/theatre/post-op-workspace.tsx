@@ -59,6 +59,8 @@ import { downloadPDF } from '@/lib/export-utils';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { StoredSurgicalPostOpCarePlanResult } from '@/lib/types/ai';
 import type { PACURecord, SurgeryCaseDetail } from '@/lib/types/theatre';
+import { useAdvisoryLinks } from '@/components/theatre/use-advisory-links';
+import { SuggestionActionChip } from '@/components/theatre/suggestion-action-chip';
 
 const pacuArrivalSchema = z.object({
   arrival_time: z.string().min(1, 'Arrival time is required'),
@@ -238,6 +240,14 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
   const latestStoredPostOp = storedPostOpPlans[0] ?? null;
   const latestStoredPostOpData = latestStoredPostOp?.result_data as Record<string, unknown> | undefined;
   const latestSurgicalApgar = latestStoredPostOpData?.surgical_apgar as Record<string, unknown> | undefined;
+
+  // Advisory links for post-op care plan
+  const postOpResultId = latestStoredPostOp?.id;
+  const { getLink, actionLink, hasOrders: postOpHasOrders } = useAdvisoryLinks(
+    postOpResultId,
+    'post_op_care_plan',
+  );
+
   const latestSurgicalApgarScore =
     typeof latestSurgicalApgar?.score === 'number' ? latestSurgicalApgar.score : null;
   const latestSurgicalApgarRiskLevel =
@@ -443,7 +453,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
             <Textarea rows={3} value={postOpFindings} onChange={(event) => setPostOpFindings(event.target.value)} placeholder="Key findings, drains, stoma, or intra-op concerns" />
           </div>
 
-          <Button type="button" onClick={() => void generatePostOpCarePlan()} disabled={generatingCarePlan || !mappedProcedureKey}>
+          <Button type="button" onClick={() => void generatePostOpCarePlan()} disabled={generatingCarePlan || !mappedProcedureKey || postOpHasOrders}>
             {generatingCarePlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
             {latestStoredPostOp ? 'Ask again' : 'Ask TibaBot®'}
           </Button>
@@ -502,7 +512,16 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                         <AccordionContent>
                           {Array.isArray(latestStoredPostOpData?.medications) && (latestStoredPostOpData.medications as string[]).length > 0 ? (
                             <ul className="ml-4 list-disc space-y-1 text-sm">
-                              {(latestStoredPostOpData.medications as string[]).map((med, i) => <li key={i}>{med}</li>)}
+                              {(latestStoredPostOpData.medications as string[]).map((med, i) => (
+                                <li key={i} className="flex items-center gap-1">
+                                  <span className="flex-1">{med}</span>
+                                  <SuggestionActionChip
+                                    link={getLink('medications', i)}
+                                    onAction={actionLink}
+                                    orderable
+                                  />
+                                </li>
+                              ))}
                             </ul>
                           ) : (
                             <p className="text-sm text-muted-foreground">No medication guidance recorded</p>
@@ -572,7 +591,13 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                                 <div key={i} className="rounded-md border p-3">
                                   <div className="flex items-center justify-between gap-2">
                                     <p className="font-medium">{comp.complication as string}</p>
-                                    {comp.incidence ? <Badge variant="secondary" className="shrink-0 text-xs">{comp.incidence as string}</Badge> : null}
+                                    <span className="flex items-center gap-1.5">
+                                      <SuggestionActionChip
+                                        link={getLink('complications_to_watch', i)}
+                                        onAction={actionLink}
+                                      />
+                                      {comp.incidence ? <Badge variant="secondary" className="shrink-0 text-xs">{comp.incidence as string}</Badge> : null}
+                                    </span>
                                   </div>
                                   {comp.signs ? <p className="mt-1 text-muted-foreground"><span className="font-medium">Signs:</span> {comp.signs as string}</p> : null}
                                   {comp.action ? <p className="mt-0.5 text-muted-foreground"><span className="font-medium">Action:</span> {comp.action as string}</p> : null}
@@ -596,7 +621,15 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                           </AccordionTrigger>
                           <AccordionContent>
                             <ul className="ml-4 list-disc space-y-1 text-sm">
-                              {(latestStoredPostOpData.discharge_criteria as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                              {(latestStoredPostOpData.discharge_criteria as string[]).map((item, i) => (
+                                <li key={i} className="flex items-center gap-1">
+                                  <span className="flex-1">{item}</span>
+                                  <SuggestionActionChip
+                                    link={getLink('discharge_criteria', i)}
+                                    onAction={actionLink}
+                                  />
+                                </li>
+                              ))}
                             </ul>
                           </AccordionContent>
                         </AccordionItem>
@@ -630,8 +663,16 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                               {Array.isArray(followUp.red_flags) && (followUp.red_flags as string[]).length > 0 ? (
                                 <div>
                                   <p className="font-medium text-destructive">Red Flags — Advise patient</p>
-                                  <ul className="ml-4 mt-1 list-disc space-y-0.5">
-                                    {(followUp.red_flags as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                                  <ul className="ml-4 mt-1 list-disc space-y-1">
+                                    {(followUp.red_flags as string[]).map((item, i) => (
+                                      <li key={i} className="flex items-center gap-1">
+                                        <span className="flex-1">{item}</span>
+                                        <SuggestionActionChip
+                                          link={getLink('follow_up.red_flags', i)}
+                                          onAction={actionLink}
+                                        />
+                                      </li>
+                                    ))}
                                   </ul>
                                 </div>
                               ) : null}
