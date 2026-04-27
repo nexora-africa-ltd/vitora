@@ -51,6 +51,7 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { LabOrderForm } from '@/components/laboratory/lab-order-form';
 import { ImagingOrderForm } from '@/components/imaging/imaging-order-form';
 import { aiApi } from '@/lib/api/ai';
@@ -256,6 +257,7 @@ export function PreOpReadinessCard({
         <CardTitle className="text-base flex items-center gap-2">
           <ShieldCheck className="h-4 w-4" />
           Pre-Op Readiness
+          <HelpPopover content="Automated checklist evaluating whether all pre-operative requirements are met: consent, labs, imaging, WHO Sign-In, and anesthesia assessment." />
           <Badge variant={readyForTheatre ? 'success' : 'warning'} size="sm" className="ml-auto w-fit">
             {readyForTheatre ? 'Ready for theatre' : 'Needs attention'}
           </Badge>
@@ -798,10 +800,10 @@ export function PreOpWorkspace({
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Pre-Operative Workflow</h2>
-          <p className="text-sm text-muted-foreground">
-            Capture readiness checks, surgical consent, WHO Sign-In, and anesthesia assessment.
-          </p>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            Pre-Operative Workflow
+            <HelpPopover content="Capture readiness checks, surgical consent, WHO Sign-In, and anesthesia assessment before the patient enters the operating theatre." />
+          </h2>
         </div>
         <Button variant="outline" size="sm" onClick={() => void refreshEverything()} disabled={refreshing}>
           {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
@@ -837,6 +839,7 @@ export function PreOpWorkspace({
           <CardTitle className="text-base flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4" />
             Surgical AI Pre-Op Advisory
+            <HelpPopover content="AI-powered pre-operative risk assessment. Evaluates patient fitness, procedure-specific risks, and suggests preparation steps." />
             {latestStoredPreOp ? <Sparkles className="h-4 w-4 text-teal-400" /> : null}
             <Badge variant={surgeryCase.ai_surgical_summary.pre_op.has_result ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
               {surgeryCase.ai_surgical_summary.pre_op.has_result ? 'Result available' : 'Not run'}
@@ -1339,6 +1342,7 @@ export function PreOpWorkspace({
           <CardTitle className="text-base flex items-center gap-2">
             <ShieldCheck className="h-4 w-4" />
             Surgical Team
+            <HelpPopover content="Assign and review the surgical team: lead surgeon, assistants, anesthesia staff, and theatre nurses. Coverage status reflects shift scheduling." />
             <Badge variant="secondary" size="sm" className="ml-auto w-fit">
               {surgeryCase.team_members.length}
             </Badge>
@@ -1383,6 +1387,7 @@ export function PreOpWorkspace({
             <CardTitle className="text-base flex items-center gap-2">
               <FileSignature className="h-4 w-4" />
               Surgical Consent
+              <HelpPopover content="Documents patient informed consent for the procedure. Records consent method, witnesses, and any special considerations or refusals." />
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1590,6 +1595,7 @@ export function PreOpWorkspace({
               <CardTitle className="text-base flex items-center gap-2">
                 <FlaskConical className="h-4 w-4" />
                 Pre-Op Labs
+                <HelpPopover content="Laboratory investigations required before surgery. Order new tests or review existing results to ensure readiness." />
               </CardTitle>
               {surgeryCase.encounter != null && (
                 <Button
@@ -1655,6 +1661,7 @@ export function PreOpWorkspace({
               <CardTitle className="text-base flex items-center gap-2">
                 <ScanLine className="h-4 w-4" />
                 Pre-Op Imaging
+                <HelpPopover content="Imaging studies (X-ray, CT, MRI, ultrasound) required for surgical planning. Order new scans or review existing results." />
               </CardTitle>
               {surgeryCase.encounter != null && (
                 <Button
@@ -1719,6 +1726,7 @@ export function PreOpWorkspace({
             <CardTitle className="text-base flex items-center gap-2">
               <ClipboardCheck className="h-4 w-4" />
               WHO Sign-In
+              <HelpPopover content="WHO Surgical Safety Checklist Sign-In: completed before induction of anesthesia. Confirms patient identity, site marking, allergies, airway, and blood loss risk." />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1806,6 +1814,7 @@ export function PreOpWorkspace({
             <CardTitle className="text-base flex items-center gap-2">
               <Syringe className="h-4 w-4" />
               Anesthesia Pre-Op Assessment
+              <HelpPopover content="Anesthesia pre-operative evaluation: ASA class, airway assessment, planned technique, pre-medication, and fasting status." />
             </CardTitle>
           </CardHeader>
           <CardContent>

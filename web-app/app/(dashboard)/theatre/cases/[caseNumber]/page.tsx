@@ -17,14 +17,18 @@ import {
   Ban,
   CalendarX2,
   Loader2,
-  ChevronRight,
-  PauseCircle,
   Scissors,
   Plus,
   Trash2,
   ExternalLink,
+  Eye,
+  Stethoscope,
+  HeartPulse,
+  BedDouble,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { theatreApi } from '@/lib/api/theatre';
+import { formatDate } from '@/lib/utils/format';
 import type { CaseSchedulingContext, SurgeryCaseDetail, SurgicalTeamMember } from '@/lib/types/theatre';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -297,17 +302,25 @@ export default function CaseDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-4 sm:space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-20 w-full rounded-lg" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Skeleton className="h-40 rounded-lg" />
+          <Skeleton className="h-40 rounded-lg" />
+          <Skeleton className="h-40 rounded-lg" />
+          <Skeleton className="h-40 rounded-lg" />
+        </div>
       </div>
     );
   }
 
   if (!surgeryCase) {
     return (
-      <div className="text-center py-24">
-        <p className="text-muted-foreground mb-4">Case not found.</p>
-        <Button variant="outline" onClick={() => router.push('/theatre/cases')}>Back to Cases</Button>
+      <div className="flex flex-col items-center justify-center py-16 sm:py-24 gap-4">
+        <AlertTriangle className="h-10 w-10 text-muted-foreground/50" />
+        <p className="text-muted-foreground text-sm">Case not found.</p>
+        <Button variant="outline" size="sm" onClick={() => router.push('/theatre/cases')}>View All Cases</Button>
       </div>
     );
   }
@@ -324,7 +337,7 @@ export default function CaseDetailPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title={`Case ${surgeryCase.case_number}`}
         helpContent="View surgery case details, manage workflow transitions, review team and documentation."
@@ -339,8 +352,8 @@ export default function CaseDetailPage() {
           </p>
           <p className="text-sm truncate">{surgeryCase.primary_procedure_name}</p>
           <p className="text-xs text-muted-foreground">
-            {surgeryCase.theatre_name} &middot; {surgeryCase.scheduled_date} {surgeryCase.scheduled_start_time?.slice(0, 5)}
-            {surgeryCase.estimated_duration_minutes ? ` &middot; ${surgeryCase.estimated_duration_minutes}min est.` : ''}
+            {surgeryCase.theatre_name} &middot; {formatDate(surgeryCase.scheduled_date)} {surgeryCase.scheduled_start_time?.slice(0, 5)}
+            {surgeryCase.estimated_duration_minutes ? <> &middot; {surgeryCase.estimated_duration_minutes}min est.</> : ''}
             {surgeryCase.encounter != null ? (
               <>
                 {' '}&middot;{' '}
@@ -378,7 +391,7 @@ export default function CaseDetailPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
           <TheatreCasePriorityBadge priority={surgeryCase.priority} hideElective />
           <TheatreCaseStatusBadge status={surgeryCase.status} />
         </div>
@@ -386,17 +399,17 @@ export default function CaseDetailPage() {
 
       {/* Actions */}
       {!isTerminal && (
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          {nextStep && (
-            <Button onClick={() => runAction(nextStep.action)} disabled={actionLoading}>
-              {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <nextStep.icon className="h-4 w-4 mr-2" />}
-              {nextStep.label}
-            </Button>
-          )}
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           {canCancel && (
             <Button variant="destructive" onClick={() => setCancelDialog(true)} disabled={actionLoading}>
               <Ban className="h-4 w-4 mr-2" />
               Cancel Case
+            </Button>
+          )}
+          {nextStep && (
+            <Button onClick={() => runAction(nextStep.action)} disabled={actionLoading}>
+              {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <nextStep.icon className="h-4 w-4 mr-2" />}
+              {nextStep.label}
             </Button>
           )}
         </div>
@@ -417,35 +430,52 @@ export default function CaseDetailPage() {
         }}
       >
         <TabsList className="grid w-full grid-cols-4 rounded-lg border bg-muted/30 p-1">
-          <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
-          <TabsTrigger value="pre-op" className="text-sm">Pre-Op</TabsTrigger>
-          <TabsTrigger value="intra-op" className="text-sm">Intra-Op</TabsTrigger>
-          <TabsTrigger value="post-op" className="text-sm">Post-Op</TabsTrigger>
+          <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm">
+            <Eye className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="pre-op" className="gap-1.5 text-xs sm:text-sm">
+            <Stethoscope className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Pre-Op</span>
+          </TabsTrigger>
+          <TabsTrigger value="intra-op" className="gap-1.5 text-xs sm:text-sm">
+            <HeartPulse className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Intra-Op</span>
+          </TabsTrigger>
+          <TabsTrigger value="post-op" className="gap-1.5 text-xs sm:text-sm">
+            <BedDouble className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Post-Op</span>
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="space-y-4 sm:space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="relative overflow-hidden">
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Clock className="h-4 w-4" /> Scheduling Integration
+                  <Clock className="h-4 w-4" /> Scheduling
+                  <HelpPopover content="Shows how this case maps to the scheduling system: theatre resource, slot availability, and team shift coverage status." />
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="relative space-y-2 text-sm">
                 <DetailRow
                   label="Slot Source"
                   value={schedulingContext?.slot_validation.source === 'scheduling_resource' ? 'Scheduling resource' : 'Theatre hours'}
                 />
                 <DetailRow
-                  label="Scheduling Resource"
+                  label="Resource"
                   value={schedulingContext?.theatre.scheduling_resource_name || 'Not linked'}
                 />
                 <DetailRow
-                  label="Resource Schedule"
+                  label="Schedule"
                   value={schedulingContext?.theatre.has_resource_schedule ? 'Configured' : 'Not configured'}
                 />
                 <DetailRow
-                  label="Team Coverage"
+                  label="Coverage"
                   value={
                     schedulingContext
                       ? `${schedulingContext.team_summary.covered_members}/${schedulingContext.team_summary.total_members || 0}`
@@ -453,26 +483,31 @@ export default function CaseDetailPage() {
                   }
                 />
                 {schedulingContext && !schedulingContext.slot_validation.available && (
-                  <div className="rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-                    <p className="font-medium">Scheduling issue detected</p>
-                    <p className="mt-1 text-xs">{schedulingContext.slot_validation.reason}</p>
+                  <div className="rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100 text-xs sm:text-sm">
+                    <p className="font-medium">Scheduling issue</p>
+                    <p className="mt-1">{schedulingContext.slot_validation.reason}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="relative overflow-hidden">
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Activity className="h-4 w-4" /> Clinical Details
+                  <HelpPopover content="Diagnosis, ASA classification, anesthesia type, laterality, and procedure notes from the requesting surgeon." />
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="relative space-y-2 text-sm">
                 <DetailRow label="Diagnosis" value={surgeryCase.diagnosis || '—'} />
                 <DetailRow label="ASA Class" value={surgeryCase.asa_class || '—'} />
                 <DetailRow label="Anesthesia" value={surgeryCase.anesthesia_type || '—'} />
                 <DetailRow label="Laterality" value={surgeryCase.laterality} />
-                <DetailRow label="Requesting Doctor" value={surgeryCase.requesting_doctor_name} />
+                <DetailRow label="Doctor" value={surgeryCase.requesting_doctor_name} />
                 {surgeryCase.procedure_notes && (
                   <div>
                     <p className="text-muted-foreground">Notes</p>
@@ -482,38 +517,48 @@ export default function CaseDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="relative overflow-hidden">
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <FileText className="h-4 w-4" /> Billing
+                  <HelpPopover content="Total theatre charges and billable status for this surgery case." />
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="relative space-y-2 text-sm">
                 <DetailRow label="Total Charges" value={`KES ${surgeryCase.total_charges}`} />
                 <DetailRow label="Billable" value={surgeryCase.is_billable ? 'Yes' : 'No'} />
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="relative overflow-hidden">
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Users className="h-4 w-4" /> Surgical Team
-                  <Badge variant="secondary" className="text-xs ml-auto">{surgeryCase.team_members.length}</Badge>
+                  <HelpPopover content="Assigned team members with roles and shift coverage status. Add or remove members when you have theatre management permissions." />
+                  <Badge variant="secondary" className="text-xs ml-auto shrink-0">{surgeryCase.team_members.length}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {canManageTeam ? (
+              <CardContent className="relative space-y-3">
+                {canManageTeam && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-dashed p-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium">Assign team members</p>
-                      <p className="text-xs text-muted-foreground">Add surgeons, anesthesia staff, and theatre nurses from the active staff directory.</p>
+                      <p className="text-xs text-muted-foreground">Add surgeons, anesthesia staff, and theatre nurses.</p>
                     </div>
-                    <Button type="button" size="sm" onClick={() => setAssignmentDialog(true)}>
+                    <Button type="button" size="sm" onClick={() => setAssignmentDialog(true)} className="w-full sm:w-auto">
                       <Plus className="h-4 w-4 mr-2" />
-                      Assign Member
+                      Assign
                     </Button>
                   </div>
-                ) : null}
+                )}
                 {surgeryCase.team_members.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No team members assigned yet.</p>
                 ) : (
@@ -533,13 +578,18 @@ export default function CaseDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="relative overflow-hidden sm:col-span-2">
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+                aria-hidden="true"
+              />
+              <CardHeader className="relative pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <ClipboardCheck className="h-4 w-4" /> Documentation
+                  <HelpPopover content="Tracks completion of WHO checklist, anesthesia record, operative note, and PACU record across the surgical workflow." />
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="relative grid gap-2 sm:grid-cols-2">
                 <DocStatus label="WHO Checklist" done={surgeryCase.has_who_checklist} />
                 <DocStatus label="Anesthesia Record" done={surgeryCase.has_anesthesia_record} />
                 <DocStatus label="Operative Note" done={surgeryCase.has_operative_note} />
@@ -549,15 +599,15 @@ export default function CaseDetailPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="pre-op" className="space-y-6">
+        <TabsContent value="pre-op" className="space-y-4 sm:space-y-6">
           <PreOpWorkspace surgeryCase={surgeryCase} onCaseRefresh={fetchCase} />
         </TabsContent>
 
-        <TabsContent value="intra-op" className="space-y-6">
+        <TabsContent value="intra-op" className="space-y-4 sm:space-y-6">
           <IntraOpWorkspace surgeryCase={surgeryCase} onCaseRefresh={fetchCase} />
         </TabsContent>
 
-        <TabsContent value="post-op" className="space-y-6">
+        <TabsContent value="post-op" className="space-y-4 sm:space-y-6">
           <PostOpWorkspace surgeryCase={surgeryCase} onCaseRefresh={fetchCase} />
         </TabsContent>
       </Tabs>
@@ -565,7 +615,7 @@ export default function CaseDetailPage() {
       {/* Cancellation Details */}
       {surgeryCase.status === 'CANCELLED' && surgeryCase.cancellation_reason && (
         <Card className="border-destructive/50">
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <p className="text-sm font-medium text-destructive">Cancellation Reason</p>
             <p className="text-sm mt-1">{surgeryCase.cancellation_reason}</p>
           </CardContent>
@@ -574,8 +624,8 @@ export default function CaseDetailPage() {
 
       {surgeryCase.status === 'POSTPONED' && surgeryCase.postponed_to_date && (
         <Card className="border-amber-500/50">
-          <CardContent className="p-4 flex items-center gap-2">
-            <CalendarX2 className="h-4 w-4 text-amber-600" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2">
+            <CalendarX2 className="h-4 w-4 text-amber-600 shrink-0" />
             <p className="text-sm">Postponed to <strong>{surgeryCase.postponed_to_date}</strong></p>
           </CardContent>
         </Card>
@@ -585,7 +635,10 @@ export default function CaseDetailPage() {
       <Dialog open={cancelDialog} onOpenChange={setCancelDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel Surgery Case</DialogTitle>
+            <div className="flex items-center gap-2">
+              <DialogTitle>Cancel Surgery Case</DialogTitle>
+              <HelpPopover content="Provide a reason for cancelling this case. The cancellation will be recorded in the case audit trail." />
+            </div>
           </DialogHeader>
           <Textarea
             placeholder="Reason for cancellation..."
@@ -593,9 +646,9 @@ export default function CaseDetailPage() {
             onChange={e => setCancelReason(e.target.value)}
             rows={3}
           />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialog(false)}>Keep Case</Button>
-            <Button variant="destructive" onClick={handleCancel} disabled={!cancelReason.trim() || actionLoading}>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => setCancelDialog(false)} className="w-full sm:w-auto">Keep Case</Button>
+            <Button variant="destructive" onClick={handleCancel} disabled={!cancelReason.trim() || actionLoading} className="w-full sm:w-auto">
               {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Confirm Cancel
             </Button>
@@ -616,9 +669,9 @@ export default function CaseDetailPage() {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4">
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className="text-right truncate">{value}</span>
+    <div className="flex justify-between gap-2 sm:gap-4">
+      <span className="text-muted-foreground shrink-0 text-xs sm:text-sm">{label}</span>
+      <span className="text-right truncate text-xs sm:text-sm">{value}</span>
     </div>
   );
 }
@@ -637,50 +690,48 @@ function TeamMemberRow({
   removing: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 text-sm">
-      <div className="min-w-0">
-        <p className="truncate">{member.staff_name}</p>
-        {coverage && (
-          <p className={`text-xs ${coverage.has_shift_coverage ? 'text-muted-foreground' : 'text-amber-700 dark:text-amber-300'}`}>
-            {coverage.message}
-          </p>
-        )}
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {coverage && (
-          <Badge className={coverage.has_shift_coverage ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs' : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs'}>
-            {coverage.has_shift_coverage ? 'Covered' : 'Uncovered'}
+    <div className="flex items-start sm:items-center justify-between gap-2 text-sm">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{member.staff_name}</p>
+        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+          <Badge variant="outline" className="text-xs shrink-0 w-fit">
+            {member.role.replace(/_/g, ' ')}
           </Badge>
+          {coverage && (
+            <Badge className={`text-xs shrink-0 w-fit ${coverage.has_shift_coverage ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'}`}>
+              {coverage.has_shift_coverage ? 'Covered' : 'Uncovered'}
+            </Badge>
+          )}
+        </div>
+        {coverage && !coverage.has_shift_coverage && (
+          <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{coverage.message}</p>
         )}
-        <Badge variant="outline" className="text-xs">
-          {member.role.replace(/_/g, ' ')}
-        </Badge>
-        {canManageTeam ? (
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={onRemove}
-            disabled={removing}
-            aria-label={`Remove ${member.staff_name} from team`}
-          >
-            {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-          </Button>
-        ) : null}
       </div>
+      {canManageTeam && (
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+          onClick={onRemove}
+          disabled={removing}
+          aria-label={`Remove ${member.staff_name} from team`}
+        >
+          {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        </Button>
+      )}
     </div>
   );
 }
 
 function DocStatus({ label, done }: { label: string; done: boolean }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span>{label}</span>
+    <div className="flex items-center justify-between text-sm gap-2">
+      <span className="truncate">{label}</span>
       {done ? (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs">Complete</Badge>
+        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs shrink-0 w-fit">Complete</Badge>
       ) : (
-        <Badge variant="outline" className="text-xs text-muted-foreground">Pending</Badge>
+        <Badge variant="outline" className="text-xs text-muted-foreground shrink-0 w-fit">Pending</Badge>
       )}
     </div>
   );

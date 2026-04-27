@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { HelpPopover } from '@/components/shared/help-popover';
 import type { IntraOpVital } from '@/lib/types/theatre';
 import { CRITICAL_THRESHOLDS, vitalBadgeVariant } from '@/lib/vitals-thresholds';
 
@@ -79,6 +80,7 @@ export function VitalsChartCard({ vitals }: VitalsChartCardProps) {
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Anesthesia Vitals Trend
+            <HelpPopover content="Time-series chart of intra-operative vital signs. Toggle individual parameters and threshold reference lines. BP band shows systolic/diastolic envelope. Summary badges highlight values outside normal ranges." />
           </CardTitle>
           {hasCritical && (
             <Badge variant="destructive" size="sm" className="animate-pulse">
