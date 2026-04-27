@@ -1101,10 +1101,25 @@ export interface AISurgicalPreOpAssessResponse {
   error?: string | null;
 }
 
+export interface AISurgicalChecklistItem {
+  id: string;
+  phase?: string;
+  description: string;
+  responsible?: string | null;
+  checked?: boolean;
+  checked_by?: string | null;
+  notes?: string | null;
+  critical?: boolean;
+  [key: string]: unknown;
+}
+
 export interface AISurgicalChecklistSession {
   id?: string;
+  session_id?: string;
+  procedure_key?: string;
+  patient_id?: string;
   state?: string;
-  items?: string[];
+  items?: AISurgicalChecklistItem[];
   [key: string]: unknown;
 }
 

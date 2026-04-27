@@ -126,10 +126,10 @@ export default function CaseDetailPage() {
     setActiveTab(derivedDefaultTab);
   }, [derivedDefaultTab]);
 
-  const fetchCase = useCallback(async () => {
+  const fetchCase = useCallback(async (showLoading = false) => {
     if (!caseNumber) return;
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const [detail, context] = await Promise.all([
         theatreApi.getCase(caseNumber),
         theatreApi.getCaseSchedulingContext(caseNumber).catch(() => null),
@@ -141,11 +141,11 @@ export default function CaseDetailPage() {
       setSurgeryCase(null);
       setSchedulingContext(null);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [caseNumber]);
 
-  useEffect(() => { fetchCase(); }, [fetchCase]);
+  useEffect(() => { fetchCase(true); }, [fetchCase]);
 
   // =========================================================================
   // AI Chat Widget — theatre-aware context wiring

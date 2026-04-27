@@ -537,10 +537,24 @@ export const AISurgicalPreOpAssessResponseSchema = z.object({
   error: z.string().nullable().optional(),
 }).passthrough();
 
+export const AISurgicalChecklistItemSchema = z.object({
+  id: z.string(),
+  phase: z.string().optional(),
+  description: z.string(),
+  responsible: z.string().optional().nullable(),
+  checked: z.boolean().optional(),
+  checked_by: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  critical: z.boolean().optional(),
+}).catchall(z.unknown());
+
 export const AISurgicalChecklistSessionSchema = z.object({
   id: z.string().optional(),
+  session_id: z.string().optional(),
+  procedure_key: z.string().optional(),
+  patient_id: z.string().optional(),
   state: z.string().optional(),
-  items: z.array(z.string()).optional(),
+  items: z.array(AISurgicalChecklistItemSchema).optional(),
 }).catchall(z.unknown());
 
 export const AISurgicalChecklistProgressSchema = z.object({

@@ -65,21 +65,21 @@ export function TheatreCaseWorkspacePage({ workspace }: { workspace: TheatreWork
   const [loading, setLoading] = useState(true);
   const config = WORKSPACE_CONFIG[workspace];
 
-  const fetchCase = useCallback(async () => {
+  const fetchCase = useCallback(async (showLoading = false) => {
     if (!caseNumber) return;
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const detail = await theatreApi.getCase(caseNumber);
       setSurgeryCase(detail);
     } catch {
       setSurgeryCase(null);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [caseNumber]);
 
   useEffect(() => {
-    void fetchCase();
+    void fetchCase(true);
   }, [fetchCase]);
 
   const statusAligned = useMemo(

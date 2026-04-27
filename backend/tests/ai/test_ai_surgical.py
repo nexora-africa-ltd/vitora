@@ -138,9 +138,30 @@ PRE_OP_RESPONSE = {
 
 CHECKLIST_START_RESPONSE = {
     "session": {
-        "id": "surg-session-123",
+        "session_id": "surg-session-123",
         "state": "sign_in",
-        "items": ["SI-01", "SI-02"],
+        "items": [
+            {
+                "id": "SI-01",
+                "phase": "sign_in",
+                "description": "Patient has confirmed identity",
+                "responsible": "nurse",
+                "checked": False,
+                "checked_by": None,
+                "notes": None,
+                "critical": True,
+            },
+            {
+                "id": "SI-02",
+                "phase": "sign_in",
+                "description": "Surgical site marked",
+                "responsible": "surgeon",
+                "checked": False,
+                "checked_by": None,
+                "notes": None,
+                "critical": True,
+            },
+        ],
     },
     "message": "WHO SIGN IN",
     "phase_complete": False,
@@ -149,9 +170,30 @@ CHECKLIST_START_RESPONSE = {
 
 CHECKLIST_ADVANCE_RESPONSE = {
     "session": {
-        "id": "surg-session-123",
+        "session_id": "surg-session-123",
         "state": "time_out",
-        "items": ["TO-01", "TO-02"],
+        "items": [
+            {
+                "id": "TO-01",
+                "phase": "time_out",
+                "description": "All team members introduced",
+                "responsible": "nurse",
+                "checked": False,
+                "checked_by": None,
+                "notes": None,
+                "critical": False,
+            },
+            {
+                "id": "TO-02",
+                "phase": "time_out",
+                "description": "Patient name and procedure confirmed",
+                "responsible": "surgeon",
+                "checked": False,
+                "checked_by": None,
+                "notes": None,
+                "critical": True,
+            },
+        ],
     },
     "message": "WHO TIME OUT",
     "phase_complete": True,
