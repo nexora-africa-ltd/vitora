@@ -37,6 +37,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -390,29 +391,29 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <div className="xl:col-span-1">
-              <FormLabel>AI procedure key</FormLabel>
+              <Label>AI procedure key</Label>
               <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">{mappedProcedureKey || 'Not mapped'}</div>
             </div>
             <div>
-              <FormLabel>Blood loss (mL)</FormLabel>
+              <Label>Blood loss (mL)</Label>
               <Input type="number" min={0} value={estimatedBloodLossMl} onChange={(event) => setEstimatedBloodLossMl(event.target.value ? Number(event.target.value) : '')} />
             </div>
             <div>
-              <FormLabel>Lowest HR</FormLabel>
+              <Label>Lowest HR</Label>
               <Input type="number" min={0} value={lowestHeartRate} onChange={(event) => setLowestHeartRate(event.target.value ? Number(event.target.value) : '')} />
             </div>
             <div>
-              <FormLabel>Lowest MAP</FormLabel>
+              <Label>Lowest MAP</Label>
               <Input type="number" min={0} value={lowestMap} onChange={(event) => setLowestMap(event.target.value ? Number(event.target.value) : '')} />
             </div>
             <div>
-              <FormLabel>Caprini score</FormLabel>
+              <Label>Caprini score</Label>
               <Input type="number" min={0} value={capriniScore} onChange={(event) => setCapriniScore(event.target.value ? Number(event.target.value) : '')} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <FormLabel>Operative findings for the care plan prompt</FormLabel>
+            <Label>Operative findings for the care plan prompt</Label>
             <Textarea rows={3} value={postOpFindings} onChange={(event) => setPostOpFindings(event.target.value)} placeholder="Key findings, drains, stoma, or intra-op concerns" />
           </div>
 
