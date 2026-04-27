@@ -111,7 +111,7 @@ properties:
           - name: POSTGRES_USER
             value: umami
           - name: POSTGRES_PASSWORD
-            value: "$UMAMI_DB_PASSWORD"
+            secretRef: postgres-password
           - name: PGDATA
             value: /var/lib/postgresql/data/pgdata
         volumeMounts:
@@ -125,6 +125,9 @@ properties:
         storageName: umamidbstorage
         storageType: AzureFile
   configuration:
+    secrets:
+      - name: postgres-password
+        value: "$UMAMI_DB_PASSWORD"
     ingress:
       external: false
       transport: tcp
@@ -149,6 +152,16 @@ echo "    Done (persistent volume: umamidbstorage → /var/lib/postgresql/data).
 
 # ─── 2. Umami (external ingress) ──────────────────────────────────────────
 echo "==> Deploying Umami..."
+
+# Set secrets first, then reference them in env vars
+az containerapp secret set \
+  --name vitora-umami \
+  --resource-group "$RG" \
+  --secrets \
+    "db-url=postgresql://umami:${UMAMI_DB_PASSWORD}@vitora-umami-db:5432/umami" \
+    "app-secret=$UMAMI_APP_SECRET" \
+  --output none 2>/dev/null || true
+
 az containerapp create \
   --name vitora-umami \
   --resource-group "$RG" \
@@ -157,17 +170,20 @@ az containerapp create \
   --cpu 0.25 --memory 0.5Gi \
   --min-replicas 1 --max-replicas 2 \
   --ingress external --target-port 3000 \
+  --secrets \
+    "db-url=postgresql://umami:${UMAMI_DB_PASSWORD}@vitora-umami-db:5432/umami" \
+    "app-secret=$UMAMI_APP_SECRET" \
   --env-vars \
-    "DATABASE_URL=postgresql://umami:${UMAMI_DB_PASSWORD}@vitora-umami-db:5432/umami" \
-    "APP_SECRET=$UMAMI_APP_SECRET" \
+    "DATABASE_URL=secretref:db-url" \
+    "APP_SECRET=secretref:app-secret" \
     "DISABLE_TELEMETRY=1" \
   --output none 2>/dev/null || \
 az containerapp update \
   --name vitora-umami \
   --resource-group "$RG" \
   --set-env-vars \
-    "DATABASE_URL=postgresql://umami:${UMAMI_DB_PASSWORD}@vitora-umami-db:5432/umami" \
-    "APP_SECRET=$UMAMI_APP_SECRET" \
+    "DATABASE_URL=secretref:db-url" \
+    "APP_SECRET=secretref:app-secret" \
     "DISABLE_TELEMETRY=1" \
   --output none
 
@@ -195,7 +211,7 @@ properties:
           - name: GF_SECURITY_ADMIN_USER
             value: admin
           - name: GF_SECURITY_ADMIN_PASSWORD
-            value: "$GRAFANA_ADMIN_PASSWORD"
+            secretRef: admin-password
           - name: GF_SERVER_ROOT_URL
             value: "https://vitora-grafana.${ENV_NAME}.${LOCATION}.azurecontainerapps.io"
         volumeMounts:
@@ -209,6 +225,9 @@ properties:
         storageName: grafanastorage
         storageType: AzureFile
   configuration:
+    secrets:
+      - name: admin-password
+        value: "$GRAFANA_ADMIN_PASSWORD"
     ingress:
       external: true
       targetPort: 3000

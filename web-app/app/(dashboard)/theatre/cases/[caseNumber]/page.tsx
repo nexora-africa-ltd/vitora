@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ClipboardCheck,
@@ -21,6 +22,7 @@ import {
   Scissors,
   Plus,
   Trash2,
+  ExternalLink,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -383,6 +385,41 @@ export default function CaseDetailPage() {
           <p className="text-xs text-muted-foreground">
             {surgeryCase.theatre_name} &middot; {surgeryCase.scheduled_date} {surgeryCase.scheduled_start_time?.slice(0, 5)}
             {surgeryCase.estimated_duration_minutes ? ` &middot; ${surgeryCase.estimated_duration_minutes}min est.` : ''}
+            {surgeryCase.encounter != null ? (
+              <>
+                {' '}&middot;{' '}
+                <Link
+                  href={`/encounters/${surgeryCase.encounter}`}
+                  className="inline-flex items-center gap-1 text-blue-700 underline decoration-blue-700/40 hover:decoration-blue-700 dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:decoration-blue-400"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Encounter #{surgeryCase.encounter}
+                </Link>
+              </>
+            ) : (
+              <>
+                {' '}&middot;{' '}
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  disabled={actionLoading}
+                  onClick={async () => {
+                    try {
+                      setActionLoading(true);
+                      await theatreApi.linkEncounter(surgeryCase.case_number);
+                      toast({ title: 'Encounter linked', description: 'A procedure encounter has been created and linked to this case.' });
+                      await fetchCase();
+                    } catch {
+                      toast({ title: 'Failed to link encounter', variant: 'destructive' });
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                >
+                  {actionLoading ? 'Linking...' : 'Link encounter'}
+                </button>
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

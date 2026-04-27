@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { AlertCircle, ClipboardCheck, Loader2, MonitorPlay, TimerReset } from 'lucide-react';
+import { AlertCircle, ClipboardCheck, ExternalLink, Loader2, MonitorPlay, TimerReset } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -124,6 +124,20 @@ export function TheatreCaseWorkspacePage({ workspace }: { workspace: TheatreWork
           <p className="truncate text-sm">{surgeryCase.primary_procedure_name}</p>
           <p className="text-xs text-muted-foreground">
             {surgeryCase.theatre_name} · {surgeryCase.scheduled_date} {surgeryCase.scheduled_start_time?.slice(0, 5)}
+            {surgeryCase.encounter != null ? (
+              <>
+                {' · '}
+                <Link
+                  href={`/encounters/${surgeryCase.encounter}`}
+                  className="inline-flex items-center gap-1 text-blue-700 underline decoration-blue-700/40 hover:decoration-blue-700 dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:decoration-blue-400"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Encounter #{surgeryCase.encounter}
+                </Link>
+              </>
+            ) : (
+              <span className="text-amber-500"> · No encounter linked</span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

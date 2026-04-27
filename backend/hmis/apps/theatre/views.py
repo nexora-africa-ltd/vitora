@@ -8,6 +8,7 @@ All ViewSets follow codebase conventions:
 - Thin views: validate input then delegate to model methods
 """
 
+import logging
 from datetime import timedelta
 
 from django.http import HttpResponse
@@ -22,6 +23,7 @@ from hmis.apps.billing.agent import BillingAgentService
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.encounters.models import Encounter
 from hmis.apps.pharmacy.services import InsufficientStockError
 
 from .filters import OperatingTheatreFilter, SurgeryCaseFilter
@@ -71,6 +73,8 @@ from .services.consumables import create_theatre_consumable, restore_theatre_con
 from .services.pdf_exports import generate_operative_note_pdf, generate_pacu_summary_pdf
 from .services.reports import build_theatre_report_summary
 from .services.scheduling import get_available_slots, get_case_scheduling_context
+
+logger = logging.getLogger(__name__)
 
 # ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -277,10 +281,31 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         return SurgeryCaseDetailSerializer
 
     def perform_create(self, serializer):
-        serializer.save(
+        tenant_kwargs = self.get_tenant_save_kwargs()
+        instance = serializer.save(
             requesting_doctor=self.request.user,
-            **self.get_tenant_save_kwargs(),
+            **tenant_kwargs,
         )
+        # Auto-create a PROCEDURE encounter and link it to the case
+        # so pre-op labs, imaging, and procedure orders are scoped correctly.
+        if not instance.encounter_id:
+            self._auto_link_encounter(instance, tenant_kwargs)
+
+    def _auto_link_encounter(self, case: SurgeryCase, tenant_kwargs: dict) -> None:
+        """Create a PROCEDURE encounter and link it to the surgery case."""
+        try:
+            encounter = Encounter.objects.create(
+                patient=case.patient,
+                encounter_type="PROCEDURE",
+                encounter_date=case.scheduled_date,
+                chief_complaint=(f"Scheduled procedure: {case.primary_procedure.name}"),
+                created_by=self.request.user,
+                **{k: v for k, v in tenant_kwargs.items() if k in ("facility", "organization")},
+            )
+            case.encounter = encounter
+            case.save(update_fields=["encounter"])
+        except Exception:
+            logger.exception("Failed to auto-create encounter for case %s", case.case_number)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -295,6 +320,25 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
             case_number=serializer.instance.case_number,
         )
         return Response(detail.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="link-encounter")
+    def link_encounter(self, request, **kwargs):
+        """Auto-create a PROCEDURE encounter and link it to an existing case."""
+        case = self.get_object()
+        if case.encounter_id:
+            return Response(
+                {"encounter": case.encounter_id, "message": "Encounter already linked."},
+                status=status.HTTP_200_OK,
+            )
+        tenant_kwargs = self.get_tenant_save_kwargs()
+        self._auto_link_encounter(case, tenant_kwargs)
+        if not case.encounter_id:
+            return Response(
+                {"error": "Failed to create encounter."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        detail = SurgeryCaseDetailSerializer(case)
+        return Response(detail.data, status=status.HTTP_200_OK)
 
     # ── Workflow Actions ──────────────────────────────────────────────
 
