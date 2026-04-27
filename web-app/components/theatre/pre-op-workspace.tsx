@@ -1001,7 +1001,9 @@ export function PreOpWorkspace({
                   {/* Procedure Identity */}
                   <AccordionItem value="procedure-info">
                     <AccordionTrigger className="text-sm font-medium">
-                      Procedure — {(latestProcedureTemplate.display_name as string) || (latestProcedureTemplate.procedure_key as string)}
+                      <span className="flex items-center gap-2">
+                        Procedure — {(latestProcedureTemplate.display_name as string) || (latestProcedureTemplate.procedure_key as string)}
+                      </span>
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="grid gap-2 sm:grid-cols-3 text-sm">
@@ -1036,7 +1038,14 @@ export function PreOpWorkspace({
                   {/* Pre-Op Checklist */}
                   {(latestProcedureTemplate.pre_op_checklist as Record<string, unknown> | undefined) ? (
                     <AccordionItem value="pre-op-checklist">
-                      <AccordionTrigger className="text-sm font-medium">Pre-Op Checklist</AccordionTrigger>
+                      <AccordionTrigger className="text-sm font-medium">
+                        <span className="flex items-center gap-2">
+                          Pre-Op Checklist
+                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {Object.keys(latestProcedureTemplate.pre_op_checklist as Record<string, unknown>).length}
+                          </Badge>
+                        </span>
+                      </AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-3 text-sm">
                           {(() => {
@@ -1082,7 +1091,14 @@ export function PreOpWorkspace({
                   {/* Anaesthesia Options */}
                   {Array.isArray(latestProcedureTemplate.anaesthesia_options) ? (
                     <AccordionItem value="anaesthesia">
-                      <AccordionTrigger className="text-sm font-medium">Anaesthesia Options</AccordionTrigger>
+                      <AccordionTrigger className="text-sm font-medium">
+                        <span className="flex items-center gap-2">
+                          Anaesthesia Options
+                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {(latestProcedureTemplate.anaesthesia_options as unknown[]).length}
+                          </Badge>
+                        </span>
+                      </AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-2 text-sm">
                           {(latestProcedureTemplate.anaesthesia_options as Record<string, unknown>[]).map((option, i) => (
@@ -1104,7 +1120,14 @@ export function PreOpWorkspace({
                   {/* Required Equipment & Personnel */}
                   {(Array.isArray(latestProcedureTemplate.required_equipment) || Array.isArray(latestProcedureTemplate.required_personnel)) ? (
                     <AccordionItem value="equipment-personnel">
-                      <AccordionTrigger className="text-sm font-medium">Equipment &amp; Personnel</AccordionTrigger>
+                      <AccordionTrigger className="text-sm font-medium">
+                        <span className="flex items-center gap-2">
+                          Equipment &amp; Personnel
+                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {(Array.isArray(latestProcedureTemplate.required_equipment) ? (latestProcedureTemplate.required_equipment as unknown[]).length : 0) + (Array.isArray(latestProcedureTemplate.required_personnel) ? (latestProcedureTemplate.required_personnel as unknown[]).length : 0)}
+                          </Badge>
+                        </span>
+                      </AccordionTrigger>
                       <AccordionContent>
                         <div className="grid gap-4 sm:grid-cols-2 text-sm">
                           {Array.isArray(latestProcedureTemplate.required_equipment) ? (
@@ -1131,7 +1154,14 @@ export function PreOpWorkspace({
                   {/* Procedure Steps */}
                   {(latestProcedureTemplate.procedure_steps as Record<string, unknown> | undefined) ? (
                     <AccordionItem value="procedure-steps">
-                      <AccordionTrigger className="text-sm font-medium">Procedure Steps</AccordionTrigger>
+                      <AccordionTrigger className="text-sm font-medium">
+                        <span className="flex items-center gap-2">
+                          Procedure Steps
+                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {Object.values(latestProcedureTemplate.procedure_steps as Record<string, string[]>).reduce((sum, steps) => sum + steps.length, 0)}
+                          </Badge>
+                        </span>
+                      </AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-3 text-sm">
                           {Object.entries(latestProcedureTemplate.procedure_steps as Record<string, string[]>).map(([approach, steps]) => (
@@ -1150,7 +1180,14 @@ export function PreOpWorkspace({
                   {/* Post-Op Care */}
                   {(latestProcedureTemplate.post_op_care as Record<string, unknown> | undefined) ? (
                     <AccordionItem value="post-op-care">
-                      <AccordionTrigger className="text-sm font-medium">Post-Op Care</AccordionTrigger>
+                      <AccordionTrigger className="text-sm font-medium">
+                        <span className="flex items-center gap-2">
+                          Post-Op Care
+                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {Object.values(latestProcedureTemplate.post_op_care as Record<string, unknown>).filter(Boolean).length}
+                          </Badge>
+                        </span>
+                      </AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-3 text-sm">
                           {(() => {
@@ -1200,7 +1237,14 @@ export function PreOpWorkspace({
                   {/* Complications Watchlist */}
                   {Array.isArray(latestProcedureTemplate.complications_watchlist) ? (
                     <AccordionItem value="complications">
-                      <AccordionTrigger className="text-sm font-medium">Complications Watchlist</AccordionTrigger>
+                      <AccordionTrigger className="text-sm font-medium">
+                        <span className="flex items-center gap-2">
+                          Complications Watchlist
+                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {(latestProcedureTemplate.complications_watchlist as unknown[]).length}
+                          </Badge>
+                        </span>
+                      </AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-3 text-sm">
                           {(latestProcedureTemplate.complications_watchlist as Record<string, unknown>[]).map((comp, i) => (
@@ -1221,7 +1265,14 @@ export function PreOpWorkspace({
                   {/* Discharge Criteria & Follow-up */}
                   {(Array.isArray(latestProcedureTemplate.discharge_criteria) || latestProcedureTemplate.follow_up) ? (
                     <AccordionItem value="discharge-followup">
-                      <AccordionTrigger className="text-sm font-medium">Discharge &amp; Follow-up</AccordionTrigger>
+                      <AccordionTrigger className="text-sm font-medium">
+                        <span className="flex items-center gap-2">
+                          Discharge &amp; Follow-up
+                          <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {(Array.isArray(latestProcedureTemplate.discharge_criteria) ? (latestProcedureTemplate.discharge_criteria as unknown[]).length : 0) + (latestProcedureTemplate.follow_up ? 1 : 0)}
+                          </Badge>
+                        </span>
+                      </AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-3 text-sm">
                           {Array.isArray(latestProcedureTemplate.discharge_criteria) ? (

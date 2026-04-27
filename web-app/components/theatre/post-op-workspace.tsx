@@ -6,15 +6,18 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
   AlertCircle,
+  BrainCircuit,
   CheckCircle2,
   ChevronsDownUp,
   ChevronsUpDown,
+  ClipboardCheck,
   Download,
   FileText,
   HeartPulse,
   Loader2,
   MoveRight,
   Siren,
+  Sparkles,
 } from 'lucide-react';
 import {
   Line,
@@ -129,6 +132,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
   const [storedPostOpPlans, setStoredPostOpPlans] = useState<StoredSurgicalPostOpCarePlanResult[]>([]);
   const [postOpOpenSections, setPostOpOpenSections] = useState<string[]>([]);
   const [generatingCarePlan, setGeneratingCarePlan] = useState(false);
+  const [freshInsight, setFreshInsight] = useState(false);
   const [estimatedBloodLossMl, setEstimatedBloodLossMl] = useState<number | ''>('');
   const [lowestHeartRate, setLowestHeartRate] = useState<number | ''>('');
   const [lowestMap, setLowestMap] = useState<number | ''>('');
@@ -348,10 +352,12 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
         findings: postOpFindings || undefined,
         caprini_score: capriniScore === '' ? undefined : Number(capriniScore),
       });
-      toast({ title: 'Post-op AI care plan generated', description: 'The advisory post-operative care plan has been saved for this case.' });
+      toast({ title: 'Surgical AI advisory complete', description: 'Post-op care plan and recovery guidance are now available below.' });
       await refreshAll();
+      setFreshInsight(true);
+      setTimeout(() => setFreshInsight(false), 4000);
     } catch (error) {
-      toast({ title: 'Unable to generate post-op care plan', description: getApiErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Unable to generate care plan', description: getApiErrorMessage(error), variant: 'destructive' });
     } finally {
       setGeneratingCarePlan(false);
     }
@@ -379,23 +385,34 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
         </div>
       </div>
 
-      <Card className="relative overflow-hidden">
+      <Card className={`relative overflow-hidden transition-all duration-700 ${
+        freshInsight
+          ? 'border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.35)]'
+          : latestStoredPostOp
+            ? 'border-emerald-500/40'
+            : ''
+      }`}
+        style={freshInsight ? {
+          animation: 'border-glow 1.5s ease-in-out infinite',
+        } : undefined}
+      >
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
           aria-hidden="true"
         />
         <CardHeader className="relative pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Surgical AI Post-Op Care Plan
-            <Badge variant={latestStoredPostOp ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
-              {latestStoredPostOp ? 'Result available' : 'Not generated'}
+            <ClipboardCheck className="h-4 w-4" />
+            Surgical AI Post-Op Advisory
+            {latestStoredPostOp ? <Sparkles className="h-4 w-4 text-teal-400" /> : null}
+            <Badge variant={surgeryCase.ai_surgical_summary.post_op.has_result ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
+              {surgeryCase.ai_surgical_summary.post_op.has_result ? 'Result available' : 'Not run'}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="relative space-y-4">
           {!mappedProcedureKey ? (
-            <p className="text-sm text-muted-foreground">AI care plan generation is not available for this procedure.</p>
+            <p className="text-sm text-muted-foreground">AI assessment is not available for this procedure.</p>
           ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -427,8 +444,8 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
           </div>
 
           <Button type="button" onClick={() => void generatePostOpCarePlan()} disabled={generatingCarePlan || !mappedProcedureKey}>
-            {generatingCarePlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-            Generate advisory care plan
+            {generatingCarePlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
+            {latestStoredPostOp ? 'Ask again' : 'Ask TibaBot®'}
           </Button>
 
           {latestStoredPostOp ? (
@@ -472,7 +489,16 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                     <Accordion type="multiple" className="w-full" value={postOpOpenSections} onValueChange={setPostOpOpenSections}>
                       {/* Medications */}
                       <AccordionItem value="medications">
-                        <AccordionTrigger className="text-sm font-medium">Medications</AccordionTrigger>
+                        <AccordionTrigger className="text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            Medications
+                            {Array.isArray(latestStoredPostOpData?.medications) && (latestStoredPostOpData.medications as string[]).length > 0 ? (
+                              <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                                {(latestStoredPostOpData.medications as string[]).length}
+                              </Badge>
+                            ) : null}
+                          </span>
+                        </AccordionTrigger>
                         <AccordionContent>
                           {Array.isArray(latestStoredPostOpData?.medications) && (latestStoredPostOpData.medications as string[]).length > 0 ? (
                             <ul className="ml-4 list-disc space-y-1 text-sm">
@@ -487,7 +513,12 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                       {/* Activity */}
                       {latestStoredPostOpData?.activity ? (
                         <AccordionItem value="activity">
-                          <AccordionTrigger className="text-sm font-medium">Activity</AccordionTrigger>
+                          <AccordionTrigger className="text-sm font-medium">
+                            <span className="flex items-center gap-2">
+                              Activity
+                              <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">1</Badge>
+                            </span>
+                          </AccordionTrigger>
                           <AccordionContent>
                             <p className="text-sm">{String(latestStoredPostOpData.activity)}</p>
                           </AccordionContent>
@@ -497,7 +528,12 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                       {/* Nutrition */}
                       {latestStoredPostOpData?.nutrition ? (
                         <AccordionItem value="nutrition">
-                          <AccordionTrigger className="text-sm font-medium">Nutrition</AccordionTrigger>
+                          <AccordionTrigger className="text-sm font-medium">
+                            <span className="flex items-center gap-2">
+                              Nutrition
+                              <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">1</Badge>
+                            </span>
+                          </AccordionTrigger>
                           <AccordionContent>
                             <p className="text-sm">{String(latestStoredPostOpData.nutrition)}</p>
                           </AccordionContent>
@@ -507,7 +543,12 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                       {/* Wound Care */}
                       {latestStoredPostOpData?.wound_care ? (
                         <AccordionItem value="wound-care">
-                          <AccordionTrigger className="text-sm font-medium">Wound Care</AccordionTrigger>
+                          <AccordionTrigger className="text-sm font-medium">
+                            <span className="flex items-center gap-2">
+                              Wound Care
+                              <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">1</Badge>
+                            </span>
+                          </AccordionTrigger>
                           <AccordionContent>
                             <p className="text-sm">{String(latestStoredPostOpData.wound_care)}</p>
                           </AccordionContent>
@@ -517,7 +558,14 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                       {/* Complications to Watch */}
                       {Array.isArray(latestStoredPostOpData?.complications_to_watch) && (latestStoredPostOpData.complications_to_watch as Record<string, unknown>[]).length > 0 ? (
                         <AccordionItem value="complications">
-                          <AccordionTrigger className="text-sm font-medium">Complications to Watch</AccordionTrigger>
+                          <AccordionTrigger className="text-sm font-medium">
+                            <span className="flex items-center gap-2">
+                              Complications to Watch
+                              <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                                {(latestStoredPostOpData.complications_to_watch as unknown[]).length}
+                              </Badge>
+                            </span>
+                          </AccordionTrigger>
                           <AccordionContent>
                             <div className="space-y-3 text-sm">
                               {(latestStoredPostOpData.complications_to_watch as Record<string, unknown>[]).map((comp, i) => (
@@ -538,7 +586,14 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                       {/* Discharge Criteria */}
                       {Array.isArray(latestStoredPostOpData?.discharge_criteria) && (latestStoredPostOpData.discharge_criteria as string[]).length > 0 ? (
                         <AccordionItem value="discharge">
-                          <AccordionTrigger className="text-sm font-medium">Discharge Criteria</AccordionTrigger>
+                          <AccordionTrigger className="text-sm font-medium">
+                            <span className="flex items-center gap-2">
+                              Discharge Criteria
+                              <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                                {(latestStoredPostOpData.discharge_criteria as string[]).length}
+                              </Badge>
+                            </span>
+                          </AccordionTrigger>
                           <AccordionContent>
                             <ul className="ml-4 list-disc space-y-1 text-sm">
                               {(latestStoredPostOpData.discharge_criteria as string[]).map((item, i) => <li key={i}>{item}</li>)}
@@ -550,7 +605,14 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                       {/* Follow-up */}
                       {followUp ? (
                         <AccordionItem value="follow-up">
-                          <AccordionTrigger className="text-sm font-medium">Follow-up</AccordionTrigger>
+                          <AccordionTrigger className="text-sm font-medium">
+                            <span className="flex items-center gap-2">
+                              Follow-up
+                              <Badge variant="secondary" className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                                {(followUp.appointment ? 1 : 0) + (followUp.investigations ? 1 : 0) + (Array.isArray(followUp.red_flags) ? (followUp.red_flags as unknown[]).length : 0)}
+                              </Badge>
+                            </span>
+                          </AccordionTrigger>
                           <AccordionContent>
                             <div className="space-y-3 text-sm">
                               {followUp.appointment ? (
