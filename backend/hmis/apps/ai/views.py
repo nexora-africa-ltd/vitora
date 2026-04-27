@@ -2724,7 +2724,7 @@ class SurgicalPostOpCarePlanView(AIFeatureGatedMixin, APIView):
             logger.error("TibaBot error for surgical post-op care plan: %s", e)
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
-        surgical_apgar = result.get("surgical_apgar", {})
+        surgical_apgar = result.get("surgical_apgar") or {}
         try:
             stored = AISurgicalPostOpCarePlanResult.objects.create(
                 created_by=request.user,

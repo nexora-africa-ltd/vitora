@@ -7,6 +7,8 @@ import { z } from 'zod';
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Download,
   FileText,
   HeartPulse,
@@ -23,6 +25,12 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -119,6 +127,7 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
   const [refreshing, setRefreshing] = useState(false);
   const [pacuRecord, setPacuRecord] = useState<PACURecord | null>(null);
   const [storedPostOpPlans, setStoredPostOpPlans] = useState<StoredSurgicalPostOpCarePlanResult[]>([]);
+  const [postOpOpenSections, setPostOpOpenSections] = useState<string[]>([]);
   const [generatingCarePlan, setGeneratingCarePlan] = useState(false);
   const [estimatedBloodLossMl, setEstimatedBloodLossMl] = useState<number | ''>('');
   const [lowestHeartRate, setLowestHeartRate] = useState<number | ''>('');
@@ -439,20 +448,139 @@ export function PostOpWorkspace({ surgeryCase, onCaseRefresh }: { surgeryCase: S
                 </div>
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-3">
-                <div className="rounded-lg border p-3 text-sm xl:col-span-2">
-                  <p className="text-muted-foreground">Medications</p>
-                  <p className="mt-1 font-medium">
-                    {Array.isArray(latestStoredPostOpData?.medications) && latestStoredPostOpData.medications.length > 0
-                      ? latestStoredPostOpData.medications.join(', ')
-                      : 'No medication guidance recorded'}
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3 text-sm">
-                  <p className="text-muted-foreground">Follow-up</p>
-                  <p className="mt-1 font-medium">{String((latestStoredPostOpData?.follow_up as Record<string, unknown> | undefined)?.timing || 'Not specified')}</p>
-                </div>
-              </div>
+              {(() => {
+                const ALL_POST_OP_SECTIONS = [
+                  'medications', 'activity', 'nutrition', 'wound-care',
+                  'complications', 'discharge', 'follow-up',
+                ];
+                const allExpanded = postOpOpenSections.length === ALL_POST_OP_SECTIONS.length;
+                const followUp = latestStoredPostOpData?.follow_up as Record<string, unknown> | undefined;
+                return (
+                  <>
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1.5 text-xs text-muted-foreground"
+                        onClick={() => setPostOpOpenSections(allExpanded ? [] : ALL_POST_OP_SECTIONS)}
+                      >
+                        {allExpanded ? <ChevronsDownUp className="h-3.5 w-3.5" /> : <ChevronsUpDown className="h-3.5 w-3.5" />}
+                        {allExpanded ? 'Collapse all' : 'Expand all'}
+                      </Button>
+                    </div>
+                    <Accordion type="multiple" className="w-full" value={postOpOpenSections} onValueChange={setPostOpOpenSections}>
+                      {/* Medications */}
+                      <AccordionItem value="medications">
+                        <AccordionTrigger className="text-sm font-medium">Medications</AccordionTrigger>
+                        <AccordionContent>
+                          {Array.isArray(latestStoredPostOpData?.medications) && (latestStoredPostOpData.medications as string[]).length > 0 ? (
+                            <ul className="ml-4 list-disc space-y-1 text-sm">
+                              {(latestStoredPostOpData.medications as string[]).map((med, i) => <li key={i}>{med}</li>)}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No medication guidance recorded</p>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      {/* Activity */}
+                      {latestStoredPostOpData?.activity ? (
+                        <AccordionItem value="activity">
+                          <AccordionTrigger className="text-sm font-medium">Activity</AccordionTrigger>
+                          <AccordionContent>
+                            <p className="text-sm">{String(latestStoredPostOpData.activity)}</p>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ) : null}
+
+                      {/* Nutrition */}
+                      {latestStoredPostOpData?.nutrition ? (
+                        <AccordionItem value="nutrition">
+                          <AccordionTrigger className="text-sm font-medium">Nutrition</AccordionTrigger>
+                          <AccordionContent>
+                            <p className="text-sm">{String(latestStoredPostOpData.nutrition)}</p>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ) : null}
+
+                      {/* Wound Care */}
+                      {latestStoredPostOpData?.wound_care ? (
+                        <AccordionItem value="wound-care">
+                          <AccordionTrigger className="text-sm font-medium">Wound Care</AccordionTrigger>
+                          <AccordionContent>
+                            <p className="text-sm">{String(latestStoredPostOpData.wound_care)}</p>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ) : null}
+
+                      {/* Complications to Watch */}
+                      {Array.isArray(latestStoredPostOpData?.complications_to_watch) && (latestStoredPostOpData.complications_to_watch as Record<string, unknown>[]).length > 0 ? (
+                        <AccordionItem value="complications">
+                          <AccordionTrigger className="text-sm font-medium">Complications to Watch</AccordionTrigger>
+                          <AccordionContent>
+                            <div className="space-y-3 text-sm">
+                              {(latestStoredPostOpData.complications_to_watch as Record<string, unknown>[]).map((comp, i) => (
+                                <div key={i} className="rounded-md border p-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="font-medium">{comp.complication as string}</p>
+                                    {comp.incidence ? <Badge variant="secondary" className="shrink-0 text-xs">{comp.incidence as string}</Badge> : null}
+                                  </div>
+                                  {comp.signs ? <p className="mt-1 text-muted-foreground"><span className="font-medium">Signs:</span> {comp.signs as string}</p> : null}
+                                  {comp.action ? <p className="mt-0.5 text-muted-foreground"><span className="font-medium">Action:</span> {comp.action as string}</p> : null}
+                                </div>
+                              ))}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ) : null}
+
+                      {/* Discharge Criteria */}
+                      {Array.isArray(latestStoredPostOpData?.discharge_criteria) && (latestStoredPostOpData.discharge_criteria as string[]).length > 0 ? (
+                        <AccordionItem value="discharge">
+                          <AccordionTrigger className="text-sm font-medium">Discharge Criteria</AccordionTrigger>
+                          <AccordionContent>
+                            <ul className="ml-4 list-disc space-y-1 text-sm">
+                              {(latestStoredPostOpData.discharge_criteria as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                            </ul>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ) : null}
+
+                      {/* Follow-up */}
+                      {followUp ? (
+                        <AccordionItem value="follow-up">
+                          <AccordionTrigger className="text-sm font-medium">Follow-up</AccordionTrigger>
+                          <AccordionContent>
+                            <div className="space-y-3 text-sm">
+                              {followUp.appointment ? (
+                                <div>
+                                  <p className="font-medium text-muted-foreground">Appointment</p>
+                                  <p>{followUp.appointment as string}</p>
+                                </div>
+                              ) : null}
+                              {followUp.investigations ? (
+                                <div>
+                                  <p className="font-medium text-muted-foreground">Investigations</p>
+                                  <p>{followUp.investigations as string}</p>
+                                </div>
+                              ) : null}
+                              {Array.isArray(followUp.red_flags) && (followUp.red_flags as string[]).length > 0 ? (
+                                <div>
+                                  <p className="font-medium text-destructive">Red Flags — Advise patient</p>
+                                  <ul className="ml-4 mt-1 list-disc space-y-0.5">
+                                    {(followUp.red_flags as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                                  </ul>
+                                </div>
+                              ) : null}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ) : null}
+                    </Accordion>
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No advisory post-operative care plan has been generated for this case yet.</p>
