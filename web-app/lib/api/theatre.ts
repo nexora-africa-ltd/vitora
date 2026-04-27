@@ -323,6 +323,39 @@ export const theatreApi = {
     });
   },
 
+  async updateIntraOpVital(
+    caseNumber: string,
+    vitalId: number,
+    data: Record<string, unknown>
+  ): Promise<IntraOpVital> {
+    const response = await apiClient.patch(
+      `/api/theatre/cases/${caseNumber}/anesthesia/vitals/${vitalId}/`,
+      data
+    );
+    return parseResponse(IntraOpVitalSchema, response.data, {
+      context: 'theatreApi.updateIntraOpVital',
+    });
+  },
+
+  async deleteIntraOpVital(caseNumber: string, vitalId: number): Promise<void> {
+    await apiClient.delete(
+      `/api/theatre/cases/${caseNumber}/anesthesia/vitals/${vitalId}/delete/`
+    );
+  },
+
+  async bulkAddIntraOpVitals(
+    caseNumber: string,
+    data: Record<string, unknown>[]
+  ): Promise<IntraOpVital[]> {
+    const response = await apiClient.post(
+      `/api/theatre/cases/${caseNumber}/anesthesia/vitals/bulk/`,
+      data
+    );
+    return parseResponse(z.array(IntraOpVitalSchema), response.data, {
+      context: 'theatreApi.bulkAddIntraOpVitals',
+    });
+  },
+
   async listIntraOpVitals(caseNumber: string): Promise<IntraOpVital[]> {
     const response = await apiClient.get(`/api/theatre/cases/${caseNumber}/anesthesia/vitals/`);
     return parseResponse(z.array(IntraOpVitalSchema), response.data, {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -14,22 +14,11 @@ import {
   FileText,
   Loader2,
   Package,
-  Play,
-  Plus,
   ShieldCheck,
   Sparkles,
   Syringe,
   Trash2,
 } from 'lucide-react';
-import {
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,6 +37,10 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { VitalsChartCard } from '@/components/theatre/vitals-chart-card';
+import { VitalsEntryForm } from '@/components/theatre/vitals-entry-form';
+import { VitalsTable } from '@/components/theatre/vitals-table';
+import { VitalsTimerBadge } from '@/components/theatre/vitals-timer-badge';
 import { aiApi } from '@/lib/api/ai';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { pharmacyApi } from '@/lib/api/pharmacy';
@@ -119,20 +112,14 @@ const anesthesiaIntraOpSchema = z.object({
   other_post_op_orders: z.string().default(''),
 });
 
-const intraOpVitalSchema = z.object({
-  recorded_at: z.string().min(1, 'Recording time is required'),
-  recorded_by: z.coerce.number().int().positive('Recorder user ID is required'),
-  systolic_bp: z.coerce.number().nullable().optional(),
-  diastolic_bp: z.coerce.number().nullable().optional(),
-  heart_rate: z.coerce.number().nullable().optional(),
-  respiratory_rate: z.coerce.number().nullable().optional(),
-  spo2: z.coerce.number().nullable().optional(),
-  etco2: z.coerce.number().nullable().optional(),
-  fio2: z.coerce.number().nullable().optional(),
-  tidal_volume: z.coerce.number().nullable().optional(),
-  peak_pressure: z.coerce.number().nullable().optional(),
-  temperature: z.string().default(''),
-  notes: z.string().default(''),
+const consumableSchema = z.object({
+  item: z.coerce.number().int().positive('Consumable item is required'),
+  quantity_used: z.coerce.number().int().positive('Quantity is required'),
+  unit_cost: z.coerce.number().min(0).default(0),
+  lot_number: z.string().default(''),
+  expiry_date: z.string().default(''),
+  is_implant: z.boolean().default(false),
+  implant_serial_number: z.string().default(''),
 });
 
 const operativeNoteSchema = z.object({
@@ -155,20 +142,9 @@ const operativeNoteSchema = z.object({
   post_operative_plan: z.string().default(''),
 });
 
-const consumableSchema = z.object({
-  item: z.coerce.number().int().positive('Consumable item is required'),
-  quantity_used: z.coerce.number().int().positive('Quantity is required'),
-  unit_cost: z.coerce.number().min(0).default(0),
-  lot_number: z.string().default(''),
-  expiry_date: z.string().default(''),
-  is_implant: z.boolean().default(false),
-  implant_serial_number: z.string().default(''),
-});
-
 type TimeOutValues = z.infer<typeof timeOutSchema>;
 type SignOutValues = z.infer<typeof signOutSchema>;
 type AnesthesiaIntraOpValues = z.infer<typeof anesthesiaIntraOpSchema>;
-type IntraOpVitalValues = z.infer<typeof intraOpVitalSchema>;
 type OperativeNoteValues = z.infer<typeof operativeNoteSchema>;
 type ConsumableValues = z.infer<typeof consumableSchema>;
 
@@ -226,24 +202,6 @@ export function IntraOpWorkspace({
   const timeOutForm = useForm<TimeOutValues>({ resolver: zodResolver(timeOutSchema), defaultValues: timeOutSchema.parse({}) });
   const signOutForm = useForm<SignOutValues>({ resolver: zodResolver(signOutSchema), defaultValues: signOutSchema.parse({}) });
   const anesthesiaForm = useForm<AnesthesiaIntraOpValues>({ resolver: zodResolver(anesthesiaIntraOpSchema), defaultValues: anesthesiaIntraOpSchema.parse({}) });
-  const vitalForm = useForm<IntraOpVitalValues>({
-    resolver: zodResolver(intraOpVitalSchema),
-    defaultValues: {
-      recorded_at: toDateTimeLocalValue(new Date().toISOString()),
-      recorded_by: surgeryCase.requesting_doctor,
-      systolic_bp: undefined,
-      diastolic_bp: undefined,
-      heart_rate: undefined,
-      respiratory_rate: undefined,
-      spo2: undefined,
-      etco2: undefined,
-      fio2: undefined,
-      tidal_volume: undefined,
-      peak_pressure: undefined,
-      temperature: '',
-      notes: '',
-    },
-  });
   const noteForm = useForm<OperativeNoteValues>({
     resolver: zodResolver(operativeNoteSchema),
     defaultValues: {
@@ -402,16 +360,6 @@ export function IntraOpWorkspace({
       : latestStoredChecklist?.phase_complete ?? false;
   const checklistMessage = typeof liveChecklistStatus?.message === 'string' ? liveChecklistStatus.message : '';
 
-  const chartData = useMemo(
-    () => vitals.map((vital) => ({
-      time: new Date(vital.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      heartRate: vital.heart_rate ?? null,
-      spo2: vital.spo2 ?? null,
-      etco2: vital.etco2 ?? null,
-    })),
-    [vitals]
-  );
-
   const saveTimeOut = async (values: TimeOutValues) => {
     try {
       await theatreApi.completeTimeOut(surgeryCase.case_number, values);
@@ -462,21 +410,6 @@ export function IntraOpWorkspace({
       await refreshAll();
     } catch (error) {
       toast({ title: 'Unable to update anesthesia record', description: getApiErrorMessage(error), variant: 'destructive' });
-    }
-  };
-
-  const saveVital = async (values: IntraOpVitalValues) => {
-    try {
-      await theatreApi.addIntraOpVital(surgeryCase.case_number, {
-        ...values,
-        recorded_at: toIsoOrUndefined(values.recorded_at),
-        temperature: values.temperature || undefined,
-      });
-      toast({ title: 'Intra-op vital saved', description: 'The anesthesia trend chart has been updated.' });
-      vitalForm.reset({ ...values, notes: '' });
-      await refreshAll();
-    } catch (error) {
-      toast({ title: 'Unable to save vital', description: getApiErrorMessage(error), variant: 'destructive' });
     }
   };
 
@@ -690,57 +623,19 @@ export function IntraOpWorkspace({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
+        {/* Intra-op vitals — decomposed into chart, form, table, and timer sub-components */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold flex items-center gap-2">
               <Syringe className="h-4 w-4" />
-              Anesthesia Vitals Trend
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {vitals.length === 0 ? (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>No vitals yet</AlertTitle>
-                <AlertDescription>Add the first intra-operative vital to start the graph.</AlertDescription>
-              </Alert>
-            ) : (
-              <div className="h-64 rounded-lg border p-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="heartRate" stroke="#ef4444" strokeWidth={2} dot={false} name="HR" />
-                    <Line type="monotone" dataKey="spo2" stroke="#0ea5e9" strokeWidth={2} dot={false} name="SpO2" />
-                    <Line type="monotone" dataKey="etco2" stroke="#14b8a6" strokeWidth={2} dot={false} name="EtCO2" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-            <Form {...vitalForm}>
-              <form className="space-y-4" onSubmit={vitalForm.handleSubmit(saveVital)}>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <FormField control={vitalForm.control} name="recorded_at" render={({ field }) => <FormItem><FormLabel>Recorded at</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="recorded_by" render={({ field }) => <FormItem><FormLabel>Recorded by user ID</FormLabel><FormControl><Input type="number" min={1} {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="heart_rate" render={({ field }) => <FormItem><FormLabel>HR</FormLabel><FormControl><Input type="number" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="spo2" render={({ field }) => <FormItem><FormLabel>SpO2</FormLabel><FormControl><Input type="number" step="0.1" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="systolic_bp" render={({ field }) => <FormItem><FormLabel>Systolic BP</FormLabel><FormControl><Input type="number" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="diastolic_bp" render={({ field }) => <FormItem><FormLabel>Diastolic BP</FormLabel><FormControl><Input type="number" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="respiratory_rate" render={({ field }) => <FormItem><FormLabel>Respiratory rate</FormLabel><FormControl><Input type="number" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="etco2" render={({ field }) => <FormItem><FormLabel>EtCO2</FormLabel><FormControl><Input type="number" step="0.1" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="fio2" render={({ field }) => <FormItem><FormLabel>FiO2</FormLabel><FormControl><Input type="number" step="0.1" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="tidal_volume" render={({ field }) => <FormItem><FormLabel>Tidal volume</FormLabel><FormControl><Input type="number" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="peak_pressure" render={({ field }) => <FormItem><FormLabel>Peak pressure</FormLabel><FormControl><Input type="number" value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={vitalForm.control} name="temperature" render={({ field }) => <FormItem><FormLabel>Temperature</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                </div>
-                <FormField control={vitalForm.control} name="notes" render={({ field }) => <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>} />
-                <Button type="submit"><Plus className="h-4 w-4 mr-2" />Add vital reading</Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+              Intra-Op Vitals
+            </h3>
+            <VitalsTimerBadge lastRecordedAt={vitals.length > 0 ? vitals[vitals.length - 1]!.recorded_at : null} />
+          </div>
+          <VitalsChartCard vitals={vitals} />
+          <VitalsEntryForm caseNumber={surgeryCase.case_number} onVitalAdded={refreshAll} />
+          <VitalsTable vitals={vitals} caseNumber={surgeryCase.case_number} onVitalDeleted={refreshAll} />
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

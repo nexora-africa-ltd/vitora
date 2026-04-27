@@ -29,6 +29,7 @@ from hmis.apps.pharmacy.services import InsufficientStockError
 from .filters import OperatingTheatreFilter, SurgeryCaseFilter
 from .models import (
     AnesthesiaRecord,
+    IntraOpVitalReading,
     OperatingTheatre,
     OperativeNote,
     PACURecord,
@@ -213,6 +214,9 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         "create_anesthesia",
         "update_anesthesia",
         "add_intraop_vital",
+        "update_intraop_vital",
+        "delete_intraop_vital",
+        "bulk_add_intraop_vitals",
         "add_consumable",
         "remove_consumable",
         "create_pacu",
@@ -262,6 +266,10 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
         if self.action == "create_anesthesia":
             return AnesthesiaRecordCreateSerializer
         if self.action == "add_intraop_vital":
+            return IntraOpVitalReadingCreateSerializer
+        if self.action == "update_intraop_vital":
+            return IntraOpVitalReadingCreateSerializer
+        if self.action == "bulk_add_intraop_vitals":
             return IntraOpVitalReadingCreateSerializer
         # Operative note
         if self.action == "create_operative_note":
@@ -683,9 +691,109 @@ class SurgeryCaseViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.Mode
             return Response(IntraOpVitalReadingSerializer(readings, many=True).data)
         serializer = IntraOpVitalReadingCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        vital = serializer.save(anesthesia_record=record)
+        vital = serializer.save(anesthesia_record=record, recorded_by=request.user)
+        _audit(
+            request,
+            "intraop_vital_create",
+            "IntraOpVitalReading",
+            vital.pk,
+            case_number=case.case_number,
+        )
         return Response(
             IntraOpVitalReadingSerializer(vital).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["patch"], url_path=r"anesthesia/vitals/(?P<vital_id>\d+)")
+    def update_intraop_vital(self, request, vital_id=None, **kwargs):
+        case = self.get_object()
+        try:
+            record = case.anesthesia_record
+        except AnesthesiaRecord.DoesNotExist:
+            return Response(
+                {"error": "Create anesthesia record first."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            vital = record.vital_readings.get(pk=vital_id)
+        except IntraOpVitalReading.DoesNotExist:
+            return Response(
+                {"error": "Vital reading not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = IntraOpVitalReadingCreateSerializer(vital, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        _audit(
+            request,
+            "intraop_vital_update",
+            "IntraOpVitalReading",
+            vital.pk,
+            case_number=case.case_number,
+        )
+        return Response(IntraOpVitalReadingSerializer(vital).data)
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"anesthesia/vitals/(?P<vital_id>\d+)/delete",
+    )
+    def delete_intraop_vital(self, request, vital_id=None, **kwargs):
+        case = self.get_object()
+        try:
+            record = case.anesthesia_record
+        except AnesthesiaRecord.DoesNotExist:
+            return Response(
+                {"error": "Create anesthesia record first."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            vital = record.vital_readings.get(pk=vital_id)
+        except IntraOpVitalReading.DoesNotExist:
+            return Response(
+                {"error": "Vital reading not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        vital_pk = vital.pk
+        vital.delete()
+        _audit(
+            request,
+            "intraop_vital_delete",
+            "IntraOpVitalReading",
+            vital_pk,
+            case_number=case.case_number,
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"], url_path="anesthesia/vitals/bulk")
+    def bulk_add_intraop_vitals(self, request, **kwargs):
+        """Create multiple vital readings in a single request."""
+        case = self.get_object()
+        try:
+            record = case.anesthesia_record
+        except AnesthesiaRecord.DoesNotExist:
+            return Response(
+                {"error": "Create anesthesia record first."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if not isinstance(request.data, list):
+            return Response(
+                {"error": "Expected a list of vital readings."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = IntraOpVitalReadingCreateSerializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+        vitals = serializer.save(anesthesia_record=record, recorded_by=request.user)
+        for v in vitals:
+            _audit(
+                request,
+                "intraop_vital_create",
+                "IntraOpVitalReading",
+                v.pk,
+                case_number=case.case_number,
+            )
+        return Response(
+            IntraOpVitalReadingSerializer(vitals, many=True).data,
             status=status.HTTP_201_CREATED,
         )
 

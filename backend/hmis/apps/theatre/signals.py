@@ -13,6 +13,7 @@ from django.dispatch import receiver
 from hmis.apps.core.events import TheatreEvents, publish_event
 from hmis.apps.scheduling.models import Resource, Schedule
 from hmis.apps.theatre.models import (
+    IntraOpVitalReading,
     OperatingTheatre,
     PACURecord,
     SurgeryCase,
@@ -244,3 +245,28 @@ def publish_pacu_event(sender, instance, created, **kwargs):
             },
             facility_id=getattr(instance.surgery_case, "facility_id", None),
         )
+
+
+@receiver(post_save, sender=IntraOpVitalReading)
+def publish_intraop_vital_event(sender, instance, created, **kwargs):
+    """Publish domain event when an intra-op vital reading is recorded."""
+    if not created:
+        return
+    case = instance.anesthesia_record.surgery_case
+    publish_event(
+        event_type=TheatreEvents.INTRAOP_VITAL_RECORDED,
+        aggregate_type="IntraOpVitalReading",
+        aggregate_id=instance.pk,
+        payload={
+            "case_number": case.case_number,
+            "anesthesia_record_id": instance.anesthesia_record_id,
+            "has_critical_vitals": instance.has_critical_vitals,
+            "alerts": instance.alerts,
+            "heart_rate": instance.heart_rate,
+            "spo2": float(instance.spo2) if instance.spo2 is not None else None,
+            "systolic_bp": instance.systolic_bp,
+            "diastolic_bp": instance.diastolic_bp,
+        },
+        facility_id=getattr(case, "facility_id", None),
+        organization_id=getattr(case, "organization_id", None),
+    )
