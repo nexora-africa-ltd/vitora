@@ -80,6 +80,8 @@ import type {
   SurgicalTeamMember,
   WHOChecklist,
 } from '@/lib/types/theatre';
+import { useAdvisoryLinks } from '@/components/theatre/use-advisory-links';
+import { SuggestionActionChip } from '@/components/theatre/suggestion-action-chip';
 
 const consentFormSchema = z.object({
   consent_text: z.string().min(10, 'Consent text is required'),
@@ -577,6 +579,14 @@ export function PreOpWorkspace({
   const latestStoredPreOpData = latestStoredPreOp?.result_data as Record<string, unknown> | undefined;
   const latestStoredRiskScores = latestStoredPreOpData?.risk_scores as Record<string, unknown> | undefined;
   const latestProcedureTemplate = latestStoredPreOpData?.procedure_template as Record<string, unknown> | undefined;
+
+  // Advisory links (seed on mount, track suggestion → order links)
+  const preOpResultId = latestStoredPreOp?.id;
+  const { getLink, actionLink, hasOrders: preOpHasOrders, refresh: refreshAdvisoryLinks } = useAdvisoryLinks(
+    preOpResultId,
+    'pre_op_assessment',
+  );
+
   const aiAsaClass = ['I', 'II', 'III', 'IV', 'V', 'VI'].includes(surgeryCase.asa_class)
     ? (surgeryCase.asa_class as 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI')
     : 'II';
@@ -918,7 +928,7 @@ export function PreOpWorkspace({
                 type="button"
                 className="w-full"
                 onClick={() => void handleRunSurgicalAssessment()}
-                disabled={runningSurgicalAssessment || !mappedProcedureKey}
+                disabled={runningSurgicalAssessment || !mappedProcedureKey || preOpHasOrders}
               >
                 {runningSurgicalAssessment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
                 {latestStoredPreOp ? 'Ask again' : 'Ask TibaBot®'}
@@ -1061,8 +1071,17 @@ export function PreOpWorkspace({
                                 {Array.isArray(checklist.investigations) ? (
                                   <div>
                                     <p className="font-medium text-muted-foreground">Investigations</p>
-                                    <ul className="ml-4 mt-1 list-disc space-y-0.5">
-                                      {(checklist.investigations as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                                    <ul className="ml-4 mt-1 list-disc space-y-1">
+                                      {(checklist.investigations as string[]).map((item, i) => (
+                                        <li key={i} className="flex items-center gap-1">
+                                          <span className="flex-1">{item}</span>
+                                          <SuggestionActionChip
+                                            link={getLink('pre_op_checklist.investigations', i)}
+                                            onAction={actionLink}
+                                            orderable
+                                          />
+                                        </li>
+                                      ))}
                                     </ul>
                                   </div>
                                 ) : null}
@@ -1133,8 +1152,16 @@ export function PreOpWorkspace({
                           {Array.isArray(latestProcedureTemplate.required_equipment) ? (
                             <div>
                               <p className="mb-1 font-medium text-muted-foreground">Equipment</p>
-                              <ul className="ml-4 list-disc space-y-0.5">
-                                {(latestProcedureTemplate.required_equipment as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                              <ul className="ml-4 list-disc space-y-1">
+                                {(latestProcedureTemplate.required_equipment as string[]).map((item, i) => (
+                                  <li key={i} className="flex items-center gap-1">
+                                    <span className="flex-1">{item}</span>
+                                    <SuggestionActionChip
+                                      link={getLink('required_equipment', i)}
+                                      onAction={actionLink}
+                                    />
+                                  </li>
+                                ))}
                               </ul>
                             </div>
                           ) : null}
@@ -1203,8 +1230,17 @@ export function PreOpWorkspace({
                                 {Array.isArray(postOp.medications) ? (
                                   <div>
                                     <p className="font-medium text-muted-foreground">Medications</p>
-                                    <ul className="ml-4 mt-1 list-disc space-y-0.5">
-                                      {(postOp.medications as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                                    <ul className="ml-4 mt-1 list-disc space-y-1">
+                                      {(postOp.medications as string[]).map((item, i) => (
+                                        <li key={i} className="flex items-center gap-1">
+                                          <span className="flex-1">{item}</span>
+                                          <SuggestionActionChip
+                                            link={getLink('post_op_care.medications', i)}
+                                            onAction={actionLink}
+                                            orderable
+                                          />
+                                        </li>
+                                      ))}
                                     </ul>
                                   </div>
                                 ) : null}
@@ -1251,7 +1287,13 @@ export function PreOpWorkspace({
                             <div key={i} className="rounded-md border p-3">
                               <div className="flex items-center justify-between gap-2">
                                 <p className="font-medium">{comp.complication as string}</p>
-                                <Badge variant="secondary" className="shrink-0 text-xs">{comp.incidence as string}</Badge>
+                                <span className="flex items-center gap-1.5">
+                                  <SuggestionActionChip
+                                    link={getLink('complications_to_watch', i)}
+                                    onAction={actionLink}
+                                  />
+                                  <Badge variant="secondary" className="shrink-0 text-xs">{comp.incidence as string}</Badge>
+                                </span>
                               </div>
                               <p className="mt-1 text-muted-foreground"><span className="font-medium">Signs:</span> {comp.signs as string}</p>
                               <p className="mt-0.5 text-muted-foreground"><span className="font-medium">Action:</span> {comp.action as string}</p>
@@ -1278,8 +1320,16 @@ export function PreOpWorkspace({
                           {Array.isArray(latestProcedureTemplate.discharge_criteria) ? (
                             <div>
                               <p className="mb-1 font-medium text-muted-foreground">Discharge Criteria</p>
-                              <ul className="ml-4 list-disc space-y-0.5">
-                                {(latestProcedureTemplate.discharge_criteria as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                              <ul className="ml-4 list-disc space-y-1">
+                                {(latestProcedureTemplate.discharge_criteria as string[]).map((item, i) => (
+                                  <li key={i} className="flex items-center gap-1">
+                                    <span className="flex-1">{item}</span>
+                                    <SuggestionActionChip
+                                      link={getLink('discharge_criteria', i)}
+                                      onAction={actionLink}
+                                    />
+                                  </li>
+                                ))}
                               </ul>
                             </div>
                           ) : null}
@@ -1303,8 +1353,16 @@ export function PreOpWorkspace({
                                 {Array.isArray(followUp.red_flags) ? (
                                   <div>
                                     <p className="font-medium text-destructive">Red Flags — Advise patient</p>
-                                    <ul className="ml-4 mt-1 list-disc space-y-0.5">
-                                      {(followUp.red_flags as string[]).map((item, i) => <li key={i}>{item}</li>)}
+                                    <ul className="ml-4 mt-1 list-disc space-y-1">
+                                      {(followUp.red_flags as string[]).map((item, i) => (
+                                        <li key={i} className="flex items-center gap-1">
+                                          <span className="flex-1">{item}</span>
+                                          <SuggestionActionChip
+                                            link={getLink('follow_up.red_flags', i)}
+                                            onAction={actionLink}
+                                          />
+                                        </li>
+                                      ))}
                                     </ul>
                                   </div>
                                 ) : null}

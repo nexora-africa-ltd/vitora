@@ -5,6 +5,9 @@ URL configuration for AI proxy endpoints.
 from django.urls import path
 
 from .views import (
+    AIAdvisoryHasOrdersView,
+    AIAdvisoryOrderLinkActionView,
+    AIAdvisoryOrderLinkListView,
     AIFeedbackStatsView,
     AIFeedbackView,
     AIStatusView,
@@ -210,5 +213,21 @@ urlpatterns = [
         "results/surgical/post-op-care-plans/",
         StoredSurgicalPostOpCarePlanListView.as_view(),
         name="results-surgical-post-op-care-plans",
+    ),
+    # ── Advisory order links ──────────────────────────────────────────
+    path(
+        "advisory-links/",
+        AIAdvisoryOrderLinkListView.as_view(),
+        name="advisory-links-list",
+    ),
+    path(
+        "advisory-links/has-orders/",
+        AIAdvisoryHasOrdersView.as_view(),
+        name="advisory-links-has-orders",
+    ),
+    path(
+        "advisory-links/<int:pk>/action/",
+        AIAdvisoryOrderLinkActionView.as_view(),
+        name="advisory-links-action",
     ),
 ]

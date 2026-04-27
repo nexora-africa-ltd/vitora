@@ -2413,3 +2413,73 @@ class StoredInvestigationSuggestSerializer(StoredAIResultSerializer):
     encounter_id = serializers.IntegerField(allow_null=True, read_only=True)
     matched_conditions = serializers.ListField(child=serializers.CharField(), read_only=True)
     suggestion_count = serializers.IntegerField(read_only=True)
+
+
+# =============================================================================
+# AI Advisory → Order link
+# =============================================================================
+
+
+class AIAdvisoryOrderLinkSerializer(serializers.Serializer):
+    """Read serializer for advisory-order links."""
+
+    id = serializers.IntegerField(read_only=True)
+    ai_result_id = serializers.UUIDField(read_only=True)
+    suggestion_category = serializers.CharField(read_only=True)
+    suggestion_index = serializers.IntegerField(read_only=True)
+    suggestion_text = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    lab_order_id = serializers.IntegerField(allow_null=True, read_only=True)
+    imaging_order_id = serializers.IntegerField(allow_null=True, read_only=True)
+    prescription_id = serializers.IntegerField(allow_null=True, read_only=True)
+    actioned_by = serializers.IntegerField(allow_null=True, source="actioned_by_id", read_only=True)
+    actioned_at = serializers.DateTimeField(allow_null=True, read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+    # Denormalised order number for display
+    order_number = serializers.SerializerMethodField()
+
+    def get_order_number(self, obj: "AIAdvisoryOrderLink") -> str | None:  # type: ignore[name-defined]  # noqa: F821
+        if obj.lab_order_id:
+            return getattr(obj.lab_order, "order_number", None)
+        if obj.imaging_order_id:
+            return getattr(obj.imaging_order, "order_number", None)
+        if obj.prescription_id:
+            return getattr(obj.prescription, "prescription_number", None)
+        return None
+
+
+class AIAdvisoryOrderLinkActionSerializer(serializers.Serializer):
+    """Write serializer for actioning a suggestion (order / decline / N/A)."""
+
+    status = serializers.ChoiceField(choices=["ORDERED", "DECLINED", "NOT_APPLICABLE"])
+    lab_order_id = serializers.IntegerField(required=False, allow_null=True)
+    imaging_order_id = serializers.IntegerField(required=False, allow_null=True)
+    prescription_id = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate(self, attrs: dict) -> dict:
+        if attrs["status"] == "ORDERED":
+            order_count = sum(
+                1
+                for key in ("lab_order_id", "imaging_order_id", "prescription_id")
+                if attrs.get(key)
+            )
+            if order_count != 1:
+                raise serializers.ValidationError(
+                    "Exactly one of lab_order_id, imaging_order_id, or prescription_id "
+                    "is required when status is ORDERED."
+                )
+        return attrs
+
+
+class AIAdvisoryBulkSeedSerializer(serializers.Serializer):
+    """Seed suggestion rows from an AI result's result_data."""
+
+    ai_result_id = serializers.UUIDField()
+    ai_result_type = serializers.ChoiceField(
+        choices=[
+            "pre_op_assessment",
+            "post_op_care_plan",
+        ],
+        help_text="Which AI result model to reference.",
+    )

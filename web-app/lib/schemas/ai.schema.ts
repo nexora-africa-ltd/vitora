@@ -664,3 +664,33 @@ export const StoredInvestigationSuggestResultSchema = StoredAIResultBaseSchema.e
   matched_conditions: z.array(z.string()),
   suggestion_count: z.number(),
 });
+
+// =============================================================================
+// AI Advisory → Order Links
+// =============================================================================
+
+export const AIAdvisoryOrderLinkSchema = z.object({
+  id: z.number(),
+  ai_result_id: z.string(),
+  suggestion_category: z.string(),
+  suggestion_index: z.number(),
+  suggestion_text: z.string(),
+  status: z.enum(['SUGGESTED', 'ORDERED', 'DECLINED', 'NOT_APPLICABLE']),
+  lab_order_id: z.number().nullable(),
+  imaging_order_id: z.number().nullable(),
+  prescription_id: z.number().nullable(),
+  order_number: z.string().nullable(),
+  actioned_by: z.number().nullable(),
+  actioned_at: z.string().nullable(),
+  created_at: z.string(),
+});
+
+export const AIAdvisoryBulkSeedResponseSchema = z.object({
+  created: z.number(),
+  total: z.number(),
+  links: z.array(AIAdvisoryOrderLinkSchema),
+});
+
+export const AIAdvisoryHasOrdersResponseSchema = z.object({
+  has_orders: z.boolean(),
+});
