@@ -8,6 +8,8 @@ import {
   AlertCircle,
   BrainCircuit,
   CheckCircle2,
+  ChevronsDownUp,
+  ChevronsUpDown,
   ClipboardCheck,
   FileSignature,
   FlaskConical,
@@ -44,9 +46,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { LabOrderForm } from '@/components/laboratory/lab-order-form';
+import { ImagingOrderForm } from '@/components/imaging/imaging-order-form';
 import { aiApi } from '@/lib/api/ai';
 import { staffApi } from '@/lib/api/rbac';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -295,8 +301,18 @@ export function PreOpWorkspace({
   const [savingWho, setSavingWho] = useState(false);
   const [savingAnesthesia, setSavingAnesthesia] = useState(false);
   const [runningSurgicalAssessment, setRunningSurgicalAssessment] = useState(false);
+  const [showLabOrderForm, setShowLabOrderForm] = useState(false);
+  const [showImagingOrderForm, setShowImagingOrderForm] = useState(false);
   const [freshInsight, setFreshInsight] = useState(false);
   const [storedPreOpAssessments, setStoredPreOpAssessments] = useState<StoredSurgicalPreOpAssessResult[]>([]);
+  const [advisoryOpenSections, setAdvisoryOpenSections] = useState<string[]>([]);
+
+  const ALL_ADVISORY_SECTIONS = [
+    'procedure-info', 'pre-op-checklist', 'anaesthesia',
+    'equipment-personnel', 'procedure-steps', 'post-op-care',
+    'complications', 'discharge-followup',
+  ];
+  const allAdvisoryExpanded = advisoryOpenSections.length === ALL_ADVISORY_SECTIONS.length;
 
   // Auto-populate patient age and sex from biodata
   const computedAge = (() => {
@@ -968,7 +984,20 @@ export function PreOpWorkspace({
 
               {/* ── Procedure template details (collapsible) ── */}
               {latestProcedureTemplate ? (
-                <Accordion type="multiple" className="w-full">
+                <>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs text-muted-foreground"
+                    onClick={() => setAdvisoryOpenSections(allAdvisoryExpanded ? [] : ALL_ADVISORY_SECTIONS)}
+                  >
+                    {allAdvisoryExpanded ? <ChevronsDownUp className="h-3.5 w-3.5" /> : <ChevronsUpDown className="h-3.5 w-3.5" />}
+                    {allAdvisoryExpanded ? 'Collapse all' : 'Expand all'}
+                  </Button>
+                </div>
+                <Accordion type="multiple" className="w-full" value={advisoryOpenSections} onValueChange={setAdvisoryOpenSections}>
                   {/* Procedure Identity */}
                   <AccordionItem value="procedure-info">
                     <AccordionTrigger className="text-sm font-medium">
@@ -1236,6 +1265,7 @@ export function PreOpWorkspace({
                     </AccordionItem>
                   ) : null}
                 </Accordion>
+                </>
               ) : null}
             </div>
           ) : (
@@ -1496,10 +1526,23 @@ export function PreOpWorkspace({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FlaskConical className="h-4 w-4" />
-              Pre-Op Labs
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FlaskConical className="h-4 w-4" />
+                Pre-Op Labs
+              </CardTitle>
+              {surgeryCase.encounter != null && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowLabOrderForm(true)}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Request Labs
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <Alert>
@@ -1548,10 +1591,23 @@ export function PreOpWorkspace({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ScanLine className="h-4 w-4" />
-              Pre-Op Imaging
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ScanLine className="h-4 w-4" />
+                Pre-Op Imaging
+              </CardTitle>
+              {surgeryCase.encounter != null && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowImagingOrderForm(true)}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Request Imaging
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <Alert>
@@ -1872,6 +1928,61 @@ export function PreOpWorkspace({
         onSubmit={handleAssignTeamMember}
         submitting={teamMutationLoading}
       />
+
+      {/* Lab Order Sheet */}
+      {surgeryCase.encounter != null && (
+        <Sheet open={showLabOrderForm} onOpenChange={setShowLabOrderForm}>
+          <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+            <SheetHeader className="sr-only">
+              <SheetTitle>New Pre-Op Lab Order</SheetTitle>
+            </SheetHeader>
+            <ScrollArea className="h-full">
+              <div className="p-6">
+                <LabOrderForm
+                  patientId={surgeryCase.patient}
+                  encounterId={surgeryCase.encounter}
+                  patientName={surgeryCase.patient_name}
+                  patientMrn={surgeryCase.patient_mrn}
+                  patientGender={surgeryCase.patient_gender}
+                  patientDateOfBirth={surgeryCase.patient_date_of_birth}
+                  encounterType="PROCEDURE"
+                  chiefComplaint={`Pre-op labs for ${surgeryCase.primary_procedure_name}`}
+                  onSuccess={() => {
+                    setShowLabOrderForm(false);
+                    void refreshEverything();
+                  }}
+                  onCancel={() => setShowLabOrderForm(false)}
+                />
+              </div>
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Imaging Order Sheet */}
+      {surgeryCase.encounter != null && (
+        <Sheet open={showImagingOrderForm} onOpenChange={setShowImagingOrderForm}>
+          <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl p-0 overflow-hidden">
+            <SheetHeader className="sr-only">
+              <SheetTitle>New Pre-Op Imaging Order</SheetTitle>
+            </SheetHeader>
+            <ScrollArea className="h-full">
+              <div className="p-6">
+                <ImagingOrderForm
+                  patientId={surgeryCase.patient}
+                  patientName={surgeryCase.patient_name}
+                  encounterId={surgeryCase.encounter}
+                  onSuccess={() => {
+                    setShowImagingOrderForm(false);
+                    void refreshEverything();
+                  }}
+                  onCancel={() => setShowImagingOrderForm(false)}
+                />
+              </div>
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }
