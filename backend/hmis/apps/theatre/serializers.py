@@ -426,6 +426,10 @@ class AnesthesiaRecordCreateSerializer(serializers.ModelSerializer):
 
 
 class IntraOpVitalReadingSerializer(serializers.ModelSerializer):
+    alerts = serializers.ListField(child=serializers.CharField(), read_only=True)
+    has_critical_vitals = serializers.BooleanField(read_only=True)
+    mean_arterial_pressure = serializers.FloatField(read_only=True)
+
     class Meta:
         model = IntraOpVitalReading
         fields = "__all__"
@@ -437,7 +441,6 @@ class IntraOpVitalReadingCreateSerializer(serializers.ModelSerializer):
         model = IntraOpVitalReading
         fields = [
             "recorded_at",
-            "recorded_by",
             "systolic_bp",
             "diastolic_bp",
             "heart_rate",
@@ -448,8 +451,86 @@ class IntraOpVitalReadingCreateSerializer(serializers.ModelSerializer):
             "tidal_volume",
             "peak_pressure",
             "temperature",
+            "cvp",
+            "bis_index",
+            "tof_count",
+            "blood_glucose",
+            "pain_score",
             "notes",
         ]
+
+    # -- Clinical range validation ------------------------------------------
+
+    @staticmethod
+    def _check_range(value, low, high, field_label):
+        if value is not None and not (low <= value <= high):
+            raise serializers.ValidationError(f"{field_label} must be between {low} and {high}.")
+        return value
+
+    def validate_systolic_bp(self, value):
+        return self._check_range(value, 30, 300, "Systolic BP")
+
+    def validate_diastolic_bp(self, value):
+        return self._check_range(value, 10, 200, "Diastolic BP")
+
+    def validate_heart_rate(self, value):
+        return self._check_range(value, 20, 300, "Heart rate")
+
+    def validate_respiratory_rate(self, value):
+        return self._check_range(value, 2, 80, "Respiratory rate")
+
+    def validate_spo2(self, value):
+        if value is not None and not (0 <= value <= 100):
+            raise serializers.ValidationError("SpO2 must be between 0 and 100.")
+        return value
+
+    def validate_etco2(self, value):
+        return self._check_range(value, 0, 100, "EtCO2")
+
+    def validate_fio2(self, value):
+        return self._check_range(value, 21, 100, "FiO2")
+
+    def validate_tidal_volume(self, value):
+        return self._check_range(value, 50, 2000, "Tidal volume")
+
+    def validate_peak_pressure(self, value):
+        return self._check_range(value, 0, 80, "Peak pressure")
+
+    def validate_temperature(self, value):
+        if value is not None:
+            try:
+                t = float(value) if isinstance(value, str) else value
+            except (ValueError, TypeError):
+                raise serializers.ValidationError("Temperature must be a number.")
+            if not (28.0 <= t <= 45.0):
+                raise serializers.ValidationError("Temperature must be between 28.0 and 45.0 °C.")
+        return value
+
+    def validate_cvp(self, value):
+        return self._check_range(value, -5, 30, "CVP")
+
+    def validate_bis_index(self, value):
+        return self._check_range(value, 0, 100, "BIS index")
+
+    def validate_tof_count(self, value):
+        return self._check_range(value, 0, 4, "TOF count")
+
+    def validate_blood_glucose(self, value):
+        if value is not None and not (1.0 <= float(value) <= 40.0):
+            raise serializers.ValidationError("Blood glucose must be between 1.0 and 40.0 mmol/L.")
+        return value
+
+    def validate_pain_score(self, value):
+        return self._check_range(value, 0, 10, "Pain score")
+
+    def validate(self, attrs):
+        sbp = attrs.get("systolic_bp")
+        dbp = attrs.get("diastolic_bp")
+        if sbp is not None and dbp is not None and dbp >= sbp:
+            raise serializers.ValidationError(
+                {"diastolic_bp": "Diastolic BP must be less than systolic BP."}
+            )
+        return attrs
 
 
 # ═══════════════════════════════════════════════════════════════════════════

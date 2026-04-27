@@ -518,11 +518,10 @@ class TestAnesthesiaRecordAPI:
         # Create anesthesia record first
         create_url = _case_action_url(sample_surgery_case.case_number, "anesthesia/create")
         authenticated_client.post(create_url, {"anesthesiologist": test_user.id})
-        # Add vital reading
+        # Add vital reading — recorded_by is auto-set from request.user
         vitals_url = _case_action_url(sample_surgery_case.case_number, "anesthesia/vitals")
         data = {
             "recorded_at": timezone.now().isoformat(),
-            "recorded_by": test_user.id,
             "systolic_bp": 120,
             "diastolic_bp": 80,
             "heart_rate": 72,
@@ -531,6 +530,358 @@ class TestAnesthesiaRecordAPI:
         response = authenticated_client.post(vitals_url, data)
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["systolic_bp"] == 120
+        assert response.data["recorded_by"] == test_user.id
+
+
+@pytest.mark.django_db
+class TestIntraOpVitalsAPI:
+    """Comprehensive tests for intra-operative vital readings."""
+
+    def _create_anesthesia(self, client, case_number, user_id):
+        url = _case_action_url(case_number, "anesthesia/create")
+        return client.post(url, {"anesthesiologist": user_id})
+
+    def _vitals_url(self, case_number):
+        return _case_action_url(case_number, "anesthesia/vitals")
+
+    # -- B3: recorded_by auto-set from request.user -----------------------
+
+    def test_recorded_by_auto_set(self, authenticated_client, sample_surgery_case, test_user):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        data = {
+            "recorded_at": timezone.now().isoformat(),
+            "heart_rate": 80,
+        }
+        response = authenticated_client.post(
+            self._vitals_url(sample_surgery_case.case_number), data
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["recorded_by"] == test_user.id
+
+    def test_client_cannot_spoof_recorded_by(
+        self, authenticated_client, sample_surgery_case, test_user
+    ):
+        """Sending recorded_by in payload should be ignored."""
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        data = {
+            "recorded_at": timezone.now().isoformat(),
+            "heart_rate": 80,
+            "recorded_by": 9999,  # should be ignored
+        }
+        response = authenticated_client.post(
+            self._vitals_url(sample_surgery_case.case_number), data
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["recorded_by"] == test_user.id
+
+    # -- B1: Vital range validation ----------------------------------------
+
+    def test_heart_rate_out_of_range_rejected(
+        self, authenticated_client, sample_surgery_case, test_user
+    ):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {"recorded_at": timezone.now().isoformat(), "heart_rate": 500}
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "heart_rate" in response.data
+
+    def test_spo2_over_100_rejected(self, authenticated_client, sample_surgery_case, test_user):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {"recorded_at": timezone.now().isoformat(), "spo2": 105}
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "spo2" in response.data
+
+    def test_diastolic_gte_systolic_rejected(
+        self, authenticated_client, sample_surgery_case, test_user
+    ):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {
+            "recorded_at": timezone.now().isoformat(),
+            "systolic_bp": 100,
+            "diastolic_bp": 110,
+        }
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "diastolic_bp" in response.data
+
+    def test_fio2_below_21_rejected(self, authenticated_client, sample_surgery_case, test_user):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {"recorded_at": timezone.now().isoformat(), "fio2": 15}
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "fio2" in response.data
+
+    def test_pain_score_over_10_rejected(
+        self, authenticated_client, sample_surgery_case, test_user
+    ):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {"recorded_at": timezone.now().isoformat(), "pain_score": 15}
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "pain_score" in response.data
+
+    def test_valid_ranges_accepted(self, authenticated_client, sample_surgery_case, test_user):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {
+            "recorded_at": timezone.now().isoformat(),
+            "systolic_bp": 120,
+            "diastolic_bp": 80,
+            "heart_rate": 72,
+            "spo2": 98,
+            "etco2": 35,
+            "fio2": 50,
+            "tidal_volume": 500,
+            "peak_pressure": 20,
+            "temperature": 36.5,
+            "cvp": 8,
+            "bis_index": 45,
+            "tof_count": 2,
+            "blood_glucose": 6.5,
+            "pain_score": 3,
+        }
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_201_CREATED
+
+    # -- B2: Critical alerting ---------------------------------------------
+
+    def test_critical_vitals_flagged(self, authenticated_client, sample_surgery_case, test_user):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {
+            "recorded_at": timezone.now().isoformat(),
+            "spo2": 85,
+            "heart_rate": 35,
+            "systolic_bp": 70,
+        }
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["has_critical_vitals"] is True
+        assert len(response.data["alerts"]) == 3
+
+    def test_normal_vitals_no_alerts(self, authenticated_client, sample_surgery_case, test_user):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {
+            "recorded_at": timezone.now().isoformat(),
+            "spo2": 98,
+            "heart_rate": 72,
+            "systolic_bp": 120,
+            "diastolic_bp": 80,
+        }
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["has_critical_vitals"] is False
+        assert response.data["alerts"] == []
+
+    def test_mean_arterial_pressure_computed(
+        self, authenticated_client, sample_surgery_case, test_user
+    ):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {
+            "recorded_at": timezone.now().isoformat(),
+            "systolic_bp": 120,
+            "diastolic_bp": 80,
+        }
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_201_CREATED
+        # MAP = (120 + 2*80) / 3 = 93.3
+        assert response.data["mean_arterial_pressure"] == 93.3
+
+    # -- B4: Update vital --------------------------------------------------
+
+    def test_update_intraop_vital(self, authenticated_client, sample_surgery_case, test_user):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        create_data = {
+            "recorded_at": timezone.now().isoformat(),
+            "heart_rate": 72,
+        }
+        create_resp = authenticated_client.post(url, create_data)
+        vital_id = create_resp.data["id"]
+
+        update_url = f"{CASES_URL}{sample_surgery_case.case_number}/anesthesia/vitals/{vital_id}/"
+        response = authenticated_client.patch(update_url, {"heart_rate": 80})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["heart_rate"] == 80
+
+    def test_update_nonexistent_vital_returns_404(
+        self, authenticated_client, sample_surgery_case, test_user
+    ):
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = f"{CASES_URL}{sample_surgery_case.case_number}/anesthesia/vitals/99999/"
+        response = authenticated_client.patch(url, {"heart_rate": 80})
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # -- B4: Delete vital --------------------------------------------------
+
+    def test_delete_intraop_vital(self, authenticated_client, sample_surgery_case, test_user):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        create_data = {
+            "recorded_at": timezone.now().isoformat(),
+            "heart_rate": 72,
+        }
+        create_resp = authenticated_client.post(url, create_data)
+        vital_id = create_resp.data["id"]
+
+        delete_url = (
+            f"{CASES_URL}{sample_surgery_case.case_number}/anesthesia/vitals/{vital_id}/delete/"
+        )
+        response = authenticated_client.delete(delete_url)
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        # Verify deleted
+        list_resp = authenticated_client.get(url)
+        assert list_resp.status_code == status.HTTP_200_OK
+        assert len(list_resp.data) == 0
+
+    # -- B8: Bulk create ---------------------------------------------------
+
+    def test_bulk_add_vitals(self, authenticated_client, sample_surgery_case, test_user):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        bulk_url = _case_action_url(sample_surgery_case.case_number, "anesthesia/vitals/bulk")
+        now = timezone.now()
+        data = [
+            {
+                "recorded_at": (now - timezone.timedelta(minutes=10)).isoformat(),
+                "heart_rate": 72,
+                "spo2": 98,
+            },
+            {
+                "recorded_at": (now - timezone.timedelta(minutes=5)).isoformat(),
+                "heart_rate": 75,
+                "spo2": 97,
+            },
+            {
+                "recorded_at": now.isoformat(),
+                "heart_rate": 78,
+                "spo2": 96,
+            },
+        ]
+        response = authenticated_client.post(bulk_url, data, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) == 3
+        assert all(v["recorded_by"] == test_user.id for v in response.data)
+
+    def test_bulk_add_rejects_non_list(self, authenticated_client, sample_surgery_case, test_user):
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        bulk_url = _case_action_url(sample_surgery_case.case_number, "anesthesia/vitals/bulk")
+        response = authenticated_client.post(bulk_url, {"heart_rate": 72}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    # -- B5: Audit logging -------------------------------------------------
+
+    def test_add_vital_creates_audit_log(
+        self, authenticated_client, sample_surgery_case, test_user
+    ):
+        from django.utils import timezone
+
+        from hmis.apps.core.models import AuditLog
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {"recorded_at": timezone.now().isoformat(), "heart_rate": 72}
+        authenticated_client.post(url, data)
+
+        assert AuditLog.objects.filter(
+            action="intraop_vital_create",
+            resource_type="IntraOpVitalReading",
+        ).exists()
+
+    # -- B6: Domain events -------------------------------------------------
+
+    def test_create_vital_publishes_domain_event(
+        self, authenticated_client, sample_surgery_case, test_user, mocker
+    ):
+        from django.utils import timezone
+
+        mock_publish = mocker.patch("hmis.apps.theatre.signals.publish_event")
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {"recorded_at": timezone.now().isoformat(), "heart_rate": 72, "spo2": 98}
+        authenticated_client.post(url, data)
+
+        # Check that INTRAOP_VITAL_RECORDED event was published
+        vital_calls = [
+            c
+            for c in mock_publish.call_args_list
+            if c.kwargs.get("event_type", c.args[0] if c.args else "")
+            == "theatre.intraop_vital.recorded"
+        ]
+        assert len(vital_calls) >= 1
+
+    # -- B7: Extended fields -----------------------------------------------
+
+    def test_extended_fields_stored_and_returned(
+        self, authenticated_client, sample_surgery_case, test_user
+    ):
+        from django.utils import timezone
+
+        self._create_anesthesia(authenticated_client, sample_surgery_case.case_number, test_user.id)
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {
+            "recorded_at": timezone.now().isoformat(),
+            "cvp": 8,
+            "bis_index": 45,
+            "tof_count": 2,
+            "blood_glucose": 6.5,
+            "pain_score": 3,
+        }
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["cvp"] == 8
+        assert response.data["bis_index"] == 45
+        assert response.data["tof_count"] == 2
+        assert float(response.data["blood_glucose"]) == 6.5
+        assert response.data["pain_score"] == 3
+
+    # -- No anesthesia record guard ----------------------------------------
+
+    def test_add_vital_without_anesthesia_record_returns_404(
+        self, authenticated_client, sample_surgery_case
+    ):
+        from django.utils import timezone
+
+        url = self._vitals_url(sample_surgery_case.case_number)
+        data = {"recorded_at": timezone.now().isoformat(), "heart_rate": 72}
+        response = authenticated_client.post(url, data)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.django_db

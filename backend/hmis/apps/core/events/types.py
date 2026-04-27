@@ -230,5 +230,6 @@ class TheatreEvents:
     CHECKLIST_SIGN_OUT = "theatre.checklist.sign_out"
     SURGERY_STARTED = "theatre.surgery.started"
     SURGERY_COMPLETED = "theatre.surgery.completed"
+    INTRAOP_VITAL_RECORDED = "theatre.intraop_vital.recorded"
     PACU_ARRIVED = "theatre.pacu.arrived"
     PACU_DISCHARGED = "theatre.pacu.discharged"

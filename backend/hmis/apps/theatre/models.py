@@ -682,6 +682,19 @@ class IntraOpVitalReading(TimeStampedModel):
     # Other
     temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
 
+    # Extended clinical fields
+    cvp = models.IntegerField(null=True, blank=True, help_text="Central venous pressure (cmH2O)")
+    bis_index = models.IntegerField(
+        null=True, blank=True, help_text="Bispectral Index (depth of anesthesia)"
+    )
+    tof_count = models.IntegerField(
+        null=True, blank=True, help_text="Train-of-Four count (neuromuscular)"
+    )
+    blood_glucose = models.DecimalField(
+        max_digits=5, decimal_places=1, null=True, blank=True, help_text="mmol/L"
+    )
+    pain_score = models.IntegerField(null=True, blank=True, help_text="Pain score (0-10)")
+
     notes = models.TextField(blank=True, default="")
 
     class Meta:
@@ -691,6 +704,45 @@ class IntraOpVitalReading(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"Vitals @ {self.recorded_at}"
+
+    # -- Critical alert helpers --------------------------------------------
+
+    CRITICAL_THRESHOLDS: dict[str, tuple[float | None, float | None]] = {
+        # (low_critical, high_critical) — None means no bound
+        "spo2": (92, None),
+        "systolic_bp": (80, 200),
+        "diastolic_bp": (40, 120),
+        "heart_rate": (40, 150),
+        "etco2": (20, 60),
+        "respiratory_rate": (6, 40),
+    }
+
+    @property
+    def alerts(self) -> list[str]:
+        """Return list of critical vital alert messages."""
+        result: list[str] = []
+        for field, (low, high) in self.CRITICAL_THRESHOLDS.items():
+            value = getattr(self, field, None)
+            if value is None:
+                continue
+            val = float(value)
+            if low is not None and val < low:
+                result.append(f"{field}: {value} (critically low, threshold <{low})")
+            elif high is not None and val > high:
+                result.append(f"{field}: {value} (critically high, threshold >{high})")
+        return result
+
+    @property
+    def has_critical_vitals(self) -> bool:
+        """Return True if any vital sign is in the critical range."""
+        return len(self.alerts) > 0
+
+    @property
+    def mean_arterial_pressure(self) -> float | None:
+        """Computed MAP = (SBP + 2*DBP) / 3."""
+        if self.systolic_bp is not None and self.diastolic_bp is not None:
+            return round((self.systolic_bp + 2 * self.diastolic_bp) / 3, 1)
+        return None
 
 
 # ---------------------------------------------------------------------------
