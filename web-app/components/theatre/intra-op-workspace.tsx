@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
   AlertCircle,
+  BrainCircuit,
   CheckCircle2,
   ClipboardCheck,
   Download,
@@ -16,6 +17,7 @@ import {
   Play,
   Plus,
   ShieldCheck,
+  Sparkles,
   Syringe,
   Trash2,
 } from 'lucide-react';
@@ -203,6 +205,7 @@ export function IntraOpWorkspace({
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
   const [checklistBusy, setChecklistBusy] = useState(false);
   const [liveChecklistStatus, setLiveChecklistStatus] = useState<Record<string, unknown> | null>(null);
+  const [freshChecklistInsight, setFreshChecklistInsight] = useState(false);
   const [drugSearch, setDrugSearch] = useState('');
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
   const [removingConsumableId, setRemovingConsumableId] = useState<number | null>(null);
@@ -377,12 +380,27 @@ export function IntraOpWorkspace({
   const storedProgress = latestStoredChecklistData?.progress as Record<string, unknown> | undefined;
   const liveSession = (liveChecklistStatus?.session as Record<string, unknown> | undefined) ?? storedSession;
   const liveProgress = (liveChecklistStatus?.progress as Record<string, unknown> | undefined) ?? storedProgress;
-  const checklistItems = Array.isArray(liveSession?.items) ? (liveSession.items as string[]) : [];
-  const currentChecklistSessionId = latestStoredChecklist?.tibabot_session_id || surgeryCase.ai_surgical_summary.checklist.tibabot_session_id;
+  const checklistItems = Array.isArray(liveSession?.items)
+    ? (liveSession.items as Array<{ id: string; description: string; phase?: string; checked?: boolean; critical?: boolean; responsible?: string | null; checked_by?: string | null; notes?: string | null }>)
+    : [];
+  const currentChecklistSessionId =
+    (liveChecklistStatus?.tibabot_session_id as string | undefined) ||
+    latestStoredChecklist?.tibabot_session_id ||
+    surgeryCase.ai_surgical_summary.checklist.tibabot_session_id;
+  const checklistCurrentPhase =
+    (typeof liveProgress?.current_phase === 'string' ? liveProgress.current_phase : undefined) ||
+    latestStoredChecklist?.current_phase ||
+    surgeryCase.ai_surgical_summary.checklist.current_phase ||
+    'Not started';
   const checklistPercentComplete =
     typeof liveProgress?.percent_complete === 'number'
       ? liveProgress.percent_complete
       : latestStoredChecklist?.percent_complete ?? surgeryCase.ai_surgical_summary.checklist.percent_complete ?? 0;
+  const checklistPhaseComplete =
+    typeof liveChecklistStatus?.phase_complete === 'boolean'
+      ? liveChecklistStatus.phase_complete
+      : latestStoredChecklist?.phase_complete ?? false;
+  const checklistMessage = typeof liveChecklistStatus?.message === 'string' ? liveChecklistStatus.message : '';
 
   const chartData = useMemo(
     () => vitals.map((vital) => ({
@@ -545,7 +563,12 @@ export function IntraOpWorkspace({
       setLiveChecklistStatus(response as unknown as Record<string, unknown>);
       setCheckedItems([]);
       toast({ title: 'Surgical checklist session started', description: 'The advisory checklist session is now active.' });
-      await refreshAll();
+      setFreshChecklistInsight(true);
+      // Sync stored sessions in background so navigating away preserves state
+      void aiApi.getStoredSurgicalChecklistSessions({ surgery_case_id: surgeryCase.id })
+        .then(setStoredChecklistSessions)
+        .catch(() => {});
+      setTimeout(() => setFreshChecklistInsight(false), 4000);
     } catch (error) {
       toast({ title: 'Unable to start surgical checklist', description: getApiErrorMessage(error), variant: 'destructive' });
     } finally {
@@ -566,7 +589,12 @@ export function IntraOpWorkspace({
       setLiveChecklistStatus(response as unknown as Record<string, unknown>);
       setCheckedItems([]);
       toast({ title: 'Checklist advanced', description: 'The surgical checklist session moved to the next advisory phase.' });
-      await refreshAll();
+      setFreshChecklistInsight(true);
+      // Sync stored sessions in background so navigating away preserves state
+      void aiApi.getStoredSurgicalChecklistSessions({ surgery_case_id: surgeryCase.id })
+        .then(setStoredChecklistSessions)
+        .catch(() => {});
+      setTimeout(() => setFreshChecklistInsight(false), 4000);
     } catch (error) {
       toast({ title: 'Unable to advance checklist', description: getApiErrorMessage(error), variant: 'destructive' });
     } finally {
@@ -943,7 +971,17 @@ export function IntraOpWorkspace({
         </CardContent>
       </Card>
 
-      <Card className="relative overflow-hidden">
+      <Card className={`relative overflow-hidden transition-all duration-700 ${
+        freshChecklistInsight
+          ? 'border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.35)]'
+          : currentChecklistSessionId
+            ? 'border-emerald-500/40'
+            : ''
+      }`}
+        style={freshChecklistInsight ? {
+          animation: 'border-glow 1.5s ease-in-out infinite',
+        } : undefined}
+      >
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
           aria-hidden="true"
@@ -952,7 +990,8 @@ export function IntraOpWorkspace({
           <CardTitle className="text-base flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4" />
             Surgical AI Checklist Advisory
-            <Badge variant={latestStoredChecklist ? 'info' : 'outline'} size="sm" className="ml-auto w-fit">
+            {currentChecklistSessionId ? <Sparkles className="h-4 w-4 text-teal-400" /> : null}
+            <Badge variant={currentChecklistSessionId ? 'success' : 'outline'} size="sm" className="ml-auto w-fit">
               {currentChecklistSessionId ? 'Session active' : 'Not started'}
             </Badge>
           </CardTitle>
@@ -967,45 +1006,59 @@ export function IntraOpWorkspace({
               <Label>AI procedure key</Label>
               <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">{mappedProcedureKey || 'Not mapped'}</div>
             </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <p className="text-muted-foreground">Current phase</p>
-              <p className="mt-1 font-medium">{latestStoredChecklist?.current_phase || surgeryCase.ai_surgical_summary.checklist.current_phase || 'Not started'}</p>
+            <div>
+              <Label>Current phase</Label>
+              <div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium capitalize">{checklistCurrentPhase}</div>
             </div>
-            <div className="rounded-lg border p-3 text-sm">
-              <p className="text-muted-foreground">Completion</p>
-              <p className="mt-1 font-medium">{checklistPercentComplete}%</p>
+            <div>
+              <Label>Completion</Label>
+              <div className="flex h-9 items-center gap-2 rounded-md border bg-muted/50 px-3 text-sm font-medium">
+                {checklistPercentComplete}%
+                {checklistPhaseComplete ? <Badge variant="success" size="sm">Phase done</Badge> : null}
+              </div>
             </div>
-            <div className="flex items-end gap-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => void refreshSurgicalChecklistStatus()} disabled={checklistBusy || !currentChecklistSessionId}>
-                {checklistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Refresh status
-              </Button>
-            </div>
+            {!currentChecklistSessionId ? (
+              <div className="flex items-end">
+                <Button type="button" className="w-full" onClick={() => void startSurgicalChecklist()} disabled={checklistBusy || !mappedProcedureKey}>
+                  {checklistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
+                  Ask TibaBot®
+                </Button>
+              </div>
+            ) : null}
           </div>
 
-          {!currentChecklistSessionId ? (
-            <Button type="button" onClick={() => void startSurgicalChecklist()} disabled={checklistBusy || !mappedProcedureKey}>
-              {checklistBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-              Start advisory checklist
-            </Button>
-          ) : (
+          {currentChecklistSessionId ? (
             <>
+              {checklistMessage ? (
+                <p className="text-sm text-muted-foreground italic">{checklistMessage}</p>
+              ) : null}
+
               {checklistItems.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {checklistItems.map((item) => {
-                    const checked = checkedItems.includes(item);
+                    const checked = checkedItems.includes(item.id);
                     return (
-                      <label key={item} className="flex items-center gap-3 rounded-lg border p-3 text-sm">
+                      <label key={item.id} className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${item.critical ? 'border-amber-500/40' : ''}`}>
                         <Checkbox
                           checked={checked}
+                          className="mt-0.5"
                           onCheckedChange={(value) => {
                             const nextChecked = value === true;
                             setCheckedItems((current) =>
-                              nextChecked ? Array.from(new Set([...current, item])) : current.filter((entry) => entry !== item)
+                              nextChecked ? Array.from(new Set([...current, item.id])) : current.filter((entry) => entry !== item.id)
                             );
                           }}
                         />
-                        <span>{item}</span>
+                        <div className="min-w-0 flex-1">
+                          <span>{item.description}</span>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            {item.phase ? <span className="text-xs text-muted-foreground capitalize">{item.phase}</span> : null}
+                            {item.responsible ? <span className="text-xs text-muted-foreground capitalize">{item.phase ? '·' : ''} {item.responsible}</span> : null}
+                            {item.critical ? <Badge variant="warning" size="sm" className="w-fit">Critical</Badge> : null}
+                            {item.checked_by ? <span className="text-xs text-muted-foreground">✓ {item.checked_by}</span> : null}
+                          </div>
+                          {item.notes ? <p className="mt-1 text-xs text-muted-foreground">{item.notes}</p> : null}
+                        </div>
                       </label>
                     );
                   })}
@@ -1019,7 +1072,7 @@ export function IntraOpWorkspace({
                 Advance with selected items
               </Button>
             </>
-          )}
+          ) : null}
         </CardContent>
       </Card>
     </div>

@@ -2569,8 +2569,22 @@ class SurgicalChecklistStartView(AIFeatureGatedMixin, APIView):
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
         session = result.get("session", {})
-        tibabot_session_id = session.get("id") or result.get("session_id") or ""
+        tibabot_session_id = (
+            session.get("session_id") or session.get("id") or result.get("session_id") or ""
+        )
         progress = result.get("progress", {})
+        # Derive progress from session items if TibaBot didn't include a progress block
+        if not progress and session.get("items"):
+            items = session["items"]
+            total = len(items)
+            checked = sum(1 for i in items if isinstance(i, dict) and i.get("checked"))
+            progress = {
+                "current_phase": session.get("state", ""),
+                "total_items": total,
+                "total_checked": checked,
+                "percent_complete": round(checked / total * 100) if total else 0,
+            }
+            result["progress"] = progress
         try:
             stored = AISurgicalChecklistSessionResult.objects.create(
                 created_by=request.user,
@@ -2636,6 +2650,18 @@ class SurgicalChecklistAdvanceView(AIFeatureGatedMixin, APIView):
         )
         session = result.get("session", {})
         progress = result.get("progress", {})
+        # Derive progress from session items if TibaBot didn't include a progress block
+        if not progress and session.get("items"):
+            items = session["items"]
+            total = len(items)
+            checked = sum(1 for i in items if isinstance(i, dict) and i.get("checked"))
+            progress = {
+                "current_phase": session.get("state", ""),
+                "total_items": total,
+                "total_checked": checked,
+                "percent_complete": round(checked / total * 100) if total else 0,
+            }
+            result["progress"] = progress
         if latest is not None:
             try:
                 stored = AISurgicalChecklistSessionResult.objects.create(
@@ -2676,6 +2702,19 @@ class SurgicalChecklistStatusView(AIFeatureGatedMixin, APIView):
             result = client.get_surgical_checklist_status(session_id)
             result["mode"] = "tibabot"
             result["tibabot_session_id"] = session_id
+            # Derive progress from session items if TibaBot didn't include a progress block
+            session = result.get("session", {})
+            progress = result.get("progress", {})
+            if not progress and session.get("items"):
+                items = session["items"]
+                total = len(items)
+                checked = sum(1 for i in items if isinstance(i, dict) and i.get("checked"))
+                result["progress"] = {
+                    "current_phase": session.get("state", ""),
+                    "total_items": total,
+                    "total_checked": checked,
+                    "percent_complete": round(checked / total * 100) if total else 0,
+                }
         except TibaBotUnavailableError:
             logger.warning("TibaBot unavailable for surgical checklist status")
             return Response(
