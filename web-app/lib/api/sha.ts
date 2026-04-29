@@ -45,6 +45,9 @@ import {
   IlmRegistryResponseSchema,
   PatientContactSchema,
   PatientContactListSchema,
+  IlmPreauthResponseSchema,
+  SHAPreauthListSchema,
+  SHAEmergencyClaimListSchema,
 } from '@/lib/schemas/sha.schema';
 import type {
   IlmStartVisitRequest,
@@ -63,6 +66,7 @@ import type {
   PatientContact,
   PatientContactList,
   PatientContactCreateInput,
+  IlmPreauthResponse,
 } from '@/lib/schemas/sha.schema';
 import type {
   // Client Registry
@@ -793,6 +797,158 @@ async function createPatientContact(body: PatientContactCreateInput): Promise<Pa
 }
 
 // ============================================================================
+// DHA HIE Middleware (ILM) — Phase 3: preauth, doctor consent & emergency
+// ============================================================================
+
+async function ilmPreauthFetch(params: {
+  consent_token: string;
+  intervention_code?: string;
+  patient_pk?: number;
+}): Promise<IlmPreauthResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/preauth/`, { params });
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmPreauthFetch',
+  });
+}
+
+async function ilmPreauthCreate(body: {
+  consent_token: string;
+  intervention_code: string;
+  patient_pk: number;
+  claim_pk?: number;
+  payload?: Record<string, unknown>;
+}): Promise<IlmPreauthResponse> {
+  const response = await apiClient.post(`${ILM_BASE}/preauth/create/`, body);
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmPreauthCreate',
+  });
+}
+
+async function ilmPreauthCancel(body: {
+  consent_token: string;
+  intervention_code: string;
+  reason?: string;
+}): Promise<IlmPreauthResponse> {
+  const response = await apiClient.post(`${ILM_BASE}/preauth/cancel/`, body);
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmPreauthCancel',
+  });
+}
+
+async function ilmPreauthRemoveDiagnosis(
+  icdCode: string,
+  body: { consent_token: string; intervention_code: string },
+): Promise<IlmPreauthResponse> {
+  const response = await apiClient.delete(
+    `${ILM_BASE}/preauth/diagnoses/${encodeURIComponent(icdCode)}/`,
+    { data: body },
+  );
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmPreauthRemoveDiagnosis',
+  });
+}
+
+async function ilmPreauthRemoveDoctor(body: {
+  consent_token: string;
+  intervention_code: string;
+  practitioner_registration_number: string;
+}): Promise<IlmPreauthResponse> {
+  const response = await apiClient.delete(`${ILM_BASE}/preauth/doctors/`, { data: body });
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmPreauthRemoveDoctor',
+  });
+}
+
+async function ilmDoctorConsent(body: {
+  consent_token: string;
+  intervention_code: string;
+  practitioner_registration_number: string;
+  identification_number: string;
+  identification_type?: string;
+}): Promise<IlmPreauthResponse> {
+  const response = await apiClient.post(`${ILM_BASE}/preauth/doctor-consent/`, body);
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmDoctorConsent',
+  });
+}
+
+async function ilmEmergencyOpen(body: {
+  interventions: string[];
+  diagnoses?: string[];
+  reference_number?: string;
+  beneficiary_cr_id?: string;
+  brought_by?: string;
+  mode_of_arrival?: string;
+  consent_token?: string;
+  patient_pk?: number;
+  claim_pk?: number;
+  payload?: Record<string, unknown>;
+}): Promise<IlmPreauthResponse> {
+  const response = await apiClient.post(`${ILM_BASE}/emergency/`, body);
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmEmergencyOpen',
+  });
+}
+
+async function ilmEmergencyProtocolsList(params: {
+  active?: boolean | string;
+  intervention_code?: string;
+  protocol_code?: string;
+}): Promise<IlmPreauthResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/emergency/protocols/`, { params });
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmEmergencyProtocolsList',
+  });
+}
+
+async function ilmEmergencyProtocolApply(body: {
+  consent_token: string;
+  protocol_code: string;
+  intervention_code: string;
+  unit_price: number;
+  quantity: number;
+  diagnoses?: string;
+  payload?: Record<string, unknown>;
+}): Promise<IlmPreauthResponse> {
+  const response = await apiClient.post(`${ILM_BASE}/emergency/protocols/apply/`, body);
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmEmergencyProtocolApply',
+  });
+}
+
+async function ilmEmtCreate(body: {
+  beneficiary_cr_id: string;
+  case_number: string;
+  consent_token: string;
+  diagnoses: string[];
+  interventions: string[];
+  practitioner_reg_number: string;
+  provider_registration_number: string;
+  protocol_code: string;
+  patient_pk?: number;
+  payload?: Record<string, unknown>;
+}): Promise<IlmPreauthResponse> {
+  const response = await apiClient.post(`${ILM_BASE}/emt/`, body);
+  return parseResponse(IlmPreauthResponseSchema, response.data, {
+    context: 'shaApi.ilmEmtCreate',
+  });
+}
+
+async function listLocalPreauths(params: { patient_pk?: number; consent_token?: string }) {
+  const response = await apiClient.get(`${ILM_BASE}/preauth/local/`, { params });
+  return parseResponse(SHAPreauthListSchema, response.data, {
+    context: 'shaApi.listLocalPreauths',
+  });
+}
+
+async function listLocalEmergencyClaims(params: { patient_pk?: number; kind?: 'emergency' | 'emt' } = {}) {
+  const response = await apiClient.get(`${ILM_BASE}/emergency/local/`, { params });
+  return parseResponse(SHAEmergencyClaimListSchema, response.data, {
+    context: 'shaApi.listLocalEmergencyClaims',
+  });
+}
+
+// ============================================================================
 // Export API Object
 // ============================================================================
 
@@ -885,4 +1041,18 @@ export const shaApi = {
   ilmUtilization,
   listPatientContacts,
   createPatientContact,
+
+  // DHA HIE Middleware (ILM) — Phase 3 preauth, doctor consent & emergency
+  ilmPreauthFetch,
+  ilmPreauthCreate,
+  ilmPreauthCancel,
+  ilmPreauthRemoveDiagnosis,
+  ilmPreauthRemoveDoctor,
+  ilmDoctorConsent,
+  ilmEmergencyOpen,
+  ilmEmergencyProtocolsList,
+  ilmEmergencyProtocolApply,
+  ilmEmtCreate,
+  listLocalPreauths,
+  listLocalEmergencyClaims,
 };

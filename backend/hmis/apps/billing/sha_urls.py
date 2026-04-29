@@ -7,6 +7,20 @@ Provides routes for SHA Members, Tariffs, Claims, and related operations.
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from hmis.apps.billing.sha_ilm_preauth_views import (
+    IlmDoctorConsentView,
+    IlmEmergencyOpenView,
+    IlmEmergencyProtocolApplyView,
+    IlmEmergencyProtocolsListView,
+    IlmEmtCreateView,
+    IlmPreauthCancelView,
+    IlmPreauthCreateView,
+    IlmPreauthFetchView,
+    IlmPreauthRemoveDiagnosisView,
+    IlmPreauthRemoveDoctorView,
+    SHAEmergencyClaimListView,
+    SHAPreauthListView,
+)
 from hmis.apps.billing.sha_ilm_registry_views import (
     IlmBenefitInterventionsView,
     IlmBenefitsView,
@@ -108,5 +122,42 @@ urlpatterns = [
         "ilm/patient-contacts/",
         PatientContactListCreateView.as_view(),
         name="ilm-patient-contacts",
+    ),
+    # ----- DHA HIE Middleware (ILM) — Phase 3 preauth & emergency -----
+    path("ilm/preauth/", IlmPreauthFetchView.as_view(), name="ilm-preauth-fetch"),
+    path("ilm/preauth/create/", IlmPreauthCreateView.as_view(), name="ilm-preauth-create"),
+    path("ilm/preauth/cancel/", IlmPreauthCancelView.as_view(), name="ilm-preauth-cancel"),
+    path(
+        "ilm/preauth/diagnoses/<str:icd_code>/",
+        IlmPreauthRemoveDiagnosisView.as_view(),
+        name="ilm-preauth-remove-diagnosis",
+    ),
+    path(
+        "ilm/preauth/doctors/",
+        IlmPreauthRemoveDoctorView.as_view(),
+        name="ilm-preauth-remove-doctor",
+    ),
+    path(
+        "ilm/preauth/doctor-consent/",
+        IlmDoctorConsentView.as_view(),
+        name="ilm-doctor-consent",
+    ),
+    path("ilm/preauth/local/", SHAPreauthListView.as_view(), name="ilm-preauth-local"),
+    path("ilm/emergency/", IlmEmergencyOpenView.as_view(), name="ilm-emergency-open"),
+    path(
+        "ilm/emergency/protocols/",
+        IlmEmergencyProtocolsListView.as_view(),
+        name="ilm-emergency-protocols",
+    ),
+    path(
+        "ilm/emergency/protocols/apply/",
+        IlmEmergencyProtocolApplyView.as_view(),
+        name="ilm-emergency-protocols-apply",
+    ),
+    path("ilm/emt/", IlmEmtCreateView.as_view(), name="ilm-emt-create"),
+    path(
+        "ilm/emergency/local/",
+        SHAEmergencyClaimListView.as_view(),
+        name="ilm-emergency-local",
     ),
 ]

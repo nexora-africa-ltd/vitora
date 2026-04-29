@@ -728,3 +728,89 @@ class SHACoverageSnapshotAdmin(admin.ModelAdmin):
     )
     raw_id_fields = ("patient", "sha_member", "facility", "organization", "fetched_by")
     readonly_fields = ("fetched_at", "fetched_by", "correlation_id", "http_status", "payload")
+
+
+# ---------------------------------------------------------------------------
+# DHA HIE Middleware (ILM) — Phase 3 preauth & emergency admin
+# ---------------------------------------------------------------------------
+from .models import SHAEmergencyClaim, SHAPreauth  # noqa: E402
+
+
+@admin.register(SHAPreauth)
+class SHAPreauthAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "patient",
+        "claim",
+        "intervention_code",
+        "status",
+        "doctor_consent_state",
+        "dha_external_id",
+        "submitted_at",
+        "decided_at",
+    )
+    list_filter = ("status", "doctor_consent_state")
+    search_fields = (
+        "patient__mrn",
+        "intervention_code",
+        "dha_external_id",
+        "consent_token",
+        "correlation_id",
+    )
+    raw_id_fields = (
+        "patient",
+        "sha_member",
+        "claim",
+        "facility",
+        "organization",
+        "requested_by",
+        "decided_by",
+    )
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "submitted_at",
+        "decided_at",
+        "cancelled_at",
+        "correlation_id",
+        "request_payload",
+        "response_payload",
+    )
+
+
+@admin.register(SHAEmergencyClaim)
+class SHAEmergencyClaimAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "kind",
+        "status",
+        "patient",
+        "reference_number",
+        "case_number",
+        "dha_external_id",
+        "created_at",
+    )
+    list_filter = ("kind", "status")
+    search_fields = (
+        "reference_number",
+        "case_number",
+        "beneficiary_cr_id",
+        "dha_external_id",
+        "correlation_id",
+        "patient__mrn",
+    )
+    raw_id_fields = (
+        "patient",
+        "sha_member",
+        "claim",
+        "facility",
+        "organization",
+        "opened_by",
+    )
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "correlation_id",
+        "request_payload",
+        "response_payload",
+    )

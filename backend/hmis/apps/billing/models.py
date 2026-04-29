@@ -3744,3 +3744,171 @@ class SHACoverageSnapshot(FacilityScopedModel):
 
     def __str__(self) -> str:  # pragma: no cover - trivial
         return f"{self.patient_id} {self.snapshot_type} @ {self.fetched_at:%Y-%m-%d %H:%M}"
+
+
+# ============================================================================
+# DHA HIE Middleware (ILM) — Preauthorisation & Emergency claims (Phase 3)
+# ============================================================================
+
+
+class SHAPreauth(FacilityScopedModel):
+    """Tracks DHA HIE preauthorisation requests submitted via ``/api/v1/preauths``.
+
+    A preauth is created per ``(consent_token, intervention_code)`` pair and
+    moves through DRAFT → SUBMITTED → (APPROVED|DENIED|CANCELLED). The
+    ``request_payload`` and ``response_payload`` fields keep the full DHA
+    round-trip so we can reconstruct decisions and audit failures.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SUBMITTED = "submitted", "Submitted"
+        APPROVED = "approved", "Approved"
+        DENIED = "denied", "Denied"
+        CANCELLED = "cancelled", "Cancelled"
+
+    id = models.BigAutoField(primary_key=True)
+    claim = models.ForeignKey(
+        SHAClaim,
+        on_delete=models.CASCADE,
+        related_name="preauths",
+        null=True,
+        blank=True,
+    )
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.PROTECT, related_name="dha_preauths"
+    )
+    sha_member = models.ForeignKey(
+        SHAMember,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_preauths",
+    )
+    consent_token = models.CharField(max_length=255)
+    intervention_code = models.CharField(max_length=64)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    dha_external_id = models.CharField(max_length=64, blank=True)
+    correlation_id = models.CharField(max_length=64, blank=True)
+    request_payload = models.JSONField(default=dict, blank=True)
+    response_payload = models.JSONField(default=dict, blank=True)
+    diagnoses = models.JSONField(default=list, blank=True)
+    doctor_consent_state = models.CharField(max_length=32, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_dha_preauths",
+    )
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="decided_dha_preauths",
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "SHA Preauthorisation (DHA)"
+        verbose_name_plural = "SHA Preauthorisations (DHA)"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["claim", "status"]),
+            models.Index(fields=["consent_token"]),
+            models.Index(fields=["dha_external_id"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["consent_token", "intervention_code"],
+                name="uniq_dha_preauth_consent_intervention",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"Preauth {self.intervention_code} ({self.status})"
+
+
+class SHAEmergencyClaim(FacilityScopedModel):
+    """Tracks DHA HIE emergency / EMT claims (``/api/v1/claims/emergency``, ``/claims/emt``).
+
+    Emergency claims live alongside (not inside) ``SHAClaim`` because they may
+    precede patient identification (unidentified patients get ``brought_by`` /
+    ``mode_of_arrival`` with no MRN). When the patient is later identified,
+    ``patient`` is back-filled.
+    """
+
+    class ClaimKind(models.TextChoices):
+        EMERGENCY = "emergency", "Emergency"
+        EMT = "emt", "EMT"
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Open"
+        SUBMITTED = "submitted", "Submitted"
+        AUTHORIZED = "authorized", "Authorized"
+        CANCELLED = "cancelled", "Cancelled"
+
+    id = models.BigAutoField(primary_key=True)
+    kind = models.CharField(max_length=16, choices=ClaimKind.choices, default=ClaimKind.EMERGENCY)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_emergency_claims",
+    )
+    sha_member = models.ForeignKey(
+        SHAMember,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_emergency_claims",
+    )
+    claim = models.ForeignKey(
+        SHAClaim,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_emergency_claims",
+    )
+    consent_token = models.CharField(max_length=255, blank=True)
+    reference_number = models.CharField(max_length=64, blank=True)
+    case_number = models.CharField(max_length=64, blank=True)
+    beneficiary_cr_id = models.CharField(max_length=64, blank=True)
+    brought_by = models.CharField(max_length=32, blank=True)
+    mode_of_arrival = models.CharField(max_length=32, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    dha_external_id = models.CharField(max_length=64, blank=True)
+    correlation_id = models.CharField(max_length=64, blank=True)
+    request_payload = models.JSONField(default=dict, blank=True)
+    response_payload = models.JSONField(default=dict, blank=True)
+    interventions = models.JSONField(default=list, blank=True)
+    diagnoses = models.JSONField(default=list, blank=True)
+    notes = models.TextField(blank=True)
+    opened_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="opened_dha_emergency_claims",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "SHA Emergency Claim (DHA)"
+        verbose_name_plural = "SHA Emergency Claims (DHA)"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["kind", "status"]),
+            models.Index(fields=["dha_external_id"]),
+            models.Index(fields=["reference_number"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"{self.kind} {self.reference_number or self.dha_external_id} ({self.status})"
