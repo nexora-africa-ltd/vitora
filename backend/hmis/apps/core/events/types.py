@@ -51,6 +51,18 @@ class BillingEvents:
     DHA_PATIENT_CONTACT_FETCHED = "billing.dha_patient_contact.fetched"
     DHA_PATIENT_CONTACT_CREATED = "billing.dha_patient_contact.created"
     DHA_REGISTRY_CALL_FAILED = "billing.dha_registry.call_failed"
+    # DHA HIE preauthorisation & emergency (Phase 3)
+    DHA_PREAUTH_CREATED = "billing.dha_preauth.created"
+    DHA_PREAUTH_FETCHED = "billing.dha_preauth.fetched"
+    DHA_PREAUTH_CANCELLED = "billing.dha_preauth.cancelled"
+    DHA_PREAUTH_DIAGNOSIS_REMOVED = "billing.dha_preauth.diagnosis_removed"
+    DHA_PREAUTH_DOCTOR_REMOVED = "billing.dha_preauth.doctor_removed"
+    DHA_PREAUTH_DOCTOR_CONSENT_REQUESTED = "billing.dha_preauth.doctor_consent_requested"
+    DHA_EMERGENCY_OPENED = "billing.dha_emergency.opened"
+    DHA_EMERGENCY_PROTOCOL_LISTED = "billing.dha_emergency.protocol_listed"
+    DHA_EMERGENCY_PROTOCOL_APPLIED = "billing.dha_emergency.protocol_applied"
+    DHA_EMT_CLAIM_CREATED = "billing.dha_emt.created"
+    DHA_PREAUTH_CALL_FAILED = "billing.dha_preauth.call_failed"
 
 
 class PharmacyEvents:

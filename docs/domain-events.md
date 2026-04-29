@@ -175,7 +175,7 @@ def create_invoice(...) -> dict:
 
 Convention: `<domain>.<aggregate>.<action>`
 
-### BillingEvents (28 constants)
+### BillingEvents (39 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -207,6 +207,17 @@ Convention: `<domain>.<aggregate>.<action>`
 | `DHA_PATIENT_CONTACT_FETCHED` | `billing.dha_patient_contact.fetched` | — (defined, wired in Phase 3) |
 | `DHA_PATIENT_CONTACT_CREATED` | `billing.dha_patient_contact.created` | `billing/sha_ilm_registry_views.py` |
 | `DHA_REGISTRY_CALL_FAILED` | `billing.dha_registry.call_failed` | `billing/sha_ilm_registry_views.py` (error path) |
+| `DHA_PREAUTH_CREATED` | `billing.dha_preauth.created` | `billing/services/ilm_preauth_service.py` |
+| `DHA_PREAUTH_FETCHED` | `billing.dha_preauth.fetched` | `billing/services/ilm_preauth_service.py` |
+| `DHA_PREAUTH_CANCELLED` | `billing.dha_preauth.cancelled` | `billing/services/ilm_preauth_service.py` |
+| `DHA_PREAUTH_DIAGNOSIS_REMOVED` | `billing.dha_preauth.diagnosis_removed` | `billing/services/ilm_preauth_service.py` |
+| `DHA_PREAUTH_DOCTOR_REMOVED` | `billing.dha_preauth.doctor_removed` | `billing/services/ilm_preauth_service.py` |
+| `DHA_PREAUTH_DOCTOR_CONSENT_REQUESTED` | `billing.dha_preauth.doctor_consent_requested` | `billing/services/ilm_preauth_service.py` |
+| `DHA_EMERGENCY_OPENED` | `billing.dha_emergency.opened` | `billing/services/ilm_preauth_service.py` |
+| `DHA_EMERGENCY_PROTOCOL_LISTED` | `billing.dha_emergency.protocol_listed` | `billing/services/ilm_preauth_service.py` |
+| `DHA_EMERGENCY_PROTOCOL_APPLIED` | `billing.dha_emergency.protocol_applied` | `billing/services/ilm_preauth_service.py` |
+| `DHA_EMT_CLAIM_CREATED` | `billing.dha_emt.claim_created` | `billing/services/ilm_preauth_service.py` |
+| `DHA_PREAUTH_CALL_FAILED` | `billing.dha_preauth.call_failed` | `billing/sha_ilm_preauth_views.py` (error path) |
 
 ### PharmacyEvents (7 constants)
 

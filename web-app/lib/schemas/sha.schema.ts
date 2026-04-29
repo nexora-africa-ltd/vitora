@@ -1001,3 +1001,132 @@ export const PatientContactCreateSchema = z.object({
   dha_contact_id: z.string().optional(),
 });
 export type PatientContactCreateInput = z.infer<typeof PatientContactCreateSchema>;
+
+// ============================================================================
+// DHA HIE Middleware (ILM) — Phase 3: preauth, doctor consent & emergency
+// ============================================================================
+
+export const IlmPreauthResponseSchema = z.object({
+  data: z.unknown(),
+  http_status: z.number(),
+  record_id: z.number().nullable().optional(),
+  dha_external_id: z.string().optional().default(''),
+  correlation_id: z.string().optional().default(''),
+});
+export type IlmPreauthResponse = z.infer<typeof IlmPreauthResponseSchema>;
+
+export const SHAPreauthSchema = z.object({
+  id: z.number(),
+  patient: z.number().nullable().optional(),
+  facility: z.number().nullable().optional(),
+  consent_token: z.string(),
+  intervention_code: z.string(),
+  status: z.enum(['draft', 'submitted', 'approved', 'denied', 'cancelled']),
+  dha_external_id: z.string().optional().default(''),
+  correlation_id: z.string().optional().default(''),
+  diagnoses: z.unknown().optional(),
+  doctor_consent_state: z.string().optional().default(''),
+  submitted_at: z.string().nullable().optional(),
+  decided_at: z.string().nullable().optional(),
+  cancelled_at: z.string().nullable().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+}).passthrough();
+export type SHAPreauth = z.infer<typeof SHAPreauthSchema>;
+
+export const SHAPreauthListSchema = z.object({ results: z.array(SHAPreauthSchema) });
+
+export const SHAEmergencyClaimSchema = z.object({
+  id: z.number(),
+  patient: z.number().nullable().optional(),
+  facility: z.number().nullable().optional(),
+  kind: z.enum(['emergency', 'emt']),
+  status: z.enum(['open', 'submitted', 'authorized', 'cancelled']),
+  consent_token: z.string().optional().default(''),
+  reference_number: z.string().optional().default(''),
+  case_number: z.string().optional().default(''),
+  beneficiary_cr_id: z.string().optional().default(''),
+  brought_by: z.string().optional().default(''),
+  mode_of_arrival: z.string().optional().default(''),
+  interventions: z.unknown().optional(),
+  diagnoses: z.unknown().optional(),
+  dha_external_id: z.string().optional().default(''),
+  correlation_id: z.string().optional().default(''),
+  created_at: z.string().optional(),
+}).passthrough();
+export type SHAEmergencyClaim = z.infer<typeof SHAEmergencyClaimSchema>;
+
+export const SHAEmergencyClaimListSchema = z.object({ results: z.array(SHAEmergencyClaimSchema) });
+
+// --- Inputs -----------------------------------------------------------------
+
+export const PreauthCreateInputSchema = z.object({
+  consent_token: z.string().min(1),
+  intervention_code: z.string().min(1),
+  patient_pk: z.number(),
+  claim_pk: z.number().optional(),
+  payload: z.record(z.unknown()).optional(),
+});
+export type PreauthCreateInput = z.infer<typeof PreauthCreateInputSchema>;
+
+export const PreauthCancelInputSchema = z.object({
+  consent_token: z.string().min(1),
+  intervention_code: z.string().min(1),
+  reason: z.string().optional(),
+});
+export type PreauthCancelInput = z.infer<typeof PreauthCancelInputSchema>;
+
+export const PreauthRemoveDiagnosisInputSchema = z.object({
+  consent_token: z.string().min(1),
+  intervention_code: z.string().min(1),
+});
+
+export const PreauthRemoveDoctorInputSchema = z.object({
+  consent_token: z.string().min(1),
+  intervention_code: z.string().min(1),
+  practitioner_registration_number: z.string().min(1),
+});
+
+export const DoctorConsentInputSchema = z.object({
+  consent_token: z.string().min(1),
+  intervention_code: z.string().min(1),
+  practitioner_registration_number: z.string().min(1),
+  identification_number: z.string().min(1),
+  identification_type: z.string().optional(),
+});
+
+export const EmergencyOpenInputSchema = z.object({
+  interventions: z.array(z.string()).min(1),
+  diagnoses: z.array(z.string()).optional(),
+  reference_number: z.string().optional(),
+  beneficiary_cr_id: z.string().optional(),
+  brought_by: z.string().optional(),
+  mode_of_arrival: z.string().optional(),
+  consent_token: z.string().optional(),
+  patient_pk: z.number().optional(),
+  claim_pk: z.number().optional(),
+  payload: z.record(z.unknown()).optional(),
+});
+
+export const EmergencyProtocolApplyInputSchema = z.object({
+  consent_token: z.string().min(1),
+  protocol_code: z.string().min(1),
+  intervention_code: z.string().min(1),
+  unit_price: z.number(),
+  quantity: z.number(),
+  diagnoses: z.string().optional(),
+  payload: z.record(z.unknown()).optional(),
+});
+
+export const EmtCreateInputSchema = z.object({
+  beneficiary_cr_id: z.string().min(1),
+  case_number: z.string().min(1),
+  consent_token: z.string().min(1),
+  diagnoses: z.array(z.string()).min(1),
+  interventions: z.array(z.string()).min(1),
+  practitioner_reg_number: z.string().min(1),
+  provider_registration_number: z.string().min(1),
+  protocol_code: z.string().min(1),
+  patient_pk: z.number().optional(),
+  payload: z.record(z.unknown()).optional(),
+});
