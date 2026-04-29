@@ -2069,7 +2069,7 @@ class SHATariff(models.Model):
         return tariff
 
 
-class SHAClaim(models.Model):
+class SHAClaim(FacilityScopedModel):
     """
     SHA Claim submission record.
 
@@ -2119,6 +2119,13 @@ class SHAClaim(models.Model):
         API = "api", "API Integration"
         PORTAL = "portal", "SHA Portal"
         MANUAL = "manual", "Manual Submission"
+
+    class ClaimFlow(models.TextChoices):
+        """DHA HIE claim routing flow determined by eligibility + facility level."""
+
+        PHC = "phc", "Primary Health Care (UHC, Level 2-3)"
+        SHIF = "shif", "SHIF (Level 3+, biometric/OTP consent)"
+        ECCIF = "eccif", "Emergency (ECCIF, bundled tariffs)"
 
     id = models.BigAutoField(primary_key=True)
 
@@ -2202,6 +2209,18 @@ class SHAClaim(models.Model):
         default=dict, blank=True, help_text="Response from SHA on submission"
     )
 
+    # DHA HIE claim flow routing
+    claim_flow = models.CharField(
+        max_length=5,
+        choices=ClaimFlow.choices,
+        blank=True,
+        help_text="DHA HIE claim flow (PHC/SHIF/ECCIF), set by flow router",
+    )
+    is_emergency_claim = models.BooleanField(
+        default=False,
+        help_text="Whether this is an emergency claim (ECCIF flow)",
+    )
+
     # Adjudication
     adjudication_date = models.DateField(null=True, blank=True)
     adjudication_notes = models.TextField(blank=True)
@@ -2269,9 +2288,20 @@ class SHAClaim(models.Model):
         return f"{self.claim_number} - {self.patient} ({self.get_status_display()})"
 
     def save(self, *args, **kwargs):
-        """Override save to generate claim number and run validation."""
+        """Override save to generate claim number, auto-resolve tenant, and run validation."""
         if not self.claim_number:
             self.claim_number = self.generate_claim_number()
+        # Auto-resolve facility from encounter if not explicitly set
+        if not self.facility_id and self.encounter_id:
+            try:
+                enc = self.encounter
+                if enc.facility_id:
+                    self.facility_id = enc.facility_id
+            except Exception:  # noqa: S110
+                pass  # Encounter may not be loaded yet during migrations
+        # Backfill facility_code from facility FK if not set
+        if self.facility and not self.facility_code:
+            self.facility_code = self.facility.mfl_code or ""
         self.full_clean()
         super().save(*args, **kwargs)
 
@@ -2389,6 +2419,27 @@ class SHAClaim(models.Model):
         # Check claimed amount is positive
         if self.claimed_amount <= Decimal("0.00"):
             errors.append("Claimed amount must be greater than zero")
+
+        # Check pre-authorization for restricted services
+        items_needing_preauth = self.items.filter(
+            tariff__isnull=False,
+            tariff__requires_preauthorization=True,
+        ).select_related("tariff")
+        if items_needing_preauth.exists():
+            approved_preauth = self.preauth_requests.filter(
+                decision="APPROVED",
+            ).first()
+            if not approved_preauth:
+                tariff_codes = ", ".join(i.tariff.code for i in items_needing_preauth if i.tariff)
+                errors.append(
+                    f"Pre-authorization required for restricted services ({tariff_codes}) "
+                    "but no approved pre-authorization found"
+                )
+            elif approved_preauth.valid_until and approved_preauth.valid_until < date.today():
+                errors.append(
+                    f"Pre-authorization {approved_preauth.preauth_reference} has expired "
+                    f"(valid until {approved_preauth.valid_until})"
+                )
 
         return len(errors) == 0, errors
 
@@ -3224,3 +3275,325 @@ class FacilityBillingConfig(models.Model):
         if price is not None:
             return Decimal(str(price))
         return None
+
+
+# ---------------------------------------------------------------------------
+# DHA HIE Consent & Preauth Models (User Journey Compliance)
+# ---------------------------------------------------------------------------
+
+
+class ConsentToken(FacilityScopedModel):
+    """
+    DHA visit consent token obtained via OTP or biometric verification.
+
+    Required by the Kenya Digital Superhighway for SHIF (mandatory) and
+    PHC (simplified) claim flows. Represents patient authorization for
+    a clinical visit and subsequent billing.
+
+    Lifecycle: PENDING → VALIDATED → EXPIRED/FAILED
+    """
+
+    class ConsentMethod(models.TextChoices):
+        OTP = "OTP", "OTP (One-Time Password)"
+        BIOMETRIC = "BIOMETRIC", "Biometric Verification"
+
+    class ConsentStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending Verification"
+        VALIDATED = "VALIDATED", "Validated"
+        EXPIRED = "EXPIRED", "Expired"
+        FAILED = "FAILED", "Failed"
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Links
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="consent_tokens",
+    )
+    sha_member = models.ForeignKey(
+        "billing.SHAMember",
+        on_delete=models.PROTECT,
+        related_name="consent_tokens",
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="consent_tokens",
+    )
+
+    # Consent details
+    consent_method = models.CharField(
+        max_length=10,
+        choices=ConsentMethod.choices,
+        help_text="Method used for patient consent verification",
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=ConsentStatus.choices,
+        default=ConsentStatus.PENDING,
+    )
+
+    # OTP flow fields
+    otp_reference = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Reference returned by DHA /send-web-otp endpoint",
+    )
+    identification_type = models.CharField(
+        max_length=30,
+        default="National ID",
+        help_text="ID type used for OTP request",
+    )
+    identification_number = models.CharField(
+        max_length=50,
+        help_text="ID number used for OTP request",
+    )
+
+    # Token from DHA (returned after successful validation)
+    consent_token = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Consent token returned by DHA after successful verification",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    validated_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this consent token expires",
+    )
+
+    # Audit
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="consent_tokens_created",
+    )
+
+    class Meta:
+        verbose_name = "Consent Token"
+        verbose_name_plural = "Consent Tokens"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["patient", "status"]),
+            models.Index(fields=["sha_member", "status"]),
+            models.Index(fields=["status", "created_at"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"Consent({self.get_consent_method_display()}) - "
+            f"{self.patient} [{self.get_status_display()}]"
+        )
+
+    # ------------------------------------------------------------------
+    # State transition methods
+    # ------------------------------------------------------------------
+
+    def mark_validated(self, token: str, expires_in_seconds: int = 3600) -> None:
+        """Mark consent as validated with the token from DHA."""
+        self.status = self.ConsentStatus.VALIDATED
+        self.consent_token = token
+        self.validated_at = timezone.now()
+        self.expires_at = timezone.now() + timedelta(seconds=expires_in_seconds)
+        self.save(update_fields=["status", "consent_token", "validated_at", "expires_at"])
+
+    def mark_failed(self) -> None:
+        """Mark consent verification as failed."""
+        self.status = self.ConsentStatus.FAILED
+        self.save(update_fields=["status"])
+
+    def mark_expired(self) -> None:
+        """Mark consent token as expired."""
+        self.status = self.ConsentStatus.EXPIRED
+        self.save(update_fields=["status"])
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if consent token is currently valid (validated and not expired)."""
+        if self.status != self.ConsentStatus.VALIDATED:
+            return False
+        if self.expires_at and timezone.now() >= self.expires_at:
+            return False
+        return True
+
+
+class PreauthRequest(FacilityScopedModel):
+    """
+    Pre-authorization request for SHA restricted services.
+
+    Required by DHA for SHIF claims where the tariff has
+    requires_preauthorization=True. Must be APPROVED before
+    the claim can be submitted.
+
+    Lifecycle: PENDING → APPROVED/DENIED → EXPIRED
+    """
+
+    class PreauthDecision(models.TextChoices):
+        PENDING = "PENDING", "Pending Review"
+        APPROVED = "APPROVED", "Approved"
+        DENIED = "DENIED", "Denied"
+        EXPIRED = "EXPIRED", "Expired"
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Links
+    claim = models.ForeignKey(
+        "billing.SHAClaim",
+        on_delete=models.CASCADE,
+        related_name="preauth_requests",
+    )
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="preauth_requests",
+    )
+    sha_member = models.ForeignKey(
+        "billing.SHAMember",
+        on_delete=models.PROTECT,
+        related_name="preauth_requests",
+    )
+    consent_token = models.ForeignKey(
+        "billing.ConsentToken",
+        on_delete=models.PROTECT,
+        related_name="preauth_requests",
+        help_text="Valid consent token required for preauth submission",
+    )
+
+    # Request details
+    preauth_reference = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Reference returned by DHA /v1/preauth/request",
+    )
+    procedure_code = models.CharField(
+        max_length=20,
+        help_text="SHA tariff code requiring pre-authorization",
+    )
+    diagnosis_codes = models.JSONField(
+        default=list,
+        help_text="List of ICD-10 diagnosis codes justifying the procedure",
+    )
+    estimated_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Estimated cost of the procedure (KES)",
+    )
+    scheduled_date = models.DateField(
+        help_text="Planned date for the procedure",
+    )
+    clinical_notes = models.TextField(
+        blank=True,
+        help_text="Clinical justification for pre-authorization",
+    )
+
+    # Decision from DHA
+    decision = models.CharField(
+        max_length=10,
+        choices=PreauthDecision.choices,
+        default=PreauthDecision.PENDING,
+    )
+    approved_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Amount approved by SHA (may differ from estimated)",
+    )
+    valid_until = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date until which the pre-authorization is valid",
+    )
+    denial_reason = models.TextField(
+        blank=True,
+        help_text="Reason for denial (if denied)",
+    )
+
+    # Polling metadata
+    poll_count = models.IntegerField(default=0)
+    last_polled_at = models.DateTimeField(null=True, blank=True)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+
+    # Audit
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="preauth_requests_created",
+    )
+
+    class Meta:
+        verbose_name = "Pre-authorization Request"
+        verbose_name_plural = "Pre-authorization Requests"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["claim", "decision"]),
+            models.Index(fields=["decision", "created_at"]),
+            models.Index(fields=["preauth_reference"]),
+            models.Index(fields=["patient", "decision"]),
+        ]
+
+    def __str__(self):
+        return f"Preauth({self.procedure_code}) - {self.patient} [{self.get_decision_display()}]"
+
+    # ------------------------------------------------------------------
+    # State transition methods
+    # ------------------------------------------------------------------
+
+    def update_from_poll(self, response_data: dict) -> None:
+        """Update preauth status from DHA poll response."""
+        decision = response_data.get("decision", "").upper()
+        self.poll_count += 1
+        self.last_polled_at = timezone.now()
+
+        if decision == "APPROVED":
+            self.decision = self.PreauthDecision.APPROVED
+            self.approved_amount = Decimal(str(response_data.get("approved_amount", 0)))
+            valid_until = response_data.get("valid_until")
+            if valid_until:
+                self.valid_until = date.fromisoformat(valid_until)
+        elif decision == "DENIED":
+            self.decision = self.PreauthDecision.DENIED
+            self.denial_reason = response_data.get("message", "")
+
+        self.save(
+            update_fields=[
+                "decision",
+                "approved_amount",
+                "valid_until",
+                "denial_reason",
+                "poll_count",
+                "last_polled_at",
+            ]
+        )
+
+    def mark_expired(self) -> None:
+        """Mark preauth as expired."""
+        self.decision = self.PreauthDecision.EXPIRED
+        self.save(update_fields=["decision"])
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if preauth is approved and not expired."""
+        if self.decision != self.PreauthDecision.APPROVED:
+            return False
+        if self.valid_until and date.today() > self.valid_until:
+            return False
+        return True
