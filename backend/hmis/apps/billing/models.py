@@ -2267,6 +2267,36 @@ class SHAClaim(FacilityScopedModel):
         help_text="Original claim if this is a resubmission",
     )
 
+    # DHA HIE Middleware (ILM) lifecycle tracking
+    dha_external_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="DHA-side claim identifier returned by /api/v1/claims/visit",
+    )
+    dha_correlation_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Last X-Correlation-Id used when calling DHA HIE",
+    )
+    last_dha_status = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Last DHA-side status (VISIT_STARTED, SUBMITTED, CLOSED, ...)",
+    )
+    last_dha_payload_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of the most recent successful DHA HIE call",
+    )
+    dha_visit_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When /api/v1/claims/visit succeeded for this claim",
+    )
+
     class Meta:
         verbose_name = "SHA Claim"
         verbose_name_plural = "SHA Claims"
