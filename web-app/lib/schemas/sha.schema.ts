@@ -1254,3 +1254,101 @@ export const IlmPomsfBalanceInputSchema = z.object({
   benefit_package_id: z.string().optional(),
 });
 export type IlmPomsfBalanceInput = z.infer<typeof IlmPomsfBalanceInputSchema>;
+
+// ============================================================================
+// DHA HIE Middleware (ILM) — Phase 5: ePrescriptions
+// ============================================================================
+
+export const IlmPrescriptionResponseSchema = z.object({
+  data: z.unknown(),
+  http_status: z.number(),
+  record_id: z.number().nullable().optional(),
+  dha_external_id: z.string().optional().default(''),
+  correlation_id: z.string().optional().default(''),
+});
+export type IlmPrescriptionResponse = z.infer<typeof IlmPrescriptionResponseSchema>;
+
+export const SHADhaPrescriptionSchema = z.object({
+  id: z.number(),
+  patient: z.number().nullable().optional(),
+  encounter: z.number().nullable().optional(),
+  claim: z.number().nullable().optional(),
+  facility: z.number().nullable().optional(),
+  status: z.enum(['draft', 'created', 'dispensed', 'cancelled', 'failed']),
+  intervention_code: z.string().optional().default(''),
+  identification_number: z.string().optional().default(''),
+  identification_type: z.string().optional().default(''),
+  regulation_body: z.string().optional().default(''),
+  items: z.unknown().optional(),
+  dha_external_id: z.string().optional().default(''),
+  dha_guid: z.string().optional().default(''),
+  correlation_id: z.string().optional().default(''),
+  created_at: z.string().nullable().optional(),
+  dispensed_at: z.string().nullable().optional(),
+}).passthrough();
+export type SHADhaPrescription = z.infer<typeof SHADhaPrescriptionSchema>;
+export const SHADhaPrescriptionListSchema = z.object({
+  results: z.array(SHADhaPrescriptionSchema),
+});
+
+// --- Inputs -----------------------------------------------------------------
+
+export const PrescriptionItemInputSchema = z.object({
+  generic_concept_code: z.string().min(1),
+  dose_quantity: z.number(),
+  dose_unit: z.string().min(1),
+  frequency: z.number().int().nonnegative(),
+  duration: z.number().int().nonnegative(),
+  duration_unit: z.string().min(1),
+  period_unit: z.string().min(1),
+  start_date: z.string().min(1),
+  end_date: z.string().optional(),
+  additional_instruction: z.string().optional(),
+  patient_instruction: z.string().optional(),
+  needs_refill: z.boolean().optional(),
+  refill_count: z.number().int().nonnegative().optional(),
+});
+export type PrescriptionItemInput = z.infer<typeof PrescriptionItemInputSchema>;
+
+export const IlmPrescriptionCreateInputSchema = z.object({
+  consent_token: z.string().min(1),
+  intervention_code: z.string().min(1),
+  identification_number: z.string().min(1),
+  identification_type: z.string().optional(),
+  regulation_body: z.string().optional(),
+  items: z.array(PrescriptionItemInputSchema).min(1),
+  patient_pk: z.number().optional(),
+  encounter_pk: z.number().optional(),
+});
+export type IlmPrescriptionCreateInput = z.infer<typeof IlmPrescriptionCreateInputSchema>;
+
+export const DispenseProductInputSchema = z.object({
+  actual_product_code: z.string().min(1),
+  medication_price: z.number(),
+  total_quantity: z.number().int().nonnegative(),
+});
+export type DispenseProductInput = z.infer<typeof DispenseProductInputSchema>;
+
+export const DispenseDoctorInputSchema = z.object({
+  identification_number: z.string().min(1),
+  identification_type: z.string().optional(),
+});
+export type DispenseDoctorInput = z.infer<typeof DispenseDoctorInputSchema>;
+
+export const IlmPrescriptionDispenseInputSchema = z.object({
+  consent_token: z.string().min(1),
+  intervention_code: z.string().min(1),
+  actual_products: z.array(DispenseProductInputSchema).min(1),
+  doctors: z.array(DispenseDoctorInputSchema).optional(),
+  prescription_pk: z.number().optional(),
+});
+export type IlmPrescriptionDispenseInput = z.infer<typeof IlmPrescriptionDispenseInputSchema>;
+
+export const IlmPrescriptionRemoveDoctorInputSchema = z.object({
+  consent_token: z.string().min(1),
+  intervention_code: z.string().min(1),
+  practitioner_registration_number: z.string().min(1),
+});
+export type IlmPrescriptionRemoveDoctorInput = z.infer<
+  typeof IlmPrescriptionRemoveDoctorInputSchema
+>;

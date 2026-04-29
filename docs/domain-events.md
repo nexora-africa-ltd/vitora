@@ -175,7 +175,7 @@ def create_invoice(...) -> dict:
 
 Convention: `<domain>.<aggregate>.<action>`
 
-### BillingEvents (51 constants)
+### BillingEvents (56 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -230,6 +230,11 @@ Convention: `<domain>.<aggregate>.<action>`
 | `DHA_FILE_UPLOADED` | `billing.dha_lifecycle.file_uploaded` | `billing/services/ilm_lifecycle_service.py` |
 | `DHA_FILE_URL_GENERATED` | `billing.dha_lifecycle.file_url_generated` | `billing/services/ilm_lifecycle_service.py` |
 | `DHA_LIFECYCLE_CALL_FAILED` | `billing.dha_lifecycle.call_failed` | `billing/sha_ilm_lifecycle_views.py` (error path) |
+| `DHA_PRESCRIPTION_CREATED` | `billing.dha_prescription.created` | `billing/services/ilm_prescription_service.py` |
+| `DHA_PRESCRIPTION_FETCHED` | `billing.dha_prescription.fetched` | `billing/services/ilm_prescription_service.py` |
+| `DHA_PRESCRIPTION_DISPENSED` | `billing.dha_prescription.dispensed` | `billing/services/ilm_prescription_service.py` |
+| `DHA_PRESCRIPTION_DOCTOR_REMOVED` | `billing.dha_prescription.doctor_removed` | `billing/services/ilm_prescription_service.py` |
+| `DHA_PRESCRIPTION_CALL_FAILED` | `billing.dha_prescription.call_failed` | `billing/sha_ilm_prescription_views.py` (error path) |
 
 ### PharmacyEvents (7 constants)
 
