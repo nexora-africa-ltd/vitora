@@ -87,6 +87,11 @@ jobs:
             SHA_AGENT=DHABP05113
             SHA_FHIR_BASE_URL=https://qa-mis.apeiro-digital.com
             SHA_API_TIMEOUT=30
+            SHA_FACILITY_FR_CODE=${{ vars.SHA_FACILITY_FR_CODE }}
+            ILM_BASE_URL=${{ vars.ILM_BASE_URL }}
+            ILM_REQUEST_TIMEOUT=30
+            ILM_MAX_RETRIES=2
+            ILM_BACKOFF_SECONDS=0.5
             FACILITY_MFL_CODE=TEST-001
             FACILITY_LEVEL=L3
             FACILITY_NAME=Demo-Health-Facility

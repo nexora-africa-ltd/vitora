@@ -742,6 +742,13 @@ SHA_USERNAME = os.getenv("SHA_USERNAME", "")  # API username for Basic Auth
 SHA_PASSWORD = os.getenv("SHA_PASSWORD", "")  # API password for Basic Auth
 SHA_AGENT = os.getenv("SHA_AGENT", "")  # Agent identifier for API requests
 SHA_ENCRYPTED_PIN = os.getenv("SHA_ENCRYPTED_PIN", "")  # Pre-encrypted PIN for API requests
+SHA_FACILITY_FR_CODE = os.getenv("SHA_FACILITY_FR_CODE", "")  # Facility Registry (FR) code
+
+# DHA HIE Middleware (ILM) shared HTTP client tunables
+ILM_BASE_URL = os.getenv("ILM_BASE_URL", "")  # Defaults to SHA_AUTH_BASE_URL when empty
+ILM_REQUEST_TIMEOUT = int(os.getenv("ILM_REQUEST_TIMEOUT", str(SHA_API_TIMEOUT)))
+ILM_MAX_RETRIES = int(os.getenv("ILM_MAX_RETRIES", "2"))
+ILM_BACKOFF_SECONDS = float(os.getenv("ILM_BACKOFF_SECONDS", "0.5"))
 # SHA FHIR Base URL (for bundle profile/resource URLs - NOT API endpoint)
 # UAT: https://qa-mis.apeiro-digital.com
 # Production: https://mis.apeiro-digital.com or https://fhir.sha.go.ke

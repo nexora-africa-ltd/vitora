@@ -3882,6 +3882,81 @@ class OrgJoinRequest(TimeStampedModel):
         return f"{self.user.get_full_name() or self.user.username} → {self.organization.name} ({self.status})"
 
 
+class DHAOutboundCall(TimeStampedModel):
+    """Audit row for every outbound call to the DHA HIE Middleware (ILM).
+
+    Captures method, path, status, latency and a PII-redacted excerpt of the
+    request/response payloads. Backed by a 7-year retention task to satisfy
+    Kenya DPA 2019.
+    """
+
+    class Status(models.TextChoices):
+        SUCCESS = "SUCCESS", "Success"
+        CLIENT_ERROR = "CLIENT_ERROR", "Client Error (4xx)"
+        SERVER_ERROR = "SERVER_ERROR", "Server Error (5xx)"
+        TRANSPORT = "TRANSPORT", "Transport Error"
+        TIMEOUT = "TIMEOUT", "Timeout"
+
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_outbound_calls",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_outbound_calls",
+    )
+    user = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_outbound_calls",
+        help_text="User who triggered the call (if request-scoped).",
+    )
+
+    method = models.CharField(max_length=10)
+    path = models.CharField(max_length=500, help_text="Path on the ILM middleware (no host).")
+    base_url = models.CharField(max_length=255, blank=True, default="")
+    auth_mode = models.CharField(max_length=20, blank=True, default="")
+
+    status = models.CharField(max_length=20, choices=Status.choices)
+    status_code = models.IntegerField(null=True, blank=True)
+    duration_ms = models.IntegerField(null=True, blank=True)
+    attempt = models.PositiveSmallIntegerField(default=1)
+
+    consent_token = models.CharField(max_length=255, blank=True, default="")
+    request_id = models.CharField(max_length=64, blank=True, default="")
+    correlation_id = models.CharField(max_length=64, blank=True, default="")
+    error_code = models.CharField(max_length=64, blank=True, default="")
+
+    request_payload = models.JSONField(null=True, blank=True, help_text="PII-redacted body.")
+    response_excerpt = models.JSONField(null=True, blank=True, help_text="First 4KB of response.")
+    error_message = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["facility", "-created_at"]),
+            models.Index(fields=["status", "-created_at"]),
+            models.Index(fields=["consent_token"]),
+            models.Index(fields=["correlation_id"]),
+            models.Index(fields=["path"]),
+        ]
+        verbose_name = "DHA Outbound Call"
+        verbose_name_plural = "DHA Outbound Calls"
+
+    def __str__(self) -> str:  # pragma: no cover - cosmetic
+        return (
+            f"[{self.created_at:%Y-%m-%d %H:%M:%S}] {self.method} {self.path} -> {self.status_code}"
+        )
+
+
 # Import MFA models so Django discovers them for syncdb (--no-migrations mode)
 # Import EventStore so Django discovers it for migrations
 from hmis.apps.core.events.store import EventStore  # noqa: E402, F401
