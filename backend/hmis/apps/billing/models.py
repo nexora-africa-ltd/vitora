@@ -4059,3 +4059,70 @@ class SHAUpload(FacilityScopedModel):
 
     def __str__(self) -> str:  # pragma: no cover - trivial
         return f"{self.filename} ({self.dha_file_id or 'pending'})"
+
+
+class SHADhaPrescription(FacilityScopedModel):
+    """Audit row for ePrescriptions sent through DHA ILM (Phase 5)."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        CREATED = "created", "Created"
+        DISPENSED = "dispensed", "Dispensed"
+        CANCELLED = "cancelled", "Cancelled"
+        FAILED = "failed", "Failed"
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="sha_dha_prescriptions",
+        null=True,
+        blank=True,
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        related_name="sha_dha_prescriptions",
+        null=True,
+        blank=True,
+    )
+    claim = models.ForeignKey(
+        "billing.SHAClaim",
+        on_delete=models.SET_NULL,
+        related_name="dha_prescriptions",
+        null=True,
+        blank=True,
+    )
+    consent_token = models.CharField(max_length=512, blank=True, default="")
+    intervention_code = models.CharField(max_length=64, blank=True, default="")
+    identification_number = models.CharField(max_length=64, blank=True, default="")
+    identification_type = models.CharField(max_length=32, blank=True, default="")
+    regulation_body = models.CharField(max_length=128, blank=True, default="")
+    items = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
+    dha_external_id = models.CharField(max_length=128, blank=True, default="")
+    dha_guid = models.CharField(max_length=128, blank=True, default="")
+    response_payload = models.JSONField(default=dict, blank=True)
+    dispense_payload = models.JSONField(default=dict, blank=True)
+    correlation_id = models.CharField(max_length=128, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="sha_dha_prescriptions_created",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    dispensed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "SHA DHA Prescription"
+        verbose_name_plural = "SHA DHA Prescriptions"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["dha_external_id"]),
+            models.Index(fields=["intervention_code"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"DHA Rx {self.dha_external_id or self.pk} ({self.status})"

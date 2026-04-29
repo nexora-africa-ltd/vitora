@@ -52,6 +52,8 @@ import {
   SHAOtpRequestListSchema,
   SHAOtpWhitelistListSchema,
   SHAUploadListSchema,
+  IlmPrescriptionResponseSchema,
+  SHADhaPrescriptionListSchema,
 } from '@/lib/schemas/sha.schema';
 import type {
   IlmStartVisitRequest,
@@ -1098,6 +1100,66 @@ async function listLocalUploads(params: Record<string, string> = {}) {
 }
 
 // ============================================================================
+// DHA HIE Middleware (ILM) — Phase 5: ePrescriptions
+// ============================================================================
+
+async function ilmPreviewPrescription(params: { consent_token: string; patient_pk?: number }) {
+  const response = await apiClient.get(`${ILM_BASE}/prescriptions/preview/`, { params });
+  return parseResponse(IlmPrescriptionResponseSchema, response.data, {
+    context: 'shaApi.ilmPreviewPrescription',
+  });
+}
+
+async function ilmCreatePrescription(body: {
+  consent_token: string;
+  intervention_code: string;
+  identification_number: string;
+  identification_type?: string;
+  regulation_body?: string;
+  items: Array<Record<string, unknown>>;
+  patient_pk?: number;
+  encounter_pk?: number;
+}) {
+  const response = await apiClient.post(`${ILM_BASE}/prescriptions/`, body);
+  return parseResponse(IlmPrescriptionResponseSchema, response.data, {
+    context: 'shaApi.ilmCreatePrescription',
+  });
+}
+
+async function ilmDispensePrescription(body: {
+  consent_token: string;
+  intervention_code: string;
+  actual_products: Array<{ actual_product_code: string; medication_price: number; total_quantity: number }>;
+  doctors?: Array<{ identification_number: string; identification_type?: string }>;
+  prescription_pk?: number;
+}) {
+  const response = await apiClient.post(`${ILM_BASE}/prescriptions/dispenses/`, body);
+  return parseResponse(IlmPrescriptionResponseSchema, response.data, {
+    context: 'shaApi.ilmDispensePrescription',
+  });
+}
+
+async function ilmRemovePrescriptionDoctor(body: {
+  consent_token: string;
+  intervention_code: string;
+  practitioner_registration_number: string;
+}) {
+  const response = await apiClient.delete(`${ILM_BASE}/prescriptions/doctors/`, { data: body });
+  return parseResponse(IlmPrescriptionResponseSchema, response.data, {
+    context: 'shaApi.ilmRemovePrescriptionDoctor',
+  });
+}
+
+async function listLocalDhaPrescriptions(
+  params: { patient_pk?: number; status?: string; intervention_code?: string } = {},
+) {
+  const response = await apiClient.get(`${ILM_BASE}/prescriptions/local/`, { params });
+  return parseResponse(SHADhaPrescriptionListSchema, response.data, {
+    context: 'shaApi.listLocalDhaPrescriptions',
+  });
+}
+
+// ============================================================================
 // Export API Object
 // ============================================================================
 
@@ -1219,4 +1281,10 @@ export const shaApi = {
   listLocalOtpRequests,
   listLocalOtpWhitelists,
   listLocalUploads,
+  // Phase 5 — ePrescriptions
+  ilmPreviewPrescription,
+  ilmCreatePrescription,
+  ilmDispensePrescription,
+  ilmRemovePrescriptionDoctor,
+  listLocalDhaPrescriptions,
 };

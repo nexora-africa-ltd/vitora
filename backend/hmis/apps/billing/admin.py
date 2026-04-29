@@ -854,3 +854,38 @@ class SHAUploadAdmin(admin.ModelAdmin):
         "dha_download_url",
         "uploaded_at",
     )
+
+
+from .models import SHADhaPrescription  # noqa: E402
+
+
+@admin.register(SHADhaPrescription)
+class SHADhaPrescriptionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "intervention_code",
+        "status",
+        "patient",
+        "dha_external_id",
+        "facility",
+        "created_at",
+        "dispensed_at",
+    )
+    list_filter = ("status", "facility")
+    search_fields = (
+        "intervention_code",
+        "identification_number",
+        "dha_external_id",
+        "dha_guid",
+        "correlation_id",
+    )
+    raw_id_fields = ("patient", "encounter", "claim", "facility", "organization", "created_by")
+    readonly_fields = (
+        "response_payload",
+        "dispense_payload",
+        "correlation_id",
+        "dha_external_id",
+        "dha_guid",
+        "created_at",
+        "dispensed_at",
+    )

@@ -77,6 +77,13 @@ class BillingEvents:
     DHA_FILE_URL_GENERATED = "billing.dha_upload.url_generated"
     DHA_LIFECYCLE_CALL_FAILED = "billing.dha_lifecycle.call_failed"
 
+    # DHA HIE Middleware (ILM) — Phase 5: ePrescriptions
+    DHA_PRESCRIPTION_CREATED = "billing.dha_prescription.created"
+    DHA_PRESCRIPTION_FETCHED = "billing.dha_prescription.fetched"
+    DHA_PRESCRIPTION_DISPENSED = "billing.dha_prescription.dispensed"
+    DHA_PRESCRIPTION_DOCTOR_REMOVED = "billing.dha_prescription.doctor_removed"
+    DHA_PRESCRIPTION_CALL_FAILED = "billing.dha_prescription.call_failed"
+
 
 class PharmacyEvents:
     """Pharmacy domain event types."""

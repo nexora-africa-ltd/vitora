@@ -37,6 +37,13 @@ from hmis.apps.billing.sha_ilm_preauth_views import (
     SHAEmergencyClaimListView,
     SHAPreauthListView,
 )
+from hmis.apps.billing.sha_ilm_prescription_views import (
+    IlmPrescriptionCreateView,
+    IlmPrescriptionDispenseView,
+    IlmPrescriptionPreviewView,
+    IlmPrescriptionRemoveDoctorView,
+    SHADhaPrescriptionListView,
+)
 from hmis.apps.billing.sha_ilm_registry_views import (
     IlmBenefitInterventionsView,
     IlmBenefitsView,
@@ -234,5 +241,31 @@ urlpatterns = [
         "ilm/uploads/<str:file_id>/",
         IlmFileUrlView.as_view(),
         name="ilm-uploads-url",
+    ),
+    # ----- DHA HIE Middleware (ILM) — Phase 5 ePrescriptions -----
+    path(
+        "ilm/prescriptions/preview/",
+        IlmPrescriptionPreviewView.as_view(),
+        name="ilm-prescription-preview",
+    ),
+    path(
+        "ilm/prescriptions/",
+        IlmPrescriptionCreateView.as_view(),
+        name="ilm-prescription-create",
+    ),
+    path(
+        "ilm/prescriptions/dispenses/",
+        IlmPrescriptionDispenseView.as_view(),
+        name="ilm-prescription-dispense",
+    ),
+    path(
+        "ilm/prescriptions/doctors/",
+        IlmPrescriptionRemoveDoctorView.as_view(),
+        name="ilm-prescription-remove-doctor",
+    ),
+    path(
+        "ilm/prescriptions/local/",
+        SHADhaPrescriptionListView.as_view(),
+        name="ilm-prescriptions-local",
     ),
 ]

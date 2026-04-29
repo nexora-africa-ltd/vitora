@@ -1,6 +1,6 @@
 # DHA HIE Middleware (ILM) Integration
 
-> **Status**: Phases 0–4 complete. Phase 5 (M&E reports) planned.
+> **Status**: Phases 0–5 complete.
 >
 > **Scope**: This document is the implementation-side SSOT for Vitora's
 > integration with the **Digital Health Authority (DHA) Health Information
@@ -328,10 +328,58 @@ Migration: `billing/0040_shaotprequest_shaotpwhitelistrequest_shaupload`.
 
 ---
 
-## 7b. Phase 5 — planned (not yet started)
+## 7b. Phase 5 — ePrescriptions ✅ COMPLETE
 
-- **Phase 5 — ePrescriptions (4 ops, new Django app)**:
-  prescriptions list / create / dispense / cancel.
+4 operations under `/api/v1/prescriptions...` plus a local browse view.
+
+### 7b.1 Endpoints
+
+| Op | Verb / Path (DHA) | Service method | APIView | Local model |
+|----|-------------------|----------------|---------|-------------|
+| Preview prescription | `GET /prescriptions` | `preview_prescription` | `IlmPrescriptionPreviewView` | — |
+| Create prescription | `POST /prescriptions` | `create_prescription` | `IlmPrescriptionCreateView` | `SHADhaPrescription(status=created)` |
+| Create dispense | `POST /prescriptions/dispenses` | `create_dispense` | `IlmPrescriptionDispenseView` | flips local row `→ dispensed` |
+| Remove prescribing doctor | `DELETE /prescriptions/doctors` | `remove_prescription_doctor` | `IlmPrescriptionRemoveDoctorView` | — |
+
+Local browse: `GET /api/sha/ilm/prescriptions/local/` (filters: `patient_pk`, `status`, `intervention_code`).
+
+Mounts under `/api/sha/ilm/prescriptions/...`:
+- `preview/`, `` (POST create), `dispenses/`, `doctors/` (DELETE), `local/`.
+
+### 7b.2 Model
+
+- **`SHADhaPrescription`** — facility-scoped audit row. Status
+  `draft|created|dispensed|cancelled|failed`, FKs to patient / encounter
+  / claim, `intervention_code`, `identification_number/type`,
+  `regulation_body`, `items` JSON, `dha_external_id`, `dha_guid`,
+  `response_payload`, `dispense_payload`, `correlation_id`,
+  `created_by` user FK, `created_at`, `dispensed_at`. Migration:
+  `billing/0041_shadhaprescription`.
+
+### 7b.3 Domain events
+
+5 new `BillingEvents` constants:
+`DHA_PRESCRIPTION_CREATED`, `DHA_PRESCRIPTION_FETCHED`,
+`DHA_PRESCRIPTION_DISPENSED`, `DHA_PRESCRIPTION_DOCTOR_REMOVED`,
+`DHA_PRESCRIPTION_CALL_FAILED`. BillingEvents: 51 → 56.
+
+### 7b.4 Tests
+
+- `tests/billing/test_ilm_prescription_service.py` — 8 service tests.
+- `tests/billing/test_api/test_sha_ilm_prescription_views.py` — 18 view tests.
+
+### 7b.5 Frontend
+
+- Schemas in `web-app/lib/schemas/sha.schema.ts`:
+  `IlmPrescriptionResponseSchema`, `SHADhaPrescriptionSchema`,
+  `SHADhaPrescriptionListSchema`, `PrescriptionItemInputSchema`,
+  `IlmPrescriptionCreateInputSchema`, `DispenseProductInputSchema`,
+  `DispenseDoctorInputSchema`, `IlmPrescriptionDispenseInputSchema`,
+  `IlmPrescriptionRemoveDoctorInputSchema`.
+- `shaApi` methods (Phase 5):
+  `ilmPreviewPrescription`, `ilmCreatePrescription`,
+  `ilmDispensePrescription`, `ilmRemovePrescriptionDoctor`,
+  `listLocalDhaPrescriptions`.
 
 ---
 
@@ -367,4 +415,4 @@ Migration: `billing/0040_shaotprequest_shaotpwhitelistrequest_shaupload`.
 
 ---
 
-**Last updated**: April 30, 2026 — Phase 4 complete.
+**Last updated**: April 30, 2026 — Phase 5 complete.
