@@ -63,6 +63,19 @@ class BillingEvents:
     DHA_EMERGENCY_PROTOCOL_APPLIED = "billing.dha_emergency.protocol_applied"
     DHA_EMT_CLAIM_CREATED = "billing.dha_emt.created"
     DHA_PREAUTH_CALL_FAILED = "billing.dha_preauth.call_failed"
+    # DHA HIE lifecycle polish (Phase 4): OTP, discharge, NoK, doctors, POMSF, uploads
+    DHA_VISIT_OTP_SENT = "billing.dha_otp.visit_sent"
+    DHA_DISCHARGE_OTP_SENT = "billing.dha_otp.discharge_sent"
+    DHA_DISCHARGE_COMPLETED = "billing.dha_discharge.completed"
+    DHA_OTP_WHITELIST_REQUESTED = "billing.dha_otp_whitelist.requested"
+    DHA_OTP_WHITELIST_FETCHED = "billing.dha_otp_whitelist.fetched"
+    DHA_NEXT_OF_KIN_ADDED = "billing.dha_next_of_kin.added"
+    DHA_EMERGENCY_DOCTOR_ADDED = "billing.dha_emergency_doctor.added"
+    DHA_EMERGENCY_DOCTOR_REMOVED = "billing.dha_emergency_doctor.removed"
+    DHA_POMSF_BALANCE_FETCHED = "billing.dha_pomsf.balance_fetched"
+    DHA_FILE_UPLOADED = "billing.dha_upload.uploaded"
+    DHA_FILE_URL_GENERATED = "billing.dha_upload.url_generated"
+    DHA_LIFECYCLE_CALL_FAILED = "billing.dha_lifecycle.call_failed"
 
 
 class PharmacyEvents:

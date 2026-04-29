@@ -48,6 +48,10 @@ import {
   IlmPreauthResponseSchema,
   SHAPreauthListSchema,
   SHAEmergencyClaimListSchema,
+  IlmLifecycleResponseSchema,
+  SHAOtpRequestListSchema,
+  SHAOtpWhitelistListSchema,
+  SHAUploadListSchema,
 } from '@/lib/schemas/sha.schema';
 import type {
   IlmStartVisitRequest,
@@ -949,6 +953,151 @@ async function listLocalEmergencyClaims(params: { patient_pk?: number; kind?: 'e
 }
 
 // ============================================================================
+// DHA HIE Middleware (ILM) — Phase 4: lifecycle (OTP, discharge, NoK, uploads)
+// ============================================================================
+
+async function ilmSendVisitOtp(body: {
+  intervention_codes: string[];
+  patient_id: string;
+  beneficiary_contact_id?: string;
+}) {
+  const response = await apiClient.post(`${ILM_BASE}/lifecycle/visit-otp/`, body);
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmSendVisitOtp',
+  });
+}
+
+async function ilmSendDischargeOtp(body: {
+  consent_token: string;
+  patient_id: string;
+  beneficiary_contact_id?: string;
+}) {
+  const response = await apiClient.post(`${ILM_BASE}/lifecycle/discharge-otp/`, body);
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmSendDischargeOtp',
+  });
+}
+
+async function ilmDischarge(body: {
+  consent_token: string;
+  discharge_date: string;
+  discharge_reason: string;
+  invoice_number: string;
+  otp: string;
+}) {
+  const response = await apiClient.post(`${ILM_BASE}/lifecycle/discharge/`, body);
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmDischarge',
+  });
+}
+
+async function ilmRequestOtpWhitelist(formData: FormData) {
+  const response = await apiClient.post(`${ILM_BASE}/lifecycle/otp-whitelist/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmRequestOtpWhitelist',
+  });
+}
+
+async function ilmListOtpWhitelistStatus(params: {
+  beneficiary_cr_id: string;
+  facility_fr_code?: string;
+  beneficiary_contact_id?: string;
+}) {
+  const response = await apiClient.get(`${ILM_BASE}/lifecycle/otp-whitelist/callback/`, { params });
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmListOtpWhitelistStatus',
+  });
+}
+
+async function ilmAddNextOfKin(body: {
+  consent_token: string;
+  contact_value: string;
+  next_of_kin_full_name: string;
+  next_of_kin_id_number: string;
+  next_of_kin_id_number_type?: string;
+  contact_type?: string;
+}) {
+  const response = await apiClient.post(`${ILM_BASE}/lifecycle/next-of-kin/`, body);
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmAddNextOfKin',
+  });
+}
+
+async function ilmAddEmergencyDoctor(body: {
+  consent_token: string;
+  identification_number: string;
+  identification_type?: string;
+}) {
+  const response = await apiClient.post(`${ILM_BASE}/lifecycle/emergency-doctors/`, body);
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmAddEmergencyDoctor',
+  });
+}
+
+async function ilmRemoveEmergencyDoctor(body: { consent_token: string }) {
+  const response = await apiClient.delete(`${ILM_BASE}/lifecycle/emergency-doctors/remove/`, {
+    data: body,
+  });
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmRemoveEmergencyDoctor',
+  });
+}
+
+async function ilmGetPomsfBalances(params: {
+  patient_id: string;
+  policy_year?: string;
+  principal_member_number?: string;
+  benefit_package_id?: string;
+}) {
+  const response = await apiClient.get(`${ILM_BASE}/lifecycle/pomsf-balances/`, { params });
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmGetPomsfBalances',
+  });
+}
+
+async function ilmUploadFile(file: File, extra: Record<string, string> = {}) {
+  const formData = new FormData();
+  formData.append('file', file);
+  Object.entries(extra).forEach(([k, v]) => formData.append(k, v));
+  const response = await apiClient.post(`/api/sha/ilm/uploads/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmUploadFile',
+  });
+}
+
+async function ilmGetUploadUrl(fileId: string) {
+  const response = await apiClient.get(`/api/sha/ilm/uploads/${encodeURIComponent(fileId)}/`);
+  return parseResponse(IlmLifecycleResponseSchema, response.data, {
+    context: 'shaApi.ilmGetUploadUrl',
+  });
+}
+
+async function listLocalOtpRequests(params: { kind?: 'visit' | 'discharge'; patient_pk?: number } = {}) {
+  const response = await apiClient.get(`${ILM_BASE}/lifecycle/otp/local/`, { params });
+  return parseResponse(SHAOtpRequestListSchema, response.data, {
+    context: 'shaApi.listLocalOtpRequests',
+  });
+}
+
+async function listLocalOtpWhitelists(params: { status?: string } = {}) {
+  const response = await apiClient.get(`${ILM_BASE}/lifecycle/otp-whitelist/local/`, { params });
+  return parseResponse(SHAOtpWhitelistListSchema, response.data, {
+    context: 'shaApi.listLocalOtpWhitelists',
+  });
+}
+
+async function listLocalUploads(params: Record<string, string> = {}) {
+  const response = await apiClient.get(`/api/sha/ilm/uploads/local/`, { params });
+  return parseResponse(SHAUploadListSchema, response.data, {
+    context: 'shaApi.listLocalUploads',
+  });
+}
+
+// ============================================================================
 // Export API Object
 // ============================================================================
 
@@ -1055,4 +1204,19 @@ export const shaApi = {
   ilmEmtCreate,
   listLocalPreauths,
   listLocalEmergencyClaims,
+  // Phase 4 — lifecycle
+  ilmSendVisitOtp,
+  ilmSendDischargeOtp,
+  ilmDischarge,
+  ilmRequestOtpWhitelist,
+  ilmListOtpWhitelistStatus,
+  ilmAddNextOfKin,
+  ilmAddEmergencyDoctor,
+  ilmRemoveEmergencyDoctor,
+  ilmGetPomsfBalances,
+  ilmUploadFile,
+  ilmGetUploadUrl,
+  listLocalOtpRequests,
+  listLocalOtpWhitelists,
+  listLocalUploads,
 };

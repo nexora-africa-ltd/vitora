@@ -7,6 +7,22 @@ Provides routes for SHA Members, Tariffs, Claims, and related operations.
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from hmis.apps.billing.sha_ilm_lifecycle_views import (
+    IlmDischargeOtpView,
+    IlmDischargeView,
+    IlmEmergencyDoctorAddView,
+    IlmEmergencyDoctorRemoveView,
+    IlmFileUploadView,
+    IlmFileUrlView,
+    IlmNextOfKinView,
+    IlmOtpWhitelistCallbackView,
+    IlmOtpWhitelistRequestView,
+    IlmPomsfBalancesView,
+    IlmVisitOtpView,
+    SHAOtpRequestListView,
+    SHAOtpWhitelistListView,
+    SHAUploadListView,
+)
 from hmis.apps.billing.sha_ilm_preauth_views import (
     IlmDoctorConsentView,
     IlmEmergencyOpenView,
@@ -159,5 +175,64 @@ urlpatterns = [
         "ilm/emergency/local/",
         SHAEmergencyClaimListView.as_view(),
         name="ilm-emergency-local",
+    ),
+    # ----- DHA HIE Middleware (ILM) — Phase 4 lifecycle polish -----
+    path("ilm/lifecycle/visit-otp/", IlmVisitOtpView.as_view(), name="ilm-visit-otp"),
+    path(
+        "ilm/lifecycle/discharge-otp/",
+        IlmDischargeOtpView.as_view(),
+        name="ilm-discharge-otp",
+    ),
+    path("ilm/lifecycle/discharge/", IlmDischargeView.as_view(), name="ilm-discharge"),
+    path(
+        "ilm/lifecycle/otp-whitelist/",
+        IlmOtpWhitelistRequestView.as_view(),
+        name="ilm-otp-whitelist-request",
+    ),
+    path(
+        "ilm/lifecycle/otp-whitelist/callback/",
+        IlmOtpWhitelistCallbackView.as_view(),
+        name="ilm-otp-whitelist-callback",
+    ),
+    path(
+        "ilm/lifecycle/otp-whitelist/local/",
+        SHAOtpWhitelistListView.as_view(),
+        name="ilm-otp-whitelist-local",
+    ),
+    path(
+        "ilm/lifecycle/otp/local/",
+        SHAOtpRequestListView.as_view(),
+        name="ilm-otp-local",
+    ),
+    path(
+        "ilm/lifecycle/next-of-kin/",
+        IlmNextOfKinView.as_view(),
+        name="ilm-next-of-kin",
+    ),
+    path(
+        "ilm/lifecycle/emergency-doctors/",
+        IlmEmergencyDoctorAddView.as_view(),
+        name="ilm-emergency-doctor-add",
+    ),
+    path(
+        "ilm/lifecycle/emergency-doctors/remove/",
+        IlmEmergencyDoctorRemoveView.as_view(),
+        name="ilm-emergency-doctor-remove",
+    ),
+    path(
+        "ilm/lifecycle/pomsf-balances/",
+        IlmPomsfBalancesView.as_view(),
+        name="ilm-pomsf-balances",
+    ),
+    path("ilm/uploads/", IlmFileUploadView.as_view(), name="ilm-uploads-create"),
+    path(
+        "ilm/uploads/local/",
+        SHAUploadListView.as_view(),
+        name="ilm-uploads-local",
+    ),
+    path(
+        "ilm/uploads/<str:file_id>/",
+        IlmFileUrlView.as_view(),
+        name="ilm-uploads-url",
     ),
 ]

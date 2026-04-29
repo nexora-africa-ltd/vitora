@@ -175,7 +175,7 @@ def create_invoice(...) -> dict:
 
 Convention: `<domain>.<aggregate>.<action>`
 
-### BillingEvents (39 constants)
+### BillingEvents (51 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -218,6 +218,18 @@ Convention: `<domain>.<aggregate>.<action>`
 | `DHA_EMERGENCY_PROTOCOL_APPLIED` | `billing.dha_emergency.protocol_applied` | `billing/services/ilm_preauth_service.py` |
 | `DHA_EMT_CLAIM_CREATED` | `billing.dha_emt.claim_created` | `billing/services/ilm_preauth_service.py` |
 | `DHA_PREAUTH_CALL_FAILED` | `billing.dha_preauth.call_failed` | `billing/sha_ilm_preauth_views.py` (error path) |
+| `DHA_VISIT_OTP_SENT` | `billing.dha_lifecycle.visit_otp_sent` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_DISCHARGE_OTP_SENT` | `billing.dha_lifecycle.discharge_otp_sent` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_DISCHARGE_COMPLETED` | `billing.dha_lifecycle.discharge_completed` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_OTP_WHITELIST_REQUESTED` | `billing.dha_lifecycle.otp_whitelist_requested` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_OTP_WHITELIST_FETCHED` | `billing.dha_lifecycle.otp_whitelist_fetched` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_NEXT_OF_KIN_ADDED` | `billing.dha_lifecycle.next_of_kin_added` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_EMERGENCY_DOCTOR_ADDED` | `billing.dha_lifecycle.emergency_doctor_added` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_EMERGENCY_DOCTOR_REMOVED` | `billing.dha_lifecycle.emergency_doctor_removed` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_POMSF_BALANCE_FETCHED` | `billing.dha_lifecycle.pomsf_balance_fetched` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_FILE_UPLOADED` | `billing.dha_lifecycle.file_uploaded` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_FILE_URL_GENERATED` | `billing.dha_lifecycle.file_url_generated` | `billing/services/ilm_lifecycle_service.py` |
+| `DHA_LIFECYCLE_CALL_FAILED` | `billing.dha_lifecycle.call_failed` | `billing/sha_ilm_lifecycle_views.py` (error path) |
 
 ### PharmacyEvents (7 constants)
 

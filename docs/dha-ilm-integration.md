@@ -1,6 +1,6 @@
 # DHA HIE Middleware (ILM) Integration
 
-> **Status**: Phases 0–3 complete. Phase 4 (lifecycle polish) and Phase 5 (M&E reports) planned.
+> **Status**: Phases 0–4 complete. Phase 5 (M&E reports) planned.
 >
 > **Scope**: This document is the implementation-side SSOT for Vitora's
 > integration with the **Digital Health Authority (DHA) Health Information
@@ -260,14 +260,76 @@ by Zod schemas (`IlmPreauthResponseSchema`, `SHAPreauthSchema`,
 
 ---
 
-## 7. Phase 4–5 — planned (not yet started)
+## 7. Phase 4 — lifecycle polish ✅ COMPLETE
 
-- **Phase 4 — Lifecycle polish (10 ops)**: OTP flows
-  (`POST /claims/otp`, `POST /claims/otp/discharge`,
-  `POST /patients/otp-whitelists`,
-  `GET /patients/otp-whitelists/callback`), discharge
-  (`POST /claims/discharge`), POMSF balances, uploads,
-  `claims/doctors` add/remove, `next-of-kin/contacts`.
+10 lifecycle operations covering OTP, discharge, next-of-kin, emergency-claim
+doctors, POMSF balances, and file uploads.
+
+### 7.1 Endpoints (DHA HIE Middleware)
+
+| Op | Verb / Path | Service method | APIView | Local model |
+|----|-------------|----------------|---------|-------------|
+| Send visit OTP | `POST /claims/otp` | `send_visit_otp` | `IlmVisitOtpView` | `SHAOtpRequest(kind=visit)` |
+| Send discharge OTP | `POST /claims/otp/discharge` | `send_discharge_otp` | `IlmDischargeOtpView` | `SHAOtpRequest(kind=discharge)` |
+| Discharge inpatient | `POST /claims/discharge` | `discharge_inpatient` | `IlmDischargeView` | — |
+| Request OTP whitelist (multipart) | `POST /patients/otp-whitelists` | `request_otp_whitelist` | `IlmOtpWhitelistRequestView` | `SHAOtpWhitelistRequest` |
+| Whitelist callback | `GET /patients/otp-whitelists/callback` | `list_otp_whitelist_status` | `IlmOtpWhitelistCallbackView` | — |
+| Add next-of-kin contact | `POST /patients/next-of-kin/contacts` | `add_next_of_kin_contact` | `IlmNextOfKinView` | — |
+| Add emergency-claim doctor | `POST /claims/doctors` | `add_emergency_claim_doctor` | `IlmEmergencyDoctorAddView` | — |
+| Remove emergency-claim doctor | `DELETE /claims/doctors` | `remove_emergency_claim_doctor` | `IlmEmergencyDoctorRemoveView` | — |
+| POMSF balances | `GET /patients/pomsf-balances` | `get_pomsf_balances` | `IlmPomsfBalancesView` | — |
+| Upload file (multipart) | `POST /uploads` | `upload_file` | `IlmFileUploadView` | `SHAUpload` |
+| Get upload URL | `GET /uploads/{file_id}` | `get_upload_url` | `IlmFileUrlView` | refreshes `SHAUpload.dha_download_url` |
+
+Local browse endpoints: `GET /api/sha/ilm/lifecycle/otp/local/`,
+`GET /api/sha/ilm/lifecycle/otp-whitelist/local/`,
+`GET /api/sha/ilm/uploads/local/`.
+
+### 7.2 Models
+
+- **`SHAOtpRequest`** — facility-scoped audit of every OTP send. Kind
+  `visit|discharge`, status `sent|verified|failed`, FKs to patient /
+  sha_member / claim, `intervention_codes` JSON, `consent_token`,
+  `patient_cr_id`, `correlation_id`, `sent_by` user FK.
+- **`SHAOtpWhitelistRequest`** — facility-scoped audit of biometric-failure
+  whitelist requests. Status `requested|approved|rejected|failed`,
+  `beneficiary_cr_id`, `reason_type`, `reason`, `biometric_attempts`,
+  `dha_guid`, `requested_by` user FK.
+- **`SHAUpload`** — facility-scoped record per uploaded file. Captures
+  `dha_file_id`, `dha_file_path`, `dha_download_url` (refreshed on
+  `get_upload_url`), `size_bytes`, `content_type`, `uploaded_by`.
+
+Migration: `billing/0040_shaotprequest_shaotpwhitelistrequest_shaupload`.
+
+### 7.3 Domain events
+
+12 new `BillingEvents` constants:
+`DHA_VISIT_OTP_SENT`, `DHA_DISCHARGE_OTP_SENT`, `DHA_DISCHARGE_COMPLETED`,
+`DHA_OTP_WHITELIST_REQUESTED`, `DHA_OTP_WHITELIST_FETCHED`,
+`DHA_NEXT_OF_KIN_ADDED`, `DHA_EMERGENCY_DOCTOR_ADDED`,
+`DHA_EMERGENCY_DOCTOR_REMOVED`, `DHA_POMSF_BALANCE_FETCHED`,
+`DHA_FILE_UPLOADED`, `DHA_FILE_URL_GENERATED`, `DHA_LIFECYCLE_CALL_FAILED`.
+
+### 7.4 Tests
+
+- `tests/billing/test_ilm_lifecycle_service.py` — 12 service tests.
+- `tests/billing/test_api/test_sha_ilm_lifecycle_views.py` — 27 view tests.
+
+### 7.5 Frontend
+
+- Schemas added to `web-app/lib/schemas/sha.schema.ts`:
+  `IlmLifecycleResponseSchema`, `SHAOtpRequestSchema`, `SHAOtpWhitelistRowSchema`,
+  `SHAUploadSchema`, plus 8 input schemas.
+- `shaApi` methods (Phase 4): `ilmSendVisitOtp`, `ilmSendDischargeOtp`,
+  `ilmDischarge`, `ilmRequestOtpWhitelist`, `ilmListOtpWhitelistStatus`,
+  `ilmAddNextOfKin`, `ilmAddEmergencyDoctor`, `ilmRemoveEmergencyDoctor`,
+  `ilmGetPomsfBalances`, `ilmUploadFile`, `ilmGetUploadUrl`,
+  `listLocalOtpRequests`, `listLocalOtpWhitelists`, `listLocalUploads`.
+
+---
+
+## 7b. Phase 5 — planned (not yet started)
+
 - **Phase 5 — ePrescriptions (4 ops, new Django app)**:
   prescriptions list / create / dispense / cancel.
 
@@ -305,4 +367,4 @@ by Zod schemas (`IlmPreauthResponseSchema`, `SHAPreauthSchema`,
 
 ---
 
-**Last updated**: April 30, 2026 — Phase 3 complete.
+**Last updated**: April 30, 2026 — Phase 4 complete.

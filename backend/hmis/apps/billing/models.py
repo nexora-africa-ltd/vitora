@@ -3912,3 +3912,150 @@ class SHAEmergencyClaim(FacilityScopedModel):
 
     def __str__(self) -> str:  # pragma: no cover - trivial
         return f"{self.kind} {self.reference_number or self.dha_external_id} ({self.status})"
+
+
+# ============================================================================
+# DHA HIE Middleware (ILM) — Phase 4: Lifecycle polish models
+# ============================================================================
+
+
+class SHAOtpRequest(FacilityScopedModel):
+    """Track OTP requests sent through DHA ILM (visit / discharge)."""
+
+    class Kind(models.TextChoices):
+        VISIT = "visit", "Visit OTP"
+        DISCHARGE = "discharge", "Discharge OTP"
+
+    class Status(models.TextChoices):
+        SENT = "sent", "Sent"
+        VERIFIED = "verified", "Verified"
+        FAILED = "failed", "Failed"
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="sha_otp_requests",
+        null=True,
+        blank=True,
+    )
+    sha_member = models.ForeignKey(
+        "billing.SHAMember",
+        on_delete=models.SET_NULL,
+        related_name="otp_requests",
+        null=True,
+        blank=True,
+    )
+    claim = models.ForeignKey(
+        "billing.SHAClaim",
+        on_delete=models.SET_NULL,
+        related_name="otp_requests",
+        null=True,
+        blank=True,
+    )
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.SENT)
+    consent_token = models.CharField(max_length=512, blank=True, default="")
+    patient_cr_id = models.CharField(max_length=64, blank=True, default="")
+    intervention_codes = models.JSONField(default=list, blank=True)
+    response_payload = models.JSONField(default=dict, blank=True)
+    correlation_id = models.CharField(max_length=128, blank=True, default="")
+    sent_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="sha_otp_sent",
+        null=True,
+        blank=True,
+    )
+    sent_at = models.DateTimeField(default=timezone.now)
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "SHA OTP Request"
+        verbose_name_plural = "SHA OTP Requests"
+        ordering = ["-sent_at"]
+        indexes = [
+            models.Index(fields=["kind", "status"]),
+            models.Index(fields=["patient_cr_id"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"{self.get_kind_display()} OTP -> {self.patient_cr_id or self.patient_id} ({self.status})"
+
+
+class SHAOtpWhitelistRequest(FacilityScopedModel):
+    """Track OTP whitelist requests submitted to DHA ILM."""
+
+    class Status(models.TextChoices):
+        REQUESTED = "requested", "Requested"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        FAILED = "failed", "Failed"
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="sha_otp_whitelist_requests",
+        null=True,
+        blank=True,
+    )
+    beneficiary_cr_id = models.CharField(max_length=64)
+    reason_type = models.CharField(max_length=64, blank=True, default="")
+    reason = models.TextField(blank=True, default="")
+    biometric_attempts = models.IntegerField(default=0)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.REQUESTED)
+    dha_guid = models.CharField(max_length=128, blank=True, default="")
+    response_payload = models.JSONField(default=dict, blank=True)
+    correlation_id = models.CharField(max_length=128, blank=True, default="")
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="sha_otp_whitelists",
+        null=True,
+        blank=True,
+    )
+    requested_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "SHA OTP Whitelist Request"
+        verbose_name_plural = "SHA OTP Whitelist Requests"
+        ordering = ["-requested_at"]
+        indexes = [
+            models.Index(fields=["beneficiary_cr_id"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["dha_guid"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"OTP whitelist {self.beneficiary_cr_id} ({self.status})"
+
+
+class SHAUpload(FacilityScopedModel):
+    """Audit row for files uploaded to DHA ILM /uploads."""
+
+    filename = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=128, blank=True, default="")
+    size_bytes = models.BigIntegerField(default=0)
+    dha_file_id = models.CharField(max_length=255, blank=True, default="")
+    dha_file_path = models.CharField(max_length=512, blank=True, default="")
+    dha_download_url = models.TextField(blank=True, default="")
+    response_payload = models.JSONField(default=dict, blank=True)
+    correlation_id = models.CharField(max_length=128, blank=True, default="")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="sha_uploads",
+        null=True,
+        blank=True,
+    )
+    uploaded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "SHA Upload"
+        verbose_name_plural = "SHA Uploads"
+        ordering = ["-uploaded_at"]
+        indexes = [
+            models.Index(fields=["dha_file_id"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"{self.filename} ({self.dha_file_id or 'pending'})"
