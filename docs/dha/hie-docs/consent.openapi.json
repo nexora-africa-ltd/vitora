@@ -1,0 +1,1680 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Consent Services APIs",
+    "version": "1.0.0",
+    "description": "APIs for managing beneficiary consent through OTP or Biomentrics verification."
+  },
+  "servers": [
+    {
+      "url": "https://ilm-dev.dha.go.ke/uat-middleware"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authorizations",
+      "description": "Endpoints for creating and retrieving patient consent authorizations via OTP or biometrics."
+    },
+    {
+      "name": "Send OTP",
+      "description": "Endpoints for sending OTP to beneficiaries."
+    },
+    {
+      "name": "OTP Whitelist",
+      "description": "Endpoints for managing OTP whitelist requests for beneficiaries."
+    }
+  ],
+  "paths": {
+    "/api/v1/claims/authorize": {
+      "post": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "Creates a new authorization by capturing patient consent via OTP or biometrics. Use the OTP strategy for standard outpatient and inpatient consent; use the biometrics strategy (eKYC or fingerprint) when the facility has a registered hardware agent. The same endpoint is used across claims creation and consent workflows.",
+        "tags": [
+          "Authorizations"
+        ],
+        "summary": "Create a new authorization (OTP or biometrics)",
+        "requestBody": {
+          "description": "Authorization request payload. Choose one strategy: OTP (phone-based one-time password) or Biometrics (eKYC/fingerprint via hardware agent).",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "title": "OTP Authorization",
+                    "description": "Authorization request using a one-time password (OTP) sent to the patient's registered phone number. Use this strategy for outpatient or inpatient consent where OTP verification is available.",
+                    "type": "object",
+                    "required": [
+                      "patient_id",
+                      "service_type",
+                      "otp",
+                      "interventions"
+                    ],
+                    "properties": {
+                      "patient_id": {
+                        "type": "string",
+                        "description": "The patient's Client Registry identifier.",
+                        "examples": [
+                          "3-4538-5219"
+                        ]
+                      },
+                      "service_type": {
+                        "type": "string",
+                        "description": "Type of service being authorized.",
+                        "enum": [
+                          "OUTPATIENT",
+                          "INPATIENT"
+                        ],
+                        "examples": [
+                          "OUTPATIENT"
+                        ]
+                      },
+                      "otp": {
+                        "type": "string",
+                        "description": "One-time password delivered to the patient's registered phone number.",
+                        "examples": [
+                          "123456"
+                        ]
+                      },
+                      "interventions": {
+                        "type": "array",
+                        "description": "List of intervention codes for the services being requested in this visit.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "examples": [
+                          [
+                            "INPATIENT_ADMISSION"
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "title": "Biometrics Authorization",
+                    "description": "Authorization request using biometric verification via a registered hardware agent. Supports eKYC (SHA flow) and fingerprint (Under-18 patient flow). All fields are required for biometric consent.",
+                    "type": "object",
+                    "required": [
+                      "agent_id",
+                      "authorizing_device_os",
+                      "ekyc_provider_id",
+                      "factors",
+                      "interventions",
+                      "is_biometrics_discharge_authorization",
+                      "is_emergency",
+                      "is_integration",
+                      "patient_id",
+                      "provider",
+                      "service_type",
+                      "work_station_id"
+                    ],
+                    "properties": {
+                      "agent_id": {
+                        "type": "string",
+                        "description": "ID number of the registered biometrics agent. Obtained from the user logged into the hardware server application.",
+                        "examples": [
+                          "37915050"
+                        ]
+                      },
+                      "authorizing_device_os": {
+                        "type": "string",
+                        "description": "Operating system of the device making the biometrics request.",
+                        "enum": [
+                          "windows",
+                          "android"
+                        ],
+                        "examples": [
+                          "windows"
+                        ]
+                      },
+                      "ekyc_provider_id": {
+                        "type": "string",
+                        "description": "Name of the healthcare facility initiating the eKYC verification.",
+                        "examples": [
+                          "Nairobi West"
+                        ]
+                      },
+                      "factors": {
+                        "type": "array",
+                        "description": "Biometric verification flow(s) to use. `SHA` triggers the eKYC flow; `fingerprint` is used for Under-18 patient consent.",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "SHA",
+                            "fingerprint"
+                          ]
+                        },
+                        "examples": [
+                          [
+                            "SHA"
+                          ]
+                        ]
+                      },
+                      "interventions": {
+                        "type": "array",
+                        "description": "List of intervention codes for the services being requested in this visit.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "examples": [
+                          [
+                            "INPATIENT_ADMISSION"
+                          ]
+                        ]
+                      },
+                      "is_biometrics_discharge_authorization": {
+                        "type": "boolean",
+                        "description": "Set to `true` only when this authorization is for a patient's discharge. `false` for all other consent scenarios.",
+                        "examples": [
+                          false
+                        ]
+                      },
+                      "is_emergency": {
+                        "type": "boolean",
+                        "description": "Set to `true` if this authorization is for an emergency claim.",
+                        "examples": [
+                          false
+                        ]
+                      },
+                      "is_integration": {
+                        "type": "boolean",
+                        "description": "Indicates an integration with external systems. Always `true` for system-to-system integrations.",
+                        "examples": [
+                          true
+                        ]
+                      },
+                      "patient_id": {
+                        "type": "string",
+                        "description": "The patient's Client Registry identifier.",
+                        "examples": [
+                          "3-4538-5219"
+                        ]
+                      },
+                      "provider": {
+                        "type": "string",
+                        "description": "The healthcare facility's Facility Registry (FR) code.",
+                        "examples": [
+                          "13023"
+                        ]
+                      },
+                      "service_type": {
+                        "type": "string",
+                        "description": "Type of service being authorized.",
+                        "enum": [
+                          "OUTPATIENT",
+                          "INPATIENT"
+                        ],
+                        "examples": [
+                          "INPATIENT"
+                        ]
+                      },
+                      "work_station_id": {
+                        "type": "string",
+                        "description": "Workstation identifier obtained from the hardware server application running in the background on the authorizing device.",
+                        "examples": [
+                          "790bf760-08e6-4fbe-b892-7b877dd52f2b-F406692C85F3"
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorization created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authCode": {
+                      "type": "string"
+                    },
+                    "authorizationReason": {
+                      "type": "string"
+                    },
+                    "authorizationType": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "authorizingDeviceOs": {
+                      "type": "string"
+                    },
+                    "beneficiary": {
+                      "type": "integer"
+                    },
+                    "beneficiaryCode": {
+                      "type": "string"
+                    },
+                    "beneficiaryJoinDate": {
+                      "type": "string"
+                    },
+                    "beneficiaryName": {
+                      "type": "string"
+                    },
+                    "beneficiaryNumber": {
+                      "type": "string"
+                    },
+                    "beneficiaryScheme": {
+                      "type": "string"
+                    },
+                    "benefitType": {
+                      "type": "string"
+                    },
+                    "biometricMatchLogId": {
+                      "type": "string"
+                    },
+                    "createdByName": {
+                      "type": "string"
+                    },
+                    "created_by": {
+                      "type": "string"
+                    },
+                    "dateAuthorized": {
+                      "type": "string"
+                    },
+                    "ekycToken": {
+                      "type": "string"
+                    },
+                    "endDate": {
+                      "type": "string"
+                    },
+                    "endedVia": {
+                      "type": "string"
+                    },
+                    "expiry": {
+                      "type": "string"
+                    },
+                    "guardian": {
+                      "type": "integer"
+                    },
+                    "guid": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "integer"
+                    },
+                    "isBiometricsDischargeAuthorization": {
+                      "type": "boolean"
+                    },
+                    "isComplete": {
+                      "type": "boolean"
+                    },
+                    "isElective": {
+                      "type": "boolean"
+                    },
+                    "isEmergency": {
+                      "type": "boolean"
+                    },
+                    "isOpen": {
+                      "type": "boolean"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "needsPreauth": {
+                      "type": "boolean"
+                    },
+                    "notes": {
+                      "type": "string"
+                    },
+                    "overallPreauthFinalised": {
+                      "type": "boolean"
+                    },
+                    "parentAuthorization": {
+                      "type": "integer"
+                    },
+                    "parentType": {
+                      "type": "string"
+                    },
+                    "payerName": {
+                      "type": "string"
+                    },
+                    "payerSladeCode": {
+                      "type": "integer"
+                    },
+                    "provider": {
+                      "type": "integer"
+                    },
+                    "providerFid": {
+                      "type": "string"
+                    },
+                    "providerName": {
+                      "type": "string"
+                    },
+                    "requestedBy": {
+                      "type": "string"
+                    },
+                    "sessionType": {
+                      "type": "string"
+                    },
+                    "shaGuid": {
+                      "type": "string"
+                    },
+                    "shaVerificationRequest": {
+                      "type": "object",
+                      "properties": {
+                        "embedExpiry": {
+                          "type": "integer"
+                        },
+                        "embededToken": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "requestUrl": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "shaVerificationRequestId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "updated_by": {
+                      "type": "string"
+                    },
+                    "workStationId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing or invalid fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Standard error response format for all error conditions.",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "description": "@Description\tHTTP status text from the standard HTTP status codes\n\t@Example\t\t\"Bad Request\"",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "@Description\tDetailed error message explaining what went wrong\n\t@Example\t\t\"token missing required tenant_id claim\"",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - Service error occurred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_130"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/claims/otp": {
+      "post": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "Sends a One-Time Password (OTP) to a beneficiary’s registered contact. Used for verifying patient identity and obtaining consent before proceeding with certain operations like claim creation.",
+        "tags": [
+          "Send OTP"
+        ],
+        "summary": "Send OTP to patient",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Request payload for sending OTP to patient. All fields are required and validated.",
+                "type": "object",
+                "required": [
+                  "intervention_codes",
+                  "patient_id"
+                ],
+                "properties": {
+                  "contact_id": {
+                    "type": "string",
+                    "description": "Identifier of the contact (phone number record) to which the OTP should be sent."
+                  },
+                  "intervention_codes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "examples": [
+                        "SHA-18-005"
+                      ]
+                    },
+                    "description": "Intervention code(s) for the service scheduled to be offered",
+                    "examples": [
+                      [
+                        "SHA-18-005"
+                      ]
+                    ]
+                  },
+                  "patient_id": {
+                    "type": "string",
+                    "description": "Client registry identifier of the beneficiary associated with the patient",
+                    "examples": [
+                      "CR69364****4997-0"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "description": "OTP Request",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Standard success response format for all successful operations.",
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "description": "@Description\tResponse data payload containing operation details\n\t@Example\t\t{\"status\": \"success\"}",
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "message": {
+                      "description": "@Description\tSuccess message describing the operation result\n\t@Example\t\t\"Visit has been successfully started\"",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing required fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_130"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_130"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - Service error occurred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_130"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/otp-whitelists": {
+      "post": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Request OTP Whitelist",
+        "operationId": "CreateOTPWhitelistRequest",
+        "tags": [
+          "OTP Whitelist"
+        ],
+        "description": "Creates an OTP whitelist request for a beneficiary to allow using OTP for consent request under special conditions (e.g., power outage, amputee). This includes supporting attachments as proof for the whitelist reason.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attachments",
+                  "beneficiary_cr_id",
+                  "reason",
+                  "reason_type"
+                ],
+                "properties": {
+                  "attachments": {
+                    "type": "array",
+                    "description": "List of attachment metadata. Each attachment specifies the title, document type, and associated file field for upload.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "document_title": {
+                          "type": "string",
+                          "description": "Title or description of the attachment.",
+                          "examples": [
+                            "Support doc"
+                          ]
+                        },
+                        "document_type": {
+                          "type": "string",
+                          "description": "Type of document attached.",
+                          "enum": [
+                            "SUPPORT_DOCUMENT",
+                            "EVIDENCE_FORM",
+                            "MEDICAL_REPORT"
+                          ],
+                          "examples": [
+                            "SUPPORT_DOCUMENT"
+                          ]
+                        },
+                        "file_field_name": {
+                          "type": "string",
+                          "description": "Field name for uploading the corresponding file in multipart form data.",
+                          "examples": [
+                            "attachments_file_blob"
+                          ]
+                        },
+                        "file_name": {
+                          "type": "string",
+                          "description": "Name of the file to be uploaded.",
+                          "examples": [
+                            "support_document.pdf"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "beneficiary_cr_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the beneficiary within the coverage system.",
+                    "examples": [
+                      "CR9152849569-1"
+                    ]
+                  },
+                  "biometric_attempts": {
+                    "type": "string",
+                    "description": "Number of failed attempts using biometrics.",
+                    "examples": [
+                      20
+                    ]
+                  },
+                  "facility_fr_code": {
+                    "type": "string",
+                    "description": "Facility registry (FR) code identifying the facility raising the whitelist request."
+                  },
+                  "facility_fr_type": {
+                    "type": "string",
+                    "description": "Type of facility registry identifier (e.g. KMFL code) accompanying the facility_fr_code."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Detailed explanation of the reason for the whitelist request.",
+                    "examples": [
+                      "power outage"
+                    ]
+                  },
+                  "reason_type": {
+                    "type": "string",
+                    "description": "Type of reason for requesting the whitelist.",
+                    "enum": [
+                      "OLD",
+                      "AMPUTEE",
+                      "MEDICAL_CONDITION",
+                      "MENTALLY_UNSTABLE",
+                      "ONCOLOGY_TREATMENT",
+                      "DIALYSIS_TREATMENT",
+                      "CONSTRUCTION_WORKER",
+                      "OTHER",
+                      "EXPIRED",
+                      "BIOMETRIC_FAILURE",
+                      "CHILD_BELOW_7_YEARS",
+                      "PRIVACY_CONCERNS",
+                      "TECHNICAL_ISSUES"
+                    ],
+                    "examples": [
+                      "AMPUTEE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "description": "Add patient request input",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OTP whitelist request created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "contentType": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "guid": {
+                            "type": "string"
+                          },
+                          "uploadedFile": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "beneficiaryCrId": {
+                      "type": "string"
+                    },
+                    "beneficiaryName": {
+                      "type": "string"
+                    },
+                    "facilityFrCode": {
+                      "type": "string"
+                    },
+                    "facilityName": {
+                      "type": "string"
+                    },
+                    "guid": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "reasonType": {
+                      "type": "string"
+                    },
+                    "reviewedByUser": {
+                      "type": "string"
+                    },
+                    "reviewerResponseNotes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing required fields or invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_130"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - Service error occurred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_130"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/otp-whitelists/callback": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "OTP Whitelist"
+        ],
+        "summary": "Get OTP Whitelist Requests",
+        "description": "Retrieve OTP whitelist requests using a GUID or by combining `beneficiary_cr_id`, `facility_id`, and `facility_id_type`.",
+        "operationId": "getOtpWhitelistRequests",
+        "parameters": [
+          {
+            "description": "Patient client registry number",
+            "name": "beneficiary_cr_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique GUID of the OTP whitelist request.",
+            "name": "guid",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer"
+                    },
+                    "currentPage": {
+                      "type": "integer"
+                    },
+                    "endIndex": {
+                      "type": "integer"
+                    },
+                    "next": {
+                      "type": "string"
+                    },
+                    "pageSize": {
+                      "type": "integer"
+                    },
+                    "previous": {
+                      "type": "string"
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "beneficiaryCrId": {
+                            "type": "string"
+                          },
+                          "beneficiaryName": {
+                            "type": "string"
+                          },
+                          "biometricsAttempt": {
+                            "type": "integer"
+                          },
+                          "created": {
+                            "type": "string"
+                          },
+                          "facilityFrCode": {
+                            "type": "string"
+                          },
+                          "facilityName": {
+                            "type": "string"
+                          },
+                          "guid": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "reasonType": {
+                            "type": "string"
+                          },
+                          "reviewedByUser": {
+                            "type": "string"
+                          },
+                          "reviewerResponseNotes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "responseNotes": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "startIndex": {
+                      "type": "integer"
+                    },
+                    "totalPages": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing query parameters or invalid request input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/contacts": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "Retrieves a list of contacts associated with a patient",
+        "tags": [
+          "Patients"
+        ],
+        "summary": "Get patient contacts",
+        "parameters": [
+          {
+            "description": "Patient's client registry ID",
+            "name": "patient_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "active": {
+                        "type": "boolean"
+                      },
+                      "contactType": {
+                        "type": "string"
+                      },
+                      "contactValue": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "integer"
+                      },
+                      "isConfirmed": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing query parameters or invalid request input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_286"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "OTPAuthorizationRequest": {
+        "title": "OTP Authorization",
+        "description": "Authorization request using a one-time password (OTP) sent to the patient's registered phone number. Use this strategy for outpatient or inpatient consent where OTP verification is available.",
+        "type": "object",
+        "required": [
+          "patient_id",
+          "service_type",
+          "otp",
+          "interventions"
+        ],
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The patient's Client Registry identifier.",
+            "examples": [
+              "3-4538-5219"
+            ]
+          },
+          "service_type": {
+            "type": "string",
+            "description": "Type of service being authorized.",
+            "enum": [
+              "OUTPATIENT",
+              "INPATIENT"
+            ],
+            "examples": [
+              "OUTPATIENT"
+            ]
+          },
+          "otp": {
+            "type": "string",
+            "description": "One-time password delivered to the patient's registered phone number.",
+            "examples": [
+              "123456"
+            ]
+          },
+          "interventions": {
+            "type": "array",
+            "description": "List of intervention codes for the services being requested in this visit.",
+            "items": {
+              "type": "string"
+            },
+            "examples": [
+              [
+                "INPATIENT_ADMISSION"
+              ]
+            ]
+          }
+        }
+      },
+      "BiometricsAuthorizationRequest": {
+        "title": "Biometrics Authorization",
+        "description": "Authorization request using biometric verification via a registered hardware agent. Supports eKYC (SHA flow) and fingerprint (Under-18 patient flow). All fields are required for biometric consent.",
+        "type": "object",
+        "required": [
+          "agent_id",
+          "authorizing_device_os",
+          "ekyc_provider_id",
+          "factors",
+          "interventions",
+          "is_biometrics_discharge_authorization",
+          "is_emergency",
+          "is_integration",
+          "patient_id",
+          "provider",
+          "service_type",
+          "work_station_id"
+        ],
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "description": "ID number of the registered biometrics agent. Obtained from the user logged into the hardware server application.",
+            "examples": [
+              "37915050"
+            ]
+          },
+          "authorizing_device_os": {
+            "type": "string",
+            "description": "Operating system of the device making the biometrics request.",
+            "enum": [
+              "windows",
+              "android"
+            ],
+            "examples": [
+              "windows"
+            ]
+          },
+          "ekyc_provider_id": {
+            "type": "string",
+            "description": "Name of the healthcare facility initiating the eKYC verification.",
+            "examples": [
+              "Nairobi West"
+            ]
+          },
+          "factors": {
+            "type": "array",
+            "description": "Biometric verification flow(s) to use. `SHA` triggers the eKYC flow; `fingerprint` is used for Under-18 patient consent.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "SHA",
+                "fingerprint"
+              ]
+            },
+            "examples": [
+              [
+                "SHA"
+              ]
+            ]
+          },
+          "interventions": {
+            "type": "array",
+            "description": "List of intervention codes for the services being requested in this visit.",
+            "items": {
+              "type": "string"
+            },
+            "examples": [
+              [
+                "INPATIENT_ADMISSION"
+              ]
+            ]
+          },
+          "is_biometrics_discharge_authorization": {
+            "type": "boolean",
+            "description": "Set to `true` only when this authorization is for a patient's discharge. `false` for all other consent scenarios.",
+            "examples": [
+              false
+            ]
+          },
+          "is_emergency": {
+            "type": "boolean",
+            "description": "Set to `true` if this authorization is for an emergency claim.",
+            "examples": [
+              false
+            ]
+          },
+          "is_integration": {
+            "type": "boolean",
+            "description": "Indicates an integration with external systems. Always `true` for system-to-system integrations.",
+            "examples": [
+              true
+            ]
+          },
+          "patient_id": {
+            "type": "string",
+            "description": "The patient's Client Registry identifier.",
+            "examples": [
+              "3-4538-5219"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "description": "The healthcare facility's Facility Registry (FR) code.",
+            "examples": [
+              "13023"
+            ]
+          },
+          "service_type": {
+            "type": "string",
+            "description": "Type of service being authorized.",
+            "enum": [
+              "OUTPATIENT",
+              "INPATIENT"
+            ],
+            "examples": [
+              "INPATIENT"
+            ]
+          },
+          "work_station_id": {
+            "type": "string",
+            "description": "Workstation identifier obtained from the hardware server application running in the background on the authorizing device.",
+            "examples": [
+              "790bf760-08e6-4fbe-b892-7b877dd52f2b-F406692C85F3"
+            ]
+          }
+        }
+      },
+      "internal_domain_claims.EKYCResponse": {
+        "type": "object",
+        "properties": {
+          "embedExpiry": {
+            "type": "integer"
+          },
+          "embededToken": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "requestUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_claims.Authorization": {
+        "type": "object",
+        "properties": {
+          "authCode": {
+            "type": "string"
+          },
+          "authorizationReason": {
+            "type": "string"
+          },
+          "authorizationType": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "authorizingDeviceOs": {
+            "type": "string"
+          },
+          "beneficiary": {
+            "type": "integer"
+          },
+          "beneficiaryCode": {
+            "type": "string"
+          },
+          "beneficiaryJoinDate": {
+            "type": "string"
+          },
+          "beneficiaryName": {
+            "type": "string"
+          },
+          "beneficiaryNumber": {
+            "type": "string"
+          },
+          "beneficiaryScheme": {
+            "type": "string"
+          },
+          "benefitType": {
+            "type": "string"
+          },
+          "biometricMatchLogId": {
+            "type": "string"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "dateAuthorized": {
+            "type": "string"
+          },
+          "ekycToken": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "endedVia": {
+            "type": "string"
+          },
+          "expiry": {
+            "type": "string"
+          },
+          "guardian": {
+            "type": "integer"
+          },
+          "guid": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "isBiometricsDischargeAuthorization": {
+            "type": "boolean"
+          },
+          "isComplete": {
+            "type": "boolean"
+          },
+          "isElective": {
+            "type": "boolean"
+          },
+          "isEmergency": {
+            "type": "boolean"
+          },
+          "isOpen": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "needsPreauth": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "overallPreauthFinalised": {
+            "type": "boolean"
+          },
+          "parentAuthorization": {
+            "type": "integer"
+          },
+          "parentType": {
+            "type": "string"
+          },
+          "payerName": {
+            "type": "string"
+          },
+          "payerSladeCode": {
+            "type": "integer"
+          },
+          "provider": {
+            "type": "integer"
+          },
+          "providerFid": {
+            "type": "string"
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "requestedBy": {
+            "type": "string"
+          },
+          "sessionType": {
+            "type": "string"
+          },
+          "shaGuid": {
+            "type": "string"
+          },
+          "shaVerificationRequest": {
+            "$ref_circular": "#/__circ_116"
+          },
+          "shaVerificationRequestId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          },
+          "workStationId": {
+            "type": "string"
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_dto.ErrorResponse": {
+        "description": "Standard error response format for all error conditions.",
+        "type": "object",
+        "properties": {
+          "error": {
+            "description": "@Description\tHTTP status text from the standard HTTP status codes\n\t@Example\t\t\"Bad Request\"",
+            "type": "string"
+          },
+          "message": {
+            "description": "@Description\tDetailed error message explaining what went wrong\n\t@Example\t\t\"token missing required tenant_id claim\"",
+            "type": "string"
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_dto.SendOTPRequestInput": {
+        "description": "Request payload for sending OTP to patient. All fields are required and validated.",
+        "type": "object",
+        "required": [
+          "intervention_codes",
+          "patient_id"
+        ],
+        "properties": {
+          "contact_id": {
+            "type": "string",
+            "description": "Identifier of the contact (phone number record) to which the OTP should be sent."
+          },
+          "intervention_codes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "examples": [
+                "SHA-18-005"
+              ]
+            },
+            "description": "Intervention code(s) for the service scheduled to be offered",
+            "examples": [
+              [
+                "SHA-18-005"
+              ]
+            ]
+          },
+          "patient_id": {
+            "type": "string",
+            "description": "Client registry identifier of the beneficiary associated with the patient",
+            "examples": [
+              "CR69364****4997-0"
+            ]
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_dto.SuccessResponse": {
+        "description": "Standard success response format for all successful operations.",
+        "type": "object",
+        "properties": {
+          "data": {
+            "description": "@Description\tResponse data payload containing operation details\n\t@Example\t\t{\"status\": \"success\"}",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "message": {
+            "description": "@Description\tSuccess message describing the operation result\n\t@Example\t\t\"Visit has been successfully started\"",
+            "type": "string"
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_dto.OTPWhitelistRequestAttachments": {
+        "type": "object",
+        "properties": {
+          "document_title": {
+            "type": "string",
+            "description": "Title or description of the attachment.",
+            "examples": [
+              "Support doc"
+            ]
+          },
+          "document_type": {
+            "type": "string",
+            "description": "Type of document attached.",
+            "enum": [
+              "SUPPORT_DOCUMENT",
+              "EVIDENCE_FORM",
+              "MEDICAL_REPORT"
+            ],
+            "examples": [
+              "SUPPORT_DOCUMENT"
+            ]
+          },
+          "file_field_name": {
+            "type": "string",
+            "description": "Field name for uploading the corresponding file in multipart form data.",
+            "examples": [
+              "attachments_file_blob"
+            ]
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Name of the file to be uploaded.",
+            "examples": [
+              "support_document.pdf"
+            ]
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_dto.OTPWhitelistRequest": {
+        "type": "object",
+        "required": [
+          "attachments",
+          "beneficiary_cr_id",
+          "reason",
+          "reason_type"
+        ],
+        "properties": {
+          "attachments": {
+            "type": "array",
+            "description": "List of attachment metadata. Each attachment specifies the title, document type, and associated file field for upload.",
+            "items": {
+              "$ref_circular": "#/__circ_188"
+            }
+          },
+          "beneficiary_cr_id": {
+            "type": "string",
+            "description": "Unique identifier of the beneficiary within the coverage system.",
+            "examples": [
+              "CR9152849569-1"
+            ]
+          },
+          "biometric_attempts": {
+            "type": "string",
+            "description": "Number of failed attempts using biometrics.",
+            "examples": [
+              20
+            ]
+          },
+          "facility_fr_code": {
+            "type": "string",
+            "description": "Facility registry (FR) code identifying the facility raising the whitelist request."
+          },
+          "facility_fr_type": {
+            "type": "string",
+            "description": "Type of facility registry identifier (e.g. KMFL code) accompanying the facility_fr_code."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Detailed explanation of the reason for the whitelist request.",
+            "examples": [
+              "power outage"
+            ]
+          },
+          "reason_type": {
+            "type": "string",
+            "description": "Type of reason for requesting the whitelist.",
+            "enum": [
+              "OLD",
+              "AMPUTEE",
+              "MEDICAL_CONDITION",
+              "MENTALLY_UNSTABLE",
+              "ONCOLOGY_TREATMENT",
+              "DIALYSIS_TREATMENT",
+              "CONSTRUCTION_WORKER",
+              "OTHER",
+              "EXPIRED",
+              "BIOMETRIC_FAILURE",
+              "CHILD_BELOW_7_YEARS",
+              "PRIVACY_CONCERNS",
+              "TECHNICAL_ISSUES"
+            ],
+            "examples": [
+              "AMPUTEE"
+            ]
+          }
+        }
+      },
+      "internal_domain_patients.OTPWhitelistResponseAttachments": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "guid": {
+            "type": "string"
+          },
+          "uploadedFile": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_patients.OTPWhitelistResponse": {
+        "type": "object",
+        "properties": {
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref_circular": "#/__circ_217"
+            }
+          },
+          "beneficiaryCrId": {
+            "type": "string"
+          },
+          "beneficiaryName": {
+            "type": "string"
+          },
+          "facilityFrCode": {
+            "type": "string"
+          },
+          "facilityName": {
+            "type": "string"
+          },
+          "guid": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "reasonType": {
+            "type": "string"
+          },
+          "reviewedByUser": {
+            "type": "string"
+          },
+          "reviewerResponseNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_patients.ReviewerResponseNote": {
+        "type": "object",
+        "properties": {
+          "responseNotes": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_patients.OTPWhitelistCallbackData": {
+        "type": "object",
+        "properties": {
+          "beneficiaryCrId": {
+            "type": "string"
+          },
+          "beneficiaryName": {
+            "type": "string"
+          },
+          "biometricsAttempt": {
+            "type": "integer"
+          },
+          "created": {
+            "type": "string"
+          },
+          "facilityFrCode": {
+            "type": "string"
+          },
+          "facilityName": {
+            "type": "string"
+          },
+          "guid": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "reasonType": {
+            "type": "string"
+          },
+          "reviewedByUser": {
+            "type": "string"
+          },
+          "reviewerResponseNotes": {
+            "type": "array",
+            "items": {
+              "$ref_circular": "#/__circ_277"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_patients.OTPWhitelistCallbackResponse": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "currentPage": {
+            "type": "integer"
+          },
+          "endIndex": {
+            "type": "integer"
+          },
+          "next": {
+            "type": "string"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "previous": {
+            "type": "string"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref_circular": "#/__circ_264"
+            }
+          },
+          "startIndex": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_shared.ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_patients.PatientContact": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "contactType": {
+            "type": "string"
+          },
+          "contactValue": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "isConfirmed": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}
