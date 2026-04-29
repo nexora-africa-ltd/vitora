@@ -10,13 +10,14 @@ import { parseResponse } from '@/lib/schemas/validation';
 import {
   PatientSchema,
   PatientListItemSchema,
+  HouseholdMembersResponseSchema,
   PaginatedPatientSchema,
   EmergencyContactArrayResponseSchema,
   PatientEncounterArrayResponseSchema,
   PatientQRCodeSchema,
   VitalsHistoryResponseSchema,
 } from '@/lib/schemas/patient.schema';
-import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter, DuplicateCheckResult, DuplicateCheckParams } from '@/lib/types/patient';
+import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter, DuplicateCheckResult, DuplicateCheckParams, HouseholdMembersResponse } from '@/lib/types/patient';
 import type { PaginatedResponse } from '@/lib/types';
 import type { VitalsDataPoint, TimeRange } from '@/components/shared/vitals-trend-chart';
 
@@ -163,6 +164,27 @@ export const patientsApi = {
     );
 
     return response.data;
+  },
+
+  /**
+   * Get locally registered patients linked by household number.
+   */
+  async getHouseholdMembers(
+    householdNumber: string,
+    excludePatientId?: number,
+  ): Promise<HouseholdMembersResponse> {
+    const searchParams = new URLSearchParams({ household_number: householdNumber });
+    if (excludePatientId) {
+      searchParams.set('exclude_patient_id', String(excludePatientId));
+    }
+
+    const response = await apiClient.get<HouseholdMembersResponse>(
+      `/api/patients/household-members/?${searchParams.toString()}`
+    );
+
+    return parseResponse(HouseholdMembersResponseSchema, response.data, {
+      context: 'patientsApi.getHouseholdMembers',
+    }) as HouseholdMembersResponse;
   },
 
   /**

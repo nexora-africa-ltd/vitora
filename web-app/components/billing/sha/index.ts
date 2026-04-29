@@ -11,6 +11,7 @@ export {
 
 // SHA Verification Modal (combined CR + Eligibility)
 export { SHAVerificationModal } from './SHAVerificationModal';
+export type { SHAPayloadPerson } from '@/lib/types/sha';
 
 // Eligibility
 export {

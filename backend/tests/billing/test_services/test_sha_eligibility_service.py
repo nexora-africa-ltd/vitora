@@ -34,9 +34,17 @@ from unittest.mock import Mock, patch
 import pytest  # type: ignore
 import requests
 from django.conf import settings
+from django.test import override_settings
 from django.utils import timezone
 
 from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
+
+
+@pytest.fixture
+def legacy_sha_settings(settings):
+    """Force legacy SHA mode for tests that exercise the old eligibility contract."""
+    settings.SHA_AUTH_MODE = "legacy"
+    return settings
 
 
 @pytest.fixture
@@ -154,6 +162,7 @@ def mock_sha_api_suspended_response():
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("legacy_sha_settings")
 class TestSHAEligibilityServiceCheckEligibility:
     """Tests for SHAEligibilityService.check_eligibility() method."""
 
@@ -237,6 +246,7 @@ class TestSHAEligibilityServiceCheckEligibility:
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("legacy_sha_settings")
 class TestSHAEligibilityServiceErrorHandling:
     """Tests for SHAEligibilityService error handling."""
 
@@ -283,6 +293,41 @@ class TestSHAEligibilityServiceErrorHandling:
         assert check.is_eligible is False
         assert check.error_code == "API_ERROR"
         assert "Connection refused" in check.error_message
+
+    @override_settings(SHA_AUTH_MODE="ilm")
+    def test_direct_eligibility_auth_error_payload(self):
+        """Direct eligibility should return a structured auth failure payload for UI messaging."""
+        from hmis.apps.billing.services.sha_auth import SHAAuthError
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService()
+
+        with patch.object(
+            service, "_call_api", side_effect=SHAAuthError("Invalid credentials", 401)
+        ):
+            result = service.check_eligibility_direct("National ID", "32440686")
+
+        assert result["error_code"] == "SHA_AUTH_FAILED"
+        assert result["error_title"] == "SHA auth failed"
+        assert result["reason"] == "SHA auth failed"
+        assert "Unable to authenticate" in result["error"]
+        assert result["upstream_status"] == 401
+
+    @override_settings(SHA_AUTH_MODE="ilm")
+    def test_direct_eligibility_timeout_payload(self):
+        """Direct eligibility should return a structured timeout payload for UI messaging."""
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService()
+
+        with patch.object(service, "_call_api", side_effect=requests.Timeout()):
+            result = service.check_eligibility_direct("National ID", "32440686")
+
+        assert result["error_code"] == "SHA_UPSTREAM_TIMEOUT"
+        assert result["error_title"] == "SHA upstream timed out"
+        assert result["reason"] == "SHA upstream timed out"
+        assert "Please retry" in result["error"]
+        assert result["upstream_status"] == 504
 
     def test_retry_logic_with_exponential_backoff(self, sha_member_needs_check, test_user):
         """
@@ -335,6 +380,7 @@ class TestSHAEligibilityServiceErrorHandling:
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("legacy_sha_settings")
 class TestSHAEligibilityServiceRequestPayload:
     """Tests for SHAEligibilityService request payload building."""
 
@@ -359,8 +405,23 @@ class TestSHAEligibilityServiceRequestPayload:
         assert request_data["doc_type"] == "sha_number"
         assert request_data["doc_value"] == sha_member.sha_number
 
+    @override_settings(SHA_AUTH_MODE="ilm")
+    def test_request_payload_format_for_ilm_patient_lookup(self, sha_member):
+        """ILM mode should use eligibility query parameters expected by the middleware."""
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService()
+
+        request_data = service._build_request(sha_member)
+
+        assert request_data == {
+            "identification_type": "National ID",
+            "identification_number": sha_member.national_id,
+        }
+
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("legacy_sha_settings")
 class TestSHAEligibilityServiceResponseParsing:
     """Tests for SHAEligibilityService response parsing."""
 
@@ -412,8 +473,168 @@ class TestSHAEligibilityServiceResponseParsing:
         assert check.ineligibility_reason == "Membership expired"
         assert check.benefit_balance is None
 
+    @override_settings(SHA_AUTH_MODE="ilm")
+    def test_response_parsing_for_ilm_eligibility(self, sha_member_needs_check, test_user):
+        """ILM eligibility responses should be interpreted from coverage fields, not patient lookup heuristics."""
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService()
+        ilm_eligibility_response = {
+            "id": "CR0127974703399-5",
+            "eligible": 1,
+            "coverageEndDate": "2026-12-31",
+            "reason": "Active SHA cover",
+            "possible_solution": None,
+            "message": "The individual is covered",
+        }
+
+        with patch.object(service, "_call_api", return_value=ilm_eligibility_response):
+            check = service.check_eligibility(sha_member_needs_check, test_user)
+
+        assert check.result == SHAEligibilityCheck.CheckResult.ELIGIBLE
+        assert check.is_eligible is True
+        assert check.eligible_until is not None
+        assert check.ineligibility_reason == ""
+        assert check.response_data["sha_number"] == "CR0127974703399-5"
+        assert check.response_data["lookup_mode"] == "ilm_eligibility"
+
+    @override_settings(SHA_AUTH_MODE="ilm")
+    def test_direct_eligibility_uses_scheme_coverage_status(self):
+        """Scheme-based ILM eligibility payloads should be treated as eligible when any scheme has active coverage."""
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService()
+        ilm_scheme_response = {
+            "requestIdType": 2,
+            "requestIdNumber": "34221265",
+            "dateOfBirth": "1997-11-15T01:00:00+03:00",
+            "gender": "F",
+            "age": 29,
+            "whitelistedForOTP": False,
+            "memberCrNumber": "CR8432995013637-1",
+            "fullName": "SALOME KUNGU",
+            "statusCode": "10",
+            "statusDesc": "Member found. Check Schemes for coverages",
+            "schemes": [
+                {
+                    "schemeName": "UHC",
+                    "schemeId": 1,
+                    "memberType": "PRIMARY",
+                    "policy": {
+                        "startDate": "2024-10-01",
+                        "endDate": "2034-09-30",
+                        "number": "UHC-MUN4KH1C",
+                    },
+                    "coverage": {
+                        "startDate": "2024-10-01",
+                        "endDate": "2034-09-30",
+                        "message": "The individual is covered.",
+                        "reason": "Payment is up to Date. ",
+                        "status": "1",
+                    },
+                    "principalContributor": {
+                        "idNumber": "34221265",
+                        "idType": "NATIONAL_ID",
+                        "crNumber": "CR8432995013637-1",
+                        "name": "SALOME KUNGU",
+                        "relationship": "",
+                        "employmentType": "EMPLOYED",
+                        "employerDetails": {"name": "MERCYLITE HOSPITAL LTD"},
+                    },
+                }
+            ],
+        }
+
+        with patch.object(service, "_call_api", return_value=ilm_scheme_response):
+            result = service.check_eligibility_direct("National ID", "34221265")
+
+        assert result["is_eligible"] is True
+        assert result["sha_number"] == "CR8432995013637-1"
+        assert result["coverage_end_date"] == "2034-09-30"
+        assert result["status_code"] == "10"
+        assert result["member_cr_number"] == "CR8432995013637-1"
+        assert result["employment_type"] == "EMPLOYED"
+        assert result["employer_name"] == "MERCYLITE HOSPITAL LTD"
+        assert len(result["schemes"]) == 1
+
+    @override_settings(SHA_AUTH_MODE="ilm")
+    def test_direct_eligibility_prefers_shif_scheme_for_summary_status(self):
+        """When SHIF is present, overall eligibility should follow SHIF rather than another covered scheme."""
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService()
+        mixed_scheme_response = {
+            "requestIdType": 2,
+            "requestIdNumber": "41132081",
+            "memberCrNumber": "CR1481274185029-8",
+            "fullName": "DAHABO ALI",
+            "statusCode": "10",
+            "statusDesc": "Member found. Check Schemes for coverages",
+            "schemes": [
+                {
+                    "schemeName": "UHC",
+                    "schemeId": 1,
+                    "memberType": "PRIMARY",
+                    "policy": {
+                        "startDate": "2024-10-01",
+                        "endDate": "2034-09-30",
+                        "number": "UHC-MIRIVV3D",
+                    },
+                    "coverage": {
+                        "startDate": "2024-10-01",
+                        "endDate": "2034-09-30",
+                        "message": "The individual is covered.",
+                        "reason": "Payment is up to Date. ",
+                        "status": "1",
+                    },
+                    "principalContributor": {
+                        "idNumber": "41132081",
+                        "idType": "NATIONAL_ID",
+                        "crNumber": "CR1481274185029-8",
+                        "name": "DAHABO ALI",
+                        "relationship": "",
+                        "employmentType": "EMPLOYED",
+                        "employerDetails": {"name": "NEXORA CONSULTING LIMITED"},
+                    },
+                },
+                {
+                    "schemeName": "SHIF",
+                    "schemeId": 2,
+                    "memberType": "PRIMARY",
+                    "policy": {"startDate": "", "endDate": ""},
+                    "coverage": {
+                        "startDate": "2025-07-11",
+                        "endDate": "2025-08-10",
+                        "message": "The individual is not covered.",
+                        "reason": "Payment is  not up to Date.",
+                        "possibleSolution": "Contribution Required.",
+                        "status": "0",
+                    },
+                    "principalContributor": {
+                        "idNumber": "41132081",
+                        "idType": "NATIONAL_ID",
+                        "crNumber": "CR1481274185029-8",
+                        "name": "DAHABO ALI",
+                        "relationship": "",
+                        "employmentType": "EMPLOYED",
+                        "employerDetails": {"name": "NEXORA CONSULTING LIMITED"},
+                    },
+                },
+            ],
+        }
+
+        with patch.object(service, "_call_api", return_value=mixed_scheme_response):
+            result = service.check_eligibility_direct("National ID", "41132081")
+
+        assert result["is_eligible"] is False
+        assert result["primary_scheme_name"] == "SHIF"
+        assert result["reason"] == "The individual is not covered."
+        assert result["possible_solution"] == "Contribution Required."
+        assert result["coverage_end_date"] == "2025-08-10"
+
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("legacy_sha_settings")
 class TestSHAEligibilityServiceMemberUpdate:
     """Tests for SHAEligibilityService member status updates."""
 
@@ -496,6 +717,7 @@ class TestSHAEligibilityServiceMemberUpdate:
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("legacy_sha_settings")
 class TestSHAEligibilityServiceLogging:
     """Tests for SHAEligibilityService audit logging."""
 
@@ -532,6 +754,7 @@ class TestSHAEligibilityServiceLogging:
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("legacy_sha_settings")
 class TestSHAEligibilityServiceMockAPI:
     """Tests for using mock SHA API in unit tests."""
 
@@ -578,8 +801,57 @@ class TestSHAEligibilityServiceMockAPI:
 
         assert check.is_eligible is True
 
+    @override_settings(
+        SHA_AUTH_MODE="ilm",
+        SHA_API_BASE_URL="https://uat.dha.go.ke",
+        SHA_ENDPOINTS={
+            "eligibility": "/v2/eligibility",
+            "ilm_eligibility": "/api/v1/patients/eligibility",
+        },
+    )
+    def test_ilm_mode_calls_documented_eligibility_endpoint(self, sha_member_needs_check):
+        """ILM mode should call the documented eligibility endpoint instead of patient lookup."""
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService()
+
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "id": "CR0127974703399-5",
+            "resourceType": "Patient",
+            "identification_type": "National ID",
+            "identification_number": "32440686",
+        }
+        mock_response.raise_for_status = Mock()
+        mock_response.status_code = 200
+
+        with patch("requests.get", return_value=mock_response) as mock_get:
+            with patch.object(
+                service.auth_service,
+                "get_auth_headers",
+                return_value={"Authorization": "Bearer test"},
+            ):
+                service._call_api(
+                    {
+                        "identification_type": "National ID",
+                        "identification_number": "32440686",
+                    }
+                )
+
+        mock_get.assert_called_once()
+        call_args = mock_get.call_args
+        assert (
+            call_args.args[0]
+            == "https://ilm-dev.dha.go.ke/uat-middleware/api/v1/patients/eligibility"
+        )
+        assert call_args.kwargs["params"] == {
+            "identification_type": "National ID",
+            "identification_number": "32440686",
+        }
+
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("legacy_sha_settings")
 class TestSHAEligibilityServiceConfiguration:
     """Tests for SHAEligibilityService configuration."""
 
@@ -621,3 +893,18 @@ class TestSHAEligibilityServiceConfiguration:
         assert service.api_base_url == settings.SHA_API_BASE_URL.rstrip("/")
         assert service.api_key == settings.SHA_API_KEY
         assert service.timeout == settings.SHA_API_TIMEOUT
+
+    @override_settings(
+        SHA_AUTH_MODE="ilm",
+        SHA_AUTH_BASE_URL="https://ilm-dev.dha.go.ke/uat-middleware",
+        SHA_API_BASE_URL="https://uat.dha.go.ke",
+        SHA_CLIENT_ID="vitora",
+        SHA_CLIENT_SECRET="ilm-secret",
+    )
+    def test_service_uses_auth_base_url_in_ilm_mode(self):
+        """ILM mode should send eligibility lookups to the ILM middleware host."""
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService()
+
+        assert service.api_base_url == "https://ilm-dev.dha.go.ke/uat-middleware"

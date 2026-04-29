@@ -20,7 +20,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { getOrCreateIdempotencyKey, clearIdempotencyKey } from '@/lib/utils/idempotency';
 import { getApiErrorMessage } from '@/lib/api/client';
 import type { PatientCreateData, Patient } from '@/lib/types/patient';
-import type { ClientRegistryClient, DirectEligibilityCheckResponse } from '@/lib/types/sha';
+import type { ClientRegistryClient, DirectEligibilityCheckResponse, SHAPayloadPerson } from '@/lib/types/sha';
 
 const IDEMPOTENCY_FORM_ID = 'patient-registration';
 
@@ -56,6 +56,7 @@ export default function NewPatientPage() {
   const [registeredPatient, setRegisteredPatient] = useState<Patient | null>(null);
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
   const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
+  const [selectedShaPerson, setSelectedShaPerson] = useState<SHAPayloadPerson | null>(null);
 
   // Generate idempotency key for form submission (Sprint 1.7)
   const idempotencyKey = useMemo(() => getOrCreateIdempotencyKey(IDEMPOTENCY_FORM_ID), []);
@@ -73,6 +74,14 @@ export default function NewPatientPage() {
   const handleEligibilityVerified = useCallback((result: DirectEligibilityCheckResponse) => {
     setEligibility(result);
   }, []);
+
+  const handleAddShaPersonToForm = useCallback((person: SHAPayloadPerson) => {
+    setSelectedShaPerson(person);
+    toast({
+      title: 'Patient form updated',
+      description: `Loaded ${[person.first_name, person.last_name].filter(Boolean).join(' ') || 'selected member'} into the registration form.`,
+    });
+  }, [toast]);
 
   const handleSubmit = async (data: PatientCreateData) => {
     try {
@@ -144,6 +153,7 @@ export default function NewPatientPage() {
     setRegisteredPatient(null);
     setCrClient(null);
     setEligibility(null);
+    setSelectedShaPerson(null);
   }, []);
 
   const handleCancel = () => {
@@ -202,6 +212,7 @@ export default function NewPatientPage() {
                 defaultTab="cr"
                 onClientFound={handleCRClientFound}
                 onEligibilityVerified={handleEligibilityVerified}
+                onAddPersonToForm={handleAddShaPersonToForm}
               />
               <SHAVerificationModal
                 trigger={
@@ -214,6 +225,7 @@ export default function NewPatientPage() {
                 defaultTab="eligibility"
                 onClientFound={handleCRClientFound}
                 onEligibilityVerified={handleEligibilityVerified}
+                onAddPersonToForm={handleAddShaPersonToForm}
               />
             </div>
           </div>
@@ -310,6 +322,7 @@ export default function NewPatientPage() {
             onCancel={handleCancel}
             isLoading={createPatient.isPending}
             prePopulatedClient={crClient}
+            prePopulatedShaPerson={selectedShaPerson}
           />
         </CardContent>
       </Card>
