@@ -1838,7 +1838,22 @@ class DirectEligibilityCheckView(APIView):
 
             # Return appropriate status based on result
             if result.get("error"):
-                return Response(result, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                error_code = result.get("error_code")
+                if error_code == "SHA_AUTH_FAILED":
+                    error_status = status.HTTP_502_BAD_GATEWAY
+                elif error_code == "SHA_UPSTREAM_TIMEOUT":
+                    error_status = status.HTTP_504_GATEWAY_TIMEOUT
+                else:
+                    error_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+                return Response(
+                    {
+                        **result,
+                        "message": result.get("error"),
+                        "detail": result.get("error"),
+                    },
+                    status=error_status,
+                )
 
             return Response(result)
 

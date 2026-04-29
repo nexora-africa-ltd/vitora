@@ -59,6 +59,23 @@ export const EmergencyContactSchema = z.object({
   updated_at: z.string(),
 });
 
+export const HouseholdMemberSchema = z.object({
+  id: z.number(),
+  mrn: z.string(),
+  full_name: z.string(),
+  date_of_birth: z.string(),
+  gender: GenderSchema,
+  cr_number: z.string().optional().nullable(),
+  sha_number: z.string().optional().nullable(),
+  household_number: z.string().optional().nullable(),
+});
+
+export const HouseholdMembersResponseSchema = z.object({
+  household_number: z.string(),
+  count: z.number(),
+  results: z.array(HouseholdMemberSchema),
+});
+
 // =============================================================================
 // PATIENT SCHEMAS
 // =============================================================================
@@ -76,6 +93,7 @@ export const PatientSchema = z.object({
 
   // SHA Integration
   sha_number: z.string().optional().nullable(),
+  household_number: z.string().optional().nullable(),
 
   // Personal Information
   title: PatientTitleSchema.nullable(),
@@ -128,6 +146,7 @@ export const PatientSchema = z.object({
   // Clinical summary (read-only, computed)
   allergy_summary: z.array(z.string()).optional(),
   chronic_conditions_summary: z.string().optional().nullable(),
+  household_members: z.array(HouseholdMemberSchema).optional(),
 
   // Metadata
   registered_by: z.number().nullable(),
@@ -147,6 +166,7 @@ export const PatientListItemSchema = z.object({
   cr_number: z.string().optional().nullable(),
   cr_synced_at: z.string().optional().nullable(),
   sha_number: z.string().optional().nullable(),
+  household_number: z.string().optional().nullable(),
   title: PatientTitleSchema.nullable(),
   first_name: z.string(),
   middle_name: z.string().optional().nullable(),
@@ -189,6 +209,7 @@ export const PatientCreateDataSchema = z.object({
 
   // SHA (Social Health Authority)
   sha_number: z.string().optional(),
+  household_number: z.string().optional(),
 
   // Personal Information
   title: PatientTitleSchema,

@@ -154,6 +154,23 @@ class TestSHAEndpointsConfiguration:
             f"Eligibility endpoint should be /v2/eligibility, got: {eligibility}"
         )
 
+    def test_ilm_eligibility_endpoint_configured(self):
+        """ILM eligibility endpoint should be configured separately from patient lookup."""
+        endpoints = getattr(settings, "SHA_ENDPOINTS", {})
+
+        ilm_eligibility = endpoints.get("ilm_eligibility")
+
+        assert ilm_eligibility is not None, (
+            "SHA_ENDPOINTS['ilm_eligibility'] must be configured. Expected: /api/v1/patients/eligibility"
+        )
+
+        assert (
+            "/api/v1/patients/eligibility" in ilm_eligibility
+            or ilm_eligibility == "/api/v1/patients/eligibility"
+        ), (
+            f"ILM eligibility endpoint should be /api/v1/patients/eligibility, got: {ilm_eligibility}"
+        )
+
     def test_claims_submit_endpoint_configured(self):
         """
         SHA Requirement: Claims submission endpoint must be configured.

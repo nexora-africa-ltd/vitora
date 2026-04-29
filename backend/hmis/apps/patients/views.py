@@ -36,6 +36,7 @@ from .serializers import (
     DeathRecordReleaseBodySerializer,
     DeathRecordVoidSerializer,
     EmergencyContactSerializer,
+    PatientHouseholdMemberSerializer,
     PatientSerializer,
     VitalsDataPointSerializer,
 )
@@ -759,6 +760,34 @@ class PatientViewSet(
                 "has_duplicate": len(matches) > 0,
                 "match_type": match_type,
                 "matches": matches,
+            }
+        )
+
+    @action(detail=False, methods=["get"], url_path="household-members")
+    def household_members(self, request):
+        """Return linked patients in the same organization for a household number."""
+        household_number = request.query_params.get("household_number", "").strip()
+        exclude_patient_id = request.query_params.get("exclude_patient_id")
+
+        if not household_number:
+            return Response(
+                {"detail": "household_number query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = self.get_queryset().filter(household_number=household_number)
+
+        if exclude_patient_id:
+            queryset = queryset.exclude(pk=exclude_patient_id)
+
+        queryset = queryset.order_by("last_name", "first_name")[:10]
+        serializer = PatientHouseholdMemberSerializer(queryset, many=True)
+
+        return Response(
+            {
+                "household_number": household_number,
+                "count": len(serializer.data),
+                "results": serializer.data,
             }
         )
 

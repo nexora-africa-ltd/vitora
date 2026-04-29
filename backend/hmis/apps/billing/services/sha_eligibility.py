@@ -51,8 +51,12 @@ class SHAEligibilityService:
 
     def __init__(self):
         """Initialize SHAEligibilityService with settings from Django config."""
-        self.api_base_url = settings.SHA_API_BASE_URL.rstrip("/")
         self.auth_service = SHAAuthService()
+        self.auth_mode = self.auth_service.auth_mode
+        if self.auth_mode == "ilm":
+            self.api_base_url = self.auth_service.auth_base_url.rstrip("/")
+        else:
+            self.api_base_url = settings.SHA_API_BASE_URL.rstrip("/")
         self.timeout = settings.SHA_API_TIMEOUT
         self.max_retries = 3
 
@@ -60,7 +64,16 @@ class SHAEligibilityService:
         self.api_key = settings.SHA_API_KEY
 
         # Get endpoint from settings
-        self.eligibility_endpoint = settings.SHA_ENDPOINTS.get("eligibility", "/v2/eligibility")
+        if self.auth_mode == "ilm":
+            self.eligibility_endpoint = settings.SHA_ENDPOINTS.get(
+                "ilm_eligibility", "/api/v1/patients/eligibility"
+            )
+            self.patient_lookup_endpoint = settings.SHA_ENDPOINTS.get(
+                "patient_lookup", "/api/v1/patients"
+            )
+        else:
+            self.eligibility_endpoint = settings.SHA_ENDPOINTS.get("eligibility", "/v2/eligibility")
+            self.patient_lookup_endpoint = None
 
     def check_eligibility(
         self, sha_member: SHAMember, user, force_refresh: bool = False
@@ -123,23 +136,38 @@ class SHAEligibilityService:
         Returns:
             Dict containing request parameters
         """
+        if self.auth_mode == "ilm":
+            if sha_member.national_id:
+                return {
+                    "identification_type": "National ID",
+                    "identification_number": sha_member.national_id,
+                }
+            if sha_member.sha_number:
+                return {
+                    "identification_type": "SHA Number",
+                    "identification_number": sha_member.sha_number,
+                }
+            return {
+                "identification_type": "SHA Number",
+                "identification_number": sha_member.cr_number or "",
+            }
+
         # Prefer SHA number if available, otherwise use national ID
         if sha_member.sha_number:
             return {
                 "doc_type": "sha_number",
                 "doc_value": sha_member.sha_number,
             }
-        elif sha_member.national_id:
+        if sha_member.national_id:
             return {
                 "doc_type": "national_id",
                 "doc_value": sha_member.national_id,
             }
-        else:
-            # Fallback to CR number if available
-            return {
-                "doc_type": "cr_number",
-                "doc_value": sha_member.cr_number or "",
-            }
+        # Fallback to CR number if available
+        return {
+            "doc_type": "cr_number",
+            "doc_value": sha_member.cr_number or "",
+        }
 
     def _call_api(self, request_params: dict) -> dict:
         """
@@ -189,6 +217,9 @@ class SHAEligibilityService:
                 # Parse response - handle official wrapper format
                 data = response.json()
 
+                if self.auth_mode == "ilm":
+                    return data
+
                 # Official format: {"IsSuccess": true, "Data": {...}}
                 if "Data" in data and data.get("IsSuccess"):
                     return data["Data"]
@@ -207,6 +238,143 @@ class SHAEligibilityService:
 
         # Should not reach here, but satisfy type checker
         raise last_exception  # type: ignore
+
+    def _normalize_response(self, response: dict) -> dict:
+        """Map legacy and ILM responses into a common eligibility shape."""
+        if self.auth_mode != "ilm":
+            return response
+
+        if isinstance(response.get("schemes"), list):
+            schemes = [scheme for scheme in response.get("schemes", []) if isinstance(scheme, dict)]
+            covered_schemes = []
+            shif_scheme = None
+            for scheme in schemes:
+                scheme_name = scheme.get("schemeName")
+                if isinstance(scheme_name, str) and scheme_name.strip().upper() == "SHIF":
+                    shif_scheme = scheme
+
+                coverage = (
+                    scheme.get("coverage") if isinstance(scheme.get("coverage"), dict) else {}
+                )
+                status_value = coverage.get("status")
+                if status_value in (1, True, "1", "active", "ACTIVE", "covered", "COVERED"):
+                    covered_schemes.append(scheme)
+
+            prioritized_schemes = ([shif_scheme] if shif_scheme else covered_schemes) or schemes
+            primary_scheme = prioritized_schemes[0] if prioritized_schemes else {}
+            primary_coverage = (
+                primary_scheme.get("coverage")
+                if isinstance(primary_scheme.get("coverage"), dict)
+                else {}
+            )
+            principal = (
+                primary_scheme.get("principalContributor")
+                if isinstance(primary_scheme.get("principalContributor"), dict)
+                else {}
+            )
+            employer_details = (
+                principal.get("employerDetails")
+                if isinstance(principal.get("employerDetails"), dict)
+                else {}
+            )
+            primary_status = primary_coverage.get("status")
+            primary_is_eligible = primary_status in (
+                1,
+                True,
+                "1",
+                "active",
+                "ACTIVE",
+                "covered",
+                "COVERED",
+            )
+
+            return {
+                **response,
+                "eligible": primary_is_eligible,
+                "coverageEndDate": primary_coverage.get("endDate"),
+                "reason": (
+                    primary_coverage.get("message")
+                    or primary_coverage.get("reason")
+                    or response.get("statusDesc")
+                    or response.get("message")
+                    or ""
+                ),
+                "possible_solution": primary_coverage.get("possibleSolution")
+                or primary_coverage.get("possible_solution"),
+                "sha_number": response.get("memberCrNumber")
+                or response.get("id")
+                or response.get("sha_number"),
+                "full_name": response.get("fullName") or response.get("full_name"),
+                "employment_type": principal.get("employmentType"),
+                "employer_name": employer_details.get("name"),
+                "status_code": response.get("statusCode"),
+                "status_desc": response.get("statusDesc"),
+                "member_cr_number": response.get("memberCrNumber"),
+                "date_of_birth": response.get("dateOfBirth"),
+                "gender": response.get("gender"),
+                "age": response.get("age"),
+                "whitelisted_for_otp": response.get("whitelistedForOTP"),
+                "schemes": schemes,
+                "primary_scheme_name": primary_scheme.get("schemeName"),
+                "primary_scheme_member_type": primary_scheme.get("memberType"),
+                "lookup_mode": "ilm_eligibility_schemes",
+                "raw_response": response,
+            }
+
+        # ILM eligibility endpoint returns coverage-oriented fields like
+        # eligible/reason/possible_solution/coverageEndDate. Preserve that shape.
+        if any(
+            key in response
+            for key in ["eligible", "coverageEndDate", "possible_solution", "eligible_nhif"]
+        ):
+            first_name = (response.get("first_name") or "").strip()
+            middle_name = (response.get("middle_name") or "").strip()
+            last_name = (response.get("last_name") or "").strip()
+            full_name = " ".join(part for part in [first_name, middle_name, last_name] if part)
+
+            return {
+                **response,
+                "sha_number": response.get("id")
+                or response.get("sha_number")
+                or response.get("cr_number"),
+                "full_name": full_name or response.get("full_name"),
+                "status_code": response.get("statusCode"),
+                "status_desc": response.get("statusDesc"),
+                "member_cr_number": response.get("memberCrNumber"),
+                "date_of_birth": response.get("dateOfBirth"),
+                "gender": response.get("gender"),
+                "age": response.get("age"),
+                "whitelisted_for_otp": response.get("whitelistedForOTP"),
+                "raw_response": response,
+                "lookup_mode": "ilm_eligibility",
+            }
+
+        # ILM patient lookup returns a patient resource and is registry-like, not a
+        # true eligibility decision. Keep a best-effort normalized shape only when
+        # we explicitly process a lookup response.
+        if "resourceType" not in response and not any(
+            key in response for key in ["first_name", "middle_name", "last_name"]
+        ):
+            return {**response, "raw_response": response}
+
+        first_name = (response.get("first_name") or "").strip()
+        middle_name = (response.get("middle_name") or "").strip()
+        last_name = (response.get("last_name") or "").strip()
+        full_name = " ".join(part for part in [first_name, middle_name, last_name] if part)
+        sha_number = response.get("id") or response.get("sha_number") or response.get("cr_number")
+        is_eligible = bool(response.get("id") or response.get("identification_number"))
+
+        return {
+            **response,
+            "eligible": is_eligible,
+            "coverageEndDate": response.get("coverageEndDate") or response.get("coverage_end_date"),
+            "balance": response.get("balance"),
+            "reason": response.get("message") or response.get("reason") or "",
+            "sha_number": sha_number,
+            "full_name": full_name or response.get("full_name"),
+            "lookup_mode": "ilm_patient",
+            "raw_response": response,
+        }
 
     def _process_response(
         self, sha_member: SHAMember, user, request_data: dict, response: dict, response_time: int
@@ -236,22 +404,24 @@ class SHAEligibilityService:
         Returns:
             SHAEligibilityCheck record with parsed results
         """
-        is_eligible = response.get("eligible", False)
+        normalized_response = self._normalize_response(response)
+        eligible_value = normalized_response.get("eligible", False)
+        is_eligible = eligible_value == 1 or eligible_value is True
 
         # Parse benefit balance (if provided)
-        benefit_balance = self._parse_decimal(response.get("balance"))
+        benefit_balance = self._parse_decimal(normalized_response.get("balance"))
 
         # Parse eligible_until date - official field is 'coverageEndDate'
         eligible_until = self._parse_date(
-            response.get("coverageEndDate") or response.get("valid_until")
+            normalized_response.get("coverageEndDate") or normalized_response.get("valid_until")
         )
 
         # Get ineligibility reason
-        reason = response.get("reason", "")
+        reason = normalized_response.get("reason", "")
 
         # Store full response including means testing details
         full_response = {
-            **response,
+            **normalized_response,
             "raw_response": response,  # Keep original for debugging
         }
 
@@ -435,13 +605,14 @@ class SHAEligibilityService:
 
         try:
             response = self._call_api(request_params)
+            normalized = self._normalize_response(response)
 
             # Parse response - official format has eligibility data in 'message' wrapper
             # or directly in the response
             data = (
-                response.get("message", response)
-                if isinstance(response.get("message"), dict)
-                else response
+                normalized.get("message", normalized)
+                if isinstance(normalized.get("message"), dict)
+                else normalized
             )
 
             # Check if eligible - SHA uses 'eligible' field (1 = eligible, 0 = not)
@@ -536,9 +707,23 @@ class SHAEligibilityService:
                 "reason": data.get("message") or data.get("reason", ""),
                 "possible_solution": data.get("possible_solution"),
                 "is_employed": data.get("isEmployed", False),
-                "employment_type": data.get("client_portal_details", {}).get("employment_type"),
-                "employer_name": data.get("client_portal_details", {}).get("employer_name"),
+                "employment_type": data.get("employment_type")
+                or data.get("client_portal_details", {}).get("employment_type"),
+                "employer_name": data.get("employer_name")
+                or data.get("client_portal_details", {}).get("employer_name"),
                 "nhif_transition_status": data.get("transition_status"),
+                "status_code": data.get("status_code") or data.get("statusCode"),
+                "status_desc": data.get("status_desc") or data.get("statusDesc"),
+                "member_cr_number": data.get("member_cr_number") or data.get("memberCrNumber"),
+                "date_of_birth": data.get("date_of_birth") or data.get("dateOfBirth"),
+                "gender": data.get("gender"),
+                "age": data.get("age"),
+                "whitelisted_for_otp": data.get("whitelisted_for_otp")
+                if data.get("whitelisted_for_otp") is not None
+                else data.get("whitelistedForOTP"),
+                "primary_scheme_name": data.get("primary_scheme_name"),
+                "primary_scheme_member_type": data.get("primary_scheme_member_type"),
+                "schemes": data.get("schemes") if isinstance(data.get("schemes"), list) else [],
                 "means_testing": means_testing_info,
                 "dependents": dependents,
                 "dependents_covered": dependents_covered,
@@ -554,9 +739,13 @@ class SHAEligibilityService:
                 "full_name": None,
                 "coverage_end_date": None,
                 "copay_percentage": 100,
-                "reason": "Authentication failed",
+                "reason": "SHA auth failed",
                 "raw_response": {},
-                "error": f"Authentication error: {str(e)}",
+                "error": "SHA auth failed. Unable to authenticate with the upstream SHA service.",
+                "error_code": "SHA_AUTH_FAILED",
+                "error_title": "SHA auth failed",
+                "error_detail": str(e),
+                "upstream_status": getattr(e, "status_code", 0) or None,
             }
         except requests.Timeout:
             logger.error("Timeout during eligibility check")
@@ -566,9 +755,13 @@ class SHAEligibilityService:
                 "full_name": None,
                 "coverage_end_date": None,
                 "copay_percentage": 100,
-                "reason": "Request timeout",
+                "reason": "SHA upstream timed out",
                 "raw_response": {},
-                "error": "Request timed out",
+                "error": "SHA upstream timed out. Please retry the eligibility check.",
+                "error_code": "SHA_UPSTREAM_TIMEOUT",
+                "error_title": "SHA upstream timed out",
+                "error_detail": "The upstream SHA eligibility service did not respond before the timeout.",
+                "upstream_status": 504,
             }
         except requests.RequestException as e:
             logger.error(f"Request error during eligibility check: {e}")
@@ -578,7 +771,11 @@ class SHAEligibilityService:
                 "full_name": None,
                 "coverage_end_date": None,
                 "copay_percentage": 100,
-                "reason": "API request failed",
+                "reason": "SHA service unavailable",
                 "raw_response": {},
-                "error": str(e),
+                "error": "SHA service unavailable. The upstream eligibility service could not be reached.",
+                "error_code": "SHA_UPSTREAM_UNAVAILABLE",
+                "error_title": "SHA service unavailable",
+                "error_detail": str(e),
+                "upstream_status": getattr(getattr(e, "response", None), "status_code", None),
             }

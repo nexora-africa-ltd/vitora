@@ -194,6 +194,78 @@ export interface SHADependent {
   is_active?: boolean;
 }
 
+export interface SHAEligibilitySchemePolicy {
+  startDate?: string;
+  endDate?: string;
+  number?: string;
+}
+
+export interface SHAEligibilitySchemeCoverage {
+  startDate?: string;
+  endDate?: string;
+  message?: string;
+  reason?: string;
+  status?: string | number | boolean | null;
+}
+
+export interface SHAEligibilityPrincipalContributor {
+  idNumber?: string;
+  idType?: string;
+  crNumber?: string;
+  name?: string;
+  relationship?: string;
+  employmentType?: string;
+  employerDetails?: {
+    name?: string;
+  };
+}
+
+export interface SHAEligibilityScheme {
+  schemeName?: string;
+  schemeId?: number;
+  memberType?: string;
+  policy?: SHAEligibilitySchemePolicy;
+  coverage?: SHAEligibilitySchemeCoverage;
+  principalContributor?: SHAEligibilityPrincipalContributor;
+}
+
+export interface SHAPayloadIdentifier {
+  identification_type?: string;
+  identification_number?: string;
+}
+
+export interface SHAPayloadPerson {
+  source: 'principal' | 'dependent';
+  relationship?: string;
+  id?: string;
+  resourceType?: string;
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+  gender?: string;
+  date_of_birth?: string;
+  place_of_birth?: string;
+  citizenship?: string;
+  employment_type?: string;
+  civil_status?: string;
+  identification_type?: string;
+  identification_number?: string;
+  other_identifications?: SHAPayloadIdentifier[];
+  phone?: string;
+  country?: string;
+  county?: string;
+  sub_county?: string;
+  ward?: string;
+  village_estate?: string;
+  province_state_country?: string;
+  zip_code?: string;
+  postal_address?: string;
+  id_serial?: string;
+  sha_number?: string;
+  cr_number?: string;
+  household_number?: string;
+}
+
 export interface DirectEligibilityCheckResponse {
   is_eligible: boolean;
   sha_number?: string | null;
@@ -201,11 +273,19 @@ export interface DirectEligibilityCheckResponse {
   coverage_end_date?: string | null;
   copay_percentage: number;
   reason?: string;
-  possible_solution?: string;
+  possible_solution?: string | null;
   is_employed?: boolean;
   employment_type?: string | null;
   employer_name?: string | null;
   nhif_transition_status?: string | null;
+  status_code?: string | null;
+  status_desc?: string | null;
+  member_cr_number?: string | null;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  age?: number | null;
+  whitelisted_for_otp?: boolean;
+  schemes?: SHAEligibilityScheme[];
   means_testing?: MeansTestingDetails | null;
   dependents?: SHADependent[];
   dependents_covered?: number;

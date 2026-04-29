@@ -287,6 +287,7 @@ export default function PatientDetailPage() {
             <CardContent className="space-y-3">
               <InfoRow icon={FileText} label="CR Number" value={patient.cr_number || '—'} />
               <InfoRow icon={Shield} label="SHA Number" value={patient.sha_number || '—'} />
+              <InfoRow icon={Users} label="Household Number" value={patient.household_number || '—'} />
               <InfoRow
                 icon={FileText}
                 label={
@@ -298,6 +299,31 @@ export default function PatientDetailPage() {
               />
             </CardContent>
           </Card>
+
+          {!!patient.household_members?.length && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Household Members</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {patient.household_members.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                    <div className="min-w-0">
+                      <p className="font-medium break-words">{member.full_name}</p>
+                      <p className="text-xs text-muted-foreground break-words">
+                        {member.mrn}
+                        {member.cr_number ? ` • CR: ${member.cr_number}` : ''}
+                        {member.sha_number ? ` • SHA: ${member.sha_number}` : ''}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/patients/${member.id}`}>View</Link>
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Basic Info */}
           <Card>

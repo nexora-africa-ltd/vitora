@@ -47,6 +47,8 @@ export interface Patient {
   cr_synced_at?: string | null;
   // SHA Integration
   sha_number?: string;
+  household_number?: string | null;
+  household_members?: HouseholdMember[];
   // Personal Information
   title?: PatientTitle;
   first_name: string;
@@ -104,6 +106,7 @@ export interface PatientCreateData {
   cr_number?: string;
   // SHA (Social Health Authority) - readonly, populated from SHA lookup
   sha_number?: string;
+  household_number?: string;
   // Personal Information
   title?: PatientTitle;
   first_name: string;
@@ -211,4 +214,21 @@ export interface DuplicateCheckParams {
   last_name?: string;
   date_of_birth?: string;
   gender?: 'M' | 'F' | 'O';
+}
+
+export interface HouseholdMember {
+  id: number;
+  mrn: string;
+  full_name: string;
+  date_of_birth: string;
+  gender: 'M' | 'F' | 'O';
+  cr_number?: string | null;
+  sha_number?: string | null;
+  household_number?: string | null;
+}
+
+export interface HouseholdMembersResponse {
+  household_number: string;
+  count: number;
+  results: HouseholdMember[];
 }

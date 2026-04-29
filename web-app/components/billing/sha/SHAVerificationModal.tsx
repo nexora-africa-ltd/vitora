@@ -12,19 +12,27 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { AxiosError } from 'axios';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,15 +48,23 @@ import {
   Info,
   Database,
   ShieldQuestionMark,
-  Maximize2,
-  Minimize2,
+  Users,
+  FileJson,
+  Briefcase,
+  CalendarDays,
+  CreditCard,
+  HeartPulse,
+  UserRound,
 } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
+import { getApiErrorMessage } from '@/lib/api/client';
 import type {
   ClientRegistryClient,
   DirectEligibilityCheckResponse,
+  SHAEligibilityScheme,
+  SHAPayloadPerson,
 } from '@/lib/types/sha';
 
 // -----------------------------------------------------------------------------
@@ -93,6 +109,8 @@ interface SHAVerificationModalProps {
   onClientFound?: (client: ClientRegistryClient) => void;
   /** Callback when eligibility is verified */
   onEligibilityVerified?: (eligibility: DirectEligibilityCheckResponse) => void;
+  /** Callback when a SHA member/dependant should prefill the patient form */
+  onAddPersonToForm?: (person: SHAPayloadPerson) => void;
   /** Whether modal is open (controlled) */
   open?: boolean;
   /** Callback when modal open state changes */
@@ -100,6 +118,745 @@ interface SHAVerificationModalProps {
 }
 
 type LookupStatus = 'idle' | 'loading' | 'success' | 'not_found' | 'error';
+
+type RecordValue = string | number | boolean | null | undefined;
+
+type EligibilityIdentifierOption = {
+  value: string;
+  label: string;
+  placeholder: string;
+};
+
+type CRIdentifierOption = {
+  value: string;
+  label: string;
+  placeholder: string;
+};
+
+type SchemeCoverageTone = 'covered' | 'mixed' | 'not-covered';
+
+const ELIGIBILITY_IDENTIFIER_OPTIONS: EligibilityIdentifierOption[] = [
+  { value: 'National ID', label: 'National ID', placeholder: 'Enter National ID' },
+  { value: 'SHA Number', label: 'SHA Number', placeholder: 'Enter SHA Number / CR Number' },
+  { value: 'Passport Number', label: 'Passport Number', placeholder: 'Enter Passport Number' },
+  { value: 'Alien ID', label: 'Alien ID', placeholder: 'Enter Alien ID' },
+  { value: 'Huduma Number', label: 'Huduma Number', placeholder: 'Enter Huduma Number' },
+];
+
+const CR_IDENTIFIER_OPTIONS: CRIdentifierOption[] = [
+  { value: 'National ID', label: 'National ID', placeholder: 'Enter National ID' },
+  { value: 'CR Number', label: 'CR Number', placeholder: 'Enter CR Number' },
+  { value: 'Passport Number', label: 'Passport Number', placeholder: 'Enter Passport Number' },
+  { value: 'Alien ID', label: 'Alien ID', placeholder: 'Enter Alien ID' },
+  { value: 'Huduma Number', label: 'Huduma Number', placeholder: 'Enter Huduma Number' },
+  { value: 'KRA PIN', label: 'KRA PIN', placeholder: 'Enter KRA PIN' },
+  { value: 'Mandate Number', label: 'Mandate Number', placeholder: 'Enter Mandate Number' },
+];
+
+function formatRecordValue(value: RecordValue): string {
+  if (value === null || value === undefined || value === '') {
+    return 'Not provided';
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+  return String(value);
+}
+
+function DetailItem({ label, value }: { label: string; value: RecordValue }) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  return (
+    <div className="rounded-lg border bg-card/60 p-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium">{formatRecordValue(value)}</p>
+    </div>
+  );
+}
+
+function isCoveredSchemeStatus(status: string | number | boolean | null | undefined): boolean {
+  if (status === true || status === 1 || status === '1') {
+    return true;
+  }
+
+  if (typeof status === 'string') {
+    const normalizedStatus = status.trim().toLowerCase();
+    return ['active', 'covered', 'eligible'].includes(normalizedStatus);
+  }
+
+  return false;
+}
+
+function formatSchemeCoverageStatus(status: string | number | boolean | null | undefined): string {
+  if (status === null || status === undefined || status === '') {
+    return 'Unknown';
+  }
+
+  if (status === true || status === 1 || status === '1') {
+    return 'Covered';
+  }
+
+  if (status === false || status === 0 || status === '0') {
+    return 'Not Covered';
+  }
+
+  if (typeof status === 'string') {
+    return status.replace(/_/g, ' ');
+  }
+
+  return String(status);
+}
+
+function getEligibilitySchemeSummary(eligibility: DirectEligibilityCheckResponse): {
+  tone: SchemeCoverageTone;
+  title: string;
+  description: string;
+  coveredSchemes: string[];
+  uncoveredSchemes: string[];
+} {
+  const schemes = Array.isArray(eligibility.schemes) ? eligibility.schemes : [];
+  const coveredSchemes = schemes
+    .filter((scheme) => isCoveredSchemeStatus(scheme.coverage?.status))
+    .map((scheme) => scheme.schemeName)
+    .filter((schemeName): schemeName is string => typeof schemeName === 'string' && schemeName.trim().length > 0);
+  const uncoveredSchemes = schemes
+    .filter((scheme) => !isCoveredSchemeStatus(scheme.coverage?.status))
+    .map((scheme) => scheme.schemeName)
+    .filter((schemeName): schemeName is string => typeof schemeName === 'string' && schemeName.trim().length > 0);
+  const uniqueCoveredSchemes = Array.from(new Set(coveredSchemes));
+  const uniqueUncoveredSchemes = Array.from(new Set(uncoveredSchemes));
+  const shifCovered = schemes.some(
+    (scheme) => scheme.schemeName?.trim().toUpperCase() === 'SHIF' && isCoveredSchemeStatus(scheme.coverage?.status)
+  );
+  const shifUncovered = schemes.some(
+    (scheme) => scheme.schemeName?.trim().toUpperCase() === 'SHIF' && !isCoveredSchemeStatus(scheme.coverage?.status)
+  );
+
+  if (shifUncovered && uniqueCoveredSchemes.length > 0) {
+    return {
+      tone: 'mixed',
+      title: 'SHIF Not Covered',
+      description: `SHIF is not covered, while ${uniqueCoveredSchemes.join(', ')} ${uniqueCoveredSchemes.length === 1 ? 'is' : 'are'} covered.`,
+      coveredSchemes: uniqueCoveredSchemes,
+      uncoveredSchemes: uniqueUncoveredSchemes,
+    };
+  }
+
+  if (shifCovered || eligibility.is_eligible) {
+    return {
+      tone: 'covered',
+      title: 'SHA Eligible',
+      description:
+        eligibility.reason ||
+        `Active coverage found${uniqueCoveredSchemes.length > 0 ? ` in ${uniqueCoveredSchemes.join(', ')}` : ''}.`,
+      coveredSchemes: uniqueCoveredSchemes,
+      uncoveredSchemes: uniqueUncoveredSchemes,
+    };
+  }
+
+  return {
+    tone: 'not-covered',
+    title: 'Not SHA Eligible',
+    description:
+      eligibility.reason ||
+      `No active cover was returned${uniqueUncoveredSchemes.length > 0 ? ` for ${uniqueUncoveredSchemes.join(', ')}` : ''}.`,
+    coveredSchemes: uniqueCoveredSchemes,
+    uncoveredSchemes: uniqueUncoveredSchemes,
+  };
+}
+
+function getEligibilityErrorPresentation(error: unknown): { title: string; message: string } {
+  const fallbackMessage = getApiErrorMessage(error);
+
+  if (error instanceof AxiosError) {
+    const data = error.response?.data;
+    const status = error.response?.status;
+
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const errorTitle = typeof data.error_title === 'string' ? data.error_title : null;
+      const detail = typeof data.detail === 'string' ? data.detail : null;
+      const message = typeof data.message === 'string' ? data.message : null;
+      const payloadError = typeof data.error === 'string' ? data.error : null;
+
+      if (errorTitle) {
+        return {
+          title: errorTitle,
+          message: detail || message || payloadError || fallbackMessage,
+        };
+      }
+    }
+
+    if (status === 502) {
+      return {
+        title: 'SHA auth failed',
+        message: 'Unable to authenticate with the upstream SHA service. Please verify the SHA credentials or try again later.',
+      };
+    }
+
+    if (status === 503) {
+      return {
+        title: 'SHA API currently unavailable',
+        message: 'The upstream SHA service is currently unavailable. Please try the eligibility check again later.',
+      };
+    }
+
+    if (status === 504) {
+      return {
+        title: 'SHA API timed out',
+        message: 'The upstream SHA service did not respond in time. Please retry the eligibility check.',
+      };
+    }
+  }
+
+  return {
+    title: 'Verification Failed',
+    message: fallbackMessage || 'Unable to verify eligibility',
+  };
+}
+
+function getSHAServiceErrorPresentation(
+  error: unknown,
+  options?: {
+    unavailableTitle?: string;
+    unavailableMessage?: string;
+    timeoutTitle?: string;
+    timeoutMessage?: string;
+    authTitle?: string;
+    authMessage?: string;
+    fallbackTitle?: string;
+    fallbackMessage?: string;
+  }
+): { title: string; message: string } {
+  const fallbackMessage = getApiErrorMessage(error);
+
+  if (error instanceof AxiosError) {
+    const data = error.response?.data;
+    const status = error.response?.status;
+
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const errorTitle = typeof data.error_title === 'string' ? data.error_title : null;
+      const detail = typeof data.detail === 'string' ? data.detail : null;
+      const message = typeof data.message === 'string' ? data.message : null;
+      const payloadError = typeof data.error === 'string' ? data.error : null;
+
+      if (errorTitle) {
+        return {
+          title: errorTitle,
+          message: detail || message || payloadError || fallbackMessage,
+        };
+      }
+    }
+
+    if (status === 502) {
+      return {
+        title: options?.authTitle || 'SHA auth failed',
+        message:
+          options?.authMessage ||
+          'Unable to authenticate with the upstream SHA service. Please verify the SHA credentials or try again later.',
+      };
+    }
+
+    if (status === 503) {
+      return {
+        title: options?.unavailableTitle || 'SHA API currently unavailable',
+        message:
+          options?.unavailableMessage ||
+          'The upstream SHA service is currently unavailable. Please try again later.',
+      };
+    }
+
+    if (status === 504) {
+      return {
+        title: options?.timeoutTitle || 'SHA API timed out',
+        message:
+          options?.timeoutMessage ||
+          'The upstream SHA service did not respond in time. Please retry in a moment.',
+      };
+    }
+  }
+
+  return {
+    title: options?.fallbackTitle || 'Request Failed',
+    message: fallbackMessage || options?.fallbackMessage || 'Unable to complete the request.',
+  };
+}
+
+function extractShaNumberFromIdentifiers(identifiers: Array<Record<string, unknown>>): string | undefined {
+  const shaIdentifier = identifiers.find((identifier) => {
+    const identificationType = identifier.identification_type;
+    return typeof identificationType === 'string' && identificationType.toLowerCase().includes('sha');
+  });
+
+  return typeof shaIdentifier?.identification_number === 'string'
+    ? shaIdentifier.identification_number
+    : undefined;
+}
+
+function extractIdentifierByLabel(
+  identifiers: Array<Record<string, unknown>>,
+  matcher: (label: string) => boolean
+): string | undefined {
+  const match = identifiers.find((identifier) => {
+    const identificationType = identifier.identification_type;
+    return typeof identificationType === 'string' && matcher(identificationType.toLowerCase());
+  });
+
+  return typeof match?.identification_number === 'string' ? match.identification_number : undefined;
+}
+
+function buildShaPayloadPerson(
+  person: Record<string, unknown>,
+  source: SHAPayloadPerson['source'],
+  relationship?: string
+): SHAPayloadPerson {
+  const identifiers = Array.isArray(person.other_identifications)
+    ? (person.other_identifications as Array<Record<string, unknown>>)
+    : [];
+
+  return {
+    source,
+    relationship,
+    id: typeof person.id === 'string' ? person.id : undefined,
+    resourceType: typeof person.resourceType === 'string' ? person.resourceType : undefined,
+    first_name: typeof person.first_name === 'string' ? person.first_name : undefined,
+    middle_name: typeof person.middle_name === 'string' ? person.middle_name : undefined,
+    last_name: typeof person.last_name === 'string' ? person.last_name : undefined,
+    gender: typeof person.gender === 'string' ? person.gender : undefined,
+    date_of_birth: typeof person.date_of_birth === 'string' ? person.date_of_birth : undefined,
+    place_of_birth: typeof person.place_of_birth === 'string' ? person.place_of_birth : undefined,
+    citizenship: typeof person.citizenship === 'string' ? person.citizenship : undefined,
+    employment_type: typeof person.employment_type === 'string' ? person.employment_type : undefined,
+    civil_status: typeof person.civil_status === 'string' ? person.civil_status : undefined,
+    identification_type: typeof person.identification_type === 'string' ? person.identification_type : undefined,
+    identification_number: typeof person.identification_number === 'string' ? person.identification_number : undefined,
+    other_identifications: identifiers.map((identifier) => ({
+      identification_type: typeof identifier.identification_type === 'string' ? identifier.identification_type : undefined,
+      identification_number: typeof identifier.identification_number === 'string' ? identifier.identification_number : undefined,
+    })),
+    phone: typeof person.phone === 'string' ? person.phone : undefined,
+    country: typeof person.country === 'string' ? person.country : undefined,
+    county: typeof person.county === 'string' ? person.county : undefined,
+    sub_county: typeof person.sub_county === 'string' ? person.sub_county : undefined,
+    ward: typeof person.ward === 'string' ? person.ward : undefined,
+    village_estate: typeof person.village_estate === 'string' ? person.village_estate : undefined,
+    province_state_country: typeof person.province_state_country === 'string' ? person.province_state_country : undefined,
+    zip_code: typeof person.zip_code === 'string' ? person.zip_code : undefined,
+    postal_address: typeof person.postal_address === 'string' ? person.postal_address : undefined,
+    id_serial: typeof person.id_serial === 'string' ? person.id_serial : undefined,
+    sha_number:
+      extractShaNumberFromIdentifiers(identifiers) ??
+      (typeof person.sha_number === 'string' ? person.sha_number : undefined),
+    cr_number: typeof person.id === 'string' && person.id.startsWith('CR') ? person.id : undefined,
+    household_number: extractIdentifierByLabel(identifiers, (label) => label.includes('household')),
+  };
+}
+
+function DetailSection({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3 rounded-xl border bg-background/70 p-4">
+      <div className="flex items-center gap-2">
+        <div className="text-muted-foreground">{icon}</div>
+        <h4 className="text-sm font-semibold">{title}</h4>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EligibilityDataPanel({
+  eligibility,
+  onAddPersonToForm,
+}: {
+  eligibility: DirectEligibilityCheckResponse;
+  onAddPersonToForm?: (person: SHAPayloadPerson) => void;
+}) {
+  const raw = eligibility.raw_response ?? {};
+  const rawPatient = raw as Record<string, unknown>;
+  const schemeSummary = getEligibilitySchemeSummary(eligibility);
+  const otherIdentifications = Array.isArray(rawPatient.other_identifications)
+    ? (rawPatient.other_identifications as Array<Record<string, unknown>>)
+    : [];
+  const dependantGroups = Array.isArray(rawPatient.dependants)
+    ? (rawPatient.dependants as Array<Record<string, unknown>>)
+    : [];
+  const meta = rawPatient.meta && typeof rawPatient.meta === 'object'
+    ? (rawPatient.meta as Record<string, unknown>)
+    : null;
+  const originSystem = rawPatient.originSystem && typeof rawPatient.originSystem === 'object'
+    ? (rawPatient.originSystem as Record<string, unknown>)
+    : null;
+  const schemes = Array.isArray(eligibility.schemes) ? eligibility.schemes : [];
+
+  return (
+    <div className="space-y-4">
+      <div className={cn(
+        'rounded-2xl border p-4',
+        schemeSummary.tone === 'covered' ? 'border-success/30 bg-success/10' : 'border-warning/30 bg-warning/10'
+      )}>
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 shrink-0">
+              {schemeSummary.tone === 'covered' ? <SHALogo size="lg" /> : <ShieldOff className="h-6 w-6 text-warning-foreground" />}
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base font-semibold">
+                  {schemeSummary.tone === 'mixed' ? 'Mixed Scheme Coverage' : schemeSummary.tone === 'covered' ? 'SHA Coverage Found' : 'SHA Coverage Not Active'}
+                </h3>
+                <Badge variant="outline" className={cn(
+                  schemeSummary.tone === 'covered' ? 'border-success text-success' : 'border-warning text-warning-foreground'
+                )}>
+                  {schemeSummary.tone === 'covered' ? 'Eligible' : schemeSummary.tone === 'mixed' ? 'Mixed' : 'Ineligible'}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {schemeSummary.description}
+              </p>
+              {schemeSummary.tone === 'mixed' && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {schemeSummary.uncoveredSchemes.map((schemeName) => (
+                    <Badge key={`uncovered-${schemeName}`} variant="outline" className="border-warning text-warning-foreground">
+                      {schemeName} not covered
+                    </Badge>
+                  ))}
+                  {schemeSummary.coveredSchemes.map((schemeName) => (
+                    <Badge key={`covered-${schemeName}`} variant="outline" className="border-success text-success">
+                      {schemeName} covered
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <DetailItem label="SHA Number" value={eligibility.sha_number} />
+            <DetailItem label="Member CR Number" value={eligibility.member_cr_number} />
+            <DetailItem label="Copay" value={eligibility.copay_percentage === 0 ? 'Full coverage' : `${eligibility.copay_percentage}%`} />
+            <DetailItem label="Status Code" value={eligibility.status_code} />
+          </div>
+        </div>
+        {onAddPersonToForm && (
+          <div className="mt-4 flex justify-end">
+            <Button
+              type="button"
+              onClick={() => onAddPersonToForm(buildShaPayloadPerson(rawPatient, 'principal'))}
+            >
+              Add Member To Form
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {schemes.length > 0 && (
+        <DetailSection title="Scheme Coverage" icon={<ShieldQuestionMark className="h-4 w-4" />}>
+          <div className="space-y-3">
+            {schemes.map((scheme: SHAEligibilityScheme, index) => {
+              const coverage = scheme.coverage;
+              const policy = scheme.policy;
+              const principalContributor = scheme.principalContributor;
+              const isCovered = isCoveredSchemeStatus(coverage?.status);
+              const schemeKey = [
+                scheme.schemeName,
+                scheme.schemeId,
+                scheme.memberType,
+                policy?.number,
+                principalContributor?.crNumber,
+                index,
+              ]
+                .filter((value) => value !== null && value !== undefined && value !== '')
+                .join('-');
+
+              return (
+                <div key={schemeKey} className="rounded-xl border bg-card/60 p-4">
+                  <div className="border-b pb-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold">{scheme.schemeName ?? `Scheme ${index + 1}`}</p>
+                      {scheme.schemeId !== undefined && <Badge variant="outline">ID {scheme.schemeId}</Badge>}
+                      {scheme.memberType && <Badge variant="secondary">{scheme.memberType}</Badge>}
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'sm:ml-auto',
+                          isCovered ? 'border-success text-success' : 'border-warning text-warning-foreground'
+                        )}
+                      >
+                        {formatSchemeCoverageStatus(coverage?.status)}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {coverage?.message || coverage?.reason || 'Coverage details returned by SHA eligibility lookup.'}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <DetailItem label="Policy Number" value={policy?.number} />
+                    <DetailItem label="Policy Start" value={policy?.startDate} />
+                    <DetailItem label="Policy End" value={policy?.endDate} />
+                    <DetailItem label="Coverage Start" value={coverage?.startDate} />
+                    <DetailItem label="Coverage End" value={coverage?.endDate} />
+                    <DetailItem label="Coverage Reason" value={coverage?.reason} />
+                  </div>
+
+                  {principalContributor && (
+                    <div className="mt-4 rounded-lg border bg-background/80 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Principal Contributor</p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <DetailItem label="Name" value={principalContributor.name} />
+                        <DetailItem label="CR Number" value={principalContributor.crNumber} />
+                        <DetailItem label="ID Type" value={principalContributor.idType} />
+                        <DetailItem label="ID Number" value={principalContributor.idNumber} />
+                        <DetailItem label="Relationship" value={principalContributor.relationship} />
+                        <DetailItem label="Employment Type" value={principalContributor.employmentType} />
+                        <DetailItem label="Employer" value={principalContributor.employerDetails?.name} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </DetailSection>
+      )}
+
+      <DetailSection title="Member Details" icon={<UserRound className="h-4 w-4" />}>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <DetailItem label="Full Name" value={eligibility.full_name} />
+          <DetailItem label="Member CR Number" value={eligibility.member_cr_number} />
+          <DetailItem label="Status Description" value={eligibility.status_desc} />
+          <DetailItem label="First Name" value={rawPatient.first_name as RecordValue} />
+          <DetailItem label="Middle Name" value={rawPatient.middle_name as RecordValue} />
+          <DetailItem label="Last Name" value={rawPatient.last_name as RecordValue} />
+          <DetailItem label="Identification Type" value={rawPatient.identification_type as RecordValue} />
+          <DetailItem label="Identification Number" value={rawPatient.identification_number as RecordValue} />
+          <DetailItem label="Gender" value={eligibility.gender ?? (rawPatient.gender as RecordValue)} />
+          <DetailItem label="Date of Birth" value={eligibility.date_of_birth ?? (rawPatient.date_of_birth as RecordValue)} />
+          <DetailItem label="Age" value={eligibility.age} />
+          <DetailItem label="Citizenship" value={rawPatient.citizenship as RecordValue} />
+          <DetailItem label="Civil Status" value={rawPatient.civil_status as RecordValue} />
+          <DetailItem label="Coverage End Date" value={eligibility.coverage_end_date} />
+          <DetailItem label="OTP Whitelisted" value={eligibility.whitelisted_for_otp} />
+          <DetailItem label="Principal Record" value={rawPatient.resourceType as RecordValue} />
+          <DetailItem label="Record ID" value={rawPatient.id as RecordValue} />
+        </div>
+      </DetailSection>
+
+      <DetailSection title="Contact & Address" icon={<Database className="h-4 w-4" />}>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <DetailItem label="Phone" value={rawPatient.phone as RecordValue} />
+          <DetailItem label="Country" value={rawPatient.country as RecordValue} />
+          <DetailItem label="County" value={rawPatient.county as RecordValue} />
+          <DetailItem label="Sub County" value={rawPatient.sub_county as RecordValue} />
+          <DetailItem label="Ward" value={rawPatient.ward as RecordValue} />
+          <DetailItem label="Village / Estate" value={rawPatient.village_estate as RecordValue} />
+          <DetailItem label="Province / State" value={rawPatient.province_state_country as RecordValue} />
+          <DetailItem label="Postal Address" value={rawPatient.postal_address as RecordValue} />
+          <DetailItem label="ZIP Code" value={rawPatient.zip_code as RecordValue} />
+          <DetailItem label="Place of Birth" value={rawPatient.place_of_birth as RecordValue} />
+          <DetailItem label="ID Serial" value={rawPatient.id_serial as RecordValue} />
+        </div>
+      </DetailSection>
+
+      <DetailSection title="Employment" icon={<Briefcase className="h-4 w-4" />}>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <DetailItem label="Employment Type" value={eligibility.employment_type ?? (rawPatient.employment_type as RecordValue)} />
+          <DetailItem label="Employer Name" value={eligibility.employer_name} />
+          <DetailItem label="Employed" value={eligibility.is_employed} />
+          <DetailItem label="Transition Status" value={eligibility.nhif_transition_status} />
+        </div>
+      </DetailSection>
+
+      {otherIdentifications.length > 0 && (
+        <DetailSection title="Other Identifications" icon={<CreditCard className="h-4 w-4" />}>
+          <div className="space-y-2">
+            {otherIdentifications.map((item, index) => (
+              <div key={`${String(item.identification_type)}-${index}`} className="rounded-lg border bg-card/60 p-3">
+                <p className="text-sm font-medium">{formatRecordValue(item.identification_type as RecordValue)}</p>
+                <p className="mt-1 text-sm text-muted-foreground break-all">{formatRecordValue(item.identification_number as RecordValue)}</p>
+              </div>
+            ))}
+          </div>
+        </DetailSection>
+      )}
+
+      {eligibility.dependents && eligibility.dependents.length > 0 && (
+        <DetailSection title="Dependants" icon={<Users className="h-4 w-4" />}>
+          <div className="space-y-2">
+            {eligibility.dependents.map((dependent, index) => (
+              <div key={`${dependent.sha_number ?? dependent.name}-${index}`} className="rounded-lg border bg-card/60 p-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium break-words">{dependent.name}</p>
+                    <p className="text-xs text-muted-foreground break-words">
+                      {[dependent.relationship, dependent.sha_number].filter(Boolean).join(' • ') || 'Dependant'}
+                    </p>
+                  </div>
+                  {dependent.is_active !== undefined && (
+                    <Badge variant="outline" className={dependent.is_active ? 'border-success text-success' : 'border-warning text-warning-foreground'}>
+                      {dependent.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DetailSection>
+      )}
+
+      {dependantGroups.length > 0 && (
+        <DetailSection title="Dependants From SHA Payload" icon={<Users className="h-4 w-4" />}>
+          <div className="space-y-3">
+            {dependantGroups.map((group, groupIndex) => {
+              const groupResults = Array.isArray(group.result)
+                ? (group.result as Array<Record<string, unknown>>)
+                : [];
+
+              return (
+                <div key={`${String(group.relationship)}-${groupIndex}`} className="rounded-xl border bg-card/60 p-3">
+                  <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold">{formatRecordValue(group.relationship as RecordValue)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Added {formatRecordValue(group.date_added as RecordValue)}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{formatRecordValue(group.total as RecordValue)} linked</Badge>
+                  </div>
+
+                  <div className="mt-3 space-y-3">
+                    {groupResults.map((person, personIndex) => (
+                      <div key={`${String(person.id)}-${personIndex}`} className="rounded-lg border bg-background/80 p-3">
+                        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold break-words">
+                              {[person.first_name, person.middle_name, person.last_name]
+                                .filter((value) => typeof value === 'string' && value.trim().length > 0)
+                                .join(' ')}
+                            </p>
+                            <p className="text-xs text-muted-foreground break-words">
+                              {[
+                                person.identification_type,
+                                person.identification_number,
+                                person.id,
+                              ]
+                                .filter((value) => typeof value === 'string' && value.trim().length > 0)
+                                .join(' • ')}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{formatRecordValue(person.resourceType as RecordValue)}</Badge>
+                            {onAddPersonToForm && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => onAddPersonToForm(buildShaPayloadPerson(person, 'dependent', typeof group.relationship === 'string' ? group.relationship : undefined))}
+                              >
+                                Add To Form
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          <DetailItem label="Gender" value={person.gender as RecordValue} />
+                          <DetailItem label="Date of Birth" value={person.date_of_birth as RecordValue} />
+                          <DetailItem label="Civil Status" value={person.civil_status as RecordValue} />
+                          <DetailItem label="Employment Type" value={person.employment_type as RecordValue} />
+                          <DetailItem label="Phone" value={person.phone as RecordValue} />
+                          <DetailItem label="Country" value={person.country as RecordValue} />
+                          <DetailItem label="County" value={person.county as RecordValue} />
+                          <DetailItem label="Sub County" value={person.sub_county as RecordValue} />
+                          <DetailItem label="Ward" value={person.ward as RecordValue} />
+                          <DetailItem label="Village / Estate" value={person.village_estate as RecordValue} />
+                          <DetailItem label="Province / State" value={person.province_state_country as RecordValue} />
+                          <DetailItem label="Postal Address" value={person.postal_address as RecordValue} />
+                          <DetailItem label="ZIP Code" value={person.zip_code as RecordValue} />
+                          <DetailItem label="ID Serial" value={person.id_serial as RecordValue} />
+                          <DetailItem label="Place of Birth" value={person.place_of_birth as RecordValue} />
+                        </div>
+
+                        {Array.isArray(person.other_identifications) && person.other_identifications.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              Other Identifications
+                            </p>
+                            <div className="space-y-2">
+                              {(person.other_identifications as Array<Record<string, unknown>>).map((identifier, identifierIndex) => (
+                                <div key={`${String(identifier.identification_type)}-${identifierIndex}`} className="rounded-lg border bg-card/60 p-2.5">
+                                  <p className="text-sm font-medium">
+                                    {formatRecordValue(identifier.identification_type as RecordValue)}
+                                  </p>
+                                  <p className="mt-1 break-all text-sm text-muted-foreground">
+                                    {formatRecordValue(identifier.identification_number as RecordValue)}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DetailSection>
+      )}
+
+      {eligibility.means_testing && (
+        <DetailSection title="Means Testing" icon={<HeartPulse className="h-4 w-4" />}>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <DetailItem label="Monthly Contribution" value={eligibility.means_testing.monthly_contribution} />
+            <DetailItem label="Annual Contribution" value={eligibility.means_testing.annual_contribution} />
+            <DetailItem label="Income Category" value={eligibility.means_testing.income_prediction_category} />
+            <DetailItem label="Appeal Status" value={eligibility.means_testing.appeal_status} />
+            <DetailItem label="Means Testing Done" value={eligibility.means_testing.means_testing_done} />
+            <DetailItem label="Assessment Date" value={eligibility.means_testing.mt_date} />
+          </div>
+        </DetailSection>
+      )}
+
+      {(meta || originSystem) && (
+        <DetailSection title="Source Metadata" icon={<CalendarDays className="h-4 w-4" />}>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <DetailItem label="Version" value={meta?.versionId as RecordValue} />
+            <DetailItem label="Created" value={meta?.creationTime as RecordValue} />
+            <DetailItem label="Last Updated" value={meta?.lastUpdated as RecordValue} />
+            <DetailItem label="Source" value={meta?.source as RecordValue} />
+            <DetailItem label="Origin System" value={originSystem?.system as RecordValue} />
+          </div>
+        </DetailSection>
+      )}
+
+      {eligibility.possible_solution && (
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
+          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <AlertTitle className="text-blue-800 dark:text-blue-300 text-sm">Suggested Resolution</AlertTitle>
+          <AlertDescription className="text-sm text-blue-700 dark:text-blue-400">
+            {eligibility.possible_solution}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <DetailSection title="Raw SHA Payload" icon={<FileJson className="h-4 w-4" />}>
+        <pre className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
+          {JSON.stringify(eligibility.raw_response ?? {}, null, 2)}
+        </pre>
+      </DetailSection>
+    </div>
+  );
+}
 
 // ============================================================================
 // Client Registry Tab Content
@@ -111,25 +868,36 @@ interface CRLookupTabProps {
 }
 
 function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
-  const [nationalId, setNationalId] = useState(defaultNationalId || '');
+  const [identifierType, setIdentifierType] = useState<string>('National ID');
+  const [identifierValue, setIdentifierValue] = useState(defaultNationalId || '');
   const [status, setStatus] = useState<LookupStatus>('idle');
   const [client, setClient] = useState<ClientRegistryClient | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>();
+  const [errorTitle, setErrorTitle] = useState<string>('Lookup Failed');
+  const selectedIdentifierOption = CR_IDENTIFIER_OPTIONS.find(
+    (option) => option.value === identifierType
+  ) ?? {
+    value: 'National ID',
+    label: 'National ID',
+    placeholder: 'Enter National ID',
+  };
 
   const handleLookup = useCallback(async () => {
-    if (!nationalId || nationalId.trim().length < 5) {
-      setErrorMessage('Please enter a valid National ID (at least 5 characters)');
+    if (!identifierValue || identifierValue.trim().length < 5) {
+      setErrorTitle('Lookup Failed');
+      setErrorMessage(`Please enter a valid ${identifierType} (at least 5 characters)`);
       return;
     }
 
     setStatus('loading');
     setClient(null);
+    setErrorTitle('Lookup Failed');
     setErrorMessage(undefined);
 
     try {
       const response = await shaApi.fetchFromClientRegistry({
-        identification_type: 'National ID',
-        identification_number: nationalId.trim(),
+        identification_type: identifierType,
+        identification_number: identifierValue.trim(),
       });
 
       if (response.found && response.client) {
@@ -141,12 +909,21 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
       }
     } catch (error) {
       console.error('CR lookup failed:', error);
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Failed to connect to Client Registry'
-      );
+      const presentation = getSHAServiceErrorPresentation(error, {
+        unavailableTitle: 'SHA Client Registry unavailable',
+        unavailableMessage: 'The upstream SHA Client Registry is currently unavailable. Please try the lookup again later.',
+        timeoutTitle: 'SHA Client Registry timed out',
+        timeoutMessage: 'The upstream SHA Client Registry did not respond in time. Please retry the lookup.',
+        authTitle: 'SHA auth failed',
+        authMessage: 'Unable to authenticate with the upstream SHA service while performing the Client Registry lookup.',
+        fallbackTitle: 'Lookup Failed',
+        fallbackMessage: 'Failed to connect to Client Registry',
+      });
+      setErrorTitle(presentation.title);
+      setErrorMessage(presentation.message);
       setStatus('error');
     }
-  }, [nationalId, onClientFound]);
+  }, [identifierType, identifierValue, onClientFound]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -158,13 +935,34 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="cr-national-id">National ID Number</Label>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <Label htmlFor="cr-identifier-value">Identification</Label>
+        <div className="grid gap-2 sm:grid-cols-[220px_minmax(0,1fr)_auto]">
+          <Select
+            value={identifierType}
+            onValueChange={(value) => {
+              setIdentifierType(value);
+              setStatus('idle');
+              setClient(null);
+              setErrorTitle('Lookup Failed');
+              setErrorMessage(undefined);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select identifier type" />
+            </SelectTrigger>
+            <SelectContent>
+              {CR_IDENTIFIER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
-            id="cr-national-id"
-            value={nationalId}
-            onChange={(e) => setNationalId(e.target.value)}
-            placeholder="Enter National ID"
+            id="cr-identifier-value"
+            value={identifierValue}
+            onChange={(e) => setIdentifierValue(e.target.value)}
+            placeholder={selectedIdentifierOption.placeholder}
             onKeyDown={handleKeyDown}
             className={cn(
               'flex-1',
@@ -174,7 +972,7 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
           />
           <Button
             onClick={handleLookup}
-            disabled={status === 'loading' || !nationalId.trim()}
+            disabled={status === 'loading' || !identifierValue.trim()}
             className="w-full sm:w-auto"
           >
             {status === 'loading' ? (
@@ -202,7 +1000,7 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
       {status === 'error' && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Lookup Failed</AlertTitle>
+          <AlertTitle>{errorTitle}</AlertTitle>
           <AlertDescription>
             {errorMessage || 'Unable to connect to Client Registry'}
           </AlertDescription>
@@ -286,33 +1084,61 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
 interface EligibilityCheckTabProps {
   defaultNationalId?: string;
   onEligibilityVerified?: (eligibility: DirectEligibilityCheckResponse) => void;
+  onEligibilityPreviewChange?: (eligibility: DirectEligibilityCheckResponse | null) => void;
 }
 
-function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: EligibilityCheckTabProps) {
-  const [nationalId, setNationalId] = useState(defaultNationalId || '');
+function EligibilityCheckTab({
+  defaultNationalId,
+  onEligibilityVerified,
+  onEligibilityPreviewChange,
+}: EligibilityCheckTabProps) {
+  const [identifierType, setIdentifierType] = useState<string>('National ID');
+  const [identifierValue, setIdentifierValue] = useState(defaultNationalId || '');
   const [status, setStatus] = useState<LookupStatus>('idle');
   const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>();
+  const [errorTitle, setErrorTitle] = useState<string>('Verification Failed');
+
+  const selectedIdentifierOption = ELIGIBILITY_IDENTIFIER_OPTIONS.find(
+    (option) => option.value === identifierType
+  ) ?? {
+    value: 'National ID',
+    label: 'National ID',
+    placeholder: 'Enter National ID',
+  };
 
   const handleCheck = useCallback(async () => {
-    if (!nationalId || nationalId.trim().length < 5) {
-      setErrorMessage('Please enter a valid National ID (at least 5 characters)');
+    if (!identifierValue || identifierValue.trim().length < 5) {
+      setErrorTitle('Verification Failed');
+      setErrorMessage(`Please enter a valid ${identifierType} (at least 5 characters)`);
       return;
     }
 
     setStatus('loading');
     setEligibility(null);
+    setErrorTitle('Verification Failed');
     setErrorMessage(undefined);
+    onEligibilityPreviewChange?.(null);
 
     try {
-      const response = await shaApi.checkDirectEligibility({
-        national_id: nationalId.trim(),
-      });
+      const trimmedIdentifierValue = identifierValue.trim();
+      const response = await shaApi.checkDirectEligibility(
+        identifierType === 'National ID'
+          ? { national_id: trimmedIdentifierValue }
+          : identifierType === 'SHA Number'
+            ? { sha_number: trimmedIdentifierValue }
+            : {
+                identification_type: identifierType,
+                identification_number: trimmedIdentifierValue,
+              }
+      );
 
       setEligibility(response);
+      onEligibilityPreviewChange?.(response);
 
       if (response.error) {
         setStatus('error');
+        setErrorTitle('Verification Failed');
         setErrorMessage(response.error);
       } else {
         setStatus('success');
@@ -320,12 +1146,13 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
       }
     } catch (error) {
       console.error('Eligibility check failed:', error);
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Failed to verify eligibility'
-      );
+      onEligibilityPreviewChange?.(null);
+      const presentation = getEligibilityErrorPresentation(error);
+      setErrorTitle(presentation.title);
+      setErrorMessage(presentation.message);
       setStatus('error');
     }
-  }, [nationalId, onEligibilityVerified]);
+  }, [identifierType, identifierValue, onEligibilityPreviewChange, onEligibilityVerified]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -337,13 +1164,34 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="elig-national-id">National ID Number</Label>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <Label htmlFor="elig-identifier-value">Identification</Label>
+        <div className="grid gap-2 sm:grid-cols-[220px_minmax(0,1fr)_auto]">
+          <Select
+            value={identifierType}
+            onValueChange={(value) => {
+              setIdentifierType(value);
+              setStatus('idle');
+              setEligibility(null);
+              setErrorMessage(undefined);
+              onEligibilityPreviewChange?.(null);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select identifier type" />
+            </SelectTrigger>
+            <SelectContent>
+              {ELIGIBILITY_IDENTIFIER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
-            id="elig-national-id"
-            value={nationalId}
-            onChange={(e) => setNationalId(e.target.value)}
-            placeholder="Enter National ID"
+            id="elig-identifier-value"
+            value={identifierValue}
+            onChange={(e) => setIdentifierValue(e.target.value)}
+            placeholder={selectedIdentifierOption.placeholder}
             onKeyDown={handleKeyDown}
             className={cn(
               'flex-1',
@@ -354,7 +1202,7 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
           />
           <Button
             onClick={handleCheck}
-            disabled={status === 'loading' || !nationalId.trim()}
+            disabled={status === 'loading' || !identifierValue.trim()}
             className="w-full sm:w-auto"
           >
             {status === 'loading' ? (
@@ -371,7 +1219,7 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
       {status === 'error' && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Verification Failed</AlertTitle>
+          <AlertTitle>{errorTitle}</AlertTitle>
           <AlertDescription>
             {errorMessage || 'Unable to verify eligibility'}
           </AlertDescription>
@@ -380,22 +1228,26 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
 
       {/* Eligibility Result */}
       {status === 'success' && eligibility && (
+        (() => {
+          const schemeSummary = getEligibilitySchemeSummary(eligibility);
+
+          return (
         <Card className={cn(
-          eligibility.is_eligible
+          schemeSummary.tone === 'covered'
             ? 'border-success bg-success/10'
             : 'border-warning bg-warning/10'
         )}>
           <CardContent className="pt-4">
-            {eligibility.is_eligible ? (
+            {schemeSummary.tone === 'covered' ? (
               <>
                 <div className="flex items-center gap-2 mb-3">
                   <SHALogo size="lg" />
                   <div>
                     <h4 className="font-semibold text-success text-lg">
-                      SHA ELIGIBLE
+                      SHA Eligible
                     </h4>
                     <p className="text-sm text-success/80">
-                      {eligibility.reason || 'This individual has active SHA coverage'}
+                      {schemeSummary.description}
                     </p>
                   </div>
                 </div>
@@ -456,6 +1308,70 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
                     Confirm Eligibility
                   </Button>
                 </div>
+              </>
+            ) : schemeSummary.tone === 'mixed' ? (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldOff className="h-6 w-6 text-warning-foreground" />
+                  <div>
+                    <h4 className="font-semibold text-warning-foreground text-lg">
+                      SHIF Not Covered
+                    </h4>
+                    <p className="text-sm text-warning-foreground/80">
+                      {schemeSummary.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {schemeSummary.uncoveredSchemes.map((schemeName) => (
+                    <Badge key={`summary-uncovered-${schemeName}`} variant="outline" className="border-warning text-warning-foreground">
+                      {schemeName} not covered
+                    </Badge>
+                  ))}
+                  {schemeSummary.coveredSchemes.map((schemeName) => (
+                    <Badge key={`summary-covered-${schemeName}`} variant="outline" className="border-success text-success">
+                      {schemeName} covered
+                    </Badge>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-4">
+                  {eligibility.full_name && (
+                    <div className="min-w-0">
+                      <Label className="text-muted-foreground text-xs">Name</Label>
+                      <p className="font-medium break-words">{eligibility.full_name}</p>
+                    </div>
+                  )}
+                  {eligibility.sha_number && (
+                    <div className="min-w-0">
+                      <Label className="text-muted-foreground text-xs">SHA Number</Label>
+                      <p className="font-medium break-words">{eligibility.sha_number}</p>
+                    </div>
+                  )}
+                  {eligibility.coverage_end_date && (
+                    <div className="min-w-0">
+                      <Label className="text-muted-foreground text-xs">SHIF Coverage Until</Label>
+                      <p className="font-medium break-words">{eligibility.coverage_end_date}</p>
+                    </div>
+                  )}
+                  {eligibility.employer_name && (
+                    <div className="min-w-0">
+                      <Label className="text-muted-foreground text-xs">Employer</Label>
+                      <p className="font-medium break-words">{eligibility.employer_name}</p>
+                    </div>
+                  )}
+                </div>
+
+                {eligibility.possible_solution && (
+                  <Alert className="mt-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
+                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <AlertTitle className="text-blue-800 dark:text-blue-300 text-sm">How to Resolve</AlertTitle>
+                    <AlertDescription className="text-sm text-blue-700 dark:text-blue-400">
+                      {eligibility.possible_solution}
+                    </AlertDescription>
+                  </Alert>
+                )}
               </>
             ) : (
               <>
@@ -554,6 +1470,8 @@ function EligibilityCheckTab({ defaultNationalId, onEligibilityVerified }: Eligi
             )}
           </CardContent>
         </Card>
+          );
+        })()
       )}
     </div>
   );
@@ -569,145 +1487,50 @@ export function SHAVerificationModal({
   defaultTab = 'eligibility',
   onClientFound,
   onEligibilityVerified,
+  onAddPersonToForm,
   open,
   onOpenChange,
 }: SHAVerificationModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const scrollAreaRef = React.useRef<HTMLDivElement | null>(null);
-
-  const isMobile = useMediaQuery('(max-width: 640px)');
-
-  // Always use fullscreen layout on small screens.
-  const effectiveExpanded = isMobile ? true : isExpanded;
-  const useFullScreenLayout = effectiveExpanded;
 
   const isControlled = open !== undefined;
   const isOpen = isControlled ? open : internalOpen;
   const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
 
+  const [previewEligibility, setPreviewEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
+
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) setIsExpanded(false); // Reset expanded state when closing
+    <Sheet open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        setPreviewEligibility(null);
+      }
       setIsOpen(open);
     }}>
-      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
 
-      <DialogContent className={cn(
-        "transition-all duration-200 overflow-hidden",
-        useFullScreenLayout
-          ? "!max-w-[95vw] !w-[95vw] !h-[95vh] !max-h-[95vh] p-0"
-          : "max-w-md w-auto"
-      )}>
-        {useFullScreenLayout ? (
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="relative border-b px-4 py-3">
-              {!isMobile && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-4 top-3 h-8 w-8"
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  title={effectiveExpanded ? 'Minimize' : 'Expand to fullscreen'}
-                >
-                  {effectiveExpanded ? (
-                    <Minimize2 className="h-4 w-4" />
-                  ) : (
-                    <Maximize2 className="h-4 w-4" />
-                  )}
-                </Button>
-              )}
+      <SheetContent
+        side="right"
+        className={cn(
+          'flex h-full w-full flex-col gap-0 p-0',
+          isMobile ? 'max-w-none' : 'sm:max-w-4xl xl:max-w-5xl'
+        )}
+      >
+        <SheetHeader className="border-b px-5 py-4 text-left">
+          <SheetTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            Kenya Digital Health Verification
+          </SheetTitle>
+          <SheetDescription>
+            Lookup patient records from Client Registry and review the full SHA eligibility payload in one place.
+          </SheetDescription>
+        </SheetHeader>
 
-              <DialogHeader className={cn('text-left pr-10', !isMobile && 'pl-10')}>
-                <DialogTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-primary" />
-                  Kenya Digital Health Verification
-                </DialogTitle>
-                <DialogDescription>
-                  Lookup patient records from Client Registry or verify SHA insurance eligibility
-                </DialogDescription>
-              </DialogHeader>
-            </div>
-
-            <div className="relative flex-1 min-h-0">
-              <ScrollArea ref={scrollAreaRef} className="h-full">
-                <div className="p-4">
-                <Tabs defaultValue={defaultTab}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="cr" className="flex items-center gap-2">
-                      <Database className="h-4 w-4" />
-                      Client Registry
-                    </TabsTrigger>
-                    <TabsTrigger value="eligibility" className="flex items-center gap-2">
-                      <SHALogo size="sm" />
-                      SHA Eligibility
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="cr" className="mt-4">
-                    <div className="mb-4 p-3 bg-muted rounded-lg text-xs sm:text-sm leading-relaxed">
-                      <p className="text-muted-foreground">
-                        <strong>Client Registry</strong> lookup retrieves patient demographic information
-                        from Kenya&apos;s national database to auto-fill registration details.
-                      </p>
-                    </div>
-                    <CRLookupTab
-                      defaultNationalId={defaultNationalId}
-                      onClientFound={(client) => {
-                        onClientFound?.(client);
-                      }}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="eligibility" className="mt-4">
-                    <div className="mb-4 p-3 bg-muted rounded-lg text-xs sm:text-sm leading-relaxed">
-                      <p className="text-muted-foreground">
-                        <strong>SHA Eligibility</strong> verifies if a person has active Social Health Authority
-                        insurance coverage and determines their copay percentage.
-                      </p>
-                    </div>
-                    <EligibilityCheckTab
-                      defaultNationalId={defaultNationalId}
-                      onEligibilityVerified={(elig) => {
-                        onEligibilityVerified?.(elig);
-                      }}
-                    />
-                  </TabsContent>
-                </Tabs>
-                </div>
-              </ScrollArea>
-              <ScrollMoreButton scrollAreaRef={scrollAreaRef} direction="down" />
-              <ScrollMoreButton scrollAreaRef={scrollAreaRef} direction="up" />
-            </div>
-          </div>
-        ) : (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute left-4 top-4 h-7 w-7 z-10"
-              onClick={() => setIsExpanded(!isExpanded)}
-              title={isExpanded ? 'Minimize' : 'Expand to fullscreen'}
-            >
-              {isExpanded ? (
-                <Minimize2 className="h-4 w-4" />
-              ) : (
-                <Maximize2 className="h-4 w-4" />
-              )}
-            </Button>
-            <DialogHeader className="pl-8">
-              <DialogTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5 text-primary" />
-                Kenya Digital Health Verification
-              </DialogTitle>
-              <DialogDescription>
-                Lookup patient records from Client Registry or verify SHA insurance eligibility
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="overflow-y-auto max-h-[70vh]">
-              <Tabs defaultValue={defaultTab} className="mt-4">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ScrollArea className="flex-1">
+            <div className="space-y-6 p-5">
+              <Tabs defaultValue={defaultTab} className="space-y-4">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="cr" className="flex items-center gap-2">
                     <Database className="h-4 w-4" />
@@ -719,12 +1542,9 @@ export function SHAVerificationModal({
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="cr" className="mt-4">
-                  <div className="mb-4 p-3 bg-muted rounded-lg text-xs sm:text-sm leading-relaxed">
-                    <p className="text-muted-foreground">
-                      <strong>Client Registry</strong> lookup retrieves patient demographic information
-                      from Kenya&apos;s national database to auto-fill registration details.
-                    </p>
+                <TabsContent value="cr" className="space-y-4">
+                  <div className="rounded-xl bg-muted p-4 text-sm leading-relaxed text-muted-foreground">
+                    <strong>Client Registry</strong> lookup retrieves patient demographic information from Kenya&apos;s national database to prefill registration details.
                   </div>
                   <CRLookupTab
                     defaultNationalId={defaultNationalId}
@@ -734,26 +1554,36 @@ export function SHAVerificationModal({
                   />
                 </TabsContent>
 
-                <TabsContent value="eligibility" className="mt-4">
-                  <div className="mb-4 p-3 bg-muted rounded-lg text-xs sm:text-sm leading-relaxed">
-                    <p className="text-muted-foreground">
-                      <strong>SHA Eligibility</strong> verifies if a person has active Social Health Authority
-                      insurance coverage and determines their copay percentage.
-                    </p>
+                <TabsContent value="eligibility" className="space-y-4">
+                  <div className="rounded-xl bg-muted p-4 text-sm leading-relaxed text-muted-foreground">
+                    <strong>SHA Eligibility</strong> verifies active Social Health Authority coverage and now exposes the full ILM patient payload, including source metadata and dependants.
                   </div>
                   <EligibilityCheckTab
                     defaultNationalId={defaultNationalId}
+                    onEligibilityPreviewChange={setPreviewEligibility}
                     onEligibilityVerified={(elig) => {
                       onEligibilityVerified?.(elig);
                     }}
                   />
+
+                  {previewEligibility && (
+                    <EligibilityDataPanel
+                      eligibility={previewEligibility}
+                      onAddPersonToForm={onAddPersonToForm
+                        ? (person) => {
+                            onAddPersonToForm(person);
+                            setIsOpen(false);
+                          }
+                        : undefined}
+                    />
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+          </ScrollArea>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

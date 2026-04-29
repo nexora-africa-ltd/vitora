@@ -199,6 +199,41 @@ export const SHADependentSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
+export const SHAEligibilitySchemePolicySchema = z.object({
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  number: z.string().optional(),
+});
+
+export const SHAEligibilitySchemeCoverageSchema = z.object({
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  message: z.string().optional(),
+  reason: z.string().optional(),
+  status: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+});
+
+export const SHAEligibilityPrincipalContributorSchema = z.object({
+  idNumber: z.string().optional(),
+  idType: z.string().optional(),
+  crNumber: z.string().optional(),
+  name: z.string().optional(),
+  relationship: z.string().optional(),
+  employmentType: z.string().optional(),
+  employerDetails: z.object({
+    name: z.string().optional(),
+  }).optional(),
+});
+
+export const SHAEligibilitySchemeSchema = z.object({
+  schemeName: z.string().optional(),
+  schemeId: z.number().optional(),
+  memberType: z.string().optional(),
+  policy: SHAEligibilitySchemePolicySchema.optional(),
+  coverage: SHAEligibilitySchemeCoverageSchema.optional(),
+  principalContributor: SHAEligibilityPrincipalContributorSchema.optional(),
+});
+
 export const DirectEligibilityCheckResponseSchema = z.object({
   is_eligible: z.boolean(),
   sha_number: z.string().nullable().optional(),
@@ -206,11 +241,19 @@ export const DirectEligibilityCheckResponseSchema = z.object({
   coverage_end_date: z.string().nullable().optional(),
   copay_percentage: z.number(),
   reason: z.string().optional(),
-  possible_solution: z.string().optional(),
+  possible_solution: z.string().nullable().optional(),
   is_employed: z.boolean().optional(),
   employment_type: z.string().nullable().optional(),
   employer_name: z.string().nullable().optional(),
   nhif_transition_status: z.string().nullable().optional(),
+  status_code: z.string().nullable().optional(),
+  status_desc: z.string().nullable().optional(),
+  member_cr_number: z.string().nullable().optional(),
+  date_of_birth: z.string().nullable().optional(),
+  gender: z.string().nullable().optional(),
+  age: z.number().nullable().optional(),
+  whitelisted_for_otp: z.boolean().optional(),
+  schemes: z.array(SHAEligibilitySchemeSchema).optional(),
   means_testing: MeansTestingDetailsSchema.nullable().optional(),
   dependents: z.array(SHADependentSchema).optional(),
   dependents_covered: z.number().optional(),

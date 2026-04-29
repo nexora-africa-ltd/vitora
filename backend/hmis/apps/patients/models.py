@@ -147,6 +147,12 @@ class Patient(HistoryMixin, models.Model):
         null=True,
         help_text="SHA member number for Social Health Authority coverage",
     )
+    household_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="SHA household number used to group related members and dependants",
+    )
 
     # Title and Names
     title = models.CharField(
@@ -312,6 +318,7 @@ class Patient(HistoryMixin, models.Model):
         indexes = [
             models.Index(fields=["mrn"]),
             models.Index(fields=["cr_number"]),
+            models.Index(fields=["household_number"]),
             models.Index(fields=["last_name", "first_name"]),
             models.Index(fields=["date_of_birth"]),
             models.Index(fields=["is_sensitive"]),

@@ -759,6 +759,8 @@ SHA_API_ENDPOINTS = {
 SHA_ENDPOINTS = {
     "auth": "/v1/hie-auth",
     "eligibility": "/v2/eligibility",
+    "ilm_eligibility": "/api/v1/patients/eligibility",
+    "patient_lookup": "/api/v1/patients",
     "client_registry": "/v3/client-registry/fetch-client",
     "client_register": "/v3/uat-cr-registration",
     "client_update": "/v3/update-client",

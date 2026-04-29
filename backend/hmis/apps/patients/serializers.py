@@ -29,6 +29,8 @@ class EmergencyContactSerializer(serializers.ModelSerializer):
 class PatientSerializer(serializers.ModelSerializer):
     """Serializer for the Patient model."""
 
+    household_members = serializers.SerializerMethodField()
+
     age = serializers.ReadOnlyField()
     full_name = serializers.ReadOnlyField()
     registered_by_username = serializers.CharField(source="registered_by.username", read_only=True)
@@ -65,6 +67,7 @@ class PatientSerializer(serializers.ModelSerializer):
             "cr_number",
             # SHA Integration
             "sha_number",
+            "household_number",
             # Personal Information
             "title",
             "first_name",
@@ -107,6 +110,7 @@ class PatientSerializer(serializers.ModelSerializer):
             # Clinical summary (read-only, computed)
             "allergy_summary",
             "chronic_conditions_summary",
+            "household_members",
             # Deceased status
             "is_deceased",
             "date_of_death",
@@ -145,6 +149,7 @@ class PatientSerializer(serializers.ModelSerializer):
             "emergency_contact_relationship",
             "allergy_summary",
             "chronic_conditions_summary",
+            "household_members",
             "is_deceased",
             "date_of_death",
         ]
@@ -176,6 +181,53 @@ class PatientSerializer(serializers.ModelSerializer):
             .first()
         )
         return latest if latest is not None else ""
+
+    def get_household_members(self, obj) -> list[dict[str, object]]:
+        """Return other locally registered patients linked by household number."""
+        if not obj.household_number:
+            return []
+
+        queryset = (
+            Patient.objects.filter(
+                organization=obj.organization,
+                household_number=obj.household_number,
+            )
+            .exclude(pk=obj.pk)
+            .order_by("last_name", "first_name")[:10]
+        )
+
+        return [
+            {
+                "id": patient.id,
+                "mrn": patient.mrn,
+                "full_name": patient.full_name,
+                "date_of_birth": patient.date_of_birth,
+                "gender": patient.gender,
+                "cr_number": patient.cr_number,
+                "sha_number": patient.sha_number,
+            }
+            for patient in queryset
+        ]
+
+
+class PatientHouseholdMemberSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for household member suggestions."""
+
+    full_name = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Patient
+        fields = [
+            "id",
+            "mrn",
+            "full_name",
+            "date_of_birth",
+            "gender",
+            "cr_number",
+            "sha_number",
+            "household_number",
+        ]
+        read_only_fields = fields
 
     def validate_date_of_birth(self, value):
         """Validate date of birth is not in the future."""

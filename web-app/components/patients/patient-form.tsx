@@ -110,6 +110,7 @@ import { GENDER_OPTIONS, REFERRAL_SOURCE_OPTIONS, RELATIONSHIP_OPTIONS } from '@
 import { NATIONALITIES, NATIONALITY_OPTIONS } from '@/lib/utils/nationalities';
 import {
   type PatientCreateData,
+  type HouseholdMember,
   type IdentificationType,
   type PatientTitle,
   type PaymentMode,
@@ -119,7 +120,7 @@ import {
   TITLE_OPTIONS,
   PAYMENT_MODE_OPTIONS,
 } from '@/lib/types/patient';
-import type { ClientRegistryClient, DirectEligibilityCheckResponse } from '@/lib/types/sha';
+import type { ClientRegistryClient, DirectEligibilityCheckResponse, SHAPayloadPerson } from '@/lib/types/sha';
 import { PaymentMethodCarousel } from './payment-method-carousel';
 
 // Debounce hook for auto-search
@@ -149,6 +150,7 @@ const patientFormSchema = z.object({
     .optional(),
   cr_number: z.string().optional(), // Read-only, populated from CR lookup
   sha_number: z.string().optional(), // Read-only, populated from SHA lookup
+  household_number: z.string().optional(), // Read-only, populated from SHA payload
 
   // Personal Information
   title: z.enum(['Mr', 'Mrs', 'Miss', 'Ms', 'Dr', 'Prof', 'Hon', 'Rev', '']).optional(),
@@ -225,7 +227,76 @@ interface PatientFormProps {
   defaultValues?: Partial<PatientFormValues>;
   /** Pre-populated CR client from external lookup */
   prePopulatedClient?: ClientRegistryClient | null;
+  /** Pre-populated SHA member or dependant from external lookup */
+  prePopulatedShaPerson?: SHAPayloadPerson | null;
   isEditing?: boolean;
+}
+
+const SHA_IDENTIFICATION_TYPE_MAP: Record<string, IdentificationType> = {
+  'national id': 'national_id',
+  'national_id': 'national_id',
+  'hie patient id': 'cr_number',
+  'cr number': 'cr_number',
+  'cr_number': 'cr_number',
+  'mandate number': 'mandate_number',
+  'mandate_number': 'mandate_number',
+  'alien id': 'alien_id',
+  'alien_id': 'alien_id',
+  'kra pin': 'kra_pin',
+  'kra_pin': 'kra_pin',
+  passport: 'passport',
+  'passport number': 'passport',
+  'birth certificate': 'birth_certificate',
+  birth_certificate: 'birth_certificate',
+  'temporary id': 'temporary_id',
+  temporary_id: 'temporary_id',
+};
+
+function normalizeShaGender(gender?: string): 'M' | 'F' | 'O' | undefined {
+  if (!gender) {
+    return undefined;
+  }
+
+  const normalizedGender = gender.trim().toLowerCase();
+  if (normalizedGender === 'male' || normalizedGender === 'm') {
+    return 'M';
+  }
+  if (normalizedGender === 'female' || normalizedGender === 'f') {
+    return 'F';
+  }
+  return 'O';
+}
+
+function normalizeShaIdentificationType(type?: string): IdentificationType | undefined {
+  if (!type) {
+    return undefined;
+  }
+
+  return SHA_IDENTIFICATION_TYPE_MAP[type.trim().toLowerCase()];
+}
+
+function normalizeLocationName(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalizedValue = value.trim().replace(/\s+/g, ' ');
+  return normalizedValue ? normalizedValue.toLowerCase() : undefined;
+}
+
+function buildShaAddress(person: SHAPayloadPerson): string | undefined {
+  const addressParts = [
+    person.village_estate,
+    person.ward,
+    person.sub_county,
+    person.county,
+    person.postal_address,
+    person.zip_code,
+  ]
+    .filter((part) => typeof part === 'string' && part.trim().length > 0)
+    .map((part) => part!.trim());
+
+  return addressParts.length > 0 ? addressParts.join(', ') : undefined;
 }
 
 // Payment mode icons - using muted foreground for consistent theming
@@ -242,6 +313,7 @@ export function PatientForm({
   isLoading,
   defaultValues,
   prePopulatedClient,
+  prePopulatedShaPerson,
   isEditing = false
 }: PatientFormProps) {
   const { toast } = useToast();
@@ -275,6 +347,13 @@ export function PatientForm({
   // Unified verification dialog state (combines duplicates + SHA eligibility)
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [pendingShaDetails, setPendingShaDetails] = useState<DirectEligibilityCheckResponse | null>(null);
+  const [pendingShaLocation, setPendingShaLocation] = useState<{
+    county?: string;
+    subCounty?: string;
+    ward?: string;
+  } | null>(null);
+  const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>([]);
+  const [isLoadingHouseholdMembers, setIsLoadingHouseholdMembers] = useState(false);
 
   // Nationality combobox state
   const [nationalityOpen, setNationalityOpen] = useState(false);
@@ -297,6 +376,7 @@ export function PatientForm({
       identification_number: '',
       cr_number: '',
       sha_number: '',
+      household_number: '',
       title: '',
       first_name: '',
       middle_name: '',
@@ -330,6 +410,7 @@ export function PatientForm({
   const identificationNumber = form.watch('identification_number');
   const paymentMode = form.watch('payment_mode');
   const referralSource = form.watch('referral_source');
+  const householdNumber = form.watch('household_number');
 
   // Watch demographic fields for duplicate checking
   const watchedFirstName = form.watch('first_name');
@@ -400,6 +481,48 @@ export function PatientForm({
     if (details.is_eligible) {
       form.setValue('payment_mode', 'sha');
     }
+  }, [form]);
+
+  const populateFromShaPerson = useCallback((person: SHAPayloadPerson) => {
+    if (person.first_name) form.setValue('first_name', person.first_name);
+    if (person.middle_name) form.setValue('middle_name', person.middle_name);
+    if (person.last_name) form.setValue('last_name', person.last_name);
+
+    const normalizedGender = normalizeShaGender(person.gender);
+    if (normalizedGender) form.setValue('gender', normalizedGender);
+
+    if (person.date_of_birth) {
+      const dob = new Date(person.date_of_birth);
+      if (!isNaN(dob.getTime())) {
+        form.setValue('date_of_birth', dob);
+      }
+    }
+
+    const normalizedIdentificationType = normalizeShaIdentificationType(person.identification_type);
+    if (normalizedIdentificationType) {
+      form.setValue('identification_type', normalizedIdentificationType);
+    }
+    if (person.identification_number) form.setValue('identification_number', person.identification_number);
+    if (person.cr_number) form.setValue('cr_number', person.cr_number);
+    if (person.phone) form.setValue('phone_number', person.phone);
+    if (person.place_of_birth) form.setValue('place_of_birth', person.place_of_birth);
+    if (person.citizenship) form.setValue('nationality', person.citizenship);
+    if (person.village_estate) form.setValue('village', person.village_estate);
+    if (person.household_number) form.setValue('household_number', person.household_number);
+
+    const shaAddress = buildShaAddress(person);
+    if (shaAddress) form.setValue('address', shaAddress);
+
+    if (person.sha_number) {
+      form.setValue('sha_number', person.sha_number);
+      form.setValue('payment_mode', 'sha');
+    }
+
+    setPendingShaLocation({
+      county: person.county,
+      subCounty: person.sub_county,
+      ward: person.ward,
+    });
   }, [form]);
 
   // Run duplicate check after user selects a person from verification dialog
@@ -809,6 +932,114 @@ export function PatientForm({
     }
   }, [prePopulatedClient, crClient, populateFromCRClient]);
 
+  useEffect(() => {
+    if (prePopulatedShaPerson) {
+      populateFromShaPerson(prePopulatedShaPerson);
+
+      const firstName = prePopulatedShaPerson.first_name;
+      const lastName = prePopulatedShaPerson.last_name;
+      const normalizedGender = normalizeShaGender(prePopulatedShaPerson.gender);
+
+      void runPostSelectionDuplicateCheck({
+        idNumber: prePopulatedShaPerson.identification_number,
+        idType: normalizeShaIdentificationType(prePopulatedShaPerson.identification_type),
+        firstName,
+        lastName,
+        dateOfBirth: prePopulatedShaPerson.date_of_birth,
+        gender: normalizedGender,
+        fullName: [prePopulatedShaPerson.first_name, prePopulatedShaPerson.middle_name, prePopulatedShaPerson.last_name]
+          .filter(Boolean)
+          .join(' '),
+      });
+    }
+  }, [prePopulatedShaPerson, populateFromShaPerson, runPostSelectionDuplicateCheck]);
+
+  useEffect(() => {
+    if (!householdNumber) {
+      setHouseholdMembers([]);
+      return;
+    }
+
+    let isActive = true;
+    setIsLoadingHouseholdMembers(true);
+
+    void patientsApi.getHouseholdMembers(householdNumber)
+      .then((response) => {
+        if (isActive) {
+          setHouseholdMembers(response.results);
+        }
+      })
+      .catch((error) => {
+        console.warn('Household lookup failed:', error);
+        if (isActive) {
+          setHouseholdMembers([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoadingHouseholdMembers(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [householdNumber]);
+
+  useEffect(() => {
+    if (!pendingShaLocation?.county || !counties?.length) {
+      return;
+    }
+
+    const countyMatch = counties.find(
+      (county) => normalizeLocationName(county.name) === normalizeLocationName(pendingShaLocation.county)
+    );
+    if (!countyMatch) {
+      return;
+    }
+
+    if (form.getValues('county') !== countyMatch.id) {
+      form.setValue('county', countyMatch.id);
+      form.setValue('sub_county', undefined as unknown as number);
+      form.setValue('ward', undefined);
+    }
+  }, [counties, form, pendingShaLocation?.county]);
+
+  useEffect(() => {
+    if (!pendingShaLocation?.subCounty || !subCounties?.length || !form.getValues('county')) {
+      return;
+    }
+
+    const subCountyMatch = subCounties.find(
+      (subCounty) => normalizeLocationName(subCounty.name) === normalizeLocationName(pendingShaLocation.subCounty)
+    );
+    if (!subCountyMatch) {
+      return;
+    }
+
+    if (form.getValues('sub_county') !== subCountyMatch.id) {
+      form.setValue('sub_county', subCountyMatch.id);
+      form.setValue('ward', undefined);
+    }
+  }, [form, pendingShaLocation?.subCounty, subCounties]);
+
+  useEffect(() => {
+    if (!pendingShaLocation?.ward || !wards?.length || !form.getValues('sub_county')) {
+      return;
+    }
+
+    const wardMatch = wards.find(
+      (ward) => normalizeLocationName(ward.name) === normalizeLocationName(pendingShaLocation.ward)
+    );
+    if (!wardMatch) {
+      return;
+    }
+
+    if (form.getValues('ward') !== wardMatch.id) {
+      form.setValue('ward', wardMatch.id);
+    }
+  }, [form, pendingShaLocation?.ward, wards]);
+
   // Demographic duplicate check when name + DOB are filled (and no ID check was done)
   useEffect(() => {
     // Skip if:
@@ -1118,6 +1349,7 @@ export function PatientForm({
         cr_number: values.cr_number || crClient?.client_number,
         // Include SHA number if found
         sha_number: values.sha_number || shaEligibility.details?.sha_number || undefined,
+        household_number: values.household_number || undefined,
       };
 
       await onSubmit(data);
@@ -1139,8 +1371,10 @@ export function PatientForm({
     setShowDuplicateModal(false);
     setShowVerificationDialog(false);
     setShowShaDetailsDialog(false);
+    setHouseholdMembers([]);
     form.setValue('cr_number', '');
     form.setValue('sha_number', '');
+    form.setValue('household_number', '');
   }, [form]);
 
   const isFormLoading = isLoading || isSubmitting;
@@ -1280,6 +1514,57 @@ export function PatientForm({
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {(householdNumber || isLoadingHouseholdMembers) && (
+              <Alert className="border-primary/20 bg-primary/5">
+                <Users className="h-4 w-4 text-primary" />
+                <AlertTitle className="text-primary">Linked Household Members</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  {householdNumber && (
+                    <p>
+                      Household Number: <span className="font-mono font-medium">{householdNumber}</span>
+                    </p>
+                  )}
+                  {isLoadingHouseholdMembers ? (
+                    <p className="text-sm text-muted-foreground">Looking up locally registered household members...</p>
+                  ) : householdMembers.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Found {householdMembers.length} linked patient{householdMembers.length === 1 ? '' : 's'} in this organization.
+                      </p>
+                      <div className="space-y-2">
+                        {householdMembers.map((member) => (
+                          <div key={member.id} className="flex flex-col gap-2 rounded-lg border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="font-medium break-words">{member.full_name}</p>
+                              <p className="text-xs text-muted-foreground break-words">
+                                {member.mrn} • DOB: {member.date_of_birth}
+                                {member.cr_number ? ` • CR: ${member.cr_number}` : ''}
+                                {member.sha_number ? ` • SHA: ${member.sha_number}` : ''}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                window.location.href = `/patients/checkin?select=${encodeURIComponent(member.mrn)}`;
+                              }}
+                            >
+                              Open Existing Record
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No locally registered household members found yet. This household number will still be stored for future family registration and dependant verification.
+                    </p>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
@@ -1445,6 +1730,31 @@ export function PatientForm({
                     </FormControl>
                     <FormDescription className="text-teal-400">
                       From SHA lookup
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="household_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      Household Number
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        readOnly
+                        disabled
+                        placeholder="Auto-populated"
+                        className="bg-muted font-mono text-sm"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Used to group family members and dependants under the same SHA household.
                     </FormDescription>
                   </FormItem>
                 )}

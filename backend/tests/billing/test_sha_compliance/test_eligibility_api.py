@@ -14,6 +14,15 @@ Key Requirements:
 """
 
 import pytest  # type: ignore
+from django.test import override_settings
+
+
+@pytest.fixture
+def legacy_sha_settings(settings):
+    """Force legacy SHA mode for compliance checks that still cover the old endpoint."""
+    settings.SHA_AUTH_MODE = "legacy"
+    return settings
+
 
 # Try to import the service - may fail if not fully implemented
 try:
@@ -34,6 +43,7 @@ except ImportError:
 class TestEligibilityEndpointCompliance:
     """Tests for eligibility API endpoint compliance."""
 
+    @pytest.mark.usefixtures("legacy_sha_settings")
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     def test_uses_correct_endpoint(self):
         """
@@ -52,6 +62,14 @@ class TestEligibilityEndpointCompliance:
             f"got '{actual_endpoint}'. "
             "See docs/sha-guides/eligibility.md - API Specification"
         )
+
+    @override_settings(SHA_AUTH_MODE="ilm")
+    @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
+    def test_uses_documented_ilm_eligibility_endpoint_in_ilm_mode(self):
+        """ILM mode should use the documented eligibility endpoint instead of patient lookup."""
+        service = SHAEligibilityService()
+
+        assert service.eligibility_endpoint == "/api/v1/patients/eligibility"
 
     @pytest.mark.skipif(not HAS_ELIGIBILITY_SERVICE, reason="SHAEligibilityService not available")
     def test_service_has_auth_service(self):

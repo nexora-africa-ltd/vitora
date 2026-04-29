@@ -354,6 +354,7 @@ class TestPatientAPIEndpoints:
             "email": "john.doe@example.com",
             "address": "123 Main St, Nairobi",
             "national_id": "12345678",
+            "household_number": "HH0127974703399-5",
             "county": sample_county.id,
             "sub_county": sample_sub_county.id,
         }
@@ -366,6 +367,7 @@ class TestPatientAPIEndpoints:
         assert response.data["email"] == "john.doe@example.com"
         assert response.data["address"] == "123 Main St, Nairobi"
         assert response.data["national_id"] == "12345678"
+        assert response.data["household_number"] == "HH0127974703399-5"
 
     def test_patient_age_in_response(
         self, auth_client, sample_county, sample_sub_county, sample_organization
@@ -446,6 +448,90 @@ class TestPatientDuplicateCheck:
         assert len(response.data["matches"]) == 1
         assert response.data["matches"][0]["full_name"] == "Jane Smith"
         assert response.data["matches"][0]["match_confidence"] == 100
+
+
+@pytest.mark.integration
+class TestPatientHouseholdSupport:
+    """Test household number persistence and linked household member suggestions."""
+
+    def test_retrieve_patient_includes_household_number(
+        self, auth_client, sample_county, sample_sub_county, sample_organization
+    ):
+        """Patient detail should expose the persisted household number."""
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Thomas",
+            last_name="Wambui",
+            date_of_birth=date(1995, 10, 20),
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            household_number="HH0127974703399-5",
+        )
+
+        response = auth_client.get(f"/api/patients/{patient.id}/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["household_number"] == "HH0127974703399-5"
+
+    def test_household_members_returns_org_scoped_linked_patients(
+        self, auth_client, sample_county, sample_sub_county, sample_organization
+    ):
+        """Household lookup should suggest linked members within the current organization."""
+        from hmis.apps.core.models import Organization
+        from hmis.apps.patients.models import Patient
+
+        primary_patient = Patient.objects.create(
+            first_name="Thomas",
+            last_name="Wambui",
+            date_of_birth=date(1995, 10, 20),
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            household_number="HH0127974703399-5",
+        )
+        linked_patient = Patient.objects.create(
+            first_name="Dahabo",
+            last_name="Ali",
+            date_of_birth=date(2001, 7, 20),
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=sample_organization,
+            household_number="HH0127974703399-5",
+            cr_number="CR1481274185029-8",
+            sha_number="SHA1481274185029-8",
+        )
+        other_org = Organization.objects.create(name="Other Org")
+        Patient.objects.create(
+            first_name="External",
+            last_name="Member",
+            date_of_birth=date(1999, 1, 1),
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            organization=other_org,
+            household_number="HH0127974703399-5",
+        )
+
+        response = auth_client.get(
+            "/api/patients/household-members/",
+            {
+                "household_number": "HH0127974703399-5",
+                "exclude_patient_id": primary_patient.id,
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["household_number"] == "HH0127974703399-5"
+        assert response.data["count"] == 1
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["id"] == linked_patient.id
+        assert response.data["results"][0]["cr_number"] == "CR1481274185029-8"
+        assert response.data["results"][0]["sha_number"] == "SHA1481274185029-8"
 
     def test_check_duplicate_no_match(self, auth_client):
         """Test no duplicate found for unknown ID."""
