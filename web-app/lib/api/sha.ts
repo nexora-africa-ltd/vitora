@@ -37,6 +37,7 @@ import {
   ConsentTokenSchema,
   SendOTPResponseSchema,
   ValidateOTPResponseSchema,
+  StartVisitResponseSchema,
   PreauthRequestSchema,
   SubmitPreauthResponseSchema,
   PaginatedPreauthRequestsSchema,
@@ -88,6 +89,8 @@ import type {
   SendOTPResponse,
   ValidateOTPRequest,
   ValidateOTPResponse,
+  StartVisitRequest,
+  StartVisitResponse,
   SubmitPreauthRequest,
   SubmitPreauthResponse,
   PreauthRequest,
@@ -513,6 +516,15 @@ async function validateConsentOTP(data: ValidateOTPRequest): Promise<ValidateOTP
 }
 
 /**
+ * Start visit with DHA (combined OTP validation + visit start)
+ * This is the primary DHA endpoint: POST /api/v1/claims/visit
+ */
+async function startVisit(data: StartVisitRequest): Promise<StartVisitResponse> {
+  const response = await apiClient.post('/api/sha/consent/start-visit/', data);
+  return parseResponse(StartVisitResponseSchema, response.data, { context: 'shaApi.startVisit' });
+}
+
+/**
  * Get consent token details
  */
 async function getConsentDetail(consentId: number): Promise<ConsentToken> {
@@ -605,6 +617,7 @@ export const shaApi = {
   // DHA HIE Consent
   sendConsentOTP,
   validateConsentOTP,
+  startVisit,
   getConsentDetail,
 
   // DHA HIE Pre-authorization

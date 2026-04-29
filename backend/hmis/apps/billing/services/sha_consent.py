@@ -4,7 +4,7 @@ SHA Consent Service for Vitora HMIS.
 Implements the DHA HIE consent workflow:
 1. Send OTP to patient via POST /send-web-otp
 2. Validate OTP via POST /v4/tiberbu-validate-otp → returns consent_token
-3. Start visit via POST /start_visit (when endpoint is available)
+3. Start visit via POST /api/v1/claims/visit (validates OTP + starts visit in one DHA call)
 
 Reference: https://hie-docs.dha.go.ke/docs/userJourney
 """
@@ -210,37 +210,59 @@ class SHAConsentService:
     def start_visit(
         self,
         consent: ConsentToken,
+        otp_code: str,
+        intervention_codes: list[str] | None = None,
+        service_type: str = "outpatient",
+        admission_date: str = "",
+        estimated_days_of_admission: int = 0,
         encounter=None,
     ) -> dict[str, Any]:
         """
-        Start a visit session with DHA using the validated consent token.
+        Start a visit session with DHA.
 
-        Calls POST /start_visit (when available). Links consent to encounter.
+        Calls POST /api/v1/claims/visit — the DHA combined endpoint that
+        validates the OTP and starts the visit in a single call.
+
+        DHA Request:
+            {
+              "admission_date": "2026-04-29",
+              "estimated_days_of_admission": 1,
+              "intervention_codes": ["SHA-01", "SHA-02"],
+              "otp": "123456",
+              "patient_id": "12345678",
+              "service_type": "outpatient"
+            }
 
         Args:
-            consent: Validated ConsentToken instance.
+            consent: ConsentToken instance (PENDING or VALIDATED).
+            otp_code: The OTP code entered by the patient.
+            intervention_codes: List of SHA intervention codes for this visit.
+            service_type: Type of service (outpatient, inpatient, emergency).
+            admission_date: Admission date (ISO format). Defaults to today.
+            estimated_days_of_admission: Expected length of stay (days).
             encounter: Optional encounter to link consent to.
 
         Returns:
             Response data from DHA start_visit endpoint.
 
         Raises:
-            SHAConsentError: If consent is invalid or API call fails.
+            SHAConsentError: If API call fails or consent state is invalid.
         """
-        if not consent.is_valid:
+        if consent.status not in (
+            ConsentToken.ConsentStatus.PENDING,
+            ConsentToken.ConsentStatus.VALIDATED,
+        ):
             raise SHAConsentError(
-                "Consent token is not valid (expired or not validated)",
-                code="invalid_consent",
+                f"Cannot start visit with consent in {consent.status} status",
+                code="invalid_consent_status",
             )
 
         if encounter:
             consent.encounter = encounter
             consent.save(update_fields=["encounter"])
 
-        # POST /start_visit — endpoint may not be live yet in DHA
         endpoint = self._get_endpoint("start_visit")
         if not endpoint:
-            # Endpoint not yet published by DHA — log and return success
             logger.warning(
                 "start_visit endpoint not configured; skipping DHA call. "
                 "Consent token %s linked to encounter %s.",
@@ -249,14 +271,32 @@ class SHAConsentService:
             )
             return {"status": "skipped", "reason": "endpoint_not_configured"}
 
+        from datetime import date as date_cls
+
         payload = {
-            "consent_token": consent.consent_token,
+            "admission_date": admission_date or date_cls.today().isoformat(),
+            "estimated_days_of_admission": estimated_days_of_admission or 1,
+            "intervention_codes": intervention_codes or [],
+            "otp": otp_code,
             "patient_id": consent.identification_number,
-            "facility_code": consent.facility.mfl_code if consent.facility else "",
+            "service_type": service_type,
         }
 
         response_data = self._make_request("POST", endpoint, json=payload)
-        logger.info("Visit started for consent %s", consent.id)
+
+        # DHA may return a consent_token or visit reference in the response
+        returned_token = response_data.get("consent_token") or response_data.get("token", "")
+        if returned_token and not consent.consent_token:
+            expires_in = int(response_data.get("expires_in", 3600))
+            consent.mark_validated(token=returned_token, expires_in_seconds=expires_in)
+        elif consent.status == ConsentToken.ConsentStatus.PENDING:
+            # Mark validated even without a new token if DHA accepted the call
+            consent.mark_validated(
+                token=consent.consent_token or "visit-started",
+                expires_in_seconds=3600,
+            )
+
+        logger.info("Visit started for consent %s (patient: %s)", consent.id, consent.patient_id)
         return response_data
 
     # ------------------------------------------------------------------

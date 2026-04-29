@@ -577,6 +577,143 @@ class TestConsentDetailAPI:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
+class TestStartVisitAPI:
+    """Tests for POST /api/sha/consent/start-visit/."""
+
+    @patch("hmis.apps.billing.services.sha_consent.SHAConsentService._make_request")
+    @patch("hmis.apps.billing.services.sha_consent.SHAAuthService")
+    def test_start_visit_success(
+        self, mock_auth_cls, mock_request, authenticated_client, consent_token
+    ):
+        """Should start visit via DHA and return validated consent."""
+        mock_request.return_value = {
+            "status": "success",
+            "consent_token": "dha-visit-token-123",
+            "expires_in": 3600,
+            "visit_id": "VISIT-001",
+        }
+
+        response = authenticated_client.post(
+            "/api/sha/consent/start-visit/",
+            {
+                "consent_id": consent_token.id,
+                "otp_code": "123456",
+                "intervention_codes": ["SHA-01", "SHA-02"],
+                "service_type": "outpatient",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "VALIDATED"
+        assert response.data["consent_token"] == "dha-visit-token-123"
+        assert response.data["message"] == "Visit started successfully"
+
+        # Verify DHA was called with correct payload
+        call_kwargs = mock_request.call_args
+        payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
+        assert payload["otp"] == "123456"
+        assert payload["intervention_codes"] == ["SHA-01", "SHA-02"]
+        assert payload["service_type"] == "outpatient"
+        assert payload["patient_id"] == consent_token.identification_number
+
+    def test_start_visit_missing_otp(self, authenticated_client, consent_token):
+        """Should reject request without otp_code."""
+        response = authenticated_client.post(
+            "/api/sha/consent/start-visit/",
+            {"consent_id": consent_token.id},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "otp_code" in response.data["error"]
+
+    def test_start_visit_missing_consent_id(self, authenticated_client):
+        """Should reject request without consent_id."""
+        response = authenticated_client.post(
+            "/api/sha/consent/start-visit/",
+            {"otp_code": "123456"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "consent_id" in response.data["error"]
+
+    def test_start_visit_consent_not_found(self, authenticated_client):
+        """Should return 404 for non-existent consent."""
+        response = authenticated_client.post(
+            "/api/sha/consent/start-visit/",
+            {"consent_id": 99999, "otp_code": "123456"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_start_visit_unauthenticated(self, api_client, consent_token):
+        """Should reject unauthenticated requests."""
+        response = api_client.post(
+            "/api/sha/consent/start-visit/",
+            {"consent_id": consent_token.id, "otp_code": "123456"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+class TestStartVisitService:
+    """Tests for SHAConsentService.start_visit() with DHA payload."""
+
+    @patch("hmis.apps.billing.services.sha_consent.SHAConsentService._make_request")
+    @patch("hmis.apps.billing.services.sha_consent.SHAAuthService")
+    def test_start_visit_sends_correct_payload(self, mock_auth_cls, mock_request, consent_token):
+        """Should send DHA-compliant payload to /api/v1/claims/visit."""
+        mock_request.return_value = {
+            "status": "success",
+            "consent_token": "visit-token-abc",
+            "expires_in": 7200,
+        }
+
+        from hmis.apps.billing.services.sha_consent import SHAConsentService
+
+        service = SHAConsentService()
+        result = service.start_visit(
+            consent=consent_token,
+            otp_code="654321",
+            intervention_codes=["SHA-PROC-01"],
+            service_type="inpatient",
+            admission_date="2026-04-29",
+            estimated_days_of_admission=5,
+        )
+
+        assert result["status"] == "success"
+
+        # Verify the DHA payload shape
+        call_kwargs = mock_request.call_args
+        payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
+        assert payload == {
+            "admission_date": "2026-04-29",
+            "estimated_days_of_admission": 5,
+            "intervention_codes": ["SHA-PROC-01"],
+            "otp": "654321",
+            "patient_id": consent_token.identification_number,
+            "service_type": "inpatient",
+        }
+
+        # Consent should be validated with returned token
+        consent_token.refresh_from_db()
+        assert consent_token.status == ConsentToken.ConsentStatus.VALIDATED
+        assert consent_token.consent_token == "visit-token-abc"
+
+    @patch("hmis.apps.billing.services.sha_consent.SHAAuthService")
+    def test_start_visit_rejects_failed_consent(self, mock_auth_cls, consent_token):
+        """Should reject start_visit on FAILED consent."""
+        consent_token.status = ConsentToken.ConsentStatus.FAILED
+        consent_token.save()
+
+        from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+
+        service = SHAConsentService()
+        with pytest.raises(SHAConsentError) as exc_info:
+            service.start_visit(consent=consent_token, otp_code="123456")
+        assert exc_info.value.code == "invalid_consent_status"
+
+
 class TestPreauthSubmitAPI:
     """Tests for POST /api/sha/preauth/submit/."""
 

@@ -23,6 +23,7 @@ from hmis.apps.billing.sha_views import (
     SHATariffViewSet,
     SHAValidateView,
     SHAWebhookView,
+    StartVisitView,
     TerminologySearchView,
 )
 
@@ -54,6 +55,7 @@ urlpatterns = [
     # Consent (DHA HIE User Journey compliance)
     path("consent/send-otp/", ConsentSendOTPView.as_view(), name="consent-send-otp"),
     path("consent/validate-otp/", ConsentValidateOTPView.as_view(), name="consent-validate-otp"),
+    path("consent/start-visit/", StartVisitView.as_view(), name="consent-start-visit"),
     path("consent/<int:pk>/", ConsentDetailView.as_view(), name="consent-detail"),
     # Pre-authorization (DHA HIE User Journey compliance)
     path("preauth/submit/", PreauthSubmitView.as_view(), name="preauth-submit"),

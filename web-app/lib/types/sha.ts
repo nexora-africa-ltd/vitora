@@ -462,6 +462,24 @@ export interface ValidateOTPResponse {
   message: string;
 }
 
+export interface StartVisitRequest {
+  consent_id: number;
+  otp_code: string;
+  intervention_codes?: string[];
+  service_type?: string;
+  admission_date?: string;
+  estimated_days_of_admission?: number;
+}
+
+export interface StartVisitResponse {
+  id: number;
+  status: ConsentStatus;
+  consent_token: string;
+  expires_at: string | null;
+  visit_data: Record<string, unknown>;
+  message: string;
+}
+
 // ============================================================================
 // DHA HIE Pre-authorization Types
 // ============================================================================

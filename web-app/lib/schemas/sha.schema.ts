@@ -749,6 +749,17 @@ export const ValidateOTPResponseSchema = z.object({
 
 export type ValidateOTPResponseSchemaType = z.infer<typeof ValidateOTPResponseSchema>;
 
+export const StartVisitResponseSchema = z.object({
+  id: z.number(),
+  status: ConsentStatusSchema,
+  consent_token: z.string(),
+  expires_at: z.string().nullable(),
+  visit_data: z.record(z.unknown()),
+  message: z.string(),
+});
+
+export type StartVisitResponseSchemaType = z.infer<typeof StartVisitResponseSchema>;
+
 // =============================================================================
 // DHA HIE PRE-AUTHORIZATION SCHEMAS
 // =============================================================================

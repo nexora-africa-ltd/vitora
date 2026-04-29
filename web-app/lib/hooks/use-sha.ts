@@ -13,6 +13,7 @@ import type {
   DrugSearchParams,
   SendOTPRequest,
   ValidateOTPRequest,
+  StartVisitRequest,
   SubmitPreauthRequest,
 } from '@/lib/types/sha';
 
@@ -366,6 +367,19 @@ export function useValidateConsentOTP() {
     mutationFn: (data: ValidateOTPRequest) => shaApi.validateConsentOTP(data),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: shaQueryKeys.consentDetail(result.consent_id) });
+    },
+  });
+}
+
+/**
+ * Start visit with DHA (combined OTP validation + visit start)
+ */
+export function useStartVisit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: StartVisitRequest) => shaApi.startVisit(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: shaQueryKeys.consentDetail(result.id) });
     },
   });
 }
