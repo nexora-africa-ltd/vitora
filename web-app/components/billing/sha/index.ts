@@ -51,3 +51,7 @@ export {
   FacilityValidation,
   PractitionerValidation,
 } from './FacilityValidation';
+
+// DHA HIE Consent & Pre-authorization
+export { ConsentPanel } from './ConsentPanel';
+export { PreauthPanel } from './PreauthPanel';

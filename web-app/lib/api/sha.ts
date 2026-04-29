@@ -34,6 +34,12 @@ import {
   FacilityValidationResponseSchema,
   DHAPractitionerSearchResponseSchema,
   PractitionerValidationResponseSchema,
+  ConsentTokenSchema,
+  SendOTPResponseSchema,
+  ValidateOTPResponseSchema,
+  PreauthRequestSchema,
+  SubmitPreauthResponseSchema,
+  PaginatedPreauthRequestsSchema,
 } from '@/lib/schemas/sha.schema';
 import type {
   // Client Registry
@@ -76,6 +82,15 @@ import type {
   DHAPractitionerSearchRequest,
   DHAPractitionerSearchResponse,
   DHAPractitioner,
+  // DHA HIE Consent/Preauth
+  ConsentToken,
+  SendOTPRequest,
+  SendOTPResponse,
+  ValidateOTPRequest,
+  ValidateOTPResponse,
+  SubmitPreauthRequest,
+  SubmitPreauthResponse,
+  PreauthRequest,
 } from '@/lib/types/sha';
 
 // ============================================================================
@@ -478,6 +493,62 @@ async function validatePractitioner(
 }
 
 // ============================================================================
+// DHA HIE Consent API
+// ============================================================================
+
+/**
+ * Send OTP to SHA member for consent verification
+ */
+async function sendConsentOTP(data: SendOTPRequest): Promise<SendOTPResponse> {
+  const response = await apiClient.post('/api/sha/consent/send-otp/', data);
+  return parseResponse(SendOTPResponseSchema, response.data, { context: 'shaApi.sendConsentOTP' });
+}
+
+/**
+ * Validate OTP code to obtain consent token
+ */
+async function validateConsentOTP(data: ValidateOTPRequest): Promise<ValidateOTPResponse> {
+  const response = await apiClient.post('/api/sha/consent/validate-otp/', data);
+  return parseResponse(ValidateOTPResponseSchema, response.data, { context: 'shaApi.validateConsentOTP' });
+}
+
+/**
+ * Get consent token details
+ */
+async function getConsentDetail(consentId: number): Promise<ConsentToken> {
+  const response = await apiClient.get(`/api/sha/consent/${consentId}/`);
+  return parseResponse(ConsentTokenSchema, response.data, { context: 'shaApi.getConsentDetail' });
+}
+
+// ============================================================================
+// DHA HIE Pre-authorization API
+// ============================================================================
+
+/**
+ * Submit pre-authorization request for a claim
+ */
+async function submitPreauth(data: SubmitPreauthRequest): Promise<SubmitPreauthResponse> {
+  const response = await apiClient.post('/api/sha/preauth/submit/', data);
+  return parseResponse(SubmitPreauthResponseSchema, response.data, { context: 'shaApi.submitPreauth' });
+}
+
+/**
+ * Get pre-authorization request status (polls DHA)
+ */
+async function getPreauthStatus(preauthId: number): Promise<PreauthRequest> {
+  const response = await apiClient.get(`/api/sha/preauth/${preauthId}/status/`);
+  return parseResponse(PreauthRequestSchema, response.data, { context: 'shaApi.getPreauthStatus' });
+}
+
+/**
+ * Get list of pending pre-authorization requests
+ */
+async function getPendingPreauths(): Promise<{ count: number; next: string | null; previous: string | null; results: PreauthRequest[] }> {
+  const response = await apiClient.get('/api/sha/preauth/pending/');
+  return parseResponse(PaginatedPreauthRequestsSchema, response.data, { context: 'shaApi.getPendingPreauths' });
+}
+
+// ============================================================================
 // Export API Object
 // ============================================================================
 
@@ -530,4 +601,14 @@ export const shaApi = {
 
   // Legacy Practitioner Validation (deprecated)
   validatePractitioner,
+
+  // DHA HIE Consent
+  sendConsentOTP,
+  validateConsentOTP,
+  getConsentDetail,
+
+  // DHA HIE Pre-authorization
+  submitPreauth,
+  getPreauthStatus,
+  getPendingPreauths,
 };

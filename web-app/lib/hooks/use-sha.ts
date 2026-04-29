@@ -11,6 +11,9 @@ import type {
   InterventionSearchParams,
   TerminologySearchParams,
   DrugSearchParams,
+  SendOTPRequest,
+  ValidateOTPRequest,
+  SubmitPreauthRequest,
 } from '@/lib/types/sha';
 
 // ============================================================================
@@ -42,6 +45,15 @@ export const shaQueryKeys = {
   loinc: (params?: TerminologySearchParams) => [...shaQueryKeys.terminology(), 'loinc', params] as const,
   drugs: (params?: DrugSearchParams) => [...shaQueryKeys.terminology(), 'drugs', params] as const,
   components: (params?: TerminologySearchParams) => [...shaQueryKeys.terminology(), 'components', params] as const,
+
+  // DHA HIE Consent
+  consent: () => [...shaQueryKeys.all, 'consent'] as const,
+  consentDetail: (id: number) => [...shaQueryKeys.consent(), id] as const,
+
+  // DHA HIE Pre-authorization
+  preauth: () => [...shaQueryKeys.all, 'preauth'] as const,
+  preauthStatus: (id: number) => [...shaQueryKeys.preauth(), id] as const,
+  preauthPending: () => [...shaQueryKeys.preauth(), 'pending'] as const,
 };
 
 // ============================================================================
@@ -329,5 +341,88 @@ export function useValidateFacility() {
 export function useValidatePractitioner() {
   return useMutation({
     mutationFn: shaApi.validatePractitioner,
+  });
+}
+
+// ============================================================================
+// DHA HIE Consent Hooks
+// ============================================================================
+
+/**
+ * Send OTP for consent verification
+ */
+export function useSendConsentOTP() {
+  return useMutation({
+    mutationFn: (data: SendOTPRequest) => shaApi.sendConsentOTP(data),
+  });
+}
+
+/**
+ * Validate OTP code to obtain consent token
+ */
+export function useValidateConsentOTP() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ValidateOTPRequest) => shaApi.validateConsentOTP(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: shaQueryKeys.consentDetail(result.consent_id) });
+    },
+  });
+}
+
+/**
+ * Get consent token detail
+ */
+export function useConsentDetail(consentId: number | undefined) {
+  return useQuery({
+    queryKey: shaQueryKeys.consentDetail(consentId!),
+    queryFn: () => shaApi.getConsentDetail(consentId!),
+    enabled: !!consentId,
+  });
+}
+
+// ============================================================================
+// DHA HIE Pre-authorization Hooks
+// ============================================================================
+
+/**
+ * Submit pre-authorization request
+ */
+export function useSubmitPreauth() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SubmitPreauthRequest) => shaApi.submitPreauth(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: shaQueryKeys.preauth() });
+    },
+  });
+}
+
+/**
+ * Get pre-authorization status (with auto-refresh for pending)
+ */
+export function usePreauthStatus(preauthId: number | undefined) {
+  return useQuery({
+    queryKey: shaQueryKeys.preauthStatus(preauthId!),
+    queryFn: () => shaApi.getPreauthStatus(preauthId!),
+    enabled: !!preauthId,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data && data.decision === 'PENDING') {
+        return 15000; // Poll every 15 seconds for pending preauths
+      }
+      return false;
+    },
+  });
+}
+
+/**
+ * Get list of pending pre-authorization requests
+ */
+export function usePendingPreauths(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: shaQueryKeys.preauthPending(),
+    queryFn: () => shaApi.getPendingPreauths(),
+    enabled: options?.enabled,
   });
 }
