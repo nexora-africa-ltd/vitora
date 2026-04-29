@@ -146,6 +146,11 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.billing.tasks.poll_sha_claim_statuses",
         "schedule": crontab(minute="*/15"),
     },
+    # Billing agent: Poll DHA API for pre-authorization decisions every 5 minutes
+    "billing-poll-preauth-statuses": {
+        "task": "hmis.apps.billing.tasks.poll_preauth_statuses",
+        "schedule": crontab(minute="*/5"),
+    },
     # Pharmacy: Expire overdue prescriptions daily at 1 AM
     "pharmacy-expire-prescriptions": {
         "task": "hmis.apps.pharmacy.tasks.expire_prescriptions",

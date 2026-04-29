@@ -230,3 +230,68 @@ def broadcast_payment_change(sender, instance, created, **kwargs):
         broadcast_payment_received(instance)
     except Exception as e:
         logger.error(f"Failed to broadcast payment received for {instance.id}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# DHA HIE Consent & Preauth domain events
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender="billing.ConsentToken")
+def publish_consent_event(sender, instance, created, **kwargs):
+    """Publish domain event when consent token status changes."""
+    if created:
+        event_type = BillingEvents.CONSENT_OTP_SENT
+    elif instance.status == "VALIDATED":
+        event_type = BillingEvents.CONSENT_VALIDATED
+    elif instance.status == "EXPIRED":
+        event_type = BillingEvents.CONSENT_EXPIRED
+    elif instance.status == "FAILED":
+        event_type = BillingEvents.CONSENT_FAILED
+    else:
+        return
+
+    publish_event(
+        event_type=event_type,
+        aggregate_type="ConsentToken",
+        aggregate_id=instance.id,
+        payload={
+            "patient_id": instance.patient_id,
+            "sha_member_id": instance.sha_member_id,
+            "consent_method": instance.consent_method,
+            "status": instance.status,
+        },
+        facility_id=instance.facility_id,
+        organization_id=instance.organization_id,
+    )
+
+
+@receiver(post_save, sender="billing.PreauthRequest")
+def publish_preauth_event(sender, instance, created, **kwargs):
+    """Publish domain event when preauth status changes."""
+    if created:
+        event_type = BillingEvents.PREAUTH_SUBMITTED
+    elif instance.decision == "APPROVED":
+        event_type = BillingEvents.PREAUTH_APPROVED
+    elif instance.decision == "DENIED":
+        event_type = BillingEvents.PREAUTH_DENIED
+    elif instance.decision == "EXPIRED":
+        event_type = BillingEvents.PREAUTH_EXPIRED
+    else:
+        return
+
+    publish_event(
+        event_type=event_type,
+        aggregate_type="PreauthRequest",
+        aggregate_id=instance.id,
+        payload={
+            "patient_id": instance.patient_id,
+            "claim_id": instance.claim_id,
+            "preauth_reference": instance.preauth_reference,
+            "procedure_code": instance.procedure_code,
+            "decision": instance.decision,
+            "approved_amount": str(instance.approved_amount) if instance.approved_amount else None,
+        },
+        facility_id=instance.facility_id,
+        organization_id=instance.organization_id,
+    )

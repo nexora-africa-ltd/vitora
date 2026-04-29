@@ -145,7 +145,8 @@ class TestEligibilityRequestParameters:
 
         # Should fall back to national_id
         doc_type = request_params.get("doc_type", request_params.get("identification_type", ""))
-        assert "national_id" in doc_type.lower() or doc_type == "national_id", (
+        normalized = doc_type.lower().replace(" ", "_")
+        assert "national_id" in normalized or normalized == "national_id", (
             "Should fall back to national_id when SHA number not available"
         )
 

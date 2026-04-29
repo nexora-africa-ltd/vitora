@@ -248,10 +248,15 @@ class SHAEligibilityService:
             schemes = [scheme for scheme in response.get("schemes", []) if isinstance(scheme, dict)]
             covered_schemes = []
             shif_scheme = None
+            uhc_scheme = None
             for scheme in schemes:
                 scheme_name = scheme.get("schemeName")
-                if isinstance(scheme_name, str) and scheme_name.strip().upper() == "SHIF":
-                    shif_scheme = scheme
+                if isinstance(scheme_name, str):
+                    upper_name = scheme_name.strip().upper()
+                    if upper_name == "SHIF":
+                        shif_scheme = scheme
+                    elif upper_name == "UHC":
+                        uhc_scheme = scheme
 
                 coverage = (
                     scheme.get("coverage") if isinstance(scheme.get("coverage"), dict) else {}
@@ -260,7 +265,10 @@ class SHAEligibilityService:
                 if status_value in (1, True, "1", "active", "ACTIVE", "covered", "COVERED"):
                     covered_schemes.append(scheme)
 
-            prioritized_schemes = ([shif_scheme] if shif_scheme else covered_schemes) or schemes
+            # Prioritize SHIF first, then UHC, then any covered scheme
+            prioritized_schemes = (
+                [shif_scheme] if shif_scheme else [uhc_scheme] if uhc_scheme else covered_schemes
+            ) or schemes
             primary_scheme = prioritized_schemes[0] if prioritized_schemes else {}
             primary_coverage = (
                 primary_scheme.get("coverage")

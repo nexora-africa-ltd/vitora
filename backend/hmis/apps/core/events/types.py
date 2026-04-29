@@ -22,6 +22,16 @@ class BillingEvents:
     DISCHARGE_BILLING = "billing.discharge.processed"
     ADMISSION_BILLING = "billing.admission.processed"
     IMMUNIZATION_BILLING = "billing.immunization.processed"
+    # DHA HIE Consent events
+    CONSENT_OTP_SENT = "billing.consent.otp_sent"
+    CONSENT_VALIDATED = "billing.consent.validated"
+    CONSENT_EXPIRED = "billing.consent.expired"
+    CONSENT_FAILED = "billing.consent.failed"
+    # DHA HIE Preauth events
+    PREAUTH_SUBMITTED = "billing.preauth.submitted"
+    PREAUTH_APPROVED = "billing.preauth.approved"
+    PREAUTH_DENIED = "billing.preauth.denied"
+    PREAUTH_EXPIRED = "billing.preauth.expired"
 
 
 class PharmacyEvents:

@@ -9,9 +9,15 @@ from rest_framework.routers import DefaultRouter
 
 from hmis.apps.billing.sha_views import (
     ClientRegistryView,
+    ConsentDetailView,
+    ConsentSendOTPView,
+    ConsentValidateOTPView,
     EligibilityCheckView,
     FacilitySearchView,
     PractitionerSearchView,
+    PreauthPendingListView,
+    PreauthStatusView,
+    PreauthSubmitView,
     SHAClaimViewSet,
     SHAMemberViewSet,
     SHATariffViewSet,
@@ -45,6 +51,14 @@ urlpatterns = [
     path("practitioner/validate/", PractitionerSearchView.as_view(), name="practitioner-validate"),
     # Eligibility check
     path("eligibility/check/", EligibilityCheckView.as_view(), name="eligibility-check"),
+    # Consent (DHA HIE User Journey compliance)
+    path("consent/send-otp/", ConsentSendOTPView.as_view(), name="consent-send-otp"),
+    path("consent/validate-otp/", ConsentValidateOTPView.as_view(), name="consent-validate-otp"),
+    path("consent/<int:pk>/", ConsentDetailView.as_view(), name="consent-detail"),
+    # Pre-authorization (DHA HIE User Journey compliance)
+    path("preauth/submit/", PreauthSubmitView.as_view(), name="preauth-submit"),
+    path("preauth/<int:pk>/status/", PreauthStatusView.as_view(), name="preauth-status"),
+    path("preauth/pending/", PreauthPendingListView.as_view(), name="preauth-pending"),
     # DHA Integration Endpoints (Callback/Webhook URLs)
     # Register these with DHA when setting up integration:
     # - Callback URL: https://your-domain/api/sha/webhook/

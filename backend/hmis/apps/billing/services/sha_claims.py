@@ -577,6 +577,33 @@ class SHAClaimsService:
             "resourceType": "Organization",
         }
 
+    def _get_active_consent(self, claim: SHAClaim):
+        """Return the most recent validated, non-expired consent token for this claim's member."""
+        from hmis.apps.billing.models import ConsentToken
+
+        if not claim.sha_member_id:
+            return None
+        return (
+            ConsentToken.objects.filter(
+                sha_member_id=claim.sha_member_id,
+                status=ConsentToken.ConsentStatus.VALIDATED,
+            )
+            .order_by("-validated_at")
+            .first()
+        )
+
+    def _get_approved_preauth(self, claim: SHAClaim):
+        """Return the most recent approved, non-expired preauth for this claim."""
+        from hmis.apps.billing.models import PreauthRequest
+
+        return (
+            claim.preauth_requests.filter(
+                decision=PreauthRequest.PreauthDecision.APPROVED,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
     def _build_claim_resource(
         self,
         claim: SHAClaim,
@@ -753,6 +780,31 @@ class SHAClaimsService:
                     },
                 }
             )
+
+        # ---------------------------------------------------------------------
+        # DHA HIE consent token & pre-authorization references
+        # ---------------------------------------------------------------------
+        # Attach validated consent token (required for SHIF/PHC flows)
+        consent_token = self._get_active_consent(claim)
+        if consent_token:
+            claim_resource.setdefault("extension", []).append(
+                {
+                    "url": "https://vitora.health/fhir/StructureDefinition/consent-token",
+                    "valueString": consent_token.consent_token or "",
+                }
+            )
+
+        # Attach pre-authorization reference (required for SHIF restricted services)
+        preauth = self._get_approved_preauth(claim)
+        if preauth and preauth.preauth_reference:
+            claim_resource.setdefault("extension", []).append(
+                {
+                    "url": "https://vitora.health/fhir/StructureDefinition/preauth-reference",
+                    "valueString": preauth.preauth_reference,
+                }
+            )
+            # Also set the formal preAuth reference per FHIR Claim spec
+            claim_resource["preAuthRef"] = [preauth.preauth_reference]
 
         return claim_resource
 

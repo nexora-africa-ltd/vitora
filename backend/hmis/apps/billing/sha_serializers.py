@@ -453,3 +453,126 @@ class SHAClaimDashboardSerializer(serializers.Serializer):
     claims_by_status = serializers.DictField()
     claims_by_type = serializers.DictField()
     average_processing_days = serializers.FloatField(allow_null=True)
+
+
+# ---------------------------------------------------------------------------
+# Consent Token Serializers
+# ---------------------------------------------------------------------------
+
+
+class ConsentTokenSerializer(serializers.ModelSerializer):
+    """Read serializer for ConsentToken."""
+
+    patient_name = serializers.SerializerMethodField()
+    is_valid = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        from hmis.apps.billing.models import ConsentToken
+
+        model = ConsentToken
+        fields = [
+            "id",
+            "patient",
+            "patient_name",
+            "sha_member",
+            "encounter",
+            "consent_method",
+            "status",
+            "otp_reference",
+            "identification_type",
+            "identification_number",
+            "consent_token",
+            "created_at",
+            "validated_at",
+            "expires_at",
+            "is_valid",
+            "facility",
+        ]
+        read_only_fields = fields
+
+    def get_patient_name(self, obj) -> str:
+        if obj.patient:
+            return f"{obj.patient.first_name} {obj.patient.last_name}"
+        return ""
+
+
+class SendOTPSerializer(serializers.Serializer):
+    """Input serializer for sending OTP."""
+
+    sha_member_id = serializers.IntegerField(help_text="ID of the SHA member to send OTP to")
+
+
+class ValidateOTPSerializer(serializers.Serializer):
+    """Input serializer for validating OTP."""
+
+    consent_id = serializers.IntegerField(help_text="ID of the pending ConsentToken")
+    otp_code = serializers.CharField(max_length=10, help_text="OTP code entered by patient")
+    encrypted_pin = serializers.CharField(
+        max_length=255, required=False, default="", help_text="Optional encrypted PIN"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pre-authorization Serializers
+# ---------------------------------------------------------------------------
+
+
+class PreauthRequestSerializer(serializers.ModelSerializer):
+    """Read serializer for PreauthRequest."""
+
+    patient_name = serializers.SerializerMethodField()
+    is_valid = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        from hmis.apps.billing.models import PreauthRequest
+
+        model = PreauthRequest
+        fields = [
+            "id",
+            "claim",
+            "patient",
+            "patient_name",
+            "sha_member",
+            "consent_token",
+            "preauth_reference",
+            "procedure_code",
+            "diagnosis_codes",
+            "estimated_cost",
+            "scheduled_date",
+            "clinical_notes",
+            "decision",
+            "approved_amount",
+            "valid_until",
+            "denial_reason",
+            "poll_count",
+            "last_polled_at",
+            "created_at",
+            "submitted_at",
+            "is_valid",
+            "facility",
+        ]
+        read_only_fields = fields
+
+    def get_patient_name(self, obj) -> str:
+        if obj.patient:
+            return f"{obj.patient.first_name} {obj.patient.last_name}"
+        return ""
+
+
+class SubmitPreauthSerializer(serializers.Serializer):
+    """Input serializer for submitting pre-authorization."""
+
+    claim_id = serializers.IntegerField(help_text="ID of the SHA claim requiring preauth")
+    consent_token_id = serializers.IntegerField(help_text="ID of a valid ConsentToken")
+    procedure_code = serializers.CharField(max_length=20, help_text="SHA tariff code")
+    diagnosis_codes = serializers.ListField(
+        child=serializers.CharField(max_length=10),
+        help_text="ICD-10 diagnosis codes",
+    )
+    estimated_cost = serializers.DecimalField(
+        max_digits=12, decimal_places=2, help_text="Estimated cost (KES)"
+    )
+    scheduled_date = serializers.DateField(help_text="Planned procedure date")
+    clinical_notes = serializers.CharField(
+        required=False, default="", help_text="Clinical justification"
+    )

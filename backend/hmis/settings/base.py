@@ -773,6 +773,12 @@ SHA_ENDPOINTS = {
     "terminology_ichi": "/terminology/v1/ichi",
     "terminology_sha": "/terminology/v1/sha-intervention",
     "terminology_product": "/terminology/v1/product",
+    # DHA HIE User Journey Consent & Preauth endpoints
+    "send_otp": "/send-web-otp",
+    "validate_otp": "/v4/tiberbu-validate-otp",
+    "start_visit": "",  # Not yet published by DHA — will be populated when available
+    "preauth_submit": "/v1/preauth/request",
+    "preauth_status": "/v1/preauth/{ref}/status",
 }
 
 # Local WHO ICD-11 API (Docker container: whoicd/icd-api)

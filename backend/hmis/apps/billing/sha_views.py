@@ -56,6 +56,7 @@ from hmis.apps.billing.sha_serializers import (
     SHAMemberSerializer,
     SHATariffSerializer,
 )
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.permissions import SHAPermission
 
 logger = logging.getLogger(__name__)
@@ -310,7 +311,7 @@ class SHATariffViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(categories)
 
 
-class SHAClaimViewSet(viewsets.ModelViewSet):
+class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for SHA Claims management.
 
@@ -319,11 +320,12 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
 
     queryset = (
         SHAClaim.objects.select_related(
-            "patient", "sha_member", "encounter", "created_by", "submitted_by"
+            "patient", "sha_member", "encounter", "created_by", "submitted_by", "facility"
         )
         .prefetch_related("items", "attachments")
         .all()
     )
+    tenant_scope = "facility"
     lookup_value_regex = r"\d+"
     permission_classes = [IsAuthenticated, SHAPermission]
     renderer_classes = [JSONRenderer, BrowsableAPIRenderer, CSVRenderer, XLSXRenderer]
@@ -2190,5 +2192,494 @@ class SHAValidateView(APIView):
                 "status": "validated",
                 "result": validation_result,
                 "timestamp": timezone.now().isoformat(),
+            }
+        )
+
+
+# ---------------------------------------------------------------------------
+# DHA HIE Consent & Preauth Views (User Journey Compliance)
+# ---------------------------------------------------------------------------
+
+
+class ConsentSendOTPView(APIView):
+    """
+    Send OTP to patient for DHA visit consent.
+
+    POST /api/sha/consent/send-otp/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_facility(self, request):
+        """Resolve and return the request facility, or raise 403."""
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return None
+        return facility
+
+    @extend_schema(
+        request=inline_serializer(
+            name="ConsentSendOTPRequest",
+            fields={
+                "sha_member_id": serializers.IntegerField(),
+            },
+        ),
+        responses={
+            201: inline_serializer(
+                name="ConsentSendOTPResponse",
+                fields={
+                    "id": serializers.IntegerField(),
+                    "otp_reference": serializers.CharField(),
+                    "status": serializers.CharField(),
+                    "message": serializers.CharField(),
+                },
+            )
+        },
+    )
+    def post(self, request):
+        """Send OTP to patient for consent verification."""
+        from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+        from hmis.apps.billing.sha_serializers import SendOTPSerializer
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {
+                    "error": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = SendOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        sha_member_id = serializer.validated_data["sha_member_id"]
+
+        try:
+            sha_member = SHAMember.objects.select_related("patient").get(
+                id=sha_member_id, patient__organization=facility.organization
+            )
+        except SHAMember.DoesNotExist:
+            return Response(
+                {"error": "SHA member not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            service = SHAConsentService()
+            consent = service.send_otp(
+                sha_member=sha_member,
+                facility_code=facility.mfl_code or "",
+                user=request.user,
+                facility=facility,
+            )
+
+            return Response(
+                {
+                    "id": consent.id,
+                    "otp_reference": consent.otp_reference,
+                    "status": consent.status,
+                    "message": "OTP sent successfully",
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        except SHAConsentError as e:
+            logger.warning("Failed to send OTP: %s", e.message)
+            return Response(
+                {"error": e.message, "code": e.code, "details": e.details},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+
+class ConsentValidateOTPView(APIView):
+    """
+    Validate OTP and obtain consent token from DHA.
+
+    POST /api/sha/consent/validate-otp/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_facility(self, request):
+        """Resolve and return the request facility, or None."""
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        return getattr(request, "facility", None)
+
+    @extend_schema(
+        request=inline_serializer(
+            name="ConsentValidateOTPRequest",
+            fields={
+                "consent_id": serializers.IntegerField(),
+                "otp_code": serializers.CharField(),
+                "encrypted_pin": serializers.CharField(required=False),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="ConsentValidateOTPResponse",
+                fields={
+                    "id": serializers.IntegerField(),
+                    "status": serializers.CharField(),
+                    "consent_token": serializers.CharField(),
+                    "expires_at": serializers.DateTimeField(),
+                    "message": serializers.CharField(),
+                },
+            )
+        },
+    )
+    def post(self, request):
+        """Validate OTP and receive consent token."""
+        from hmis.apps.billing.models import ConsentToken
+        from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+        from hmis.apps.billing.sha_serializers import ValidateOTPSerializer
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {
+                    "error": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = ValidateOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        consent_id = serializer.validated_data["consent_id"]
+        otp_code = serializer.validated_data["otp_code"]
+        encrypted_pin = serializer.validated_data.get("encrypted_pin", "")
+
+        try:
+            consent = ConsentToken.objects.get(id=consent_id, facility=facility)
+        except ConsentToken.DoesNotExist:
+            return Response(
+                {"error": "Consent token not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            service = SHAConsentService()
+            consent = service.validate_otp(
+                consent=consent,
+                otp_code=otp_code,
+                encrypted_pin=encrypted_pin,
+            )
+
+            return Response(
+                {
+                    "id": consent.id,
+                    "status": consent.status,
+                    "consent_token": consent.consent_token,
+                    "expires_at": consent.expires_at,
+                    "message": "Consent validated successfully",
+                },
+                status=status.HTTP_200_OK,
+            )
+        except SHAConsentError as e:
+            logger.warning("Failed to validate OTP: %s", e.message)
+            return Response(
+                {"error": e.message, "code": e.code, "details": e.details},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ConsentDetailView(APIView):
+    """
+    Get consent token status.
+
+    GET /api/sha/consent/{id}/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_facility(self, request):
+        """Resolve and return the request facility, or None."""
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        return getattr(request, "facility", None)
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="ConsentDetailResponse",
+                fields={
+                    "id": serializers.IntegerField(),
+                    "patient": serializers.IntegerField(),
+                    "sha_member": serializers.IntegerField(),
+                    "consent_method": serializers.CharField(),
+                    "status": serializers.CharField(),
+                    "consent_token": serializers.CharField(),
+                    "is_valid": serializers.BooleanField(),
+                    "created_at": serializers.DateTimeField(),
+                    "validated_at": serializers.DateTimeField(),
+                    "expires_at": serializers.DateTimeField(),
+                },
+            )
+        },
+    )
+    def get(self, request, pk):
+        """Retrieve consent token details."""
+        from hmis.apps.billing.models import ConsentToken
+        from hmis.apps.billing.sha_serializers import ConsentTokenSerializer
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {
+                    "error": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            consent = ConsentToken.objects.select_related("patient", "sha_member").get(
+                id=pk, facility=facility
+            )
+        except ConsentToken.DoesNotExist:
+            return Response(
+                {"error": "Consent token not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ConsentTokenSerializer(consent)
+        return Response(serializer.data)
+
+
+class PreauthSubmitView(APIView):
+    """
+    Submit pre-authorization request to DHA.
+
+    POST /api/sha/preauth/submit/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_facility(self, request):
+        """Resolve and return the request facility, or None."""
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        return getattr(request, "facility", None)
+
+    @extend_schema(
+        request=inline_serializer(
+            name="PreauthSubmitRequest",
+            fields={
+                "claim_id": serializers.IntegerField(),
+                "consent_token_id": serializers.IntegerField(),
+                "procedure_code": serializers.CharField(),
+                "diagnosis_codes": serializers.ListField(),
+                "estimated_cost": serializers.DecimalField(max_digits=12, decimal_places=2),
+                "scheduled_date": serializers.DateField(),
+                "clinical_notes": serializers.CharField(required=False),
+            },
+        ),
+        responses={
+            201: inline_serializer(
+                name="PreauthSubmitResponse",
+                fields={
+                    "id": serializers.IntegerField(),
+                    "preauth_reference": serializers.CharField(),
+                    "decision": serializers.CharField(),
+                    "message": serializers.CharField(),
+                },
+            )
+        },
+    )
+    def post(self, request):
+        """Submit pre-authorization request."""
+        from hmis.apps.billing.models import ConsentToken, PreauthRequest, SHAClaim
+        from hmis.apps.billing.services.sha_preauth import SHAPreauthError, SHAPreauthService
+        from hmis.apps.billing.sha_serializers import SubmitPreauthSerializer
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {
+                    "error": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = SubmitPreauthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Validate references — scoped to facility
+        try:
+            claim = SHAClaim.objects.select_related("patient", "sha_member").get(
+                id=data["claim_id"], facility=facility
+            )
+        except SHAClaim.DoesNotExist:
+            return Response(
+                {"error": "SHA claim not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            consent = ConsentToken.objects.get(id=data["consent_token_id"], facility=facility)
+        except ConsentToken.DoesNotExist:
+            return Response(
+                {"error": "Consent token not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not consent.is_valid:
+            return Response(
+                {"error": "Consent token is expired or invalid"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            service = SHAPreauthService()
+            preauth = service.submit_preauth(
+                claim=claim,
+                consent=consent,
+                procedure_code=data["procedure_code"],
+                diagnosis_codes=data["diagnosis_codes"],
+                estimated_cost=data["estimated_cost"],
+                scheduled_date=data["scheduled_date"],
+                clinical_notes=data.get("clinical_notes", ""),
+                user=request.user,
+            )
+
+            return Response(
+                {
+                    "id": preauth.id,
+                    "preauth_reference": preauth.preauth_reference,
+                    "decision": preauth.decision,
+                    "message": "Pre-authorization submitted successfully",
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        except SHAPreauthError as e:
+            logger.warning("Failed to submit preauth: %s", e.message)
+            return Response(
+                {"error": e.message, "code": e.code, "details": e.details},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+
+class PreauthStatusView(APIView):
+    """
+    Check pre-authorization status.
+
+    GET /api/sha/preauth/{id}/status/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_facility(self, request):
+        """Resolve and return the request facility, or None."""
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        return getattr(request, "facility", None)
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="PreauthStatusResponse",
+                fields={
+                    "id": serializers.IntegerField(),
+                    "preauth_reference": serializers.CharField(),
+                    "decision": serializers.CharField(),
+                    "approved_amount": serializers.DecimalField(max_digits=12, decimal_places=2),
+                    "valid_until": serializers.DateField(),
+                    "is_valid": serializers.BooleanField(),
+                    "poll_count": serializers.IntegerField(),
+                },
+            )
+        },
+    )
+    def get(self, request, pk):
+        """Retrieve pre-authorization status."""
+        from hmis.apps.billing.models import PreauthRequest
+        from hmis.apps.billing.sha_serializers import PreauthRequestSerializer
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {
+                    "error": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            preauth = PreauthRequest.objects.select_related("patient", "sha_member", "claim").get(
+                id=pk, facility=facility
+            )
+        except PreauthRequest.DoesNotExist:
+            return Response(
+                {"error": "Pre-authorization request not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = PreauthRequestSerializer(preauth)
+        return Response(serializer.data)
+
+
+class PreauthPendingListView(APIView):
+    """
+    List pending pre-authorization requests for the facility.
+
+    GET /api/sha/preauth/pending/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_facility(self, request):
+        """Resolve and return the request facility, or None."""
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        return getattr(request, "facility", None)
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="PreauthPendingListResponse",
+                fields={
+                    "count": serializers.IntegerField(),
+                    "results": serializers.ListField(),
+                },
+            )
+        },
+    )
+    def get(self, request):
+        """List all pending preauth requests for the current facility."""
+        from hmis.apps.billing.models import PreauthRequest
+        from hmis.apps.billing.sha_serializers import PreauthRequestSerializer
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {
+                    "error": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        preauths = (
+            PreauthRequest.objects.filter(
+                decision=PreauthRequest.PreauthDecision.PENDING,
+                facility=facility,
+            )
+            .select_related("patient", "sha_member", "claim")
+            .order_by("-created_at")
+        )
+
+        serializer = PreauthRequestSerializer(preauths, many=True)
+        return Response(
+            {
+                "count": preauths.count(),
+                "results": serializer.data,
             }
         )
