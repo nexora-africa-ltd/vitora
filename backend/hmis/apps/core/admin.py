@@ -16,6 +16,7 @@ from .models import (
     CodeSystem,
     County,
     Department,
+    DHAOutboundCall,
     DocumentSignature,
     EmailVerificationToken,
     ExternalCodeMapping,
@@ -1564,3 +1565,53 @@ class OrgMembershipAdmin(admin.ModelAdmin):
     filter_horizontal = ["facilities"]
     readonly_fields = ["joined_at", "created_at", "updated_at"]
     ordering = ["-joined_at"]
+
+
+@admin.register(DHAOutboundCall)
+class DHAOutboundCallAdmin(admin.ModelAdmin):
+    """Read-only audit view for outbound DHA HIE Middleware calls."""
+
+    list_display = (
+        "created_at",
+        "method",
+        "path",
+        "status",
+        "status_code",
+        "duration_ms",
+        "attempt",
+        "facility",
+        "user",
+    )
+    list_filter = ("status", "method", "facility", "auth_mode")
+    search_fields = ("path", "correlation_id", "consent_token", "error_code", "user__username")
+    raw_id_fields = ("organization", "facility", "user")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "method",
+        "path",
+        "base_url",
+        "auth_mode",
+        "status",
+        "status_code",
+        "duration_ms",
+        "attempt",
+        "consent_token",
+        "request_id",
+        "correlation_id",
+        "error_code",
+        "request_payload",
+        "response_excerpt",
+        "error_message",
+        "organization",
+        "facility",
+        "user",
+    )
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request) -> bool:  # noqa: D401
+        return False
+
+    def has_change_permission(self, request, obj=None) -> bool:  # noqa: D401
+        return False
