@@ -447,6 +447,10 @@ export const ClaimSchema = z.object({
   preauth_date: z.string().nullable().optional(),
   preauth_valid_until: z.string().nullable().optional(),
 
+  // DHA HIE claim flow routing
+  claim_flow: z.enum(['phc', 'shif', 'eccif']).or(z.literal('')).nullable().optional(),
+  is_emergency_claim: z.boolean().optional(),
+
   // Facility
   facility_code: z.string().nullable().optional(),
   facility_level: z.string().nullable().optional(),
@@ -701,6 +705,102 @@ export const PaginatedActiveComponentsSchema = z.object({
 });
 
 // =============================================================================
+// DHA HIE CONSENT SCHEMAS
+// =============================================================================
+
+export const ConsentStatusSchema = z.enum(['PENDING', 'VALIDATED', 'EXPIRED', 'FAILED']);
+export const ConsentMethodSchema = z.enum(['OTP', 'BIOMETRIC']);
+
+export const ConsentTokenSchema = z.object({
+  id: z.number(),
+  patient: z.number(),
+  sha_member: z.number(),
+  facility: z.number(),
+  consent_method: ConsentMethodSchema,
+  status: ConsentStatusSchema,
+  otp_reference: z.string(),
+  consent_token: z.string(),
+  identification_type: z.string(),
+  identification_number: z.string(),
+  created_at: z.string(),
+  validated_at: z.string().nullable(),
+  expires_at: z.string().nullable(),
+  is_valid: z.boolean(),
+});
+
+export type ConsentTokenSchemaType = z.infer<typeof ConsentTokenSchema>;
+
+export const SendOTPResponseSchema = z.object({
+  consent_id: z.number(),
+  otp_reference: z.string(),
+  status: z.string(),
+  message: z.string(),
+});
+
+export type SendOTPResponseSchemaType = z.infer<typeof SendOTPResponseSchema>;
+
+export const ValidateOTPResponseSchema = z.object({
+  consent_id: z.number(),
+  status: ConsentStatusSchema,
+  consent_token: z.string(),
+  expires_at: z.string(),
+  message: z.string(),
+});
+
+export type ValidateOTPResponseSchemaType = z.infer<typeof ValidateOTPResponseSchema>;
+
+// =============================================================================
+// DHA HIE PRE-AUTHORIZATION SCHEMAS
+// =============================================================================
+
+export const PreauthDecisionSchema = z.enum(['PENDING', 'APPROVED', 'DENIED', 'EXPIRED']);
+
+export const PreauthRequestSchema = z.object({
+  id: z.number(),
+  claim: z.number(),
+  patient: z.number(),
+  sha_member: z.number(),
+  consent_token: z.number(),
+  facility: z.number(),
+  preauth_reference: z.string(),
+  procedure_code: z.string(),
+  diagnosis_codes: z.array(z.string()),
+  estimated_cost: z.string(),
+  scheduled_date: z.string(),
+  clinical_notes: z.string(),
+  decision: PreauthDecisionSchema,
+  approved_amount: z.string().nullable(),
+  valid_until: z.string().nullable(),
+  denial_reason: z.string(),
+  poll_count: z.number(),
+  last_polled_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  submitted_at: z.string().nullable(),
+  is_valid: z.boolean(),
+});
+
+export type PreauthRequestSchemaType = z.infer<typeof PreauthRequestSchema>;
+
+export const SubmitPreauthResponseSchema = z.object({
+  preauth_id: z.number(),
+  preauth_reference: z.string(),
+  decision: PreauthDecisionSchema,
+  message: z.string(),
+});
+
+export type SubmitPreauthResponseSchemaType = z.infer<typeof SubmitPreauthResponseSchema>;
+
+export const PaginatedPreauthRequestsSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(PreauthRequestSchema),
+});
+
+export type PaginatedPreauthRequestsSchemaType = z.infer<typeof PaginatedPreauthRequestsSchema>;
+
+// =============================================================================
 // ARRAY RESPONSES
 // =============================================================================
 
@@ -710,7 +810,7 @@ export const ClaimItemArraySchema = z.array(ClaimItemSchema);
 export const SHAMemberSearchResultSchema = SHAMemberSchema;
 export const SHAClaimSchema = ClaimSchema;
 export const SHAClaimItemSchema = ClaimItemSchema;
-export const SHAPreauthorizationSchema = z.object({}).passthrough(); // TODO: implement when needed
+export const SHAPreauthorizationSchema = PreauthRequestSchema;
 export const PaginatedSHAClaimSchema = PaginatedClaimsSchema;
 export const SHAClaimItemArrayResponseSchema = z.object({
   results: ClaimItemArraySchema,

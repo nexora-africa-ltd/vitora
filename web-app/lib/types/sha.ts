@@ -415,6 +415,120 @@ export interface DrugSearchParams extends TerminologySearchParams {
 }
 
 // ============================================================================
+// DHA HIE Consent Types
+// ============================================================================
+
+export type ConsentStatus = 'PENDING' | 'VALIDATED' | 'EXPIRED' | 'FAILED';
+export type ConsentMethod = 'OTP' | 'BIOMETRIC';
+
+export interface ConsentToken {
+  id: number;
+  patient: number;
+  sha_member: number;
+  facility: number;
+  consent_method: ConsentMethod;
+  status: ConsentStatus;
+  otp_reference: string;
+  consent_token: string;
+  identification_type: string;
+  identification_number: string;
+  created_at: string;
+  validated_at: string | null;
+  expires_at: string | null;
+  is_valid: boolean;
+}
+
+export interface SendOTPRequest {
+  sha_member_id: number;
+}
+
+export interface SendOTPResponse {
+  consent_id: number;
+  otp_reference: string;
+  status: string;
+  message: string;
+}
+
+export interface ValidateOTPRequest {
+  consent_id: number;
+  otp_code: string;
+}
+
+export interface ValidateOTPResponse {
+  consent_id: number;
+  status: ConsentStatus;
+  consent_token: string;
+  expires_at: string;
+  message: string;
+}
+
+// ============================================================================
+// DHA HIE Pre-authorization Types
+// ============================================================================
+
+export type PreauthDecision = 'PENDING' | 'APPROVED' | 'DENIED' | 'EXPIRED';
+
+export interface PreauthRequest {
+  id: number;
+  claim: number;
+  patient: number;
+  sha_member: number;
+  consent_token: number;
+  facility: number;
+  preauth_reference: string;
+  procedure_code: string;
+  diagnosis_codes: string[];
+  estimated_cost: string;
+  scheduled_date: string;
+  clinical_notes: string;
+  decision: PreauthDecision;
+  approved_amount: string | null;
+  valid_until: string | null;
+  denial_reason: string;
+  poll_count: number;
+  last_polled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  submitted_at: string | null;
+  is_valid: boolean;
+}
+
+export interface SubmitPreauthRequest {
+  claim_id: number;
+  consent_token_id: number;
+  procedure_code: string;
+  diagnosis_codes: string[];
+  estimated_cost: string;
+  scheduled_date: string;
+  clinical_notes?: string;
+}
+
+export interface SubmitPreauthResponse {
+  preauth_id: number;
+  preauth_reference: string;
+  decision: PreauthDecision;
+  message: string;
+}
+
+// ============================================================================
+// DHA HIE Claim Flow Types
+// ============================================================================
+
+export type ClaimFlow = 'phc' | 'shif' | 'eccif';
+
+export const CLAIM_FLOW_LABELS: Record<ClaimFlow, string> = {
+  phc: 'Primary Health Care (UHC)',
+  shif: 'SHIF (Social Health Insurance)',
+  eccif: 'Emergency (ECCIF)',
+};
+
+export const CLAIM_FLOW_DESCRIPTIONS: Record<ClaimFlow, string> = {
+  phc: 'Simplified consent, no pre-authorization required. For Level 2-3 facilities with UHC scheme.',
+  shif: 'Biometric/OTP consent required. Pre-authorization needed for restricted services.',
+  eccif: 'Emergency claim flow. No initial consent required, bundled tariffs applied.',
+};
+
+// ============================================================================
 // Claim Types
 // ============================================================================
 
@@ -513,6 +627,10 @@ export interface Claim {
   preauth_number?: string | null;
   preauth_date?: string | null;
   preauth_valid_until?: string | null;
+
+  // DHA HIE claim flow routing
+  claim_flow?: ClaimFlow | '' | null;
+  is_emergency_claim?: boolean;
 
   // Facility
   facility_code?: string | null;

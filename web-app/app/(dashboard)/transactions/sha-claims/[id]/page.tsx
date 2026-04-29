@@ -29,6 +29,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/utils/format';
 import { useClaim, useSubmitClaim, useResubmitClaim } from '@/lib/hooks/use-sha';
 import { ClaimStatusBadge } from '@/components/billing/sha/ClaimComponents';
+import { ConsentPanel } from '@/components/billing/sha/ConsentPanel';
+import { PreauthPanel } from '@/components/billing/sha/PreauthPanel';
+import { CLAIM_FLOW_LABELS } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
 
 function CopyButton({ text }: { text: string }) {
@@ -99,6 +102,7 @@ export default function ClaimDetailPage() {
   const { data: claim, isLoading, refetch, isRefetching } = useClaim(claimId);
   const submitMutation = useSubmitClaim();
   const resubmitMutation = useResubmitClaim();
+  const [consentTokenId, setConsentTokenId] = useState<number | undefined>();
 
   const handleSubmit = async () => {
     try {
@@ -178,6 +182,11 @@ export default function ClaimDetailPage() {
               <span className="font-mono text-sm">SHA Ref: {claim.sha_reference}</span>
               <CopyButton text={claim.sha_reference} />
             </div>
+          )}
+          {claim.claim_flow && (
+            <Badge variant="outline" className="w-fit text-xs">
+              {CLAIM_FLOW_LABELS[claim.claim_flow] || claim.claim_flow.toUpperCase()}
+            </Badge>
           )}
         </div>
 
@@ -410,6 +419,22 @@ export default function ClaimDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* DHA HIE Consent & Pre-authorization (SHIF flow only) */}
+      {claim.claim_flow === 'shif' && claim.sha_member && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <ConsentPanel
+            shaMemberId={claim.sha_member}
+            onConsentObtained={(id) => setConsentTokenId(id)}
+          />
+          <PreauthPanel
+            claimId={claim.id}
+            consentTokenId={consentTokenId}
+            diagnosisCodes={claim.primary_diagnosis_code ? [claim.primary_diagnosis_code] : []}
+            onPreauthComplete={() => refetch()}
+          />
+        </div>
+      )}
     </div>
   );
 }
