@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { useSendConsentOTP, useValidateConsentOTP, useConsentDetail } from '@/lib/hooks/use-sha';
+import { useSendConsentOTP, useStartVisit, useConsentDetail } from '@/lib/hooks/use-sha';
 import type { ConsentStatus } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
 
@@ -99,7 +99,7 @@ export function ConsentPanel({
   const [error, setError] = useState<string | null>(null);
 
   const sendOTP = useSendConsentOTP();
-  const validateOTP = useValidateConsentOTP();
+  const startVisit = useStartVisit();
   const { data: consentDetail } = useConsentDetail(consentId);
 
   const handleSendOTP = async () => {
@@ -121,13 +121,13 @@ export function ConsentPanel({
   const handleValidateOTP = async () => {
     if (!consentId || !otpCode.trim()) return;
     setError(null);
-    validateOTP.mutate(
+    startVisit.mutate(
       { consent_id: consentId, otp_code: otpCode.trim() },
       {
         onSuccess: (response) => {
           setStep('validated');
           setOtpCode('');
-          onConsentObtained?.(response.consent_id, response.consent_token);
+          onConsentObtained?.(response.id, response.consent_token);
         },
         onError: (err: Error) => {
           setError(err.message || 'Invalid OTP code');
@@ -191,10 +191,10 @@ export function ConsentPanel({
                 />
                 <Button
                   onClick={handleValidateOTP}
-                  disabled={validateOTP.isPending || otpCode.length < 4}
+                  disabled={startVisit.isPending || otpCode.length < 4}
                   size="sm"
                 >
-                  {validateOTP.isPending ? (
+                  {startVisit.isPending ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <KeyRound className="mr-2 h-4 w-4" />

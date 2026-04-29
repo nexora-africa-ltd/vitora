@@ -776,7 +776,7 @@ SHA_ENDPOINTS = {
     # DHA HIE User Journey Consent & Preauth endpoints
     "send_otp": "/send-web-otp",
     "validate_otp": "/v4/tiberbu-validate-otp",
-    "start_visit": "",  # Not yet published by DHA — will be populated when available
+    "start_visit": "/api/v1/claims/visit",
     "preauth_submit": "/v1/preauth/request",
     "preauth_status": "/v1/preauth/{ref}/status",
 }

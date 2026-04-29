@@ -2451,6 +2451,135 @@ class ConsentDetailView(APIView):
         return Response(serializer.data)
 
 
+class StartVisitView(APIView):
+    """
+    Start a visit with DHA (combined OTP validation + visit start).
+
+    POST /api/sha/consent/start-visit/
+
+    This calls DHA's POST /api/v1/claims/visit which takes the raw OTP,
+    validates it, and starts the visit session in a single call.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_facility(self, request):
+        """Resolve and return the request facility, or None."""
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        return getattr(request, "facility", None)
+
+    @extend_schema(
+        request=inline_serializer(
+            name="StartVisitRequest",
+            fields={
+                "consent_id": serializers.IntegerField(
+                    help_text="ConsentToken ID (from send-otp step)"
+                ),
+                "otp_code": serializers.CharField(help_text="OTP code entered by patient"),
+                "intervention_codes": serializers.ListField(
+                    child=serializers.CharField(),
+                    required=False,
+                    help_text="SHA intervention codes for this visit",
+                ),
+                "service_type": serializers.CharField(
+                    required=False,
+                    help_text="outpatient, inpatient, or emergency",
+                ),
+                "admission_date": serializers.CharField(
+                    required=False, help_text="ISO date (defaults to today)"
+                ),
+                "estimated_days_of_admission": serializers.IntegerField(
+                    required=False, help_text="Expected length of stay in days"
+                ),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="StartVisitResponse",
+                fields={
+                    "id": serializers.IntegerField(),
+                    "status": serializers.CharField(),
+                    "consent_token": serializers.CharField(),
+                    "expires_at": serializers.DateTimeField(allow_null=True),
+                    "visit_data": serializers.DictField(),
+                    "message": serializers.CharField(),
+                },
+            )
+        },
+    )
+    def post(self, request):
+        """Start a visit by validating OTP + creating visit session with DHA."""
+        from hmis.apps.billing.models import ConsentToken
+        from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {
+                    "error": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        consent_id = request.data.get("consent_id")
+        otp_code = request.data.get("otp_code", "")
+        intervention_codes = request.data.get("intervention_codes", [])
+        service_type = request.data.get("service_type", "outpatient")
+        admission_date = request.data.get("admission_date", "")
+        estimated_days = request.data.get("estimated_days_of_admission", 0)
+
+        if not consent_id:
+            return Response(
+                {"error": "consent_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not otp_code:
+            return Response(
+                {"error": "otp_code is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            consent = ConsentToken.objects.get(id=consent_id, facility=facility)
+        except ConsentToken.DoesNotExist:
+            return Response(
+                {"error": "Consent token not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            service = SHAConsentService()
+            visit_data = service.start_visit(
+                consent=consent,
+                otp_code=otp_code,
+                intervention_codes=intervention_codes,
+                service_type=service_type,
+                admission_date=admission_date,
+                estimated_days_of_admission=int(estimated_days),
+            )
+
+            consent.refresh_from_db()
+            return Response(
+                {
+                    "id": consent.id,
+                    "status": consent.status,
+                    "consent_token": consent.consent_token,
+                    "expires_at": consent.expires_at,
+                    "visit_data": visit_data,
+                    "message": "Visit started successfully",
+                },
+                status=status.HTTP_200_OK,
+            )
+        except SHAConsentError as e:
+            logger.warning("Failed to start visit: %s", e.message)
+            return Response(
+                {"error": e.message, "code": e.code, "details": e.details},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
 class PreauthSubmitView(APIView):
     """
     Submit pre-authorization request to DHA.
