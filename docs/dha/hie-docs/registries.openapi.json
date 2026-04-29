@@ -1,0 +1,1580 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "HIE Registries",
+    "version": "1.0.0",
+    "description": "API for accessing various registries in the Health Information Exchange (HIE) system."
+  },
+  "servers": [
+    {
+      "url": "https://ilm-dev.dha.go.ke/uat-middleware"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Client Registry",
+      "description": "Endpoints for accessing client registry"
+    },
+    {
+      "name": "Health Worker Registry",
+      "description": "Endpoints for accessing health worker registry"
+    },
+    {
+      "name": "Facility Registry",
+      "description": "Endpoints for accessing facility registry"
+    }
+  ],
+  "paths": {
+    "/api/v1/facilities/search": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "Retrieves a facility's record from facility registry",
+        "tags": [
+          "Facility Registry"
+        ],
+        "operationId": "FacilitySearch",
+        "summary": "Get facility's record",
+        "parameters": [
+          {
+            "description": "The unique identifier value for the facility",
+            "required": true,
+            "name": "identifier",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "default": {
+                "value": "021240"
+              }
+            }
+          },
+          {
+            "name": "identifier-type",
+            "description": "The type of identifier being used to search for the facility",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "default": {
+                "value": "registration-number"
+              }
+            }
+          },
+          {
+            "description": "Facility's name",
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "SHAOperationStatus": {
+                      "type": "object",
+                      "properties": {
+                        "earliestReinstatementDate": {
+                          "type": "string"
+                        },
+                        "operationalStatus": {
+                          "type": "string"
+                        },
+                        "operationalStatusReason": {
+                          "type": "string"
+                        },
+                        "reinstatementDate": {
+                          "type": "string"
+                        },
+                        "reinstatementRecommendations": {
+                          "type": "string"
+                        },
+                        "suspensionDate": {
+                          "type": "string"
+                        },
+                        "suspensionReason": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "address": {
+                      "type": "object",
+                      "properties": {
+                        "constituency": {
+                          "type": "string"
+                        },
+                        "country": {
+                          "type": "string"
+                        },
+                        "county": {
+                          "type": "string"
+                        },
+                        "countyCode": {
+                          "type": "string"
+                        },
+                        "latitude": {
+                          "type": "string"
+                        },
+                        "longitude": {
+                          "type": "string"
+                        },
+                        "physicalLocation": {
+                          "type": "string"
+                        },
+                        "postalAddress": {
+                          "type": "string"
+                        },
+                        "subCounty": {
+                          "type": "string"
+                        },
+                        "subCountyCode": {
+                          "type": "string"
+                        },
+                        "town": {
+                          "type": "string"
+                        },
+                        "ward": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "bedOccupancy": {
+                      "type": "object",
+                      "properties": {
+                        "dialysisBeds": {
+                          "type": "integer"
+                        },
+                        "hduBeds": {
+                          "type": "integer"
+                        },
+                        "icuBeds": {
+                          "type": "integer"
+                        },
+                        "normalBeds": {
+                          "type": "integer"
+                        },
+                        "numberOfCots": {
+                          "type": "integer"
+                        },
+                        "totalBeds": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "facilityAdministratorEmail": {
+                      "type": "string"
+                    },
+                    "facilityAdministratorIdentifier": {
+                      "type": "string"
+                    },
+                    "facilityAdministratorName": {
+                      "type": "string"
+                    },
+                    "facilityAdministratorPhone": {
+                      "type": "string"
+                    },
+                    "facilityEmail": {
+                      "type": "string"
+                    },
+                    "facilityLicenseEndDate": {
+                      "type": "string"
+                    },
+                    "facilityLicenseStartDate": {
+                      "type": "string"
+                    },
+                    "facilityLicenseStatus": {
+                      "type": "string"
+                    },
+                    "facilityOwnership": {
+                      "type": "string"
+                    },
+                    "facilityPhoneNumber": {
+                      "type": "string"
+                    },
+                    "facilityType": {
+                      "type": "string"
+                    },
+                    "fidCode": {
+                      "type": "string"
+                    },
+                    "frCode": {
+                      "type": "string"
+                    },
+                    "isHub": {
+                      "type": "boolean"
+                    },
+                    "kephLevel": {
+                      "type": "string"
+                    },
+                    "licenseNumber": {
+                      "type": "string"
+                    },
+                    "officialName": {
+                      "type": "string"
+                    },
+                    "pcnCode": {
+                      "type": "string"
+                    },
+                    "registrationNumber": {
+                      "type": "string"
+                    },
+                    "regulatoryBody": {
+                      "type": "string"
+                    },
+                    "regulatoryOperationalStatus": {
+                      "$ref_circular": "#/__circ_32"
+                    },
+                    "shaConstractEndDate": {},
+                    "shaConstractStartDate": {},
+                    "shaContractStatus": {
+                      "type": "string"
+                    },
+                    "shaContractedServices": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "uuid": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing required query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Standard error response format for all error conditions.",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "description": "@Description\tHTTP status text from the standard HTTP status codes\n\t@Example\t\t\"Bad Request\"",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "@Description\tDetailed error message explaining what went wrong\n\t@Example\t\t\"token missing required tenant_id claim\"",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Not enough permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_99"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - Failed to retrieve practitioner record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_92"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "Retrieves patient record from the client registry using a patient's identification number and type",
+        "tags": [
+          "Client Registry"
+        ],
+        "summary": "Get patient record",
+        "parameters": [
+          {
+            "name": "identification_number",
+            "description": "The unique number from the patient's identification document",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "default": {
+                "value": "12345678"
+              }
+            }
+          },
+          {
+            "name": "identification_type",
+            "in": "query",
+            "description": "The kind of identification document of the Patient",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Temporary ID",
+                "Alien ID",
+                "Refugee ID",
+                "Mandate Number",
+                "Birth Certificate",
+                "National ID",
+                "Birth Notification",
+                "ClientRegistry ID"
+              ]
+            },
+            "examples": {
+              "default": {
+                "value": "National ID"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "admission_number": {
+                      "type": "string"
+                    },
+                    "admission_remand_number": {
+                      "type": "string"
+                    },
+                    "agent_id": {
+                      "type": "string"
+                    },
+                    "building_house_no": {
+                      "type": "string"
+                    },
+                    "citizenship": {
+                      "type": "string"
+                    },
+                    "city": {
+                      "type": "string"
+                    },
+                    "civil_status": {
+                      "type": "string"
+                    },
+                    "country": {
+                      "type": "string"
+                    },
+                    "county": {
+                      "type": "string"
+                    },
+                    "date_of_birth": {
+                      "type": "string"
+                    },
+                    "deceased_datetime": {
+                      "type": "string"
+                    },
+                    "dependants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date_added": {
+                            "type": "string"
+                          },
+                          "relationship": {
+                            "type": "string"
+                          },
+                          "result": {
+                            "type": "array",
+                            "items": {
+                              "$ref_circular": "#/__circ_129"
+                            }
+                          },
+                          "total": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "disability_category": {
+                      "type": "string"
+                    },
+                    "disability_cause": {
+                      "type": "string"
+                    },
+                    "disability_subcategory": {
+                      "type": "string"
+                    },
+                    "domestic_worker_type": {
+                      "type": "string"
+                    },
+                    "employer_name": {
+                      "type": "string"
+                    },
+                    "employer_pin": {
+                      "type": "string"
+                    },
+                    "employment_type": {
+                      "type": "string"
+                    },
+                    "first_name": {
+                      "type": "string"
+                    },
+                    "gender": {
+                      "type": "string"
+                    },
+                    "grade_level": {
+                      "type": "string"
+                    },
+                    "gross_income": {
+                      "type": "number"
+                    },
+                    "gross_income_currency": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "id_serial": {
+                      "type": "string"
+                    },
+                    "identification_number": {
+                      "type": "string"
+                    },
+                    "identification_residence": {
+                      "type": "string"
+                    },
+                    "identification_type": {
+                      "type": "string"
+                    },
+                    "is_agent": {
+                      "type": "integer"
+                    },
+                    "kra_pin": {
+                      "type": "string"
+                    },
+                    "last_name": {
+                      "type": "string"
+                    },
+                    "latitude": {
+                      "type": "string"
+                    },
+                    "learning_institution_code": {
+                      "type": "string"
+                    },
+                    "learning_institution_name": {
+                      "type": "string"
+                    },
+                    "longitude": {
+                      "type": "string"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "creationTime": {
+                          "type": "string"
+                        },
+                        "lastUpdated": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string"
+                        },
+                        "versionId": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "middle_name": {
+                      "type": "string"
+                    },
+                    "originSystem": {
+                      "type": "object",
+                      "properties": {
+                        "record_id": {
+                          "type": "string"
+                        },
+                        "system": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "other_identifications": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "identification_number": {
+                            "type": "string"
+                          },
+                          "identification_type": {
+                            "type": "string",
+                            "enum": [
+                              "National ID",
+                              "ClientRegistry ID",
+                              "Birth Notification",
+                              "Birth Certificate",
+                              "Alien ID",
+                              "Refugee ID",
+                              "Mandate Number",
+                              "Temporary ID"
+                            ],
+                            "x-enum-varnames": [
+                              "PatientIdentificationTypeNationalID",
+                              "PatientIdentificationTypeCrID",
+                              "PatientIdentificationTypeBirthCertificate",
+                              "PatientIdentificationTypeBirthNotification",
+                              "PatientIdentificationTypeAlienID",
+                              "PatientIdentificationTypeRefugeeID",
+                              "PatientIdentificationTypeMandateNumber",
+                              "PatientIdentificationTypeTemporaryID"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "phone": {
+                      "type": "string"
+                    },
+                    "place_of_birth": {
+                      "type": "string"
+                    },
+                    "postal_address": {
+                      "type": "string"
+                    },
+                    "preferred_primary_care_network": {
+                      "type": "string"
+                    },
+                    "province_state_country": {
+                      "type": "string"
+                    },
+                    "resourceType": {
+                      "type": "string"
+                    },
+                    "sub_county": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "unconfirmed_dependants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "agent": {
+                            "type": "string"
+                          },
+                          "citizenship": {
+                            "type": "string"
+                          },
+                          "county": {
+                            "type": "string"
+                          },
+                          "date_of_birth": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "first_name": {
+                            "type": "string"
+                          },
+                          "gender": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "identification_number": {
+                            "type": "string"
+                          },
+                          "identification_type": {
+                            "type": "string"
+                          },
+                          "last_name": {
+                            "type": "string"
+                          },
+                          "learning_institution_code": {
+                            "type": "string"
+                          },
+                          "learning_institution_name": {
+                            "type": "string"
+                          },
+                          "middle_name": {
+                            "type": "string"
+                          },
+                          "phone": {
+                            "type": "string"
+                          },
+                          "related_to": {
+                            "type": "string"
+                          },
+                          "relationship": {
+                            "type": "string"
+                          },
+                          "sub_county": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "village_estate": {
+                      "type": "string"
+                    },
+                    "ward": {
+                      "type": "string"
+                    },
+                    "zip_code": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing query parameters or invalid request input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_92"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/professionals": {
+      "get": {
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "Retrieves a practitioner's record from health worker registry",
+        "tags": [
+          "Health Worker Registry"
+        ],
+        "operationId": "ProfessionalSearch",
+        "summary": "Get practitioner's record",
+        "parameters": [
+          {
+            "description": "The unique number from the professional's identification document",
+            "name": "identification_number",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "default": {
+                "value": "A11702"
+              }
+            }
+          },
+          {
+            "description": "The kind of identification document of the healthcare professional",
+            "name": "identification_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "registration_number",
+                "license_number",
+                "practice_number",
+                "national_id",
+                "passport",
+                "other"
+              ]
+            },
+            "examples": {
+              "default": {
+                "value": "registration_number"
+              }
+            }
+          },
+          {
+            "description": "Practitioner regulator. This is required to identify the correct practitioner registry to query.",
+            "name": "regulator",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "KMPDC",
+                "COC",
+                "PPB"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "object",
+                      "properties": {
+                        "contacts": {
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "string"
+                            },
+                            "phone": {
+                              "type": "string"
+                            },
+                            "postal_address": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "identifiers": {
+                          "type": "object",
+                          "properties": {
+                            "client_registry_id": {
+                              "type": "string"
+                            },
+                            "identification_number": {
+                              "type": "string"
+                            },
+                            "identification_type": {
+                              "type": "string"
+                            },
+                            "student_id": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "licenses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "external_reference_id": {
+                                "type": "string"
+                              },
+                              "id": {
+                                "type": "string"
+                              },
+                              "license_end": {
+                                "type": "string"
+                              },
+                              "license_start": {
+                                "type": "string"
+                              },
+                              "license_type": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "membership": {
+                          "type": "object",
+                          "properties": {
+                            "external_reference_id": {
+                              "type": "string"
+                            },
+                            "first_name": {
+                              "type": "string"
+                            },
+                            "full_name": {
+                              "type": "string"
+                            },
+                            "gender": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            },
+                            "is_active": {
+                              "type": "integer"
+                            },
+                            "last_name": {
+                              "type": "string"
+                            },
+                            "licensing_body": {
+                              "type": "string"
+                            },
+                            "middle_name": {
+                              "type": "string"
+                            },
+                            "registration_id": {
+                              "type": "string"
+                            },
+                            "specialty": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "professional_details": {
+                          "type": "object",
+                          "properties": {
+                            "discipline_name": {
+                              "type": "string"
+                            },
+                            "educational_qualifications": {
+                              "type": "string"
+                            },
+                            "practice_type": {
+                              "type": "string"
+                            },
+                            "professional_cadre": {
+                              "type": "string"
+                            },
+                            "specialty": {
+                              "type": "string"
+                            },
+                            "subspecialty": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing required query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_92"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - Failed to retrieve practitioner record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_92"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "internal_domain_tenants.OperationStatus": {
+        "type": "object",
+        "properties": {
+          "earliestReinstatementDate": {
+            "type": "string"
+          },
+          "operationalStatus": {
+            "type": "string"
+          },
+          "operationalStatusReason": {
+            "type": "string"
+          },
+          "reinstatementDate": {
+            "type": "string"
+          },
+          "reinstatementRecommendations": {
+            "type": "string"
+          },
+          "suspensionDate": {
+            "type": "string"
+          },
+          "suspensionReason": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_tenants.Address": {
+        "type": "object",
+        "properties": {
+          "constituency": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "county": {
+            "type": "string"
+          },
+          "countyCode": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "string"
+          },
+          "longitude": {
+            "type": "string"
+          },
+          "physicalLocation": {
+            "type": "string"
+          },
+          "postalAddress": {
+            "type": "string"
+          },
+          "subCounty": {
+            "type": "string"
+          },
+          "subCountyCode": {
+            "type": "string"
+          },
+          "town": {
+            "type": "string"
+          },
+          "ward": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_tenants.BedOcuppancy": {
+        "type": "object",
+        "properties": {
+          "dialysisBeds": {
+            "type": "integer"
+          },
+          "hduBeds": {
+            "type": "integer"
+          },
+          "icuBeds": {
+            "type": "integer"
+          },
+          "normalBeds": {
+            "type": "integer"
+          },
+          "numberOfCots": {
+            "type": "integer"
+          },
+          "totalBeds": {
+            "type": "integer"
+          }
+        }
+      },
+      "internal_domain_tenants.FacilitySummary": {
+        "type": "object",
+        "properties": {
+          "SHAOperationStatus": {
+            "$ref_circular": "#/__circ_32"
+          },
+          "address": {
+            "$ref_circular": "#/__circ_41"
+          },
+          "bedOccupancy": {
+            "$ref_circular": "#/__circ_55"
+          },
+          "facilityAdministratorEmail": {
+            "type": "string"
+          },
+          "facilityAdministratorIdentifier": {
+            "type": "string"
+          },
+          "facilityAdministratorName": {
+            "type": "string"
+          },
+          "facilityAdministratorPhone": {
+            "type": "string"
+          },
+          "facilityEmail": {
+            "type": "string"
+          },
+          "facilityLicenseEndDate": {
+            "type": "string"
+          },
+          "facilityLicenseStartDate": {
+            "type": "string"
+          },
+          "facilityLicenseStatus": {
+            "type": "string"
+          },
+          "facilityOwnership": {
+            "type": "string"
+          },
+          "facilityPhoneNumber": {
+            "type": "string"
+          },
+          "facilityType": {
+            "type": "string"
+          },
+          "fidCode": {
+            "type": "string"
+          },
+          "frCode": {
+            "type": "string"
+          },
+          "isHub": {
+            "type": "boolean"
+          },
+          "kephLevel": {
+            "type": "string"
+          },
+          "licenseNumber": {
+            "type": "string"
+          },
+          "officialName": {
+            "type": "string"
+          },
+          "pcnCode": {
+            "type": "string"
+          },
+          "registrationNumber": {
+            "type": "string"
+          },
+          "regulatoryBody": {
+            "type": "string"
+          },
+          "regulatoryOperationalStatus": {
+            "$ref_circular": "#/__circ_32"
+          },
+          "shaConstractEndDate": {},
+          "shaConstractStartDate": {},
+          "shaContractStatus": {
+            "type": "string"
+          },
+          "shaContractedServices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "uuid": {
+            "type": "string"
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_shared.ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_dto.ErrorResponse": {
+        "description": "Standard error response format for all error conditions.",
+        "type": "object",
+        "properties": {
+          "error": {
+            "description": "@Description\tHTTP status text from the standard HTTP status codes\n\t@Example\t\t\"Bad Request\"",
+            "type": "string"
+          },
+          "message": {
+            "description": "@Description\tDetailed error message explaining what went wrong\n\t@Example\t\t\"token missing required tenant_id claim\"",
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_patients.Member": {
+        "type": "object",
+        "properties": {
+          "admission_number": {
+            "type": "string"
+          },
+          "admission_remand_number": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "string"
+          },
+          "building_house_no": {
+            "type": "string"
+          },
+          "citizenship": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "civil_status": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "county": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "deceased_datetime": {
+            "type": "string"
+          },
+          "dependants": {
+            "type": "array",
+            "items": {
+              "$ref_circular": "#/__circ_143"
+            }
+          },
+          "disability_category": {
+            "type": "string"
+          },
+          "disability_cause": {
+            "type": "string"
+          },
+          "disability_subcategory": {
+            "type": "string"
+          },
+          "domestic_worker_type": {
+            "type": "string"
+          },
+          "employer_name": {
+            "type": "string"
+          },
+          "employer_pin": {
+            "type": "string"
+          },
+          "employment_type": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "grade_level": {
+            "type": "string"
+          },
+          "gross_income": {
+            "type": "number"
+          },
+          "gross_income_currency": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "id_serial": {
+            "type": "string"
+          },
+          "identification_number": {
+            "type": "string"
+          },
+          "identification_residence": {
+            "type": "string"
+          },
+          "identification_type": {
+            "type": "string"
+          },
+          "is_agent": {
+            "type": "integer"
+          },
+          "kra_pin": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "string"
+          },
+          "learning_institution_code": {
+            "type": "string"
+          },
+          "learning_institution_name": {
+            "type": "string"
+          },
+          "longitude": {
+            "type": "string"
+          },
+          "meta": {
+            "$ref_circular": "#/__circ_173"
+          },
+          "middle_name": {
+            "type": "string"
+          },
+          "originSystem": {
+            "$ref_circular": "#/__circ_180"
+          },
+          "other_identifications": {
+            "type": "array",
+            "items": {
+              "$ref_circular": "#/__circ_185"
+            }
+          },
+          "phone": {
+            "type": "string"
+          },
+          "place_of_birth": {
+            "type": "string"
+          },
+          "postal_address": {
+            "type": "string"
+          },
+          "preferred_primary_care_network": {
+            "type": "string"
+          },
+          "province_state_country": {
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "sub_county": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "unconfirmed_dependants": {
+            "type": "array",
+            "items": {
+              "$ref_circular": "#/__circ_200"
+            }
+          },
+          "village_estate": {
+            "type": "string"
+          },
+          "ward": {
+            "type": "string"
+          },
+          "zip_code": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_patients.Dependant": {
+        "type": "object",
+        "properties": {
+          "date_added": {
+            "type": "string"
+          },
+          "relationship": {
+            "type": "string"
+          },
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref_circular": "#/__circ_129"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "internal_domain_patients.Meta": {
+        "type": "object",
+        "properties": {
+          "creationTime": {
+            "type": "string"
+          },
+          "lastUpdated": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "versionId": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_patients.OriginSystem": {
+        "type": "object",
+        "properties": {
+          "record_id": {
+            "type": "string"
+          },
+          "system": {
+            "type": "string"
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_shared.PatientIdentificationType": {
+        "type": "string",
+        "enum": [
+          "National ID",
+          "ClientRegistry ID",
+          "Birth Notification",
+          "Birth Certificate",
+          "Alien ID",
+          "Refugee ID",
+          "Mandate Number",
+          "Temporary ID"
+        ],
+        "x-enum-varnames": [
+          "PatientIdentificationTypeNationalID",
+          "PatientIdentificationTypeCrID",
+          "PatientIdentificationTypeBirthCertificate",
+          "PatientIdentificationTypeBirthNotification",
+          "PatientIdentificationTypeAlienID",
+          "PatientIdentificationTypeRefugeeID",
+          "PatientIdentificationTypeMandateNumber",
+          "PatientIdentificationTypeTemporaryID"
+        ]
+      },
+      "internal_domain_patients.Identification": {
+        "type": "object",
+        "properties": {
+          "identification_number": {
+            "type": "string"
+          },
+          "identification_type": {
+            "$ref_circular": "#/__circ_188"
+          }
+        }
+      },
+      "internal_domain_patients.UnconfirmedDependant": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "citizenship": {
+            "type": "string"
+          },
+          "county": {
+            "type": "string"
+          },
+          "date_of_birth": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "identification_number": {
+            "type": "string"
+          },
+          "identification_type": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "learning_institution_code": {
+            "type": "string"
+          },
+          "learning_institution_name": {
+            "type": "string"
+          },
+          "middle_name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "related_to": {
+            "type": "string"
+          },
+          "relationship": {
+            "type": "string"
+          },
+          "sub_county": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_practitioners.PractitionerContacts": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "postal_address": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_practitioners.PractitionerIdentifiers": {
+        "type": "object",
+        "properties": {
+          "client_registry_id": {
+            "type": "string"
+          },
+          "identification_number": {
+            "type": "string"
+          },
+          "identification_type": {
+            "type": "string"
+          },
+          "student_id": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_practitioners.PractitionerLicense": {
+        "type": "object",
+        "properties": {
+          "external_reference_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "license_end": {
+            "type": "string"
+          },
+          "license_start": {
+            "type": "string"
+          },
+          "license_type": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_practitioners.PractitionerMembership": {
+        "type": "object",
+        "properties": {
+          "external_reference_id": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "integer"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "licensing_body": {
+            "type": "string"
+          },
+          "middle_name": {
+            "type": "string"
+          },
+          "registration_id": {
+            "type": "string"
+          },
+          "specialty": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_practitioners.ProfessionalDetails": {
+        "type": "object",
+        "properties": {
+          "discipline_name": {
+            "type": "string"
+          },
+          "educational_qualifications": {
+            "type": "string"
+          },
+          "practice_type": {
+            "type": "string"
+          },
+          "professional_cadre": {
+            "type": "string"
+          },
+          "specialty": {
+            "type": "string"
+          },
+          "subspecialty": {
+            "type": "string"
+          }
+        }
+      },
+      "internal_domain_practitioners.PractitionerRegistryMessage": {
+        "type": "object",
+        "properties": {
+          "contacts": {
+            "$ref_circular": "#/__circ_253"
+          },
+          "identifiers": {
+            "$ref_circular": "#/__circ_258"
+          },
+          "licenses": {
+            "type": "array",
+            "items": {
+              "$ref_circular": "#/__circ_265"
+            }
+          },
+          "membership": {
+            "$ref_circular": "#/__circ_272"
+          },
+          "professional_details": {
+            "$ref_circular": "#/__circ_285"
+          }
+        }
+      },
+      "internal_domain_practitioners.PractitionerRegistryResponseEnvelope": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "$ref_circular": "#/__circ_251"
+          }
+        }
+      }
+    }
+  }
+}

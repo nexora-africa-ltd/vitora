@@ -1,0 +1,188 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Authentication and Authorization",
+    "version": "1.0.0",
+    "description": "API for user authentication and token management."
+  },
+  "servers": [
+    {
+      "url": "https://ilm-dev.dha.go.ke/uat-middleware"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Operations related to user authentication and token management."
+    }
+  ],
+  "paths": {
+    "/api/v1/tenants/token": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "operationId": "authenticateUser",
+        "summary": "Generate access token",
+        "description": "This endpoint allows a user to obtain an access token by providing their credentials. It leverages the OpenID Connect and OAuth2 protocols to ensure secure authentication and authorization. The access token can then be used to access protected resources within the system.",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "client_id",
+                  "client_secret"
+                ],
+                "properties": {
+                  "client_id": {
+                    "type": "string",
+                    "description": "The client identifier",
+                    "examples": [
+                      "test-client"
+                    ]
+                  },
+                  "client_secret": {
+                    "type": "string",
+                    "description": "The client secret",
+                    "examples": [
+                      "wZF47BUFRhTGoiLE7amWsxcdhe5778"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "description": "Tenant credentials",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": {
+                      "type": "string"
+                    },
+                    "expires_in": {
+                      "type": "integer"
+                    },
+                    "token_type": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Standard error response format for all error conditions.",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "description": "@Description\tHTTP status text from the standard HTTP status codes\n\t@Example\t\t\"Bad Request\"",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "@Description\tDetailed error message explaining what went wrong\n\t@Example\t\t\"token missing required tenant_id claim\"",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_32"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref_circular": "#/__circ_32"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_dto.LoginInput": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "client_secret"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "description": "The client identifier",
+            "examples": [
+              "test-client"
+            ]
+          },
+          "client_secret": {
+            "type": "string",
+            "description": "The client secret",
+            "examples": [
+              "wZF47BUFRhTGoiLE7amWsxcdhe5778"
+            ]
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_dto.LoginResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer"
+          },
+          "token_type": {
+            "type": "string"
+          }
+        }
+      },
+      "gitlab_slade360emr_com_sha-edi_hie-middleware_internal_dto.ErrorResponse": {
+        "description": "Standard error response format for all error conditions.",
+        "type": "object",
+        "properties": {
+          "error": {
+            "description": "@Description\tHTTP status text from the standard HTTP status codes\n\t@Example\t\t\"Bad Request\"",
+            "type": "string"
+          },
+          "message": {
+            "description": "@Description\tDetailed error message explaining what went wrong\n\t@Example\t\t\"token missing required tenant_id claim\"",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
