@@ -523,3 +523,151 @@ class FacilityBillingConfigAdmin(admin.ModelAdmin):
                 return format_html('<span style="color: orange;">&#9888; {} days left</span>', days)
             return format_html('<span style="color: green;">&#10004; Active</span>')
         return format_html('<span style="color: gray;">&#10008; Inactive</span>')
+
+
+# ---------------------------------------------------------------------------
+# DHA HIE Middleware (ILM) — SHAClaim admin polish
+# ---------------------------------------------------------------------------
+from .models import SHAClaim, SHAClaimAttachment, SHAClaimItem  # noqa: E402
+
+
+class SHAClaimItemInline(admin.TabularInline):
+    model = SHAClaimItem
+    extra = 0
+    fields = ("description", "quantity", "unit_price", "claimed_amount")
+    readonly_fields = ("claimed_amount",)
+
+
+class SHAClaimAttachmentInline(admin.TabularInline):
+    model = SHAClaimAttachment
+    extra = 0
+    fields = ("attachment_type", "name", "uploaded_by", "created_at")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(SHAClaim)
+class SHAClaimAdmin(admin.ModelAdmin):
+    """Admin for SHA claims with DHA HIE Middleware (ILM) tracking fields."""
+
+    list_display = (
+        "claim_number",
+        "patient",
+        "facility",
+        "status",
+        "dha_status_badge",
+        "claimed_amount",
+        "service_date",
+        "submitted_at",
+    )
+    list_filter = (
+        "status",
+        "claim_type",
+        "claim_flow",
+        "last_dha_status",
+        "facility",
+        "submission_method",
+    )
+    search_fields = (
+        "claim_number",
+        "sha_claim_reference",
+        "dha_external_id",
+        "dha_correlation_id",
+        "patient__first_name",
+        "patient__last_name",
+    )
+    raw_id_fields = (
+        "patient",
+        "sha_member",
+        "encounter",
+        "invoice",
+        "facility",
+        "submitted_by",
+        "created_by",
+        "parent_claim",
+    )
+    readonly_fields = (
+        "claim_number",
+        "sha_claim_reference",
+        "dha_external_id",
+        "dha_correlation_id",
+        "last_dha_status",
+        "last_dha_payload_at",
+        "dha_visit_started_at",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+    )
+    inlines = [SHAClaimItemInline, SHAClaimAttachmentInline]
+    fieldsets = (
+        (
+            "Identifiers",
+            {
+                "fields": (
+                    "claim_number",
+                    "sha_claim_reference",
+                    "facility",
+                    "patient",
+                    "sha_member",
+                    "encounter",
+                    "invoice",
+                )
+            },
+        ),
+        (
+            "Claim",
+            {
+                "fields": (
+                    "claim_type",
+                    "claim_flow",
+                    "status",
+                    "service_date",
+                    "admission_date",
+                    "discharge_date",
+                    "primary_diagnosis_code",
+                    "primary_diagnosis_description",
+                    "claimed_amount",
+                    "approved_amount",
+                    "paid_amount",
+                )
+            },
+        ),
+        (
+            "DHA HIE Middleware (ILM)",
+            {
+                "fields": (
+                    "dha_external_id",
+                    "dha_correlation_id",
+                    "last_dha_status",
+                    "last_dha_payload_at",
+                    "dha_visit_started_at",
+                ),
+                "description": "Tracking fields populated by IlmClaimService calls.",
+            },
+        ),
+        (
+            "Audit",
+            {
+                "fields": (
+                    "created_by",
+                    "submitted_by",
+                    "submitted_at",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
+
+    @admin.display(description="DHA Status", ordering="last_dha_status")
+    def dha_status_badge(self, obj):
+        status = obj.last_dha_status or ""
+        if not status:
+            return format_html('<span style="color: gray;">—</span>')
+        colors = {
+            "VISIT_STARTED": "blue",
+            "SUBMITTED": "green",
+            "CLOSED": "orange",
+        }
+        return format_html(
+            '<span style="color: {};">{}</span>', colors.get(status, "black"), status
+        )
