@@ -32,6 +32,7 @@ import { ClaimStatusBadge } from '@/components/billing/sha/ClaimComponents';
 import { ConsentPanel } from '@/components/billing/sha/ConsentPanel';
 import { PreauthPanel } from '@/components/billing/sha/PreauthPanel';
 import { ClaimILMPanel } from '@/components/billing/sha/ClaimILMPanel';
+import { PreVisitChecksPanel } from '@/components/billing/sha/PreVisitChecksPanel';
 import { CLAIM_FLOW_LABELS } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
 
@@ -439,7 +440,13 @@ export default function ClaimDetailPage() {
 
       {/* DHA HIE Middleware (ILM) per-action workflow (SHIF flow only) */}
       {claim.claim_flow === 'shif' && (
-        <ClaimILMPanel claimId={claim.id} onChange={() => refetch()} />
+        <>
+          <PreVisitChecksPanel
+            patientPk={typeof claim.patient === 'number' ? claim.patient : undefined}
+            shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
+          />
+          <ClaimILMPanel claimId={claim.id} onChange={() => refetch()} />
+        </>
       )}
     </div>
   );

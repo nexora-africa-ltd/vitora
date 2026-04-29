@@ -175,7 +175,7 @@ def create_invoice(...) -> dict:
 
 Convention: `<domain>.<aggregate>.<action>`
 
-### BillingEvents (20 constants)
+### BillingEvents (28 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -199,6 +199,14 @@ Convention: `<domain>.<aggregate>.<action>`
 | `DHA_CLAIM_SUBMITTED` | `billing.dha_claim.submitted` | `billing/services/ilm_claim_service.py` |
 | `DHA_CLAIM_CLOSED` | `billing.dha_claim.closed` | `billing/services/ilm_claim_service.py` |
 | `DHA_CLAIM_CALL_FAILED` | `billing.dha_claim.call_failed` | `billing/sha_views.py` (ILM action error path) |
+| `DHA_REGISTRY_FACILITY_QUERIED` | `billing.dha_registry.facility_queried` | `billing/services/ilm_registries_service.py` |
+| `DHA_REGISTRY_PATIENT_QUERIED` | `billing.dha_registry.patient_queried` | `billing/services/ilm_registries_service.py` |
+| `DHA_REGISTRY_PROFESSIONAL_QUERIED` | `billing.dha_registry.professional_queried` | `billing/services/ilm_registries_service.py` |
+| `DHA_ELIGIBILITY_CHECKED` | `billing.dha_eligibility.checked` | `billing/services/ilm_registries_service.py` |
+| `DHA_COVERAGE_SNAPSHOT_REFRESHED` | `billing.dha_coverage.snapshot_refreshed` | `billing/services/ilm_registries_service.py` |
+| `DHA_PATIENT_CONTACT_FETCHED` | `billing.dha_patient_contact.fetched` | — (defined, wired in Phase 3) |
+| `DHA_PATIENT_CONTACT_CREATED` | `billing.dha_patient_contact.created` | `billing/sha_ilm_registry_views.py` |
+| `DHA_REGISTRY_CALL_FAILED` | `billing.dha_registry.call_failed` | `billing/sha_ilm_registry_views.py` (error path) |
 
 ### PharmacyEvents (7 constants)
 

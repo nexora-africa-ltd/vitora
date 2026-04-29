@@ -7,6 +7,17 @@ Provides routes for SHA Members, Tariffs, Claims, and related operations.
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from hmis.apps.billing.sha_ilm_registry_views import (
+    IlmBenefitInterventionsView,
+    IlmBenefitsView,
+    IlmEligibilityView,
+    IlmFacilitySearchView,
+    IlmPatientLookupView,
+    IlmProfessionalSearchView,
+    IlmSubBenefitsView,
+    IlmUtilizationView,
+    PatientContactListCreateView,
+)
 from hmis.apps.billing.sha_views import (
     ClientRegistryView,
     ConsentDetailView,
@@ -68,4 +79,34 @@ urlpatterns = [
     path("webhook/", SHAWebhookView.as_view(), name="sha-webhook"),
     path("callback/", SHAWebhookView.as_view(), name="sha-callback"),  # Alias for webhook
     path("validate/", SHAValidateView.as_view(), name="sha-validate"),
+    # ----- DHA HIE Middleware (ILM) — Phase 2 pre-visit registries -----
+    path(
+        "ilm/registries/facility-search/",
+        IlmFacilitySearchView.as_view(),
+        name="ilm-facility-search",
+    ),
+    path(
+        "ilm/registries/patient-lookup/",
+        IlmPatientLookupView.as_view(),
+        name="ilm-patient-lookup",
+    ),
+    path(
+        "ilm/registries/professional-search/",
+        IlmProfessionalSearchView.as_view(),
+        name="ilm-professional-search",
+    ),
+    path("ilm/eligibility/", IlmEligibilityView.as_view(), name="ilm-eligibility"),
+    path("ilm/benefits/", IlmBenefitsView.as_view(), name="ilm-benefits"),
+    path("ilm/sub-benefits/", IlmSubBenefitsView.as_view(), name="ilm-sub-benefits"),
+    path(
+        "ilm/benefit-interventions/",
+        IlmBenefitInterventionsView.as_view(),
+        name="ilm-benefit-interventions",
+    ),
+    path("ilm/utilization/", IlmUtilizationView.as_view(), name="ilm-utilization"),
+    path(
+        "ilm/patient-contacts/",
+        PatientContactListCreateView.as_view(),
+        name="ilm-patient-contacts",
+    ),
 ]
