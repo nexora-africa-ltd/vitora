@@ -921,3 +921,83 @@ export const IlmCloseRequestSchema = z.object({
   cancel_reason_text: z.string().optional(),
 });
 export type IlmCloseRequest = z.infer<typeof IlmCloseRequestSchema>;
+
+// ============================================================================
+// DHA HIE Middleware (ILM) — Phase 2: pre-visit registries & eligibility
+// ============================================================================
+
+export const IlmRegistryResponseSchema = z.object({
+  data: z.unknown(),
+  http_status: z.number(),
+  snapshot_id: z.number().nullable().optional(),
+});
+export type IlmRegistryResponse = z.infer<typeof IlmRegistryResponseSchema>;
+
+// Loose schemas — DHA payloads are deeply nested and partly free-form, so we
+// validate the envelope (data + http_status) and let UI consumers drill into
+// `data` with their own narrow schemas as needed.
+export const IlmFacilityResultSchema = z.object({
+  fidCode: z.string().optional(),
+  frCode: z.string().optional(),
+  officialName: z.string().optional(),
+  facilityType: z.string().optional(),
+  kephLevel: z.string().optional(),
+  shaContractStatus: z.string().optional(),
+  shaContractedServices: z.array(z.string()).optional(),
+}).passthrough();
+
+export const IlmEligibilitySchemeSchema = z.object({
+  schemeName: z.string().optional(),
+  memberType: z.string().optional(),
+  coverage: z.object({
+    status: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+  }).partial().optional(),
+}).passthrough();
+
+export const IlmEligibilityResultSchema = z.object({
+  fullName: z.string().optional(),
+  memberCrNumber: z.string().optional(),
+  age: z.number().optional(),
+  gender: z.string().optional(),
+  schemes: z.array(IlmEligibilitySchemeSchema).optional(),
+  whitelistedForOTP: z.boolean().optional(),
+}).passthrough();
+
+export const PatientContactSchema = z.object({
+  id: z.number(),
+  patient: z.number(),
+  sha_member: z.number().nullable().optional(),
+  contact_type: z.string(),
+  full_name: z.string(),
+  relationship: z.string().optional().default(''),
+  phone: z.string().optional().default(''),
+  email: z.string().optional().default(''),
+  identification_number: z.string().optional().default(''),
+  identification_type: z.string().optional().default(''),
+  is_otp_recipient: z.boolean(),
+  dha_contact_id: z.string().optional().default(''),
+  fetched_at: z.string().optional(),
+});
+export type PatientContact = z.infer<typeof PatientContactSchema>;
+
+export const PatientContactListSchema = z.object({
+  results: z.array(PatientContactSchema),
+});
+export type PatientContactList = z.infer<typeof PatientContactListSchema>;
+
+export const PatientContactCreateSchema = z.object({
+  patient_pk: z.number(),
+  sha_member_id: z.number().optional(),
+  contact_type: z.enum(['primary', 'next_of_kin', 'beneficiary', 'other']),
+  full_name: z.string().min(1),
+  relationship: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email().optional().or(z.literal('')),
+  identification_number: z.string().optional(),
+  identification_type: z.string().optional(),
+  is_otp_recipient: z.boolean().optional(),
+  dha_contact_id: z.string().optional(),
+});
+export type PatientContactCreateInput = z.infer<typeof PatientContactCreateSchema>;

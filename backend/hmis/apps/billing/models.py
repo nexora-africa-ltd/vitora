@@ -3627,3 +3627,120 @@ class PreauthRequest(FacilityScopedModel):
         if self.valid_until and date.today() > self.valid_until:
             return False
         return True
+
+
+# ============================================================================
+# DHA HIE Middleware (ILM) — Pre-visit registries cache
+# ============================================================================
+
+
+class PatientContact(FacilityScopedModel):
+    """Cached next-of-kin / beneficiary contact entries from DHA HIE.
+
+    Sourced from ``GET /api/v1/patients/contacts`` (consent) and
+    ``POST /api/v1/patients/next-of-kin/contacts`` (eclaims). The DHA platform
+    treats the contact list as the authoritative source for OTP delivery, so
+    we cache the most recent payload per (patient, identifier) pair.
+    """
+
+    class ContactType(models.TextChoices):
+        PRIMARY = "primary", "Primary"
+        NEXT_OF_KIN = "next_of_kin", "Next of Kin"
+        BENEFICIARY = "beneficiary", "Beneficiary"
+        OTHER = "other", "Other"
+
+    id = models.BigAutoField(primary_key=True)
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="dha_contacts"
+    )
+    sha_member = models.ForeignKey(
+        SHAMember,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_contacts",
+    )
+    contact_type = models.CharField(
+        max_length=20, choices=ContactType.choices, default=ContactType.PRIMARY
+    )
+    full_name = models.CharField(max_length=255, blank=True)
+    relationship = models.CharField(max_length=64, blank=True)
+    phone = models.CharField(max_length=32, blank=True)
+    email = models.EmailField(blank=True)
+    identification_number = models.CharField(max_length=64, blank=True)
+    identification_type = models.CharField(max_length=32, blank=True)
+    is_otp_recipient = models.BooleanField(default=False)
+    dha_contact_id = models.CharField(max_length=128, blank=True)
+    raw_payload = models.JSONField(default=dict, blank=True)
+    fetched_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Patient Contact (DHA)"
+        verbose_name_plural = "Patient Contacts (DHA)"
+        ordering = ["-fetched_at"]
+        indexes = [
+            models.Index(fields=["patient", "contact_type"]),
+            models.Index(fields=["dha_contact_id"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"{self.full_name or self.phone or self.dha_contact_id} ({self.contact_type})"
+
+
+class SHACoverageSnapshot(FacilityScopedModel):
+    """Cached snapshot of a patient's DHA HIE eligibility/benefits/utilisation.
+
+    One row is written per ``(patient, snapshot_type)`` per fetch. Older
+    snapshots are kept (insert-only) for audit; queries should always read the
+    latest by ``fetched_at``.
+    """
+
+    class SnapshotType(models.TextChoices):
+        ELIGIBILITY = "eligibility", "Eligibility"
+        BENEFITS = "benefits", "Benefits"
+        SUB_BENEFITS = "sub_benefits", "Sub-benefits"
+        BENEFITS_INTERVENTIONS = "benefits_interventions", "Benefit Interventions"
+        UTILIZATION = "utilization", "Utilization"
+
+    id = models.BigAutoField(primary_key=True)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="dha_coverage_snapshots",
+    )
+    sha_member = models.ForeignKey(
+        SHAMember,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_coverage_snapshots",
+    )
+    snapshot_type = models.CharField(max_length=32, choices=SnapshotType.choices)
+    is_eligible = models.BooleanField(default=False)
+    member_cr_number = models.CharField(max_length=64, blank=True)
+    sub_benefit_code = models.CharField(max_length=64, blank=True)
+    intervention_code = models.CharField(max_length=64, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    request_params = models.JSONField(default=dict, blank=True)
+    correlation_id = models.CharField(max_length=64, blank=True)
+    http_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    fetched_at = models.DateTimeField(auto_now_add=True)
+    fetched_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dha_coverage_snapshots",
+    )
+
+    class Meta:
+        verbose_name = "SHA Coverage Snapshot"
+        verbose_name_plural = "SHA Coverage Snapshots"
+        ordering = ["-fetched_at"]
+        indexes = [
+            models.Index(fields=["patient", "snapshot_type", "-fetched_at"]),
+            models.Index(fields=["snapshot_type", "-fetched_at"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"{self.patient_id} {self.snapshot_type} @ {self.fetched_at:%Y-%m-%d %H:%M}"

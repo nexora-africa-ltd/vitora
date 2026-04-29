@@ -528,7 +528,13 @@ class FacilityBillingConfigAdmin(admin.ModelAdmin):
 # ---------------------------------------------------------------------------
 # DHA HIE Middleware (ILM) — SHAClaim admin polish
 # ---------------------------------------------------------------------------
-from .models import SHAClaim, SHAClaimAttachment, SHAClaimItem  # noqa: E402
+from .models import (  # noqa: E402
+    PatientContact,
+    SHAClaim,
+    SHAClaimAttachment,
+    SHAClaimItem,
+    SHACoverageSnapshot,
+)
 
 
 class SHAClaimItemInline(admin.TabularInline):
@@ -671,3 +677,54 @@ class SHAClaimAdmin(admin.ModelAdmin):
         return format_html(
             '<span style="color: {};">{}</span>', colors.get(status, "black"), status
         )
+
+
+# ============================================================================
+# DHA HIE Middleware (ILM) — Phase 2 caches
+# ============================================================================
+
+
+@admin.register(PatientContact)
+class PatientContactAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "patient",
+        "contact_type",
+        "full_name",
+        "phone",
+        "is_otp_recipient",
+        "fetched_at",
+    )
+    list_filter = ("contact_type", "is_otp_recipient")
+    search_fields = (
+        "patient__mrn",
+        "full_name",
+        "phone",
+        "identification_number",
+        "dha_contact_id",
+    )
+    raw_id_fields = ("patient", "sha_member", "facility", "organization")
+    readonly_fields = ("fetched_at",)
+
+
+@admin.register(SHACoverageSnapshot)
+class SHACoverageSnapshotAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "patient",
+        "snapshot_type",
+        "is_eligible",
+        "member_cr_number",
+        "http_status",
+        "fetched_at",
+    )
+    list_filter = ("snapshot_type", "is_eligible", "http_status")
+    search_fields = (
+        "patient__mrn",
+        "member_cr_number",
+        "sub_benefit_code",
+        "intervention_code",
+        "correlation_id",
+    )
+    raw_id_fields = ("patient", "sha_member", "facility", "organization", "fetched_by")
+    readonly_fields = ("fetched_at", "fetched_by", "correlation_id", "http_status", "payload")

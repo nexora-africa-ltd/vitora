@@ -42,6 +42,9 @@ import {
   SubmitPreauthResponseSchema,
   PaginatedPreauthRequestsSchema,
   IlmCallResultSchema,
+  IlmRegistryResponseSchema,
+  PatientContactSchema,
+  PatientContactListSchema,
 } from '@/lib/schemas/sha.schema';
 import type {
   IlmStartVisitRequest,
@@ -56,6 +59,10 @@ import type {
   IlmSubmitRequest,
   IlmCloseRequest,
   IlmCallResult,
+  IlmRegistryResponse,
+  PatientContact,
+  PatientContactList,
+  PatientContactCreateInput,
 } from '@/lib/schemas/sha.schema';
 import type {
   // Client Registry
@@ -670,6 +677,122 @@ async function ilmClose(claimId: number, body: IlmCloseRequest): Promise<IlmCall
 }
 
 // ============================================================================
+// DHA HIE Middleware (ILM) — Phase 2: pre-visit registries & eligibility
+// ============================================================================
+
+const ILM_BASE = '/api/sha/ilm';
+
+async function ilmFacilitySearch(params: {
+  identifier: string;
+  identifier_type: string;
+  name?: string;
+}): Promise<IlmRegistryResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/registries/facility-search/`, { params });
+  return parseResponse(IlmRegistryResponseSchema, response.data, {
+    context: 'shaApi.ilmFacilitySearch',
+  });
+}
+
+async function ilmPatientLookup(params: {
+  identification_number: string;
+  identification_type: string;
+  patient_pk?: number;
+  sha_member_id?: number;
+}): Promise<IlmRegistryResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/registries/patient-lookup/`, { params });
+  return parseResponse(IlmRegistryResponseSchema, response.data, {
+    context: 'shaApi.ilmPatientLookup',
+  });
+}
+
+async function ilmProfessionalSearch(params: {
+  identification_number: string;
+  identification_type: string;
+  regulator: string;
+}): Promise<IlmRegistryResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/registries/professional-search/`, { params });
+  return parseResponse(IlmRegistryResponseSchema, response.data, {
+    context: 'shaApi.ilmProfessionalSearch',
+  });
+}
+
+async function ilmEligibility(params: {
+  identification_number: string;
+  identification_type: string;
+  patient_pk?: number;
+  sha_member_id?: number;
+}): Promise<IlmRegistryResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/eligibility/`, { params });
+  return parseResponse(IlmRegistryResponseSchema, response.data, {
+    context: 'shaApi.ilmEligibility',
+  });
+}
+
+async function ilmBenefits(params: {
+  patient_id: string;
+  fields?: string;
+  is_unique_benefit?: boolean;
+  patient_pk?: number;
+  sha_member_id?: number;
+}): Promise<IlmRegistryResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/benefits/`, { params });
+  return parseResponse(IlmRegistryResponseSchema, response.data, {
+    context: 'shaApi.ilmBenefits',
+  });
+}
+
+async function ilmSubBenefits(params: {
+  patient_id: string;
+  patient_pk?: number;
+  sha_member_id?: number;
+}): Promise<IlmRegistryResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/sub-benefits/`, { params });
+  return parseResponse(IlmRegistryResponseSchema, response.data, {
+    context: 'shaApi.ilmSubBenefits',
+  });
+}
+
+async function ilmBenefitInterventions(params: {
+  patient_id: string;
+  sub_benefit_code: string;
+  patient_pk?: number;
+  sha_member_id?: number;
+}): Promise<IlmRegistryResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/benefit-interventions/`, { params });
+  return parseResponse(IlmRegistryResponseSchema, response.data, {
+    context: 'shaApi.ilmBenefitInterventions',
+  });
+}
+
+async function ilmUtilization(params: {
+  patient_id: string;
+  intervention_code: string;
+  patient_pk?: number;
+  sha_member_id?: number;
+}): Promise<IlmRegistryResponse> {
+  const response = await apiClient.get(`${ILM_BASE}/utilization/`, { params });
+  return parseResponse(IlmRegistryResponseSchema, response.data, {
+    context: 'shaApi.ilmUtilization',
+  });
+}
+
+async function listPatientContacts(patientPk: number): Promise<PatientContactList> {
+  const response = await apiClient.get(`${ILM_BASE}/patient-contacts/`, {
+    params: { patient_pk: patientPk },
+  });
+  return parseResponse(PatientContactListSchema, response.data, {
+    context: 'shaApi.listPatientContacts',
+  });
+}
+
+async function createPatientContact(body: PatientContactCreateInput): Promise<PatientContact> {
+  const response = await apiClient.post(`${ILM_BASE}/patient-contacts/`, body);
+  return parseResponse(PatientContactSchema, response.data, {
+    context: 'shaApi.createPatientContact',
+  });
+}
+
+// ============================================================================
 // Export API Object
 // ============================================================================
 
@@ -750,4 +873,16 @@ export const shaApi = {
   ilmPreview,
   ilmSubmit,
   ilmClose,
+
+  // DHA HIE Middleware (ILM) — Phase 2 pre-visit registries & eligibility
+  ilmFacilitySearch,
+  ilmPatientLookup,
+  ilmProfessionalSearch,
+  ilmEligibility,
+  ilmBenefits,
+  ilmSubBenefits,
+  ilmBenefitInterventions,
+  ilmUtilization,
+  listPatientContacts,
+  createPatientContact,
 };

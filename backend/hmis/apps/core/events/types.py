@@ -42,6 +42,15 @@ class BillingEvents:
     DHA_CLAIM_SUBMITTED = "billing.dha_claim.submitted"
     DHA_CLAIM_CLOSED = "billing.dha_claim.closed"
     DHA_CLAIM_CALL_FAILED = "billing.dha_claim.call_failed"
+    # DHA HIE pre-visit registries & eligibility (Phase 2)
+    DHA_REGISTRY_FACILITY_QUERIED = "billing.dha_registry.facility_queried"
+    DHA_REGISTRY_PATIENT_QUERIED = "billing.dha_registry.patient_queried"
+    DHA_REGISTRY_PROFESSIONAL_QUERIED = "billing.dha_registry.professional_queried"
+    DHA_ELIGIBILITY_CHECKED = "billing.dha_eligibility.checked"
+    DHA_COVERAGE_SNAPSHOT_REFRESHED = "billing.dha_coverage.snapshot_refreshed"
+    DHA_PATIENT_CONTACT_FETCHED = "billing.dha_patient_contact.fetched"
+    DHA_PATIENT_CONTACT_CREATED = "billing.dha_patient_contact.created"
+    DHA_REGISTRY_CALL_FAILED = "billing.dha_registry.call_failed"
 
 
 class PharmacyEvents:
