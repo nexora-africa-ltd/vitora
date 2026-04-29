@@ -312,6 +312,11 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "parent_claim",
             "items_count",
             "attachments_count",
+            "dha_external_id",
+            "dha_correlation_id",
+            "last_dha_status",
+            "last_dha_payload_at",
+            "dha_visit_started_at",
             "created_at",
             "updated_at",
         ]
@@ -334,6 +339,11 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "payment_reference",
             "version",
             "parent_claim",
+            "dha_external_id",
+            "dha_correlation_id",
+            "last_dha_status",
+            "last_dha_payload_at",
+            "dha_visit_started_at",
             "created_at",
             "updated_at",
         ]

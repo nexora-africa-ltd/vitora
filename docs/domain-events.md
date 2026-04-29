@@ -175,7 +175,7 @@ def create_invoice(...) -> dict:
 
 Convention: `<domain>.<aggregate>.<action>`
 
-### BillingEvents (11 constants)
+### BillingEvents (20 constants)
 
 | Constant | Value | Published From |
 |----------|-------|---------------|
@@ -190,6 +190,15 @@ Convention: `<domain>.<aggregate>.<action>`
 | `DISCHARGE_BILLING` | `billing.discharge.processed` | `billing/signals.py` |
 | `ADMISSION_BILLING` | `billing.admission.processed` | `billing/signals.py` |
 | `IMMUNIZATION_BILLING` | `billing.immunization.processed` | `billing/signals.py` |
+| `DHA_CLAIM_VISIT_STARTED` | `billing.dha_claim.visit_started` | `billing/services/ilm_claim_service.py` |
+| `DHA_CLAIM_INTERVENTION_CHANGED` | `billing.dha_claim.intervention_changed` | `billing/services/ilm_claim_service.py` |
+| `DHA_CLAIM_DIAGNOSIS_CHANGED` | `billing.dha_claim.diagnosis_changed` | `billing/services/ilm_claim_service.py` |
+| `DHA_CLAIM_LINE_CHANGED` | `billing.dha_claim.line_changed` | `billing/services/ilm_claim_service.py` |
+| `DHA_CLAIM_ATTACHMENT_CHANGED` | `billing.dha_claim.attachment_changed` | `billing/services/ilm_claim_service.py` |
+| `DHA_CLAIM_PREVIEWED` | `billing.dha_claim.previewed` | `billing/services/ilm_claim_service.py` |
+| `DHA_CLAIM_SUBMITTED` | `billing.dha_claim.submitted` | `billing/services/ilm_claim_service.py` |
+| `DHA_CLAIM_CLOSED` | `billing.dha_claim.closed` | `billing/services/ilm_claim_service.py` |
+| `DHA_CLAIM_CALL_FAILED` | `billing.dha_claim.call_failed` | `billing/sha_views.py` (ILM action error path) |
 
 ### PharmacyEvents (7 constants)
 

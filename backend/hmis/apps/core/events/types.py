@@ -32,6 +32,16 @@ class BillingEvents:
     PREAUTH_APPROVED = "billing.preauth.approved"
     PREAUTH_DENIED = "billing.preauth.denied"
     PREAUTH_EXPIRED = "billing.preauth.expired"
+    # DHA HIE claim build & dispatch (Phase 1)
+    DHA_CLAIM_VISIT_STARTED = "billing.dha_claim.visit_started"
+    DHA_CLAIM_INTERVENTION_CHANGED = "billing.dha_claim.intervention_changed"
+    DHA_CLAIM_DIAGNOSIS_CHANGED = "billing.dha_claim.diagnosis_changed"
+    DHA_CLAIM_LINE_CHANGED = "billing.dha_claim.line_changed"
+    DHA_CLAIM_ATTACHMENT_CHANGED = "billing.dha_claim.attachment_changed"
+    DHA_CLAIM_PREVIEWED = "billing.dha_claim.previewed"
+    DHA_CLAIM_SUBMITTED = "billing.dha_claim.submitted"
+    DHA_CLAIM_CLOSED = "billing.dha_claim.closed"
+    DHA_CLAIM_CALL_FAILED = "billing.dha_claim.call_failed"
 
 
 class PharmacyEvents:

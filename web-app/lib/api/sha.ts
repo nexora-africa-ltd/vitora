@@ -41,6 +41,21 @@ import {
   PreauthRequestSchema,
   SubmitPreauthResponseSchema,
   PaginatedPreauthRequestsSchema,
+  IlmCallResultSchema,
+} from '@/lib/schemas/sha.schema';
+import type {
+  IlmStartVisitRequest,
+  IlmInterventionRequest,
+  IlmSwitchInterventionRequest,
+  IlmAddDiagnosisRequest,
+  IlmRemoveDiagnosisRequest,
+  IlmAddLineRequest,
+  IlmEditLineRequest,
+  IlmRemoveLineRequest,
+  IlmRemoveAttachmentRequest,
+  IlmSubmitRequest,
+  IlmCloseRequest,
+  IlmCallResult,
 } from '@/lib/schemas/sha.schema';
 import type {
   // Client Registry
@@ -561,6 +576,100 @@ async function getPendingPreauths(): Promise<{ count: number; next: string | nul
 }
 
 // ============================================================================
+// DHA HIE Middleware (ILM) — per-action claim workflow
+// ============================================================================
+
+const ilmBase = (claimId: number) => `/api/sha/claims/${claimId}/ilm`;
+
+async function ilmStartVisit(claimId: number, body: IlmStartVisitRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/start-visit/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmStartVisit' });
+}
+
+async function ilmAddIntervention(claimId: number, body: IlmInterventionRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/interventions/add/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmAddIntervention' });
+}
+
+async function ilmSwitchIntervention(claimId: number, body: IlmSwitchInterventionRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/interventions/switch/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmSwitchIntervention' });
+}
+
+async function ilmRestoreIntervention(claimId: number, body: IlmInterventionRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/interventions/restore/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRestoreIntervention' });
+}
+
+async function ilmRetireIntervention(claimId: number, body: IlmInterventionRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/interventions/retire/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRetireIntervention' });
+}
+
+async function ilmAddDiagnosis(claimId: number, body: IlmAddDiagnosisRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/diagnoses/add/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmAddDiagnosis' });
+}
+
+async function ilmRemoveDiagnosis(claimId: number, body: IlmRemoveDiagnosisRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/diagnoses/remove/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRemoveDiagnosis' });
+}
+
+async function ilmAddLine(claimId: number, body: IlmAddLineRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/lines/add/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmAddLine' });
+}
+
+async function ilmEditLine(claimId: number, body: IlmEditLineRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/lines/edit/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmEditLine' });
+}
+
+async function ilmRemoveLine(claimId: number, body: IlmRemoveLineRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/lines/remove/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRemoveLine' });
+}
+
+async function ilmAddAttachment(
+  claimId: number,
+  files: File[],
+  extra?: Record<string, string>,
+): Promise<IlmCallResult> {
+  const form = new FormData();
+  files.forEach((f) => form.append('files', f, f.name));
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) {
+      form.append(k, v);
+    }
+  }
+  const response = await apiClient.post(`${ilmBase(claimId)}/attachments/add/`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmAddAttachment' });
+}
+
+async function ilmRemoveAttachment(claimId: number, body: IlmRemoveAttachmentRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/attachments/remove/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRemoveAttachment' });
+}
+
+async function ilmPreview(claimId: number): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/preview/`, {});
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreview' });
+}
+
+async function ilmSubmit(claimId: number, body: IlmSubmitRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/submit/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmSubmit' });
+}
+
+async function ilmClose(claimId: number, body: IlmCloseRequest): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/close/`, body);
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmClose' });
+}
+
+// ============================================================================
 // Export API Object
 // ============================================================================
 
@@ -624,4 +733,21 @@ export const shaApi = {
   submitPreauth,
   getPreauthStatus,
   getPendingPreauths,
+
+  // DHA HIE Middleware (ILM) — per-action claim workflow
+  ilmStartVisit,
+  ilmAddIntervention,
+  ilmSwitchIntervention,
+  ilmRestoreIntervention,
+  ilmRetireIntervention,
+  ilmAddDiagnosis,
+  ilmRemoveDiagnosis,
+  ilmAddLine,
+  ilmEditLine,
+  ilmRemoveLine,
+  ilmAddAttachment,
+  ilmRemoveAttachment,
+  ilmPreview,
+  ilmSubmit,
+  ilmClose,
 };

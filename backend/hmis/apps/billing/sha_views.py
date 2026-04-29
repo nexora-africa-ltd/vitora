@@ -27,6 +27,7 @@ from drf_spectacular.utils import (
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
@@ -570,6 +571,343 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return Response(
                 SHAClaimAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED
             )
+
+    # =================================================================
+    # DHA HIE Middleware (ILM) — per-action claim workflow endpoints
+    # =================================================================
+    # Each action wraps the corresponding IlmClaimService method.
+    # All endpoints use url_path="ilm/<action>/" to avoid clashing with
+    # the legacy SHA submit/validate/appeal flow above.
+
+    def _ilm_service(self):
+        from hmis.apps.billing.services.ilm_claim_service import IlmClaimService
+
+        return IlmClaimService()
+
+    def _ilm_response(self, result):
+        from rest_framework.response import Response as _R
+
+        return _R(
+            {
+                "status_code": result.status_code,
+                "payload": result.payload,
+            },
+            status=(
+                status.HTTP_200_OK if result.status_code < 400 else status.HTTP_502_BAD_GATEWAY
+            ),
+        )
+
+    def _ilm_handle_error(self, exc):
+        from hmis.apps.billing.services.dha_errors import (
+            DHAClientError,
+            DHAError,
+            DHANotFoundError,
+            DHARateLimitedError,
+            DHAServerError,
+            DHATimeoutError,
+            DHATransportError,
+            DHAUnauthorizedError,
+            DHAValidationError,
+        )
+
+        try:
+            from hmis.apps.billing.services.ilm_claim_service import _publish_safe
+            from hmis.apps.core.events import BillingEvents
+
+            _publish_safe(
+                BillingEvents.DHA_CLAIM_CALL_FAILED,
+                {
+                    "error_class": exc.__class__.__name__,
+                    "message": str(exc),
+                    "status_code": getattr(exc, "status_code", None),
+                    "path": getattr(exc, "path", None),
+                },
+            )
+        except Exception:  # noqa: S110 — telemetry failure must not break the API
+            pass
+
+        if isinstance(exc, DHAValidationError):
+            return Response(
+                {"error": exc.message, "errors": getattr(exc, "errors", None)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if isinstance(exc, DHAUnauthorizedError):
+            return Response({"error": exc.message}, status=status.HTTP_401_UNAUTHORIZED)
+        if isinstance(exc, DHANotFoundError):
+            return Response({"error": exc.message}, status=status.HTTP_404_NOT_FOUND)
+        if isinstance(exc, DHARateLimitedError):
+            return Response({"error": exc.message}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        if isinstance(exc, DHAClientError):
+            return Response({"error": exc.message}, status=status.HTTP_400_BAD_REQUEST)
+        if isinstance(exc, (DHATimeoutError, DHATransportError, DHAServerError)):
+            return Response({"error": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
+        if isinstance(exc, DHAError):
+            return Response({"error": exc.message}, status=status.HTTP_502_BAD_GATEWAY)
+        logger.exception("Unexpected ILM error")
+        return Response(
+            {"error": "Internal error during DHA HIE call"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    @action(detail=True, methods=["post"], url_path="ilm/start-visit")
+    def ilm_start_visit(self, request, pk=None):
+        """Start a DHA HIE visit. POST /api/sha/claims/{id}/ilm/start-visit/"""
+        from hmis.apps.billing.services.ilm_claim_service import StartVisitParams
+
+        claim = self.get_object()
+        d = request.data
+        try:
+            params = StartVisitParams(
+                otp=str(d.get("otp", "")),
+                patient_id=str(d.get("patient_id", "")),
+                intervention_codes=list(d.get("intervention_codes") or []),
+                service_type=str(d.get("service_type", "OUTPATIENT")),
+                admission_date=d.get("admission_date"),
+                estimated_days_of_admission=d.get("estimated_days_of_admission"),
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            result = self._ilm_service().start_visit(claim, params, user=request.user)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/interventions/add")
+    def ilm_add_intervention(self, request, pk=None):
+        claim = self.get_object()
+        code = request.data.get("intervention_code")
+        if not code:
+            return Response(
+                {"error": "intervention_code required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            result = self._ilm_service().add_intervention(claim, code, user=request.user)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/interventions/switch")
+    def ilm_switch_intervention(self, request, pk=None):
+        claim = self.get_object()
+        d = request.data
+        try:
+            result = self._ilm_service().switch_intervention(
+                claim,
+                existing_intervention_code=d["existing_intervention_code"],
+                new_intervention_code=d["new_intervention_code"],
+                retain_bill_items=bool(
+                    d.get("retain_bill_items", d.get("retain_existing_claim", False))
+                ),
+                bill_from=d.get("bill_from"),
+                bill_to=d.get("bill_to"),
+                user=request.user,
+            )
+        except KeyError as e:
+            return Response({"error": f"missing field: {e}"}, status=400)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/interventions/restore")
+    def ilm_restore_intervention(self, request, pk=None):
+        claim = self.get_object()
+        code = request.data.get("intervention_code")
+        if not code:
+            return Response({"error": "intervention_code required"}, status=400)
+        try:
+            result = self._ilm_service().restore_intervention(claim, code, user=request.user)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/interventions/retire")
+    def ilm_retire_intervention(self, request, pk=None):
+        claim = self.get_object()
+        code = request.data.get("intervention_code")
+        if not code:
+            return Response({"error": "intervention_code required"}, status=400)
+        try:
+            result = self._ilm_service().retire_intervention(claim, code, user=request.user)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/diagnoses/add")
+    def ilm_add_diagnosis(self, request, pk=None):
+        claim = self.get_object()
+        d = request.data
+        if not d.get("icd_code") or not d.get("intervention_code"):
+            return Response({"error": "icd_code and intervention_code required"}, status=400)
+        try:
+            result = self._ilm_service().add_diagnosis(
+                claim,
+                icd_code=d["icd_code"],
+                intervention_code=d["intervention_code"],
+                user=request.user,
+            )
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/diagnoses/remove")
+    def ilm_remove_diagnosis(self, request, pk=None):
+        claim = self.get_object()
+        code = request.data.get("icd_code")
+        if not code:
+            return Response({"error": "icd_code required"}, status=400)
+        try:
+            result = self._ilm_service().remove_diagnosis(claim, icd_code=code, user=request.user)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/lines/add")
+    def ilm_add_line(self, request, pk=None):
+        from hmis.apps.billing.services.ilm_claim_service import ClaimLine
+
+        claim = self.get_object()
+        d = request.data
+        try:
+            line = ClaimLine(
+                intervention_code=str(d["intervention_code"]),
+                service_name=str(d["service_name"]),
+                service_identifier=str(d["service_identifier"]),
+                unit_price=str(d["unit_price"]),
+                quantity=str(d["quantity"]),
+                scheme_code=str(d["scheme_code"]),
+            )
+        except KeyError as e:
+            return Response({"error": f"missing field: {e}"}, status=400)
+        try:
+            result = self._ilm_service().add_line(claim, line, user=request.user)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/lines/edit")
+    def ilm_edit_line(self, request, pk=None):
+        claim = self.get_object()
+        d = request.data
+        if not d.get("claim_line_id"):
+            return Response({"error": "claim_line_id required"}, status=400)
+        try:
+            result = self._ilm_service().edit_line(
+                claim,
+                claim_line_id=str(d["claim_line_id"]),
+                quantity=d.get("quantity"),
+                unit_price=d.get("unit_price"),
+                scheme_code=d.get("scheme_code"),
+                user=request.user,
+            )
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/lines/remove")
+    def ilm_remove_line(self, request, pk=None):
+        claim = self.get_object()
+        line_id = request.data.get("claim_line_id")
+        if not line_id:
+            return Response({"error": "claim_line_id required"}, status=400)
+        try:
+            result = self._ilm_service().remove_line(
+                claim, claim_line_id=str(line_id), user=request.user
+            )
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="ilm/attachments/add",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def ilm_add_attachment(self, request, pk=None):
+        from hmis.apps.billing.services.multipart_builder import MultipartFile
+
+        claim = self.get_object()
+        files_in = request.FILES.getlist("files") or (
+            [request.FILES["file"]] if "file" in request.FILES else []
+        )
+        if not files_in:
+            return Response({"error": "files required"}, status=400)
+        multipart_files = [
+            MultipartFile(
+                field_name="files",
+                filename=f.name,
+                content=f.read(),
+                content_type=f.content_type or "application/octet-stream",
+            )
+            for f in files_in
+        ]
+        extra = {k: v for k, v in request.data.items() if k not in ("files", "file")}
+        try:
+            result = self._ilm_service().add_attachment(
+                claim,
+                multipart_files,
+                extra_fields=extra or None,
+                user=request.user,
+            )
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/attachments/remove")
+    def ilm_remove_attachment(self, request, pk=None):
+        claim = self.get_object()
+        attachment_id = request.data.get("attachment_id")
+        if not attachment_id:
+            return Response({"error": "attachment_id required"}, status=400)
+        try:
+            result = self._ilm_service().remove_attachment(
+                claim, attachment_id=str(attachment_id), user=request.user
+            )
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/preview")
+    def ilm_preview(self, request, pk=None):
+        claim = self.get_object()
+        try:
+            result = self._ilm_service().preview(claim, user=request.user)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/submit")
+    def ilm_submit(self, request, pk=None):
+        claim = self.get_object()
+        invoice_number = request.data.get("invoice_number")
+        if not invoice_number:
+            return Response({"error": "invoice_number required"}, status=400)
+        try:
+            result = self._ilm_service().submit(
+                claim, invoice_number=str(invoice_number), user=request.user
+            )
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
+    @action(detail=True, methods=["post"], url_path="ilm/close")
+    def ilm_close(self, request, pk=None):
+        from hmis.apps.billing.services.ilm_claim_service import CloseClaimParams
+
+        claim = self.get_object()
+        d = request.data
+        if not d.get("cancel_reason_type"):
+            return Response({"error": "cancel_reason_type required"}, status=400)
+        try:
+            params = CloseClaimParams(
+                cancel_reason_type=str(d["cancel_reason_type"]),
+                cancel_reason_text=str(d.get("cancel_reason_text", "")),
+            )
+            result = self._ilm_service().close(claim, params, user=request.user)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
 
     @action(detail=False, methods=["get"], url_path="dashboard")
     def dashboard(self, request):

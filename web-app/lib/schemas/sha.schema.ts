@@ -826,3 +826,98 @@ export const PaginatedSHAClaimSchema = PaginatedClaimsSchema;
 export const SHAClaimItemArrayResponseSchema = z.object({
   results: ClaimItemArraySchema,
 });
+
+
+// =============================================================================
+// DHA HIE Middleware (ILM) — per-action claim workflow
+// =============================================================================
+
+export const IlmCallResultSchema = z.object({
+  status_code: z.number(),
+  payload: z.unknown().optional(),
+});
+
+export type IlmCallResult = z.infer<typeof IlmCallResultSchema>;
+
+export const IlmStartVisitRequestSchema = z.object({
+  otp: z.string().min(1),
+  patient_id: z.string().min(1),
+  intervention_codes: z.array(z.string().min(1)),
+  service_type: z.enum(['OUTPATIENT', 'INPATIENT']).default('OUTPATIENT'),
+  admission_date: z.string().optional(),
+  estimated_days_of_admission: z.number().int().nonnegative().optional(),
+});
+
+export type IlmStartVisitRequest = z.infer<typeof IlmStartVisitRequestSchema>;
+
+export const IlmInterventionRequestSchema = z.object({
+  intervention_code: z.string().min(1),
+});
+export type IlmInterventionRequest = z.infer<typeof IlmInterventionRequestSchema>;
+
+export const IlmSwitchInterventionRequestSchema = z.object({
+  existing_intervention_code: z.string().min(1),
+  new_intervention_code: z.string().min(1),
+  retain_bill_items: z.boolean().optional(),
+  bill_from: z.string().optional(),
+  bill_to: z.string().optional(),
+});
+export type IlmSwitchInterventionRequest = z.infer<typeof IlmSwitchInterventionRequestSchema>;
+
+export const IlmAddDiagnosisRequestSchema = z.object({
+  icd_code: z.string().min(1),
+  intervention_code: z.string().min(1),
+});
+export type IlmAddDiagnosisRequest = z.infer<typeof IlmAddDiagnosisRequestSchema>;
+
+export const IlmRemoveDiagnosisRequestSchema = z.object({
+  icd_code: z.string().min(1),
+});
+export type IlmRemoveDiagnosisRequest = z.infer<typeof IlmRemoveDiagnosisRequestSchema>;
+
+export const IlmAddLineRequestSchema = z.object({
+  intervention_code: z.string().min(1),
+  service_name: z.string().min(1),
+  service_identifier: z.string().min(1),
+  unit_price: z.string().min(1),
+  quantity: z.string().min(1),
+  scheme_code: z.string().min(1),
+});
+export type IlmAddLineRequest = z.infer<typeof IlmAddLineRequestSchema>;
+
+export const IlmEditLineRequestSchema = z.object({
+  claim_line_id: z.string().min(1),
+  quantity: z.union([z.string(), z.number()]).optional(),
+  unit_price: z.string().optional(),
+  scheme_code: z.string().optional(),
+});
+export type IlmEditLineRequest = z.infer<typeof IlmEditLineRequestSchema>;
+
+export const IlmRemoveLineRequestSchema = z.object({
+  claim_line_id: z.string().min(1),
+});
+export type IlmRemoveLineRequest = z.infer<typeof IlmRemoveLineRequestSchema>;
+
+export const IlmRemoveAttachmentRequestSchema = z.object({
+  attachment_id: z.string().min(1),
+});
+export type IlmRemoveAttachmentRequest = z.infer<typeof IlmRemoveAttachmentRequestSchema>;
+
+export const IlmSubmitRequestSchema = z.object({
+  invoice_number: z.string().min(1),
+});
+export type IlmSubmitRequest = z.infer<typeof IlmSubmitRequestSchema>;
+
+export const IlmCloseRequestSchema = z.object({
+  cancel_reason_type: z.enum([
+    'WRONG_PATIENT',
+    'NO_SERVICE_GIVEN',
+    'WRONG_BENEFIT',
+    'EXPIRED_VISIT',
+    'EXHAUSTED_BENEFIT',
+    'TIME_BARRED',
+    'OTHER_REASONS',
+  ]),
+  cancel_reason_text: z.string().optional(),
+});
+export type IlmCloseRequest = z.infer<typeof IlmCloseRequestSchema>;

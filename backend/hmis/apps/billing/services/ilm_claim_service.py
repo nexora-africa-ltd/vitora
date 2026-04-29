@@ -35,6 +35,30 @@ from .multipart_builder import MultipartFile, build_multipart
 logger = logging.getLogger(__name__)
 
 
+def _publish_safe(event_type: str, payload: dict) -> None:
+    """Publish a billing event without ever breaking the calling request."""
+    try:
+        from hmis.apps.core.events import publish_event
+
+        publish_event(event_type, payload)
+    except Exception:  # pragma: no cover
+        logger.exception("Failed to publish DHA HIE event %s", event_type)
+
+
+def _claim_event_payload(claim: Any, result: IlmClaimResult, **extra: Any) -> dict:
+    return {
+        "claim_id": getattr(claim, "pk", None),
+        "claim_number": getattr(claim, "claim_number", ""),
+        "facility_id": getattr(claim, "facility_id", None),
+        "patient_id": getattr(claim, "patient_id", None),
+        "status": getattr(claim, "status", ""),
+        "dha_external_id": getattr(claim, "dha_external_id", ""),
+        "dha_correlation_id": getattr(claim, "dha_correlation_id", ""),
+        "http_status": result.status_code,
+        **extra,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Endpoint paths (mirrors Postman collection)
 # ---------------------------------------------------------------------------
@@ -155,6 +179,18 @@ class IlmClaimService:
         )
         result = IlmClaimResult(response=response, payload=response.json)
         self._apply_visit_response(claim, result, user=user)
+        from hmis.apps.core.events import BillingEvents
+
+        _publish_safe(
+            BillingEvents.DHA_CLAIM_VISIT_STARTED,
+            _claim_event_payload(
+                claim,
+                result,
+                service_type=params.service_type,
+                intervention_codes=list(params.intervention_codes),
+                authorization_code=result.authorization_code,
+            ),
+        )
         return result
 
     # -----------------------------------------------------------------
@@ -164,12 +200,16 @@ class IlmClaimService:
     def add_intervention(
         self, claim: Any, intervention_code: str, *, user: Any = None
     ) -> IlmClaimResult:
-        return self._post_with_consent(
+        result = self._post_with_consent(
             claim,
             INTERVENTIONS_PATH,
             {"intervention_code": intervention_code},
             user=user,
         )
+        self._emit_intervention_event(
+            claim, result, action="added", intervention_code=intervention_code
+        )
+        return result
 
     def switch_intervention(
         self,
@@ -192,27 +232,43 @@ class IlmClaimService:
                 raise ValueError("bill_from and bill_to are required when retain_bill_items=True")
             body["bill_from"] = bill_from
             body["bill_to"] = bill_to
-        return self._post_with_consent(claim, INTERVENTION_SWITCH_PATH, body, user=user)
+        result = self._post_with_consent(claim, INTERVENTION_SWITCH_PATH, body, user=user)
+        self._emit_intervention_event(
+            claim,
+            result,
+            action="switched",
+            existing_intervention_code=existing_intervention_code,
+            new_intervention_code=new_intervention_code,
+        )
+        return result
 
     def restore_intervention(
         self, claim: Any, intervention_code: str, *, user: Any = None
     ) -> IlmClaimResult:
-        return self._post_with_consent(
+        result = self._post_with_consent(
             claim,
             INTERVENTION_RESTORE_PATH,
             {"intervention_code": intervention_code},
             user=user,
         )
+        self._emit_intervention_event(
+            claim, result, action="restored", intervention_code=intervention_code
+        )
+        return result
 
     def retire_intervention(
         self, claim: Any, intervention_code: str, *, user: Any = None
     ) -> IlmClaimResult:
-        return self._post_with_consent(
+        result = self._post_with_consent(
             claim,
             INTERVENTION_RETIRE_PATH,
             {"intervention_code": intervention_code},
             user=user,
         )
+        self._emit_intervention_event(
+            claim, result, action="retired", intervention_code=intervention_code
+        )
+        return result
 
     # -----------------------------------------------------------------
     # Diagnoses
@@ -226,12 +282,20 @@ class IlmClaimService:
         intervention_code: str,
         user: Any = None,
     ) -> IlmClaimResult:
-        return self._post_with_consent(
+        result = self._post_with_consent(
             claim,
             DIAGNOSES_PATH,
             {"icd_code": icd_code, "intervention_code": intervention_code},
             user=user,
         )
+        self._emit_diagnosis_event(
+            claim,
+            result,
+            action="added",
+            icd_code=icd_code,
+            intervention_code=intervention_code,
+        )
+        return result
 
     def remove_diagnosis(self, claim: Any, *, icd_code: str, user: Any = None) -> IlmClaimResult:
         consent = resolve_for_claim(claim)
@@ -242,7 +306,9 @@ class IlmClaimService:
             facility=getattr(claim, "facility", None),
             user=user,
         )
-        return IlmClaimResult(response=response, payload=response.json)
+        result = IlmClaimResult(response=response, payload=response.json)
+        self._emit_diagnosis_event(claim, result, action="removed", icd_code=icd_code)
+        return result
 
     # -----------------------------------------------------------------
     # Lines
@@ -257,7 +323,11 @@ class IlmClaimService:
             "quantity": line.quantity,
             "scheme_code": line.scheme_code,
         }
-        return self._post_with_consent(claim, LINES_PATH, body, user=user)
+        result = self._post_with_consent(claim, LINES_PATH, body, user=user)
+        self._emit_line_event(
+            claim, result, action="added", intervention_code=line.intervention_code
+        )
+        return result
 
     def edit_line(
         self,
@@ -284,7 +354,9 @@ class IlmClaimService:
             facility=getattr(claim, "facility", None),
             user=user,
         )
-        return IlmClaimResult(response=response, payload=response.json)
+        result = IlmClaimResult(response=response, payload=response.json)
+        self._emit_line_event(claim, result, action="edited", claim_line_id=claim_line_id)
+        return result
 
     def remove_line(self, claim: Any, *, claim_line_id: str, user: Any = None) -> IlmClaimResult:
         consent = resolve_for_claim(claim)
@@ -295,7 +367,9 @@ class IlmClaimService:
             facility=getattr(claim, "facility", None),
             user=user,
         )
-        return IlmClaimResult(response=response, payload=response.json)
+        result = IlmClaimResult(response=response, payload=response.json)
+        self._emit_line_event(claim, result, action="removed", claim_line_id=claim_line_id)
+        return result
 
     # -----------------------------------------------------------------
     # Attachments
@@ -322,7 +396,9 @@ class IlmClaimService:
             facility=getattr(claim, "facility", None),
             user=user,
         )
-        return IlmClaimResult(response=response, payload=response.json)
+        result = IlmClaimResult(response=response, payload=response.json)
+        self._emit_attachment_event(claim, result, action="added", file_count=len(files))
+        return result
 
     def remove_attachment(
         self, claim: Any, *, attachment_id: str, user: Any = None
@@ -335,14 +411,23 @@ class IlmClaimService:
             facility=getattr(claim, "facility", None),
             user=user,
         )
-        return IlmClaimResult(response=response, payload=response.json)
+        result = IlmClaimResult(response=response, payload=response.json)
+        self._emit_attachment_event(claim, result, action="removed", attachment_id=attachment_id)
+        return result
 
     # -----------------------------------------------------------------
     # Preview / Submit / Close
     # -----------------------------------------------------------------
 
     def preview(self, claim: Any, *, user: Any = None) -> IlmClaimResult:
-        return self._post_with_consent(claim, PREVIEW_PATH, {}, user=user)
+        result = self._post_with_consent(claim, PREVIEW_PATH, {}, user=user)
+        from hmis.apps.core.events import BillingEvents
+
+        _publish_safe(
+            BillingEvents.DHA_CLAIM_PREVIEWED,
+            _claim_event_payload(claim, result),
+        )
+        return result
 
     def submit(
         self,
@@ -355,6 +440,17 @@ class IlmClaimService:
             claim, SUBMIT_PATH, {"invoice_number": invoice_number}, user=user
         )
         self._apply_submit_response(claim, result, user=user)
+        from hmis.apps.core.events import BillingEvents
+
+        _publish_safe(
+            BillingEvents.DHA_CLAIM_SUBMITTED,
+            _claim_event_payload(
+                claim,
+                result,
+                invoice_number=invoice_number,
+                sha_claim_reference=getattr(claim, "sha_claim_reference", ""),
+            ),
+        )
         return result
 
     def close(
@@ -370,6 +466,17 @@ class IlmClaimService:
         }
         result = self._post_with_consent(claim, CLOSE_PATH, body, user=user)
         self._apply_close_response(claim, result, user=user)
+        from hmis.apps.core.events import BillingEvents
+
+        _publish_safe(
+            BillingEvents.DHA_CLAIM_CLOSED,
+            _claim_event_payload(
+                claim,
+                result,
+                cancel_reason_type=params.cancel_reason_type,
+                cancel_reason_text=params.cancel_reason_text,
+            ),
+        )
         return result
 
     # -----------------------------------------------------------------
@@ -446,6 +553,42 @@ class IlmClaimService:
         self._stamp_dha_status(claim, "CLOSED", result, update_fields)
         if update_fields:
             claim.save(update_fields=list(set(update_fields)))
+
+    # -----------------------------------------------------------------
+    # Event helpers
+    # -----------------------------------------------------------------
+
+    def _emit_intervention_event(self, claim: Any, result: IlmClaimResult, **extra: Any) -> None:
+        from hmis.apps.core.events import BillingEvents
+
+        _publish_safe(
+            BillingEvents.DHA_CLAIM_INTERVENTION_CHANGED,
+            _claim_event_payload(claim, result, **extra),
+        )
+
+    def _emit_diagnosis_event(self, claim: Any, result: IlmClaimResult, **extra: Any) -> None:
+        from hmis.apps.core.events import BillingEvents
+
+        _publish_safe(
+            BillingEvents.DHA_CLAIM_DIAGNOSIS_CHANGED,
+            _claim_event_payload(claim, result, **extra),
+        )
+
+    def _emit_line_event(self, claim: Any, result: IlmClaimResult, **extra: Any) -> None:
+        from hmis.apps.core.events import BillingEvents
+
+        _publish_safe(
+            BillingEvents.DHA_CLAIM_LINE_CHANGED,
+            _claim_event_payload(claim, result, **extra),
+        )
+
+    def _emit_attachment_event(self, claim: Any, result: IlmClaimResult, **extra: Any) -> None:
+        from hmis.apps.core.events import BillingEvents
+
+        _publish_safe(
+            BillingEvents.DHA_CLAIM_ATTACHMENT_CHANGED,
+            _claim_event_payload(claim, result, **extra),
+        )
 
     def _stamp_dha_status(
         self,
