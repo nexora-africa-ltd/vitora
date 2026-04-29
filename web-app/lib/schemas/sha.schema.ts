@@ -1130,3 +1130,127 @@ export const EmtCreateInputSchema = z.object({
   patient_pk: z.number().optional(),
   payload: z.record(z.unknown()).optional(),
 });
+
+// ============================================================================
+// DHA HIE Middleware (ILM) — Phase 4: lifecycle (OTP, discharge, NoK, uploads)
+// ============================================================================
+
+export const IlmLifecycleResponseSchema = z.object({
+  data: z.unknown(),
+  http_status: z.number(),
+  record_id: z.number().nullable().optional(),
+  dha_external_id: z.string().optional().default(''),
+  correlation_id: z.string().optional().default(''),
+});
+export type IlmLifecycleResponse = z.infer<typeof IlmLifecycleResponseSchema>;
+
+export const SHAOtpRequestSchema = z.object({
+  id: z.number(),
+  patient: z.number().nullable().optional(),
+  facility: z.number().nullable().optional(),
+  kind: z.enum(['visit', 'discharge']),
+  status: z.enum(['sent', 'verified', 'failed']),
+  consent_token: z.string().optional().default(''),
+  patient_cr_id: z.string().optional().default(''),
+  intervention_codes: z.unknown().optional(),
+  correlation_id: z.string().optional().default(''),
+  sent_at: z.string().nullable().optional(),
+  verified_at: z.string().nullable().optional(),
+}).passthrough();
+export type SHAOtpRequestRow = z.infer<typeof SHAOtpRequestSchema>;
+export const SHAOtpRequestListSchema = z.object({ results: z.array(SHAOtpRequestSchema) });
+
+export const SHAOtpWhitelistRowSchema = z.object({
+  id: z.number(),
+  patient: z.number().nullable().optional(),
+  facility: z.number().nullable().optional(),
+  status: z.enum(['requested', 'approved', 'rejected', 'failed']),
+  beneficiary_cr_id: z.string().optional().default(''),
+  reason_type: z.string().optional().default(''),
+  reason: z.string().optional().default(''),
+  biometric_attempts: z.number().nullable().optional(),
+  dha_guid: z.string().optional().default(''),
+  correlation_id: z.string().optional().default(''),
+  requested_at: z.string().nullable().optional(),
+}).passthrough();
+export type SHAOtpWhitelistRow = z.infer<typeof SHAOtpWhitelistRowSchema>;
+export const SHAOtpWhitelistListSchema = z.object({ results: z.array(SHAOtpWhitelistRowSchema) });
+
+export const SHAUploadSchema = z.object({
+  id: z.number(),
+  facility: z.number().nullable().optional(),
+  filename: z.string(),
+  content_type: z.string().optional().default(''),
+  size_bytes: z.number().nullable().optional(),
+  dha_file_id: z.string().optional().default(''),
+  dha_file_path: z.string().optional().default(''),
+  dha_download_url: z.string().optional().default(''),
+  correlation_id: z.string().optional().default(''),
+  uploaded_at: z.string().nullable().optional(),
+}).passthrough();
+export type SHAUploadRow = z.infer<typeof SHAUploadSchema>;
+export const SHAUploadListSchema = z.object({ results: z.array(SHAUploadSchema) });
+
+// --- Inputs -----------------------------------------------------------------
+
+export const IlmVisitOtpInputSchema = z.object({
+  intervention_codes: z.array(z.string().min(1)).min(1),
+  patient_id: z.string().min(1),
+  beneficiary_contact_id: z.string().optional(),
+});
+export type IlmVisitOtpInput = z.infer<typeof IlmVisitOtpInputSchema>;
+
+export const IlmDischargeOtpInputSchema = z.object({
+  consent_token: z.string().min(1),
+  patient_id: z.string().min(1),
+  beneficiary_contact_id: z.string().optional(),
+});
+export type IlmDischargeOtpInput = z.infer<typeof IlmDischargeOtpInputSchema>;
+
+export const IlmDischargeInputSchema = z.object({
+  consent_token: z.string().min(1),
+  discharge_date: z.string().min(1),
+  discharge_reason: z.string().min(1),
+  invoice_number: z.string().min(1),
+  otp: z.string().min(1),
+});
+export type IlmDischargeInput = z.infer<typeof IlmDischargeInputSchema>;
+
+export const IlmOtpWhitelistInputSchema = z.object({
+  beneficiary_cr_id: z.string().min(1),
+  facility_fr_code: z.string().optional(),
+  reason_type: z.string().optional(),
+  reason: z.string().optional(),
+  biometric_attempts: z.number().int().nonnegative().optional(),
+});
+export type IlmOtpWhitelistInput = z.infer<typeof IlmOtpWhitelistInputSchema>;
+
+export const IlmNextOfKinInputSchema = z.object({
+  consent_token: z.string().min(1),
+  contact_value: z.string().min(1),
+  next_of_kin_full_name: z.string().min(1),
+  next_of_kin_id_number: z.string().min(1),
+  next_of_kin_id_number_type: z.string().optional(),
+  contact_type: z.string().optional(),
+});
+export type IlmNextOfKinInput = z.infer<typeof IlmNextOfKinInputSchema>;
+
+export const IlmEmergencyDoctorAddInputSchema = z.object({
+  consent_token: z.string().min(1),
+  identification_number: z.string().min(1),
+  identification_type: z.string().optional(),
+});
+export type IlmEmergencyDoctorAddInput = z.infer<typeof IlmEmergencyDoctorAddInputSchema>;
+
+export const IlmEmergencyDoctorRemoveInputSchema = z.object({
+  consent_token: z.string().min(1),
+});
+export type IlmEmergencyDoctorRemoveInput = z.infer<typeof IlmEmergencyDoctorRemoveInputSchema>;
+
+export const IlmPomsfBalanceInputSchema = z.object({
+  patient_id: z.string().min(1),
+  policy_year: z.string().optional(),
+  principal_member_number: z.string().optional(),
+  benefit_package_id: z.string().optional(),
+});
+export type IlmPomsfBalanceInput = z.infer<typeof IlmPomsfBalanceInputSchema>;

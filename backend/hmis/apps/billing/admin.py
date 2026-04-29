@@ -814,3 +814,43 @@ class SHAEmergencyClaimAdmin(admin.ModelAdmin):
         "request_payload",
         "response_payload",
     )
+
+
+# ============================================================================
+# DHA HIE Middleware (ILM) — Phase 4 lifecycle polish admin
+# ============================================================================
+from .models import SHAOtpRequest, SHAOtpWhitelistRequest, SHAUpload  # noqa: E402
+
+
+@admin.register(SHAOtpRequest)
+class SHAOtpRequestAdmin(admin.ModelAdmin):
+    list_display = ("id", "kind", "status", "patient_cr_id", "patient", "facility", "sent_at")
+    list_filter = ("kind", "status", "facility")
+    search_fields = ("patient_cr_id", "consent_token", "correlation_id")
+    raw_id_fields = ("patient", "sha_member", "claim", "facility", "organization", "sent_by")
+    readonly_fields = ("response_payload", "correlation_id", "sent_at", "verified_at")
+
+
+@admin.register(SHAOtpWhitelistRequest)
+class SHAOtpWhitelistRequestAdmin(admin.ModelAdmin):
+    list_display = ("id", "beneficiary_cr_id", "status", "reason_type", "facility", "requested_at")
+    list_filter = ("status", "reason_type", "facility")
+    search_fields = ("beneficiary_cr_id", "dha_guid", "reason", "correlation_id")
+    raw_id_fields = ("patient", "facility", "organization", "requested_by")
+    readonly_fields = ("response_payload", "correlation_id", "dha_guid", "requested_at")
+
+
+@admin.register(SHAUpload)
+class SHAUploadAdmin(admin.ModelAdmin):
+    list_display = ("id", "filename", "dha_file_id", "size_bytes", "facility", "uploaded_at")
+    list_filter = ("facility",)
+    search_fields = ("filename", "dha_file_id", "correlation_id")
+    raw_id_fields = ("facility", "organization", "uploaded_by")
+    readonly_fields = (
+        "response_payload",
+        "correlation_id",
+        "dha_file_id",
+        "dha_file_path",
+        "dha_download_url",
+        "uploaded_at",
+    )
