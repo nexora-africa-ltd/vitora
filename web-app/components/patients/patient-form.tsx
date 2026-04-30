@@ -925,21 +925,8 @@ export function PatientForm({
         form.setValue('sha_number', response.sha_number);
       }
 
-      // Store SHA details for the unified verification dialog
-      const hasShaDetailsToShow = !crFound && (response.full_name || response.sha_number);
-      if (hasShaDetailsToShow) {
-        setPendingShaDetails(response);
-      }
-
-      // Show unified verification dialog if:
-      // 1. We have duplicate matches that need user attention, OR
-      // 2. We have SHA details to confirm (when CR not found)
-      // Access duplicateCheckResult from closure - it was set in performCRLookup
-      const hasDuplicates = duplicateCheckResult?.has_duplicate && duplicateCheckResult.matches.length > 0;
-      if (hasDuplicates || hasShaDetailsToShow) {
-        setShowVerificationDialog(true);
-      } else if (crFound && response.is_eligible) {
-        // CR record was found AND eligible, no duplicates - just show success toast
+      // Show success feedback (dialog removed — user picks principal/dependant in SHA modal)
+      if (crFound && response.is_eligible) {
         toast({
           title: 'SHA Coverage Active',
           description: `Patient ${response.full_name || ''} has active SHA coverage.`,
@@ -1000,6 +987,12 @@ export function PatientForm({
 
   useEffect(() => {
     if (prePopulatedShaPerson) {
+      // Clear stale principal CR banner when populating from a new person
+      setCrClient(null);
+      setCrSearched(false);
+      setDuplicateCheckResult(null);
+      setDuplicateAcknowledged(false);
+
       populateFromShaPerson(prePopulatedShaPerson, shaEligibilityRef.current);
 
       const firstName = prePopulatedShaPerson.first_name;
@@ -1275,19 +1268,14 @@ export function PatientForm({
           form.setValue('sha_number', response.sha_number);
         }
 
-        // If SHA details found, show verification dialog for user to select who they're registering
-        const hasShaDetails = response.full_name || response.sha_number;
-        if (hasShaDetails) {
-          setPendingShaDetails(response);
-          setShowVerificationDialog(true);
-        } else if (crFound && foundCrClient) {
-          // No SHA details but CR found - auto-populate
+        // Auto-populate from CR if found (dialog removed — user picks principal/dependant in SHA modal)
+        if (crFound && foundCrClient) {
           populateFromCRClient(foundCrClient);
           toast({
             title: 'Client Registry Record Found',
             description: 'Patient details auto-populated from registry.',
           });
-        } else {
+        } else if (!response.full_name && !response.sha_number) {
           // No SHA, no CR
           toast({
             title: 'No Records Found',
@@ -1426,6 +1414,14 @@ export function PatientForm({
       }, 1000);
     }
   };
+
+  // Lightweight reset: clears verification banners/results without resetting the form
+  const clearVerificationResults = useCallback(() => {
+    setCrClient(null);
+    setCrSearched(false);
+    setDuplicateCheckResult(null);
+    setDuplicateAcknowledged(false);
+  }, []);
 
   const resetVerificationState = useCallback(() => {
     setCrClient(null);
@@ -1760,7 +1756,7 @@ export function PatientForm({
                         }}
                         onNumberChange={(value) => {
                           field.onChange(value);
-                          resetVerificationState();
+                          clearVerificationResults();
                         }}
                         onBlur={handleIdInputBlur}
                         onKeyDown={handleIdInputKeyDown}

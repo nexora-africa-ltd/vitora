@@ -77,6 +77,8 @@ export function PatientRegistrationSuccess({
         destination: 'triage',
         destinationName: 'Triage Queue',
         destinationUrl: '/triage',
+        patientId: patient.id,
+        encounterId: (result as { encounter?: number | null }).encounter ?? null,
         // WaitingQueueEntry doesn't have queue_position, so we omit it
       });
       setShowSuccessModal(true);

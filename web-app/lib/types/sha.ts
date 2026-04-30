@@ -523,6 +523,7 @@ export interface StartVisitRequest {
   service_type?: string;
   admission_date?: string;
   estimated_days_of_admission?: number;
+  encounter_id?: number;
 }
 
 export interface StartVisitResponse {

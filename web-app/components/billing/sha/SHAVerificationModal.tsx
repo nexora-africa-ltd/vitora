@@ -715,10 +715,31 @@ function EligibilityDataPanel({
                         </Button>
                       )}
                     </div>
-                    {dep.identification_number && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {dep.identification_type}: {dep.identification_number}
-                      </p>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground">
+                      {dep.identification_number && (
+                        <span>{dep.identification_type}: {dep.identification_number}</span>
+                      )}
+                      {dep.id && (
+                        <span>CR: {dep.id}</span>
+                      )}
+                      {dep.county && (
+                        <span>County: {dep.county}</span>
+                      )}
+                      {dep.sub_county && (
+                        <span>Sub-County: {dep.sub_county}</span>
+                      )}
+                      {dep.ward && (
+                        <span>Ward: {dep.ward}</span>
+                      )}
+                    </div>
+                    {dep.other_identifications && dep.other_identifications.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {dep.other_identifications.map((oid, oidIdx) => (
+                          <span key={oidIdx} className="text-xs rounded bg-muted px-1.5 py-0.5">
+                            {oid.identification_type}: {oid.identification_number}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 ))
@@ -994,10 +1015,23 @@ function EligibilityDataPanel({
         </Alert>
       )}
 
-      <DetailSection title="Raw SHA Payload" icon={<FileJson className="h-4 w-4" />}>
-        <pre className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
-          {JSON.stringify(eligibility.raw_response ?? {}, null, 2)}
-        </pre>
+      <DetailSection title="Raw Payloads" icon={<FileJson className="h-4 w-4" />}>
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">SHA Eligibility Response</p>
+            <pre className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
+              {JSON.stringify(eligibility.raw_response ?? {}, null, 2)}
+            </pre>
+          </div>
+          {crClient && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Client Registry Response</p>
+              <pre className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
+                {JSON.stringify(crClient, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
       </DetailSection>
     </div>
   );
@@ -1033,6 +1067,7 @@ export function SHAVerificationModal({
   const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
   const [crClient, setCRClient] = useState<ClientRegistryClient | null>(null);
   const [crStatus, setCRStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [dependantLookupLoading, setDependantLookupLoading] = useState(false);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -1122,7 +1157,90 @@ export function SHAVerificationModal({
     }
   };
 
-  const handleAddPerson = useCallback((person: SHAPayloadPerson) => {
+  const handleAddPerson = useCallback(async (person: SHAPayloadPerson) => {
+    // For dependants, attempt a secondary CR lookup to enrich demographics
+    if (person.source === 'dependent') {
+      // Extract the best identifier for CR lookup
+      const crNumber = person.cr_number || person.id;
+      const shaNumber = person.sha_number;
+      const birthCert = person.other_identifications?.find(
+        (oid) => oid.identification_type?.toLowerCase().includes('birth')
+      );
+      const primaryId = person.identification_number;
+      const primaryIdType = person.identification_type;
+
+      // Build lookup params — try CR number first, then SHA number, then birth cert, then primary ID
+      let lookupParams: Record<string, string> | null = null;
+      if (crNumber && typeof crNumber === 'string' && crNumber.startsWith('CR')) {
+        lookupParams = { cr_number: crNumber };
+      } else if (shaNumber) {
+        lookupParams = { identification_type: 'SHA Number', identification_number: shaNumber };
+      } else if (birthCert?.identification_number) {
+        lookupParams = { identification_type: 'Birth Certificate', identification_number: birthCert.identification_number };
+      } else if (primaryId && primaryIdType) {
+        lookupParams = { identification_type: primaryIdType, identification_number: primaryId };
+      }
+
+      if (lookupParams) {
+        setDependantLookupLoading(true);
+        try {
+          const crResponse = await shaApi.fetchFromClientRegistry(lookupParams);
+          if (crResponse.found && crResponse.client) {
+            const client = crResponse.client;
+            // Merge CR data into the person payload (CR wins for missing fields)
+            const enriched: SHAPayloadPerson = {
+              ...person,
+              first_name: person.first_name || client.first_name || undefined,
+              middle_name: person.middle_name || client.middle_name || undefined,
+              last_name: person.last_name || client.last_name || undefined,
+              gender: person.gender || client.gender || undefined,
+              date_of_birth: person.date_of_birth || client.date_of_birth || undefined,
+              phone: person.phone || client.phone_number || undefined,
+              county: person.county || client.county || undefined,
+              sub_county: person.sub_county || client.sub_county || undefined,
+              ward: person.ward || client.ward || undefined,
+              cr_number: client.client_number || person.cr_number,
+              identification_type: person.identification_type || (client.national_id ? 'National ID' : undefined),
+              identification_number: person.identification_number || client.national_id || undefined,
+              place_of_birth: person.place_of_birth || client.place_of_birth || undefined,
+              citizenship: person.citizenship || client.citizenship || undefined,
+              village_estate: person.village_estate || client.village_estate || undefined,
+              postal_address: person.postal_address || client.address || undefined,
+              id_serial: person.id_serial || client.id_serial || undefined,
+              // Merge other_identifications from CR if the dependant had none
+              other_identifications: (person.other_identifications?.length ?? 0) > 0
+                ? person.other_identifications
+                : client.other_identifications?.map((oid) => ({
+                    identification_type: oid.identification_type,
+                    identification_number: oid.identification_number,
+                  })),
+              // Re-extract SHA/household from enriched identifiers
+              sha_number: person.sha_number || (client.other_identifications
+                ? extractShaNumberFromIdentifiers(
+                    client.other_identifications as unknown as Array<Record<string, unknown>>
+                  )
+                : undefined),
+              household_number: person.household_number || (client.other_identifications
+                ? extractIdentifierByLabel(
+                    client.other_identifications as unknown as Array<Record<string, unknown>>,
+                    (label) => label.includes('household')
+                  )
+                : undefined),
+            };
+            setDependantLookupLoading(false);
+            onAddPersonToForm?.(enriched);
+            setIsOpen(false);
+            return;
+          }
+        } catch {
+          // CR lookup failed — non-fatal, proceed with original data
+          console.warn('Dependant CR enrichment failed (non-fatal), using original data');
+        }
+        setDependantLookupLoading(false);
+      }
+    }
+
+    // Fallback: pass person as-is (principal, or dependant without enrichable identifiers)
     onAddPersonToForm?.(person);
     setIsOpen(false);
   }, [onAddPersonToForm, setIsOpen]);
@@ -1147,6 +1265,15 @@ export function SHAVerificationModal({
           isMobile ? 'max-w-none' : 'sm:max-w-4xl xl:max-w-5xl'
         )}
       >
+        {/* Dependant CR enrichment loading overlay */}
+        {dependantLookupLoading && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="flex items-center gap-3 rounded-lg border bg-card p-4 shadow-lg">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm font-medium">Looking up dependant in Client Registry...</span>
+            </div>
+          </div>
+        )}
         <SheetHeader className="border-b px-5 py-4 text-left">
           <SheetTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-primary" />
@@ -1504,10 +1631,31 @@ export function SHAVerificationModal({
                                     </Button>
                                   )}
                                 </div>
-                                {dep.identification_number && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {dep.identification_type}: {dep.identification_number}
-                                  </p>
+                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground">
+                                  {dep.identification_number && (
+                                    <span>{dep.identification_type}: {dep.identification_number}</span>
+                                  )}
+                                  {dep.id && (
+                                    <span>CR: {dep.id}</span>
+                                  )}
+                                  {dep.county && (
+                                    <span>County: {dep.county}</span>
+                                  )}
+                                  {dep.sub_county && (
+                                    <span>Sub-County: {dep.sub_county}</span>
+                                  )}
+                                  {dep.ward && (
+                                    <span>Ward: {dep.ward}</span>
+                                  )}
+                                </div>
+                                {dep.other_identifications && dep.other_identifications.length > 0 && (
+                                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    {dep.other_identifications.map((oid, oidIdx) => (
+                                      <span key={oidIdx} className="text-xs rounded bg-muted px-1.5 py-0.5">
+                                        {oid.identification_type}: {oid.identification_number}
+                                      </span>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             ))

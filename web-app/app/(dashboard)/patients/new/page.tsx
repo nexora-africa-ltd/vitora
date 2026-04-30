@@ -96,6 +96,11 @@ export default function NewPatientPage() {
       setPendingIneligiblePerson(person);
       return;
     }
+    // Clear principal's CR record when selecting a different person (esp. dependant)
+    // so the form doesn't show stale principal identification data
+    if (person.source === 'dependent') {
+      setCrClient(null);
+    }
     setSelectedShaPerson(person);
     toast({
       title: 'Patient form updated',
@@ -107,6 +112,10 @@ export default function NewPatientPage() {
     if (!pendingIneligiblePerson) return;
     const person = pendingIneligiblePerson;
     setPendingIneligiblePerson(null);
+    // Clear principal's CR record for dependants
+    if (person.source === 'dependent') {
+      setCrClient(null);
+    }
     setSelectedShaPerson(person);
     toast({
       title: 'Patient form updated',

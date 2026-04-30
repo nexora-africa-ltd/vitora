@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { SHAConsentStep } from '@/components/patients/sha-consent-step';
 import type { CheckInResponse } from '@/lib/types/checkin';
 
 /**
@@ -27,6 +28,10 @@ export interface CheckinSuccessData {
   estimatedWaitMinutes?: number;
   skippedTriage?: boolean;
   warning?: string;
+  /** Patient ID for SHA consent lookup */
+  patientId?: number;
+  /** Encounter ID created during check-in (for linking consent) */
+  encounterId?: number | null;
 }
 
 /**
@@ -146,6 +151,14 @@ export function CheckinSuccessModal({
 
           {data.warning && (
             <p className="text-sm text-warning text-center">{data.warning}</p>
+          )}
+
+          {/* SHA Consent Step — shown for SHA-eligible patients */}
+          {data.patientId && (
+            <SHAConsentStep
+              patientId={data.patientId}
+              encounterId={data.encounterId}
+            />
           )}
         </div>
 

@@ -791,6 +791,8 @@ export default function PatientCheckinPage() {
         queuePosition: result.queue_position,
         estimatedWaitMinutes: result.estimated_wait_minutes,
         warning: result.warning,
+        patientId: patientDetails.id,
+        encounterId: result.encounter_id,
       });
       setShowSuccessModal(true);
 
@@ -844,6 +846,8 @@ export default function PatientCheckinPage() {
         queuePosition: result.queue_position,
         estimatedWaitMinutes: result.estimated_wait_minutes,
         warning: result.warning,
+        patientId: patientDetails.id,
+        encounterId: result.encounter_id,
       });
       setShowSuccessModal(true);
       setSearchQuery('');
@@ -882,6 +886,8 @@ export default function PatientCheckinPage() {
         estimatedWaitMinutes: result.estimated_wait_minutes,
         skippedTriage: true,
         warning: result.warning,
+        patientId: patientDetails.id,
+        encounterId: result.encounter_id,
       });
       setShowSuccessModal(true);
       setSearchQuery('');
@@ -921,6 +927,8 @@ export default function PatientCheckinPage() {
         estimatedWaitMinutes: result.estimated_wait_minutes,
         skippedTriage: true,
         warning: result.warning,
+        patientId: patientDetails.id,
+        encounterId: result.encounter_id,
       });
       setShowSuccessModal(true);
       setSearchQuery('');
@@ -969,6 +977,8 @@ export default function PatientCheckinPage() {
       estimatedWaitMinutes: result.estimated_wait_minutes,
       skippedTriage: pendingDirectRoute.skipTriage,
       warning: result.warning,
+      patientId: patientDetails.id,
+      encounterId: result.encounter_id,
     });
     setShowSuccessModal(true);
     setResetAfterDirectRoute(true);
