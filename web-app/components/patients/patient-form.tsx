@@ -151,6 +151,7 @@ const patientFormSchema = z.object({
   cr_number: z.string().optional(), // Read-only, populated from CR lookup
   sha_number: z.string().optional(), // Read-only, populated from SHA lookup
   household_number: z.string().optional(), // Read-only, populated from SHA payload
+  principal_national_id: z.string().optional(), // Read-only, principal's national ID for dependant eligibility
 
   // Personal Information
   title: z.enum(['Mr', 'Mrs', 'Miss', 'Ms', 'Dr', 'Prof', 'Hon', 'Rev', '']).optional(),
@@ -390,6 +391,7 @@ export function PatientForm({
       cr_number: '',
       sha_number: '',
       household_number: '',
+      principal_national_id: '',
       title: '',
       first_name: '',
       middle_name: '',
@@ -711,6 +713,13 @@ export function PatientForm({
 
           if (dep.sha_number) {
             form.setValue('sha_number', dep.sha_number);
+          }
+
+          // Store principal's national ID for dependant eligibility checks
+          // DHA only resolves coverage via principal, not dependant's own ID
+          const principalContributor = pendingShaDetails?.schemes?.[0]?.principalContributor;
+          if (principalContributor?.idNumber && principalContributor?.idType === 'NATIONAL_ID') {
+            form.setValue('principal_national_id', principalContributor.idNumber);
           }
           if (dep.name) {
             const nameParts = dep.name.trim().split(/\s+/);
@@ -1424,6 +1433,8 @@ export function PatientForm({
         // Include SHA number if found
         sha_number: values.sha_number || shaEligibility.details?.sha_number || undefined,
         household_number: values.household_number || undefined,
+        // Include principal's national ID for dependant eligibility resolution
+        principal_national_id: values.principal_national_id || undefined,
       };
 
       await onSubmit(data);
@@ -1778,8 +1789,6 @@ export function PatientForm({
                           field.onChange(value);
                           clearVerificationResults();
                         }}
-                        onBlur={handleIdInputBlur}
-                        onKeyDown={handleIdInputKeyDown}
                         disabled={formLocked || isFormLoading}
                         required
                         error={form.formState.errors.identification_number?.message}
@@ -1788,7 +1797,7 @@ export function PatientForm({
                         minSearchLength={5}
                       />
                       <FormDescription>
-                        Press Enter or Tab to search
+                        Click search icon to look up registries
                       </FormDescription>
                     </FormItem>
                   )}
@@ -2909,13 +2918,18 @@ export function PatientForm({
                 </div>
               )}
 
-              {/* Dependents Accordion - Always show */}
+              {/* Dependents Accordion - Shows SHA dependents or CR dependants */}
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="dependents" className="border rounded-lg px-3">
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-muted-foreground" />
-                      <span>Dependents ({shaEligibility.details.dependents?.length || shaEligibility.details.dependents_covered || 0})</span>
+                      <span>Dependents ({
+                        shaEligibility.details.dependents?.length
+                        || crClient?.dependants?.reduce((sum, g) => sum + (g.result?.length ?? 0), 0)
+                        || shaEligibility.details.dependents_covered
+                        || 0
+                      })</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
@@ -2952,6 +2966,40 @@ export function PatientForm({
                             )}
                           </div>
                         ))
+                      ) : crClient?.dependants && crClient.dependants.length > 0 ? (
+                        crClient.dependants.flatMap((group, gIdx) =>
+                          (group.result ?? []).map((dep, dIdx) => (
+                            <div
+                              key={`cr-${gIdx}-${dIdx}`}
+                              className="flex items-center justify-between p-3 rounded-md bg-muted/30 border"
+                            >
+                              <div className="space-y-1">
+                                <p className="font-medium text-sm">
+                                  {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ')}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  {group.relationship && (
+                                    <span className="capitalize">{group.relationship}</span>
+                                  )}
+                                  {dep.date_of_birth && (
+                                    <span>• DOB: {dep.date_of_birth}</span>
+                                  )}
+                                  {dep.gender && (
+                                    <span>• {dep.gender}</span>
+                                  )}
+                                  {dep.phone && (
+                                    <span>• {dep.phone}</span>
+                                  )}
+                                </div>
+                                {dep.identification_number && (
+                                  <p className="text-xs font-mono text-muted-foreground">
+                                    {dep.identification_type}: {dep.identification_number}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )
                       ) : (
                         <p className="text-sm text-muted-foreground text-center py-4">
                           No dependents registered under this membership

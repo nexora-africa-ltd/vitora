@@ -289,6 +289,8 @@ export default function TriageRoutePage() {
           destination: data.routing_type === 'clinic' ? 'clinic' : 'triage',
           destinationName,
           destinationUrl,
+          patientId: patient?.id,
+          encounterId: encounter?.id,
         });
         setShowSuccessModal(true);
       } catch (error: unknown) {

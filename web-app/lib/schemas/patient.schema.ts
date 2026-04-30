@@ -68,6 +68,7 @@ export const HouseholdMemberSchema = z.object({
   cr_number: z.string().optional().nullable(),
   sha_number: z.string().optional().nullable(),
   household_number: z.string().optional().nullable(),
+  principal_national_id: z.string().optional().nullable(),
 });
 
 export const HouseholdMembersResponseSchema = z.object({
@@ -94,6 +95,7 @@ export const PatientSchema = z.object({
   // SHA Integration
   sha_number: z.string().optional().nullable(),
   household_number: z.string().optional().nullable(),
+  principal_national_id: z.string().optional().nullable(),
 
   // Personal Information
   title: PatientTitleSchema.nullable(),
@@ -167,6 +169,7 @@ export const PatientListItemSchema = z.object({
   cr_synced_at: z.string().optional().nullable(),
   sha_number: z.string().optional().nullable(),
   household_number: z.string().optional().nullable(),
+  principal_national_id: z.string().optional().nullable(),
   title: PatientTitleSchema.nullable(),
   first_name: z.string(),
   middle_name: z.string().optional().nullable(),
@@ -210,6 +213,7 @@ export const PatientCreateDataSchema = z.object({
   // SHA (Social Health Authority)
   sha_number: z.string().optional(),
   household_number: z.string().optional(),
+  principal_national_id: z.string().optional(),
 
   // Personal Information
   title: PatientTitleSchema,

@@ -722,6 +722,9 @@ function EligibilityDataPanel({
                       {dep.id && (
                         <span>CR: {dep.id}</span>
                       )}
+                      {dep.phone && (
+                        <span>Phone: {dep.phone}</span>
+                      )}
                       {dep.county && (
                         <span>County: {dep.county}</span>
                       )}

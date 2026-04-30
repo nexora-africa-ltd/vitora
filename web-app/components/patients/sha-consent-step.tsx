@@ -48,13 +48,14 @@ interface SHAConsentStepProps {
 }
 
 type StepState =
-  | 'checking'       // Looking up SHA member
-  | 'not_eligible'   // No SHA member record — skip
-  | 'ready'          // SHA member found, ready to send OTP
-  | 'otp_sent'       // OTP sent, waiting for code
-  | 'validating'     // Validating OTP
-  | 'done'           // Consent obtained
-  | 'skipped';       // User chose to skip
+  | 'checking'         // Looking up SHA member
+  | 'not_eligible'     // No SHA coverage — skip
+  | 'direct_eligible'  // Eligible via direct DHA check (no local SHAMember record)
+  | 'ready'            // SHA member found, ready to send OTP
+  | 'otp_sent'         // OTP sent, waiting for code
+  | 'validating'       // Validating OTP
+  | 'done'             // Consent obtained
+  | 'skipped';         // User chose to skip
 
 // ============================================================================
 // Component
@@ -69,6 +70,11 @@ export function SHAConsentStep({
 }: SHAConsentStepProps) {
   const [step, setStep] = useState<StepState>('checking');
   const [shaMember, setSHAMember] = useState<SHAMember | null>(null);
+  const [directEligibility, setDirectEligibility] = useState<{
+    verifiedName?: string;
+    coverageEndDate?: string;
+    schemeName?: string;
+  } | null>(null);
   const [consentId, setConsentId] = useState<number | null>(null);
   const [otpCode, setOtpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +90,14 @@ export function SHAConsentStep({
       if (result.is_eligible && result.member) {
         setSHAMember(result.member);
         setStep('ready');
+      } else if (result.is_eligible) {
+        // Eligible via direct DHA check but no local SHAMember record
+        setDirectEligibility({
+          verifiedName: result.verified_name,
+          coverageEndDate: result.coverage_end_date,
+        });
+        setStep('direct_eligible');
+        onComplete?.({ consented: false });
       } else {
         setStep('not_eligible');
         onComplete?.({ consented: false });
@@ -150,9 +164,40 @@ export function SHAConsentStep({
     onComplete?.({ consented: false });
   };
 
-  // Don't render anything for non-SHA patients
-  if (step === 'not_eligible' || step === 'skipped') {
+  // Don't render anything if explicitly skipped
+  if (step === 'skipped') {
     return null;
+  }
+
+  // Show a brief status for non-SHA patients
+  if (step === 'not_eligible') {
+    return (
+      <div className={cn('rounded-lg border border-muted p-3', className)}>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <ShieldCheck className="h-4 w-4" />
+          <span>No active SHA coverage — patient will pay via selected payment method.</span>
+        </div>
+      </div>
+    );
+  }
+
+  // SHA coverage confirmed via direct DHA check (no local SHAMember record)
+  if (step === 'direct_eligible') {
+    return (
+      <div className={cn('rounded-lg border border-green-200 dark:border-green-800 p-4 space-y-2', className)}>
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <span className="text-sm font-medium text-green-700 dark:text-green-300">
+            SHA coverage verified
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Coverage confirmed via DHA
+          {directEligibility?.verifiedName && ` (${directEligibility.verifiedName})`}
+          {directEligibility?.coverageEndDate && ` • Valid until ${directEligibility.coverageEndDate}`}
+        </p>
+      </div>
+    );
   }
 
   // Loading state

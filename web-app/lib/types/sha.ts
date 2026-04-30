@@ -17,17 +17,29 @@ export interface CROtherIdentification {
 
 export interface CRDependantPerson {
   id?: string | null;
+  resourceType?: string | null;
   first_name?: string | null;
   middle_name?: string | null;
   last_name?: string | null;
   gender?: string | null;
   date_of_birth?: string | null;
+  place_of_birth?: string | null;
+  citizenship?: string | null;
+  employment_type?: string | null;
+  civil_status?: string | null;
   identification_type?: string | null;
   identification_number?: string | null;
   other_identifications?: CROtherIdentification[] | null;
+  phone?: string | null;
+  country?: string | null;
   county?: string | null;
   sub_county?: string | null;
   ward?: string | null;
+  village_estate?: string | null;
+  province_state_country?: string | null;
+  zip_code?: string | null;
+  postal_address?: string | null;
+  id_serial?: string | null;
 }
 
 export interface CRDependantGroup {
