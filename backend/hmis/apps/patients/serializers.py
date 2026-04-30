@@ -68,6 +68,7 @@ class PatientSerializer(serializers.ModelSerializer):
             # SHA Integration
             "sha_number",
             "household_number",
+            "principal_national_id",
             # Personal Information
             "title",
             "first_name",
@@ -226,6 +227,7 @@ class PatientHouseholdMemberSerializer(serializers.ModelSerializer):
             "cr_number",
             "sha_number",
             "household_number",
+            "principal_national_id",
         ]
         read_only_fields = fields
 

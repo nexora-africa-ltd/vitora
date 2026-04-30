@@ -153,6 +153,12 @@ class Patient(HistoryMixin, models.Model):
         null=True,
         help_text="SHA household number used to group related members and dependants",
     )
+    principal_national_id = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="Principal member's national ID (for dependants). Used for eligibility checks since DHA resolves coverage via principal.",
+    )
 
     # Title and Names
     title = models.CharField(

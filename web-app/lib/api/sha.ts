@@ -253,18 +253,26 @@ async function checkPatientEligibility(
       const patientResponse = await apiClient.get(`/api/patients/${patientId}/`);
       const patient = patientResponse.data;
 
-      // Build eligibility check params based on available ID
+      // Build eligibility check params.
+      // The DHA eligibility endpoint only reliably supports National ID.
+      // CRITICAL: For dependants, DHA only resolves coverage via the PRINCIPAL's
+      // national ID — querying a dependant's own ID returns "not covered".
+      // Strategy: use principal_national_id if available, else patient's own national_id.
       const params: DirectEligibilityCheckRequest = {};
 
-      if (patient.identification_type === 'national_id' && patient.identification_number) {
+      if (patient.principal_national_id) {
+        // Dependant: check eligibility via principal's national ID
+        params.national_id = patient.principal_national_id;
+      } else if (patient.identification_type === 'national_id' && patient.identification_number) {
         params.national_id = patient.identification_number;
       } else if (patient.national_id) {
         // Legacy field
         params.national_id = patient.national_id;
+      } else if (patient.sha_number) {
+        // Fallback: try SHA number (may not be supported by all DHA endpoints)
+        params.sha_number = patient.sha_number;
       } else if (patient.identification_type === 'cr_number' && patient.identification_number) {
         params.sha_number = patient.identification_number;
-      } else if (patient.sha_number) {
-        params.sha_number = patient.sha_number;
       } else if (patient.identification_number) {
         // Try with whatever ID we have
         params.identification_type = patient.identification_type;
@@ -273,17 +281,47 @@ async function checkPatientEligibility(
 
       // If we have identification info, do direct check
       if (Object.keys(params).length > 0) {
-        const directResponse = await checkDirectEligibility(params);
-        return {
-          is_eligible: directResponse.is_eligible,
-          copay_percentage: directResponse.copay_percentage,
-          checked_at: new Date().toISOString(),
-          verified_name: directResponse.full_name || undefined,
-          coverage_end_date: directResponse.coverage_end_date || undefined,
-          message: directResponse.is_eligible
-            ? 'SHA coverage verified via direct lookup'
-            : directResponse.reason || 'Patient is not eligible for SHA coverage',
-        };
+        try {
+          const directResponse = await checkDirectEligibility(params);
+          return {
+            is_eligible: directResponse.is_eligible,
+            copay_percentage: directResponse.copay_percentage,
+            checked_at: new Date().toISOString(),
+            verified_name: directResponse.full_name || undefined,
+            coverage_end_date: directResponse.coverage_end_date || undefined,
+            message: directResponse.is_eligible
+              ? 'SHA coverage verified via direct lookup'
+              : directResponse.reason || 'Patient is not eligible for SHA coverage',
+          };
+        } catch (primaryError) {
+          // If primary lookup failed and we have an alternative identifier, retry
+          const fallbackParams: DirectEligibilityCheckRequest = {};
+          if (params.national_id && patient.sha_number) {
+            fallbackParams.sha_number = patient.sha_number;
+          } else if (params.sha_number && patient.identification_type === 'national_id' && patient.identification_number) {
+            fallbackParams.national_id = patient.identification_number;
+          }
+
+          if (Object.keys(fallbackParams).length > 0) {
+            try {
+              const fallbackResponse = await checkDirectEligibility(fallbackParams);
+              return {
+                is_eligible: fallbackResponse.is_eligible,
+                copay_percentage: fallbackResponse.copay_percentage,
+                checked_at: new Date().toISOString(),
+                verified_name: fallbackResponse.full_name || undefined,
+                coverage_end_date: fallbackResponse.coverage_end_date || undefined,
+                message: fallbackResponse.is_eligible
+                  ? 'SHA coverage verified via direct lookup'
+                  : fallbackResponse.reason || 'Patient is not eligible for SHA coverage',
+              };
+            } catch {
+              // Both attempts failed
+              throw primaryError;
+            }
+          }
+          throw primaryError;
+        }
       }
     } catch (error) {
       console.error('Direct eligibility check failed:', error);

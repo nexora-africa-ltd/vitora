@@ -48,6 +48,7 @@ import { useAISuggestionAudit } from '@/lib/hooks/use-ai';
 import { useSmartSuggestions } from '@/lib/hooks/use-smart-suggestions';
 import { SmartSuggestionBatch } from '@/components/shared/smart-suggestion-batch';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
+import { SHAConsentStep } from '@/components/patients/sha-consent-step';
 import { encountersApi } from '@/lib/api/encounters';
 import type { DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { CreateDiagnosisData } from '@/lib/api/encounters';
@@ -507,6 +508,16 @@ export default function NewEncounterReviewPage() {
               </AlertDescription>
             </Alert>
           </div>
+          {/* SHA Consent Step — shown for SHA-eligible patients */}
+          {patientData?.id && (
+            <div className="py-2">
+              <SHAConsentStep
+                patientId={patientData.id}
+                encounterId={createdEncounterId}
+              />
+            </div>
+          )}
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={handleSkipTriage}>
               Skip for Now

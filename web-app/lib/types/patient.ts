@@ -107,6 +107,7 @@ export interface PatientCreateData {
   // SHA (Social Health Authority) - readonly, populated from SHA lookup
   sha_number?: string;
   household_number?: string;
+  principal_national_id?: string; // Principal's national ID for dependant eligibility
   // Personal Information
   title?: PatientTitle;
   first_name: string;

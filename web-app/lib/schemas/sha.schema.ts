@@ -90,17 +90,29 @@ export const CROtherIdentificationSchema = z.object({
 // Nested: dependant record from CR
 export const CRDependantPersonSchema = z.object({
   id: z.string().nullish(),
+  resourceType: z.string().nullish(),
   first_name: z.string().nullish(),
   middle_name: z.string().nullish(),
   last_name: z.string().nullish(),
   gender: z.string().nullish(),
   date_of_birth: z.string().nullish(),
+  place_of_birth: z.string().nullish(),
+  citizenship: z.string().nullish(),
+  employment_type: z.string().nullish(),
+  civil_status: z.string().nullish(),
   identification_type: z.string().nullish(),
   identification_number: z.string().nullish(),
   other_identifications: z.array(CROtherIdentificationSchema).nullish(),
+  phone: z.string().nullish(),
+  country: z.string().nullish(),
   county: z.string().nullish(),
   sub_county: z.string().nullish(),
   ward: z.string().nullish(),
+  village_estate: z.string().nullish(),
+  province_state_country: z.string().nullish(),
+  zip_code: z.string().nullish(),
+  postal_address: z.string().nullish(),
+  id_serial: z.string().nullish(),
 });
 
 export const CRDependantGroupSchema = z.object({
