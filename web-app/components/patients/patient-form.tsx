@@ -993,6 +993,26 @@ export function PatientForm({
       setDuplicateCheckResult(null);
       setDuplicateAcknowledged(false);
 
+      // Reset person-specific fields before populating with new data.
+      // Without this, fields that are undefined on the new person (e.g. dependant
+      // phone) retain stale values from the principal's CR lookup.
+      form.setValue('first_name', '');
+      form.setValue('middle_name', '');
+      form.setValue('last_name', '');
+      form.setValue('gender', '' as unknown as 'M' | 'F' | 'O');
+      form.setValue('date_of_birth', undefined as unknown as Date);
+      form.setValue('identification_type', undefined as unknown as IdentificationType);
+      form.setValue('identification_number', '');
+      form.setValue('phone_number', '');
+      form.setValue('cr_number', '');
+      form.setValue('place_of_birth', '');
+      form.setValue('nationality', '');
+      form.setValue('village', '');
+      form.setValue('household_number', '');
+      form.setValue('address', '');
+      form.setValue('sha_number', '');
+      form.setValue('email', '');
+
       populateFromShaPerson(prePopulatedShaPerson, shaEligibilityRef.current);
 
       const firstName = prePopulatedShaPerson.first_name;
