@@ -1541,6 +1541,7 @@ class ClientRegistryView(APIView):
             )
 
             if client:
+                raw = client.raw_data or {}
                 return Response(
                     {
                         "found": True,
@@ -1559,6 +1560,22 @@ class ClientRegistryView(APIView):
                             "email": client.email,
                             "county": client.county_of_residence,
                             "sub_county": client.sub_county_of_residence,
+                            "ward": client.ward_of_residence,
+                            # Extra demographic fields surfaced from the raw
+                            # CR payload (esp. via ILM /api/v1/patients).
+                            "place_of_birth": raw.get("place_of_birth"),
+                            "citizenship": raw.get("citizenship"),
+                            "civil_status": raw.get("civil_status"),
+                            "employment_type": raw.get("employment_type"),
+                            "address": raw.get("postal_address") or raw.get("address"),
+                            "village_estate": raw.get("village_estate"),
+                            "country": raw.get("country"),
+                            "zip_code": raw.get("zip_code"),
+                            "id_serial": raw.get("id_serial"),
+                            # Nested: other identifiers (SHA Number, Household Number, etc.)
+                            "other_identifications": raw.get("other_identifications"),
+                            # Nested: dependants list
+                            "dependants": raw.get("dependants"),
                         },
                     }
                 )

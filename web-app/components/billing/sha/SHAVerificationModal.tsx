@@ -55,6 +55,7 @@ import {
   CreditCard,
   HeartPulse,
   UserRound,
+  UserPlus,
 } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { cn } from '@/lib/utils';
@@ -671,15 +672,76 @@ function EligibilityDataPanel({
             <DetailItem label="Date of Birth" value={crClient.date_of_birth} />
             <DetailItem label="National ID" value={crClient.national_id} />
             <DetailItem label="CR Number" value={crClient.client_number} />
+            <DetailItem label="ID Serial No." value={crClient.id_serial} />
             <DetailItem label="Phone" value={crClient.phone_number} />
             <DetailItem label="Email" value={crClient.email} />
             <DetailItem label="County" value={crClient.county} />
             <DetailItem label="Sub County" value={crClient.sub_county} />
             <DetailItem label="Ward" value={crClient.ward} />
-            <DetailItem label="Address" value={crClient.address} />
-            <DetailItem label="Place of Birth" value={crClient.place_of_birth} />
+            <DetailItem label="Village/Estate" value={crClient.village_estate} />
+            <DetailItem label="Postal Address" value={crClient.address} />
             <DetailItem label="Citizenship" value={crClient.citizenship} />
+            <DetailItem label="Place of Birth" value={crClient.place_of_birth} />
+            <DetailItem label="Civil Status" value={crClient.civil_status} />
+            <DetailItem label="Employment" value={crClient.employment_type} />
           </div>
+
+          {/* Other Identifications */}
+          {crClient.other_identifications && crClient.other_identifications.length > 0 && (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {crClient.other_identifications.map((oid, idx) => (
+                <DetailItem key={idx} label={oid.identification_type} value={oid.identification_number} />
+              ))}
+            </div>
+          )}
+
+          {/* Dependants */}
+          {crClient.dependants && crClient.dependants.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Dependants ({crClient.dependants.reduce((sum, g) => sum + (g.total ?? g.result?.length ?? 0), 0)})
+              </p>
+              {crClient.dependants.flatMap((group) =>
+                (group.result ?? []).map((dep, idx) => (
+                  <div key={dep.id ?? idx} className="rounded-lg border bg-card/60 p-3 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="font-medium">
+                        {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ')}
+                      </span>
+                      {group.relationship && (
+                        <Badge variant="outline" className="text-xs">{group.relationship}</Badge>
+                      )}
+                      {dep.gender && <span className="text-xs text-muted-foreground">{dep.gender}</span>}
+                      {dep.date_of_birth && <span className="text-xs text-muted-foreground">DOB: {dep.date_of_birth}</span>}
+                      {onAddPersonToForm && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-6 w-6 ml-auto shrink-0"
+                          title={`Use dependant ${[dep.first_name, dep.last_name].filter(Boolean).join(' ')} to populate form`}
+                          onClick={() => {
+                            const person = buildShaPayloadPerson(
+                              dep as unknown as Record<string, unknown>,
+                              'dependent',
+                              typeof group.relationship === 'string' ? group.relationship : undefined
+                            );
+                            onAddPersonToForm(person);
+                          }}
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    {dep.identification_number && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {dep.identification_type}: {dep.identification_number}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </DetailSection>
       )}
 
@@ -704,13 +766,12 @@ function EligibilityDataPanel({
           <DetailItem label="Record ID" value={rawPatient.id as RecordValue} />
         </div>
         {onAddPersonToForm && (
-          <div className="mt-4 flex justify-end">
+          <div className="mt-3 flex justify-end">
             <Button
               type="button"
+              size="sm"
+              title="Use member details to populate form"
               onClick={() => {
-                // Merge sources by precedence: rawPatient (SHA) → CR client → eligibility top-level.
-                // CR provides the cleanest demographic data (split names, contact, address);
-                // eligibility raw_response often only has aggregated fields.
                 const merged: Record<string, unknown> = {
                   ...rawPatient,
                   first_name: rawPatient.first_name ?? crClient?.first_name,
@@ -742,7 +803,8 @@ function EligibilityDataPanel({
                 onAddPersonToForm(buildShaPayloadPerson(merged, 'principal', undefined, eligibility.full_name ?? undefined));
               }}
             >
-              Add Member To Form
+              <UserPlus className="h-4 w-4 mr-1.5" />
+              Use Principal
             </Button>
           </div>
         )}
@@ -855,10 +917,13 @@ function EligibilityDataPanel({
                             {onAddPersonToForm && (
                               <Button
                                 type="button"
-                                size="sm"
+                                size="icon"
+                                variant="outline"
+                                className="h-7 w-7 shrink-0"
+                                title={`Use dependant ${[person.first_name, person.last_name].filter((v) => typeof v === 'string' && v.trim()).join(' ')} to populate form`}
                                 onClick={() => onAddPersonToForm(buildShaPayloadPerson(person, 'dependent', typeof group.relationship === 'string' ? group.relationship : undefined))}
                               >
-                                Add To Form
+                                <UserPlus className="h-3.5 w-3.5" />
                               </Button>
                             )}
                           </div>
@@ -962,9 +1027,10 @@ function EligibilityDataPanel({
 interface CRLookupTabProps {
   defaultNationalId?: string;
   onClientFound?: (client: ClientRegistryClient) => void;
+  onAddPersonToForm?: (person: SHAPayloadPerson) => void;
 }
 
-function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
+function CRLookupTab({ defaultNationalId, onClientFound, onAddPersonToForm }: CRLookupTabProps) {
   const [identifierType, setIdentifierType] = useState<string>('National ID');
   const [identifierValue, setIdentifierValue] = useState(defaultNationalId || '');
   const [status, setStatus] = useState<LookupStatus>('idle');
@@ -1116,6 +1182,29 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
               <Badge variant="outline" className="ml-auto text-success border-success">
                 {client.client_number}
               </Badge>
+              {onAddPersonToForm && (
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  title="Use principal details to populate form"
+                  onClick={() => {
+                    const principal = buildShaPayloadPerson(
+                      {
+                        ...client,
+                        phone: client.phone_number,
+                        id: client.client_number,
+                        identification_type: client.national_id ? 'National ID' : undefined,
+                        identification_number: client.national_id,
+                      } as unknown as Record<string, unknown>,
+                      'principal'
+                    );
+                    onAddPersonToForm(principal);
+                  }}
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
@@ -1136,10 +1225,22 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
                   {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : 'Other'}
                 </p>
               </div>
+              {client.national_id && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">National ID</Label>
+                  <p className="font-medium break-words">{client.national_id}</p>
+                </div>
+              )}
               {client.phone_number && (
                 <div className="min-w-0">
                   <Label className="text-muted-foreground text-xs">Phone</Label>
                   <p className="font-medium break-words">{client.phone_number}</p>
+                </div>
+              )}
+              {client.email && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">Email</Label>
+                  <p className="font-medium break-words">{client.email}</p>
                 </div>
               )}
               {client.county && (
@@ -1154,19 +1255,125 @@ function CRLookupTab({ defaultNationalId, onClientFound }: CRLookupTabProps) {
                   <p className="font-medium break-words">{client.sub_county}</p>
                 </div>
               )}
+              {client.ward && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">Ward</Label>
+                  <p className="font-medium break-words">{client.ward}</p>
+                </div>
+              )}
+              {client.citizenship && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">Citizenship</Label>
+                  <p className="font-medium break-words">{client.citizenship}</p>
+                </div>
+              )}
+              {client.place_of_birth && client.place_of_birth.trim() && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">Place of Birth</Label>
+                  <p className="font-medium break-words">{client.place_of_birth}</p>
+                </div>
+              )}
+              {client.address && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">Postal Address</Label>
+                  <p className="font-medium break-words">{client.address}</p>
+                </div>
+              )}
+              {client.village_estate && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">Village/Estate</Label>
+                  <p className="font-medium break-words">{client.village_estate}</p>
+                </div>
+              )}
+              {client.civil_status && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">Civil Status</Label>
+                  <p className="font-medium break-words">{client.civil_status}</p>
+                </div>
+              )}
+              {client.employment_type && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">Employment</Label>
+                  <p className="font-medium break-words">{client.employment_type}</p>
+                </div>
+              )}
+              {client.id_serial && (
+                <div className="min-w-0">
+                  <Label className="text-muted-foreground text-xs">ID Serial No.</Label>
+                  <p className="font-medium break-words">{client.id_serial}</p>
+                </div>
+              )}
             </div>
 
-            <div className="mt-4 pt-3 border-t">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => onClientFound?.(client)}
-                className="w-full"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Use This Information
-              </Button>
-            </div>
+            {/* Other Identifications (SHA Number, Household Number, etc.) */}
+            {client.other_identifications && client.other_identifications.length > 0 && (
+              <div className="mt-3 pt-3 border-t">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wide">Other Identifiers</Label>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  {client.other_identifications.map((oid, idx) => (
+                    <div key={idx} className="min-w-0 flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/40">
+                      <span className="text-xs text-muted-foreground shrink-0">{oid.identification_type}:</span>
+                      <span className="font-medium break-all">{oid.identification_number}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Dependants */}
+            {client.dependants && client.dependants.length > 0 && (
+              <div className="mt-3 pt-3 border-t">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wide">
+                  Dependants ({client.dependants.reduce((sum, g) => sum + (g.total ?? g.result?.length ?? 0), 0)})
+                </Label>
+                <div className="mt-2 space-y-2">
+                  {client.dependants.flatMap((group) =>
+                    (group.result ?? []).map((dep, idx) => (
+                      <div key={dep.id ?? idx} className="rounded-md border px-3 py-2 bg-muted/40 text-sm">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span className="font-medium">
+                            {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ')}
+                          </span>
+                          {group.relationship && (
+                            <Badge variant="outline" className="text-xs">{group.relationship}</Badge>
+                          )}
+                          {dep.gender && (
+                            <span className="text-xs text-muted-foreground">{dep.gender}</span>
+                          )}
+                          {dep.date_of_birth && (
+                            <span className="text-xs text-muted-foreground">DOB: {dep.date_of_birth}</span>
+                          )}
+                          {onAddPersonToForm && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-6 w-6 ml-auto shrink-0"
+                              title={`Use dependant ${[dep.first_name, dep.last_name].filter(Boolean).join(' ')} to populate form`}
+                              onClick={() => {
+                                const person = buildShaPayloadPerson(
+                                  dep as unknown as Record<string, unknown>,
+                                  'dependent',
+                                  typeof group.relationship === 'string' ? group.relationship : undefined
+                                );
+                                onAddPersonToForm(person);
+                              }}
+                            >
+                              <UserPlus className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                        {dep.identification_number && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {dep.identification_type}: {dep.identification_number}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
           </CardContent>
         </Card>
       )}
@@ -1657,6 +1864,12 @@ export function SHAVerificationModal({
                     onClientFound={(client) => {
                       onClientFound?.(client);
                     }}
+                    onAddPersonToForm={onAddPersonToForm
+                      ? (person) => {
+                          onAddPersonToForm(person);
+                          setIsOpen(false);
+                        }
+                      : undefined}
                   />
                 </TabsContent>
 

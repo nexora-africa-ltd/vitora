@@ -17,7 +17,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle, Users } from 'lucide-react';
+import { CalendarIcon, Loader2, CheckCircle2, AlertCircle, Info, Search, Lock, CreditCard, Building2, Wallet, ChevronDown, HelpCircle, ChevronsUpDown, Check, Ban, ChevronLeft, ChevronRight, Eye, BadgeCheck, XCircle, Users, RotateCcw } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -477,16 +477,33 @@ export function PatientForm({
         form.setValue('date_of_birth', dob);
       }
     }
-    if (client.gender) form.setValue('gender', client.gender);
+    if (client.gender) {
+      const g = client.gender.charAt(0).toUpperCase();
+      if (g === 'M' || g === 'F' || g === 'O') form.setValue('gender', g);
+    }
     if (client.phone_number) form.setValue('phone_number', client.phone_number);
     if (client.email) form.setValue('email', client.email);
     if (client.client_number) form.setValue('cr_number', client.client_number);
     if (client.place_of_birth) form.setValue('place_of_birth', client.place_of_birth);
     if (client.citizenship) form.setValue('nationality', client.citizenship);
-    if (client.is_person_with_disability !== undefined) {
+    if (client.is_person_with_disability !== undefined && client.is_person_with_disability !== null) {
       form.setValue('is_person_with_disability', client.is_person_with_disability);
     }
     if (client.address) form.setValue('address', client.address);
+    if (client.village_estate) form.setValue('village', client.village_estate);
+
+    // Extract sha_number and household_number from other_identifications
+    if (client.other_identifications?.length) {
+      for (const ident of client.other_identifications) {
+        const typeLabel = ident.identification_type.toLowerCase();
+        if (typeLabel.includes('sha') && ident.identification_number) {
+          form.setValue('sha_number', ident.identification_number);
+        }
+        if (typeLabel.includes('household') && ident.identification_number) {
+          form.setValue('household_number', ident.identification_number);
+        }
+      }
+    }
   }, [form]);
 
   // Populate form from SHA eligibility details (when no CR record exists)
@@ -975,11 +992,11 @@ export function PatientForm({
 
   // Pre-populate from external CR client
   useEffect(() => {
-    if (prePopulatedClient && !crClient) {
+    if (prePopulatedClient) {
       setCrClient(prePopulatedClient);
       populateFromCRClient(prePopulatedClient);
     }
-  }, [prePopulatedClient, crClient, populateFromCRClient]);
+  }, [prePopulatedClient, populateFromCRClient]);
 
   useEffect(() => {
     if (prePopulatedShaPerson) {
@@ -1421,9 +1438,39 @@ export function PatientForm({
     setShowVerificationDialog(false);
     setShowShaDetailsDialog(false);
     setHouseholdMembers([]);
-    form.setValue('cr_number', '');
-    form.setValue('sha_number', '');
-    form.setValue('household_number', '');
+    form.reset({
+      identification_type: 'national_id',
+      identification_number: '',
+      cr_number: '',
+      sha_number: '',
+      household_number: '',
+      title: '',
+      first_name: '',
+      middle_name: '',
+      last_name: '',
+      place_of_birth: '',
+      gender: undefined,
+      nationality: 'Kenyan',
+      is_person_with_disability: false,
+      phone_number: '',
+      email: '',
+      address: '',
+      village: '',
+      payment_mode: 'cash',
+      insurance_provider: '',
+      insurance_member_number: '',
+      referral_source: 'self',
+      referred_from_facility: '',
+      emergency_contact_name: '',
+      emergency_contact_phone: '',
+      emergency_contact_relationship: '',
+      consent_given: false,
+      consent_deferred: false,
+      county: undefined,
+      sub_county: undefined,
+      ward: undefined,
+      date_of_birth: undefined,
+    });
   }, [form]);
 
   const isFormLoading = isLoading || isSubmitting;
@@ -2601,7 +2648,7 @@ export function PatientForm({
               <Button
                 type="submit"
                 disabled={isSubmitDisabled}
-                className="order-1 sm:order-2"
+                className="order-1 sm:order-3"
               >
                 {isFormLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditing ? 'Update Patient' : 'Register Patient'}
@@ -2610,15 +2657,67 @@ export function PatientForm({
 
             return (
               <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 sm:justify-end pt-4">
-                <Button type="button" variant="outline" onClick={onCancel} disabled={isFormLoading} className="order-2 sm:order-1">
+                <Button type="button" variant="outline" onClick={onCancel} disabled={isFormLoading} className="order-3 sm:order-1">
                   Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isFormLoading}
+                  className="order-2 sm:order-2"
+                  onClick={() => {
+                    form.reset({
+                      identification_type: 'national_id',
+                      identification_number: '',
+                      cr_number: '',
+                      sha_number: '',
+                      household_number: '',
+                      title: '',
+                      first_name: '',
+                      middle_name: '',
+                      last_name: '',
+                      place_of_birth: '',
+                      gender: undefined,
+                      nationality: 'Kenyan',
+                      is_person_with_disability: false,
+                      phone_number: '',
+                      email: '',
+                      address: '',
+                      village: '',
+                      payment_mode: 'cash',
+                      insurance_provider: '',
+                      insurance_member_number: '',
+                      referral_source: 'self',
+                      referred_from_facility: '',
+                      emergency_contact_name: '',
+                      emergency_contact_phone: '',
+                      emergency_contact_relationship: '',
+                      consent_given: false,
+                      consent_deferred: false,
+                      county: undefined,
+                      sub_county: undefined,
+                      ward: undefined,
+                      date_of_birth: undefined,
+                    });
+                    setCrClient(null);
+                    setCrSearched(false);
+                    setPendingShaDetails(null);
+                    setShaEligibility({ checked: false, isEligible: true });
+                    setDuplicateCheckResult(null);
+                    setDuplicateAcknowledged(false);
+                    setShowDuplicateModal(false);
+                    setHouseholdMembers([]);
+                  }}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Clear Form
                 </Button>
                 {hasExactMatch ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         {/* Wrap in span so tooltip works on disabled button */}
-                        <span tabIndex={0} className="order-1 sm:order-2">
+                        <span tabIndex={0} className="order-1 sm:order-3">
                           {submitButton}
                         </span>
                       </TooltipTrigger>

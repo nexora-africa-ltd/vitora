@@ -336,6 +336,19 @@ class ClientRegistryService:
         ):
             raise ValueError("At least one identifier must be provided")
 
+        # In ILM mode the legacy /v3/client-registry/fetch-client endpoint does
+        # not accept ILM-issued tokens. Route through the ILM Client Registry
+        # endpoint (/api/v1/patients) instead.
+        if getattr(self.auth_service, "auth_mode", "legacy") == "ilm":
+            return self._fetch_client_via_ilm(
+                national_id=national_id,
+                client_number=client_number,
+                huduma_number=huduma_number,
+                passport_number=passport_number,
+                identification_type=identification_type,
+                identification_number=identification_number,
+            )
+
         # Build query parameters per official API spec
         # API requires: identification_type, identification_number, agent
         params = {
@@ -362,6 +375,7 @@ class ClientRegistryService:
         logger.info(f"Fetching client from CR with params: {params}")
 
         try:
+            # First attempt with cached token
             headers = self.auth_service.get_auth_headers()
 
             response = requests.get(
@@ -372,6 +386,20 @@ class ClientRegistryService:
             )
 
             logger.debug(f"CR fetch response status: {response.status_code}")
+
+            # Token may be expired. Clear cache and retry once with a fresh token
+            # before surfacing 401 to the caller (mirrors sha_eligibility behaviour).
+            if response.status_code == 401:
+                logger.info("CR fetch got 401; refreshing token and retrying once")
+                self.auth_service.clear_token_cache()
+                headers = self.auth_service.get_auth_headers(force_refresh=True)
+                response = requests.get(
+                    f"{self.api_base_url}{self.fetch_endpoint}",
+                    params=params,
+                    headers=headers,
+                    timeout=self.timeout,
+                )
+                logger.debug(f"CR fetch retry response status: {response.status_code}")
 
             if response.status_code == 404:
                 return None
@@ -453,6 +481,112 @@ class ClientRegistryService:
                 f"Request failed: {str(e)}",
                 status_code=getattr(e.response, "status_code", 0) if hasattr(e, "response") else 0,
             )
+
+    # ------------------------------------------------------------------
+    # ILM (DHA HIE Middleware) dispatch
+    # ------------------------------------------------------------------
+
+    # Map of the identification_type values our app/frontend uses → the
+    # exact strings the ILM /api/v1/patients endpoint expects.
+    _ILM_ID_TYPE_MAP = {
+        "national_id": "National ID",
+        "national id": "National ID",
+        "nationalid": "National ID",
+        "passport": "Passport",
+        "passport_number": "Passport",
+        "huduma": "Huduma Number",
+        "huduma_number": "Huduma Number",
+        "huduma number": "Huduma Number",
+        "birth_certificate": "Birth Certificate",
+        "birth certificate": "Birth Certificate",
+        "alien_id": "Alien ID",
+        "alien id": "Alien ID",
+        "sha_number": "SHA Number",
+        "sha number": "SHA Number",
+        "cr_number": "CR Number",
+        "cr number": "CR Number",
+        "client_number": "CR Number",
+    }
+
+    @classmethod
+    def _normalize_ilm_id_type(cls, raw: str | None) -> str | None:
+        if not raw:
+            return None
+        key = raw.strip().lower()
+        if key in cls._ILM_ID_TYPE_MAP:
+            return cls._ILM_ID_TYPE_MAP[key]
+        # Already in the expected form ("National ID", "Passport", ...)
+        return raw.strip()
+
+    def _fetch_client_via_ilm(
+        self,
+        *,
+        national_id: str | None,
+        client_number: str | None,
+        huduma_number: str | None,
+        passport_number: str | None,
+        identification_type: str | None,
+        identification_number: str | None,
+    ) -> "ClientRegistryClient | None":
+        """Fetch a client through the ILM Client Registry endpoint.
+
+        The ILM endpoint (`GET /api/v1/patients`) returns a richer payload
+        whose keys already align with :py:meth:`ClientRegistryClient.from_api_response`,
+        so we just need to translate the call arguments and unwrap the response.
+        """
+        from .ilm_registries_service import IlmRegistriesService
+
+        # Resolve which identifier we'll send.
+        if identification_type and identification_number:
+            id_type_raw = identification_type
+            id_number = identification_number
+        elif national_id:
+            id_type_raw = "National ID"
+            id_number = national_id
+        elif huduma_number:
+            id_type_raw = "Huduma Number"
+            id_number = huduma_number
+        elif passport_number:
+            id_type_raw = "Passport"
+            id_number = passport_number
+        elif client_number:
+            id_type_raw = "CR Number"
+            id_number = client_number
+        else:
+            return None
+
+        id_type = self._normalize_ilm_id_type(id_type_raw)
+
+        logger.info(
+            "Fetching client via ILM patient lookup (type=%s, len=%d)",
+            id_type,
+            len(id_number),
+        )
+
+        try:
+            result = IlmRegistriesService().lookup_patient(
+                identification_number=id_number,
+                identification_type=id_type or "National ID",
+            )
+        except Exception as exc:  # DHAError, etc.
+            status_code = getattr(exc, "status_code", 0) or 0
+            # 404 means not found in CR — return None instead of raising.
+            if status_code == 404:
+                return None
+            raise ClientRegistryError(
+                f"ILM client registry lookup failed: {exc}",
+                status_code=status_code,
+            ) from exc
+
+        payload = result.payload or {}
+        if not isinstance(payload, dict) or not payload:
+            return None
+
+        try:
+            return ClientRegistryClient.from_api_response(payload)
+        except Exception:  # pragma: no cover — defensive
+            logger.exception("Failed to map ILM patient payload to ClientRegistryClient")
+            return None
 
     def register_client(
         self,
