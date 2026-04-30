@@ -229,6 +229,13 @@ interface PatientFormProps {
   prePopulatedClient?: ClientRegistryClient | null;
   /** Pre-populated SHA member or dependant from external lookup */
   prePopulatedShaPerson?: SHAPayloadPerson | null;
+  /**
+   * Eligibility result tied to the pre-populated SHA person. When provided,
+   * controls whether `payment_mode` is auto-set to `sha` (eligible) or
+   * `cash` (ineligible). When omitted, defaults to `sha` if a SHA number
+   * is present (legacy behaviour).
+   */
+  prePopulatedShaEligibility?: DirectEligibilityCheckResponse | null;
   isEditing?: boolean;
 }
 
@@ -314,6 +321,7 @@ export function PatientForm({
   defaultValues,
   prePopulatedClient,
   prePopulatedShaPerson,
+  prePopulatedShaEligibility,
   isEditing = false
 }: PatientFormProps) {
   const { toast } = useToast();
@@ -321,6 +329,11 @@ export function PatientForm({
   // Prevent double submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLockRef = useRef(false);
+
+  // Keep eligibility in a ref so the SHA pre-populate useEffect doesn't need
+  // it in deps (avoids deps-array-size change that breaks HMR).
+  const shaEligibilityRef = useRef(prePopulatedShaEligibility);
+  shaEligibilityRef.current = prePopulatedShaEligibility;
 
   // CR Lookup state
   const [isSearchingCR, setIsSearchingCR] = useState(false);
@@ -429,12 +442,35 @@ export function PatientForm({
   const { data: subCounties, isLoading: isLoadingSubCounties } = useSubCounties(selectedCounty);
   const { data: wards, isLoading: isLoadingWards } = useWards(selectedSubCounty);
 
+  // Normalize names from upstream registries (SHA / CR). When only two name
+  // parts are provided, treat them as first + last (drop any stray middle).
+  // Returns the trio that should be written to the form.
+  const normalizeTwoNameRule = (
+    first?: string | null,
+    middle?: string | null,
+    last?: string | null,
+  ): { first?: string; middle?: string; last?: string } => {
+    const f = (first ?? '').trim();
+    const m = (middle ?? '').trim();
+    const l = (last ?? '').trim();
+    // Exactly two names provided → first + last
+    if (f && m && !l) return { first: f, middle: '', last: m };
+    if (f && !m && l) return { first: f, middle: '', last: l };
+    if (!f && m && l) return { first: m, middle: '', last: l };
+    return {
+      first: f || undefined,
+      middle: m || undefined,
+      last: l || undefined,
+    };
+  };
+
   // Define populateFromCRClient with useCallback
   const populateFromCRClient = useCallback((client: ClientRegistryClient) => {
     // Auto-populate form fields from CR client
-    if (client.first_name) form.setValue('first_name', client.first_name);
-    if (client.middle_name) form.setValue('middle_name', client.middle_name);
-    if (client.last_name) form.setValue('last_name', client.last_name);
+    const names = normalizeTwoNameRule(client.first_name, client.middle_name, client.last_name);
+    if (names.first) form.setValue('first_name', names.first);
+    if (names.middle !== undefined) form.setValue('middle_name', names.middle);
+    if (names.last) form.setValue('last_name', names.last);
     if (client.date_of_birth) {
       const dob = new Date(client.date_of_birth);
       if (!isNaN(dob.getTime())) {
@@ -473,6 +509,8 @@ export function PatientForm({
         if (middleName) form.setValue('middle_name', middleName);
         if (lastName) form.setValue('last_name', lastName);
       } else if (nameParts.length === 2 && nameParts[1]) {
+        // Two-name rule: treat as first + last
+        form.setValue('middle_name', '');
         form.setValue('last_name', nameParts[1]);
       }
     }
@@ -483,10 +521,14 @@ export function PatientForm({
     }
   }, [form]);
 
-  const populateFromShaPerson = useCallback((person: SHAPayloadPerson) => {
-    if (person.first_name) form.setValue('first_name', person.first_name);
-    if (person.middle_name) form.setValue('middle_name', person.middle_name);
-    if (person.last_name) form.setValue('last_name', person.last_name);
+  const populateFromShaPerson = useCallback((
+    person: SHAPayloadPerson,
+    eligibility?: DirectEligibilityCheckResponse | null,
+  ) => {
+    const names = normalizeTwoNameRule(person.first_name, person.middle_name, person.last_name);
+    if (names.first) form.setValue('first_name', names.first);
+    if (names.middle !== undefined) form.setValue('middle_name', names.middle);
+    if (names.last) form.setValue('last_name', names.last);
 
     const normalizedGender = normalizeShaGender(person.gender);
     if (normalizedGender) form.setValue('gender', normalizedGender);
@@ -515,7 +557,14 @@ export function PatientForm({
 
     if (person.sha_number) {
       form.setValue('sha_number', person.sha_number);
-      form.setValue('payment_mode', 'sha');
+      // Choose payment mode from eligibility: ineligible → cash, eligible (or
+      // unknown for legacy callers) → sha. Caller can override later.
+      const isEligible = eligibility?.is_eligible;
+      if (isEligible === false) {
+        form.setValue('payment_mode', 'cash');
+      } else {
+        form.setValue('payment_mode', 'sha');
+      }
     }
 
     setPendingShaLocation({
@@ -934,7 +983,7 @@ export function PatientForm({
 
   useEffect(() => {
     if (prePopulatedShaPerson) {
-      populateFromShaPerson(prePopulatedShaPerson);
+      populateFromShaPerson(prePopulatedShaPerson, shaEligibilityRef.current);
 
       const firstName = prePopulatedShaPerson.first_name;
       const lastName = prePopulatedShaPerson.last_name;

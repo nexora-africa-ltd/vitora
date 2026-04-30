@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useSendConsentOTP, useStartVisit, useConsentDetail } from '@/lib/hooks/use-sha';
-import type { ConsentStatus } from '@/lib/types/sha';
+import type { ConsentStatus, ClaimFlow } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
 
 // ============================================================================
@@ -40,6 +40,11 @@ interface ConsentPanelProps {
   consentId?: number;
   /** Callback when consent is successfully obtained */
   onConsentObtained?: (consentId: number, consentToken: string) => void;
+  /**
+   * Routed DHA HIE flow. ECCIF skips initial consent; PHC uses simplified
+   * messaging. Defaults to SHIF when omitted.
+   */
+  flow?: ClaimFlow;
   /** Custom class name */
   className?: string;
 }
@@ -89,6 +94,7 @@ export function ConsentPanel({
   shaMemberId,
   consentId: initialConsentId,
   onConsentObtained,
+  flow = 'shif',
   className,
 }: ConsentPanelProps) {
   const [step, setStep] = useState<'idle' | 'otp_sent' | 'validated'>(
@@ -136,6 +142,27 @@ export function ConsentPanel({
     );
   };
 
+  // ECCIF: emergency claims are opened without an initial consent token.
+  // Render a notice instead of the OTP wizard.
+  if (flow === 'eccif') {
+    return (
+      <Card className={cn('relative overflow-hidden', className)}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            Emergency Claim &mdash; Consent Skipped
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            ECCIF flow allows the claim to be opened without an initial consent token.
+            Capture identity and consent post-stabilisation if/when the patient is identified.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className={cn('relative overflow-hidden', className)}>
       <CardHeader className="pb-3">
@@ -143,6 +170,11 @@ export function ConsentPanel({
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldCheck className="h-4 w-4 text-primary" />
             Patient Consent
+            {flow === 'phc' && (
+              <Badge variant="outline" className="ml-2 text-[10px]">
+                PHC \u00b7 simplified
+              </Badge>
+            )}
           </CardTitle>
           {consentDetail && getStatusBadge(consentDetail.status)}
         </div>

@@ -115,7 +115,8 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
         member = self.get_object()
 
         service = SHAEligibilityService()
-        check = service.check_eligibility(member, request.user)
+        facility = getattr(request, "facility", None)
+        check = service.check_eligibility(member, request.user, facility=facility)
 
         is_eligible = getattr(check, "is_eligible", False)
         if not isinstance(is_eligible, bool):
@@ -151,6 +152,20 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
         if not isinstance(error_message, str):
             error_message = ""
 
+        response_data = getattr(check, "response_data", {}) or {}
+        if not isinstance(response_data, dict):
+            response_data = {}
+        eligible_schemes = response_data.get("eligible_schemes") or []
+        if not isinstance(eligible_schemes, list):
+            eligible_schemes = []
+        coverage_caveat = response_data.get("coverage_caveat") or ""
+        if not isinstance(coverage_caveat, str):
+            coverage_caveat = ""
+        coverage_blocked = bool(response_data.get("coverage_blocked", False))
+        billable_schemes = response_data.get("billable_schemes") or []
+        if not isinstance(billable_schemes, list):
+            billable_schemes = []
+
         serializer = SHAEligibilityVerifySerializer(
             {
                 "is_eligible": is_eligible,
@@ -160,6 +175,10 @@ class SHAMemberViewSet(viewsets.ModelViewSet):
                 "ineligibility_reason": ineligibility_reason,
                 "error_code": error_code,
                 "error_message": error_message,
+                "eligible_schemes": eligible_schemes,
+                "billable_schemes": billable_schemes,
+                "coverage_caveat": coverage_caveat,
+                "coverage_blocked": coverage_blocked,
             }
         )
 
@@ -2050,6 +2069,14 @@ class EligibilityCheckView(APIView):
                     "ineligibility_reason": serializers.CharField(required=False),
                     "sha_number": serializers.CharField(),
                     "membership_type": serializers.CharField(),
+                    "eligible_schemes": serializers.ListField(
+                        child=serializers.CharField(), required=False
+                    ),
+                    "billable_schemes": serializers.ListField(
+                        child=serializers.CharField(), required=False
+                    ),
+                    "coverage_caveat": serializers.CharField(required=False, allow_blank=True),
+                    "coverage_blocked": serializers.BooleanField(required=False),
                 },
             )
         },
@@ -2092,7 +2119,22 @@ class EligibilityCheckView(APIView):
 
             # Check eligibility
             service = SHAEligibilityService()
-            check = service.check_eligibility(member, request.user)
+            facility = getattr(request, "facility", None)
+            check = service.check_eligibility(member, request.user, facility=facility)
+
+            response_data = getattr(check, "response_data", {}) or {}
+            if not isinstance(response_data, dict):
+                response_data = {}
+            eligible_schemes = response_data.get("eligible_schemes") or []
+            if not isinstance(eligible_schemes, list):
+                eligible_schemes = []
+            billable_schemes = response_data.get("billable_schemes") or []
+            if not isinstance(billable_schemes, list):
+                billable_schemes = []
+            coverage_caveat = response_data.get("coverage_caveat") or ""
+            if not isinstance(coverage_caveat, str):
+                coverage_caveat = ""
+            coverage_blocked = bool(response_data.get("coverage_blocked", False))
 
             return Response(
                 {
@@ -2111,6 +2153,10 @@ class EligibilityCheckView(APIView):
                     "ineligibility_reason": getattr(check, "ineligibility_reason", ""),
                     "sha_number": member.sha_number,
                     "membership_type": member.membership_type,
+                    "eligible_schemes": eligible_schemes,
+                    "billable_schemes": billable_schemes,
+                    "coverage_caveat": coverage_caveat,
+                    "coverage_blocked": coverage_blocked,
                 }
             )
 

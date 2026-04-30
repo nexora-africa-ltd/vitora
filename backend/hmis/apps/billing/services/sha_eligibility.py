@@ -19,6 +19,82 @@ from django.conf import settings
 from hmis.apps.billing.models import SHAEligibilityCheck, SHAMember
 from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
 
+# ---------------------------------------------------------------------------
+# Scheme \u2194 facility level matrix (DHA HIE user-journey spec)
+# ---------------------------------------------------------------------------
+# Defines which schemes a facility of a given KEPH level may bill against.
+# Used to derive a coverage caveat when the member's covered schemes don't
+# intersect with what the requesting facility can actually claim against \u2014
+# e.g. a UHC-only member presenting at a Level 4 hospital is technically
+# "eligible" upstream but cannot fund hospital-level services.
+BILLABLE_SCHEMES_BY_LEVEL: dict[str, set[str]] = {
+    "1": {"UHC"},  # Community units \u2014 outpatient/PHC only
+    "2": {"UHC"},  # Dispensaries
+    "3": {"UHC", "SHIF"},  # Health centres
+    "4": {"SHIF"},  # Sub-county hospitals
+    "5": {"SHIF"},  # County referral
+    "6": {"SHIF"},  # National referral
+}
+
+
+def evaluate_facility_coverage(
+    eligible_schemes: list[str],
+    facility_level: str | None,
+) -> dict[str, Any]:
+    """
+    Evaluate whether the member's covered schemes intersect with what the
+    facility can bill at its KEPH level.
+
+    Returns a dict with:
+        billable_schemes: schemes claimable at this facility level
+        usable_schemes:   intersection of eligible_schemes \u2229 billable_schemes
+        coverage_caveat:  human-readable warning when schemes don't match,
+                          else empty string
+        coverage_blocked: True when there is no overlap (member cannot fund
+                          services at this facility level)
+    """
+    normalized = [s.strip().upper() for s in eligible_schemes if isinstance(s, str) and s.strip()]
+    level = (facility_level or "").strip()
+    if not level:
+        return {
+            "billable_schemes": [],
+            "usable_schemes": normalized,
+            "coverage_caveat": "",
+            "coverage_blocked": False,
+        }
+
+    billable = BILLABLE_SCHEMES_BY_LEVEL.get(level, set())
+    usable = sorted(set(normalized) & billable)
+    if usable:
+        return {
+            "billable_schemes": sorted(billable),
+            "usable_schemes": usable,
+            "coverage_caveat": "",
+            "coverage_blocked": False,
+        }
+
+    if not normalized:
+        return {
+            "billable_schemes": sorted(billable),
+            "usable_schemes": [],
+            "coverage_caveat": "",
+            "coverage_blocked": False,
+        }
+
+    member_schemes = ", ".join(normalized)
+    facility_schemes = ", ".join(sorted(billable)) or "no schemes"
+    caveat = (
+        f"Member has {member_schemes} cover only \u2014 services at a Level {level} "
+        f"facility are billable under {facility_schemes}. Patient must self-pay "
+        "or the claim will be rejected."
+    )
+    return {
+        "billable_schemes": sorted(billable),
+        "usable_schemes": [],
+        "coverage_caveat": caveat,
+        "coverage_blocked": True,
+    }
+
 
 class SHAEligibilityService:
     """
@@ -76,7 +152,11 @@ class SHAEligibilityService:
             self.patient_lookup_endpoint = None
 
     def check_eligibility(
-        self, sha_member: SHAMember, user, force_refresh: bool = False
+        self,
+        sha_member: SHAMember,
+        user,
+        force_refresh: bool = False,
+        facility=None,
     ) -> SHAEligibilityCheck:
         """
         Check eligibility for a SHA member.
@@ -85,19 +165,24 @@ class SHAEligibilityService:
             sha_member: The member to check
             user: User performing the check
             force_refresh: Bypass cache and always call API
+            facility: Optional Facility instance. When provided, the response
+                payload is annotated with `eligible_schemes`, `coverage_caveat`
+                and `coverage_blocked` so downstream callers can warn when the
+                member's covered schemes don't match what this facility's KEPH
+                level can bill (e.g. UHC-only at Level 4).
 
         Returns:
             SHAEligibilityCheck record with results
 
         Example:
             >>> service = SHAEligibilityService()
-            >>> check = service.check_eligibility(member, user)
+            >>> check = service.check_eligibility(member, user, facility=request.facility)
             >>> if check.is_eligible:
             ...     print(f"Eligible until {check.eligible_until}")
         """
         # Check if we can use cached result
         if not force_refresh and not sha_member.needs_eligibility_check():
-            return self._create_cached_result(sha_member, user)
+            return self._create_cached_result(sha_member, user, facility=facility)
 
         # Build request
         request_data = self._build_request(sha_member)
@@ -109,7 +194,9 @@ class SHAEligibilityService:
             response_time = int((time.time() - start_time) * 1000)
 
             # Parse response
-            check = self._process_response(sha_member, user, request_data, response, response_time)
+            check = self._process_response(
+                sha_member, user, request_data, response, response_time, facility=facility
+            )
         except requests.Timeout:
             check = self._create_error_result(
                 sha_member, user, request_data, "TIMEOUT", "API request timeout"
@@ -265,6 +352,16 @@ class SHAEligibilityService:
                 if status_value in (1, True, "1", "active", "ACTIVE", "covered", "COVERED"):
                     covered_schemes.append(scheme)
 
+            # Names of schemes the member is actively covered under (uppercase,
+            # de-duplicated). Used downstream to compute facility-level caveats.
+            eligible_scheme_names: list[str] = []
+            for scheme in covered_schemes:
+                name = scheme.get("schemeName")
+                if isinstance(name, str) and name.strip():
+                    upper = name.strip().upper()
+                    if upper not in eligible_scheme_names:
+                        eligible_scheme_names.append(upper)
+
             # Prioritize SHIF first, then UHC, then any covered scheme
             prioritized_schemes = (
                 [shif_scheme] if shif_scheme else [uhc_scheme] if uhc_scheme else covered_schemes
@@ -323,6 +420,7 @@ class SHAEligibilityService:
                 "age": response.get("age"),
                 "whitelisted_for_otp": response.get("whitelistedForOTP"),
                 "schemes": schemes,
+                "eligible_schemes": eligible_scheme_names,
                 "primary_scheme_name": primary_scheme.get("schemeName"),
                 "primary_scheme_member_type": primary_scheme.get("memberType"),
                 "lookup_mode": "ilm_eligibility_schemes",
@@ -385,7 +483,13 @@ class SHAEligibilityService:
         }
 
     def _process_response(
-        self, sha_member: SHAMember, user, request_data: dict, response: dict, response_time: int
+        self,
+        sha_member: SHAMember,
+        user,
+        request_data: dict,
+        response: dict,
+        response_time: int,
+        facility=None,
     ) -> SHAEligibilityCheck:
         """
         Process API response and create check record.
@@ -427,9 +531,17 @@ class SHAEligibilityService:
         # Get ineligibility reason
         reason = normalized_response.get("reason", "")
 
+        # Annotate with facility-aware coverage caveat (DHA HIE flow router
+        # routes UHC at Level 4+ to SHIF, but SHIF cover is required to fund it).
+        coverage_info = evaluate_facility_coverage(
+            normalized_response.get("eligible_schemes") or [],
+            getattr(facility, "level", None),
+        )
+
         # Store full response including means testing details
         full_response = {
             **normalized_response,
+            **coverage_info,
             "raw_response": response,  # Keep original for debugging
         }
 
@@ -451,7 +563,9 @@ class SHAEligibilityService:
             checked_by=user,
         )
 
-    def _create_cached_result(self, sha_member: SHAMember, user) -> SHAEligibilityCheck:
+    def _create_cached_result(
+        self, sha_member: SHAMember, user, facility=None
+    ) -> SHAEligibilityCheck:
         """
         Create a cached eligibility check result from stored member data.
 
@@ -461,12 +575,19 @@ class SHAEligibilityService:
         Args:
             sha_member: The member with cached eligibility data
             user: User performing the check
+            facility: Optional Facility instance \u2014 re-evaluates the
+                facility-aware coverage caveat against the cached schemes.
 
         Returns:
             SHAEligibilityCheck record based on cached data
         """
         cached_response = sha_member.eligibility_response or {}
         is_eligible = cached_response.get("eligible", sha_member.is_eligible())
+
+        coverage_info = evaluate_facility_coverage(
+            cached_response.get("eligible_schemes") or [],
+            getattr(facility, "level", None),
+        )
 
         return SHAEligibilityCheck.objects.create(
             sha_member=sha_member,
@@ -485,6 +606,7 @@ class SHAEligibilityService:
                     else None
                 ),
                 **cached_response,
+                **coverage_info,
             },
             response_time_ms=0,  # No API call made
             is_eligible=is_eligible,

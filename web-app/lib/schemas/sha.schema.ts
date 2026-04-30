@@ -175,6 +175,11 @@ export const EligibilityCheckResponseSchema = z.object({
   verified_name: z.string().optional(),
   checked_at: z.string(),
   message: z.string().optional(),
+  // Facility-aware coverage (DHA HIE).
+  eligible_schemes: z.array(z.string()).optional(),
+  billable_schemes: z.array(z.string()).optional(),
+  coverage_caveat: z.string().optional(),
+  coverage_blocked: z.boolean().optional(),
 });
 
 export type EligibilityCheckResponseSchemaType = z.infer<typeof EligibilityCheckResponseSchema>;
@@ -854,6 +859,22 @@ export const IlmInterventionRequestSchema = z.object({
   intervention_code: z.string().min(1),
 });
 export type IlmInterventionRequest = z.infer<typeof IlmInterventionRequestSchema>;
+
+/**
+ * PHC virtual claim line — DHA HIE user-journey Scenario C.
+ * Used by Level 2/3 facilities for capitation / basic FFS interventions.
+ * Skips pre-authorization.
+ */
+export const IlmVirtualClaimLineRequestSchema = z.object({
+  intervention_code: z.string().min(1),
+  service_name: z.string().optional(),
+  service_identifier: z.string().optional(),
+  unit_price: z.string().optional(),
+  quantity: z.string().optional(),
+  scheme_code: z.string().optional(),
+  extra: z.record(z.unknown()).optional(),
+});
+export type IlmVirtualClaimLineRequest = z.infer<typeof IlmVirtualClaimLineRequestSchema>;
 
 export const IlmSwitchInterventionRequestSchema = z.object({
   existing_intervention_code: z.string().min(1),

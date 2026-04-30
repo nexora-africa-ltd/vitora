@@ -575,6 +575,106 @@ class TestUHCSchemeDetection:
 
 
 # ---------------------------------------------------------------------------
+# Facility-aware coverage (eligible_schemes + coverage_caveat)
+# ---------------------------------------------------------------------------
+
+
+class TestFacilityAwareCoverage:
+    """Tests for evaluate_facility_coverage and check_eligibility facility kwarg."""
+
+    def test_normalize_response_includes_eligible_schemes(self):
+        """_normalize_response should expose uppercase eligible_schemes list."""
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService.__new__(SHAEligibilityService)
+        service.auth_mode = "ilm"
+
+        response = {
+            "memberCrNumber": "CR001",
+            "schemes": [
+                {"schemeName": "UHC", "coverage": {"status": "active"}, "memberType": "PRINCIPAL"},
+                {
+                    "schemeName": "shif",
+                    "coverage": {"status": "inactive"},
+                    "memberType": "PRINCIPAL",
+                },
+            ],
+        }
+
+        result = service._normalize_response(response)
+        assert result["eligible_schemes"] == ["UHC"]
+
+    def test_evaluate_facility_coverage_uhc_only_at_level_4_blocks(self):
+        """UHC-only member at Level 4 hospital should be flagged with caveat."""
+        from hmis.apps.billing.services.sha_eligibility import evaluate_facility_coverage
+
+        info = evaluate_facility_coverage(["UHC"], "4")
+        assert info["coverage_blocked"] is True
+        assert info["usable_schemes"] == []
+        assert "UHC" in info["coverage_caveat"]
+        assert "Level 4" in info["coverage_caveat"]
+        assert info["billable_schemes"] == ["SHIF"]
+
+    def test_evaluate_facility_coverage_shif_at_level_4_passes(self):
+        """SHIF member at Level 4 should have no caveat."""
+        from hmis.apps.billing.services.sha_eligibility import evaluate_facility_coverage
+
+        info = evaluate_facility_coverage(["SHIF"], "4")
+        assert info["coverage_blocked"] is False
+        assert info["coverage_caveat"] == ""
+        assert info["usable_schemes"] == ["SHIF"]
+
+    def test_evaluate_facility_coverage_uhc_at_level_3_passes(self):
+        """UHC at Level 3 health centre is billable \u2014 no caveat."""
+        from hmis.apps.billing.services.sha_eligibility import evaluate_facility_coverage
+
+        info = evaluate_facility_coverage(["UHC"], "3")
+        assert info["coverage_blocked"] is False
+        assert info["coverage_caveat"] == ""
+        assert "UHC" in info["usable_schemes"]
+
+    def test_evaluate_facility_coverage_uhc_at_level_2_passes(self):
+        """UHC at Level 2 dispensary is billable."""
+        from hmis.apps.billing.services.sha_eligibility import evaluate_facility_coverage
+
+        info = evaluate_facility_coverage(["UHC"], "2")
+        assert info["coverage_blocked"] is False
+        assert info["usable_schemes"] == ["UHC"]
+
+    def test_evaluate_facility_coverage_shif_at_level_2_blocks(self):
+        """SHIF-only at a Level 2 dispensary should be blocked."""
+        from hmis.apps.billing.services.sha_eligibility import evaluate_facility_coverage
+
+        info = evaluate_facility_coverage(["SHIF"], "2")
+        assert info["coverage_blocked"] is True
+        assert info["billable_schemes"] == ["UHC"]
+        assert "SHIF" in info["coverage_caveat"]
+
+    def test_evaluate_facility_coverage_no_facility_level_returns_passthrough(self):
+        """When facility level is unknown, no caveat is set."""
+        from hmis.apps.billing.services.sha_eligibility import evaluate_facility_coverage
+
+        info = evaluate_facility_coverage(["UHC"], None)
+        assert info["coverage_blocked"] is False
+        assert info["coverage_caveat"] == ""
+
+    def test_evaluate_facility_coverage_empty_eligible_schemes(self):
+        """No eligible schemes \u2014 nothing to caveat about."""
+        from hmis.apps.billing.services.sha_eligibility import evaluate_facility_coverage
+
+        info = evaluate_facility_coverage([], "4")
+        assert info["coverage_blocked"] is False
+        assert info["coverage_caveat"] == ""
+
+    def test_evaluate_facility_coverage_case_insensitive(self):
+        """Scheme name matching is case-insensitive."""
+        from hmis.apps.billing.services.sha_eligibility import evaluate_facility_coverage
+
+        info = evaluate_facility_coverage(["uhc"], "4")
+        assert info["coverage_blocked"] is True
+
+
+# ---------------------------------------------------------------------------
 # package_claim Consent/Preauth Extensions
 # ---------------------------------------------------------------------------
 

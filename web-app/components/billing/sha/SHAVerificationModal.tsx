@@ -409,20 +409,46 @@ function extractIdentifierByLabel(
 function buildShaPayloadPerson(
   person: Record<string, unknown>,
   source: SHAPayloadPerson['source'],
-  relationship?: string
+  relationship?: string,
+  /** Fallback full name to parse when first/last are absent (from eligibility.full_name) */
+  fallbackFullName?: string,
 ): SHAPayloadPerson {
   const identifiers = Array.isArray(person.other_identifications)
     ? (person.other_identifications as Array<Record<string, unknown>>)
     : [];
+
+  // Derive first/middle/last from explicit fields OR fallback full name
+  let firstName = typeof person.first_name === 'string' ? person.first_name : undefined;
+  let middleName = typeof person.middle_name === 'string' ? person.middle_name : undefined;
+  let lastName = typeof person.last_name === 'string' ? person.last_name : undefined;
+
+  if (!firstName && !lastName) {
+    const fullName = fallbackFullName
+      ?? (typeof person.full_name === 'string' ? person.full_name : undefined)
+      ?? (typeof person.name === 'string' ? person.name : undefined);
+    if (fullName) {
+      const parts = fullName.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        firstName = parts[0];
+        middleName = parts.slice(1, -1).join(' ');
+        lastName = parts[parts.length - 1];
+      } else if (parts.length === 2) {
+        firstName = parts[0];
+        lastName = parts[1];
+      } else if (parts.length === 1) {
+        firstName = parts[0];
+      }
+    }
+  }
 
   return {
     source,
     relationship,
     id: typeof person.id === 'string' ? person.id : undefined,
     resourceType: typeof person.resourceType === 'string' ? person.resourceType : undefined,
-    first_name: typeof person.first_name === 'string' ? person.first_name : undefined,
-    middle_name: typeof person.middle_name === 'string' ? person.middle_name : undefined,
-    last_name: typeof person.last_name === 'string' ? person.last_name : undefined,
+    first_name: firstName,
+    middle_name: middleName,
+    last_name: lastName,
     gender: typeof person.gender === 'string' ? person.gender : undefined,
     date_of_birth: typeof person.date_of_birth === 'string' ? person.date_of_birth : undefined,
     place_of_birth: typeof person.place_of_birth === 'string' ? person.place_of_birth : undefined,
@@ -546,16 +572,6 @@ function EligibilityDataPanel({
             <DetailItem label="Status Code" value={eligibility.status_code} />
           </div>
         </div>
-        {onAddPersonToForm && (
-          <div className="mt-4 flex justify-end">
-            <Button
-              type="button"
-              onClick={() => onAddPersonToForm(buildShaPayloadPerson(rawPatient, 'principal'))}
-            >
-              Add Member To Form
-            </Button>
-          </div>
-        )}
       </div>
 
       {schemes.length > 0 && (
@@ -649,6 +665,27 @@ function EligibilityDataPanel({
           <DetailItem label="Principal Record" value={rawPatient.resourceType as RecordValue} />
           <DetailItem label="Record ID" value={rawPatient.id as RecordValue} />
         </div>
+        {onAddPersonToForm && (
+          <div className="mt-4 flex justify-end">
+            <Button
+              type="button"
+              onClick={() => {
+                // Merge eligibility-level fields into rawPatient as fallbacks
+                // (the raw_response often lacks first_name/last_name/gender/dob individually)
+                const merged: Record<string, unknown> = {
+                  ...rawPatient,
+                  gender: rawPatient.gender ?? eligibility.gender,
+                  date_of_birth: rawPatient.date_of_birth ?? eligibility.date_of_birth,
+                  sha_number: rawPatient.sha_number ?? eligibility.sha_number,
+                  identification_number: rawPatient.identification_number ?? (rawPatient as Record<string, unknown>).id_number,
+                };
+                onAddPersonToForm(buildShaPayloadPerson(merged, 'principal', undefined, eligibility.full_name ?? undefined));
+              }}
+            >
+              Add Member To Form
+            </Button>
+          </div>
+        )}
       </DetailSection>
 
       <DetailSection title="Contact & Address" icon={<Database className="h-4 w-4" />}>
@@ -1295,18 +1332,6 @@ function EligibilityCheckTab({
                       <p className="font-medium break-words">{eligibility.employer_name}</p>
                     </div>
                   )}
-                </div>
-
-                <div className="mt-4 pt-3 border-t">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => onEligibilityVerified?.(eligibility)}
-                    className="w-full"
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Confirm Eligibility
-                  </Button>
                 </div>
               </>
             ) : schemeSummary.tone === 'mixed' ? (

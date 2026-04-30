@@ -32,8 +32,9 @@ import { ClaimStatusBadge } from '@/components/billing/sha/ClaimComponents';
 import { ConsentPanel } from '@/components/billing/sha/ConsentPanel';
 import { PreauthPanel } from '@/components/billing/sha/PreauthPanel';
 import { ClaimILMPanel } from '@/components/billing/sha/ClaimILMPanel';
+import { ClaimFlowBadge } from '@/components/billing/sha/ClaimFlowBadge';
+import { useClaimFlow } from '@/lib/hooks/use-claim-flow';
 import { PreVisitChecksPanel } from '@/components/billing/sha/PreVisitChecksPanel';
-import { CLAIM_FLOW_LABELS } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
 
 function CopyButton({ text }: { text: string }) {
@@ -105,6 +106,7 @@ export default function ClaimDetailPage() {
   const submitMutation = useSubmitClaim();
   const resubmitMutation = useResubmitClaim();
   const [consentTokenId, setConsentTokenId] = useState<number | undefined>();
+  const flowInfo = useClaimFlow(claim);
 
   const handleSubmit = async () => {
     try {
@@ -186,9 +188,7 @@ export default function ClaimDetailPage() {
             </div>
           )}
           {claim.claim_flow && (
-            <Badge variant="outline" className="w-fit text-xs">
-              {CLAIM_FLOW_LABELS[claim.claim_flow] || claim.claim_flow.toUpperCase()}
-            </Badge>
+            <ClaimFlowBadge claim={claim} className="w-fit text-xs" />
           )}
         </div>
 
@@ -422,32 +422,31 @@ export default function ClaimDetailPage() {
         </Card>
       </div>
 
-      {/* DHA HIE Consent & Pre-authorization (SHIF flow only) */}
-      {claim.claim_flow === 'shif' && claim.sha_member && (
-        <div className="grid gap-6 md:grid-cols-2">
+      {/* DHA HIE Consent & Pre-authorization — driven by routed flow */}
+      {flowInfo.requiresConsent && claim.sha_member && (
+        <div className={`grid gap-6 ${flowInfo.requiresPreauth ? 'md:grid-cols-2' : ''}`}>
           <ConsentPanel
             shaMemberId={claim.sha_member}
+            flow={flowInfo.flow}
             onConsentObtained={(id) => setConsentTokenId(id)}
           />
-          <PreauthPanel
-            claimId={claim.id}
-            consentTokenId={consentTokenId}
-            diagnosisCodes={claim.primary_diagnosis_code ? [claim.primary_diagnosis_code] : []}
-            onPreauthComplete={() => refetch()}
-          />
+          {flowInfo.requiresPreauth && (
+            <PreauthPanel
+              claimId={claim.id}
+              consentTokenId={consentTokenId}
+              diagnosisCodes={claim.primary_diagnosis_code ? [claim.primary_diagnosis_code] : []}
+              onPreauthComplete={() => refetch()}
+            />
+          )}
         </div>
       )}
 
-      {/* DHA HIE Middleware (ILM) per-action workflow (SHIF flow only) */}
-      {claim.claim_flow === 'shif' && (
-        <>
-          <PreVisitChecksPanel
-            patientPk={typeof claim.patient === 'number' ? claim.patient : undefined}
-            shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
-          />
-          <ClaimILMPanel claimId={claim.id} onChange={() => refetch()} />
-        </>
-      )}
+      {/* DHA HIE Middleware (ILM) per-action workflow — all flows */}
+      <PreVisitChecksPanel
+        patientPk={typeof claim.patient === 'number' ? claim.patient : undefined}
+        shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
+      />
+      <ClaimILMPanel claimId={claim.id} flow={flowInfo} onChange={() => refetch()} />
     </div>
   );
 }

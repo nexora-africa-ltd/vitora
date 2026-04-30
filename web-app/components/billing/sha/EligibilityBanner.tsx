@@ -119,6 +119,8 @@ function StatusIcon({
   switch (status) {
     case 'eligible':
       return <SHALogo size="md" className={className} />;
+    case 'eligible_with_caveats':
+      return <ShieldAlert className={cn(iconClass, 'text-warning-foreground')} />;
     case 'ineligible':
       return <ShieldOff className={cn(iconClass, 'text-destructive')} />;
     case 'expired':
@@ -156,6 +158,7 @@ function CompactEligibilityBanner({
       <span className={cn(
         'text-sm font-medium',
         status === 'eligible' && 'text-success',
+        status === 'eligible_with_caveats' && 'text-warning-foreground',
         status === 'ineligible' && 'text-destructive',
         status === 'expired' && 'text-warning-foreground',
         status === 'pending' && 'text-warning-foreground',
@@ -163,6 +166,7 @@ function CompactEligibilityBanner({
         status === 'checking' && 'text-muted-foreground',
       )}>
         {status === 'eligible' && 'SHA Eligible'}
+        {status === 'eligible_with_caveats' && 'Coverage Mismatch'}
         {status === 'ineligible' && 'Not Eligible'}
         {status === 'expired' && 'Coverage Expired'}
         {status === 'pending' && 'Pending Verification'}
@@ -209,12 +213,14 @@ function FullEligibilityBanner({
   onRefresh: () => void;
   isRefreshing: boolean;
 }) {
-  const { status, copayPercentage, coverageEndDate, schemeCategory, memberName, checkedAt, errorMessage, member } = eligibility;
+  const { status, copayPercentage, coverageEndDate, schemeCategory, memberName, checkedAt, errorMessage, member, coverageCaveat, eligibleSchemes, billableSchemes } = eligibility;
 
   const getBannerStyles = () => {
     switch (status) {
       case 'eligible':
         return 'border-success bg-success/10';
+      case 'eligible_with_caveats':
+        return 'border-warning bg-warning/10';
       case 'ineligible':
         return 'border-destructive bg-destructive/10';
       case 'expired':
@@ -235,6 +241,7 @@ function FullEligibilityBanner({
         <div className={cn(
           'flex items-center justify-center w-12 h-12 rounded-full',
           status === 'eligible' && 'bg-success/20',
+          status === 'eligible_with_caveats' && 'bg-warning/20',
           status === 'ineligible' && 'bg-destructive/20',
           status === 'expired' && 'bg-warning/20',
           status === 'pending' && 'bg-warning/20',
@@ -251,6 +258,7 @@ function FullEligibilityBanner({
             <h4 className={cn(
               'font-semibold text-lg',
               status === 'eligible' && 'text-success',
+              status === 'eligible_with_caveats' && 'text-warning-foreground',
               status === 'ineligible' && 'text-destructive',
               status === 'expired' && 'text-warning-foreground',
               status === 'pending' && 'text-warning-foreground',
@@ -258,6 +266,7 @@ function FullEligibilityBanner({
               status === 'checking' && 'text-muted-foreground',
             )}>
               {status === 'eligible' && 'SHA ELIGIBLE'}
+              {status === 'eligible_with_caveats' && 'COVERAGE MISMATCH AT THIS FACILITY'}
               {status === 'ineligible' && 'NOT SHA ELIGIBLE'}
               {status === 'expired' && 'COVERAGE EXPIRED'}
               {status === 'pending' && 'PENDING VERIFICATION'}
@@ -265,6 +274,33 @@ function FullEligibilityBanner({
               {status === 'error' && 'ELIGIBILITY CHECK FAILED'}
             </h4>
           </div>
+
+          {/* Facility-aware caveat: member is enrolled with SHA but the
+              specific scheme(s) they hold can't fund services at this
+              facility's KEPH level (e.g. UHC-only at Level 4 hospital). */}
+          {status === 'eligible_with_caveats' && (
+            <div className="space-y-1 text-sm text-warning-foreground">
+              <p>
+                {coverageCaveat || 'Member coverage does not match this facility’s billable schemes.'}
+              </p>
+              {(eligibleSchemes?.length || billableSchemes?.length) ? (
+                <p className="text-xs">
+                  {eligibleSchemes?.length ? (
+                    <><span className="font-medium">Member cover:</span> {eligibleSchemes.join(', ')}</>
+                  ) : null}
+                  {eligibleSchemes?.length && billableSchemes?.length ? ' · ' : ''}
+                  {billableSchemes?.length ? (
+                    <><span className="font-medium">Facility bills:</span> {billableSchemes.join(', ')}</>
+                  ) : null}
+                </p>
+              ) : null}
+              {memberName && (
+                <p>
+                  <span className="font-medium">Verified:</span> {memberName}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Status Details */}
           {status === 'eligible' && (
@@ -400,6 +436,10 @@ export function EligibilityBanner({
         // Check if coverage is expired
         if (response.coverage_end_date && isPast(parseISO(response.coverage_end_date))) {
           newState.status = 'expired';
+        } else if (response.coverage_blocked || (response.coverage_caveat && response.coverage_caveat.length > 0)) {
+          // SHA says eligible, but member's covered schemes don't match what
+          // this facility's KEPH level can bill against (e.g. UHC at Level 4).
+          newState.status = 'eligible_with_caveats';
         } else {
           newState.status = 'eligible';
         }
@@ -413,6 +453,10 @@ export function EligibilityBanner({
       newState.schemeCategory = response.scheme_category;
       newState.memberName = response.verified_name;
       newState.checkedAt = response.checked_at;
+      newState.coverageCaveat = response.coverage_caveat;
+      newState.eligibleSchemes = response.eligible_schemes;
+      newState.billableSchemes = response.billable_schemes;
+      newState.coverageBlocked = response.coverage_blocked;
 
       setEligibility(newState);
       onStatusChange?.(newState);
@@ -482,6 +526,8 @@ export function useEligibilityCheck(patientId?: number) {
       if (response.is_eligible) {
         if (response.coverage_end_date && isPast(parseISO(response.coverage_end_date))) {
           status = 'expired';
+        } else if (response.coverage_blocked || (response.coverage_caveat && response.coverage_caveat.length > 0)) {
+          status = 'eligible_with_caveats';
         } else {
           status = 'eligible';
         }
@@ -495,6 +541,10 @@ export function useEligibilityCheck(patientId?: number) {
         schemeCategory: response.scheme_category,
         memberName: response.verified_name,
         checkedAt: response.checked_at,
+        coverageCaveat: response.coverage_caveat,
+        eligibleSchemes: response.eligible_schemes,
+        billableSchemes: response.billable_schemes,
+        coverageBlocked: response.coverage_blocked,
       };
 
       setEligibility(newState);

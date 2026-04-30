@@ -55,3 +55,6 @@ export {
 // DHA HIE Consent & Pre-authorization
 export { ConsentPanel } from './ConsentPanel';
 export { PreauthPanel } from './PreauthPanel';
+
+// DHA HIE Flow visual indicator (SHIF / PHC / ECCIF)
+export { ClaimFlowBadge } from './ClaimFlowBadge';
