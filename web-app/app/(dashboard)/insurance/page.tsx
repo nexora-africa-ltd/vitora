@@ -37,7 +37,6 @@ export default function InsurancePage() {
                 Use this before billing to confirm coverage and copay.
               </div>
               <SHAVerificationModal
-                defaultTab="eligibility"
                 trigger={
                   <Button>
                     <SHALogo size="sm" className="mr-2" />

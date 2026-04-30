@@ -1,13 +1,9 @@
 /**
  * SHA Verification Modal
  *
- * A modal dialog with two separate functions:
- * 1. Client Registry (CR) Lookup - Find patient demographics from national CR
- * 2. SHA Eligibility Check - Verify if someone has active SHA coverage
- *
- * These are independent operations:
- * - CR lookup finds the person in Kenya's national database
- * - Eligibility check verifies SHA insurance coverage status
+ * A unified lookup that runs both Client Registry and SHA Eligibility checks
+ * in parallel from a single search input. Displays eligibility status first,
+ * then CR demographics below, with UserPlus buttons to populate the patient form.
  */
 'use client';
 
@@ -21,7 +17,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,12 +32,11 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ScrollMoreButton } from '@/components/ui/scroll-more-button';
+
 import {
   Search,
   Loader2,
-  CheckCircle2,
-  XCircle,
+
   AlertCircle,
   UserCheck,
   ShieldOff,
@@ -104,8 +99,6 @@ interface SHAVerificationModalProps {
   trigger?: React.ReactNode;
   /** Default national ID to pre-fill */
   defaultNationalId?: string;
-  /** Default tab to open ('eligibility' or 'cr') */
-  defaultTab?: 'eligibility' | 'cr';
   /** Callback when CR client is found */
   onClientFound?: (client: ClientRegistryClient) => void;
   /** Callback when eligibility is verified */
@@ -142,16 +135,6 @@ const ELIGIBILITY_IDENTIFIER_OPTIONS: EligibilityIdentifierOption[] = [
   { value: 'Passport Number', label: 'Passport Number', placeholder: 'Enter Passport Number' },
   { value: 'Alien ID', label: 'Alien ID', placeholder: 'Enter Alien ID' },
   { value: 'Huduma Number', label: 'Huduma Number', placeholder: 'Enter Huduma Number' },
-];
-
-const CR_IDENTIFIER_OPTIONS: CRIdentifierOption[] = [
-  { value: 'National ID', label: 'National ID', placeholder: 'Enter National ID' },
-  { value: 'CR Number', label: 'CR Number', placeholder: 'Enter CR Number' },
-  { value: 'Passport Number', label: 'Passport Number', placeholder: 'Enter Passport Number' },
-  { value: 'Alien ID', label: 'Alien ID', placeholder: 'Enter Alien ID' },
-  { value: 'Huduma Number', label: 'Huduma Number', placeholder: 'Enter Huduma Number' },
-  { value: 'KRA PIN', label: 'KRA PIN', placeholder: 'Enter KRA PIN' },
-  { value: 'Mandate Number', label: 'Mandate Number', placeholder: 'Enter Mandate Number' },
 ];
 
 function formatRecordValue(value: RecordValue): string {
@@ -1021,781 +1004,12 @@ function EligibilityDataPanel({
 }
 
 // ============================================================================
-// Client Registry Tab Content
-// ============================================================================
-
-interface CRLookupTabProps {
-  defaultNationalId?: string;
-  onClientFound?: (client: ClientRegistryClient) => void;
-  onAddPersonToForm?: (person: SHAPayloadPerson) => void;
-}
-
-function CRLookupTab({ defaultNationalId, onClientFound, onAddPersonToForm }: CRLookupTabProps) {
-  const [identifierType, setIdentifierType] = useState<string>('National ID');
-  const [identifierValue, setIdentifierValue] = useState(defaultNationalId || '');
-  const [status, setStatus] = useState<LookupStatus>('idle');
-  const [client, setClient] = useState<ClientRegistryClient | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string>();
-  const [errorTitle, setErrorTitle] = useState<string>('Lookup Failed');
-  const selectedIdentifierOption = CR_IDENTIFIER_OPTIONS.find(
-    (option) => option.value === identifierType
-  ) ?? {
-    value: 'National ID',
-    label: 'National ID',
-    placeholder: 'Enter National ID',
-  };
-
-  const handleLookup = useCallback(async () => {
-    if (!identifierValue || identifierValue.trim().length < 5) {
-      setErrorTitle('Lookup Failed');
-      setErrorMessage(`Please enter a valid ${identifierType} (at least 5 characters)`);
-      return;
-    }
-
-    setStatus('loading');
-    setClient(null);
-    setErrorTitle('Lookup Failed');
-    setErrorMessage(undefined);
-
-    try {
-      const response = await shaApi.fetchFromClientRegistry({
-        identification_type: identifierType,
-        identification_number: identifierValue.trim(),
-      });
-
-      if (response.found && response.client) {
-        setClient(response.client);
-        setStatus('success');
-        onClientFound?.(response.client);
-      } else {
-        setStatus('not_found');
-      }
-    } catch (error) {
-      console.error('CR lookup failed:', error);
-      const presentation = getSHAServiceErrorPresentation(error, {
-        unavailableTitle: 'SHA Client Registry unavailable',
-        unavailableMessage: 'The upstream SHA Client Registry is currently unavailable. Please try the lookup again later.',
-        timeoutTitle: 'SHA Client Registry timed out',
-        timeoutMessage: 'The upstream SHA Client Registry did not respond in time. Please retry the lookup.',
-        authTitle: 'SHA auth failed',
-        authMessage: 'Unable to authenticate with the upstream SHA service while performing the Client Registry lookup.',
-        fallbackTitle: 'Lookup Failed',
-        fallbackMessage: 'Failed to connect to Client Registry',
-      });
-      setErrorTitle(presentation.title);
-      setErrorMessage(presentation.message);
-      setStatus('error');
-    }
-  }, [identifierType, identifierValue, onClientFound]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleLookup();
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="cr-identifier-value">Identification</Label>
-        <div className="grid gap-2 sm:grid-cols-[220px_minmax(0,1fr)_auto]">
-          <Select
-            value={identifierType}
-            onValueChange={(value) => {
-              setIdentifierType(value);
-              setStatus('idle');
-              setClient(null);
-              setErrorTitle('Lookup Failed');
-              setErrorMessage(undefined);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select identifier type" />
-            </SelectTrigger>
-            <SelectContent>
-              {CR_IDENTIFIER_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            id="cr-identifier-value"
-            value={identifierValue}
-            onChange={(e) => setIdentifierValue(e.target.value)}
-            placeholder={selectedIdentifierOption.placeholder}
-            onKeyDown={handleKeyDown}
-            className={cn(
-              'flex-1',
-              status === 'success' && 'border-primary',
-              status === 'error' && 'border-destructive'
-            )}
-          />
-          <Button
-            onClick={handleLookup}
-            disabled={status === 'loading' || !identifierValue.trim()}
-            className="w-full sm:w-auto"
-          >
-            {status === 'loading' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
-            <span className="ml-2">Search</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Status Messages */}
-      {status === 'not_found' && (
-        <Alert className="border-warning bg-warning/10">
-          <Info className="h-4 w-4 text-warning-foreground" />
-          <AlertTitle>Not Found in Client Registry</AlertTitle>
-          <AlertDescription>
-            This National ID was not found in Kenya&apos;s Client Registry.
-            You can still register the patient manually.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {status === 'error' && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{errorTitle}</AlertTitle>
-          <AlertDescription>
-            {errorMessage || 'Unable to connect to Client Registry'}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Client Details */}
-      {status === 'success' && client && (
-        <Card className="border-success bg-success/10">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <UserCheck className="h-5 w-5 text-success" />
-              <h4 className="font-semibold text-success">
-                Client Found
-              </h4>
-              <Badge variant="outline" className="ml-auto text-success border-success">
-                {client.client_number}
-              </Badge>
-              {onAddPersonToForm && (
-                <Button
-                  variant="default"
-                  size="icon"
-                  className="h-7 w-7 shrink-0"
-                  title="Use principal details to populate form"
-                  onClick={() => {
-                    const principal = buildShaPayloadPerson(
-                      {
-                        ...client,
-                        phone: client.phone_number,
-                        id: client.client_number,
-                        identification_type: client.national_id ? 'National ID' : undefined,
-                        identification_number: client.national_id,
-                      } as unknown as Record<string, unknown>,
-                      'principal'
-                    );
-                    onAddPersonToForm(principal);
-                  }}
-                >
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
-              <div className="min-w-0">
-                <Label className="text-muted-foreground text-xs">Full Name</Label>
-                <p className="font-medium break-words">
-                  {client.first_name} {client.middle_name && `${client.middle_name} `}
-                  {client.last_name}
-                </p>
-              </div>
-              <div className="min-w-0">
-                <Label className="text-muted-foreground text-xs">Date of Birth</Label>
-                <p className="font-medium break-words">{client.date_of_birth}</p>
-              </div>
-              <div className="min-w-0">
-                <Label className="text-muted-foreground text-xs">Gender</Label>
-                <p className="font-medium break-words">
-                  {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : 'Other'}
-                </p>
-              </div>
-              {client.national_id && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">National ID</Label>
-                  <p className="font-medium break-words">{client.national_id}</p>
-                </div>
-              )}
-              {client.phone_number && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Phone</Label>
-                  <p className="font-medium break-words">{client.phone_number}</p>
-                </div>
-              )}
-              {client.email && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Email</Label>
-                  <p className="font-medium break-words">{client.email}</p>
-                </div>
-              )}
-              {client.county && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">County</Label>
-                  <p className="font-medium break-words">{client.county}</p>
-                </div>
-              )}
-              {client.sub_county && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Sub-County</Label>
-                  <p className="font-medium break-words">{client.sub_county}</p>
-                </div>
-              )}
-              {client.ward && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Ward</Label>
-                  <p className="font-medium break-words">{client.ward}</p>
-                </div>
-              )}
-              {client.citizenship && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Citizenship</Label>
-                  <p className="font-medium break-words">{client.citizenship}</p>
-                </div>
-              )}
-              {client.place_of_birth && client.place_of_birth.trim() && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Place of Birth</Label>
-                  <p className="font-medium break-words">{client.place_of_birth}</p>
-                </div>
-              )}
-              {client.address && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Postal Address</Label>
-                  <p className="font-medium break-words">{client.address}</p>
-                </div>
-              )}
-              {client.village_estate && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Village/Estate</Label>
-                  <p className="font-medium break-words">{client.village_estate}</p>
-                </div>
-              )}
-              {client.civil_status && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Civil Status</Label>
-                  <p className="font-medium break-words">{client.civil_status}</p>
-                </div>
-              )}
-              {client.employment_type && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">Employment</Label>
-                  <p className="font-medium break-words">{client.employment_type}</p>
-                </div>
-              )}
-              {client.id_serial && (
-                <div className="min-w-0">
-                  <Label className="text-muted-foreground text-xs">ID Serial No.</Label>
-                  <p className="font-medium break-words">{client.id_serial}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Other Identifications (SHA Number, Household Number, etc.) */}
-            {client.other_identifications && client.other_identifications.length > 0 && (
-              <div className="mt-3 pt-3 border-t">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wide">Other Identifiers</Label>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                  {client.other_identifications.map((oid, idx) => (
-                    <div key={idx} className="min-w-0 flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/40">
-                      <span className="text-xs text-muted-foreground shrink-0">{oid.identification_type}:</span>
-                      <span className="font-medium break-all">{oid.identification_number}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Dependants */}
-            {client.dependants && client.dependants.length > 0 && (
-              <div className="mt-3 pt-3 border-t">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wide">
-                  Dependants ({client.dependants.reduce((sum, g) => sum + (g.total ?? g.result?.length ?? 0), 0)})
-                </Label>
-                <div className="mt-2 space-y-2">
-                  {client.dependants.flatMap((group) =>
-                    (group.result ?? []).map((dep, idx) => (
-                      <div key={dep.id ?? idx} className="rounded-md border px-3 py-2 bg-muted/40 text-sm">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                          <span className="font-medium">
-                            {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ')}
-                          </span>
-                          {group.relationship && (
-                            <Badge variant="outline" className="text-xs">{group.relationship}</Badge>
-                          )}
-                          {dep.gender && (
-                            <span className="text-xs text-muted-foreground">{dep.gender}</span>
-                          )}
-                          {dep.date_of_birth && (
-                            <span className="text-xs text-muted-foreground">DOB: {dep.date_of_birth}</span>
-                          )}
-                          {onAddPersonToForm && (
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-6 w-6 ml-auto shrink-0"
-                              title={`Use dependant ${[dep.first_name, dep.last_name].filter(Boolean).join(' ')} to populate form`}
-                              onClick={() => {
-                                const person = buildShaPayloadPerson(
-                                  dep as unknown as Record<string, unknown>,
-                                  'dependent',
-                                  typeof group.relationship === 'string' ? group.relationship : undefined
-                                );
-                                onAddPersonToForm(person);
-                              }}
-                            >
-                              <UserPlus className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                        {dep.identification_number && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {dep.identification_type}: {dep.identification_number}
-                          </p>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
-// Eligibility Check Tab Content
-// ============================================================================
-
-interface EligibilityCheckTabProps {
-  defaultNationalId?: string;
-  onEligibilityVerified?: (eligibility: DirectEligibilityCheckResponse) => void;
-  onEligibilityPreviewChange?: (eligibility: DirectEligibilityCheckResponse | null) => void;
-  onCRClientChange?: (client: ClientRegistryClient | null) => void;
-}
-
-function EligibilityCheckTab({
-  defaultNationalId,
-  onEligibilityVerified,
-  onEligibilityPreviewChange,
-  onCRClientChange,
-}: EligibilityCheckTabProps) {
-  const [identifierType, setIdentifierType] = useState<string>('National ID');
-  const [identifierValue, setIdentifierValue] = useState(defaultNationalId || '');
-  const [status, setStatus] = useState<LookupStatus>('idle');
-  const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string>();
-  const [errorTitle, setErrorTitle] = useState<string>('Verification Failed');
-
-  const selectedIdentifierOption = ELIGIBILITY_IDENTIFIER_OPTIONS.find(
-    (option) => option.value === identifierType
-  ) ?? {
-    value: 'National ID',
-    label: 'National ID',
-    placeholder: 'Enter National ID',
-  };
-
-  const handleCheck = useCallback(async () => {
-    if (!identifierValue || identifierValue.trim().length < 5) {
-      setErrorTitle('Verification Failed');
-      setErrorMessage(`Please enter a valid ${identifierType} (at least 5 characters)`);
-      return;
-    }
-
-    setStatus('loading');
-    setEligibility(null);
-    setErrorTitle('Verification Failed');
-    setErrorMessage(undefined);
-    onEligibilityPreviewChange?.(null);
-
-    try {
-      const trimmedIdentifierValue = identifierValue.trim();
-      const response = await shaApi.checkDirectEligibility(
-        identifierType === 'National ID'
-          ? { national_id: trimmedIdentifierValue }
-          : identifierType === 'SHA Number'
-            ? { sha_number: trimmedIdentifierValue }
-            : {
-                identification_type: identifierType,
-                identification_number: trimmedIdentifierValue,
-              }
-      );
-
-      setEligibility(response);
-      onEligibilityPreviewChange?.(response);
-
-      if (response.error) {
-        setStatus('error');
-        setErrorTitle('Verification Failed');
-        setErrorMessage(response.error);
-      } else {
-        setStatus('success');
-        onEligibilityVerified?.(response);
-        // Best-effort CR fetch in parallel: enriches the patient form with full
-        // demographics (DOB, contact, address) that the eligibility raw_response
-        // does not carry. Failures are swallowed so eligibility flow continues.
-        if (onCRClientChange) {
-          onCRClientChange(null);
-          shaApi
-            .fetchFromClientRegistry({
-              identification_type: identifierType,
-              identification_number: trimmedIdentifierValue,
-            })
-            .then((cr) => {
-              if (cr.found && cr.client) onCRClientChange(cr.client);
-            })
-            .catch((err) => {
-              console.warn('CR enrichment failed (non-fatal):', err);
-            });
-        }
-      }
-    } catch (error) {
-      console.error('Eligibility check failed:', error);
-      onEligibilityPreviewChange?.(null);
-      const presentation = getEligibilityErrorPresentation(error);
-      setErrorTitle(presentation.title);
-      setErrorMessage(presentation.message);
-      setStatus('error');
-    }
-  }, [identifierType, identifierValue, onEligibilityPreviewChange, onEligibilityVerified, onCRClientChange]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleCheck();
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="elig-identifier-value">Identification</Label>
-        <div className="grid gap-2 sm:grid-cols-[220px_minmax(0,1fr)_auto]">
-          <Select
-            value={identifierType}
-            onValueChange={(value) => {
-              setIdentifierType(value);
-              setStatus('idle');
-              setEligibility(null);
-              setErrorMessage(undefined);
-              onEligibilityPreviewChange?.(null);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select identifier type" />
-            </SelectTrigger>
-            <SelectContent>
-              {ELIGIBILITY_IDENTIFIER_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            id="elig-identifier-value"
-            value={identifierValue}
-            onChange={(e) => setIdentifierValue(e.target.value)}
-            placeholder={selectedIdentifierOption.placeholder}
-            onKeyDown={handleKeyDown}
-            className={cn(
-              'flex-1',
-              status === 'success' && eligibility?.is_eligible && 'border-success',
-              status === 'success' && !eligibility?.is_eligible && 'border-warning',
-              status === 'error' && 'border-destructive'
-            )}
-          />
-          <Button
-            onClick={handleCheck}
-            disabled={status === 'loading' || !identifierValue.trim()}
-            className="w-full sm:w-auto"
-          >
-            {status === 'loading' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ShieldQuestionMark className="h-4 w-4" />
-            )}
-            <span className="ml-2">Verify</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {status === 'error' && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{errorTitle}</AlertTitle>
-          <AlertDescription>
-            {errorMessage || 'Unable to verify eligibility'}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Eligibility Result */}
-      {status === 'success' && eligibility && (
-        (() => {
-          const schemeSummary = getEligibilitySchemeSummary(eligibility);
-
-          return (
-        <Card className={cn(
-          schemeSummary.tone === 'covered'
-            ? 'border-success bg-success/10'
-            : 'border-warning bg-warning/10'
-        )}>
-          <CardContent className="pt-4">
-            {schemeSummary.tone === 'covered' ? (
-              <>
-                <div className="flex items-center gap-2 mb-3">
-                  <SHALogo size="lg" />
-                  <div>
-                    <h4 className="font-semibold text-success text-lg">
-                      SHA Eligible
-                    </h4>
-                    <p className="text-sm text-success/80">
-                      {schemeSummary.description}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-4">
-                  {eligibility.full_name && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">Name</Label>
-                      <p className="font-medium break-words">{eligibility.full_name}</p>
-                    </div>
-                  )}
-                  {eligibility.sha_number && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">SHA Number</Label>
-                      <p className="font-medium break-words">{eligibility.sha_number}</p>
-                    </div>
-                  )}
-                  {eligibility.coverage_end_date && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">Coverage Until</Label>
-                      <p className="font-medium break-words">{eligibility.coverage_end_date}</p>
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <Label className="text-muted-foreground text-xs">Copay</Label>
-                    <div className="font-medium">
-                      {eligibility.copay_percentage === 0 ? (
-                        <Badge className="bg-success text-success-foreground">Full Coverage</Badge>
-                      ) : (
-                        <span>{eligibility.copay_percentage}%</span>
-                      )}
-                    </div>
-                  </div>
-                  {eligibility.is_employed !== undefined && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">Employment</Label>
-                      <p className="font-medium break-words">
-                        {eligibility.is_employed ? 'Employed' : 'Not Employed'}
-                      </p>
-                    </div>
-                  )}
-                  {eligibility.employer_name && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">Employer</Label>
-                      <p className="font-medium break-words">{eligibility.employer_name}</p>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : schemeSummary.tone === 'mixed' ? (
-              <>
-                <div className="flex items-center gap-2 mb-3">
-                  <ShieldOff className="h-6 w-6 text-warning-foreground" />
-                  <div>
-                    <h4 className="font-semibold text-warning-foreground text-lg">
-                      SHIF Not Covered
-                    </h4>
-                    <p className="text-sm text-warning-foreground/80">
-                      {schemeSummary.description}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {schemeSummary.uncoveredSchemes.map((schemeName) => (
-                    <Badge key={`summary-uncovered-${schemeName}`} variant="outline" className="border-warning text-warning-foreground">
-                      {schemeName} not covered
-                    </Badge>
-                  ))}
-                  {schemeSummary.coveredSchemes.map((schemeName) => (
-                    <Badge key={`summary-covered-${schemeName}`} variant="outline" className="border-success text-success">
-                      {schemeName} covered
-                    </Badge>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-4">
-                  {eligibility.full_name && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">Name</Label>
-                      <p className="font-medium break-words">{eligibility.full_name}</p>
-                    </div>
-                  )}
-                  {eligibility.sha_number && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">SHA Number</Label>
-                      <p className="font-medium break-words">{eligibility.sha_number}</p>
-                    </div>
-                  )}
-                  {eligibility.coverage_end_date && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">SHIF Coverage Until</Label>
-                      <p className="font-medium break-words">{eligibility.coverage_end_date}</p>
-                    </div>
-                  )}
-                  {eligibility.employer_name && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">Employer</Label>
-                      <p className="font-medium break-words">{eligibility.employer_name}</p>
-                    </div>
-                  )}
-                </div>
-
-                {eligibility.possible_solution && (
-                  <Alert className="mt-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
-                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <AlertTitle className="text-blue-800 dark:text-blue-300 text-sm">How to Resolve</AlertTitle>
-                    <AlertDescription className="text-sm text-blue-700 dark:text-blue-400">
-                      {eligibility.possible_solution}
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 mb-3">
-                  <ShieldOff className="h-6 w-6 text-warning-foreground" />
-                  <div>
-                    <h4 className="font-semibold text-warning-foreground text-lg">
-                      NOT SHA ELIGIBLE
-                    </h4>
-                    <p className="text-sm text-warning-foreground/80">
-                      {eligibility.reason || 'This individual does not have active SHA coverage'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-4">
-                  {eligibility.full_name && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">Name</Label>
-                      <p className="font-medium break-words">{eligibility.full_name}</p>
-                    </div>
-                  )}
-                  {eligibility.sha_number && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">SHA Number</Label>
-                      <p className="font-medium break-words">{eligibility.sha_number}</p>
-                    </div>
-                  )}
-                  {eligibility.is_employed !== undefined && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">Employment Status</Label>
-                      <p className="font-medium break-words">
-                        {eligibility.is_employed ? 'Employed' : 'Not Employed'}
-                        {eligibility.employment_type && eligibility.employment_type !== 'Unspecified' && (
-                          <span className="text-muted-foreground"> ({eligibility.employment_type})</span>
-                        )}
-                      </p>
-                    </div>
-                  )}
-                  {eligibility.employer_name && (
-                    <div className="min-w-0">
-                      <Label className="text-muted-foreground text-xs">Employer</Label>
-                      <p className="font-medium break-words">{eligibility.employer_name}</p>
-                    </div>
-                  )}
-                </div>
-
-                {eligibility.nhif_transition_status && (
-                  <div className="text-sm mt-3">
-                    <Label className="text-muted-foreground text-xs">NHIF Transition Status</Label>
-                    <p className="font-medium text-warning-foreground">{eligibility.nhif_transition_status}</p>
-                  </div>
-                )}
-
-                {/* Means Testing Details */}
-                {eligibility.means_testing && eligibility.means_testing.means_testing_done === 1 && (
-                  <div className="mt-4 p-3 rounded-lg bg-muted/50 border">
-                    <Label className="text-muted-foreground text-xs font-semibold block mb-2">Means Testing Details</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                      <div className="min-w-0">
-                        <span className="text-muted-foreground text-xs">Monthly Contribution:</span>
-                        <p className="font-medium">KES {eligibility.means_testing.monthly_contribution?.toLocaleString()}</p>
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-muted-foreground text-xs">Annual Contribution:</span>
-                        <p className="font-medium">KES {eligibility.means_testing.annual_contribution?.toLocaleString()}</p>
-                      </div>
-                      {eligibility.means_testing.income_prediction_category && (
-                        <div className="col-span-2">
-                          <span className="text-muted-foreground text-xs">Income Category:</span>
-                          <p className="font-medium break-words">{eligibility.means_testing.income_prediction_category}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Possible Solution */}
-                {eligibility.possible_solution && (
-                  <Alert className="mt-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
-                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <AlertTitle className="text-blue-800 dark:text-blue-300 text-sm">How to Resolve</AlertTitle>
-                    <AlertDescription className="text-sm text-blue-700 dark:text-blue-400">
-                      {eligibility.possible_solution}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <Alert className="mt-4 border-warning bg-warning/10">
-                  <Info className="h-4 w-4 text-warning-foreground" />
-                  <AlertDescription className="text-sm">
-                    Patient will need to pay cash or use other payment methods.
-                  </AlertDescription>
-                </Alert>
-              </>
-            )}
-          </CardContent>
-        </Card>
-          );
-        })()
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
 // Main Modal Component
 // ============================================================================
 
 export function SHAVerificationModal({
   trigger,
   defaultNationalId,
-  defaultTab = 'eligibility',
   onClientFound,
   onEligibilityVerified,
   onAddPersonToForm,
@@ -1808,18 +1022,121 @@ export function SHAVerificationModal({
   const isOpen = isControlled ? open : internalOpen;
   const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
 
-  const [previewEligibility, setPreviewEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
-  const [previewCRClient, setPreviewCRClient] = useState<ClientRegistryClient | null>(null);
+  // Search state
+  const [identifierType, setIdentifierType] = useState<string>('National ID');
+  const [identifierValue, setIdentifierValue] = useState(defaultNationalId || '');
+  const [status, setStatus] = useState<LookupStatus>('idle');
+  const [errorMessage, setErrorMessage] = useState<string>();
+  const [errorTitle, setErrorTitle] = useState<string>('Verification Failed');
+
+  // Results state
+  const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
+  const [crClient, setCRClient] = useState<ClientRegistryClient | null>(null);
+  const [crStatus, setCRStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  return (
-    <Sheet open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        setPreviewEligibility(null);
-        setPreviewCRClient(null);
+  const selectedIdentifierOption = ELIGIBILITY_IDENTIFIER_OPTIONS.find(
+    (option) => option.value === identifierType
+  ) ?? {
+    value: 'National ID',
+    label: 'National ID',
+    placeholder: 'Enter National ID',
+  };
+
+  const handleSearch = useCallback(async () => {
+    if (!identifierValue || identifierValue.trim().length < 5) {
+      setErrorTitle('Verification Failed');
+      setErrorMessage(`Please enter a valid ${identifierType} (at least 5 characters)`);
+      setStatus('error');
+      return;
+    }
+
+    setStatus('loading');
+    setEligibility(null);
+    setCRClient(null);
+    setCRStatus('loading');
+    setErrorTitle('Verification Failed');
+    setErrorMessage(undefined);
+
+    const trimmedValue = identifierValue.trim();
+
+    // Run eligibility + CR lookup in parallel
+    const eligibilityPromise = shaApi.checkDirectEligibility(
+      identifierType === 'National ID'
+        ? { national_id: trimmedValue }
+        : identifierType === 'SHA Number'
+          ? { sha_number: trimmedValue }
+          : {
+              identification_type: identifierType,
+              identification_number: trimmedValue,
+            }
+    );
+
+    const crPromise = shaApi.fetchFromClientRegistry({
+      identification_type: identifierType,
+      identification_number: trimmedValue,
+    });
+
+    // Handle eligibility result
+    try {
+      const eligResponse = await eligibilityPromise;
+      setEligibility(eligResponse);
+
+      if (eligResponse.error) {
+        setStatus('error');
+        setErrorTitle('Eligibility Check Failed');
+        setErrorMessage(eligResponse.error);
+      } else {
+        setStatus('success');
+        onEligibilityVerified?.(eligResponse);
       }
-      setIsOpen(open);
+    } catch (error) {
+      console.error('Eligibility check failed:', error);
+      const presentation = getEligibilityErrorPresentation(error);
+      setErrorTitle(presentation.title);
+      setErrorMessage(presentation.message);
+      setStatus('error');
+    }
+
+    // Handle CR result (non-blocking — shows whatever comes back)
+    try {
+      const crResponse = await crPromise;
+      if (crResponse.found && crResponse.client) {
+        setCRClient(crResponse.client);
+        onClientFound?.(crResponse.client);
+        setCRStatus('done');
+      } else {
+        setCRStatus('done');
+      }
+    } catch (err) {
+      console.warn('CR enrichment failed (non-fatal):', err);
+      setCRStatus('error');
+    }
+  }, [identifierType, identifierValue, onEligibilityVerified, onClientFound]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
+
+  const handleAddPerson = useCallback((person: SHAPayloadPerson) => {
+    onAddPersonToForm?.(person);
+    setIsOpen(false);
+  }, [onAddPersonToForm, setIsOpen]);
+
+  return (
+    <Sheet open={isOpen} onOpenChange={(openState) => {
+      if (!openState) {
+        setEligibility(null);
+        setCRClient(null);
+        setStatus('idle');
+        setCRStatus('idle');
+        setErrorMessage(undefined);
+      }
+      setIsOpen(openState);
     }}>
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
 
@@ -1836,73 +1153,389 @@ export function SHAVerificationModal({
             Kenya Digital Health Verification
           </SheetTitle>
           <SheetDescription>
-            Lookup patient records from Client Registry and review the full SHA eligibility payload in one place.
+            Verify SHA eligibility and retrieve patient demographics from Kenya&apos;s Client Registry in a single lookup.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col">
           <ScrollArea className="flex-1">
             <div className="space-y-6 p-5">
-              <Tabs defaultValue={defaultTab} className="space-y-4">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="cr" className="flex items-center gap-2">
-                    <Database className="h-4 w-4" />
-                    Client Registry
-                  </TabsTrigger>
-                  <TabsTrigger value="eligibility" className="flex items-center gap-2">
-                    <SHALogo size="sm" />
-                    SHA Eligibility
-                  </TabsTrigger>
-                </TabsList>
 
-                <TabsContent value="cr" className="space-y-4">
-                  <div className="rounded-xl bg-muted p-4 text-sm leading-relaxed text-muted-foreground">
-                    <strong>Client Registry</strong> lookup retrieves patient demographic information from Kenya&apos;s national database to prefill registration details.
-                  </div>
-                  <CRLookupTab
-                    defaultNationalId={defaultNationalId}
-                    onClientFound={(client) => {
-                      onClientFound?.(client);
+              {/* Search Input */}
+              <div className="space-y-2">
+                <Label htmlFor="unified-identifier-value">Identification</Label>
+                <div className="grid gap-2 sm:grid-cols-[220px_minmax(0,1fr)_auto]">
+                  <Select
+                    value={identifierType}
+                    onValueChange={(value) => {
+                      setIdentifierType(value);
+                      setStatus('idle');
+                      setEligibility(null);
+                      setCRClient(null);
+                      setCRStatus('idle');
+                      setErrorMessage(undefined);
                     }}
-                    onAddPersonToForm={onAddPersonToForm
-                      ? (person) => {
-                          onAddPersonToForm(person);
-                          setIsOpen(false);
-                        }
-                      : undefined}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select identifier type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ELIGIBILITY_IDENTIFIER_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    id="unified-identifier-value"
+                    value={identifierValue}
+                    onChange={(e) => setIdentifierValue(e.target.value)}
+                    placeholder={selectedIdentifierOption.placeholder}
+                    onKeyDown={handleKeyDown}
+                    className={cn(
+                      'flex-1',
+                      status === 'success' && eligibility?.is_eligible && 'border-success',
+                      status === 'success' && !eligibility?.is_eligible && 'border-warning',
+                      status === 'error' && 'border-destructive'
+                    )}
                   />
-                </TabsContent>
+                  <Button
+                    onClick={handleSearch}
+                    disabled={status === 'loading' || !identifierValue.trim()}
+                    className="w-full sm:w-auto"
+                  >
+                    {status === 'loading' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">Verify</span>
+                  </Button>
+                </div>
+              </div>
 
-                <TabsContent value="eligibility" className="space-y-4">
-                  <div className="rounded-xl bg-muted p-4 text-sm leading-relaxed text-muted-foreground">
-                    <strong>SHA Eligibility</strong> verifies active Social Health Authority coverage and now exposes the full ILM patient payload, including source metadata and dependants.
-                  </div>
-                  <EligibilityCheckTab
-                    defaultNationalId={defaultNationalId}
-                    onEligibilityPreviewChange={setPreviewEligibility}
-                    onEligibilityVerified={(elig) => {
-                      onEligibilityVerified?.(elig);
-                    }}
-                    onCRClientChange={(client) => {
-                      setPreviewCRClient(client);
-                      if (client) onClientFound?.(client);
-                    }}
-                  />
+              {/* Error Message */}
+              {status === 'error' && errorMessage && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>{errorTitle}</AlertTitle>
+                  <AlertDescription>{errorMessage}</AlertDescription>
+                </Alert>
+              )}
 
-                  {previewEligibility && (
-                    <EligibilityDataPanel
-                      eligibility={previewEligibility}
-                      crClient={previewCRClient}
-                      onAddPersonToForm={onAddPersonToForm
-                        ? (person) => {
-                            onAddPersonToForm(person);
-                            setIsOpen(false);
-                          }
-                        : undefined}
-                    />
-                  )}
-                </TabsContent>
-              </Tabs>
+              {/* Eligibility Result (compact card) */}
+              {status === 'success' && eligibility && (
+                (() => {
+                  const schemeSummary = getEligibilitySchemeSummary(eligibility);
+                  return (
+                    <Card className={cn(
+                      schemeSummary.tone === 'covered'
+                        ? 'border-success bg-success/10'
+                        : 'border-warning bg-warning/10'
+                    )}>
+                      <CardContent className="pt-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 shrink-0">
+                            {schemeSummary.tone === 'covered' ? <SHALogo size="lg" /> : <ShieldOff className="h-6 w-6 text-warning-foreground" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className={cn(
+                                'font-semibold text-lg',
+                                schemeSummary.tone === 'covered' ? 'text-success' : 'text-warning-foreground'
+                              )}>
+                                {schemeSummary.tone === 'covered' ? 'SHA Eligible' : schemeSummary.tone === 'mixed' ? 'SHIF Not Covered' : 'NOT SHA ELIGIBLE'}
+                              </h4>
+                              <Badge variant="outline" className={cn(
+                                schemeSummary.tone === 'covered' ? 'border-success text-success' : 'border-warning text-warning-foreground'
+                              )}>
+                                {schemeSummary.tone === 'covered' ? 'Eligible' : schemeSummary.tone === 'mixed' ? 'Mixed' : 'Ineligible'}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {schemeSummary.tone === 'not-covered'
+                                ? (eligibility.reason || 'This individual does not have active SHA coverage')
+                                : schemeSummary.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-4">
+                          {eligibility.full_name && (
+                            <div className="min-w-0">
+                              <Label className="text-muted-foreground text-xs">Name</Label>
+                              <p className="font-medium break-words">{eligibility.full_name}</p>
+                            </div>
+                          )}
+                          {eligibility.sha_number && (
+                            <div className="min-w-0">
+                              <Label className="text-muted-foreground text-xs">SHA Number</Label>
+                              <p className="font-medium break-words">{eligibility.sha_number}</p>
+                            </div>
+                          )}
+                          {eligibility.coverage_end_date && (
+                            <div className="min-w-0">
+                              <Label className="text-muted-foreground text-xs">Coverage Until</Label>
+                              <p className="font-medium break-words">{eligibility.coverage_end_date}</p>
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <Label className="text-muted-foreground text-xs">Copay</Label>
+                            <div className="font-medium">
+                              {eligibility.copay_percentage === 0 ? (
+                                <Badge className="bg-success text-success-foreground">Full Coverage</Badge>
+                              ) : (
+                                <span>{eligibility.copay_percentage}%</span>
+                              )}
+                            </div>
+                          </div>
+                          {eligibility.employer_name && (
+                            <div className="min-w-0">
+                              <Label className="text-muted-foreground text-xs">Employer</Label>
+                              <p className="font-medium break-words">{eligibility.employer_name}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {schemeSummary.tone === 'mixed' && (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {schemeSummary.uncoveredSchemes.map((schemeName) => (
+                              <Badge key={`uncovered-${schemeName}`} variant="outline" className="border-warning text-warning-foreground">
+                                {schemeName} not covered
+                              </Badge>
+                            ))}
+                            {schemeSummary.coveredSchemes.map((schemeName) => (
+                              <Badge key={`covered-${schemeName}`} variant="outline" className="border-success text-success">
+                                {schemeName} covered
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+
+                        {eligibility.possible_solution && (
+                          <Alert className="mt-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
+                            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <AlertTitle className="text-blue-800 dark:text-blue-300 text-sm">How to Resolve</AlertTitle>
+                            <AlertDescription className="text-sm text-blue-700 dark:text-blue-400">
+                              {eligibility.possible_solution}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
+                        {schemeSummary.tone === 'not-covered' && (
+                          <Alert className="mt-4 border-warning bg-warning/10">
+                            <Info className="h-4 w-4 text-warning-foreground" />
+                            <AlertDescription className="text-sm">
+                              Patient will need to pay cash or use other payment methods.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })()
+              )}
+
+              {/* CR Demographics — shown once CR result arrives */}
+              {crClient && (
+                <Card className="border-success bg-success/10">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <UserCheck className="h-5 w-5 text-success" />
+                      <h4 className="font-semibold text-success">
+                        Client Registry Record
+                      </h4>
+                      <Badge variant="outline" className="ml-auto text-success border-success">
+                        {crClient.client_number}
+                      </Badge>
+                      {onAddPersonToForm && (
+                        <Button
+                          variant="default"
+                          size="icon"
+                          className="h-7 w-7 shrink-0"
+                          title="Use principal details to populate form"
+                          onClick={() => {
+                            const principal = buildShaPayloadPerson(
+                              {
+                                ...crClient,
+                                phone: crClient.phone_number,
+                                id: crClient.client_number,
+                                identification_type: crClient.national_id ? 'National ID' : undefined,
+                                identification_number: crClient.national_id,
+                              } as unknown as Record<string, unknown>,
+                              'principal'
+                            );
+                            handleAddPerson(principal);
+                          }}
+                        >
+                          <UserPlus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
+                      <div className="min-w-0">
+                        <Label className="text-muted-foreground text-xs">Full Name</Label>
+                        <p className="font-medium break-words">
+                          {crClient.first_name} {crClient.middle_name && `${crClient.middle_name} `}{crClient.last_name}
+                        </p>
+                      </div>
+                      <div className="min-w-0">
+                        <Label className="text-muted-foreground text-xs">Date of Birth</Label>
+                        <p className="font-medium break-words">{crClient.date_of_birth}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <Label className="text-muted-foreground text-xs">Gender</Label>
+                        <p className="font-medium break-words">
+                          {crClient.gender === 'M' ? 'Male' : crClient.gender === 'F' ? 'Female' : crClient.gender || 'Other'}
+                        </p>
+                      </div>
+                      {crClient.national_id && (
+                        <div className="min-w-0">
+                          <Label className="text-muted-foreground text-xs">National ID</Label>
+                          <p className="font-medium break-words">{crClient.national_id}</p>
+                        </div>
+                      )}
+                      {crClient.phone_number && (
+                        <div className="min-w-0">
+                          <Label className="text-muted-foreground text-xs">Phone</Label>
+                          <p className="font-medium break-words">{crClient.phone_number}</p>
+                        </div>
+                      )}
+                      {crClient.email && (
+                        <div className="min-w-0">
+                          <Label className="text-muted-foreground text-xs">Email</Label>
+                          <p className="font-medium break-words">{crClient.email}</p>
+                        </div>
+                      )}
+                      {crClient.county && (
+                        <div className="min-w-0">
+                          <Label className="text-muted-foreground text-xs">County</Label>
+                          <p className="font-medium break-words">{crClient.county}</p>
+                        </div>
+                      )}
+                      {crClient.sub_county && (
+                        <div className="min-w-0">
+                          <Label className="text-muted-foreground text-xs">Sub-County</Label>
+                          <p className="font-medium break-words">{crClient.sub_county}</p>
+                        </div>
+                      )}
+                      {crClient.ward && (
+                        <div className="min-w-0">
+                          <Label className="text-muted-foreground text-xs">Ward</Label>
+                          <p className="font-medium break-words">{crClient.ward}</p>
+                        </div>
+                      )}
+                      {crClient.citizenship && (
+                        <div className="min-w-0">
+                          <Label className="text-muted-foreground text-xs">Citizenship</Label>
+                          <p className="font-medium break-words">{crClient.citizenship}</p>
+                        </div>
+                      )}
+                      {crClient.village_estate && (
+                        <div className="min-w-0">
+                          <Label className="text-muted-foreground text-xs">Village/Estate</Label>
+                          <p className="font-medium break-words">{crClient.village_estate}</p>
+                        </div>
+                      )}
+                      {crClient.id_serial && (
+                        <div className="min-w-0">
+                          <Label className="text-muted-foreground text-xs">ID Serial No.</Label>
+                          <p className="font-medium break-words">{crClient.id_serial}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Other Identifications (SHA Number, Household Number, etc.) */}
+                    {crClient.other_identifications && crClient.other_identifications.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <Label className="text-muted-foreground text-xs uppercase tracking-wide">Other Identifiers</Label>
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                          {crClient.other_identifications.map((oid, idx) => (
+                            <div key={idx} className="min-w-0 flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/40">
+                              <span className="text-xs text-muted-foreground shrink-0">{oid.identification_type}:</span>
+                              <span className="font-medium break-all">{oid.identification_number}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dependants */}
+                    {crClient.dependants && crClient.dependants.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <Label className="text-muted-foreground text-xs uppercase tracking-wide">
+                          Dependants ({crClient.dependants.reduce((sum, g) => sum + (g.total ?? g.result?.length ?? 0), 0)})
+                        </Label>
+                        <div className="mt-2 space-y-2">
+                          {crClient.dependants.flatMap((group) =>
+                            (group.result ?? []).map((dep, idx) => (
+                              <div key={dep.id ?? idx} className="rounded-md border px-3 py-2 bg-muted/40 text-sm">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                  <span className="font-medium">
+                                    {[dep.first_name, dep.middle_name, dep.last_name].filter(Boolean).join(' ')}
+                                  </span>
+                                  {group.relationship && (
+                                    <Badge variant="outline" className="text-xs">{group.relationship}</Badge>
+                                  )}
+                                  {dep.gender && (
+                                    <span className="text-xs text-muted-foreground">{dep.gender}</span>
+                                  )}
+                                  {dep.date_of_birth && (
+                                    <span className="text-xs text-muted-foreground">DOB: {dep.date_of_birth}</span>
+                                  )}
+                                  {onAddPersonToForm && (
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-6 w-6 ml-auto shrink-0"
+                                      title={`Use dependant ${[dep.first_name, dep.last_name].filter(Boolean).join(' ')} to populate form`}
+                                      onClick={() => {
+                                        const person = buildShaPayloadPerson(
+                                          dep as unknown as Record<string, unknown>,
+                                          'dependent',
+                                          typeof group.relationship === 'string' ? group.relationship : undefined
+                                        );
+                                        handleAddPerson(person);
+                                      }}
+                                    >
+                                      <UserPlus className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                                {dep.identification_number && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {dep.identification_type}: {dep.identification_number}
+                                  </p>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* CR Loading indicator */}
+              {crStatus === 'loading' && status === 'success' && !crClient && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading Client Registry demographics...
+                </div>
+              )}
+
+              {/* Full eligibility data panel (expand for deep details) */}
+              {eligibility && (status === 'success' || eligibility.error) && (
+                <EligibilityDataPanel
+                  eligibility={eligibility}
+                  crClient={crClient}
+                  onAddPersonToForm={onAddPersonToForm ? handleAddPerson : undefined}
+                />
+              )}
+
             </div>
           </ScrollArea>
         </div>

@@ -632,6 +632,83 @@ class TestSHAEligibilityServiceResponseParsing:
         assert result["possible_solution"] == "Contribution Required."
         assert result["coverage_end_date"] == "2025-08-10"
 
+    @override_settings(SHA_AUTH_MODE="ilm")
+    def test_direct_eligibility_prefers_primary_member_type_over_beneficiary(self):
+        """When both PRIMARY and BENEFICIARY schemes exist, employer should come from PRIMARY."""
+        from hmis.apps.billing.services.sha_eligibility import SHAEligibilityService
+
+        service = SHAEligibilityService()
+        mixed_member_response = {
+            "requestIdType": 2,
+            "requestIdNumber": "34349545",
+            "memberCrNumber": "CR4237486648862-4",
+            "fullName": "ELOSSY KAWIRA",
+            "statusCode": "10",
+            "statusDesc": "Member found. Check Schemes for coverages",
+            "schemes": [
+                {
+                    "schemeName": "SHIF",
+                    "schemeId": 2,
+                    "memberType": "PRIMARY",
+                    "policy": {
+                        "startDate": "2025-09-09",
+                        "endDate": "2026-09-09",
+                        "number": "SHIF-DFA9WY5U",
+                    },
+                    "coverage": {
+                        "startDate": "2025-09-09",
+                        "endDate": "2026-05-10",
+                        "message": "The individual is covered.",
+                        "reason": "Payment is up to Date. ",
+                        "status": "1",
+                    },
+                    "principalContributor": {
+                        "idNumber": "34349545",
+                        "idType": "NATIONAL_ID",
+                        "crNumber": "CR4237486648862-4",
+                        "name": "ELOSSY KAWIRA",
+                        "relationship": "",
+                        "employmentType": "EMPLOYED",
+                        "employerDetails": {"name": "PENDA HEALTH LTD"},
+                    },
+                },
+                {
+                    "schemeName": "SHIF",
+                    "schemeId": 2,
+                    "memberType": "BENEFICIARY",
+                    "policy": {
+                        "startDate": "2025-11-22",
+                        "endDate": "2026-11-22",
+                        "number": "SHIF-1RJ7R72Y",
+                    },
+                    "coverage": {
+                        "startDate": "2024-11-22",
+                        "endDate": "2026-05-10",
+                        "message": "The individual is covered.",
+                        "reason": "Payment is up to Date. ",
+                        "status": "1",
+                    },
+                    "principalContributor": {
+                        "idNumber": "32052800",
+                        "idType": "NATIONAL_ID",
+                        "crNumber": "CR0349448859716-9",
+                        "name": "JUMA NASKAI",
+                        "relationship": "Spouse",
+                        "employmentType": "EMPLOYED",
+                        "employerDetails": {"name": "County Government of Marsabit"},
+                    },
+                },
+            ],
+        }
+
+        with patch.object(service, "_call_api", return_value=mixed_member_response):
+            result = service.check_eligibility_direct("National ID", "34349545")
+
+        assert result["is_eligible"] is True
+        assert result["employer_name"] == "PENDA HEALTH LTD"
+        assert result["primary_scheme_member_type"] == "PRIMARY"
+        assert result["employment_type"] == "EMPLOYED"
+
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("legacy_sha_settings")
