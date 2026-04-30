@@ -105,6 +105,44 @@ class TestInterventionEndpoints:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_add_virtual_claim_line(self, sha_client, sample_sha_claim):
+        with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
+            svc.return_value.add_virtual_claim_line.return_value = _ilm_result({"ok": True})
+            response = sha_client.post(
+                _claim_url(sample_sha_claim, "interventions/virtual-claim-line"),
+                {
+                    "intervention_code": "PHC-001",
+                    "service_name": "Consultation",
+                    "unit_price": "200.00",
+                    "quantity": "1",
+                    "extra": {"capitation_period": "2026-04"},
+                },
+                format="json",
+            )
+        assert response.status_code == status.HTTP_200_OK
+        svc.return_value.add_virtual_claim_line.assert_called_once()
+        kwargs = svc.return_value.add_virtual_claim_line.call_args.kwargs
+        assert kwargs["intervention_code"] == "PHC-001"
+        assert kwargs["service_name"] == "Consultation"
+        assert kwargs["unit_price"] == "200.00"
+        assert kwargs["extra"] == {"capitation_period": "2026-04"}
+
+    def test_add_virtual_claim_line_requires_code(self, sha_client, sample_sha_claim):
+        response = sha_client.post(
+            _claim_url(sample_sha_claim, "interventions/virtual-claim-line"),
+            {},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_add_virtual_claim_line_rejects_non_object_extra(self, sha_client, sample_sha_claim):
+        response = sha_client.post(
+            _claim_url(sample_sha_claim, "interventions/virtual-claim-line"),
+            {"intervention_code": "PHC-001", "extra": "not-a-dict"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_switch_intervention(self, sha_client, sample_sha_claim):
         with patch("hmis.apps.billing.services.ilm_claim_service.IlmClaimService") as svc:
             svc.return_value.switch_intervention.return_value = _ilm_result({})
