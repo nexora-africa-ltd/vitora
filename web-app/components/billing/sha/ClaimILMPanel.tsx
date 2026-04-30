@@ -17,10 +17,12 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { shaApi } from '@/lib/api/sha';
 import type { IlmCallResult } from '@/lib/schemas/sha.schema';
+import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
 
 type ActionKey =
   | 'startVisit'
   | 'addIntervention'
+  | 'addVirtualClaimLine'
   | 'addDiagnosis'
   | 'preview'
   | 'submit'
@@ -28,11 +30,16 @@ type ActionKey =
 
 interface ClaimILMPanelProps {
   claimId: number;
+  /**
+   * Routed DHA HIE flow info. When omitted, behaves as the legacy SHIF panel
+   * (all sections visible, standard add-intervention endpoint).
+   */
+  flow?: ClaimFlowInfo;
   /** Called after any action finishes so the parent can refetch the claim. */
   onChange?: () => void;
 }
 
-export function ClaimILMPanel({ claimId, onChange }: ClaimILMPanelProps) {
+export function ClaimILMPanel({ claimId, flow, onChange }: ClaimILMPanelProps) {
   const [busy, setBusy] = useState<ActionKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<IlmCallResult | null>(null);
@@ -61,12 +68,26 @@ export function ClaimILMPanel({ claimId, onChange }: ClaimILMPanelProps) {
     }
   }
 
+  // Flow-driven UI rules (default to SHIF when caller omits the prop).
+  const useVirtualLine = flow?.addLineEndpoint === 'add_virtual_claim_line';
+  const showStartVisit = flow ? flow.requiresConsent : true;
+  const startVisitTitle = flow?.flow === 'eccif' ? 'Open Emergency Claim' : 'Start Visit';
+  const addInterventionTitle = useVirtualLine
+    ? 'Add Virtual Claim Line (PHC)'
+    : 'Add Intervention';
+  const panelTitle = flow
+    ? `DHA HIE Workflow \u2014 ${flow.badgeLabel}`
+    : 'DHA HIE Middleware (ILM) Workflow';
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">DHA HIE Middleware (ILM) Workflow</CardTitle>
+        <CardTitle className="text-base">{panelTitle}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {flow && (
+          <p className="text-xs text-muted-foreground">{flow.description}</p>
+        )}
         {error && (
           <Alert variant="destructive">
             <AlertTitle>ILM call failed</AlertTitle>
@@ -85,57 +106,67 @@ export function ClaimILMPanel({ claimId, onChange }: ClaimILMPanelProps) {
           </Alert>
         )}
 
-        {/* Start Visit */}
-        <section className="space-y-2">
-          <h3 className="text-sm font-medium">Start Visit</h3>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <div>
-              <Label htmlFor="ilm-otp">OTP</Label>
-              <Input id="ilm-otp" value={otp} onChange={(e) => setOtp(e.target.value)} />
+        {/* Start Visit (skipped for ECCIF \u2014 emergency, no consent) */}
+        {showStartVisit ? (
+          <section className="space-y-2">
+            <h3 className="text-sm font-medium">{startVisitTitle}</h3>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="ilm-otp">OTP</Label>
+                <Input id="ilm-otp" value={otp} onChange={(e) => setOtp(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="ilm-patient">DHA patient_id</Label>
+                <Input
+                  id="ilm-patient"
+                  value={patientExternalId}
+                  onChange={(e) => setPatientExternalId(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ilm-codes">Intervention codes (csv)</Label>
+                <Input
+                  id="ilm-codes"
+                  value={interventionCodes}
+                  onChange={(e) => setInterventionCodes(e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="ilm-patient">DHA patient_id</Label>
-              <Input
-                id="ilm-patient"
-                value={patientExternalId}
-                onChange={(e) => setPatientExternalId(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="ilm-codes">Intervention codes (csv)</Label>
-              <Input
-                id="ilm-codes"
-                value={interventionCodes}
-                onChange={(e) => setInterventionCodes(e.target.value)}
-              />
-            </div>
-          </div>
-          <Button
-            size="sm"
-            disabled={busy !== null}
-            onClick={() =>
-              run('startVisit', () =>
-                shaApi.ilmStartVisit(claimId, {
-                  otp,
-                  patient_id: patientExternalId,
-                  intervention_codes: interventionCodes
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                  service_type: 'OUTPATIENT',
-                }),
-              )
-            }
-          >
-            {busy === 'startVisit' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-            Start Visit
-          </Button>
-        </section>
+            <Button
+              size="sm"
+              disabled={busy !== null}
+              onClick={() =>
+                run('startVisit', () =>
+                  shaApi.ilmStartVisit(claimId, {
+                    otp,
+                    patient_id: patientExternalId,
+                    intervention_codes: interventionCodes
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                    service_type: 'OUTPATIENT',
+                  }),
+                )
+              }
+            >
+              {busy === 'startVisit' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+              {startVisitTitle}
+            </Button>
+          </section>
+        ) : (
+          <Alert>
+            <AlertTitle>Emergency claim \u2014 consent skipped</AlertTitle>
+            <AlertDescription>
+              ECCIF flow allows claims to be opened without an initial consent token.
+              Use the Open Emergency Claim action elsewhere in the workflow.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Add Intervention / Diagnosis */}
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <h3 className="text-sm font-medium">Add Intervention</h3>
+            <h3 className="text-sm font-medium">{addInterventionTitle}</h3>
             <Input
               placeholder="Intervention code"
               value={interventionCode}
@@ -144,17 +175,32 @@ export function ClaimILMPanel({ claimId, onChange }: ClaimILMPanelProps) {
             <Button
               size="sm"
               variant="outline"
-              disabled={busy !== null}
-              onClick={() =>
-                run('addIntervention', () =>
+              disabled={busy !== null || !interventionCode}
+              onClick={() => {
+                if (useVirtualLine) {
+                  return run('addVirtualClaimLine', () =>
+                    shaApi.ilmAddVirtualClaimLine(claimId, {
+                      intervention_code: interventionCode,
+                    }),
+                  );
+                }
+                return run('addIntervention', () =>
                   shaApi.ilmAddIntervention(claimId, {
                     intervention_code: interventionCode,
                   }),
-                )
-              }
+                );
+              }}
             >
+              {(busy === 'addIntervention' || busy === 'addVirtualClaimLine') && (
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              )}
               Add
             </Button>
+            {useVirtualLine && (
+              <p className="text-xs text-muted-foreground">
+                PHC interventions are submitted as virtual claim lines. Pre-authorization is not required.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

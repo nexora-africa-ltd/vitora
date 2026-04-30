@@ -58,6 +58,7 @@ import {
 import type {
   IlmStartVisitRequest,
   IlmInterventionRequest,
+  IlmVirtualClaimLineRequest,
   IlmSwitchInterventionRequest,
   IlmAddDiagnosisRequest,
   IlmRemoveDiagnosisRequest,
@@ -621,6 +622,24 @@ async function ilmRestoreIntervention(claimId: number, body: IlmInterventionRequ
 async function ilmRetireIntervention(claimId: number, body: IlmInterventionRequest): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/interventions/retire/`, body);
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmRetireIntervention' });
+}
+
+/**
+ * Add a PHC virtual claim line — DHA HIE user-journey Scenario C.
+ * Used by Level 2/3 facilities for capitation / basic FFS interventions
+ * (no pre-authorization).
+ */
+async function ilmAddVirtualClaimLine(
+  claimId: number,
+  body: IlmVirtualClaimLineRequest,
+): Promise<IlmCallResult> {
+  const response = await apiClient.post(
+    `${ilmBase(claimId)}/interventions/virtual-claim-line/`,
+    body,
+  );
+  return parseResponse(IlmCallResultSchema, response.data, {
+    context: 'shaApi.ilmAddVirtualClaimLine',
+  });
 }
 
 async function ilmAddDiagnosis(claimId: number, body: IlmAddDiagnosisRequest): Promise<IlmCallResult> {
@@ -1227,6 +1246,7 @@ export const shaApi = {
   // DHA HIE Middleware (ILM) — per-action claim workflow
   ilmStartVisit,
   ilmAddIntervention,
+  ilmAddVirtualClaimLine,
   ilmSwitchIntervention,
   ilmRestoreIntervention,
   ilmRetireIntervention,

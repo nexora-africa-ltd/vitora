@@ -11,6 +11,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PatientForm } from '@/components/patients/patient-form';
 import { PatientRegistrationSuccess } from '@/components/patients/patient-registration-success';
 import { SHAVerificationModal } from '@/components/billing/sha';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { patientsApi } from '@/lib/api/patients';
@@ -57,6 +67,10 @@ export default function NewPatientPage() {
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
   const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
   const [selectedShaPerson, setSelectedShaPerson] = useState<SHAPayloadPerson | null>(null);
+  // Holds a SHA person waiting for ineligibility confirmation before being
+  // pushed into the patient form.
+  const [pendingIneligiblePerson, setPendingIneligiblePerson] =
+    useState<SHAPayloadPerson | null>(null);
 
   // Generate idempotency key for form submission (Sprint 1.7)
   const idempotencyKey = useMemo(() => getOrCreateIdempotencyKey(IDEMPOTENCY_FORM_ID), []);
@@ -76,12 +90,33 @@ export default function NewPatientPage() {
   }, []);
 
   const handleAddShaPersonToForm = useCallback((person: SHAPayloadPerson) => {
+    // Ineligible → confirm with the user that an alternative payment method
+    // (cash) will be applied before populating the form.
+    if (eligibility && eligibility.is_eligible === false) {
+      setPendingIneligiblePerson(person);
+      return;
+    }
     setSelectedShaPerson(person);
     toast({
       title: 'Patient form updated',
       description: `Loaded ${[person.first_name, person.last_name].filter(Boolean).join(' ') || 'selected member'} into the registration form.`,
     });
-  }, [toast]);
+  }, [eligibility, toast]);
+
+  const handleConfirmIneligible = useCallback(() => {
+    if (!pendingIneligiblePerson) return;
+    const person = pendingIneligiblePerson;
+    setPendingIneligiblePerson(null);
+    setSelectedShaPerson(person);
+    toast({
+      title: 'Patient form updated',
+      description: `Loaded ${[person.first_name, person.last_name].filter(Boolean).join(' ') || 'selected member'} — payment method set to Cash because SHA coverage is unavailable.`,
+    });
+  }, [pendingIneligiblePerson, toast]);
+
+  const handleCancelIneligible = useCallback(() => {
+    setPendingIneligiblePerson(null);
+  }, []);
 
   const handleSubmit = async (data: PatientCreateData) => {
     try {
@@ -323,9 +358,34 @@ export default function NewPatientPage() {
             isLoading={createPatient.isPending}
             prePopulatedClient={crClient}
             prePopulatedShaPerson={selectedShaPerson}
+            prePopulatedShaEligibility={eligibility}
           />
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={pendingIneligiblePerson !== null}
+        onOpenChange={(open) => {
+          if (!open) handleCancelIneligible();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>SHA coverage not available</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingIneligiblePerson
+                ? `${[pendingIneligiblePerson.first_name, pendingIneligiblePerson.last_name].filter(Boolean).join(' ') || 'This member'} is not currently covered by SHA${eligibility?.reason ? ` (${eligibility.reason})` : ''}. The patient form will be populated with their details and the payment method will be set to Cash. You can change the payment method later if needed.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelIneligible}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmIneligible}>
+              Continue with Cash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

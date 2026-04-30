@@ -85,6 +85,7 @@ export type CRLookupStatus = 'idle' | 'searching' | 'found' | 'not_found' | 'err
 export type EligibilityStatus =
   | 'checking'
   | 'eligible'
+  | 'eligible_with_caveats'
   | 'ineligible'
   | 'expired'
   | 'pending'
@@ -162,6 +163,15 @@ export interface EligibilityCheckResponse {
   verified_name?: string;
   checked_at: string;
   message?: string;
+  // Facility-aware coverage (DHA HIE).
+  // `eligible_schemes` lists the schemes the member is actively covered under
+  // (uppercase: 'SHIF', 'UHC', ...).
+  // `billable_schemes` lists what the requesting facility's KEPH level can claim against.
+  // `coverage_caveat` is populated when the two don't intersect (member must self-pay).
+  eligible_schemes?: string[];
+  billable_schemes?: string[];
+  coverage_caveat?: string;
+  coverage_blocked?: boolean;
 }
 
 // Direct eligibility check (without SHAMember record)
@@ -302,6 +312,12 @@ export interface EligibilityState {
   memberName?: string;
   checkedAt?: string;
   errorMessage?: string;
+  // Facility-aware coverage caveat surfaced when the member's covered schemes
+  // don't match what the requesting facility's KEPH level can bill against.
+  coverageCaveat?: string;
+  eligibleSchemes?: string[];
+  billableSchemes?: string[];
+  coverageBlocked?: boolean;
 }
 
 // ============================================================================

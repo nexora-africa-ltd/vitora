@@ -451,6 +451,15 @@ class SHAEligibilityVerifySerializer(serializers.Serializer):
     ineligibility_reason = serializers.CharField(allow_blank=True)
     error_code = serializers.CharField(allow_blank=True)
     error_message = serializers.CharField(allow_blank=True)
+    # Facility-aware coverage fields (DHA HIE).
+    eligible_schemes = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list
+    )
+    billable_schemes = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list
+    )
+    coverage_caveat = serializers.CharField(required=False, allow_blank=True, default="")
+    coverage_blocked = serializers.BooleanField(required=False, default=False)
 
 
 class SHAClaimDashboardSerializer(serializers.Serializer):
