@@ -158,7 +158,10 @@ function buildQueryString<T extends object>(params: T): string {
 async function fetchFromClientRegistry(
   data: ClientRegistryFetchRequest
 ): Promise<ClientRegistryFetchResponse> {
-  const queryString = buildQueryString(data);
+  // Backend uses 'client_number' query param, frontend type uses 'cr_number'
+  const { cr_number, ...rest } = data;
+  const params = cr_number ? { ...rest, client_number: cr_number } : rest;
+  const queryString = buildQueryString(params);
   const response = await apiClient.get(`/api/billing/client-registry/fetch/?${queryString}`);
   return parseResponse(ClientRegistryFetchResponseSchema, response.data, { context: 'shaApi.fetchFromClientRegistry' });
 }

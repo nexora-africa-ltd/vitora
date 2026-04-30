@@ -2928,6 +2928,10 @@ class StartVisitView(APIView):
                 "estimated_days_of_admission": serializers.IntegerField(
                     required=False, help_text="Expected length of stay in days"
                 ),
+                "encounter_id": serializers.IntegerField(
+                    required=False,
+                    help_text="Encounter ID to link consent token to (from check-in)",
+                ),
             },
         ),
         responses={
@@ -2964,6 +2968,7 @@ class StartVisitView(APIView):
         service_type = request.data.get("service_type", "outpatient")
         admission_date = request.data.get("admission_date", "")
         estimated_days = request.data.get("estimated_days_of_admission", 0)
+        encounter_id = request.data.get("encounter_id")
 
         if not consent_id:
             return Response(
@@ -2984,6 +2989,16 @@ class StartVisitView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # Resolve encounter if provided (links consent token to encounter)
+        encounter = None
+        if encounter_id:
+            import contextlib
+
+            from hmis.apps.encounters.models import Encounter
+
+            with contextlib.suppress(Encounter.DoesNotExist):
+                encounter = Encounter.objects.get(id=encounter_id, facility=facility)
+
         try:
             service = SHAConsentService()
             visit_data = service.start_visit(
@@ -2993,6 +3008,7 @@ class StartVisitView(APIView):
                 service_type=service_type,
                 admission_date=admission_date,
                 estimated_days_of_admission=int(estimated_days),
+                encounter=encounter,
             )
 
             consent.refresh_from_db()

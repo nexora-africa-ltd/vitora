@@ -254,6 +254,8 @@ export function RouteToClinicDialog({
             destinationUrl: `/clinics/${selectedClinic.id}/queue`,
             queuePosition: visit.queue_number,
             skippedTriage: true,
+            patientId: patient.id,
+            encounterId: (visit as { encounter_id?: number | null }).encounter_id ?? null,
           };
         }
       }
