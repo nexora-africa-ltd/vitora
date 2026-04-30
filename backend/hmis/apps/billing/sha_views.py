@@ -733,6 +733,40 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
+    @action(detail=True, methods=["post"], url_path="ilm/interventions/virtual-claim-line")
+    def ilm_add_virtual_claim_line(self, request, pk=None):
+        """Add a PHC virtual claim line (DHA HIE user-journey Scenario C).
+
+        POST /api/sha/claims/{id}/ilm/interventions/virtual-claim-line/
+        Body: {"intervention_code": "...", optional "service_name",
+        "service_identifier", "unit_price", "quantity", "scheme_code", "extra"}
+        """
+        claim = self.get_object()
+        d = request.data
+        code = d.get("intervention_code")
+        if not code:
+            return Response(
+                {"error": "intervention_code required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        extra = d.get("extra")
+        if extra is not None and not isinstance(extra, dict):
+            return Response({"error": "extra must be an object"}, status=400)
+        try:
+            result = self._ilm_service().add_virtual_claim_line(
+                claim,
+                intervention_code=code,
+                service_name=d.get("service_name"),
+                service_identifier=d.get("service_identifier"),
+                unit_price=d.get("unit_price"),
+                quantity=d.get("quantity"),
+                scheme_code=d.get("scheme_code"),
+                extra=extra,
+                user=request.user,
+            )
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
     @action(detail=True, methods=["post"], url_path="ilm/diagnoses/add")
     def ilm_add_diagnosis(self, request, pk=None):
         claim = self.get_object()

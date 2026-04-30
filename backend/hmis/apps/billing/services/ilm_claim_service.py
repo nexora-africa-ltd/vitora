@@ -68,6 +68,10 @@ INTERVENTIONS_PATH = "/api/v1/claims/interventions"
 INTERVENTION_SWITCH_PATH = "/api/v1/claims/interventions/switch"
 INTERVENTION_RESTORE_PATH = "/api/v1/claims/interventions/restore"
 INTERVENTION_RETIRE_PATH = "/api/v1/claims/interventions/retire"
+# PHC (Primary Healthcare Fund) — Scenario C in DHA HIE user-journey spec.
+# Level 2/3 facilities use a "virtual claim line" path for capitation /
+# basic fee-for-service interventions (no preauth).
+VIRTUAL_CLAIM_LINE_PATH = "/api/v1/claims/add_virtual_claim_line"
 DIAGNOSES_PATH = "/api/v1/claims/diagnoses"
 LINES_PATH = "/api/v1/claims/lines"
 LINES_EDIT_PATH = "/api/v1/claims/lines/edit"
@@ -267,6 +271,53 @@ class IlmClaimService:
         )
         self._emit_intervention_event(
             claim, result, action="retired", intervention_code=intervention_code
+        )
+        return result
+
+    # -----------------------------------------------------------------
+    # PHC virtual claim line (DHA user-journey Scenario C)
+    # -----------------------------------------------------------------
+
+    def add_virtual_claim_line(
+        self,
+        claim: Any,
+        *,
+        intervention_code: str,
+        service_name: str | None = None,
+        service_identifier: str | None = None,
+        unit_price: str | None = None,
+        quantity: str | None = None,
+        scheme_code: str | None = None,
+        extra: dict[str, Any] | None = None,
+        user: Any = None,
+    ) -> IlmClaimResult:
+        """Add a PHC (Primary Healthcare Fund) virtual claim line.
+
+        Used by Level 2/3 facilities for capitation and basic
+        fee-for-service interventions. Skips preauthorization — direct
+        submission after consent is sufficient. See DHA HIE user-journey
+        Scenario C.
+        """
+        body: dict[str, Any] = {"intervention_code": intervention_code}
+        if service_name is not None:
+            body["service_name"] = service_name
+        if service_identifier is not None:
+            body["service_identifier"] = service_identifier
+        if unit_price is not None:
+            body["unit_price"] = unit_price
+        if quantity is not None:
+            body["quantity"] = quantity
+        if scheme_code is not None:
+            body["scheme_code"] = scheme_code
+        if extra:
+            body.update(extra)
+        result = self._post_with_consent(claim, VIRTUAL_CLAIM_LINE_PATH, body, user=user)
+        self._emit_intervention_event(
+            claim,
+            result,
+            action="virtual_line_added",
+            intervention_code=intervention_code,
+            phc=True,
         )
         return result
 

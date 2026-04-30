@@ -31,6 +31,7 @@ from hmis.apps.billing.services.ilm_claim_service import (
     LINES_PATH,
     PREVIEW_PATH,
     SUBMIT_PATH,
+    VIRTUAL_CLAIM_LINE_PATH,
     VISIT_PATH,
     ClaimLine,
     CloseClaimParams,
@@ -252,6 +253,40 @@ class TestInterventions:
     def test_retire_intervention(self, service, mock_client, claim, consent):
         service.retire_intervention(claim, "SHA-12-001")
         assert mock_client.post.call_args[0][0] == INTERVENTION_RETIRE_PATH
+
+
+@pytest.mark.django_db
+class TestVirtualClaimLine:
+    """PHC virtual claim line — DHA HIE user-journey Scenario C."""
+
+    def test_minimal_payload(self, service, mock_client, claim, consent):
+        service.add_virtual_claim_line(claim, intervention_code="PHC-001")
+        path = mock_client.post.call_args[0][0]
+        body = mock_client.post.call_args.kwargs["json_body"]
+        assert path == VIRTUAL_CLAIM_LINE_PATH
+        assert body == {"consent_token": "CT-TOKEN-XYZ", "intervention_code": "PHC-001"}
+        assert mock_client.post.call_args.kwargs["consent_token"] == "CT-TOKEN-XYZ"
+
+    def test_full_payload(self, service, mock_client, claim, consent):
+        service.add_virtual_claim_line(
+            claim,
+            intervention_code="PHC-002",
+            service_name="Consultation",
+            service_identifier="SVC-1",
+            unit_price="200.00",
+            quantity="1",
+            scheme_code="PHC",
+            extra={"capitation_period": "2026-04"},
+        )
+        body = mock_client.post.call_args.kwargs["json_body"]
+        assert body["intervention_code"] == "PHC-002"
+        assert body["service_name"] == "Consultation"
+        assert body["service_identifier"] == "SVC-1"
+        assert body["unit_price"] == "200.00"
+        assert body["quantity"] == "1"
+        assert body["scheme_code"] == "PHC"
+        assert body["capitation_period"] == "2026-04"
+        assert body["consent_token"] == "CT-TOKEN-XYZ"
 
 
 # ---------------------------------------------------------------------------
