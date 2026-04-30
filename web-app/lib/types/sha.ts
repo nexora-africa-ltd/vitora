@@ -10,28 +10,66 @@
 // Client Registry Types
 // ============================================================================
 
+export interface CROtherIdentification {
+  identification_type: string;
+  identification_number: string;
+}
+
+export interface CRDependantPerson {
+  id?: string | null;
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
+  gender?: string | null;
+  date_of_birth?: string | null;
+  identification_type?: string | null;
+  identification_number?: string | null;
+  other_identifications?: CROtherIdentification[] | null;
+  county?: string | null;
+  sub_county?: string | null;
+  ward?: string | null;
+}
+
+export interface CRDependantGroup {
+  relationship?: string | null;
+  total?: number | null;
+  date_added?: string | null;
+  result?: CRDependantPerson[] | null;
+}
+
 export interface ClientRegistryClient {
   client_number: string;
   first_name: string;
   last_name: string;
-  middle_name?: string;
+  middle_name?: string | null;
   date_of_birth: string;
-  gender: 'M' | 'F' | 'O';
-  national_id?: string;
-  huduma_number?: string;
-  passport_number?: string;
-  alien_id?: string;
-  kra_pin?: string;
-  mandate_number?: string;
-  phone_number?: string;
-  email?: string;
-  county?: string;
-  sub_county?: string;
-  ward?: string;
-  address?: string;
-  citizenship?: string;
-  place_of_birth?: string;
-  is_person_with_disability?: boolean;
+  gender: string;
+  national_id?: string | null;
+  huduma_number?: string | null;
+  passport_number?: string | null;
+  alien_id?: string | null;
+  kra_pin?: string | null;
+  mandate_number?: string | null;
+  phone_number?: string | null;
+  email?: string | null;
+  county?: string | null;
+  sub_county?: string | null;
+  ward?: string | null;
+  address?: string | null;
+  citizenship?: string | null;
+  place_of_birth?: string | null;
+  is_person_with_disability?: boolean | null;
+  // Optional extras surfaced via ILM /api/v1/patients
+  civil_status?: string | null;
+  employment_type?: string | null;
+  village_estate?: string | null;
+  country?: string | null;
+  zip_code?: string | null;
+  id_serial?: string | null;
+  // Nested: other identifiers (SHA Number, Household Number, etc.)
+  other_identifications?: CROtherIdentification[] | null;
+  // Nested: dependants
+  dependants?: CRDependantGroup[] | null;
 }
 
 export interface ClientRegistryFetchRequest {

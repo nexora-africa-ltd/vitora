@@ -75,34 +75,74 @@ export const MemberStatusSchema = z.enum([
 ]);
 
 // Use SHAGenderSchema internally to avoid conflict with patient.schema GenderSchema
-const SHAGenderSchema = z.enum(['M', 'F', 'O']);
+const SHAGenderSchema = z.string();
 
 // =============================================================================
 // CLIENT REGISTRY SCHEMAS
 // =============================================================================
 
+// Nested: other identification documents (SHA Number, Household Number, etc.)
+export const CROtherIdentificationSchema = z.object({
+  identification_type: z.string(),
+  identification_number: z.string(),
+});
+
+// Nested: dependant record from CR
+export const CRDependantPersonSchema = z.object({
+  id: z.string().nullish(),
+  first_name: z.string().nullish(),
+  middle_name: z.string().nullish(),
+  last_name: z.string().nullish(),
+  gender: z.string().nullish(),
+  date_of_birth: z.string().nullish(),
+  identification_type: z.string().nullish(),
+  identification_number: z.string().nullish(),
+  other_identifications: z.array(CROtherIdentificationSchema).nullish(),
+  county: z.string().nullish(),
+  sub_county: z.string().nullish(),
+  ward: z.string().nullish(),
+});
+
+export const CRDependantGroupSchema = z.object({
+  relationship: z.string().nullish(),
+  total: z.number().nullish(),
+  date_added: z.string().nullish(),
+  result: z.array(CRDependantPersonSchema).nullish(),
+});
+
 export const ClientRegistryClientSchema = z.object({
   client_number: z.string(),
   first_name: z.string(),
   last_name: z.string(),
-  middle_name: z.string().optional(),
+  middle_name: z.string().nullish(),
   date_of_birth: z.string(),
   gender: SHAGenderSchema,
-  national_id: z.string().optional(),
-  huduma_number: z.string().optional(),
-  passport_number: z.string().optional(),
-  alien_id: z.string().optional(),
-  kra_pin: z.string().optional(),
-  mandate_number: z.string().optional(),
-  phone_number: z.string().optional(),
-  email: z.string().optional(),
-  county: z.string().optional(),
-  sub_county: z.string().optional(),
-  ward: z.string().optional(),
-  address: z.string().optional(),
-  citizenship: z.string().optional(),
-  place_of_birth: z.string().optional(),
-  is_person_with_disability: z.boolean().optional(),
+  national_id: z.string().nullish(),
+  huduma_number: z.string().nullish(),
+  passport_number: z.string().nullish(),
+  alien_id: z.string().nullish(),
+  kra_pin: z.string().nullish(),
+  mandate_number: z.string().nullish(),
+  phone_number: z.string().nullish(),
+  email: z.string().nullish(),
+  county: z.string().nullish(),
+  sub_county: z.string().nullish(),
+  ward: z.string().nullish(),
+  address: z.string().nullish(),
+  citizenship: z.string().nullish(),
+  place_of_birth: z.string().nullish(),
+  is_person_with_disability: z.boolean().nullish(),
+  // Optional extras surfaced via ILM /api/v1/patients
+  civil_status: z.string().nullish(),
+  employment_type: z.string().nullish(),
+  village_estate: z.string().nullish(),
+  country: z.string().nullish(),
+  zip_code: z.string().nullish(),
+  id_serial: z.string().nullish(),
+  // Nested: other identifiers (SHA Number, Household Number, etc.)
+  other_identifications: z.array(CROtherIdentificationSchema).nullish(),
+  // Nested: dependants
+  dependants: z.array(CRDependantGroupSchema).nullish(),
 });
 
 export type ClientRegistryClientSchemaType = z.infer<typeof ClientRegistryClientSchema>;
