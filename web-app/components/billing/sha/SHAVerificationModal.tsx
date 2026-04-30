@@ -406,6 +406,20 @@ function extractIdentifierByLabel(
   return typeof match?.identification_number === 'string' ? match.identification_number : undefined;
 }
 
+/** Map SHA numeric ID type codes to human-readable identification type strings */
+function mapShaIdTypeCode(code: unknown): string | undefined {
+  const SHA_ID_TYPE_CODES: Record<string, string> = {
+    '1': 'passport',
+    '2': 'national id',
+    '3': 'alien id',
+    '4': 'mandate number',
+    '5': 'birth certificate',
+  };
+  if (typeof code === 'string') return SHA_ID_TYPE_CODES[code];
+  if (typeof code === 'number') return SHA_ID_TYPE_CODES[String(code)];
+  return undefined;
+}
+
 function buildShaPayloadPerson(
   person: Record<string, unknown>,
   source: SHAPayloadPerson['source'],
@@ -501,9 +515,11 @@ function DetailSection({
 
 function EligibilityDataPanel({
   eligibility,
+  crClient,
   onAddPersonToForm,
 }: {
   eligibility: DirectEligibilityCheckResponse;
+  crClient?: ClientRegistryClient | null;
   onAddPersonToForm?: (person: SHAPayloadPerson) => void;
 }) {
   const raw = eligibility.raw_response ?? {};
@@ -645,6 +661,28 @@ function EligibilityDataPanel({
         </DetailSection>
       )}
 
+      {crClient && (
+        <DetailSection title="Patient Profile (Client Registry)" icon={<UserRound className="h-4 w-4" />}>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <DetailItem label="First Name" value={crClient.first_name} />
+            <DetailItem label="Middle Name" value={crClient.middle_name} />
+            <DetailItem label="Last Name" value={crClient.last_name} />
+            <DetailItem label="Gender" value={crClient.gender} />
+            <DetailItem label="Date of Birth" value={crClient.date_of_birth} />
+            <DetailItem label="National ID" value={crClient.national_id} />
+            <DetailItem label="CR Number" value={crClient.client_number} />
+            <DetailItem label="Phone" value={crClient.phone_number} />
+            <DetailItem label="Email" value={crClient.email} />
+            <DetailItem label="County" value={crClient.county} />
+            <DetailItem label="Sub County" value={crClient.sub_county} />
+            <DetailItem label="Ward" value={crClient.ward} />
+            <DetailItem label="Address" value={crClient.address} />
+            <DetailItem label="Place of Birth" value={crClient.place_of_birth} />
+            <DetailItem label="Citizenship" value={crClient.citizenship} />
+          </div>
+        </DetailSection>
+      )}
+
       <DetailSection title="Member Details" icon={<UserRound className="h-4 w-4" />}>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <DetailItem label="Full Name" value={eligibility.full_name} />
@@ -670,14 +708,36 @@ function EligibilityDataPanel({
             <Button
               type="button"
               onClick={() => {
-                // Merge eligibility-level fields into rawPatient as fallbacks
-                // (the raw_response often lacks first_name/last_name/gender/dob individually)
+                // Merge sources by precedence: rawPatient (SHA) → CR client → eligibility top-level.
+                // CR provides the cleanest demographic data (split names, contact, address);
+                // eligibility raw_response often only has aggregated fields.
                 const merged: Record<string, unknown> = {
                   ...rawPatient,
-                  gender: rawPatient.gender ?? eligibility.gender,
-                  date_of_birth: rawPatient.date_of_birth ?? eligibility.date_of_birth,
+                  first_name: rawPatient.first_name ?? crClient?.first_name,
+                  middle_name: rawPatient.middle_name ?? crClient?.middle_name,
+                  last_name: rawPatient.last_name ?? crClient?.last_name,
+                  gender: rawPatient.gender ?? crClient?.gender ?? eligibility.gender,
+                  date_of_birth:
+                    rawPatient.date_of_birth
+                    ?? (rawPatient.dateOfBirth as string)
+                    ?? crClient?.date_of_birth
+                    ?? eligibility.date_of_birth,
+                  phone: rawPatient.phone ?? crClient?.phone_number,
+                  county: rawPatient.county ?? crClient?.county,
+                  sub_county: rawPatient.sub_county ?? crClient?.sub_county,
+                  ward: rawPatient.ward ?? crClient?.ward,
+                  citizenship: rawPatient.citizenship ?? crClient?.citizenship,
+                  place_of_birth: rawPatient.place_of_birth ?? crClient?.place_of_birth,
+                  postal_address: rawPatient.postal_address ?? crClient?.address,
                   sha_number: rawPatient.sha_number ?? eligibility.sha_number,
-                  identification_number: rawPatient.identification_number ?? (rawPatient as Record<string, unknown>).id_number,
+                  identification_type:
+                    rawPatient.identification_type
+                    ?? mapShaIdTypeCode(rawPatient.requestIdType)
+                    ?? 'national id',
+                  identification_number:
+                    rawPatient.identification_number
+                    ?? (rawPatient.requestIdNumber as string)
+                    ?? crClient?.national_id,
                 };
                 onAddPersonToForm(buildShaPayloadPerson(merged, 'principal', undefined, eligibility.full_name ?? undefined));
               }}
@@ -1122,12 +1182,14 @@ interface EligibilityCheckTabProps {
   defaultNationalId?: string;
   onEligibilityVerified?: (eligibility: DirectEligibilityCheckResponse) => void;
   onEligibilityPreviewChange?: (eligibility: DirectEligibilityCheckResponse | null) => void;
+  onCRClientChange?: (client: ClientRegistryClient | null) => void;
 }
 
 function EligibilityCheckTab({
   defaultNationalId,
   onEligibilityVerified,
   onEligibilityPreviewChange,
+  onCRClientChange,
 }: EligibilityCheckTabProps) {
   const [identifierType, setIdentifierType] = useState<string>('National ID');
   const [identifierValue, setIdentifierValue] = useState(defaultNationalId || '');
@@ -1180,6 +1242,23 @@ function EligibilityCheckTab({
       } else {
         setStatus('success');
         onEligibilityVerified?.(response);
+        // Best-effort CR fetch in parallel: enriches the patient form with full
+        // demographics (DOB, contact, address) that the eligibility raw_response
+        // does not carry. Failures are swallowed so eligibility flow continues.
+        if (onCRClientChange) {
+          onCRClientChange(null);
+          shaApi
+            .fetchFromClientRegistry({
+              identification_type: identifierType,
+              identification_number: trimmedIdentifierValue,
+            })
+            .then((cr) => {
+              if (cr.found && cr.client) onCRClientChange(cr.client);
+            })
+            .catch((err) => {
+              console.warn('CR enrichment failed (non-fatal):', err);
+            });
+        }
       }
     } catch (error) {
       console.error('Eligibility check failed:', error);
@@ -1189,7 +1268,7 @@ function EligibilityCheckTab({
       setErrorMessage(presentation.message);
       setStatus('error');
     }
-  }, [identifierType, identifierValue, onEligibilityPreviewChange, onEligibilityVerified]);
+  }, [identifierType, identifierValue, onEligibilityPreviewChange, onEligibilityVerified, onCRClientChange]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -1523,6 +1602,7 @@ export function SHAVerificationModal({
   const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
 
   const [previewEligibility, setPreviewEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
+  const [previewCRClient, setPreviewCRClient] = useState<ClientRegistryClient | null>(null);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -1530,6 +1610,7 @@ export function SHAVerificationModal({
     <Sheet open={isOpen} onOpenChange={(open) => {
       if (!open) {
         setPreviewEligibility(null);
+        setPreviewCRClient(null);
       }
       setIsOpen(open);
     }}>
@@ -1589,11 +1670,16 @@ export function SHAVerificationModal({
                     onEligibilityVerified={(elig) => {
                       onEligibilityVerified?.(elig);
                     }}
+                    onCRClientChange={(client) => {
+                      setPreviewCRClient(client);
+                      if (client) onClientFound?.(client);
+                    }}
                   />
 
                   {previewEligibility && (
                     <EligibilityDataPanel
                       eligibility={previewEligibility}
+                      crClient={previewCRClient}
                       onAddPersonToForm={onAddPersonToForm
                         ? (person) => {
                             onAddPersonToForm(person);
