@@ -338,12 +338,16 @@ class SHAEligibilityService:
             uhc_scheme = None
             for scheme in schemes:
                 scheme_name = scheme.get("schemeName")
+                member_type = (scheme.get("memberType") or "").strip().upper()
                 if isinstance(scheme_name, str):
                     upper_name = scheme_name.strip().upper()
                     if upper_name == "SHIF":
-                        shif_scheme = scheme
+                        # Prefer PRIMARY over BENEFICIARY
+                        if shif_scheme is None or member_type == "PRIMARY":
+                            shif_scheme = scheme
                     elif upper_name == "UHC":
-                        uhc_scheme = scheme
+                        if uhc_scheme is None or member_type == "PRIMARY":
+                            uhc_scheme = scheme
 
                 coverage = (
                     scheme.get("coverage") if isinstance(scheme.get("coverage"), dict) else {}

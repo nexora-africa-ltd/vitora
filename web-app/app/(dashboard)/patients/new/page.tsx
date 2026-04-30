@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, User } from 'lucide-react';
+import { CheckCircle2, Search, User } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Button } from '@/components/ui/button';
@@ -239,25 +239,11 @@ export default function NewPatientPage() {
               <SHAVerificationModal
                 trigger={
                   <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-8 text-xs sm:text-sm">
-                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Client Registry</span>
-                    <span className="sm:hidden ml-1">CR</span>
+                    <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Verify Patient</span>
+                    <span className="sm:hidden ml-1">Verify</span>
                   </Button>
                 }
-                defaultTab="cr"
-                onClientFound={handleCRClientFound}
-                onEligibilityVerified={handleEligibilityVerified}
-                onAddPersonToForm={handleAddShaPersonToForm}
-              />
-              <SHAVerificationModal
-                trigger={
-                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-8 text-xs sm:text-sm">
-                    <SHALogo size="sm" className="sm:mr-2" />
-                    <span className="hidden sm:inline">SHA Eligibility</span>
-                    <span className="sm:hidden ml-1">SHA</span>
-                  </Button>
-                }
-                defaultTab="eligibility"
                 onClientFound={handleCRClientFound}
                 onEligibilityVerified={handleEligibilityVerified}
                 onAddPersonToForm={handleAddShaPersonToForm}
