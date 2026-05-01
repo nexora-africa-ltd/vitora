@@ -13,7 +13,7 @@ This module contains all billing-related models including:
 All models follow TDD approach and Kenya healthcare billing requirements.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -2446,6 +2446,29 @@ class SHAClaim(FacilityScopedModel):
             if req_type not in existing_types:
                 errors.append(f"Missing required attachment: {req_type}")
 
+        # Check intervention-specific document types (DHA HIE spec)
+        missing_docs = self.missing_document_types
+        if missing_docs:
+            for entry in missing_docs:
+                code = entry["intervention_code"]
+                for doc_type in entry["missing"]:
+                    errors.append(f"Missing required document '{doc_type}' for intervention {code}")
+
+        # Check consent token for SHIF-flow claims (non-emergency)
+        if self.claim_flow == self.ClaimFlow.SHIF and not self.is_emergency_claim:
+            has_valid_consent = (
+                self.dha_visit_started_at is not None
+                or ConsentToken.objects.filter(
+                    encounter=self.encounter,
+                    status=ConsentToken.ConsentStatus.VALIDATED,
+                ).exists()
+            )
+            if not has_valid_consent:
+                errors.append(
+                    "SHIF claims require a validated consent token (OTP or biometric). "
+                    "Please complete the Start Visit flow before submitting."
+                )
+
         # Check claimed amount is positive
         if self.claimed_amount <= Decimal("0.00"):
             errors.append("Claimed amount must be greater than zero")
@@ -2580,6 +2603,180 @@ class SHAClaim(FacilityScopedModel):
             )
 
         return appeal
+
+    # ------------------------------------------------------------------
+    # Document-type enforcement (DHA HIE spec compliance)
+    # ------------------------------------------------------------------
+
+    @property
+    def missing_document_types(self) -> list[dict]:
+        """
+        Return list of missing required document types per intervention.
+
+        Per the DHA HIE spec, each intervention has a `document_types` array
+        listing required documents. Submission must be blocked if any are missing.
+
+        Returns:
+            List of dicts: [{"intervention_code": "SHA-07-001", "missing": ["MEDICAL_REPORT"]}]
+        """
+        missing = []
+        existing_types = set(self.attachments.values_list("attachment_type", flat=True))
+        for intervention in self.claim_interventions.all():
+            required = intervention.required_document_types
+            if not required:
+                continue
+            not_uploaded = [dt for dt in required if dt not in existing_types]
+            if not_uploaded:
+                missing.append(
+                    {
+                        "intervention_code": intervention.intervention_code,
+                        "intervention_name": intervention.intervention_name,
+                        "missing": not_uploaded,
+                    }
+                )
+        return missing
+
+    # ------------------------------------------------------------------
+    # Time-barring deadline (DHA spec compliance)
+    # ------------------------------------------------------------------
+
+    @property
+    def time_barring_deadline(self) -> datetime | None:
+        """
+        Compute the submission deadline based on DHA time-barring rules.
+
+        Rules:
+        - Emergency claims (ECCIF): 24 hours from service_date
+        - Standard claims with pending attachments (QUERY status): 14 days from
+          when the query was raised (approximated by updated_at when status=query)
+        - All other draft/validated claims: no hard deadline (return None)
+
+        Returns:
+            datetime deadline or None if no time limit applies.
+        """
+        if self.is_emergency_claim or self.claim_type == self.ClaimType.EMERGENCY:
+            # 24-hour window from service date for emergency claims
+            service_dt = datetime.combine(self.service_date, datetime.min.time())
+            return timezone.make_aware(service_dt) + timedelta(hours=24)
+
+        if self.status == self.ClaimStatus.QUERY:
+            # 14-day window from when query was raised
+            return self.updated_at + timedelta(days=14)
+
+        return None
+
+    @property
+    def is_time_barred(self) -> bool:
+        """Check if claim has exceeded its time-barring deadline."""
+        deadline = self.time_barring_deadline
+        if deadline is None:
+            return False
+        return timezone.now() > deadline
+
+    @property
+    def hours_until_time_barred(self) -> float | None:
+        """Hours remaining until time-barring, or None if no deadline."""
+        deadline = self.time_barring_deadline
+        if deadline is None:
+            return None
+        delta = deadline - timezone.now()
+        return max(0, delta.total_seconds() / 3600)
+
+
+class SHAClaimIntervention(models.Model):
+    """
+    Intervention added to a DHA HIE virtual claim.
+
+    Tracks each intervention added via the ILM /api/v1/claims/interventions
+    endpoint, including the required `document_types` returned by the HIE.
+    Used to enforce document-type completeness before claim submission.
+
+    Lifecycle: ACTIVE → RETIRED (can be RESTORED back to ACTIVE)
+    """
+
+    class InterventionStatus(models.TextChoices):
+        ACTIVE = "active", "Active"
+        RETIRED = "retired", "Retired"
+
+    id = models.BigAutoField(primary_key=True)
+
+    claim = models.ForeignKey(
+        SHAClaim,
+        on_delete=models.CASCADE,
+        related_name="claim_interventions",
+    )
+
+    # Intervention identification
+    intervention_code = models.CharField(
+        max_length=20,
+        help_text="SHA intervention code (e.g., SHA-07-001)",
+    )
+    intervention_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Human-readable intervention name from HIE response",
+    )
+    benefit_code = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text="Parent benefit package code (e.g., SHA-07)",
+    )
+
+    # Status
+    status = models.CharField(
+        max_length=10,
+        choices=InterventionStatus.choices,
+        default=InterventionStatus.ACTIVE,
+    )
+
+    # Document types required by SHA for this intervention
+    # Populated from the HIE response's `document_types` field
+    required_document_types = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Required document types from DHA (e.g., ['MEDICAL_REPORT', 'LAB_REPORT'])",
+    )
+
+    # DHA-side metadata
+    dha_intervention_id = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="ID returned by HIE for this intervention on the claim",
+    )
+    tariff_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Tariff amount for this intervention per HIE response",
+    )
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "SHA Claim Intervention"
+        verbose_name_plural = "SHA Claim Interventions"
+        ordering = ["claim", "created_at"]
+        unique_together = [("claim", "intervention_code")]
+        indexes = [
+            models.Index(fields=["claim", "status"]),
+            models.Index(fields=["intervention_code"]),
+        ]
+
+    def __str__(self):
+        return f"{self.claim.claim_number} - {self.intervention_code} ({self.get_status_display()})"
+
+    def retire(self) -> None:
+        """Mark intervention as retired."""
+        self.status = self.InterventionStatus.RETIRED
+        self.save(update_fields=["status", "updated_at"])
+
+    def restore(self) -> None:
+        """Restore a retired intervention."""
+        self.status = self.InterventionStatus.ACTIVE
+        self.save(update_fields=["status", "updated_at"])
 
 
 class SHAClaimItem(models.Model):
@@ -4134,3 +4331,161 @@ class SHADhaPrescription(FacilityScopedModel):
 
     def __str__(self) -> str:  # pragma: no cover - trivial
         return f"DHA Rx {self.dha_external_id or self.pk} ({self.status})"
+
+
+# =============================================================================
+# SHA Remittance Models (DHA HIE Payment Reconciliation)
+# =============================================================================
+
+
+class SHARemittance(FacilityScopedModel):
+    """
+    SHA remittance (payment batch) received from DHA.
+
+    Represents a single bank transfer from SHA to the facility,
+    retrieved via GET /api/v1/claims/remittances.
+    """
+
+    class RemittanceStatus(models.TextChoices):
+        RECEIVED = "received", "Received"
+        RECONCILING = "reconciling", "Reconciling"
+        RECONCILED = "reconciled", "Reconciled"
+        PARTIAL = "partial", "Partially Reconciled"
+
+    id = models.BigAutoField(primary_key=True)
+
+    bank_reference = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Unique bank transfer reference from SHA",
+    )
+    payment_date = models.DateField(
+        help_text="Date the payment was made by SHA",
+    )
+    total_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Total amount of this remittance",
+    )
+    claims_count = models.IntegerField(
+        default=0,
+        help_text="Number of claims paid in this remittance",
+    )
+    status = models.CharField(
+        max_length=15,
+        choices=RemittanceStatus.choices,
+        default=RemittanceStatus.RECEIVED,
+    )
+
+    # Tracking
+    fetched_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this remittance was pulled from DHA",
+    )
+    reconciled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When reconciliation was completed",
+    )
+
+    # Raw DHA response
+    dha_payload = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Raw response from DHA getRemittances endpoint",
+    )
+
+    class Meta:
+        verbose_name = "SHA Remittance"
+        verbose_name_plural = "SHA Remittances"
+        ordering = ["-payment_date"]
+        indexes = [
+            models.Index(fields=["bank_reference"]),
+            models.Index(fields=["payment_date"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self):
+        return f"Remittance {self.bank_reference} ({self.total_amount})"
+
+    @property
+    def reconciled_amount(self) -> Decimal:
+        """Total amount reconciled (matched to local claims)."""
+        return self.lines.filter(claim__isnull=False).aggregate(total=models.Sum("paid_amount"))[
+            "total"
+        ] or Decimal("0.00")
+
+    @property
+    def unreconciled_amount(self) -> Decimal:
+        """Amount not yet matched to local claims."""
+        return self.total_amount - self.reconciled_amount
+
+
+class SHARemittanceLine(models.Model):
+    """
+    Individual claim payment within a remittance.
+
+    Retrieved via GET /api/v1/claims/remittances/{bank_reference}/claims.
+    Links DHA claim payment to local SHAClaim for reconciliation.
+    """
+
+    id = models.BigAutoField(primary_key=True)
+
+    remittance = models.ForeignKey(
+        SHARemittance,
+        on_delete=models.CASCADE,
+        related_name="lines",
+    )
+    claim = models.ForeignKey(
+        "billing.SHAClaim",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="remittance_lines",
+        help_text="Matched local claim (null if unreconciled)",
+    )
+
+    # DHA fields
+    dha_claim_id = models.CharField(
+        max_length=100,
+        help_text="DHA-side claim identifier",
+    )
+    paid_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Amount paid for this claim",
+    )
+    payment_status = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="DHA payment status (e.g. PAID, PARTIAL)",
+    )
+
+    # Reconciliation
+    is_reconciled = models.BooleanField(
+        default=False,
+        help_text="Whether this line has been matched to a local claim",
+    )
+    reconciled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    # Raw data
+    dha_payload = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Raw claim data from DHA",
+    )
+
+    class Meta:
+        verbose_name = "SHA Remittance Line"
+        verbose_name_plural = "SHA Remittance Lines"
+        ordering = ["-paid_amount"]
+        indexes = [
+            models.Index(fields=["dha_claim_id"]),
+            models.Index(fields=["is_reconciled"]),
+        ]
+
+    def __str__(self):
+        return f"Line {self.dha_claim_id} ({self.paid_amount})"

@@ -83,6 +83,9 @@ class BillingEvents:
     DHA_PRESCRIPTION_DISPENSED = "billing.dha_prescription.dispensed"
     DHA_PRESCRIPTION_DOCTOR_REMOVED = "billing.dha_prescription.doctor_removed"
     DHA_PRESCRIPTION_CALL_FAILED = "billing.dha_prescription.call_failed"
+    # Time-barring alerts
+    SHA_CLAIM_TIME_BAR_WARNING = "billing.sha_claim.time_bar_warning"
+    SHA_CLAIM_TIME_BARRED = "billing.sha_claim.time_barred"
 
 
 class PharmacyEvents:

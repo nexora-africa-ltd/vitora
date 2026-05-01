@@ -737,10 +737,39 @@ export interface Claim {
   items_count?: number | null;
   attachments_count?: number | null;
 
+  // DHA HIE integration (document-type enforcement)
+  dha_external_id?: string | null;
+  dha_correlation_id?: string | null;
+  last_dha_status?: string | null;
+  last_dha_payload_at?: string | null;
+  dha_visit_started_at?: string | null;
+  claim_interventions?: Array<{
+    id: number;
+    intervention_code: string;
+    intervention_name: string;
+    benefit_code: string;
+    status: 'active' | 'retired';
+    required_document_types: string[];
+    dha_intervention_id?: string;
+    tariff_amount?: string | null;
+    created_at?: string;
+    updated_at?: string;
+  }>;
+  missing_document_types?: Array<{
+    intervention_code: string;
+    intervention_name: string;
+    missing: string[];
+  }>;
+
   // Timestamps
   created_at: string;
   updated_at: string;
   processed_at?: string | null; // Frontend-specific
+
+  // Time-barring (DHA HIE compliance)
+  time_barring_deadline?: string | null;
+  is_time_barred?: boolean;
+  hours_until_time_barred?: number | null;
 
   // FHIR reference
   fhir_bundle_id?: string | null;

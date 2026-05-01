@@ -77,6 +77,7 @@ LINES_PATH = "/api/v1/claims/lines"
 LINES_EDIT_PATH = "/api/v1/claims/lines/edit"
 ATTACHMENTS_PATH = "/api/v1/claims/attachments"
 PREVIEW_PATH = "/api/v1/claims/preview"
+PREVIEW_PAYER_PATH = "/adapter/facade/edi/v1/claims/claims"
 SUBMIT_PATH = "/api/v1/claims/submit"
 CLOSE_PATH = "/api/v1/claims/close"
 
@@ -210,6 +211,7 @@ class IlmClaimService:
             {"intervention_code": intervention_code},
             user=user,
         )
+        self._persist_intervention(claim, intervention_code, result)
         self._emit_intervention_event(
             claim, result, action="added", intervention_code=intervention_code
         )
@@ -255,6 +257,7 @@ class IlmClaimService:
             {"intervention_code": intervention_code},
             user=user,
         )
+        self._update_intervention_status(claim, intervention_code, "active")
         self._emit_intervention_event(
             claim, result, action="restored", intervention_code=intervention_code
         )
@@ -269,6 +272,7 @@ class IlmClaimService:
             {"intervention_code": intervention_code},
             user=user,
         )
+        self._update_intervention_status(claim, intervention_code, "retired")
         self._emit_intervention_event(
             claim, result, action="retired", intervention_code=intervention_code
         )
@@ -480,6 +484,23 @@ class IlmClaimService:
         )
         return result
 
+    def preview_payer_claim(self, claim: Any, *, user: Any = None) -> IlmClaimResult:
+        """Fetch the payer's adjudication view of this claim from DHA.
+
+        Calls POST /adapter/facade/edi/v1/claims/claims with consent_token.
+        Returns the full payer claim object including workflowState,
+        processing_notes, and invoice_flags.
+        """
+        result = self._post_with_consent(claim, PREVIEW_PAYER_PATH, {}, user=user)
+        # Persist payer adjudication metadata back to the claim if available
+        payload = result.payload or {}
+        payer_state = payload.get("workflowState") or payload.get("payer_claim_status")
+        if payer_state and hasattr(claim, "last_dha_status"):
+            claim.last_dha_status = payer_state
+            claim.last_dha_payload_at = timezone.now()
+            claim.save(update_fields=["last_dha_status", "last_dha_payload_at"])
+        return result
+
     def submit(
         self,
         claim: Any,
@@ -604,6 +625,65 @@ class IlmClaimService:
         self._stamp_dha_status(claim, "CLOSED", result, update_fields)
         if update_fields:
             claim.save(update_fields=list(set(update_fields)))
+
+    # -----------------------------------------------------------------
+    # Intervention persistence helpers
+    # -----------------------------------------------------------------
+
+    def _persist_intervention(
+        self, claim: Any, intervention_code: str, result: IlmClaimResult
+    ) -> None:
+        """Persist intervention data from HIE response to SHAClaimIntervention."""
+        if result.status_code >= 400:
+            return
+        try:
+            from hmis.apps.billing.models import SHAClaimIntervention
+
+            payload = result.payload if isinstance(result.payload, dict) else {}
+            # Extract document_types from response (DHA returns this per intervention)
+            document_types = payload.get("document_types") or []
+            intervention_name = payload.get("intervention_name") or payload.get("name") or ""
+            dha_id = payload.get("id") or payload.get("intervention_id") or ""
+            tariff_amount = payload.get("tariff_amount") or payload.get("overall_tariff")
+            benefit_code = intervention_code.rsplit("-", 1)[0] if "-" in intervention_code else ""
+
+            SHAClaimIntervention.objects.update_or_create(
+                claim=claim,
+                intervention_code=intervention_code,
+                defaults={
+                    "intervention_name": str(intervention_name)[:255],
+                    "benefit_code": str(benefit_code)[:10],
+                    "status": "active",
+                    "required_document_types": list(document_types),
+                    "dha_intervention_id": str(dha_id)[:64],
+                    "tariff_amount": tariff_amount,
+                },
+            )
+        except Exception:
+            logger.exception(
+                "Failed to persist intervention %s for claim %s",
+                intervention_code,
+                getattr(claim, "pk", None),
+            )
+
+    def _update_intervention_status(
+        self, claim: Any, intervention_code: str, new_status: str
+    ) -> None:
+        """Update status of a persisted intervention."""
+        try:
+            from hmis.apps.billing.models import SHAClaimIntervention
+
+            SHAClaimIntervention.objects.filter(
+                claim=claim,
+                intervention_code=intervention_code,
+            ).update(status=new_status)
+        except Exception:
+            logger.exception(
+                "Failed to update intervention status %s → %s for claim %s",
+                intervention_code,
+                new_status,
+                getattr(claim, "pk", None),
+            )
 
     # -----------------------------------------------------------------
     # Event helpers

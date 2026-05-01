@@ -9,6 +9,7 @@ from rest_framework import serializers
 from hmis.apps.billing.models import (
     SHAClaim,
     SHAClaimAttachment,
+    SHAClaimIntervention,
     SHAClaimItem,
     SHAEligibilityCheck,
     SHAMember,
@@ -268,6 +269,9 @@ class SHAClaimSerializer(serializers.ModelSerializer):
     submitted_by_username = serializers.CharField(
         source="submitted_by.username", read_only=True, allow_null=True
     )
+    time_barring_deadline = serializers.DateTimeField(read_only=True)
+    is_time_barred = serializers.BooleanField(read_only=True)
+    hours_until_time_barred = serializers.FloatField(read_only=True)
 
     class Meta:
         model = SHAClaim
@@ -317,6 +321,9 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "last_dha_status",
             "last_dha_payload_at",
             "dha_visit_started_at",
+            "time_barring_deadline",
+            "is_time_barred",
+            "hours_until_time_barred",
             "created_at",
             "updated_at",
         ]
@@ -344,6 +351,9 @@ class SHAClaimSerializer(serializers.ModelSerializer):
             "last_dha_status",
             "last_dha_payload_at",
             "dha_visit_started_at",
+            "time_barring_deadline",
+            "is_time_barred",
+            "hours_until_time_barred",
             "created_at",
             "updated_at",
         ]
@@ -382,14 +392,45 @@ class SHAClaimSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class SHAClaimInterventionSerializer(serializers.ModelSerializer):
+    """Serializer for claim interventions tracked from DHA HIE."""
+
+    class Meta:
+        model = SHAClaimIntervention
+        fields = [
+            "id",
+            "intervention_code",
+            "intervention_name",
+            "benefit_code",
+            "status",
+            "required_document_types",
+            "dha_intervention_id",
+            "tariff_amount",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
 class SHAClaimDetailSerializer(SHAClaimSerializer):
     """Detailed serializer for SHA claim with nested items and attachments."""
 
     items = SHAClaimItemSerializer(many=True, read_only=True)
     attachments = SHAClaimAttachmentSerializer(many=True, read_only=True)
+    claim_interventions = SHAClaimInterventionSerializer(many=True, read_only=True)
+    missing_document_types = serializers.SerializerMethodField()
 
     class Meta(SHAClaimSerializer.Meta):
-        fields = SHAClaimSerializer.Meta.fields + ["items", "attachments"]
+        fields = SHAClaimSerializer.Meta.fields + [
+            "items",
+            "attachments",
+            "claim_interventions",
+            "missing_document_types",
+        ]
+
+    def get_missing_document_types(self, obj) -> list[dict]:
+        """Return missing document types per intervention."""
+        return obj.missing_document_types
 
 
 class SHAClaimValidationSerializer(serializers.Serializer):
@@ -600,3 +641,57 @@ class SubmitPreauthSerializer(serializers.Serializer):
     clinical_notes = serializers.CharField(
         required=False, default="", help_text="Clinical justification"
     )
+
+
+# =============================================================================
+# SHA Remittance Serializers
+# =============================================================================
+
+
+class SHARemittanceSerializer(serializers.ModelSerializer):
+    """Serializer for SHA remittance (payment batch)."""
+
+    reconciled_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    unreconciled_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        from hmis.apps.billing.models import SHARemittance
+
+        model = SHARemittance
+        fields = [
+            "id",
+            "bank_reference",
+            "payment_date",
+            "total_amount",
+            "claims_count",
+            "status",
+            "reconciled_amount",
+            "unreconciled_amount",
+            "fetched_at",
+            "reconciled_at",
+        ]
+        read_only_fields = fields
+
+
+class SHARemittanceLineSerializer(serializers.ModelSerializer):
+    """Serializer for individual claim payment within a remittance."""
+
+    claim_number = serializers.CharField(source="claim.claim_number", read_only=True, default=None)
+    claim_status = serializers.CharField(source="claim.status", read_only=True, default=None)
+
+    class Meta:
+        from hmis.apps.billing.models import SHARemittanceLine
+
+        model = SHARemittanceLine
+        fields = [
+            "id",
+            "dha_claim_id",
+            "paid_amount",
+            "payment_status",
+            "is_reconciled",
+            "reconciled_at",
+            "claim",
+            "claim_number",
+            "claim_status",
+        ]
+        read_only_fields = fields

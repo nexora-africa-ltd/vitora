@@ -149,7 +149,7 @@ function CompactEligibilityBanner({
   onRefresh: () => void;
   isRefreshing: boolean;
 }) {
-  const { status, copayPercentage, coverageEndDate } = eligibility;
+  const { status, copayPercentage, coverageEndDate, member } = eligibility;
 
   return (
     <div className="flex items-center gap-2">
@@ -183,6 +183,13 @@ function CompactEligibilityBanner({
       {status === 'eligible' && copayPercentage === 0 && (
         <Badge variant="secondary" className="text-xs bg-success/10 text-success">
           Full Coverage
+        </Badge>
+      )}
+
+      {/* PFMS/Vulnerable badge in compact view */}
+      {member?.is_pfms_eligible && (
+        <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
+          {member.pfms_category_display || member.pfms_category || 'PFMS'}
         </Badge>
       )}
 
@@ -298,6 +305,17 @@ function FullEligibilityBanner({
                 <p>
                   <span className="font-medium">Verified:</span> {memberName}
                 </p>
+              )}
+              {/* PFMS Eligibility — show even when scheme mismatch */}
+              {member?.is_pfms_eligible && (
+                <div className="mt-1.5">
+                  <Badge variant="secondary" className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
+                    🏛️ PFMS: {member.pfms_category_display || member.pfms_category}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground ml-2">
+                    Government subsidy may apply — use PFMS tariffs
+                  </span>
+                </div>
               )}
             </div>
           )}

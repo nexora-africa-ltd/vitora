@@ -19,6 +19,8 @@ import {
   Calendar,
   AlertCircle,
   Loader2,
+  Upload,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +35,9 @@ import { ConsentPanel } from '@/components/billing/sha/ConsentPanel';
 import { PreauthPanel } from '@/components/billing/sha/PreauthPanel';
 import { ClaimILMPanel } from '@/components/billing/sha/ClaimILMPanel';
 import { ClaimFlowBadge } from '@/components/billing/sha/ClaimFlowBadge';
+import { InterventionsList } from '@/components/billing/sha/InterventionsList';
+import { TimeBarBadge } from '@/components/billing/sha/TimeBarBadge';
+import { PayerClaimPreview } from '@/components/billing/sha/PayerClaimPreview';
 import { useClaimFlow } from '@/lib/hooks/use-claim-flow';
 import { PreVisitChecksPanel } from '@/components/billing/sha/PreVisitChecksPanel';
 import { format, parseISO } from 'date-fns';
@@ -160,7 +165,9 @@ export default function ClaimDetailPage() {
     );
   }
 
-  const canSubmit = claim.status === 'draft';
+  const hasMissingDocs = claim.missing_document_types && claim.missing_document_types.length > 0;
+  const needsConsent = claim.claim_flow === 'shif' && !claim.is_emergency_claim && !claim.dha_visit_started_at;
+  const canSubmit = claim.status === 'draft' && !hasMissingDocs && !needsConsent;
   const canResubmit = claim.status === 'rejected';
   const isProcessing = submitMutation.isPending || resubmitMutation.isPending;
 
@@ -241,6 +248,47 @@ export default function ClaimDetailPage() {
                 ))}
               </div>
             )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Missing Document Types Warning (DHA HIE spec compliance) */}
+      {claim.missing_document_types && claim.missing_document_types.length > 0 && (
+        <Alert variant="destructive">
+          <Upload className="h-4 w-4" />
+          <AlertTitle>Missing Required Documents</AlertTitle>
+          <AlertDescription>
+            <p className="mb-2">
+              The following documents are required per SHA intervention rules before this claim can be submitted:
+            </p>
+            <div className="space-y-2">
+              {claim.missing_document_types.map((entry, i) => (
+                <div key={i} className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">
+                    {entry.intervention_name || entry.intervention_code}
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {entry.missing.map((docType, j) => (
+                      <Badge key={j} variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
+                        {docType.replace(/_/g, ' ')}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Consent Required Warning (SHIF flow) */}
+      {needsConsent && claim.status === 'draft' && (
+        <Alert>
+          <ShieldCheck className="h-4 w-4" />
+          <AlertTitle>Consent Required</AlertTitle>
+          <AlertDescription>
+            SHIF claims require patient consent (OTP or biometric verification) before submission.
+            Use the Patient Consent panel below to complete the Start Visit flow.
           </AlertDescription>
         </Alert>
       )}
@@ -446,7 +494,44 @@ export default function ClaimDetailPage() {
         patientPk={typeof claim.patient === 'number' ? claim.patient : undefined}
         shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
       />
-      <ClaimILMPanel claimId={claim.id} flow={flowInfo} onChange={() => refetch()} />
+
+      {/* Time-Barring Alert */}
+      {(claim.is_time_barred || (claim.hours_until_time_barred != null && claim.hours_until_time_barred <= 12)) && (
+        <Alert variant={claim.is_time_barred ? 'destructive' : 'default'} className={!claim.is_time_barred ? 'border-amber-200 dark:border-amber-800' : ''}>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle className="flex items-center gap-2">
+            DHA Time-Barring {claim.is_time_barred ? '— Expired' : '— Approaching Deadline'}
+            <TimeBarBadge claim={claim} compact />
+          </AlertTitle>
+          <AlertDescription>
+            {claim.is_time_barred
+              ? 'This claim has exceeded its DHA submission deadline and can no longer be processed.'
+              : 'Submit this claim soon to avoid time-barring by the Digital Health Agency.'}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Interventions List with Retire/Restore controls */}
+      {claim.claim_interventions && claim.claim_interventions.length > 0 && (
+        <InterventionsList
+          claimId={claim.id}
+          interventions={claim.claim_interventions}
+          onChange={() => refetch()}
+        />
+      )}
+      <ClaimILMPanel
+        claimId={claim.id}
+        flow={flowInfo}
+        existingInterventions={
+          claim.claim_interventions
+            ?.filter((i) => i.status === 'active')
+            .map((i) => i.intervention_code) ?? []
+        }
+        onChange={() => refetch()}
+      />
+
+      {/* Payer (SHA) Adjudication Preview */}
+      <PayerClaimPreview claimId={claim.id} claimStatus={claim.status} />
     </div>
   );
 }

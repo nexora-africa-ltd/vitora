@@ -24,6 +24,7 @@ from hmis.apps.billing.sha_ilm_lifecycle_views import (
     SHAUploadListView,
 )
 from hmis.apps.billing.sha_ilm_preauth_views import (
+    IlmDoctorConsentPollView,
     IlmDoctorConsentView,
     IlmEmergencyOpenView,
     IlmEmergencyProtocolApplyView,
@@ -56,6 +57,8 @@ from hmis.apps.billing.sha_ilm_registry_views import (
     PatientContactListCreateView,
 )
 from hmis.apps.billing.sha_views import (
+    BiometricAuthorizeStatusView,
+    BiometricAuthorizeView,
     ClientRegistryView,
     ConsentDetailView,
     ConsentSendOTPView,
@@ -68,6 +71,7 @@ from hmis.apps.billing.sha_views import (
     PreauthSubmitView,
     SHAClaimViewSet,
     SHAMemberViewSet,
+    SHARemittanceViewSet,
     SHATariffViewSet,
     SHAValidateView,
     SHAWebhookView,
@@ -81,6 +85,7 @@ router = DefaultRouter()
 router.register(r"members", SHAMemberViewSet, basename="member")
 router.register(r"tariffs", SHATariffViewSet, basename="tariff")
 router.register(r"claims", SHAClaimViewSet, basename="claim")
+router.register(r"remittances", SHARemittanceViewSet, basename="remittance")
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -104,6 +109,12 @@ urlpatterns = [
     path("consent/send-otp/", ConsentSendOTPView.as_view(), name="consent-send-otp"),
     path("consent/validate-otp/", ConsentValidateOTPView.as_view(), name="consent-validate-otp"),
     path("consent/start-visit/", StartVisitView.as_view(), name="consent-start-visit"),
+    path("consent/authorize/", BiometricAuthorizeView.as_view(), name="consent-authorize"),
+    path(
+        "consent/authorize/<str:auth_guid>/status/",
+        BiometricAuthorizeStatusView.as_view(),
+        name="consent-authorize-status",
+    ),
     path("consent/<int:pk>/", ConsentDetailView.as_view(), name="consent-detail"),
     # Pre-authorization (DHA HIE User Journey compliance)
     path("preauth/submit/", PreauthSubmitView.as_view(), name="preauth-submit"),
@@ -164,6 +175,11 @@ urlpatterns = [
         "ilm/preauth/doctor-consent/",
         IlmDoctorConsentView.as_view(),
         name="ilm-doctor-consent",
+    ),
+    path(
+        "ilm/preauth/doctor-consent/poll/",
+        IlmDoctorConsentPollView.as_view(),
+        name="ilm-doctor-consent-poll",
     ),
     path("ilm/preauth/local/", SHAPreauthListView.as_view(), name="ilm-preauth-local"),
     path("ilm/emergency/", IlmEmergencyOpenView.as_view(), name="ilm-emergency-open"),

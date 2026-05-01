@@ -128,6 +128,11 @@ import type {
   SubmitPreauthResponse,
   PreauthRequest,
 } from '@/lib/types/sha';
+import type {
+  SHARemittance as SHARemittanceType,
+  SHARemittanceLine as SHARemittanceLineType,
+  SHAPreauth as SHAPreauthType,
+} from '@/lib/schemas/sha.schema';
 
 // ============================================================================
 // Helper Functions
@@ -771,6 +776,68 @@ async function getConsentDetail(consentId: number): Promise<ConsentToken> {
   return parseResponse(ConsentTokenSchema, response.data, { context: 'shaApi.getConsentDetail' });
 }
 
+/**
+ * Initiate biometric authorization via DHA HIE.
+ * Returns auth_guid and iframe_url for fingerprint capture.
+ */
+async function authorizeBiometric(data: {
+  sha_member_id: number;
+  workstation_id: string;
+  agent_national_id: string;
+}): Promise<{ consent_id: number; auth_guid: string; iframe_url: string; status: string }> {
+  const response = await apiClient.post('/api/sha/consent/authorize/', data);
+  return response.data;
+}
+
+/**
+ * Poll biometric authorization status.
+ * Returns PENDING, AUTHORIZED, FAILED, or EXPIRED.
+ */
+async function getBiometricAuthStatus(authGuid: string): Promise<{
+  auth_guid: string;
+  status: string;
+  consent_token: string;
+}> {
+  const response = await apiClient.get(`/api/sha/consent/authorize/${authGuid}/status/`);
+  return response.data;
+}
+
+// ============================================================================
+// SHA Remittance API
+// ============================================================================
+
+/**
+ * Get list of remittances for the current facility
+ */
+async function getRemittances(): Promise<{ count: number; next: string | null; previous: string | null; results: SHARemittanceType[] }> {
+  const response = await apiClient.get('/api/sha/remittances/');
+  return response.data;
+}
+
+/**
+ * Get a specific remittance detail
+ */
+async function getRemittance(id: number): Promise<SHARemittanceType> {
+  const response = await apiClient.get(`/api/sha/remittances/${id}/`);
+  return response.data;
+}
+
+/**
+ * Get claims paid by a specific remittance
+ */
+async function getRemittanceClaims(id: number): Promise<{ count: number; results: SHARemittanceLineType[] }> {
+  const response = await apiClient.get(`/api/sha/remittances/${id}/claims/`);
+  return response.data;
+}
+
+/**
+ * Trigger a fetch of remittances from DHA for the current facility
+ */
+async function fetchRemittancesFromDHA(): Promise<{ message: string; count: number }> {
+  const response = await apiClient.post('/api/sha/remittances/fetch/');
+  return response.data;
+}
+
 // ============================================================================
 // DHA HIE Pre-authorization API
 // ============================================================================
@@ -899,6 +966,11 @@ async function ilmRemoveAttachment(claimId: number, body: IlmRemoveAttachmentReq
 async function ilmPreview(claimId: number): Promise<IlmCallResult> {
   const response = await apiClient.post(`${ilmBase(claimId)}/preview/`, {});
   return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreview' });
+}
+
+async function ilmPreviewPayerClaim(claimId: number): Promise<IlmCallResult> {
+  const response = await apiClient.post(`${ilmBase(claimId)}/preview-payer/`, {});
+  return parseResponse(IlmCallResultSchema, response.data, { context: 'shaApi.ilmPreviewPayerClaim' });
 }
 
 async function ilmSubmit(claimId: number, body: IlmSubmitRequest): Promise<IlmCallResult> {
@@ -1103,6 +1175,17 @@ async function ilmDoctorConsent(body: {
   });
 }
 
+/**
+ * Poll DHA for updated doctor-consent state on a preauth.
+ * Returns the latest local SHAPreauth record after refreshing from DHA.
+ */
+async function pollDoctorConsent(preauthId: number): Promise<SHAPreauthType> {
+  const response = await apiClient.get(`${ILM_BASE}/preauth/doctor-consent/poll/`, {
+    params: { preauth_id: preauthId },
+  });
+  return response.data;
+}
+
 async function ilmEmergencyOpen(body: {
   interventions: string[];
   diagnoses?: string[];
@@ -1165,7 +1248,7 @@ async function ilmEmtCreate(body: {
   });
 }
 
-async function listLocalPreauths(params: { patient_pk?: number; consent_token?: string }) {
+async function listLocalPreauths(params: { patient_pk?: number; consent_token?: string; claim_pk?: number; status?: string } = {}) {
   const response = await apiClient.get(`${ILM_BASE}/preauth/local/`, { params });
   return parseResponse(SHAPreauthListSchema, response.data, {
     context: 'shaApi.listLocalPreauths',
@@ -1443,6 +1526,9 @@ export const shaApi = {
   validateConsentOTP,
   startVisit,
   getConsentDetail,
+  authorizeBiometric,
+  getBiometricAuthStatus,
+  pollDoctorConsent,
 
   // DHA HIE Pre-authorization
   submitPreauth,
@@ -1464,6 +1550,7 @@ export const shaApi = {
   ilmAddAttachment,
   ilmRemoveAttachment,
   ilmPreview,
+  ilmPreviewPayerClaim,
   ilmSubmit,
   ilmClose,
 
@@ -1513,4 +1600,10 @@ export const shaApi = {
   ilmDispensePrescription,
   ilmRemovePrescriptionDoctor,
   listLocalDhaPrescriptions,
+
+  // Remittances
+  getRemittances,
+  getRemittance,
+  getRemittanceClaims,
+  fetchRemittancesFromDHA,
 };
