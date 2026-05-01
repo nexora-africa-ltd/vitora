@@ -60,12 +60,13 @@ Only after the web app implementation is complete should we shift focus to offli
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Current Status (February 2026)
+### Current Status (May 2026)
 
 | Component | Status | Tests | Coverage |
 |-----------|--------|-------|----------|
 | **Backend (Django)** | ✅ Phase 0 Complete | 467+ | 82.21% |
 | **Backend Contract Tests** | ✅ Implemented | 67 serializer tests | - |
+| **DHA HIE Integration** | ✅ Claims & Preauths | 4 test suites | - |
 | **Desktop App (Electron)** | ✅ Phase 0 Complete | 66+ unit, 6 E2E | 70%+ |
 | **Mobile App (React Native)** | 📋 Planned Phase 1 | - | - |
 | **Web Frontend (Next.js)** | 📋 Planned Phase 2 | - | - |
@@ -109,6 +110,14 @@ Only after the web app implementation is complete should we shift focus to offli
 - ✅ Onboarding enforcement middleware (blocks admin roles after 7-day grace period)
 - ✅ Onboarding banner in dashboard + post-login redirect for admin roles
 - ✅ Password reset flow (request + confirm) and authenticated change-password
+- ✅ DHA HIE Claims integration: document-type enforcement, OTP consent, biometrics consent, claim submission
+- ✅ DHA HIE Preauthorizations: 7-type wizard (normal/surgical/elective/oncology/renal/imaging/optical), doctor-consent polling
+- ✅ SHA Remittance module: fetch from DHA, auto-reconcile to local claims, SHARemittance/SHARemittanceLine models
+- ✅ Time-barring alerts: Celery task (30min), 24h emergency / 14-day query deadlines, domain events
+- ✅ Intervention combination rules: client-side guard for ALONE packages (SHA-01/05/06/09/10/12/18)
+- ✅ Intervention retire/restore lifecycle with DHA ILM integration
+- ✅ Payer claim adjudication preview: 14 payer states, processing notes, invoice flags
+- ✅ PFMS/vulnerable coverage flagging: PMF scheme matrix, eligibility badges (vulnerable/elderly/disabled/orphan/indigent)
 
 ---
 
@@ -601,6 +610,41 @@ GET             /api/scheduling/shifts/available-rooms/        # Unoccupied PLAC
 GET|POST        /api/clinics/{id}/rooms/                       # List/add rooms for a clinic
 DELETE          /api/clinics/{id}/rooms/{room_id}/             # Remove room from clinic
 GET             /api/clinics/{id}/public-queue/                # Public queue display (no auth required)
+```
+
+### SHA / DHA HIE Integration
+```
+# Eligibility
+POST   /api/sha/eligibility/check/                          # Check patient eligibility (includes PFMS fields)
+
+# Consent & Visit
+POST   /api/sha/consent/send-otp/                           # Send consent OTP to patient
+POST   /api/sha/consent/validate-otp/                       # Validate OTP → consent token
+POST   /api/sha/consent/start-visit/                        # Start visit with DHA
+POST   /api/sha/consent/authorize/                          # Initiate biometric auth → {auth_guid, iframe_url}
+GET    /api/sha/consent/authorize/{guid}/status/             # Poll biometric status
+
+# Claims
+POST   /api/sha/claims/{id}/validate/                       # Pre-submit validation
+POST   /api/sha/claims/{id}/submit/                         # Submit claim to DHA
+POST   /api/sha/claims/{id}/ilm/interventions/retire/       # Retire intervention
+POST   /api/sha/claims/{id}/ilm/interventions/restore/      # Restore intervention
+POST   /api/sha/claims/{id}/ilm/preview-payer/              # Fetch payer-side adjudication view
+
+# Preauthorizations
+POST   /api/sha/ilm/preauth/create/                         # Create preauth (7 types)
+POST   /api/sha/preauth/submit/                             # Submit preauth
+POST   /api/sha/ilm/preauth/cancel/                         # Cancel preauth
+GET    /api/sha/ilm/preauth/fetch/                           # Fetch preauth status
+POST   /api/sha/ilm/preauth/doctor-consent/                 # Request doctor consent (Practice360)
+GET    /api/sha/ilm/preauth/doctor-consent/poll/             # Poll doctor consent status
+GET    /api/sha/preauths/                                    # List preauths
+
+# Remittances
+GET    /api/sha/remittances/                                 # List remittances (facility-scoped)
+GET    /api/sha/remittances/{id}/                            # Remittance detail
+GET    /api/sha/remittances/{id}/claims/                     # Claims paid in remittance
+POST   /api/sha/remittances/fetch/                           # Trigger DHA remittance fetch
 ```
 
 ### AI Stored Results (Persisted TibaBot Outputs)
@@ -1373,6 +1417,7 @@ See `ROADMAP.md` for complete sprint breakdown.
 | `docs/sprint-*.md` | Sprint deliverables with implementation details |
 | `docs/domain-events.md` | Domain events SSOT: architecture, catalog, wiring tables, projections |
 | `docs/contract-testing-recommendations.md` | API contract testing strategy (Layer 1-4) |
+| `docs/dha-hie-implementation.md` | DHA HIE Claims & Preauths implementation guide (Phases 1-4) |
 
 ---
 
@@ -1488,7 +1533,7 @@ export const patientsApi = {
 | Triage | `lib/schemas/triage.schema.ts` | 📋 Placeholder |
 | Inpatient | `lib/schemas/inpatient.schema.ts` | 📋 Placeholder |
 | RBAC | `lib/schemas/rbac.schema.ts` | 📋 Placeholder |
-| SHA | `lib/schemas/sha.schema.ts` | 📋 Placeholder |
+| SHA | `lib/schemas/sha.schema.ts` | ✅ Implemented |
 | Core | `lib/schemas/core.schema.ts` | 📋 Placeholder |
 | AI | `lib/schemas/ai.schema.ts` | ✅ Implemented |
 | Onboarding | `lib/schemas/onboarding.schema.ts` | ✅ Implemented |
@@ -1980,6 +2025,6 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: April 18, 2026
+**Last Updated**: May 1, 2026
 **Maintainer**: Engineering Lead
-**Version**: 3.2 (Organization onboarding enforcement + checklist)
+**Version**: 3.3 (DHA HIE claims, preauths, remittances, PFMS coverage)
