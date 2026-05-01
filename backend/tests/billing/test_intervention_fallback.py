@@ -201,7 +201,7 @@ class TestInterventionFallbackLoading:
 
     def test_loads_actionable_concepts_only(self, patch_jsonl_path):
         """Should skip Chapter/Root concepts and only load code/Code/Procedure."""
-        results = search_local_interventions(query="", limit=100)
+        results, _ = search_local_interventions(query="", limit=100)
         # 3 actionable records (active: PMF-07-002, SHA-05-100, SHA-06-004-SI-019)
         # SHA-07-007 is inactive and filtered out in search
         # Chapter is skipped during load
@@ -216,7 +216,7 @@ class TestInterventionFallbackLoading:
             "hmis.apps.billing.services.intervention_fallback._get_jsonl_path",
             return_value=tmp_path / "nonexistent.jsonl",
         ):
-            results = search_local_interventions(query="test")
+            results, _ = search_local_interventions(query="test")
             assert results == []
 
     def test_cache_is_reused(self, patch_jsonl_path):
@@ -226,19 +226,19 @@ class TestInterventionFallbackLoading:
         with open(patch_jsonl_path, "w") as f:
             f.write("")  # empty file
         # Second call should still return cached data
-        results = search_local_interventions(query="", limit=100)
+        results, _ = search_local_interventions(query="", limit=100)
         assert len(results) > 0
 
     def test_clear_cache_forces_reload(self, patch_jsonl_path):
         """clear_cache() should force a fresh reload on next access."""
-        results1 = search_local_interventions(query="", limit=100)
+        results1, _ = search_local_interventions(query="", limit=100)
         assert len(results1) > 0
 
         clear_cache()
         # Overwrite with empty
         with open(patch_jsonl_path, "w") as f:
             f.write("")
-        results2 = search_local_interventions(query="", limit=100)
+        results2, _ = search_local_interventions(query="", limit=100)
         assert results2 == []
 
 
@@ -247,51 +247,51 @@ class TestSearchLocalInterventions:
 
     def test_search_by_name(self, patch_jsonl_path):
         """Should find interventions by display_name substring match."""
-        results = search_local_interventions(query="Surgical Complications")
+        results, _ = search_local_interventions(query="Surgical Complications")
         assert len(results) == 1
         assert results[0]["code"] == "PMF-07-002"
         assert results[0]["name"] == "Surgical Complications (Public Officers Medical Service Fund)"
 
     def test_search_by_code(self, patch_jsonl_path):
         """Should find interventions by ID substring match."""
-        results = search_local_interventions(query="PMF-07")
+        results, _ = search_local_interventions(query="PMF-07")
         assert len(results) == 1
         assert results[0]["code"] == "PMF-07-002"
 
     def test_search_case_insensitive(self, patch_jsonl_path):
         """Search should be case-insensitive."""
-        results = search_local_interventions(query="surgical complications")
+        results, _ = search_local_interventions(query="surgical complications")
         assert len(results) == 1
 
     def test_search_filters_inactive(self, patch_jsonl_path):
         """Should exclude records with active=False."""
-        results = search_local_interventions(query="Symptom management")
+        results, _ = search_local_interventions(query="Symptom management")
         assert len(results) == 0
 
     def test_search_filters_by_facility_level(self, patch_jsonl_path):
         """Should only return interventions available at the given level."""
         # SHA-05-100 is level 5+6 only
-        results_l4 = search_local_interventions(query="Cardiac", facility_level=4)
+        results_l4, _ = search_local_interventions(query="Cardiac", facility_level=4)
         assert len(results_l4) == 0
 
-        results_l5 = search_local_interventions(query="Cardiac", facility_level=5)
+        results_l5, _ = search_local_interventions(query="Cardiac", facility_level=5)
         assert len(results_l5) == 1
         assert results_l5[0]["code"] == "SHA-05-100"
 
     def test_search_filters_by_category(self, patch_jsonl_path):
         """Should filter by benefit (category) code."""
-        results = search_local_interventions(query="", category="PMF-07-SC-01")
+        results, _ = search_local_interventions(query="", category="PMF-07-SC-01")
         assert len(results) == 1
         assert results[0]["code"] == "PMF-07-002"
 
     def test_search_respects_limit(self, patch_jsonl_path):
         """Should not return more than the limit."""
-        results = search_local_interventions(query="", limit=1)
+        results, _ = search_local_interventions(query="", limit=1)
         assert len(results) == 1
 
     def test_empty_query_returns_all_active(self, patch_jsonl_path):
         """Empty query returns all active interventions."""
-        results = search_local_interventions(query="", limit=100)
+        results, _ = search_local_interventions(query="", limit=100)
         codes = [r["code"] for r in results]
         assert "PMF-07-002" in codes
         assert "SHA-05-100" in codes
@@ -301,22 +301,22 @@ class TestSearchLocalInterventions:
 
     def test_tariff_extraction_for_level(self, patch_jsonl_path):
         """Should return correct tariff for requested facility level."""
-        results = search_local_interventions(query="PMF-07-002", facility_level=4)
+        results, _ = search_local_interventions(query="PMF-07-002", facility_level=4)
         assert len(results) == 1
         assert results[0]["price"] == Decimal("3360.0")
 
     def test_tariff_extraction_procedure_type(self, patch_jsonl_path):
         """Procedure types use 'Tariff (KES)' field."""
-        results = search_local_interventions(query="Squamous Cell")
+        results, _ = search_local_interventions(query="Squamous Cell")
         assert len(results) == 1
         assert results[0]["price"] == Decimal("3500")
 
     def test_facility_level_extraction(self, patch_jsonl_path):
         """Should extract minimum facility level from levels_applicable."""
-        results = search_local_interventions(query="PMF-07-002")
+        results, _ = search_local_interventions(query="PMF-07-002")
         assert results[0]["facility_level"] == 3  # min of [3,4,5,6]
 
-        results = search_local_interventions(query="Cardiac")
+        results, _ = search_local_interventions(query="Cardiac")
         assert results[0]["facility_level"] == 5  # min of [5,6]
 
 
@@ -358,16 +358,16 @@ class TestGetLocalIntervention:
 
 
 # =============================================================================
-# Tests: TerminologyService integration
+# Tests: TerminologyService integration (local-first)
 # =============================================================================
 
 
-class TestTerminologyServiceInterventionFallback:
-    """Tests for TerminologyService falling back to local JSONL."""
+class TestTerminologyServiceLocalFirst:
+    """Tests for TerminologyService local-first intervention lookup."""
 
     @pytest.fixture
     def service(self, patch_jsonl_path):
-        """TerminologyService with local fallback enabled."""
+        """TerminologyService with local data available."""
         with patch.object(TerminologyService, "__init__", lambda self, **kw: None):
             svc = TerminologyService.__new__(TerminologyService)
             svc.api_base_url = "https://fake-dha.example.com"
@@ -377,109 +377,71 @@ class TestTerminologyServiceInterventionFallback:
             svc.auth_service = type("FakeAuth", (), {"get_terminology_headers": lambda s: {}})()
             return svc
 
-    @pytest.fixture
-    def service_no_fallback(self, patch_jsonl_path):
-        """TerminologyService with local fallback disabled."""
-        with patch.object(TerminologyService, "__init__", lambda self, **kw: None):
-            svc = TerminologyService.__new__(TerminologyService)
-            svc.api_base_url = "https://fake-dha.example.com"
-            svc.interventions_endpoint = "/terminology/v1/sha-intervention"
-            svc.timeout = 5
-            svc.use_local_fallback = False
-            svc.auth_service = type("FakeAuth", (), {"get_terminology_headers": lambda s: {}})()
-            return svc
-
-    def test_search_falls_back_on_timeout(self, service):
-        """Should return local results when DHA API times out."""
+    def test_search_serves_from_local_without_api_call(self, service):
+        """Should serve from local JSONL without ever calling the DHA API."""
         with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            mock_get.side_effect = requests.Timeout("Connection timed out")
-
             results = service.search_interventions("Surgical")
 
+        # API should NOT be called — local had results
+        mock_get.assert_not_called()
         assert len(results) == 1
         assert isinstance(results[0], InterventionCode)
         assert results[0].code == "PMF-07-002"
         assert results[0].name == "Surgical Complications (Public Officers Medical Service Fund)"
 
-    def test_search_falls_back_on_connection_error(self, service):
-        """Should return local results when DHA API is unreachable."""
+    def test_search_respects_facility_level(self, service):
+        """Local-first search should filter by facility level."""
         with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            mock_get.side_effect = requests.ConnectionError("DNS resolution failed")
-
-            results = service.search_interventions("Cardiac")
-
-        assert len(results) == 1
-        assert results[0].code == "SHA-05-100"
-
-    def test_search_raises_when_fallback_disabled(self, service_no_fallback):
-        """Should raise TerminologyError when fallback is disabled."""
-        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            mock_get.side_effect = requests.Timeout("Connection timed out")
-
-            with pytest.raises(TerminologyError):
-                service_no_fallback.search_interventions("test")
-
-    def test_search_respects_facility_level_in_fallback(self, service):
-        """Fallback should filter by facility level."""
-        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            mock_get.side_effect = requests.ConnectionError()
-
-            # Level 4 shouldn't include SHA-05-100 (level 5+6 only)
             results = service.search_interventions("", facility_level=4)
-            codes = [r.code for r in results]
-            assert "SHA-05-100" not in codes
-            assert "PMF-07-002" in codes
+
+        mock_get.assert_not_called()
+        codes = [r.code for r in results]
+        assert "SHA-05-100" not in codes  # Level 5+6 only
+        assert "PMF-07-002" in codes  # Level 3+
 
     def test_search_returns_correct_price_for_level(self, service):
-        """Fallback should return level-specific tariff."""
+        """Local-first should return level-specific tariff."""
         with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            mock_get.side_effect = requests.ConnectionError()
-
             results = service.search_interventions("PMF-07", facility_level=6)
 
+        mock_get.assert_not_called()
         assert len(results) == 1
         assert results[0].price == Decimal("4480.0")
 
-    def test_get_intervention_falls_back_on_error(self, service):
-        """get_intervention should use local fallback on network error."""
+    def test_search_falls_through_to_api_when_local_empty(self, service):
+        """Should call DHA API when local returns no matches."""
+        mock_response = type(
+            "Response",
+            (),
+            {
+                "status_code": 200,
+                "raise_for_status": lambda s: None,
+                "json": lambda s: {
+                    "IsSuccess": True,
+                    "Data": {
+                        "shaInterventions": [
+                            {
+                                "intervention_code": "SHA-NEW-001",
+                                "intervention_name": "New From API",
+                                "price": "9000",
+                            }
+                        ]
+                    },
+                },
+            },
+        )()
+
         with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            mock_get.side_effect = requests.ConnectionError("Network unreachable")
+            mock_get.return_value = mock_response
+            # Query that doesn't match any local record
+            results = service.search_interventions("xyznonexistent999")
 
-            result = service.get_intervention("PMF-07-002")
+        mock_get.assert_called_once()
+        assert len(results) == 1
+        assert results[0].code == "SHA-NEW-001"
 
-        assert isinstance(result, InterventionCode)
-        assert result.code == "PMF-07-002"
-
-    def test_get_intervention_fallback_on_404_when_exists_locally(self, service):
-        """If DHA returns 404 but code exists locally, return local."""
-        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            mock_resp = type(
-                "Response", (), {"status_code": 404, "raise_for_status": lambda s: None}
-            )()
-            mock_get.return_value = mock_resp
-
-            result = service.get_intervention("PMF-07-002")
-
-        assert result.code == "PMF-07-002"
-
-    def test_get_intervention_raises_not_found_when_truly_missing(self, service):
-        """If code doesn't exist in API or local, raise CodeNotFoundError."""
-        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            mock_get.side_effect = requests.ConnectionError()
-
-            with pytest.raises(CodeNotFoundError):
-                service.get_intervention("NONEXISTENT-999")
-
-    def test_get_intervention_raises_when_fallback_disabled(self, service_no_fallback):
-        """Should raise when API fails and fallback is disabled."""
-        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
-            mock_get.side_effect = requests.ConnectionError()
-
-            with pytest.raises(TerminologyError):
-                service_no_fallback.get_intervention("PMF-07-002")
-
-    def test_search_uses_api_when_available(self, service):
-        """Should prefer API response over local when API works."""
+    def test_search_force_remote_skips_local(self, service):
+        """force_remote=True should always call DHA API."""
         mock_response = type(
             "Response",
             (),
@@ -503,9 +465,90 @@ class TestTerminologyServiceInterventionFallback:
 
         with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
             mock_get.return_value = mock_response
+            results = service.search_interventions("Surgical", force_remote=True)
 
-            results = service.search_interventions("test")
-
+        mock_get.assert_called_once()
         assert len(results) == 1
         assert results[0].code == "SHA-API-001"
-        assert results[0].name == "From API"
+
+    def test_search_force_remote_raises_on_api_failure(self, service):
+        """force_remote should raise if API fails (no local fallback)."""
+        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
+            mock_get.side_effect = requests.Timeout("timed out")
+
+            with pytest.raises(TerminologyError):
+                service.search_interventions("test", force_remote=True)
+
+    def test_get_intervention_serves_from_local(self, service):
+        """get_intervention should serve from local without API call."""
+        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
+            result = service.get_intervention("PMF-07-002")
+
+        mock_get.assert_not_called()
+        assert isinstance(result, InterventionCode)
+        assert result.code == "PMF-07-002"
+
+    def test_get_intervention_falls_through_to_api(self, service):
+        """Should call API when code not in local store."""
+        mock_response = type(
+            "Response",
+            (),
+            {
+                "status_code": 200,
+                "raise_for_status": lambda s: None,
+                "json": lambda s: {
+                    "intervention_code": "SHA-REMOTE-001",
+                    "intervention_name": "Remote Only",
+                    "price": "7500",
+                },
+            },
+        )()
+
+        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
+            mock_get.return_value = mock_response
+            result = service.get_intervention("SHA-REMOTE-001")
+
+        mock_get.assert_called_once()
+        assert result.code == "SHA-REMOTE-001"
+
+    def test_get_intervention_raises_not_found(self, service):
+        """Should raise CodeNotFoundError when not in local AND API returns 404."""
+        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
+            mock_resp = type(
+                "Response", (), {"status_code": 404, "raise_for_status": lambda s: None}
+            )()
+            mock_get.return_value = mock_resp
+
+            with pytest.raises(CodeNotFoundError):
+                service.get_intervention("NONEXISTENT-999")
+
+    def test_get_intervention_raises_on_api_error(self, service):
+        """Should raise TerminologyError when not local and API fails."""
+        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
+            mock_get.side_effect = requests.ConnectionError("Network down")
+
+            with pytest.raises(TerminologyError):
+                service.get_intervention("NOT-IN-LOCAL-STORE")
+
+    def test_get_intervention_force_remote(self, service):
+        """force_remote=True should skip local and call API."""
+        mock_response = type(
+            "Response",
+            (),
+            {
+                "status_code": 200,
+                "raise_for_status": lambda s: None,
+                "json": lambda s: {
+                    "intervention_code": "PMF-07-002",
+                    "intervention_name": "Fresh From API",
+                    "price": "9999",
+                },
+            },
+        )()
+
+        with patch("hmis.apps.billing.services.terminology.requests.get") as mock_get:
+            mock_get.return_value = mock_response
+            result = service.get_intervention("PMF-07-002", force_remote=True)
+
+        mock_get.assert_called_once()
+        assert result.name == "Fresh From API"

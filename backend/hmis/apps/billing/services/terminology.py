@@ -554,23 +554,27 @@ class TerminologyService:
         facility_level: int | None = None,
         category: str | None = None,
         limit: int = 50,
+        force_remote: bool = False,
     ) -> list[InterventionCode]:
         """
         Search SHA interventions catalog.
 
-        Searches for reimbursable interventions by name or code.
+        Uses local-first strategy: serves from local JSONL data for speed,
+        falls back to DHA API only when local data is unavailable or
+        force_remote=True.
 
         Args:
             query: Search term (name or code)
             facility_level: Filter by minimum facility level (1-6)
             category: Filter by category
             limit: Maximum results to return
+            force_remote: If True, skip local and call DHA API directly
 
         Returns:
             List of matching InterventionCode objects
 
         Raises:
-            TerminologyError: If search fails
+            TerminologyError: If search fails and no fallback available
 
         Example:
             >>> results = service.search_interventions('consultation')
@@ -578,6 +582,25 @@ class TerminologyService:
         """
         logger.info(f"Searching SHA interventions: query='{query}'")
 
+        # Local-first: serve from JSONL unless forced remote
+        if not force_remote:
+            local_results, _ = search_local_interventions(
+                query=query,
+                facility_level=facility_level,
+                category=category,
+                limit=limit,
+            )
+            if local_results:
+                logger.debug(
+                    "Served %d interventions from local store for query='%s'",
+                    len(local_results),
+                    query,
+                )
+                return [InterventionCode(**kwargs) for kwargs in local_results]
+            # Local store empty (missing JSONL or no matches) — try remote
+            logger.info("Local store returned no results, trying DHA API")
+
+        # Remote DHA API
         params = {
             "search": query,
             "limit": limit,
@@ -611,54 +634,52 @@ class TerminologyService:
             return [InterventionCode.from_api_response(r) for r in results]
 
         except SHAAuthError as e:
-            if not self.use_local_fallback:
-                raise TerminologyError(
-                    f"Authentication error: {str(e)}",
-                    status_code=e.status_code,
-                    terminology_type="SHA_INTERVENTIONS",
-                )
-            logger.warning("DHA API auth failed, falling back to local: %s", e)
+            raise TerminologyError(
+                f"Authentication error: {str(e)}",
+                status_code=e.status_code,
+                terminology_type="SHA_INTERVENTIONS",
+            )
         except requests.Timeout:
-            if not self.use_local_fallback:
-                raise TerminologyError(
-                    "Request timed out",
-                    terminology_type="SHA_INTERVENTIONS",
-                )
-            logger.warning("DHA API timed out, falling back to local interventions")
+            raise TerminologyError(
+                "Request timed out",
+                terminology_type="SHA_INTERVENTIONS",
+            )
         except requests.RequestException as e:
-            if not self.use_local_fallback:
-                raise TerminologyError(
-                    f"Request failed: {str(e)}",
-                    terminology_type="SHA_INTERVENTIONS",
-                )
-            logger.warning("DHA API unavailable, falling back to local: %s", e)
+            raise TerminologyError(
+                f"Request failed: {str(e)}",
+                terminology_type="SHA_INTERVENTIONS",
+            )
 
-        # Local JSONL fallback
-        logger.info("Using local SHA interventions fallback for query='%s'", query)
-        local_results = search_local_interventions(
-            query=query,
-            facility_level=facility_level,
-            category=category,
-            limit=limit,
-        )
-        return [InterventionCode(**kwargs) for kwargs in local_results]
-
-    def get_intervention(self, code: str) -> InterventionCode:
+    def get_intervention(self, code: str, force_remote: bool = False) -> InterventionCode:
         """
         Get a specific SHA intervention by code.
 
+        Uses local-first strategy: checks local JSONL data first,
+        falls back to DHA API if not found locally or force_remote=True.
+
         Args:
             code: SHA intervention code
+            force_remote: If True, skip local and call DHA API directly
 
         Returns:
             InterventionCode for the specified code
 
         Raises:
-            CodeNotFoundError: If code not found
-            TerminologyError: If request fails and no local fallback
+            CodeNotFoundError: If code not found in local or remote
+            TerminologyError: If remote request fails and code not available locally
         """
         logger.info(f"Fetching SHA intervention: {code}")
 
+        # Local-first: check JSONL store
+        if not force_remote:
+            local = get_local_intervention(code)
+            if local:
+                logger.debug("Served intervention '%s' from local store", code)
+                return InterventionCode(**local)
+            # Not found locally — try remote
+            logger.info("Intervention '%s' not in local store, trying DHA API", code)
+
+        # Remote DHA API
         try:
             headers = self.auth_service.get_terminology_headers()
 
@@ -678,27 +699,11 @@ class TerminologyService:
 
             return InterventionCode.from_api_response(intervention_data)
 
-        except CodeNotFoundError:
-            # Try local fallback before giving up
-            if self.use_local_fallback:
-                local = get_local_intervention(code)
-                if local:
-                    logger.info("Found intervention '%s' in local fallback", code)
-                    return InterventionCode(**local)
-            raise
         except (SHAAuthError, requests.RequestException) as e:
-            if not self.use_local_fallback:
-                raise TerminologyError(
-                    f"Failed to fetch intervention: {str(e)}",
-                    terminology_type="SHA_INTERVENTIONS",
-                )
-            logger.warning("DHA API unavailable for get_intervention(%s), using local: %s", code, e)
-
-        # Local JSONL fallback
-        local = get_local_intervention(code)
-        if local:
-            return InterventionCode(**local)
-        raise CodeNotFoundError(code, "SHA_INTERVENTIONS")
+            raise TerminologyError(
+                f"Failed to fetch intervention: {str(e)}",
+                terminology_type="SHA_INTERVENTIONS",
+            )
 
     def get_interventions_for_facility_level(
         self,

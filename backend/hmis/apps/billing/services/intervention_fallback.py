@@ -162,16 +162,18 @@ def search_local_interventions(
     facility_level: int | None = None,
     category: str | None = None,
     limit: int = 50,
-) -> list[dict]:
+    offset: int = 0,
+) -> tuple[list[dict], int]:
     """
     Search local interventions by name or code.
 
-    Returns list of kwargs dicts suitable for InterventionCode(**kwargs).
+    Returns a tuple of (results, total_count) where results is a list of kwargs
+    dicts suitable for InterventionCode(**kwargs), sliced by offset/limit.
     """
     interventions, _ = _load_interventions()
 
     query_lower = query.lower().strip() if query else ""
-    results = []
+    matched = []
 
     for record in interventions:
         # Filter by active status
@@ -198,12 +200,13 @@ def search_local_interventions(
             if query_lower not in name and query_lower not in code:
                 continue
 
-        results.append(_record_to_intervention_kwargs(record, facility_level))
+        matched.append(record)
 
-        if len(results) >= limit:
-            break
+    total = len(matched)
+    page_records = matched[offset : offset + limit]
+    results = [_record_to_intervention_kwargs(r, facility_level) for r in page_records]
 
-    return results
+    return results, total
 
 
 def get_local_intervention(code: str, facility_level: int | None = None) -> dict | None:
