@@ -24,6 +24,7 @@ import requests
 from django.conf import settings
 from django.db.models import Q
 
+from .intervention_fallback import get_local_intervention, search_local_interventions
 from .sha_auth import SHAAuthError, SHAAuthService
 
 logger = logging.getLogger(__name__)
@@ -610,21 +611,37 @@ class TerminologyService:
             return [InterventionCode.from_api_response(r) for r in results]
 
         except SHAAuthError as e:
-            raise TerminologyError(
-                f"Authentication error: {str(e)}",
-                status_code=e.status_code,
-                terminology_type="SHA_INTERVENTIONS",
-            )
+            if not self.use_local_fallback:
+                raise TerminologyError(
+                    f"Authentication error: {str(e)}",
+                    status_code=e.status_code,
+                    terminology_type="SHA_INTERVENTIONS",
+                )
+            logger.warning("DHA API auth failed, falling back to local: %s", e)
         except requests.Timeout:
-            raise TerminologyError(
-                "Request timed out",
-                terminology_type="SHA_INTERVENTIONS",
-            )
+            if not self.use_local_fallback:
+                raise TerminologyError(
+                    "Request timed out",
+                    terminology_type="SHA_INTERVENTIONS",
+                )
+            logger.warning("DHA API timed out, falling back to local interventions")
         except requests.RequestException as e:
-            raise TerminologyError(
-                f"Request failed: {str(e)}",
-                terminology_type="SHA_INTERVENTIONS",
-            )
+            if not self.use_local_fallback:
+                raise TerminologyError(
+                    f"Request failed: {str(e)}",
+                    terminology_type="SHA_INTERVENTIONS",
+                )
+            logger.warning("DHA API unavailable, falling back to local: %s", e)
+
+        # Local JSONL fallback
+        logger.info("Using local SHA interventions fallback for query='%s'", query)
+        local_results = search_local_interventions(
+            query=query,
+            facility_level=facility_level,
+            category=category,
+            limit=limit,
+        )
+        return [InterventionCode(**kwargs) for kwargs in local_results]
 
     def get_intervention(self, code: str) -> InterventionCode:
         """
@@ -638,7 +655,7 @@ class TerminologyService:
 
         Raises:
             CodeNotFoundError: If code not found
-            TerminologyError: If request fails
+            TerminologyError: If request fails and no local fallback
         """
         logger.info(f"Fetching SHA intervention: {code}")
 
@@ -661,11 +678,27 @@ class TerminologyService:
 
             return InterventionCode.from_api_response(intervention_data)
 
+        except CodeNotFoundError:
+            # Try local fallback before giving up
+            if self.use_local_fallback:
+                local = get_local_intervention(code)
+                if local:
+                    logger.info("Found intervention '%s' in local fallback", code)
+                    return InterventionCode(**local)
+            raise
         except (SHAAuthError, requests.RequestException) as e:
-            raise TerminologyError(
-                f"Failed to fetch intervention: {str(e)}",
-                terminology_type="SHA_INTERVENTIONS",
-            )
+            if not self.use_local_fallback:
+                raise TerminologyError(
+                    f"Failed to fetch intervention: {str(e)}",
+                    terminology_type="SHA_INTERVENTIONS",
+                )
+            logger.warning("DHA API unavailable for get_intervention(%s), using local: %s", code, e)
+
+        # Local JSONL fallback
+        local = get_local_intervention(code)
+        if local:
+            return InterventionCode(**local)
+        raise CodeNotFoundError(code, "SHA_INTERVENTIONS")
 
     def get_interventions_for_facility_level(
         self,
