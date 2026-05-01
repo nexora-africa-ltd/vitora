@@ -2110,17 +2110,20 @@ class EligibilityCheckView(APIView):
         """
         patient_id = request.data.get("patient_id")
         sha_number = request.data.get("sha_number")
+        sha_member_id = request.data.get("sha_member_id")
 
-        if not patient_id and not sha_number:
+        if not patient_id and not sha_number and not sha_member_id:
             return Response(
-                {"error": "patient_id or sha_number is required"},
+                {"error": "patient_id, sha_number, or sha_member_id is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
             # Try to find SHA member
             member = None
-            if sha_number:
+            if sha_member_id:
+                member = SHAMember.objects.filter(id=sha_member_id).first()
+            elif sha_number:
                 member = SHAMember.objects.filter(sha_number=sha_number).first()
             elif patient_id:
                 member = SHAMember.objects.filter(patient_id=patient_id).first()
