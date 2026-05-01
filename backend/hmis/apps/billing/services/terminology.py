@@ -63,6 +63,9 @@ class InterventionCode:
     is_active: bool = True
     effective_date: date | None = None
     raw_data: dict = field(default_factory=dict)
+    max_amount_per_test: str | None = None
+    quantity_per_year: str | None = None
+    requires_preauthorization: bool = False
 
     @classmethod
     def from_api_response(cls, data: dict) -> "InterventionCode":

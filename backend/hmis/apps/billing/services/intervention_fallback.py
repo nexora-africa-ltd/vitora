@@ -139,21 +139,95 @@ def _get_tariff_for_level(extras: dict, facility_level: int | None) -> Decimal |
     return None
 
 
+# SHA/PMF benefit package code → human-readable category
+_BENEFIT_PACKAGE_LABELS: dict[str, str] = {
+    "SHA-01": "Emergency & Ambulance",
+    "SHA-02": "Laboratory",
+    "SHA-03": "Pharmacy",
+    "SHA-05": "Chronic Disease Management",
+    "SHA-06": "Oncology",
+    "SHA-07": "Surgical",
+    "SHA-08": "Maternity",
+    "SHA-09": "Radiology & Imaging",
+    "SHA-10": "Mental Health",
+    "SHA-11": "Dental",
+    "SHA-12": "Outpatient",
+    "SHA-13": "Rehabilitation",
+    "SHA-15": "Palliative Care",
+    "SHA-16": "Renal",
+    "SHA-17": "Organ Transplant",
+    "SHA-18": "Cardiac",
+    "SHA-19": "Ophthalmic & ENT",
+    "SHA-20": "Orthopedic",
+    "PMF-01": "Emergency (PMF)",
+    "PMF-03": "Pharmacy (PMF)",
+    "PMF-07": "Surgical (PMF)",
+    "PMF-10": "Mental Health (PMF)",
+    "PMF-12": "Outpatient (PMF)",
+    "PMF-13": "Rehabilitation (PMF)",
+}
+
+
+def _derive_category(code: str, extras: dict) -> str:
+    """Derive a human-readable category label from the intervention code prefix."""
+    import re
+
+    # Try to match SHA-XX or PMF-XX prefix from the code itself
+    m = re.match(r"((?:SHA|PMF)\s*-\s*\d+)", code.replace(" ", ""))
+    if m:
+        prefix = m.group(1).replace(" ", "")
+        label = _BENEFIT_PACKAGE_LABELS.get(prefix)
+        if label:
+            return label
+
+    # Try from the benefit field
+    benefit = extras.get("benefit", "")
+    if benefit:
+        m = re.match(r"((?:SHA|PMF)-\d+)", benefit)
+        if m:
+            label = _BENEFIT_PACKAGE_LABELS.get(m.group(1))
+            if label:
+                return label
+
+    return extras.get("concept_class", "")
+
+
+def _requires_preauth(extras: dict) -> bool:
+    """Check if any pre-authorization flag is set."""
+    preauth_keys = (
+        "requires_surgical_preauth",
+        "requires_oncology_preauth",
+        "requires_optical_preauth",
+        "requires_renal_preauth",
+        "requires_radiology_preauth",
+        "needs_manual_preauth_approval",
+    )
+    return any(extras.get(k) == "True" for k in preauth_keys)
+
+
 def _record_to_intervention_kwargs(record: dict, facility_level: int | None = None) -> dict:
     """Convert a JSONL record to InterventionCode constructor kwargs."""
     extras = record.get("extras", {})
     min_level = _extract_min_facility_level(extras)
 
+    code = record["id"]
     return {
-        "code": record["id"],
+        "code": code,
         "name": record.get("display_name", ""),
         "description": record.get("description"),
-        "category": extras.get("benefit"),
+        "category": _derive_category(code, extras),
         "price": _get_tariff_for_level(extras, facility_level),
         "facility_level": min_level,
         "is_active": extras.get("active", "True") == "True" and not record.get("retired", False),
         "effective_date": None,
         "raw_data": extras,
+        # Additional fields for Procedure-type sub-interventions
+        "max_amount_per_test": extras.get("Total Maximum Amount per test"),
+        "quantity_per_year": extras.get(
+            "Sub-Intervention quantity per year. Maximum No of markers "
+            "(Drop down for number of tests done at a time)"
+        ),
+        "requires_preauthorization": _requires_preauth(extras),
     }
 
 

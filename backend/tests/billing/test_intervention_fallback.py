@@ -329,7 +329,7 @@ class TestGetLocalIntervention:
         assert result is not None
         assert result["code"] == "PMF-07-002"
         assert result["name"] == "Surgical Complications (Public Officers Medical Service Fund)"
-        assert result["category"] == "PMF-07-SC-01"
+        assert result["category"] == "Surgical (PMF)"
         assert result["is_active"] is True
 
     def test_get_nonexistent_code(self, patch_jsonl_path):
