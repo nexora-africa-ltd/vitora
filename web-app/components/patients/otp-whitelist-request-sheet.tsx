@@ -7,12 +7,13 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
-import { AlertTriangle, FileUp, Loader2, Send, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { AlertTriangle, FileUp, Loader2, Send, CheckCircle2, RefreshCw, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -84,6 +85,8 @@ export function OtpWhitelistRequestSheet({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [whitelistStatus, setWhitelistStatus] = useState<string | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
   // Editable fields pre-populated from props
   const [crId, setCrId] = useState('');
@@ -96,6 +99,29 @@ export function OtpWhitelistRequestSheet({
       setFrCode(facilityFrCode);
     }
   }, [open, shaNumber, facilityFrCode]);
+
+  const checkWhitelistStatus = useCallback(async () => {
+    if (!crId.trim()) return;
+    setIsCheckingStatus(true);
+    try {
+      const result = await shaApi.ilmListOtpWhitelistStatus({
+        beneficiary_cr_id: crId.trim(),
+        facility_fr_code: frCode.trim() || undefined,
+      });
+      // DHA returns paginated results in `data`; pick the latest
+      const data = result.data as { results?: Array<{ status?: string }> } | undefined;
+      const latest = data?.results?.[0];
+      if (latest?.status) {
+        setWhitelistStatus(latest.status.toUpperCase());
+      } else {
+        setWhitelistStatus('PENDING');
+      }
+    } catch {
+      setWhitelistStatus('PENDING');
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  }, [crId, frCode]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -149,6 +175,7 @@ export function OtpWhitelistRequestSheet({
       setBiometricAttempts('3');
       setAttachment(null);
       setReasonType('BIOMETRIC_FAILURE');
+      setWhitelistStatus(null);
     }, 300);
   };
 
@@ -166,7 +193,7 @@ export function OtpWhitelistRequestSheet({
         </SheetHeader>
 
         {success ? (
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-4 flex-1 flex flex-col">
             <div className="rounded-md bg-green-50 dark:bg-green-900/10 p-3">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -180,9 +207,37 @@ export function OtpWhitelistRequestSheet({
                 </div>
               </div>
             </div>
-            <Button onClick={handleClose} className="w-full" size="sm">
-              Close
-            </Button>
+
+            {/* Status check */}
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Review Status</span>
+                <WhitelistStatusBadge status={whitelistStatus} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                DHA reviews typically take a few minutes to hours.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={checkWhitelistStatus}
+                disabled={isCheckingStatus}
+                className="w-full text-xs"
+              >
+                {isCheckingStatus ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Check Status
+              </Button>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button onClick={handleClose} className="w-full" size="sm">
+                Close
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="mt-4 flex flex-col flex-1 gap-4">
@@ -328,4 +383,42 @@ export function OtpWhitelistRequestSheet({
       </SheetContent>
     </Sheet>
   );
+}
+
+// ============================================================================
+// Whitelist Status Badge (also exported for use in SHAConsentStep)
+// ============================================================================
+
+export function WhitelistStatusBadge({ status }: { status: string | null }) {
+  if (!status) {
+    return (
+      <Badge variant="outline" className="text-[10px] gap-1">
+        <Clock className="h-3 w-3" />
+        Not checked
+      </Badge>
+    );
+  }
+  switch (status) {
+    case 'APPROVED':
+      return (
+        <Badge className="text-[10px] gap-1 bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200">
+          <CheckCircle2 className="h-3 w-3" />
+          Approved
+        </Badge>
+      );
+    case 'REJECTED':
+      return (
+        <Badge className="text-[10px] gap-1 bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-red-200">
+          <XCircle className="h-3 w-3" />
+          Rejected
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline" className="text-[10px] gap-1 border-amber-300 text-amber-700 dark:border-amber-600 dark:text-amber-400">
+          <Clock className="h-3 w-3" />
+          Pending Review
+        </Badge>
+      );
+  }
 }
