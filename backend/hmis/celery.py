@@ -151,6 +151,11 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.billing.tasks.poll_preauth_statuses",
         "schedule": crontab(minute="*/5"),
     },
+    # Billing: Re-scrape SHA interventions catalog weekly (Sunday 3 AM)
+    "billing-refresh-sha-interventions": {
+        "task": "hmis.apps.billing.tasks.refresh_sha_interventions",
+        "schedule": crontab(minute=0, hour=3, day_of_week="sunday"),
+    },
     # Pharmacy: Expire overdue prescriptions daily at 1 AM
     "pharmacy-expire-prescriptions": {
         "task": "hmis.apps.pharmacy.tasks.expire_prescriptions",

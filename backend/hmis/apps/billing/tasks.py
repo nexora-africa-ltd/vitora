@@ -6,7 +6,10 @@ Tasks:
 - flag_overdue_invoices: 6 AM daily — mark past-due invoices
 - submit_pending_sha_claims: Hourly — batch submit SHA claims to SHA API
 - poll_preauth_statuses: Every 5 min — poll DHA for preauth decision updates
+- refresh_sha_interventions: Weekly — re-scrape OCL intervention catalog
 """
+
+import logging
 
 from celery import shared_task
 
@@ -46,8 +49,6 @@ def poll_sha_claim_statuses():
 @shared_task(name="hmis.apps.billing.tasks.poll_preauth_statuses")
 def poll_preauth_statuses():
     """Poll DHA API for pre-authorization decision updates on pending requests."""
-    import logging
-
     from hmis.apps.billing.models import PreauthRequest
     from hmis.apps.billing.services.sha_preauth import SHAPreauthService
 
@@ -70,3 +71,11 @@ def poll_preauth_statuses():
     result = f"Polled {polled} preauth request(s), {errors} error(s)"
     logger.info(result)
     return result
+
+
+@shared_task(name="hmis.apps.billing.tasks.refresh_sha_interventions")
+def refresh_sha_interventions():
+    """Re-scrape SHA benefits/interventions from OCL API weekly."""
+    from django.core.management import call_command
+
+    call_command("refresh_interventions")

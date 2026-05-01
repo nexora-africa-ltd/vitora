@@ -1188,6 +1188,7 @@ from hmis.apps.billing.services.client_registry import (
 )
 from hmis.apps.billing.services.dha_search import DHASearchService, SearchError
 from hmis.apps.billing.services.icd11_local import ICD11LocalService
+from hmis.apps.billing.services.intervention_fallback import search_local_interventions
 from hmis.apps.billing.services.terminology import TerminologyError, TerminologyService
 
 
@@ -1231,7 +1232,10 @@ class TerminologySearchView(APIView):
         search = request.query_params.get("search", "")
         limit = int(request.query_params.get("limit", 50))
 
-        if len(search) < 2:
+        # Allow browsing interventions by facility_level without a search term
+        if len(search) < 2 and not (
+            terminology_type == "interventions" and request.query_params.get("facility_level")
+        ):
             return Response(
                 {"results": [], "message": "Search query must be at least 2 characters"}
             )
@@ -1250,7 +1254,22 @@ class TerminologySearchView(APIView):
             elif terminology_type == "ichi":
                 results = service.search_ichi(search, limit=limit)
             elif terminology_type == "interventions":
-                results = service.search_interventions(search, limit=limit)
+                facility_level = request.query_params.get("facility_level")
+                offset = int(request.query_params.get("offset", 0))
+                results_list, total_count = search_local_interventions(
+                    query=search,
+                    facility_level=int(facility_level) if facility_level else None,
+                    limit=limit,
+                    offset=offset,
+                )
+                # Convert to dicts
+                data = results_list
+                return Response(
+                    {
+                        "results": data,
+                        "count": total_count,
+                    }
+                )
             elif terminology_type == "drugs":
                 results = service.search_drug_products(search, limit=limit)
             elif terminology_type == "active-components":

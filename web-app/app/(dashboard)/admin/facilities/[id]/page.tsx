@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { facilitiesApi } from '@/lib/api/facilities';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { FacilityInterventionsPanel } from '@/components/admin/facility-interventions-panel';
 
 const levelLabels: Record<string, string> = {
   '1': 'Level 1 – Community',
@@ -210,6 +211,11 @@ export default function FacilityDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* SHA Interventions & Tariffs */}
+        {facility.sha_contracted && (
+          <FacilityInterventionsPanel facilityLevel={facility.level} />
+        )}
       </div>
     </div>
   );
