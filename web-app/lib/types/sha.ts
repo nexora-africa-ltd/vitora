@@ -182,21 +182,26 @@ export interface SHAMember {
   patient: number;
   patient_name?: string;
   patient_mrn?: string;
-  sha_member_number: string;
-  scheme_category: SchemeCategory;
+  sha_member_number?: string;
+  sha_number?: string;
+  scheme_category?: SchemeCategory;
   coverage_start_date: string;
-  coverage_end_date?: string;
-  is_active: boolean;
+  coverage_end_date?: string | null;
+  is_active?: boolean;
   // Membership type (for dependents tracking)
-  membership_type?: 'PRINCIPAL' | 'SPOUSE' | 'CHILD' | 'PARENT' | 'OTHER';
+  membership_type?: 'PRINCIPAL' | 'SPOUSE' | 'CHILD' | 'PARENT' | 'OTHER' | 'principal' | 'spouse' | 'child' | 'parent' | 'other';
   principal_sha_number?: string;
   status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_VERIFICATION' | 'SUSPENDED' | 'EXPIRED' | 'active' | 'inactive' | 'pending_verification' | 'suspended' | 'expired';
+  national_id?: string;
+  eligibility_display?: string;
+  eligibility_valid_until?: string | null;
+  last_eligibility_check?: string | null;
   // PFMS fields (SHA Integration Checklist #13)
   is_pfms_eligible: boolean;
-  pfms_category?: PFMSCategory;
-  pfms_category_display?: string;
+  pfms_category?: PFMSCategory | '' | null;
+  pfms_category_display?: string | null;
   pfms_verified: boolean;
-  pfms_verified_at?: string;
+  pfms_verified_at?: string | null;
   created_at: string;
   updated_at: string;
 }

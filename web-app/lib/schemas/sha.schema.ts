@@ -59,7 +59,7 @@ export const ClaimStatusSchema = z.enum([
 
 export const ClaimItemStatusSchema = z.enum(['pending', 'approved', 'rejected', 'adjusted']);
 
-export const MembershipTypeSchema = z.enum(['PRINCIPAL', 'SPOUSE', 'CHILD', 'PARENT', 'OTHER']);
+export const MembershipTypeSchema = z.enum(['PRINCIPAL', 'SPOUSE', 'CHILD', 'PARENT', 'OTHER', 'principal', 'spouse', 'child', 'parent', 'other']);
 
 export const MemberStatusSchema = z.enum([
   'ACTIVE',
@@ -191,12 +191,12 @@ export const SHAMemberSchema = z.object({
   patient: z.number(),
   patient_name: z.string().optional(),
   patient_mrn: z.string().optional(),
-  sha_member_number: z.string(),
+  sha_member_number: z.string().optional(),
   sha_number: z.string().optional(),
-  scheme_category: SchemeCategorySchema,
+  scheme_category: SchemeCategorySchema.optional(),
   coverage_start_date: z.string(),
-  coverage_end_date: z.string().optional(),
-  is_active: z.boolean(),
+  coverage_end_date: z.string().optional().nullable(),
+  is_active: z.boolean().optional(),
   membership_type: MembershipTypeSchema.optional(),
   principal_sha_number: z.string().optional(),
   status: MemberStatusSchema.optional(),
@@ -205,10 +205,10 @@ export const SHAMemberSchema = z.object({
   eligibility_valid_until: z.string().optional().nullable(),
   last_eligibility_check: z.string().optional().nullable(),
   is_pfms_eligible: z.boolean(),
-  pfms_category: PFMSCategorySchema.optional(),
-  pfms_category_display: z.string().optional(),
+  pfms_category: z.union([PFMSCategorySchema, z.literal('')]).optional().nullable(),
+  pfms_category_display: z.string().optional().nullable(),
   pfms_verified: z.boolean(),
-  pfms_verified_at: z.string().optional(),
+  pfms_verified_at: z.string().optional().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 });

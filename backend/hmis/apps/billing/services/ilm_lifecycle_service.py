@@ -28,6 +28,7 @@ and never break the API call.
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -346,8 +347,9 @@ class IlmLifecycleService:
             "reason": params.reason,
             "biometric_attempts": str(params.biometric_attempts),
         }
-        if params.attachments:
-            data["attachments"] = [
+        # DHA requires `attachments` metadata even when empty
+        attachments_meta = (
+            [
                 {
                     "document_title": a.document_title,
                     "document_type": a.document_type,
@@ -355,11 +357,25 @@ class IlmLifecycleService:
                 }
                 for a in params.attachments
             ]
-        multipart = build_multipart(files) if files else None
+            if params.attachments
+            else []
+        )
+        data["attachments"] = attachments_meta
+        # DHA always expects multipart/form-data for this endpoint, even without
+        # attachments.  Encode all form fields as multipart tuples so that
+        # requests uses multipart encoding (files={} is falsy and won't work).
+        multipart_fields: dict[str, Any] = {}
+        for key, value in data.items():
+            if isinstance(value, list):
+                multipart_fields[key] = (None, json.dumps(value), "application/json")
+            else:
+                multipart_fields[key] = (None, str(value))
+        # Merge actual file uploads
+        if files:
+            multipart_fields.update(build_multipart(files))
         response = self.client.post(
             OTP_WHITELIST_PATH,
-            data=data,
-            files=multipart,
+            files=multipart_fields,
             facility=facility,
             user=user,
         )
