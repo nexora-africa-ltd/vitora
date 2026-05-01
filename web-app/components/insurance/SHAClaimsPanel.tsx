@@ -7,6 +7,7 @@
 import React, { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -47,6 +48,7 @@ import {
 } from '@/components/ui/table';
 
 import { ClaimsStatusChart } from '@/components/widgets';
+import { TimeBarBadge } from '@/components/billing/sha/TimeBarBadge';
 import { useClaims } from '@/lib/hooks/use-sha';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useFacility } from '@/lib/context/facility-context';
@@ -221,7 +223,10 @@ function ClaimsTable({ claims, isLoading, onClaimClick }: ClaimsTableProps) {
               </div>
             </TableCell>
             <TableCell>
-              <ClaimStatusBadge status={claim.status} />
+              <div className="flex flex-col gap-1">
+                <ClaimStatusBadge status={claim.status} />
+                <TimeBarBadge claim={claim} compact />
+              </div>
             </TableCell>
             <TableCell className="text-right">
               <p className="font-medium">{formatCurrency(parseFloat(claim.total_amount ?? '0'))}</p>
@@ -299,6 +304,17 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
   }, [claims]);
 
   const filteredClaims = claims;
+
+  // Claims approaching time-barring deadline (within 12 hours or already barred)
+  const expiringClaims = useMemo(
+    () =>
+      claims.filter(
+        (c) =>
+          c.is_time_barred ||
+          (c.hours_until_time_barred != null && c.hours_until_time_barred <= 12)
+      ),
+    [claims]
+  );
 
   const handleClaimClick = (claim: Claim) => {
     router.push(`${basePath}/${claim.id}`);
@@ -392,6 +408,50 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Time-Barring Alerts */}
+      {expiringClaims.length > 0 && (
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <CardTitle className="text-base">Time-Barring Alerts</CardTitle>
+              <span className="text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-full font-medium">
+                {expiringClaims.length}
+              </span>
+            </div>
+            <CardDescription>
+              These claims are approaching or have exceeded their DHA submission deadline.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {expiringClaims.slice(0, 5).map((claim) => (
+                <div
+                  key={claim.id}
+                  className="flex items-center justify-between p-2 rounded-md border bg-background cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => handleClaimClick(claim)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="font-mono text-sm font-medium truncate">
+                      {claim.claim_number || `#${claim.id}`}
+                    </span>
+                    <span className="text-sm text-muted-foreground truncate">
+                      {claim.patient_name}
+                    </span>
+                  </div>
+                  <TimeBarBadge claim={claim} compact />
+                </div>
+              ))}
+              {expiringClaims.length > 5 && (
+                <p className="text-xs text-muted-foreground text-center pt-1">
+                  +{expiringClaims.length - 5} more claims approaching deadline
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <Card>

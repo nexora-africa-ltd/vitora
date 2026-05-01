@@ -9,7 +9,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { shaApi } from '@/lib/api/sha';
 import type { IlmCallResult } from '@/lib/schemas/sha.schema';
 import type { ClaimFlowInfo } from '@/lib/hooks/use-claim-flow';
+import { validateInterventionCombination, getBenefitCode, INTERVENTION_COMBINATION_RULES } from '@/lib/sha/combination-rules';
 
 type ActionKey =
   | 'startVisit'
@@ -35,11 +36,13 @@ interface ClaimILMPanelProps {
    * (all sections visible, standard add-intervention endpoint).
    */
   flow?: ClaimFlowInfo;
+  /** Active intervention codes already on this claim (for combination validation). */
+  existingInterventions?: string[];
   /** Called after any action finishes so the parent can refetch the claim. */
   onChange?: () => void;
 }
 
-export function ClaimILMPanel({ claimId, flow, onChange }: ClaimILMPanelProps) {
+export function ClaimILMPanel({ claimId, flow, existingInterventions = [], onChange }: ClaimILMPanelProps) {
   const [busy, setBusy] = useState<ActionKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<IlmCallResult | null>(null);
@@ -172,6 +175,39 @@ export function ClaimILMPanel({ claimId, flow, onChange }: ClaimILMPanelProps) {
               value={interventionCode}
               onChange={(e) => setInterventionCode(e.target.value)}
             />
+            {/* Combination rule validation */}
+            {interventionCode && existingInterventions.length > 0 && (() => {
+              const validation = validateInterventionCombination(existingInterventions, interventionCode);
+              if (!validation.valid) {
+                return (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-2 text-xs">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <span className="text-amber-700 dark:text-amber-300">{validation.reason}</span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            {/* Show allowed combinations when a primary exists */}
+            {existingInterventions.length > 0 && !interventionCode && (() => {
+              const primaryBenefit = getBenefitCode(existingInterventions[0]!);
+              const rules = INTERVENTION_COMBINATION_RULES[primaryBenefit];
+              if (rules && rules.allowedCombinations !== 'ALONE') {
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    Can combine with: {rules.allowedCombinations.join(', ')}
+                  </p>
+                );
+              }
+              if (rules && rules.allowedCombinations === 'ALONE') {
+                return (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    {rules.name} must be reported alone — no additional interventions allowed.
+                  </p>
+                );
+              }
+              return null;
+            })()}
             <Button
               size="sm"
               variant="outline"

@@ -790,6 +790,7 @@ SHA_ENDPOINTS = {
     "send_otp": "/send-web-otp",
     "validate_otp": "/v4/tiberbu-validate-otp",
     "start_visit": "/api/v1/claims/visit",
+    "authorize_biometric": "/api/v1/claims/authorize",
     "preauth_submit": "/v1/preauth/request",
     "preauth_status": "/v1/preauth/{ref}/status",
 }

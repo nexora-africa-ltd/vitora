@@ -528,6 +528,32 @@ export const ClaimSchema = z.object({
   // FHIR reference
   fhir_bundle_id: z.string().nullable().optional(),
   created_by: z.number().nullable().optional(),
+
+  // DHA HIE ILM fields
+  dha_external_id: z.string().nullable().optional(),
+  dha_correlation_id: z.string().nullable().optional(),
+  last_dha_status: z.string().nullable().optional(),
+  last_dha_payload_at: z.string().nullable().optional(),
+  dha_visit_started_at: z.string().nullable().optional(),
+
+  // Intervention tracking & document-type enforcement (Phase 1.1)
+  claim_interventions: z.array(z.object({
+    id: z.number(),
+    intervention_code: z.string(),
+    intervention_name: z.string().optional().default(''),
+    benefit_code: z.string().optional().default(''),
+    status: z.enum(['active', 'retired']),
+    required_document_types: z.array(z.string()),
+    dha_intervention_id: z.string().optional().default(''),
+    tariff_amount: z.string().nullable().optional(),
+    created_at: z.string(),
+    updated_at: z.string(),
+  })).optional().default([]),
+  missing_document_types: z.array(z.object({
+    intervention_code: z.string(),
+    intervention_name: z.string().optional().default(''),
+    missing: z.array(z.string()),
+  })).optional().default([]),
 });
 
 export type ClaimSchemaType = z.infer<typeof ClaimSchema>;
@@ -1425,3 +1451,42 @@ export const IlmPrescriptionRemoveDoctorInputSchema = z.object({
 export type IlmPrescriptionRemoveDoctorInput = z.infer<
   typeof IlmPrescriptionRemoveDoctorInputSchema
 >;
+
+// =============================================================================
+// SHA Remittance Schemas
+// =============================================================================
+
+export const SHARemittanceSchema = z.object({
+  id: z.number(),
+  bank_reference: z.string(),
+  payment_date: z.string(),
+  total_amount: z.string(),
+  claims_count: z.number(),
+  status: z.enum(['received', 'reconciling', 'reconciled', 'partial']),
+  reconciled_amount: z.string(),
+  unreconciled_amount: z.string(),
+  fetched_at: z.string(),
+  reconciled_at: z.string().nullable().optional(),
+});
+export type SHARemittance = z.infer<typeof SHARemittanceSchema>;
+
+export const SHARemittanceLineSchema = z.object({
+  id: z.number(),
+  dha_claim_id: z.string(),
+  paid_amount: z.string(),
+  payment_status: z.string(),
+  is_reconciled: z.boolean(),
+  reconciled_at: z.string().nullable().optional(),
+  claim: z.number().nullable().optional(),
+  claim_number: z.string().nullable().optional(),
+  claim_status: z.string().nullable().optional(),
+});
+export type SHARemittanceLine = z.infer<typeof SHARemittanceLineSchema>;
+
+export const PaginatedRemittancesSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(SHARemittanceSchema),
+});
+export type PaginatedRemittances = z.infer<typeof PaginatedRemittancesSchema>;

@@ -380,6 +380,59 @@ class IlmDoctorConsentView(APIView):
         return _result_to_response(result)
 
 
+class IlmDoctorConsentPollView(APIView):
+    """GET /api/sha/ilm/preauth/doctor-consent/poll/?preauth_id=
+
+    Polls DHA for the latest doctor-consent state on a preauth by re-fetching
+    the preauth via ILM. Returns the updated local SHAPreauth record.
+
+    Used by the frontend to auto-poll every ~10s while doctor_consent_state
+    is REQUESTED (awaiting doctor approval on Practice360).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        preauth_id = request.query_params.get("preauth_id")
+        if not preauth_id:
+            return Response({"error": "preauth_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            preauth = SHAPreauth.objects.get(pk=preauth_id)
+        except (SHAPreauth.DoesNotExist, ValueError):
+            return Response({"error": "preauth not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Re-fetch from DHA to get the latest state
+        try:
+            result = IlmPreauthService().fetch_preauth(
+                consent_token=preauth.consent_token,
+                facility=_facility(request),
+                user=request.user,
+                preauth=preauth,
+            )
+        except DHAError as exc:
+            return _ilm_handle_error("doctor_consent_poll", exc)
+
+        # Parse DHA response for doctor consent state update
+        dha_data = result.payload
+        if isinstance(dha_data, dict):
+            new_state = dha_data.get("doctor_consent_state", "")
+            # DHA may return states: APPROVED, REJECTED, PENDING, REQUESTED
+            if new_state and new_state != preauth.doctor_consent_state:
+                preauth.doctor_consent_state = new_state
+                preauth.save(update_fields=["doctor_consent_state", "updated_at"])
+            # Also check if preauth status changed (e.g. approved after doctor consent)
+            new_status = dha_data.get("status", "")
+            if (
+                new_status
+                and new_status in dict(SHAPreauth.Status.choices)
+                and new_status != preauth.status
+            ):
+                preauth.status = new_status
+                preauth.save(update_fields=["status", "updated_at"])
+
+        return Response(_serialize_preauth(preauth))
+
+
 # ===========================================================================
 # Emergency
 # ===========================================================================
@@ -583,6 +636,7 @@ class SHAPreauthListView(APIView):
     """GET /api/sha/ilm/preauth/local/?patient_pk=&claim_pk=
 
     Returns the cached SHAPreauth rows for browsing in the UI.
+    If no filter is provided, returns the most recent 200 preauths.
     """
 
     permission_classes = [IsAuthenticated]
@@ -595,8 +649,10 @@ class SHAPreauthListView(APIView):
             qs = qs.filter(patient=patient)
         if claim:
             qs = qs.filter(claim=claim)
-        if not patient and not claim:
-            return Response({"error": "patient_pk or claim_pk is required"}, status=400)
+        # Filter by status if provided
+        status_filter = request.query_params.get("status")
+        if status_filter and status_filter in dict(SHAPreauth.Status.choices):
+            qs = qs.filter(status=status_filter)
         return Response({"results": [_serialize_preauth(p) for p in qs[:200]]})
 
 

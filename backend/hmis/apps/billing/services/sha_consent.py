@@ -333,6 +333,138 @@ class SHAConsentService:
         logger.info("Visit started for consent %s (patient: %s)", consent.id, consent.patient_id)
         return response_data
 
+    def authorize_biometric(
+        self,
+        sha_member: SHAMember,
+        workstation_id: str,
+        agent_national_id: str,
+        user,
+        facility=None,
+    ) -> dict[str, Any]:
+        """
+        Initiate biometric authorization via DHA HIE.
+
+        Calls POST /api/v1/claims/authorize with workstationID and agent
+        national_id. Returns auth_guid and iframe_url for fingerprint capture.
+
+        Args:
+            sha_member: The SHA member to authorize.
+            workstation_id: Hardware Server workstation identifier.
+            agent_national_id: National ID of the biometrics agent (staff).
+            user: The staff user initiating the request.
+            facility: The Facility instance for tenant scoping.
+
+        Returns:
+            Dict with auth_guid, iframe_url, and status from DHA.
+
+        Raises:
+            SHAConsentError: If the authorize call fails.
+        """
+        if not facility:
+            raise SHAConsentError(
+                "Facility is required for biometric authorization",
+                code="facility_required",
+            )
+
+        endpoint = self._get_endpoint("authorize_biometric")
+        if not endpoint:
+            raise SHAConsentError(
+                "Biometric authorize endpoint not configured",
+                code="endpoint_not_configured",
+            )
+
+        patient_id = sha_member.national_id or sha_member.sha_number
+        payload = {
+            "patient_id": patient_id,
+            "workstationID": workstation_id,
+            "national_id": agent_national_id,
+        }
+
+        response_data = self._make_request("POST", endpoint, json=payload)
+
+        auth_guid = response_data.get("auth_guid") or response_data.get("guid", "")
+        iframe_url = response_data.get("iframe_url") or response_data.get("url", "")
+
+        if not auth_guid:
+            raise SHAConsentError(
+                "DHA did not return auth_guid for biometric authorization",
+                code="missing_auth_guid",
+                details=response_data,
+            )
+
+        # Create a ConsentToken in PENDING with BIOMETRIC method
+        consent = ConsentToken.objects.create(
+            patient=sha_member.patient,
+            sha_member=sha_member,
+            consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+            status=ConsentToken.ConsentStatus.PENDING,
+            otp_reference=auth_guid,  # Store auth_guid as reference
+            identification_number=agent_national_id,
+            created_by=user,
+            facility=facility,
+            organization=facility.organization if hasattr(facility, "organization") else None,
+        )
+
+        logger.info(
+            "Biometric authorization initiated for consent %s (auth_guid: %s)",
+            consent.id,
+            auth_guid,
+        )
+
+        return {
+            "consent_id": consent.id,
+            "auth_guid": auth_guid,
+            "iframe_url": iframe_url,
+            "status": "PENDING",
+        }
+
+    def get_authorization_status(self, auth_guid: str) -> dict[str, Any]:
+        """
+        Poll DHA for biometric authorization status.
+
+        Calls GET /api/v1/claims/authorize/{auth_guid} to check if the
+        fingerprint verification has completed.
+
+        Args:
+            auth_guid: The authorization GUID returned by authorize_biometric.
+
+        Returns:
+            Dict with status (PENDING, AUTHORIZED, FAILED, EXPIRED).
+
+        Raises:
+            SHAConsentError: If the status check fails.
+        """
+        endpoint = self._get_endpoint("authorize_biometric")
+        if not endpoint:
+            raise SHAConsentError(
+                "Biometric authorize endpoint not configured",
+                code="endpoint_not_configured",
+            )
+
+        url = f"{endpoint}/{auth_guid}"
+        response_data = self._make_request("GET", url)
+
+        status_value = response_data.get("status", "PENDING")
+
+        # If AUTHORIZED, update the corresponding ConsentToken
+        if status_value == "AUTHORIZED":
+            consent = ConsentToken.objects.filter(
+                otp_reference=auth_guid,
+                consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+            ).first()
+            if consent and consent.status == ConsentToken.ConsentStatus.PENDING:
+                token = response_data.get("consent_token") or auth_guid
+                consent.mark_validated(token=token, expires_in_seconds=3600)
+                logger.info(
+                    "Biometric consent %s authorized (auth_guid: %s)", consent.id, auth_guid
+                )
+
+        return {
+            "auth_guid": auth_guid,
+            "status": status_value,
+            "consent_token": response_data.get("consent_token", ""),
+        }
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

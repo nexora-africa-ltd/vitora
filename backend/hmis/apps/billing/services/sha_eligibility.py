@@ -27,13 +27,15 @@ from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
 # intersect with what the requesting facility can actually claim against \u2014
 # e.g. a UHC-only member presenting at a Level 4 hospital is technically
 # "eligible" upstream but cannot fund hospital-level services.
+#
+# PMF (Public Medical Fund) covers civil servants at Level 3+ facilities.
 BILLABLE_SCHEMES_BY_LEVEL: dict[str, set[str]] = {
-    "1": {"UHC"},  # Community units \u2014 outpatient/PHC only
+    "1": {"UHC"},  # Community units — outpatient/PHC only
     "2": {"UHC"},  # Dispensaries
-    "3": {"UHC", "SHIF"},  # Health centres
-    "4": {"SHIF"},  # Sub-county hospitals
-    "5": {"SHIF"},  # County referral
-    "6": {"SHIF"},  # National referral
+    "3": {"UHC", "SHIF", "PMF"},  # Health centres
+    "4": {"SHIF", "PMF"},  # Sub-county hospitals
+    "5": {"SHIF", "PMF"},  # County referral
+    "6": {"SHIF", "PMF"},  # National referral
 }
 
 

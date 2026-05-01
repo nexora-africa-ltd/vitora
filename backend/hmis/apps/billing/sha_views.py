@@ -930,6 +930,16 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             return self._ilm_handle_error(exc)
         return self._ilm_response(result)
 
+    @action(detail=True, methods=["post"], url_path="ilm/preview-payer")
+    def ilm_preview_payer(self, request, pk=None):
+        """Fetch the payer's adjudication view of this claim from DHA."""
+        claim = self.get_object()
+        try:
+            result = self._ilm_service().preview_payer_claim(claim, user=request.user)
+        except Exception as exc:
+            return self._ilm_handle_error(exc)
+        return self._ilm_response(result)
+
     @action(detail=True, methods=["post"], url_path="ilm/submit")
     def ilm_submit(self, request, pk=None):
         claim = self.get_object()
@@ -2196,6 +2206,12 @@ class EligibilityCheckView(APIView):
                     "billable_schemes": billable_schemes,
                     "coverage_caveat": coverage_caveat,
                     "coverage_blocked": coverage_blocked,
+                    "is_pfms_eligible": member.is_pfms_eligible,
+                    "pfms_category": member.pfms_category or None,
+                    "pfms_category_display": (
+                        member.get_pfms_category_display() if member.pfms_category else None
+                    ),
+                    "pfms_verified": member.pfms_verified,
                 }
             )
 
@@ -3121,6 +3137,148 @@ class StartVisitView(APIView):
             )
 
 
+class BiometricAuthorizeView(APIView):
+    """
+    Initiate biometric fingerprint authorization via DHA HIE.
+
+    POST /api/sha/consent/authorize/
+
+    Returns auth_guid and iframe_url for rendering the biometric capture UI.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_facility(self, request):
+        """Resolve and return the request facility, or None."""
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        return getattr(request, "facility", None)
+
+    @extend_schema(
+        request=inline_serializer(
+            name="BiometricAuthorizeRequest",
+            fields={
+                "sha_member_id": serializers.IntegerField(help_text="SHA Member ID to authorize"),
+                "workstation_id": serializers.CharField(
+                    help_text="Hardware Server workstation identifier"
+                ),
+                "agent_national_id": serializers.CharField(
+                    help_text="National ID of the biometrics agent (staff)"
+                ),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="BiometricAuthorizeResponse",
+                fields={
+                    "consent_id": serializers.IntegerField(),
+                    "auth_guid": serializers.CharField(),
+                    "iframe_url": serializers.CharField(),
+                    "status": serializers.CharField(),
+                },
+            )
+        },
+    )
+    def post(self, request):
+        """Initiate biometric authorization for patient consent."""
+        from hmis.apps.billing.models import SHAMember
+        from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+
+        facility = self._get_facility(request)
+        if not facility:
+            return Response(
+                {
+                    "error": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        sha_member_id = request.data.get("sha_member_id")
+        workstation_id = request.data.get("workstation_id", "")
+        agent_national_id = request.data.get("agent_national_id", "")
+
+        if not sha_member_id:
+            return Response(
+                {"error": "sha_member_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not workstation_id:
+            return Response(
+                {"error": "workstation_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not agent_national_id:
+            return Response(
+                {"error": "agent_national_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            sha_member = SHAMember.objects.get(id=sha_member_id)
+        except SHAMember.DoesNotExist:
+            return Response(
+                {"error": "SHA member not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            service = SHAConsentService()
+            result = service.authorize_biometric(
+                sha_member=sha_member,
+                workstation_id=workstation_id,
+                agent_national_id=agent_national_id,
+                user=request.user,
+                facility=facility,
+            )
+            return Response(result, status=status.HTTP_200_OK)
+        except SHAConsentError as e:
+            logger.warning("Biometric authorization failed: %s", e.message)
+            return Response(
+                {"error": e.message, "code": e.code, "details": e.details},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class BiometricAuthorizeStatusView(APIView):
+    """
+    Poll biometric authorization status.
+
+    GET /api/sha/consent/authorize/{auth_guid}/status/
+
+    Returns current status of the biometric fingerprint verification.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="BiometricAuthorizeStatusResponse",
+                fields={
+                    "auth_guid": serializers.CharField(),
+                    "status": serializers.CharField(),
+                    "consent_token": serializers.CharField(),
+                },
+            )
+        },
+    )
+    def get(self, request, auth_guid):
+        """Check biometric authorization status."""
+        from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+
+        try:
+            service = SHAConsentService()
+            result = service.get_authorization_status(auth_guid)
+            return Response(result, status=status.HTTP_200_OK)
+        except SHAConsentError as e:
+            logger.warning("Biometric status check failed: %s", e.message)
+            return Response(
+                {"error": e.message, "code": e.code},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
 class PreauthSubmitView(APIView):
     """
     Submit pre-authorization request to DHA.
@@ -3353,3 +3511,95 @@ class PreauthPendingListView(APIView):
                 "results": serializer.data,
             }
         )
+
+
+# =============================================================================
+# SHA Remittance ViewSet
+# =============================================================================
+
+
+class SHARemittanceViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    SHA Remittance management.
+
+    GET /api/sha/remittances/          → list remittances
+    GET /api/sha/remittances/{id}/     → remittance detail
+    GET /api/sha/remittances/{id}/claims/ → claims paid by this remittance
+    POST /api/sha/remittances/fetch/   → trigger DHA fetch
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        from hmis.apps.billing.models import SHARemittance
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(self.request)
+        facility = getattr(self.request, "facility", None)
+        if not facility:
+            return SHARemittance.objects.none()
+        return SHARemittance.objects.filter(facility=facility).order_by("-payment_date")
+
+    def get_serializer_class(self):
+        from hmis.apps.billing.sha_serializers import (
+            SHARemittanceLineSerializer,
+            SHARemittanceSerializer,
+        )
+
+        if self.action == "claims":
+            return SHARemittanceLineSerializer
+        return SHARemittanceSerializer
+
+    @action(detail=True, methods=["get"])
+    def claims(self, request, pk=None):
+        """Get claims paid by this remittance."""
+        from hmis.apps.billing.models import SHARemittanceLine
+
+        remittance = self.get_object()
+        lines = SHARemittanceLine.objects.filter(remittance=remittance).select_related("claim")
+        serializer = self.get_serializer(lines, many=True)
+        return Response({"count": lines.count(), "results": serializer.data})
+
+    @action(detail=False, methods=["post"])
+    def fetch(self, request):
+        """Trigger a fetch of remittances from DHA for the current facility."""
+        from hmis.apps.billing.services.sha_remittance import (
+            SHARemittanceError,
+            SHARemittanceService,
+        )
+        from hmis.apps.core.mixins import resolve_request_tenant
+
+        resolve_request_tenant(request)
+        facility = getattr(request, "facility", None)
+        if not facility:
+            return Response(
+                {"error": "No facility context"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        facility_code = getattr(facility, "facility_code", "") or ""
+        if not facility_code:
+            return Response(
+                {"error": "Facility has no MFL code configured"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            service = SHARemittanceService()
+            remittances = service.fetch_remittances(facility_code=facility_code, facility=facility)
+            # Fetch claims for received remittances
+            for remittance in remittances:
+                if remittance.status in ("received", "partial"):
+                    service.fetch_claims_paid(remittance, facility_code)
+
+            return Response(
+                {
+                    "message": f"Fetched {len(remittances)} remittance(s) from DHA",
+                    "count": len(remittances),
+                }
+            )
+        except SHARemittanceError as e:
+            return Response(
+                {"error": e.message, "code": e.code},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

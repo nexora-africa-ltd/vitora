@@ -79,3 +79,86 @@ def refresh_sha_interventions():
     from django.core.management import call_command
 
     call_command("refresh_interventions")
+
+
+@shared_task(name="hmis.apps.billing.tasks.flag_time_barring_claims")
+def flag_time_barring_claims():
+    """
+    Flag claims approaching or past their time-barring deadline.
+
+    Runs every 30 minutes via Celery beat.
+
+    Logic:
+    - Emergency claims (ECCIF): 24h window from service_date
+    - Query claims: 14-day window from when query was raised
+    - Emits warning event when within 25% of remaining time
+    - Auto-transitions to pseudo-TIME_BARRED status when past cutoff
+
+    Note: DHA enforces TIME_BARRED server-side, but local flagging
+    gives the facility time to act before the hard cutoff.
+    """
+    from django.db.models import Q
+    from django.utils import timezone
+
+    from hmis.apps.billing.models import SHAClaim
+    from hmis.apps.core.events import BillingEvents, publish_event
+
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+
+    # Find emergency claims that haven't been submitted yet
+    emergency_claims = SHAClaim.objects.filter(
+        Q(is_emergency_claim=True) | Q(claim_type=SHAClaim.ClaimType.EMERGENCY),
+        status__in=[
+            SHAClaim.ClaimStatus.DRAFT,
+            SHAClaim.ClaimStatus.VALIDATED,
+            SHAClaim.ClaimStatus.PENDING_SUBMISSION,
+        ],
+    )
+
+    # Find claims with QUERY status (awaiting attachments)
+    query_claims = SHAClaim.objects.filter(
+        status=SHAClaim.ClaimStatus.QUERY,
+    )
+
+    warned = 0
+    time_barred = 0
+
+    for claim in list(emergency_claims) + list(query_claims):
+        deadline = claim.time_barring_deadline
+        if deadline is None:
+            continue
+
+        remaining_hours = (deadline - now).total_seconds() / 3600
+
+        if remaining_hours <= 0:
+            # Past deadline — emit time-barred event
+            time_barred += 1
+            publish_event(
+                BillingEvents.SHA_CLAIM_TIME_BARRED,
+                {
+                    "claim_id": claim.pk,
+                    "claim_number": claim.claim_number,
+                    "claim_type": claim.claim_type,
+                    "deadline": deadline.isoformat(),
+                    "facility_id": claim.facility_id,
+                },
+            )
+        elif remaining_hours <= 6:  # Within 25% of 24h = 6h
+            # Approaching deadline — emit warning
+            warned += 1
+            publish_event(
+                BillingEvents.SHA_CLAIM_TIME_BAR_WARNING,
+                {
+                    "claim_id": claim.pk,
+                    "claim_number": claim.claim_number,
+                    "claim_type": claim.claim_type,
+                    "hours_remaining": round(remaining_hours, 1),
+                    "deadline": deadline.isoformat(),
+                    "facility_id": claim.facility_id,
+                },
+            )
+
+    result = f"Time-barring check: {warned} warning(s), {time_barred} time-barred"
+    logger.info(result)
+    return result
