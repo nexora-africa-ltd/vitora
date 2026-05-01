@@ -12,7 +12,7 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   CheckCircle2,
   Loader2,
@@ -43,8 +43,10 @@ import {
 } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
 import { useDebounce } from '@/lib/hooks';
+import { useFacility } from '@/lib/context/facility-context';
 import type { SHAMember } from '@/lib/types/sha';
 
 // ============================================================================
@@ -80,6 +82,79 @@ interface InterventionOption {
   price?: number;
 }
 
+/** Known SHA benefit packages — shown as defaults when terminology API is unreachable. */
+const SHA_BENEFIT_PACKAGES: InterventionOption[] = [
+  { code: 'SHA-12-001', name: 'Outpatient Consultation', category: 'Outpatient' },
+  { code: 'SHA-12-002', name: 'Outpatient Specialized Consultation', category: 'Outpatient' },
+  { code: 'SHA-07-001', name: 'Inpatient Admission (General Ward)', category: 'Inpatient' },
+  { code: 'SHA-01-001', name: 'Ambulance Services (Intra-metro)', category: 'Emergency' },
+  { code: 'SHA-08-001', name: 'Antenatal Care Visit', category: 'Maternity' },
+  { code: 'SHA-19-001', name: 'Minor Surgical Procedure', category: 'Surgical' },
+  { code: 'SHA-09-001', name: 'Medical Imaging (X-Ray)', category: 'Diagnostics' },
+  { code: 'SHA-05-001', name: 'Optical Consultation', category: 'Outpatient' },
+  { code: 'SHA-10-001', name: 'Mental Health Consultation', category: 'Outpatient' },
+  { code: 'SHA-16-001', name: 'Renal Dialysis Session', category: 'Specialized' },
+];
+
+/**
+ * SHA facility level restrictions:
+ * - Level 2/3: Basic outpatient, maternity (SHA-12-001, SHA-08-001)
+ * - Level 4+: Inpatient, specialized, surgical, diagnostics
+ * - Level 5/6: All interventions including renal, complex surgical
+ *
+ * Level 4B specifically cannot provide SHA-12-xxx (Outpatient) interventions
+ * under SHA rules — they handle inpatient, surgical, specialized services.
+ */
+const FACILITY_LEVEL_ALLOWED_PREFIXES: Record<string, string[]> = {
+  '1': ['SHA-12'],                                               // Dispensaries: basic outpatient only
+  '2': ['SHA-12', 'SHA-08', 'SHA-05', 'SHA-10'],                 // Health centres: outpatient + maternity + optical + mental
+  '3': ['SHA-12', 'SHA-08', 'SHA-05', 'SHA-10', 'SHA-09'],       // Sub-county hospitals: + imaging
+  '4': ['SHA-07', 'SHA-01', 'SHA-08', 'SHA-19', 'SHA-09', 'SHA-10', 'SHA-16'], // County/Level 4: inpatient, emergency, surgical, diagnostics
+  '5': ['SHA-07', 'SHA-01', 'SHA-08', 'SHA-19', 'SHA-09', 'SHA-10', 'SHA-16', 'SHA-12', 'SHA-05'], // Referral hospitals: all
+  '6': ['SHA-07', 'SHA-01', 'SHA-08', 'SHA-19', 'SHA-09', 'SHA-10', 'SHA-16', 'SHA-12', 'SHA-05'], // National referral: all
+};
+
+/** Filter interventions by facility level */
+function filterByFacilityLevel(interventions: InterventionOption[], level: string | undefined): InterventionOption[] {
+  if (!level) return interventions; // No level info — show all
+  // Normalize: "4B" → "4", "3A" → "3"
+  const numericLevel = level.replace(/[^0-9]/g, '');
+  const allowed = FACILITY_LEVEL_ALLOWED_PREFIXES[numericLevel];
+  if (!allowed) return interventions; // Unknown level — show all
+  return interventions.filter((i) => allowed.some((prefix) => i.code.startsWith(prefix)));
+}
+
+/**
+ * Extract a human-readable error message from DHA API errors.
+ * DHA errors have nested structures like:
+ * { error: "DHA API error (400): failed to start visit for patient: {\"Edi Error\":{\"error\":\"...\"}}" }
+ */
+function extractDHAError(err: unknown): string {
+  const raw = getApiErrorMessage(err);
+
+  // Try to extract the inner "Edi Error" message from DHA
+  const ediMatch = raw.match(/["']?Edi Error["']?\s*:\s*\{[^}]*["']?error["']?\s*:\s*["']([^"']+)["']/);
+  if (ediMatch?.[1]) {
+    return ediMatch[1];
+  }
+
+  // Try to extract message after "failed to start visit for patient:"
+  const visitMatch = raw.match(/failed to start visit for patient:\s*(.+)/);
+  if (visitMatch?.[1]) {
+    try {
+      const parsed = JSON.parse(visitMatch[1]);
+      if (parsed?.['Edi Error']?.error) return String(parsed['Edi Error'].error);
+    } catch {
+      // Not JSON — return as-is
+    }
+    return visitMatch[1];
+  }
+
+  // Strip "DHA API error (400): " prefix for cleaner display
+  const cleaned = raw.replace(/^DHA API error \(\d+\):\s*/i, '');
+  return cleaned || raw;
+}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -109,9 +184,12 @@ export function SHAConsentStep({
   const debouncedInterventionSearch = useDebounce(interventionSearch, 300);
   const [interventionResults, setInterventionResults] = useState<InterventionOption[]>([]);
   const [interventionLoading, setInterventionLoading] = useState(false);
+  const useLocalFallbackRef = useRef(false);
 
   const sendOTP = useSendConsentOTP();
   const startVisit = useStartVisit();
+  const { facilityDetail } = useFacility();
+  const facilityLevel = facilityDetail?.level;
   const hasCheckedRef = useRef(false);
 
   // Check SHA eligibility on mount
@@ -154,8 +232,30 @@ export function SHAConsentStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
+  // Filter packages by facility level
+  const allowedPackages = useMemo(
+    () => filterByFacilityLevel(SHA_BENEFIT_PACKAGES, facilityLevel),
+    [facilityLevel]
+  );
+
   // Search interventions when combobox query changes
   useEffect(() => {
+    // When using local fallback, filter the static list client-side
+    if (useLocalFallbackRef.current) {
+      if (debouncedInterventionSearch.length < 1) {
+        setInterventionResults(allowedPackages);
+      } else {
+        const q = debouncedInterventionSearch.toLowerCase();
+        setInterventionResults(
+          allowedPackages.filter(
+            (i) => i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q)
+          )
+        );
+      }
+      return;
+    }
+
+    // Try live API search
     if (debouncedInterventionSearch.length < 2) {
       setInterventionResults([]);
       return;
@@ -165,16 +265,26 @@ export function SHAConsentStep({
     shaApi
       .searchInterventionCodes(debouncedInterventionSearch, 20)
       .then((results) => {
-        if (!cancelled) setInterventionResults(results);
+        if (!cancelled) setInterventionResults(filterByFacilityLevel(results, facilityLevel));
       })
       .catch(() => {
-        if (!cancelled) setInterventionResults([]);
+        // API failed — switch to local fallback permanently for this session
+        if (!cancelled) {
+          useLocalFallbackRef.current = true;
+          const q = debouncedInterventionSearch.toLowerCase();
+          setInterventionResults(
+            allowedPackages.filter(
+              (i) => i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q)
+            )
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setInterventionLoading(false);
       });
     return () => { cancelled = true; };
-  }, [debouncedInterventionSearch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedInterventionSearch, facilityLevel]);
 
   const handleSendOTP = async () => {
     setError(null);
@@ -211,8 +321,8 @@ export function SHAConsentStep({
           setConsentId(response.consent_id);
           setStep('otp_sent');
         },
-        onError: (err: Error) => {
-          setError(err.message || 'Failed to send OTP');
+        onError: (err: unknown) => {
+          setError(extractDHAError(err) || 'Failed to send OTP');
         },
       }
     );
@@ -227,6 +337,7 @@ export function SHAConsentStep({
       {
         consent_id: consentId,
         otp_code: otpCode.trim(),
+        ...(selectedIntervention ? { intervention_codes: [selectedIntervention.code] } : {}),
         ...(encounterId ? { encounter_id: encounterId } : {}),
       },
       {
@@ -235,9 +346,9 @@ export function SHAConsentStep({
           setOtpCode('');
           onComplete?.({ consented: true, consentId: response.id });
         },
-        onError: (err: Error) => {
+        onError: (err: unknown) => {
           setStep('otp_sent');
-          setError(err.message || 'Invalid OTP code');
+          setError(extractDHAError(err) || 'Failed to verify OTP');
         },
       }
     );
@@ -324,7 +435,13 @@ export function SHAConsentStep({
           {/* Intervention selector */}
           <div className="space-y-1">
             <Label className="text-xs font-medium">Intervention</Label>
-            <Popover open={interventionOpen} onOpenChange={setInterventionOpen}>
+            <Popover open={interventionOpen} onOpenChange={(open) => {
+              setInterventionOpen(open);
+              // Show default packages when opening with no search text
+              if (open && !interventionSearch && interventionResults.length === 0) {
+                setInterventionResults(allowedPackages);
+              }
+            }}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -340,7 +457,7 @@ export function SHAConsentStep({
                       {selectedIntervention.code} — {selectedIntervention.name}
                     </span>
                   ) : (
-                    'Search interventions...'
+                    'Select intervention...'
                   )}
                   <div className="flex items-center gap-1 ml-2 shrink-0">
                     {selectedIntervention && (
@@ -356,14 +473,14 @@ export function SHAConsentStep({
                   </div>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[calc(100vw-3rem)] sm:w-[400px] p-0" align="start">
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                 <Command shouldFilter={false}>
                   <div className="flex items-center border-b px-2">
                     <Search className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-50" />
                     <input
                       value={interventionSearch}
                       onChange={(e) => setInterventionSearch(e.target.value)}
-                      placeholder="Type to search (e.g. consultation, dental)..."
+                      placeholder="Search interventions..."
                       className="flex h-9 w-full bg-transparent py-2 text-xs outline-none placeholder:text-muted-foreground"
                     />
                     {interventionLoading && (
@@ -372,11 +489,9 @@ export function SHAConsentStep({
                   </div>
                   <CommandList className="max-h-[200px]">
                     <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
-                      {debouncedInterventionSearch.length < 2
-                        ? 'Type at least 2 characters to search'
-                        : interventionLoading
-                          ? 'Searching...'
-                          : 'No interventions found'}
+                      {interventionLoading
+                        ? 'Searching...'
+                        : 'No interventions found'}
                     </CommandEmpty>
                     {interventionResults.length > 0 && (
                       <CommandGroup>
@@ -451,7 +566,7 @@ export function SHAConsentStep({
                 onChange={(e) => setOtpCode(e.target.value)}
                 placeholder="6-digit code"
                 maxLength={6}
-                className="font-mono h-9 max-w-[140px]"
+                className="font-mono h-9"
                 disabled={step === 'validating'}
               />
             </div>

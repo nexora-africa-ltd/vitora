@@ -2649,7 +2649,7 @@ class ConsentSendOTPView(APIView):
     permission_classes = [IsAuthenticated]
 
     # Fallback intervention code when none selected by user
-    DEFAULT_INTERVENTION = "SHA-06-001"
+    DEFAULT_INTERVENTION = "SHA-01-001"
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or raise 403."""
@@ -2770,6 +2770,7 @@ class ConsentSendOTPView(APIView):
                 otp_reference=otp_reference,
                 identification_type="National ID",
                 identification_number=sha_member.national_id or "",
+                intervention_codes=intervention_codes,
                 status=ConsentToken.ConsentStatus.PENDING,
                 created_by=request.user,
             )
@@ -3026,8 +3027,8 @@ class StartVisitView(APIView):
 
         consent_id = request.data.get("consent_id")
         otp_code = request.data.get("otp_code", "")
-        intervention_codes = request.data.get("intervention_codes", [])
-        service_type = request.data.get("service_type", "outpatient")
+        intervention_codes = request.data.get("intervention_codes") or []
+        service_type = (request.data.get("service_type", "outpatient") or "outpatient").upper()
         admission_date = request.data.get("admission_date", "")
         estimated_days = request.data.get("estimated_days_of_admission", 0)
         encounter_id = request.data.get("encounter_id")
@@ -3050,6 +3051,11 @@ class StartVisitView(APIView):
                 {"error": "Consent token not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        # Fall back to the intervention codes stored on the consent token
+        # during send-otp if the request doesn't include them.
+        if not intervention_codes and consent.intervention_codes:
+            intervention_codes = consent.intervention_codes
 
         # Resolve encounter if provided (links consent token to encounter)
         encounter = None
