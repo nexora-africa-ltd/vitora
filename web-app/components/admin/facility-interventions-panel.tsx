@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, AlertTriangle, ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useDeferredValue } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { Search, FileText, AlertTriangle, ShieldAlert, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,8 @@ interface Intervention {
   facility_level: number | string;
   requires_preauthorization?: boolean;
   is_active: boolean;
+  max_amount_per_test?: string | null;
+  quantity_per_year?: string | null;
 }
 
 interface Props {
@@ -30,6 +32,7 @@ const PAGE_SIZE = 50;
 
 export function FacilityInterventionsPanel({ facilityLevel }: Props) {
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [page, setPage] = useState(1);
   const level = parseInt(facilityLevel);
 
@@ -39,15 +42,15 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
     setPage(1);
   };
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['facility-interventions', level, search, page],
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: ['facility-interventions', level, deferredSearch, page],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.set('facility_level', String(level));
       params.set('limit', String(PAGE_SIZE));
       params.set('offset', String((page - 1) * PAGE_SIZE));
-      if (search.length >= 2) {
-        params.set('search', search);
+      if (deferredSearch.length >= 2) {
+        params.set('search', deferredSearch);
       }
       const response = await apiClient.get(
         `/api/billing/terminology/interventions/?${params.toString()}`
@@ -55,6 +58,7 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
       return response.data as { results: Intervention[]; count: number };
     },
     enabled: !isNaN(level),
+    placeholderData: keepPreviousData,
     staleTime: 10 * 60 * 1000, // 10 min
   });
 
@@ -100,8 +104,11 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
             placeholder="Search interventions..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9"
+            className="pl-9 pr-9"
           />
+          {isFetching && !isLoading && (
+            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+          )}
         </div>
 
         {error ? (
@@ -124,6 +131,8 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
                   <th className="pb-2 pr-4 font-medium">Intervention</th>
                   <th className="pb-2 pr-4 font-medium hidden sm:table-cell">Category</th>
                   <th className="pb-2 pr-4 font-medium text-right">Tariff (KES)</th>
+                  <th className="pb-2 pr-4 font-medium text-right hidden lg:table-cell">Max/Test</th>
+                  <th className="pb-2 pr-4 font-medium text-right hidden lg:table-cell">Qty/Year</th>
                   <th className="pb-2 font-medium hidden md:table-cell">Pre-auth</th>
                 </tr>
               </thead>
@@ -135,14 +144,26 @@ export function FacilityInterventionsPanel({ facilityLevel }: Props) {
                       {item.name}
                     </td>
                     <td className="py-2 pr-4 hidden sm:table-cell">
-                      <Badge variant="outline" className="text-xs">
-                        {item.category}
-                      </Badge>
+                      {item.category && (
+                        <Badge variant="outline" className="text-xs">
+                          {item.category}
+                        </Badge>
+                      )}
                     </td>
                     <td className="py-2 pr-4 text-right font-medium tabular-nums">
-                      {typeof item.price === 'number'
-                        ? item.price.toLocaleString()
-                        : Number(item.price).toLocaleString()}
+                      {item.price
+                        ? (typeof item.price === 'number'
+                            ? item.price.toLocaleString()
+                            : Number(item.price).toLocaleString())
+                        : '—'}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums hidden lg:table-cell">
+                      {item.max_amount_per_test
+                        ? Number(item.max_amount_per_test).toLocaleString()
+                        : '—'}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums hidden lg:table-cell">
+                      {item.quantity_per_year ?? '—'}
                     </td>
                     <td className="py-2 hidden md:table-cell">
                       {item.requires_preauthorization && (
