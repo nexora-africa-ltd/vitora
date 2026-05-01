@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { CheckCircle2, ArrowRight, X, Stethoscope, Building2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ export interface CheckinSuccessData {
 /**
  * Create CheckinSuccessData from CheckInResponse
  */
-export function fromCheckInResponse(response: CheckInResponse): CheckinSuccessData {
+export function fromCheckInResponse(response: CheckInResponse, patientId?: number): CheckinSuccessData {
   const isTriage = response.destination === 'TRIAGE' || response.destination === 'Triage';
   return {
     patientName: response.patient_name,
@@ -49,6 +50,8 @@ export function fromCheckInResponse(response: CheckInResponse): CheckinSuccessDa
     estimatedWaitMinutes: response.estimated_wait_minutes,
     skippedTriage: response.skip_triage,
     warning: response.warning,
+    patientId,
+    encounterId: response.encounter_id ?? response.linked_encounter_id ?? null,
   };
 }
 
@@ -75,6 +78,14 @@ export function CheckinSuccessModal({
   dismissLabel,
 }: CheckinSuccessModalProps) {
   const router = useRouter();
+  const [shaConsentPending, setShaConsentPending] = useState(true);
+
+  // Reset consent state when modal opens with a new check-in result
+  useEffect(() => {
+    if (open && checkInResult) {
+      setShaConsentPending(true);
+    }
+  }, [open, checkInResult]);
 
   if (!checkInResult) return null;
 
@@ -158,16 +169,17 @@ export function CheckinSuccessModal({
             <SHAConsentStep
               patientId={data.patientId}
               encounterId={data.encounterId}
+              onComplete={() => setShaConsentPending(false)}
             />
           )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={handleDismiss} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={handleDismiss} className="w-full sm:w-auto" disabled={data.patientId ? shaConsentPending : false}>
             <X className="mr-2 h-4 w-4" />
             {dismissLabel || 'Stay Here'}
           </Button>
-          <Button onClick={handleGoToDestination} className="w-full sm:w-auto">
+          <Button onClick={handleGoToDestination} className="w-full sm:w-auto" disabled={data.patientId ? shaConsentPending : false}>
             <ArrowRight className="mr-2 h-4 w-4" />
             Go to {data.destinationName}
           </Button>

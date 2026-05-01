@@ -31,7 +31,7 @@ import { useClinics } from '@/lib/hooks/use-clinics';
 import { VISIT_REASON_OPTIONS, type VisitReason, type CheckInResponse } from '@/lib/types/checkin';
 import { cn } from '@/lib/utils';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { CheckinSuccessModal } from './checkin-success-modal';
+import { CheckinSuccessModal, type CheckinSuccessData, fromCheckInResponse } from './checkin-success-modal';
 
 const CHRONIC_CARE_CLINIC_TYPES = ['CCC', 'TB', 'DIABETIC', 'HYPERTENSION', 'MENTAL_HEALTH', 'ONCOLOGY', 'DIALYSIS'];
 
@@ -51,7 +51,7 @@ export function QuickCheckinDialog({
   const [open, setOpen] = useState(false);
   const [destinationMode, setDestinationMode] = useState<'TRIAGE' | 'CLINIC'>('TRIAGE');
   const [visitReason, setVisitReason] = useState<VisitReason>('NEW_COMPLAINT');
-  const [checkInResult, setCheckInResult] = useState<CheckInResponse | null>(null);
+  const [checkInResult, setCheckInResult] = useState<CheckinSuccessData | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [referralFacility, setReferralFacility] = useState('');
   const [chronicClinicId, setChronicClinicId] = useState<number | undefined>(undefined);
@@ -167,7 +167,7 @@ export function QuickCheckinDialog({
       });
 
       // Store the result and show success modal
-      setCheckInResult(result);
+      setCheckInResult(fromCheckInResponse(result, patientId));
       setOpen(false);
       setShowSuccessModal(true);
     } catch (error) {

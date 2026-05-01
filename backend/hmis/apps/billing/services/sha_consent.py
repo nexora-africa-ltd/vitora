@@ -52,6 +52,9 @@ class SHAConsentService:
         max_retries: Maximum retry attempts for transient failures
     """
 
+    # Tiberbu-hosted endpoints that must use SHA_TIBERBU_BASE_URL
+    _TIBERBU_ENDPOINTS = {"send_otp", "validate_otp"}
+
     def __init__(self):
         """Initialize SHAConsentService with settings from Django config."""
         self.auth_service = SHAAuthService()
@@ -60,6 +63,11 @@ class SHAConsentService:
             self.api_base_url = self.auth_service.auth_base_url.rstrip("/")
         else:
             self.api_base_url = settings.SHA_API_BASE_URL.rstrip("/")
+        # Tiberbu consent endpoints (send-web-otp, validate-otp) live on a
+        # separate host from the main DHA gateway / ILM middleware.
+        self.tiberbu_base_url = getattr(settings, "SHA_TIBERBU_BASE_URL", self.api_base_url).rstrip(
+            "/"
+        )
         self.timeout = settings.SHA_API_TIMEOUT
         self.max_retries = getattr(settings, "SHA_CONSENT_MAX_RETRIES", 3)
 
@@ -309,7 +317,10 @@ class SHAConsentService:
         path = endpoints.get(endpoint_name, "")
         if not path:
             return ""
-        return f"{self.api_base_url}{path}"
+        base = (
+            self.tiberbu_base_url if endpoint_name in self._TIBERBU_ENDPOINTS else self.api_base_url
+        )
+        return f"{base}{path}"
 
     def _make_request(
         self,
@@ -342,7 +353,7 @@ class SHAConsentService:
             try:
                 token = self.auth_service.get_token()
                 headers = {
-                    "Authorization": f"Bearer {token.token}",
+                    "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                 }
@@ -357,7 +368,7 @@ class SHAConsentService:
 
                 if response.status_code == 401 and attempt < retries - 1:
                     # Token expired — refresh and retry
-                    self.auth_service.refresh_token()
+                    self.auth_service.get_token(force_refresh=True)
                     continue
 
                 if response.status_code >= 500 and attempt < retries - 1:
