@@ -48,7 +48,7 @@ import { getApiErrorMessage } from '@/lib/api/client';
 import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
 import { useDebounce } from '@/lib/hooks';
 import { useFacility } from '@/lib/context/facility-context';
-import { OtpWhitelistRequestSheet } from './otp-whitelist-request-sheet';
+import { OtpWhitelistRequestSheet, WhitelistStatusBadge } from './otp-whitelist-request-sheet';
 import type { SHAMember } from '@/lib/types/sha';
 
 // ============================================================================
@@ -194,6 +194,9 @@ export function SHAConsentStep({
 
   // Whitelist request sheet
   const [whitelistOpen, setWhitelistOpen] = useState(false);
+  // Existing whitelist status (checked on mount when SHA eligible)
+  const [existingWhitelistStatus, setExistingWhitelistStatus] = useState<string | null>(null);
+  const [isCheckingWhitelist, setIsCheckingWhitelist] = useState(false);
 
   const sendOTP = useSendConsentOTP();
   const startVisit = useStartVisit();
@@ -240,6 +243,30 @@ export function SHAConsentStep({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
+
+  // Check for existing whitelist requests once we have SHA member info
+  useEffect(() => {
+    if (step !== 'ready' || !shaMember) return;
+    const crId = shaMember.sha_member_number || shaMember.sha_number || '';
+    if (!crId) return;
+    let cancelled = false;
+    setIsCheckingWhitelist(true);
+    shaApi
+      .listLocalOtpWhitelists({ status: 'requested' })
+      .then((result) => {
+        if (cancelled) return;
+        // Check if any pending whitelist matches this patient
+        const match = result.results?.find(
+          (r) => r.patient === patientId || r.beneficiary_cr_id === crId
+        );
+        if (match) {
+          setExistingWhitelistStatus(match.status?.toUpperCase() || 'REQUESTED');
+        }
+      })
+      .catch(() => { /* best effort */ })
+      .finally(() => { if (!cancelled) setIsCheckingWhitelist(false); });
+    return () => { cancelled = true; };
+  }, [step, shaMember, patientId]);
 
   // Cleanup countdown interval on unmount
   useEffect(() => {
@@ -562,6 +589,14 @@ export function SHAConsentStep({
               </PopoverContent>
             </Popover>
           </div>
+
+          {/* Existing whitelist request status */}
+          {existingWhitelistStatus && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2">
+              <span className="text-xs text-muted-foreground">OTP Whitelist:</span>
+              <WhitelistStatusBadge status={existingWhitelistStatus} />
+            </div>
+          )}
 
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button
