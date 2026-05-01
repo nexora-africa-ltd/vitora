@@ -540,11 +540,14 @@ async function searchInterventions(
  */
 async function searchInterventionCodes(
   search: string,
-  limit: number = 20
+  limit: number = 20,
+  facilityLevel?: number
 ): Promise<{ code: string; name: string; category?: string; price?: number }[]> {
   if (search.length < 2) return [];
+  const params = new URLSearchParams({ search, limit: String(limit) });
+  if (facilityLevel) params.set('facility_level', String(facilityLevel));
   const response = await apiClient.get(
-    `/api/sha/terminology/interventions/?search=${encodeURIComponent(search)}&limit=${limit}`
+    `/api/sha/terminology/interventions/?${params.toString()}`
   );
   const data = response.data as { results?: Array<Record<string, unknown>> };
   return (data.results || []).map((r) => ({

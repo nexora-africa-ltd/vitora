@@ -306,7 +306,7 @@ export function SHAConsentStep({
     let cancelled = false;
     setInterventionLoading(true);
     shaApi
-      .searchInterventionCodes(debouncedInterventionSearch, 20)
+      .searchInterventionCodes(debouncedInterventionSearch, 20, facilityLevel ? parseInt(facilityLevel.replace(/[^0-9]/g, '')) : undefined)
       .then((results) => {
         if (!cancelled) setInterventionResults(filterByFacilityLevel(results, facilityLevel));
       })
