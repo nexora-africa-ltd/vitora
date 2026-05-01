@@ -122,6 +122,7 @@ az containerapp update \
     "SHA_FHIR_BASE_URL=${SHA_FHIR_BASE_URL:-https://qa-mis.apeiro-digital.com}" \
     "SHA_API_TIMEOUT=${SHA_API_TIMEOUT:-30}" \
     "SHA_FACILITY_FR_CODE=${SHA_FACILITY_FR_CODE:-}" \
+    "SHA_TIBERBU_BASE_URL=${SHA_TIBERBU_BASE_URL:-https://api-uat.tiberbu.health}" \
     "ILM_BASE_URL=${ILM_BASE_URL:-}" \
     "ILM_REQUEST_TIMEOUT=${ILM_REQUEST_TIMEOUT:-30}" \
     "ILM_MAX_RETRIES=${ILM_MAX_RETRIES:-2}" \
