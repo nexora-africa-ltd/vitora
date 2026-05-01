@@ -519,6 +519,11 @@ class SendOTPSerializer(serializers.Serializer):
     """Input serializer for sending OTP."""
 
     sha_member_id = serializers.IntegerField(help_text="ID of the SHA member to send OTP to")
+    intervention_codes = serializers.ListField(
+        child=serializers.CharField(max_length=50),
+        required=False,
+        help_text="SHA intervention codes for this visit (e.g. ['SHA-06-001'])",
+    )
 
 
 class ValidateOTPSerializer(serializers.Serializer):

@@ -20,14 +20,31 @@ import {
   KeyRound,
   ShieldCheck,
   SkipForward,
+  ChevronsUpDown,
+  Search,
+  Check,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { shaApi } from '@/lib/api/sha';
 import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
+import { useDebounce } from '@/lib/hooks';
 import type { SHAMember } from '@/lib/types/sha';
 
 // ============================================================================
@@ -56,6 +73,13 @@ type StepState =
   | 'done'             // Consent obtained
   | 'skipped';         // User chose to skip
 
+interface InterventionOption {
+  code: string;
+  name: string;
+  category?: string;
+  price?: number;
+}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -77,6 +101,14 @@ export function SHAConsentStep({
   const [otpCode, setOtpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isCreatingMember, setIsCreatingMember] = useState(false);
+
+  // Intervention combobox state
+  const [selectedIntervention, setSelectedIntervention] = useState<InterventionOption | null>(null);
+  const [interventionOpen, setInterventionOpen] = useState(false);
+  const [interventionSearch, setInterventionSearch] = useState('');
+  const debouncedInterventionSearch = useDebounce(interventionSearch, 300);
+  const [interventionResults, setInterventionResults] = useState<InterventionOption[]>([]);
+  const [interventionLoading, setInterventionLoading] = useState(false);
 
   const sendOTP = useSendConsentOTP();
   const startVisit = useStartVisit();
@@ -122,6 +154,28 @@ export function SHAConsentStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
+  // Search interventions when combobox query changes
+  useEffect(() => {
+    if (debouncedInterventionSearch.length < 2) {
+      setInterventionResults([]);
+      return;
+    }
+    let cancelled = false;
+    setInterventionLoading(true);
+    shaApi
+      .searchInterventionCodes(debouncedInterventionSearch, 20)
+      .then((results) => {
+        if (!cancelled) setInterventionResults(results);
+      })
+      .catch(() => {
+        if (!cancelled) setInterventionResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setInterventionLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [debouncedInterventionSearch]);
+
   const handleSendOTP = async () => {
     setError(null);
 
@@ -148,7 +202,10 @@ export function SHAConsentStep({
     }
 
     sendOTP.mutate(
-      { sha_member_id: memberId },
+      {
+        sha_member_id: memberId,
+        ...(selectedIntervention ? { intervention_codes: [selectedIntervention.code] } : {}),
+      },
       {
         onSuccess: (response) => {
           setConsentId(response.consent_id);
@@ -253,9 +310,9 @@ export function SHAConsentStep({
 
       {/* Step: Ready to send OTP */}
       {step === 'ready' && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Send a one-time password to the patient&apos;s phone to authorize this visit with DHA.
+            Select the visit intervention, then send a one-time password to the patient&apos;s phone.
             {eligibilityInfo?.verifiedName && (
               <span className="block mt-0.5 text-green-600 dark:text-green-400">
                 Coverage verified for {eligibilityInfo.verifiedName}
@@ -263,6 +320,106 @@ export function SHAConsentStep({
               </span>
             )}
           </p>
+
+          {/* Intervention selector */}
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">Intervention</Label>
+            <Popover open={interventionOpen} onOpenChange={setInterventionOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={interventionOpen}
+                  className={cn(
+                    'w-full justify-between h-9 text-xs font-normal',
+                    !selectedIntervention && 'text-muted-foreground'
+                  )}
+                >
+                  {selectedIntervention ? (
+                    <span className="truncate">
+                      {selectedIntervention.code} — {selectedIntervention.name}
+                    </span>
+                  ) : (
+                    'Search interventions...'
+                  )}
+                  <div className="flex items-center gap-1 ml-2 shrink-0">
+                    {selectedIntervention && (
+                      <X
+                        className="h-3.5 w-3.5 opacity-50 hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedIntervention(null);
+                        }}
+                      />
+                    )}
+                    <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
+                  </div>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[calc(100vw-3rem)] sm:w-[400px] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <div className="flex items-center border-b px-2">
+                    <Search className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-50" />
+                    <input
+                      value={interventionSearch}
+                      onChange={(e) => setInterventionSearch(e.target.value)}
+                      placeholder="Type to search (e.g. consultation, dental)..."
+                      className="flex h-9 w-full bg-transparent py-2 text-xs outline-none placeholder:text-muted-foreground"
+                    />
+                    {interventionLoading && (
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin opacity-50" />
+                    )}
+                  </div>
+                  <CommandList className="max-h-[200px]">
+                    <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
+                      {debouncedInterventionSearch.length < 2
+                        ? 'Type at least 2 characters to search'
+                        : interventionLoading
+                          ? 'Searching...'
+                          : 'No interventions found'}
+                    </CommandEmpty>
+                    {interventionResults.length > 0 && (
+                      <CommandGroup>
+                        {interventionResults.map((item) => (
+                          <CommandItem
+                            key={item.code}
+                            value={item.code}
+                            onSelect={() => {
+                              setSelectedIntervention(item);
+                              setInterventionOpen(false);
+                              setInterventionSearch('');
+                            }}
+                            className="text-xs"
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-3.5 w-3.5 shrink-0',
+                                selectedIntervention?.code === item.code
+                                  ? 'opacity-100'
+                                  : 'opacity-0'
+                              )}
+                            />
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                              <span className="font-medium truncate">{item.code}</span>
+                              <span className="text-muted-foreground truncate">{item.name}</span>
+                              {(item.category || item.price != null) && (
+                                <span className="text-[10px] text-muted-foreground/70">
+                                  {item.category && <>{item.category}</>}
+                                  {item.category && item.price != null && ' • '}
+                                  {item.price != null && <>KES {item.price.toLocaleString()}</>}
+                                </span>
+                              )}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button
             onClick={handleSendOTP}
