@@ -2638,12 +2638,18 @@ class SHAValidateView(APIView):
 
 class ConsentSendOTPView(APIView):
     """
-    Send OTP to patient for DHA visit consent.
+    Send OTP to patient for DHA visit consent via ILM middleware.
 
     POST /api/sha/consent/send-otp/
+
+    Uses the ILM lifecycle service (POST /api/v1/claims/otp) which handles
+    authentication transparently via OAuth2 client_credentials token.
     """
 
     permission_classes = [IsAuthenticated]
+
+    # Fallback intervention code when none selected by user
+    DEFAULT_INTERVENTION = "SHA-06-001"
 
     def _get_facility(self, request):
         """Resolve and return the request facility, or raise 403."""
@@ -2655,18 +2661,33 @@ class ConsentSendOTPView(APIView):
             return None
         return facility
 
+    @staticmethod
+    def _sha_number_to_cr_id(sha_number: str) -> str:
+        """Convert internal SHA-XXXX-N format to DHA Client Registry CR format.
+
+        SHA-0127974703399-5 → CR0127974703399-5
+        """
+        if sha_number.startswith("SHA-"):
+            return f"CR{sha_number[4:]}"
+        if sha_number.startswith("CR"):
+            return sha_number
+        return sha_number
+
     @extend_schema(
         request=inline_serializer(
             name="ConsentSendOTPRequest",
             fields={
                 "sha_member_id": serializers.IntegerField(),
+                "intervention_codes": serializers.ListField(
+                    child=serializers.CharField(), required=False
+                ),
             },
         ),
         responses={
             201: inline_serializer(
                 name="ConsentSendOTPResponse",
                 fields={
-                    "id": serializers.IntegerField(),
+                    "consent_id": serializers.IntegerField(),
                     "otp_reference": serializers.CharField(),
                     "status": serializers.CharField(),
                     "message": serializers.CharField(),
@@ -2675,8 +2696,11 @@ class ConsentSendOTPView(APIView):
         },
     )
     def post(self, request):
-        """Send OTP to patient for consent verification."""
-        from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+        """Send OTP to patient for consent verification via ILM middleware."""
+        from hmis.apps.billing.services.ilm_lifecycle_service import (
+            IlmLifecycleService,
+            VisitOtpParams,
+        )
         from hmis.apps.billing.sha_serializers import SendOTPSerializer
 
         facility = self._get_facility(request)
@@ -2692,6 +2716,9 @@ class ConsentSendOTPView(APIView):
         serializer.is_valid(raise_exception=True)
 
         sha_member_id = serializer.validated_data["sha_member_id"]
+        intervention_codes = serializer.validated_data.get("intervention_codes") or [
+            self.DEFAULT_INTERVENTION
+        ]
 
         try:
             sha_member = SHAMember.objects.select_related("patient").get(
@@ -2703,28 +2730,63 @@ class ConsentSendOTPView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # Derive the Client Registry ID from the SHA number
+        patient_cr_id = self._sha_number_to_cr_id(sha_member.sha_number)
+        if not patient_cr_id:
+            return Response(
+                {"error": "Cannot determine Client Registry ID for this member"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Use the ILM lifecycle service to send OTP via /api/v1/claims/otp
+        params = VisitOtpParams(
+            intervention_codes=intervention_codes,
+            patient_id=patient_cr_id,
+        )
+
         try:
-            service = SHAConsentService()
-            consent = service.send_otp(
+            service = IlmLifecycleService()
+            result = service.send_visit_otp(
+                params=params,
+                patient=sha_member.patient,
                 sha_member=sha_member,
-                facility_code=facility.mfl_code or "",
-                user=request.user,
                 facility=facility,
+                user=request.user,
+            )
+
+            # Extract OTP reference from ILM response
+            payload = result.payload if isinstance(result.payload, dict) else {}
+            otp_reference = payload.get("otp_reference") or payload.get("otpReference") or ""
+
+            # Create a local ConsentToken for tracking
+            from hmis.apps.billing.models import ConsentToken
+
+            consent = ConsentToken.objects.create(
+                patient=sha_member.patient,
+                sha_member=sha_member,
+                facility=facility,
+                organization=facility.organization,
+                consent_method=ConsentToken.ConsentMethod.OTP,
+                otp_reference=otp_reference,
+                identification_type="National ID",
+                identification_number=sha_member.national_id or "",
+                status=ConsentToken.ConsentStatus.PENDING,
+                created_by=request.user,
             )
 
             return Response(
                 {
-                    "id": consent.id,
-                    "otp_reference": consent.otp_reference,
-                    "status": consent.status,
+                    "consent_id": consent.id,
+                    "otp_reference": otp_reference,
+                    "status": "PENDING",
                     "message": "OTP sent successfully",
                 },
                 status=status.HTTP_201_CREATED,
             )
-        except SHAConsentError as e:
-            logger.warning("Failed to send OTP: %s", e.message)
+        except Exception as e:
+            logger.warning("Failed to send OTP: %s", str(e))
             return Response(
-                {"error": e.message, "code": e.code, "details": e.details},
+                {"error": str(e), "code": "ilm_error", "details": {}},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 

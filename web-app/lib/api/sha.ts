@@ -508,6 +508,27 @@ async function searchInterventions(
   return parseResponse(PaginatedSHAInterventionsSchema, response.data, { context: 'shaApi.searchInterventions' });
 }
 
+/**
+ * Lightweight search for SHA interventions used in consent OTP flow.
+ * Calls the terminology endpoint directly and returns raw results.
+ */
+async function searchInterventionCodes(
+  search: string,
+  limit: number = 20
+): Promise<{ code: string; name: string; category?: string; price?: number }[]> {
+  if (search.length < 2) return [];
+  const response = await apiClient.get(
+    `/api/sha/terminology/interventions/?search=${encodeURIComponent(search)}&limit=${limit}`
+  );
+  const data = response.data as { results?: Array<Record<string, unknown>> };
+  return (data.results || []).map((r) => ({
+    code: String(r.code || ''),
+    name: String(r.name || ''),
+    category: r.category ? String(r.category) : undefined,
+    price: typeof r.price === 'number' ? r.price : undefined,
+  }));
+}
+
 // ============================================================================
 // Terminology API - ICHI
 // ============================================================================
@@ -1360,6 +1381,7 @@ export const shaApi = {
 
   // Terminology - Interventions
   searchInterventions,
+  searchInterventionCodes,
 
   // Terminology - ICHI
   searchICHI,

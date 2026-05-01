@@ -166,11 +166,13 @@ export function CheckinSuccessModal({
 
           {/* SHA Consent Step — shown for SHA-eligible patients */}
           {data.patientId && (
-            <SHAConsentStep
-              patientId={data.patientId}
-              encounterId={data.encounterId}
-              onComplete={() => setShaConsentPending(false)}
-            />
+            <div className="min-h-[120px]">
+              <SHAConsentStep
+                patientId={data.patientId}
+                encounterId={data.encounterId}
+                onComplete={() => setShaConsentPending(false)}
+              />
+            </div>
           )}
         </div>
 
