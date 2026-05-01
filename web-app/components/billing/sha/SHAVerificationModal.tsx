@@ -1161,6 +1161,19 @@ export function SHAVerificationModal({
   };
 
   const handleAddPerson = useCallback(async (person: SHAPayloadPerson) => {
+    // For dependants, inject the principal's national ID so downstream eligibility
+    // checks can resolve coverage via the principal (DHA only resolves via principal).
+    if (person.source === 'dependent' && !person.principal_national_id) {
+      // Try from eligibility schemes first
+      const principalIdFromScheme = eligibility?.schemes?.[0]?.principalContributor?.idNumber;
+      if (principalIdFromScheme) {
+        person = { ...person, principal_national_id: principalIdFromScheme };
+      } else if (identifierType === 'National ID' && identifierValue.trim()) {
+        // Fallback: the user searched with the principal's national ID
+        person = { ...person, principal_national_id: identifierValue.trim() };
+      }
+    }
+
     // For dependants, attempt a secondary CR lookup to enrich demographics
     if (person.source === 'dependent') {
       // Extract the best identifier for CR lookup
@@ -1246,7 +1259,7 @@ export function SHAVerificationModal({
     // Fallback: pass person as-is (principal, or dependant without enrichable identifiers)
     onAddPersonToForm?.(person);
     setIsOpen(false);
-  }, [onAddPersonToForm, setIsOpen]);
+  }, [onAddPersonToForm, setIsOpen, eligibility, identifierType, identifierValue]);
 
   return (
     <Sheet open={isOpen} onOpenChange={(openState) => {

@@ -588,6 +588,11 @@ export function PatientForm({
       }
     }
 
+    // For dependants, set the principal's national ID (needed for eligibility checks)
+    if (person.source === 'dependent' && person.principal_national_id) {
+      form.setValue('principal_national_id', person.principal_national_id);
+    }
+
     setPendingShaLocation({
       county: person.county,
       subCounty: person.sub_county,
@@ -722,6 +727,14 @@ export function PatientForm({
           const principalContributor = pendingShaDetails?.schemes?.[0]?.principalContributor;
           if (principalContributor?.idNumber && principalContributor?.idType === 'NATIONAL_ID') {
             form.setValue('principal_national_id', principalContributor.idNumber);
+          } else {
+            // Fallback: the original search was done using principal's national ID
+            // (identification_number field contains what the user entered)
+            const searchedId = form.getValues('identification_number');
+            const searchedIdType = form.getValues('identification_type');
+            if (searchedId && searchedIdType === 'national_id') {
+              form.setValue('principal_national_id', searchedId);
+            }
           }
           if (dep.name) {
             const nameParts = dep.name.trim().split(/\s+/);
@@ -1299,8 +1312,17 @@ export function PatientForm({
           form.setValue('sha_number', response.sha_number);
         }
 
-        // Auto-populate from CR if found (dialog removed — user picks principal/dependant in SHA modal)
-        if (crFound && foundCrClient) {
+        // If SHA has dependants OR CR has dependants, open verification dialog
+        // so user can pick principal vs dependant
+        const hasDependants = (response.dependents && response.dependents.length > 0)
+          || (foundCrClient?.dependants && foundCrClient.dependants.some(g => (g.result?.length ?? 0) > 0));
+
+        if (hasDependants && response.sha_number) {
+          // Open the verification dialog for principal/dependant selection
+          setPendingShaDetails(response);
+          setShowVerificationDialog(true);
+        } else if (crFound && foundCrClient) {
+          // No dependants — auto-populate from CR
           populateFromCRClient(foundCrClient);
           toast({
             title: 'Client Registry Record Found',

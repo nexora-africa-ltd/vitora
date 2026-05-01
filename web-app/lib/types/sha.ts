@@ -324,6 +324,8 @@ export interface SHAPayloadPerson {
   sha_number?: string;
   cr_number?: string;
   household_number?: string;
+  /** Principal's national ID — set when source is 'dependent' for eligibility checks */
+  principal_national_id?: string;
 }
 
 export interface DirectEligibilityCheckResponse {
