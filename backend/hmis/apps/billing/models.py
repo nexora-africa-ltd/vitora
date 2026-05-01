@@ -3382,6 +3382,14 @@ class ConsentToken(FacilityScopedModel):
         help_text="ID number used for OTP request",
     )
 
+    # Intervention codes sent with the OTP request (persisted so that
+    # start-visit can re-use them without the frontend needing to resend).
+    intervention_codes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="SHA intervention codes sent with the OTP request",
+    )
+
     # Token from DHA (returned after successful validation)
     consent_token = models.CharField(
         max_length=500,
