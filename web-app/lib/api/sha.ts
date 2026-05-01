@@ -360,9 +360,12 @@ async function checkPatientEligibility(
 
   if (!membersResponse.results.length) {
     // No SHA member record - try direct eligibility check
+    let patient: Record<string, any> | null = null;
     try {
       const patientResponse = await apiClient.get(`/api/patients/${patientId}/`);
-      const patient = patientResponse.data;
+      patient = patientResponse.data;
+
+      if (!patient) throw new Error('Patient not found');
 
       // Build eligibility check params.
       // CRITICAL: For dependants, DHA only resolves coverage via the PRINCIPAL's
@@ -387,6 +390,19 @@ async function checkPatientEligibility(
       if (Object.keys(params).length > 0) {
         try {
           const directResponse = await checkDirectEligibility(params);
+          // If the direct check says ineligible but this is a dependant
+          // (has principal_national_id), still allow the OTP flow — the
+          // principal's cover may be active and DHA validates at OTP time.
+          if (!directResponse.is_eligible && patient.principal_national_id) {
+            return {
+              is_eligible: true,
+              copay_percentage: directResponse.copay_percentage ?? 0,
+              checked_at: new Date().toISOString(),
+              verified_name: directResponse.full_name || undefined,
+              coverage_end_date: directResponse.coverage_end_date || undefined,
+              message: 'Dependant — coverage via principal member',
+            };
+          }
           return {
             is_eligible: directResponse.is_eligible,
             copay_percentage: directResponse.copay_percentage,
@@ -428,6 +444,16 @@ async function checkPatientEligibility(
       }
     } catch (error) {
       console.error('Direct eligibility check failed:', error);
+      // If this is a dependant (has principal_national_id), still allow the
+      // OTP flow — DHA will validate at OTP time
+      if (patient?.principal_national_id) {
+        return {
+          is_eligible: true,
+          copay_percentage: 0,
+          checked_at: new Date().toISOString(),
+          message: 'Dependant — coverage via principal member',
+        };
+      }
     }
 
     // Fallback: no SHA member record and direct check failed

@@ -426,6 +426,8 @@ export function PatientForm({
   const paymentMode = form.watch('payment_mode');
   const referralSource = form.watch('referral_source');
   const householdNumber = form.watch('household_number');
+  const shaNumber = form.watch('sha_number');
+  const principalNationalId = form.watch('principal_national_id');
 
   // Watch demographic fields for duplicate checking
   const watchedFirstName = form.watch('first_name');
@@ -1855,6 +1857,35 @@ export function PatientForm({
                   </FormItem>
                 )}
               />
+
+              {/* Principal National ID - shown when SHA number is present (dependant flow) */}
+              {shaNumber && (
+                <FormField
+                  control={form.control}
+                  name="principal_national_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={`flex items-center gap-1 ${principalNationalId ? 'text-teal-400' : 'text-amber-500'}`}>
+                        <Users className="h-4 w-4" />
+                        Principal&apos;s National ID
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Enter principal's national ID (for dependants)"
+                          className={principalNationalId
+                            ? 'bg-secondary/5 border-secondary/20 font-mono text-sm text-teal-400'
+                            : 'border-amber-500/30 focus:border-amber-500'
+                          }
+                        />
+                      </FormControl>
+                      <FormDescription className={principalNationalId ? 'text-teal-400' : 'text-amber-500/80'}>
+                        {principalNationalId ? 'Used for dependant eligibility verification' : 'Required if patient is a dependant'}
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

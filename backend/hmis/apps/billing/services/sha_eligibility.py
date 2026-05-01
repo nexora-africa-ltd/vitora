@@ -207,6 +207,40 @@ class SHAEligibilityService:
         # Update member record
         check.update_member_eligibility()
 
+        # If dependant is ineligible on their own record, try the principal's
+        # credentials — DHA resolves dependant coverage via the principal.
+        if (
+            not check.is_eligible
+            and sha_member.membership_type != SHAMember.MembershipType.PRINCIPAL
+        ):
+            principal = sha_member.principal
+            if not principal and sha_member.principal_sha_number:
+                principal = SHAMember.objects.filter(
+                    sha_number=sha_member.principal_sha_number
+                ).first()
+            if principal:
+                principal_check = self.check_eligibility(
+                    principal, user, force_refresh=force_refresh, facility=facility
+                )
+                if principal_check.is_eligible:
+                    # Mark the dependant as eligible via principal's coverage
+                    check.is_eligible = True
+                    check.result = SHAEligibilityCheck.CheckResult.ELIGIBLE
+                    check.ineligibility_reason = ""
+                    if principal_check.eligible_until:
+                        check.eligible_until = principal_check.eligible_until
+                    check.save(
+                        update_fields=[
+                            "is_eligible",
+                            "result",
+                            "ineligibility_reason",
+                            "eligible_until",
+                        ]
+                    )
+                    # Also update the member's cached eligibility
+                    sha_member.is_eligible = True
+                    sha_member.save(update_fields=["is_eligible"])
+
         return check
 
     def _build_request(self, sha_member: SHAMember) -> dict:
