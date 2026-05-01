@@ -24,6 +24,7 @@ import {
   Search,
   Check,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +48,7 @@ import { getApiErrorMessage } from '@/lib/api/client';
 import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
 import { useDebounce } from '@/lib/hooks';
 import { useFacility } from '@/lib/context/facility-context';
+import { OtpWhitelistRequestSheet } from './otp-whitelist-request-sheet';
 import type { SHAMember } from '@/lib/types/sha';
 
 // ============================================================================
@@ -189,6 +191,9 @@ export function SHAConsentStep({
   // OTP resend countdown (seconds)
   const [resendCountdown, setResendCountdown] = useState(0);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Whitelist request sheet
+  const [whitelistOpen, setWhitelistOpen] = useState(false);
 
   const sendOTP = useSendConsentOTP();
   const startVisit = useStartVisit();
@@ -608,6 +613,17 @@ export function SHAConsentStep({
             </Button>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && error.toLowerCase().includes('restricted to biometric') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setWhitelistOpen(true)}
+              className="text-xs h-7 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-400 dark:hover:bg-amber-900/20"
+            >
+              <AlertTriangle className="mr-1 h-3 w-3" />
+              Request OTP Whitelist
+            </Button>
+          )}
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -627,6 +643,15 @@ export function SHAConsentStep({
               </span>
             )}
           </div>
+
+          {/* OTP Whitelist Request Sheet */}
+          <OtpWhitelistRequestSheet
+            open={whitelistOpen}
+            onOpenChange={setWhitelistOpen}
+            shaNumber={shaMember?.sha_member_number || shaMember?.sha_number || ''}
+            facilityFrCode={facilityDetail?.sha_facility_code || ''}
+            beneficiaryName={eligibilityInfo?.verifiedName}
+          />
         </div>
       )}
 

@@ -132,9 +132,10 @@ class TestOtpWhitelist:
             facility=sample_facility,
         )
         assert client.post.call_args[0][0] == "/api/v1/patients/otp-whitelists"
-        data = client.post.call_args.kwargs["data"]
-        assert data["beneficiary_cr_id"] == "CR-1"
-        assert data["biometric_attempts"] == "2"
+        files_arg = client.post.call_args.kwargs["files"]
+        # Form fields are encoded as (None, value) tuples in the files dict
+        assert files_arg["beneficiary_cr_id"] == (None, "CR-1")
+        assert files_arg["biometric_attempts"] == (None, "2")
         rec = SHAOtpWhitelistRequest.objects.get()
         assert rec.dha_guid == "wh-1"
         assert result.record_id == rec.pk

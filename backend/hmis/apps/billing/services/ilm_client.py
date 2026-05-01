@@ -194,6 +194,9 @@ class IlmClient:
 
         if files is None and json_body is not None and "Content-Type" not in merged_headers:
             merged_headers["Content-Type"] = "application/json"
+        if files is not None:
+            # Let requests auto-set Content-Type with multipart boundary
+            merged_headers.pop("Content-Type", None)
         if headers:
             merged_headers.update(headers)
         if idempotency_key:

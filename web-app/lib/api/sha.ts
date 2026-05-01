@@ -1216,9 +1216,7 @@ async function ilmDischarge(body: {
 }
 
 async function ilmRequestOtpWhitelist(formData: FormData) {
-  const response = await apiClient.post(`${ILM_BASE}/lifecycle/otp-whitelist/`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await apiClient.post(`${ILM_BASE}/lifecycle/otp-whitelist/`, formData);
   return parseResponse(IlmLifecycleResponseSchema, response.data, {
     context: 'shaApi.ilmRequestOtpWhitelist',
   });
