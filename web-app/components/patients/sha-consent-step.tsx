@@ -186,6 +186,10 @@ export function SHAConsentStep({
   const [interventionLoading, setInterventionLoading] = useState(false);
   const useLocalFallbackRef = useRef(false);
 
+  // OTP resend countdown (seconds)
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+
   const sendOTP = useSendConsentOTP();
   const startVisit = useStartVisit();
   const { facilityDetail } = useFacility();
@@ -231,6 +235,13 @@ export function SHAConsentStep({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
+
+  // Cleanup countdown interval on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
 
   // Filter packages by facility level
   const allowedPackages = useMemo(
@@ -320,6 +331,18 @@ export function SHAConsentStep({
         onSuccess: (response) => {
           setConsentId(response.consent_id);
           setStep('otp_sent');
+          // Start 60s resend countdown
+          setResendCountdown(60);
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          countdownRef.current = setInterval(() => {
+            setResendCountdown((prev) => {
+              if (prev <= 1) {
+                if (countdownRef.current) clearInterval(countdownRef.current);
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
         },
         onError: (err: unknown) => {
           setError(extractDHAError(err) || 'Failed to send OTP');
@@ -473,7 +496,7 @@ export function SHAConsentStep({
                   </div>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" onWheel={(e) => e.stopPropagation()}>
                 <Command shouldFilter={false}>
                   <div className="flex items-center border-b px-2">
                     <Search className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -487,7 +510,7 @@ export function SHAConsentStep({
                       <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin opacity-50" />
                     )}
                   </div>
-                  <CommandList className="max-h-[200px]">
+                  <CommandList className="max-h-[200px] overflow-y-auto">
                     <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
                       {interventionLoading
                         ? 'Searching...'
@@ -585,15 +608,25 @@ export function SHAConsentStep({
             </Button>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSendOTP}
-            disabled={sendOTP.isPending}
-            className="text-xs h-7"
-          >
-            Resend OTP
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSendOTP}
+              disabled={sendOTP.isPending || resendCountdown > 0}
+              className="text-xs h-7"
+            >
+              {sendOTP.isPending ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : null}
+              {resendCountdown > 0 ? `Resend OTP (${resendCountdown}s)` : 'Resend OTP'}
+            </Button>
+            {resendCountdown > 0 && (
+              <span className="text-[10px] text-muted-foreground">
+                Code expires in {resendCountdown}s
+              </span>
+            )}
+          </div>
         </div>
       )}
 

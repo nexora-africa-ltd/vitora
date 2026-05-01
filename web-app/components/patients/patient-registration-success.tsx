@@ -25,6 +25,7 @@ import {
   Activity,
   FileText,
   Building2,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +40,7 @@ import {
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useToast } from '@/lib/hooks/use-toast';
 import { CheckinSuccessModal, type CheckinSuccessData } from './checkin-success-modal';
+import { SHAConsentStep } from '@/components/patients/sha-consent-step';
 import { RouteToClinicDialog } from '@/components/triage/route-to-clinic-dialog';
 import type { Patient } from '@/lib/types/patient';
 
@@ -56,6 +58,8 @@ export function PatientRegistrationSuccess({
 
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [showRouteDialog, setShowRouteDialog] = useState(false);
+  const [showShaConsent, setShowShaConsent] = useState(false);
+  const [checkinEncounterId, setCheckinEncounterId] = useState<number | null>(null);
 
   // Success modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -70,6 +74,10 @@ export function PatientRegistrationSuccess({
         create_encounter: true,
       });
 
+      const encId = (result as { encounter?: number | null }).encounter ?? null;
+      setCheckinEncounterId(encId);
+      setShowShaConsent(true);
+
       // Show success modal with navigation option
       setSuccessData({
         patientName: `${patient.first_name} ${patient.last_name}`,
@@ -78,7 +86,7 @@ export function PatientRegistrationSuccess({
         destinationName: 'Triage Queue',
         destinationUrl: '/triage',
         patientId: patient.id,
-        encounterId: (result as { encounter?: number | null }).encounter ?? null,
+        encounterId: encId,
         // WaitingQueueEntry doesn't have queue_position, so we omit it
       });
       setShowSuccessModal(true);
@@ -291,6 +299,32 @@ export function PatientRegistrationSuccess({
           </TooltipProvider>
         </CardContent>
       </Card>
+
+      {/* SHA Consent — shown after check-in or on demand */}
+      {showShaConsent ? (
+        <SHAConsentStep
+          patientId={patient.id}
+          encounterId={checkinEncounterId}
+          onComplete={() => setShowShaConsent(false)}
+        />
+      ) : (
+        <Card className="border-dashed">
+          <CardContent className="flex items-center justify-between py-4 px-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <ShieldCheck className="h-4 w-4" />
+              <span>Obtain SHA visit consent (OTP verification)</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowShaConsent(true)}
+            >
+              <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+              Start SHA Consent
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <RouteToClinicDialog
         open={showRouteDialog}
