@@ -59,12 +59,18 @@ function shaToCrId(shaNumber: string): string {
 }
 
 const REASON_TYPES = [
-  { value: 'BIOMETRIC_FAILURE', label: 'Biometric Failure' },
-  { value: 'OLD', label: 'Elderly / Degraded Fingerprints' },
-  { value: 'AMPUTEE', label: 'Amputee' },
-  { value: 'POWER_OUTAGE', label: 'Power Outage' },
-  { value: 'DEVICE_MALFUNCTION', label: 'Device Malfunction' },
-  { value: 'OTHER', label: 'Other' },
+  { value: 'BIOMETRIC_FAILURE', label: 'Biometric Failure', hint: 'Multiple failed fingerprint scans' },
+  { value: 'OLD', label: 'Elderly / Degraded Fingerprints', hint: 'Age ≥60, worn fingerprints' },
+  { value: 'AMPUTEE', label: 'Amputee', hint: 'Missing fingers/hands' },
+  { value: 'MENTALLY_UNSTABLE', label: 'Mentally Unstable', hint: 'Patient unable to cooperate' },
+  { value: 'CONSTRUCTION_WORKER', label: 'Construction Worker', hint: 'Damaged/worn fingerprints from labour' },
+  { value: 'MEDICAL_CONDITION', label: 'Medical Condition', hint: 'Skin condition affecting fingerprints' },
+  { value: 'CHILD_BELOW_7_YEARS', label: 'Child Below 7 Years', hint: 'Undeveloped fingerprints' },
+  { value: 'EXPIRED', label: 'Expired Member', hint: 'Deceased beneficiary, next-of-kin claiming' },
+  { value: 'PRIVACY_CONCERNS', label: 'Privacy Concerns', hint: 'Patient refuses biometric capture' },
+  { value: 'TECHNICAL_ISSUES', label: 'Technical Issues', hint: 'Device malfunction, connectivity problems' },
+  { value: 'DEVICE_MALFUNCTION', label: 'Device Malfunction', hint: 'Hardware failure' },
+  { value: 'OTHER', label: 'Other', hint: 'Specify in details' },
 ] as const;
 
 // ============================================================================
@@ -287,7 +293,12 @@ export function OtpWhitelistRequestSheet({
                   <SelectContent>
                     {REASON_TYPES.map((r) => (
                       <SelectItem key={r.value} value={r.value}>
-                        {r.label}
+                        <span>{r.label}</span>
+                        {r.hint && (
+                          <span className="text-[10px] text-muted-foreground ml-1 hidden sm:inline">
+                            — {r.hint}
+                          </span>
+                        )}
                       </SelectItem>
                     ))}
                   </SelectContent>

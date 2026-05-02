@@ -69,6 +69,7 @@ class BillingEvents:
     DHA_DISCHARGE_COMPLETED = "billing.dha_discharge.completed"
     DHA_OTP_WHITELIST_REQUESTED = "billing.dha_otp_whitelist.requested"
     DHA_OTP_WHITELIST_FETCHED = "billing.dha_otp_whitelist.fetched"
+    DHA_OTP_WHITELIST_STATUS_CHANGED = "billing.dha_otp_whitelist.status_changed"
     DHA_NEXT_OF_KIN_ADDED = "billing.dha_next_of_kin.added"
     DHA_EMERGENCY_DOCTOR_ADDED = "billing.dha_emergency_doctor.added"
     DHA_EMERGENCY_DOCTOR_REMOVED = "billing.dha_emergency_doctor.removed"
