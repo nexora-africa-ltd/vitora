@@ -72,11 +72,11 @@ jobs:
           fi
         continue-on-error: false
 
-      - name: Run Black Formatter Check
+      - name: Run Ruff Formatter Check
         working-directory: ./backend
         run: |
           if [ -f "pyproject.toml" ]; then
-            poetry run black --check .
+            poetry run ruff format --check .
           else
             echo "⏭️  Skipping: No backend code yet"
           fi
@@ -152,7 +152,7 @@ jobs:
         continue-on-error: true
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -185,10 +185,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-          cache-dependency-path: |
-            web-app/package-lock.json
-            desktop-app/package-lock.json
-        if: hashFiles('web-app/package.json', 'desktop-app/package.json') != ''
+          cache-dependency-path: web-app/package-lock.json
+        if: hashFiles('web-app/package.json') != ''
 
       - name: Install Frontend Dependencies
         working-directory: ./web-app
@@ -205,17 +203,6 @@ jobs:
         working-directory: ./web-app
         run: npm test -- --coverage --watchAll=false
         if: hashFiles('web-app/package.json') != ''
-        continue-on-error: true
-
-      - name: Install Desktop App Dependencies
-        working-directory: ./desktop-app
-        run: npm ci
-        if: hashFiles('desktop-app/package.json') != ''
-
-      - name: Build Desktop App
-        working-directory: ./desktop-app
-        run: npm run build
-        if: hashFiles('desktop-app/package.json') != ''
         continue-on-error: true
 
   # Job 4: Documentation Check
