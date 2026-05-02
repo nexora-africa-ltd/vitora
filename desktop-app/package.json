@@ -10,6 +10,7 @@
     "build": "npm run build:web && npm run bundle-standalone && npm run build:tauri",
     "build:web": "cd ../web-app && npm run build",
     "build:tauri": "cd src-tauri && cargo tauri build -c tauri.conf.production.json",
+    "build:check": "cd src-tauri && cargo check --release",
     "bundle-standalone": "node scripts/bundle-standalone.js",
     "download-node": "node scripts/download-node.js",
     "setup": "npm run download-node && npm run build:web && npm run bundle-standalone",
