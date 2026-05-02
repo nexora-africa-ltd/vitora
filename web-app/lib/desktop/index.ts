@@ -102,3 +102,27 @@ export async function getSidecarPort(): Promise<number | null> {
   if (!invoke) return null;
   return invoke<number>('get_sidecar_port');
 }
+
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the configured API base URL.
+ * Returns default (https://api.vitora.digital) if not configured or not in desktop mode.
+ */
+export async function getApiUrl(): Promise<string> {
+  const invoke = getInvoke();
+  if (!invoke) return process.env.NEXT_PUBLIC_API_URL || '';
+  return invoke<string>('get_api_url');
+}
+
+/**
+ * Set and persist the API base URL.
+ * Only works in desktop mode.
+ */
+export async function setApiUrl(url: string): Promise<string | null> {
+  const invoke = getInvoke();
+  if (!invoke) return null;
+  return invoke<string>('set_api_url', { url });
+}
