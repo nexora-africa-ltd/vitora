@@ -55,6 +55,7 @@ export const ClaimStatusSchema = z.enum([
   'appealed',
   'paid',
   'written_off',
+  'cancelled',
 ]);
 
 export const ClaimItemStatusSchema = z.enum(['pending', 'approved', 'rejected', 'adjusted']);
@@ -592,11 +593,12 @@ export const ClaimCreateResponseSchema = z.object({
 export type ClaimCreateResponseSchemaType = z.infer<typeof ClaimCreateResponseSchema>;
 
 export const ClaimSubmitResponseSchema = z.object({
-  success: z.boolean(),
-  sha_reference: z.string().optional(),
-  tracking_number: z.string().optional(),
+  status: z.string(),
+  claim_number: z.string(),
+  submitted_at: z.string().nullable().optional(),
+  sha_claim_reference: z.string().nullable().optional(),
   message: z.string().optional(),
-  errors: z.array(z.string()).optional(),
+  queue_entry_id: z.number().optional(),
 });
 
 export type ClaimSubmitResponseSchemaType = z.infer<typeof ClaimSubmitResponseSchema>;
@@ -823,7 +825,7 @@ export const SendOTPResponseSchema = z.object({
 export type SendOTPResponseSchemaType = z.infer<typeof SendOTPResponseSchema>;
 
 export const ValidateOTPResponseSchema = z.object({
-  consent_id: z.number(),
+  id: z.number(),
   status: ConsentStatusSchema,
   consent_token: z.string(),
   expires_at: z.string(),
@@ -877,7 +879,7 @@ export const PreauthRequestSchema = z.object({
 export type PreauthRequestSchemaType = z.infer<typeof PreauthRequestSchema>;
 
 export const SubmitPreauthResponseSchema = z.object({
-  preauth_id: z.number(),
+  id: z.number(),
   preauth_reference: z.string(),
   decision: PreauthDecisionSchema,
   message: z.string(),

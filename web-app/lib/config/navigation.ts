@@ -4,6 +4,7 @@
  */
 
 import { SHAIcon } from '@/components/ui/sha-logo';
+import { KenyaCoatOfArmsIcon } from '@/components/ui/kenya-coat-of-arms';
 import {
   LayoutDashboard,
   Users,
@@ -128,6 +129,7 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'patients',
     children: [
       { label: 'All Patients', href: '/patients', icon: Users },
+      { label: 'Patient Lookup', href: '/patients/lookup', icon: KenyaCoatOfArmsIcon },
       { label: 'New Patient', href: '/patients/new', icon: UserPlus2 },
     ],
   },

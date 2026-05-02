@@ -366,7 +366,7 @@ export function useValidateConsentOTP() {
   return useMutation({
     mutationFn: (data: ValidateOTPRequest) => shaApi.validateConsentOTP(data),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: shaQueryKeys.consentDetail(result.consent_id) });
+      queryClient.invalidateQueries({ queryKey: shaQueryKeys.consentDetail(result.id) });
     },
   });
 }

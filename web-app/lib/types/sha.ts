@@ -529,7 +529,7 @@ export interface ValidateOTPRequest {
 }
 
 export interface ValidateOTPResponse {
-  consent_id: number;
+  id: number;
   status: ConsentStatus;
   consent_token: string;
   expires_at: string;
@@ -597,7 +597,7 @@ export interface SubmitPreauthRequest {
 }
 
 export interface SubmitPreauthResponse {
-  preauth_id: number;
+  id: number;
   preauth_reference: string;
   decision: PreauthDecision;
   message: string;
@@ -641,7 +641,8 @@ export type ClaimStatus =
   | 'rejected'
   | 'appealed'
   | 'paid'
-  | 'written_off';
+  | 'written_off'
+  | 'cancelled';
 
 /**
  * SHA Claim interface - matches backend SHAClaimSerializer.
@@ -813,11 +814,12 @@ export interface ClaimCreateResponse {
 }
 
 export interface ClaimSubmitResponse {
-  success: boolean;
-  sha_reference?: string;
-  tracking_number?: string;
+  status: string;
+  claim_number: string;
+  submitted_at?: string | null;
+  sha_claim_reference?: string | null;
   message?: string;
-  errors?: string[];
+  queue_entry_id?: number;
 }
 
 export interface ClaimListParams {
