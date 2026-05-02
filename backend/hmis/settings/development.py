@@ -42,6 +42,7 @@ CORS_ALLOW_HEADERS = [
     "x-idempotency-key",  # Sprint 1.7: Idempotent API operations
     "x-facility-id",  # Multi-facility: facility context header
     "x-organization-id",  # Multi-org: organization context header
+    "x-vitora-client",  # Desktop app identifier: "desktop/<version>"
     "ngrok-skip-browser-warning",
 ]
 
