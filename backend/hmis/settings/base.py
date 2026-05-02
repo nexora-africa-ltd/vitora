@@ -452,6 +452,12 @@ SIMPLE_JWT = {
 # CORS settings (for development, will be more restrictive in production)
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = []
+# Allow the Tauri desktop app's Node sidecar (any localhost port)
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://127\.0\.0\.1:\d+$",
+    r"^http://localhost:\d+$",
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # ---------------------------------------------------------------------------
 # HttpOnly Cookie Auth Settings (web frontend)
