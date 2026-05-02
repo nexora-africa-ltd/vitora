@@ -95,6 +95,10 @@ apiClient.interceptors.request.use(
     if (_activeOrganizationId != null) {
       config.headers['X-Organization-Id'] = String(_activeOrganizationId);
     }
+    // Identify desktop app to the backend (analytics + debugging)
+    if (typeof window !== 'undefined' && window.__TAURI__) {
+      config.headers['X-Vitora-Client'] = 'desktop/0.1.0';
+    }
     return config;
   },
   (error) => Promise.reject(error)

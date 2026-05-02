@@ -1,0 +1,12 @@
+# Build output
+/target/
+/standalone/
+/node_modules/
+
+# Bundled Node.js binary (fetched during build)
+/src-tauri/binaries/
+
+# IDE
+.idea/
+*.swp
+*.swo
