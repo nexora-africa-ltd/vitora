@@ -381,6 +381,9 @@ class SHAPermission(permissions.BasePermission):
     # Custom action permissions
     CUSTOM_ACTION_PERMISSIONS = {
         "submit": "submit_sha_claim",
+        "resubmit": "submit_sha_claim",
+        "cancel": "change_shaclaim",
+        "bundle": "view_shaclaim",
         "appeal": "appeal_sha_claim",
         "verify": "verify_sha_eligibility",
         "check_eligibility": "verify_sha_eligibility",

@@ -34,6 +34,7 @@ const statusColors: Record<ClaimStatus, string> = {
   paid: 'hsl(var(--chart-3))',
   partial_approved: 'hsl(var(--chart-4))',
   written_off: 'hsl(var(--muted-foreground))',
+  cancelled: 'hsl(var(--muted-foreground))',
 };
 
 const statusLabels: Record<ClaimStatus, string> = {
@@ -53,6 +54,7 @@ const statusLabels: Record<ClaimStatus, string> = {
   paid: 'Paid',
   partial_approved: 'Partial Approved',
   written_off: 'Written Off',
+  cancelled: 'Cancelled',
 };
 
 export function ClaimsStatusChart({

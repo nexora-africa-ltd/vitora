@@ -25,6 +25,17 @@ interface KenyaCoatOfArmsProps {
  * @example
  * <KenyaCoatOfArms size={20} className="text-muted-foreground" />
  */
+/**
+ * KenyaCoatOfArmsIcon - A functional component matching Lucide icon interface
+ * Can be used as a drop-in replacement for Lucide icons in navigation configs
+ */
+export function KenyaCoatOfArmsIcon({ className }: { className?: string }) {
+  const sizeMatch = className ? className.match(/h-(\d+)/) : null;
+  const heightNum = sizeMatch && sizeMatch[1] ? parseInt(sizeMatch[1], 10) : 5;
+  const pxSize = heightNum * 4; // Tailwind h-5 = 20px
+  return <KenyaCoatOfArms size={pxSize} className={className} />;
+}
+
 export function KenyaCoatOfArms({
   size = 24,
   className,

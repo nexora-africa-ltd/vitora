@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Search, User } from 'lucide-react';
@@ -74,6 +74,24 @@ export default function NewPatientPage() {
 
   // Generate idempotency key for form submission (Sprint 1.7)
   const idempotencyKey = useMemo(() => getOrCreateIdempotencyKey(IDEMPOTENCY_FORM_ID), []);
+
+  // Pre-populate from CR data passed via Patient Lookup page
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('cr_prepopulate');
+      if (stored) {
+        sessionStorage.removeItem('cr_prepopulate');
+        const client = JSON.parse(stored) as ClientRegistryClient;
+        setCrClient(client);
+        toast({
+          title: 'Client Registry Record Loaded',
+          description: `Pre-populated from ${client.first_name} ${client.last_name} (${client.client_number})`,
+        });
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle CR client found from modal
   const handleCRClientFound = useCallback((client: ClientRegistryClient) => {

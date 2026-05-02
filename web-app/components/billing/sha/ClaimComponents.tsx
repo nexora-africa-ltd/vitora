@@ -190,6 +190,12 @@ export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
       icon: <Ban className="h-3 w-3" />,
       className: 'border-gray-400 text-gray-500',
     },
+    cancelled: {
+      label: 'Cancelled',
+      variant: 'outline',
+      icon: <Ban className="h-3 w-3" />,
+      className: 'border-gray-400 text-gray-500',
+    },
   };
 
   const { label, icon, className: statusClassName } = config[status];
@@ -265,7 +271,9 @@ export function ClaimSubmissionButton({
       // Step 2: Submit to SHA
       const submitResponse = await shaApi.submitClaim(createResponse.id);
 
-      if (!submitResponse.success) {
+      if (submitResponse.status === 'queued') {
+        // Queued for later submission - still proceed to get claim
+      } else if (submitResponse.status === 'draft' || submitResponse.status === 'validated') {
         throw new Error(submitResponse.message || 'Claim submission failed');
       }
 
@@ -392,6 +400,7 @@ export function ClaimStatusCard({
       appealed: 40,
       paid: 100,
       written_off: 100,
+      cancelled: 0,
     };
     return statusProgress[claim.status];
   };

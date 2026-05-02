@@ -2099,6 +2099,7 @@ class SHAClaim(FacilityScopedModel):
         APPEALED = "appealed", "Appealed"
         PAID = "paid", "Paid"
         WRITTEN_OFF = "written_off", "Written Off"
+        CANCELLED = "cancelled", "Cancelled"
 
     class ClaimType(models.TextChoices):
         """Types of SHA claims."""

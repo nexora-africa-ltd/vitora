@@ -137,7 +137,7 @@ export function PreauthPanel({
       },
       {
         onSuccess: (response) => {
-          setPreauthId(response.preauth_id);
+          setPreauthId(response.id);
         },
         onError: (err: Error) => {
           setError(err.message || 'Failed to submit pre-authorization');

@@ -493,6 +493,120 @@ class SHAClaimViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    @action(detail=True, methods=["post"], url_path="resubmit")
+    def resubmit(self, request, pk=None):
+        """
+        Resubmit a rejected or queried claim.
+
+        POST /api/sha/claims/{id}/resubmit/
+
+        Resets the claim status to PENDING_SUBMISSION and re-triggers
+        submission to SHA. Only allowed for claims in REJECTED or QUERY status.
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+
+        claim = self.get_object()
+
+        allowed_statuses = [
+            SHAClaim.ClaimStatus.REJECTED,
+            SHAClaim.ClaimStatus.QUERY,
+        ]
+        if claim.status not in allowed_statuses:
+            return Response(
+                {
+                    "error": (
+                        f"Cannot resubmit claim in '{claim.get_status_display()}' status. "
+                        "Only rejected or queried claims can be resubmitted."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Reset status so submit_claim validation passes
+        claim.status = SHAClaim.ClaimStatus.PENDING_SUBMISSION
+        claim.save(update_fields=["status", "updated_at"])
+
+        try:
+            service = SHAClaimsService()
+            result = service.submit_claim(claim, request.user, force_online=True)
+
+            if result.get("status") == "queued":
+                return Response(
+                    {
+                        "status": "queued",
+                        "message": result.get("message"),
+                        "queue_entry_id": result.get("queue_entry_id"),
+                        "claim_number": claim.claim_number,
+                    }
+                )
+
+            claim.refresh_from_db()
+            serializer = SHAClaimSubmitSerializer(
+                {
+                    "status": claim.status,
+                    "claim_number": claim.claim_number,
+                    "submitted_at": claim.submitted_at,
+                    "sha_claim_reference": claim.sha_claim_reference,
+                }
+            )
+            return Response(serializer.data)
+
+        except Exception:
+            logger.exception("SHA claim resubmission failed for claim %s", pk)
+            return Response(
+                {"error": "Claim resubmission failed. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        """
+        Cancel a draft or validated claim (local only, not yet submitted to DHA).
+
+        POST /api/sha/claims/{id}/cancel/
+
+        For claims already submitted to DHA, use the ILM close endpoint instead.
+        """
+        claim = self.get_object()
+
+        allowed_statuses = [
+            SHAClaim.ClaimStatus.DRAFT,
+            SHAClaim.ClaimStatus.VALIDATED,
+        ]
+        if claim.status not in allowed_statuses:
+            return Response(
+                {
+                    "error": (
+                        f"Cannot cancel claim in '{claim.get_status_display()}' status. "
+                        "Only draft or validated claims can be cancelled locally. "
+                        "For submitted claims, use the ILM close endpoint."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        claim.status = SHAClaim.ClaimStatus.CANCELLED
+        claim.save(update_fields=["status", "updated_at"])
+
+        return Response(
+            {"status": claim.status, "message": "Claim cancelled successfully"},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["get"], url_path="bundle")
+    def bundle(self, request, pk=None):
+        """
+        Get full claim bundle with all nested relations.
+
+        GET /api/sha/claims/{id}/bundle/
+
+        Returns the claim with items, attachments, interventions, and related
+        patient/encounter data for export or preview purposes.
+        """
+        claim = self.get_object()
+        serializer = SHAClaimDetailSerializer(claim, context={"request": request})
+        return Response(serializer.data)
+
     @action(detail=True, methods=["get", "post"], url_path="items")
     def items(self, request, pk=None):
         """

@@ -698,8 +698,16 @@ async function getClaimBundle(claimId: number): Promise<unknown> {
 async function validateFacility(
   data: FacilityValidationRequest
 ): Promise<FacilityValidationResponse> {
-  const response = await apiClient.post('/api/billing/dha/validate-facility/', data);
-  return parseResponse(FacilityValidationResponseSchema, response.data, { context: 'shaApi.validateFacility' });
+  const response = await apiClient.get(`/api/sha/facility/validate/?facility_code=${encodeURIComponent(data.facility_code)}`);
+  // Transform backend shape {found, facility} to frontend shape {valid, facility, errors, warnings}
+  const raw = response.data as { found: boolean; facility?: Record<string, unknown> };
+  const transformed = {
+    valid: raw.found,
+    facility: raw.facility,
+    errors: raw.found ? [] : ['Facility not found'],
+    warnings: [],
+  };
+  return parseResponse(FacilityValidationResponseSchema, transformed, { context: 'shaApi.validateFacility' });
 }
 
 // ============================================================================
@@ -735,8 +743,17 @@ async function searchPractitioner(
 async function validatePractitioner(
   data: PractitionerValidationRequest
 ): Promise<PractitionerValidationResponse> {
-  const response = await apiClient.post('/api/billing/dha/validate-practitioner/', data);
-  return parseResponse(PractitionerValidationResponseSchema, response.data, { context: 'shaApi.validatePractitioner' });
+  const response = await apiClient.get(
+    `/api/sha/practitioner/validate/?identification_number=${encodeURIComponent(data.hwr_number)}&identification_type=Registration+Number`
+  );
+  // Transform backend shape {message: {...practitioner}} to frontend shape {valid, practitioner, errors}
+  const raw = response.data as { message?: Record<string, unknown> | null };
+  const transformed = {
+    valid: !!raw.message,
+    practitioner: raw.message || undefined,
+    errors: raw.message ? [] : ['Practitioner not found'],
+  };
+  return parseResponse(PractitionerValidationResponseSchema, transformed, { context: 'shaApi.validatePractitioner' });
 }
 
 // ============================================================================

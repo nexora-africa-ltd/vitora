@@ -445,7 +445,10 @@ class SHAClaimSubmitSerializer(serializers.Serializer):
 
     status = serializers.CharField()
     claim_number = serializers.CharField()
-    submitted_at = serializers.DateTimeField()
+    submitted_at = serializers.DateTimeField(allow_null=True, required=False)
+    sha_claim_reference = serializers.CharField(allow_null=True, required=False)
+    message = serializers.CharField(required=False)
+    queue_entry_id = serializers.IntegerField(required=False)
 
 
 class SHAClaimAppealSerializer(serializers.Serializer):
