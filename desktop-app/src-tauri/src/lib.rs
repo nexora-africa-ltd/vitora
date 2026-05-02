@@ -9,8 +9,9 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager, State, WindowEvent,
+    AppHandle, Emitter, Manager, State, WindowEvent,
 };
+use tauri_plugin_deep_link::DeepLinkExt;
 
 pub mod commands;
 pub mod config;
@@ -244,12 +245,13 @@ pub fn run() {
             {
                 let handle_deep = handle.clone();
                 app.deep_link().on_open_url(move |event| {
-                    log::info!("Deep link opened: {:?}", event.urls());
+                    let urls = event.urls();
+                    log::info!("Deep link opened: {:?}", urls);
                     if let Some(main_window) = handle_deep.get_webview_window("main") {
                         let _ = main_window.show();
                         let _ = main_window.set_focus();
                         // Emit event to frontend for route navigation
-                        let _ = main_window.emit("deep-link", event.urls());
+                        let _ = main_window.emit("deep-link", &urls);
                     }
                 });
             }
