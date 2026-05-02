@@ -3181,7 +3181,7 @@ class StartVisitView(APIView):
         otp_code = request.data.get("otp_code", "")
         auth_guid = request.data.get("auth_guid", "")
         intervention_codes = request.data.get("intervention_codes") or []
-        service_type = (request.data.get("service_type", "outpatient") or "outpatient").upper()
+        service_type = request.data.get("service_type", "outpatient") or "outpatient"
         admission_date = request.data.get("admission_date", "")
         estimated_days = request.data.get("estimated_days_of_admission", 0)
         encounter_id = request.data.get("encounter_id")

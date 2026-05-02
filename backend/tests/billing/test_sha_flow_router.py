@@ -613,7 +613,7 @@ class TestFacilityAwareCoverage:
         assert info["usable_schemes"] == []
         assert "UHC" in info["coverage_caveat"]
         assert "Level 4" in info["coverage_caveat"]
-        assert info["billable_schemes"] == ["SHIF"]
+        assert info["billable_schemes"] == ["PMF", "SHIF"]
 
     def test_evaluate_facility_coverage_shif_at_level_4_passes(self):
         """SHIF member at Level 4 should have no caveat."""

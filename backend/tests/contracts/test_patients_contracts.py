@@ -18,6 +18,7 @@ from hmis.apps.patients.serializers import (
     DeathRecordReleaseBodySerializer,
     DeathRecordVoidSerializer,
     EmergencyContactSerializer,
+    PatientHouseholdMemberSerializer,
     PatientSerializer,
     VitalsDataPointSerializer,
 )
@@ -234,6 +235,22 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        PatientHouseholdMemberSerializer,
+        frozenset(
+            {
+                "cr_number",
+                "date_of_birth",
+                "full_name",
+                "gender",
+                "household_number",
+                "id",
+                "mrn",
+                "principal_national_id",
+                "sha_number",
+            }
+        ),
+    ),
+    (
         PatientSerializer,
         frozenset(
             {
@@ -259,6 +276,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "first_name",
                 "full_name",
                 "gender",
+                "household_members",
+                "household_number",
                 "id",
                 "identification_number",
                 "identification_type",
@@ -273,6 +292,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "organization_name",
                 "phone_number",
                 "place_of_birth",
+                "principal_national_id",
                 "referral_source",
                 "referred_from_facility",
                 "registered_at_facility",

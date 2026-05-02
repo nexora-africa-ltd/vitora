@@ -62,7 +62,7 @@ class TestSHAInterventions:
             },
         )
 
-        results = service.search_interventions(query="consultation")
+        results = service.search_interventions(query="consultation", force_remote=True)
 
         assert len(results) > 0
         assert results[0].code == "SHA-INT-001"
@@ -101,7 +101,7 @@ class TestSHAInterventions:
             json=lambda: {"IsSuccess": True, "Data": {"shaInterventions": []}},
         )
 
-        service.search_interventions(query="surgery", facility_level=4)
+        service.search_interventions(query="surgery", facility_level=4, force_remote=True)
 
         call_args = mock_requests_get.call_args
         assert call_args is not None

@@ -473,6 +473,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "laterality",
                 "organization",
                 "patient",
+                "patient_date_of_birth",
+                "patient_gender",
                 "patient_mrn",
                 "patient_name",
                 "postponed_to_date",

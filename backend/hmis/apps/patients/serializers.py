@@ -210,6 +210,65 @@ class PatientSerializer(serializers.ModelSerializer):
             for patient in queryset
         ]
 
+    def validate_date_of_birth(self, value):
+        """Validate date of birth is not in the future."""
+        if value and value > date.today():
+            raise serializers.ValidationError("Date of birth cannot be in the future.")
+        return value
+
+    def validate(self, data):
+        """Cross-field validation including duplicate detection."""
+        referral_source = data.get(
+            "referral_source", self.instance.referral_source if self.instance else "self"
+        )
+        referred_from_facility = data.get("referred_from_facility", "")
+
+        if referral_source == "other_facility" and not referred_from_facility:
+            raise serializers.ValidationError(
+                {
+                    "referred_from_facility": "Facility name is required when referral source is 'Other Facility'."
+                }
+            )
+
+        # Validate county and sub_county are provided
+        county = data.get("county")
+        sub_county = data.get("sub_county")
+
+        # For new patients (no instance), both are required
+        if not self.instance:
+            if not county:
+                raise serializers.ValidationError({"county": "County is required."})
+            if not sub_county:
+                raise serializers.ValidationError({"sub_county": "Sub-county is required."})
+
+        # Check for potential duplicate patients (same name + DOB + gender)
+        if not self.instance:
+            first_name = data.get("first_name", "")
+            last_name = data.get("last_name", "")
+            dob = data.get("date_of_birth")
+            gender = data.get("gender", "")
+
+            if first_name and last_name and dob and gender:
+                duplicate_qs = Patient.objects.filter(
+                    first_name__iexact=first_name,
+                    last_name__iexact=last_name,
+                    date_of_birth=dob,
+                    gender=gender,
+                )
+                if duplicate_qs.exists():
+                    existing = duplicate_qs.first()
+                    raise serializers.ValidationError(
+                        {
+                            "non_field_errors": [
+                                f"A patient with similar demographics already exists. "
+                                f"Possible duplicate: {existing.full_name} (MRN: {existing.mrn}). "
+                                f"If this is a different person, please add an identification number to distinguish them."
+                            ]
+                        }
+                    )
+
+        return data
+
 
 class PatientHouseholdMemberSerializer(serializers.ModelSerializer):
     """Lightweight serializer for household member suggestions."""
