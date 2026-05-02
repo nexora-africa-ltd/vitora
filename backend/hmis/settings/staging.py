@@ -87,6 +87,11 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
+# Desktop app connects from http://127.0.0.1:<random-port> (Tauri Node sidecar)
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://127\.0\.0\.1:\d+$",
+    r"^http://localhost:\d+$",
+]
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
@@ -100,6 +105,7 @@ CORS_ALLOW_HEADERS = [
     "x-idempotency-key",  # Sprint 1.7: Idempotent API operations
     "x-facility-id",  # Multi-facility: facility context header
     "x-organization-id",  # Multi-org: organization context header
+    "x-vitora-client",  # Desktop app identifier: "desktop/<version>"
 ]
 
 CSRF_TRUSTED_ORIGINS = [

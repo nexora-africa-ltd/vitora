@@ -458,6 +458,16 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://localhost:\d+$",
 ]
 CORS_ALLOW_CREDENTIALS = True
+# Extend default django-cors-headers allowed headers with Vitora custom headers
+from corsheaders.defaults import default_headers  # noqa: E402
+
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    "x-facility-id",
+    "x-organization-id",
+    "x-idempotency-key",
+    "x-vitora-client",
+)
 
 # ---------------------------------------------------------------------------
 # HttpOnly Cookie Auth Settings (web frontend)
