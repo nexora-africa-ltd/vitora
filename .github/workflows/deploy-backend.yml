@@ -85,7 +85,6 @@ jobs:
             SHA_CLIENT_SECRET=secretref:sha-client-secret
             SHA_ENCRYPTED_PIN=secretref:sha-encrypted-pin
             SHA_AGENT=DHABP05113
-            SHA_AGENT=DHABP05113
             SHA_FHIR_BASE_URL=https://qa-mis.apeiro-digital.com
             SHA_API_TIMEOUT=30
             SHA_FACILITY_FR_CODE=${{ vars.SHA_FACILITY_FR_CODE }}
