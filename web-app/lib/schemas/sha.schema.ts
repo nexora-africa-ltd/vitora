@@ -925,13 +925,17 @@ export const IlmCallResultSchema = z.object({
 export type IlmCallResult = z.infer<typeof IlmCallResultSchema>;
 
 export const IlmStartVisitRequestSchema = z.object({
-  otp: z.string().min(1),
+  otp: z.string().optional(),
+  auth_guid: z.string().optional(),
   patient_id: z.string().min(1),
   intervention_codes: z.array(z.string().min(1)),
   service_type: z.enum(['OUTPATIENT', 'INPATIENT']).default('OUTPATIENT'),
   admission_date: z.string().optional(),
   estimated_days_of_admission: z.number().int().nonnegative().optional(),
-});
+}).refine(
+  (data) => (!!data.otp) !== (!!data.auth_guid),
+  { message: 'Exactly one of otp or auth_guid must be provided', path: ['otp'] },
+);
 
 export type IlmStartVisitRequest = z.infer<typeof IlmStartVisitRequestSchema>;
 

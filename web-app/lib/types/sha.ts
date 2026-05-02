@@ -538,7 +538,8 @@ export interface ValidateOTPResponse {
 
 export interface StartVisitRequest {
   consent_id: number;
-  otp_code: string;
+  otp_code?: string;
+  auth_guid?: string;
   intervention_codes?: string[];
   service_type?: string;
   admission_date?: string;

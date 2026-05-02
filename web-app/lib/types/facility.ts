@@ -42,6 +42,10 @@ export interface FacilityDetail extends FacilityListItem {
   has_maternity: boolean;
   has_mortuary: boolean;
   has_blood_bank: boolean;
+  /** Biometrics workstation ID for DHA HIE consent */
+  workstation_id?: string;
+  /** Agent national ID for biometric authorization */
+  biometrics_agent_national_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +58,8 @@ export interface FacilityUpdateData {
   sha_contracted?: boolean;
   sha_contract_expiry?: string | null;
   sha_facility_code?: string;
+  workstation_id?: string;
+  biometrics_agent_national_id?: string;
   has_outpatient?: boolean;
   has_inpatient?: boolean;
   has_emergency?: boolean;

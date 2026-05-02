@@ -25,6 +25,7 @@ import {
   Check,
   X,
   AlertTriangle,
+  Fingerprint,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +50,8 @@ import { useSendConsentOTP, useStartVisit } from '@/lib/hooks/use-sha';
 import { useDebounce } from '@/lib/hooks';
 import { useFacility } from '@/lib/context/facility-context';
 import { OtpWhitelistRequestSheet, WhitelistStatusBadge } from './otp-whitelist-request-sheet';
+import { BiometricsConsentDialog } from './biometrics-consent-dialog';
+import { ContactPicker } from './contact-picker';
 import type { SHAMember } from '@/lib/types/sha';
 
 // ============================================================================
@@ -71,9 +74,11 @@ interface SHAConsentStepProps {
 type StepState =
   | 'checking'         // Looking up SHA member
   | 'not_eligible'     // No SHA coverage — skip
-  | 'ready'            // SHA eligible, ready to send OTP
+  | 'ready'            // SHA eligible, ready to obtain consent
+  | 'biometric_pending' // Biometric dialog open, waiting for fingerprint
+  | 'biometric_failed'  // Biometrics failed/expired, showing OTP fallback option
   | 'otp_sent'         // OTP sent, waiting for code
-  | 'validating'       // Validating OTP
+  | 'validating'       // Validating OTP or starting visit with auth_guid
   | 'done'             // Consent obtained
   | 'skipped';         // User chose to skip
 
@@ -198,11 +203,26 @@ export function SHAConsentStep({
   const [existingWhitelistStatus, setExistingWhitelistStatus] = useState<string | null>(null);
   const [isCheckingWhitelist, setIsCheckingWhitelist] = useState(false);
 
+  // Biometrics dialog state
+  const [biometricsOpen, setBiometricsOpen] = useState(false);
+  const [biometricAuthGuid, setBiometricAuthGuid] = useState<string | null>(null);
+  const [biometricConsentId, setBiometricConsentId] = useState<number | null>(null);
+
+  // Contact picker state (for OTP target selection)
+  const [selectedContactId, setSelectedContactId] = useState<string | undefined>(undefined);
+
   const sendOTP = useSendConsentOTP();
   const startVisit = useStartVisit();
   const { facilityDetail } = useFacility();
   const facilityLevel = facilityDetail?.level;
   const hasCheckedRef = useRef(false);
+
+  // Biometric consent is primary for Level 4+ facilities
+  const isBiometricPrimary = useMemo(() => {
+    if (!facilityLevel) return false;
+    const numLevel = parseInt(facilityLevel.replace(/[^0-9]/g, ''), 10);
+    return numLevel >= 4;
+  }, [facilityLevel]);
 
   // Check SHA eligibility on mount
   const checkEligibility = useCallback(async () => {
@@ -409,6 +429,52 @@ export function SHAConsentStep({
     );
   };
 
+  // Biometric authorization handlers
+  const handleBiometricStart = () => {
+    setBiometricsOpen(true);
+    setStep('biometric_pending');
+  };
+
+  const handleBiometricSuccess = (result: { authGuid: string; consentId: number }) => {
+    setBiometricsOpen(false);
+    setBiometricAuthGuid(result.authGuid);
+    setBiometricConsentId(result.consentId);
+    setConsentId(result.consentId);
+    setError(null);
+    setStep('validating');
+
+    // Start visit using auth_guid (no OTP needed)
+    startVisit.mutate(
+      {
+        consent_id: result.consentId,
+        auth_guid: result.authGuid,
+        ...(selectedIntervention ? { intervention_codes: [selectedIntervention.code] } : {}),
+        ...(encounterId ? { encounter_id: encounterId } : {}),
+      },
+      {
+        onSuccess: (response) => {
+          setStep('done');
+          onComplete?.({ consented: true, consentId: response.id });
+        },
+        onError: (err: unknown) => {
+          setStep('biometric_failed');
+          setError(extractDHAError(err) || 'Failed to start visit after biometric verification');
+        },
+      }
+    );
+  };
+
+  const handleBiometricCancel = () => {
+    setBiometricsOpen(false);
+    setStep('ready');
+  };
+
+  const handleBiometricMaxRetries = () => {
+    setBiometricsOpen(false);
+    setStep('biometric_failed');
+    setError('Biometric verification failed after maximum retries. Please use OTP instead.');
+  };
+
   const handleSkip = () => {
     setStep('skipped');
     onComplete?.({ consented: false });
@@ -474,11 +540,13 @@ export function SHAConsentStep({
         )}
       </div>
 
-      {/* Step: Ready to send OTP */}
+      {/* Step: Ready to obtain consent */}
       {step === 'ready' && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Select the visit intervention, then send a one-time password to the patient&apos;s phone.
+            {isBiometricPrimary
+              ? 'Verify patient identity with fingerprint, then start the SHA visit.'
+              : 'Select the visit intervention, then send a one-time password to the patient\u0027s phone.'}
             {eligibilityInfo?.verifiedName && (
               <span className="block mt-0.5 text-green-600 dark:text-green-400">
                 Coverage verified for {eligibilityInfo.verifiedName}
@@ -590,6 +658,15 @@ export function SHAConsentStep({
             </Popover>
           </div>
 
+          {/* Contact picker (for OTP target) — only show when not biometric primary */}
+          {!isBiometricPrimary && shaMember?.sha_member_number && (
+            <ContactPicker
+              beneficiaryCrId={shaMember.sha_member_number}
+              onSelect={setSelectedContactId}
+              selectedContactId={selectedContactId}
+            />
+          )}
+
           {/* Existing whitelist request status */}
           {existingWhitelistStatus && (
             <div className="flex items-center gap-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10 px-3 py-2">
@@ -599,18 +676,46 @@ export function SHAConsentStep({
           )}
 
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button
-            onClick={handleSendOTP}
-            disabled={sendOTP.isPending || isCreatingMember}
-            size="sm"
-          >
-            {(sendOTP.isPending || isCreatingMember) ? (
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-3.5 w-3.5" />
-            )}
-            {isCreatingMember ? 'Preparing...' : 'Send OTP'}
-          </Button>
+
+          {/* Action buttons: biometric primary vs OTP primary */}
+          {isBiometricPrimary ? (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                onClick={handleBiometricStart}
+                size="sm"
+              >
+                <Fingerprint className="mr-2 h-3.5 w-3.5" />
+                Verify Fingerprint
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleSendOTP}
+                disabled={sendOTP.isPending || isCreatingMember}
+                size="sm"
+                className="text-xs"
+              >
+                {(sendOTP.isPending || isCreatingMember) ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Use OTP Instead
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={handleSendOTP}
+              disabled={sendOTP.isPending || isCreatingMember}
+              size="sm"
+            >
+              {(sendOTP.isPending || isCreatingMember) ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-3.5 w-3.5" />
+              )}
+              {isCreatingMember ? 'Preparing...' : 'Send OTP'}
+            </Button>
+          )}
         </div>
       )}
 
@@ -690,6 +795,101 @@ export function SHAConsentStep({
         </div>
       )}
 
+      {/* Step: Biometric pending — dialog is open */}
+      {step === 'biometric_pending' && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 py-2">
+            <Fingerprint className="h-4 w-4 text-primary animate-pulse" />
+            <span className="text-sm text-muted-foreground">
+              Waiting for biometric verification...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Step: Biometric failed — offer OTP fallback */}
+      {step === 'biometric_failed' && (
+        <div className="space-y-3">
+          <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10 p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                  Biometric verification unavailable
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {error || 'Fingerprint verification could not be completed. You can send an OTP to the patient\u0027s phone instead.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Contact picker for OTP target */}
+          {shaMember?.sha_member_number && (
+            <ContactPicker
+              beneficiaryCrId={shaMember.sha_member_number}
+              onSelect={setSelectedContactId}
+              selectedContactId={selectedContactId}
+            />
+          )}
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              onClick={() => {
+                setError(null);
+                handleBiometricStart();
+              }}
+              variant="outline"
+              size="sm"
+            >
+              <Fingerprint className="mr-1.5 h-3.5 w-3.5" />
+              Retry Biometric
+            </Button>
+            <Button
+              onClick={handleSendOTP}
+              disabled={sendOTP.isPending || isCreatingMember}
+              size="sm"
+            >
+              {(sendOTP.isPending || isCreatingMember) ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Send OTP Instead
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setWhitelistOpen(true)}
+              className="text-xs h-7 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-400 dark:hover:bg-amber-900/20"
+            >
+              <AlertTriangle className="mr-1 h-3 w-3" />
+              Request OTP Whitelist
+            </Button>
+          </div>
+
+          {/* OTP Whitelist Request Sheet (for biometric fallback) */}
+          <OtpWhitelistRequestSheet
+            open={whitelistOpen}
+            onOpenChange={setWhitelistOpen}
+            shaNumber={shaMember?.sha_member_number || shaMember?.sha_number || ''}
+            facilityFrCode={facilityDetail?.sha_facility_code || ''}
+            beneficiaryName={eligibilityInfo?.verifiedName}
+          />
+        </div>
+      )}
+
+      {/* Step: Validating (biometric path — no OTP input needed) */}
+      {step === 'validating' && biometricAuthGuid && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 py-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Starting SHA visit...</span>
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      )}
+
       {/* Step: Done */}
       {step === 'done' && (
         <div className="rounded-md bg-green-50 dark:bg-green-900/10 p-3">
@@ -701,6 +901,18 @@ export function SHAConsentStep({
           </div>
         </div>
       )}
+
+      {/* Biometrics Consent Dialog */}
+      <BiometricsConsentDialog
+        open={biometricsOpen}
+        onOpenChange={setBiometricsOpen}
+        shaMemberId={shaMember?.id || 0}
+        workstationId={facilityDetail?.workstation_id || 'WS-001'}
+        agentNationalId={facilityDetail?.biometrics_agent_national_id || ''}
+        onSuccess={handleBiometricSuccess}
+        onCancel={handleBiometricCancel}
+        onMaxRetriesExhausted={handleBiometricMaxRetries}
+      />
     </div>
   );
 }
