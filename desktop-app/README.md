@@ -155,7 +155,8 @@ The workflow `.github/workflows/build-desktop.yml` builds for all platforms:
 - **Matrix**: Windows x86_64, Linux x86_64, macOS aarch64
 - **Signing**: Ed25519 for updater artifacts, PFX for Windows code signing
 - **Output**: GitHub Release (draft) with installers + `latest.json` updater manifest
-- **Updater endpoint**: Azure Blob at `https://releases.vitora.digital/updates`
+- **Updater endpoint**: Azure Front Door CDN → Blob Storage at `https://vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net/updates`
+- **Custom domain** (pending DNS): `https://releases.vitora.digital/updates`
 
 ### Required Secrets
 
@@ -165,7 +166,7 @@ The workflow `.github/workflows/build-desktop.yml` builds for all platforms:
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | ✅ Set | Key password (empty) |
 | `WINDOWS_CERTIFICATE_BASE64` | ⚠️ Placeholder | PFX cert for Windows code signing |
 | `WINDOWS_CERTIFICATE_PASSWORD` | ⚠️ Placeholder | PFX password |
-| `AZURE_STORAGE_CONNECTION_STRING` | ⚠️ Placeholder | For updater blob upload |
+| `AZURE_STORAGE_CONNECTION_STRING` | ✅ Set | For updater blob upload (vitorareleases) |
 
 ## Auth & CORS
 
@@ -184,16 +185,23 @@ Cookie persistence: WebView2 stores cookies in its user profile directory, survi
 ### Must-Have (Blocking Release)
 
 1. **Procure Windows code signing certificate**
-   - Azure Trusted Signing (~$10/mo) or DigiCert EV (~$400/yr)
-   - Required to avoid SmartScreen "Unknown publisher" warning
-   - Update `WINDOWS_CERTIFICATE_BASE64` and `WINDOWS_CERTIFICATE_PASSWORD` secrets
-   - Lead time: 1-2 weeks (Azure requires verified business identity)
+   - Azure Trusted Signing account created (`vitora-signing` in `vitora-rg`)
+   - **Next**: Complete identity validation in [Azure Portal](https://portal.azure.com/#view/Microsoft_Azure_CodeSigning) → upload business documents
+   - Create certificate profile `vitora-hmis` after identity verification
+   - Export PFX → base64-encode → set `WINDOWS_CERTIFICATE_BASE64` and `WINDOWS_CERTIFICATE_PASSWORD`
+   - Lead time: 1-2 weeks (identity verification)
 
-2. **Set up Azure Blob Storage for updater**
-   - Create `releases` container in Azure Storage
-   - Set up CDN endpoint at `releases.vitora.digital`
-   - Update `AZURE_STORAGE_CONNECTION_STRING` secret
-   - Test: upload dummy `latest.json`, verify it's accessible at the endpoint URL
+2. **Set up custom domain `releases.vitora.digital`** (optional, CDN works without it)
+   - Azure Front Door endpoint already provisioned: `vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net`
+   - Storage account: `vitorareleases` (eastus), container: `releases`, public blob access
+   - To enable custom domain, add these records in **Vercel DNS**:
+     ```
+     CNAME  releases  →  vitora-releases-dzf4f6hmfdadf3gk.z01.azurefd.net
+     CAA    0 issue "digicert.com"   (required for Azure managed TLS cert)
+     ```
+   - Then run: `az afd custom-domain create --profile-name vitora-cdn --resource-group vitora-rg --custom-domain-name releases-domain --host-name releases.vitora.digital --certificate-type ManagedCertificate --minimum-tls-version TLS12`
+   - Associate domain with route: `az afd route update ... --custom-domains releases-domain`
+   - Update `tauri.conf.json` endpoint back to `https://releases.vitora.digital/updates`
 
 3. **End-to-end build test**
    - Tag `desktop-v0.1.0-beta.1` to trigger CI workflow
