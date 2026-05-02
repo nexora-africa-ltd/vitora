@@ -33,6 +33,11 @@ interface PrintResult {
   message: string;
 }
 
+interface PrinterInfo {
+  name: string;
+  is_default: boolean;
+}
+
 /**
  * Print a receipt via native ESC/POS printer.
  * Falls back to window.print() in browser mode.
@@ -50,6 +55,16 @@ export async function printReceipt(
   return invoke<PrintResult>('print_receipt', {
     payload: { content, printer_name: printerName },
   });
+}
+
+/**
+ * List available printers on the system.
+ * Returns empty array in browser mode.
+ */
+export async function listPrinters(): Promise<PrinterInfo[]> {
+  const invoke = getInvoke();
+  if (!invoke) return [];
+  return invoke<PrinterInfo[]>('list_printers');
 }
 
 // ---------------------------------------------------------------------------
@@ -125,4 +140,105 @@ export async function setApiUrl(url: string): Promise<string | null> {
   const invoke = getInvoke();
   if (!invoke) return null;
   return invoke<string>('set_api_url', { url });
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+/**
+ * Show a native desktop notification.
+ * Falls back to Web Notifications API in browser mode.
+ */
+export async function showNotification(
+  title: string,
+  body?: string
+): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) {
+    // Browser fallback
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body });
+    }
+    return;
+  }
+  await invoke('plugin:notification|notify', { title, body });
+}
+
+/**
+ * Request notification permission (desktop + browser).
+ * Returns true if granted.
+ */
+export async function requestNotificationPermission(): Promise<boolean> {
+  const invoke = getInvoke();
+  if (!invoke) {
+    if (!('Notification' in window)) return false;
+    const result = await Notification.requestPermission();
+    return result === 'granted';
+  }
+  const granted = await invoke<string>('plugin:notification|request_permission');
+  return granted === 'granted';
+}
+
+// ---------------------------------------------------------------------------
+// Deep Link
+// ---------------------------------------------------------------------------
+
+/**
+ * Listen for deep link events (vitora:// URLs).
+ * Only works in desktop mode. Returns an unlisten function.
+ */
+export function onDeepLink(
+  callback: (urls: string[]) => void
+): (() => void) | null {
+  if (typeof window === 'undefined' || !window.__TAURI__) return null;
+
+  // Listen for the 'deep-link' event emitted by the Rust side
+  const handler = (event: Event) => {
+    const detail = (event as CustomEvent).detail;
+    if (Array.isArray(detail)) {
+      callback(detail);
+    }
+  };
+
+  window.addEventListener('deep-link', handler);
+  return () => window.removeEventListener('deep-link', handler);
+}
+
+// ---------------------------------------------------------------------------
+// Auto-updater
+// ---------------------------------------------------------------------------
+
+export interface UpdateInfo {
+  available: boolean;
+  version?: string;
+  body?: string;
+}
+
+/**
+ * Check for app updates. Returns info about the available update, if any.
+ * Only works in desktop mode.
+ */
+export async function checkForUpdates(): Promise<UpdateInfo> {
+  const invoke = getInvoke();
+  if (!invoke) return { available: false };
+
+  try {
+    const result = await invoke<{ available: boolean; version?: string; body?: string }>(
+      'plugin:updater|check'
+    );
+    return result;
+  } catch {
+    return { available: false };
+  }
+}
+
+/**
+ * Download and install an available update. The app will restart.
+ * Only works in desktop mode.
+ */
+export async function installUpdate(): Promise<void> {
+  const invoke = getInvoke();
+  if (!invoke) return;
+  await invoke('plugin:updater|download_and_install');
 }

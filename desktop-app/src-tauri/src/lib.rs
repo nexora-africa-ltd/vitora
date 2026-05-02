@@ -5,12 +5,17 @@ use std::time::{Duration, Instant};
 
 use shared_child::SharedChild;
 use std::sync::Arc;
-use tauri::{AppHandle, Manager, State};
+use tauri::{
+    image::Image,
+    menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
+    tray::TrayIconBuilder,
+    AppHandle, Manager, State, WindowEvent,
+};
 
 pub mod commands;
 pub mod config;
 
-use commands::print_receipt;
+use commands::{list_printers, print_receipt};
 use config::{get_api_url, set_api_url, AppConfig};
 
 /// Manages the Node.js sidecar process lifecycle.
@@ -152,6 +157,55 @@ fn get_sidecar_port(state: State<SidecarState>) -> u16 {
     state.port()
 }
 
+/// Build the system tray with menu items.
+fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    let show = MenuItemBuilder::with_id("show", "Show Vitora").build(app)?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+
+    let menu = MenuBuilder::new(app)
+        .item(&show)
+        .item(&separator)
+        .item(&quit)
+        .build()?;
+
+    let icon = Image::from_path("icons/icon.png").unwrap_or_else(|_| {
+        // Fallback: use the embedded icon from tauri.conf.json
+        Image::from_bytes(include_bytes!("../icons/32x32.png"))
+            .expect("Failed to load fallback tray icon")
+    });
+
+    let _tray = TrayIconBuilder::new()
+        .icon(icon)
+        .menu(&menu)
+        .tooltip("Vitora HMIS")
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "show" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            "quit" => {
+                let state = app.state::<SidecarState>();
+                state.kill();
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
+                if let Some(window) = tray.app_handle().get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+        })
+        .build(app)?;
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let sidecar = SidecarState::new();
@@ -166,15 +220,38 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_deep_link::init())
         .manage(sidecar)
         .invoke_handler(tauri::generate_handler![
             get_sidecar_port,
             print_receipt,
+            list_printers,
             get_api_url,
             set_api_url,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
+
+            // --- System tray ---
+            setup_tray(app)?;
+
+            // --- Deep link registration ---
+            // Register vitora:// scheme handler
+            #[cfg(not(debug_assertions))]
+            {
+                let handle_deep = handle.clone();
+                app.deep_link().on_open_url(move |event| {
+                    log::info!("Deep link opened: {:?}", event.urls());
+                    if let Some(main_window) = handle_deep.get_webview_window("main") {
+                        let _ = main_window.show();
+                        let _ = main_window.set_focus();
+                        // Emit event to frontend for route navigation
+                        let _ = main_window.emit("deep-link", event.urls());
+                    }
+                });
+            }
 
             // In dev mode, don't spawn sidecar — use the running dev server
             if cfg!(debug_assertions) {
@@ -254,10 +331,19 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
-                // Kill sidecar when the main window is destroyed
-                let state = window.state::<SidecarState>();
-                state.kill();
+            match event {
+                WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
+                    // Minimize to tray instead of closing
+                    api.prevent_close();
+                    let _ = window.hide();
+                    log::info!("Main window hidden to tray");
+                }
+                WindowEvent::Destroyed => {
+                    // Kill sidecar when the app is truly destroyed
+                    let state = window.state::<SidecarState>();
+                    state.kill();
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())
