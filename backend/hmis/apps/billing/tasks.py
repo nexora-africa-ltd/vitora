@@ -162,3 +162,77 @@ def flag_time_barring_claims():
     result = f"Time-barring check: {warned} warning(s), {time_barred} time-barred"
     logger.info(result)
     return result
+
+
+@shared_task(name="hmis.apps.billing.tasks.refresh_otp_whitelist_statuses")
+def refresh_otp_whitelist_statuses():
+    """
+    Poll DHA for status updates on PENDING/REQUESTED OTP whitelist requests.
+
+    Runs every 10 minutes via Celery beat. Updates local status and publishes
+    a domain event when a whitelist request transitions to APPROVED/REJECTED.
+    """
+    from hmis.apps.billing.models import SHAOtpWhitelistRequest
+    from hmis.apps.billing.services.ilm_lifecycle_service import IlmLifecycleService
+    from hmis.apps.core.events import BillingEvents, publish_event
+
+    logger = logging.getLogger(__name__)
+
+    pending = SHAOtpWhitelistRequest.objects.filter(
+        status=SHAOtpWhitelistRequest.Status.REQUESTED,
+    ).select_related("facility")
+
+    updated = 0
+    errors = 0
+
+    service = IlmLifecycleService()
+
+    for request in pending:
+        try:
+            result = service.list_otp_whitelist_status(
+                beneficiary_cr_id=request.beneficiary_cr_id,
+                guid=request.dha_guid,
+                facility=request.facility,
+            )
+            if not isinstance(result.payload, dict):
+                continue
+
+            # DHA returns status in different shapes; normalize
+            dha_status = (
+                result.payload.get("status", "") or result.payload.get("whitelist_status", "")
+            ).lower()
+
+            new_status = None
+            if dha_status in ("approved", "active", "whitelisted"):
+                new_status = SHAOtpWhitelistRequest.Status.APPROVED
+            elif dha_status in ("rejected", "denied", "expired"):
+                new_status = SHAOtpWhitelistRequest.Status.REJECTED
+
+            if new_status and new_status != request.status:
+                old_status = request.status
+                request.status = new_status
+                request.response_payload = result.payload
+                request.save(update_fields=["status", "response_payload"])
+                updated += 1
+
+                publish_event(
+                    BillingEvents.DHA_OTP_WHITELIST_STATUS_CHANGED,
+                    {
+                        "whitelist_id": request.pk,
+                        "beneficiary_cr_id": request.beneficiary_cr_id,
+                        "old_status": old_status,
+                        "new_status": new_status,
+                        "dha_guid": request.dha_guid,
+                        "facility_id": request.facility_id,
+                    },
+                )
+        except Exception:
+            errors += 1
+            logger.exception("Failed to poll whitelist status for %s", request.beneficiary_cr_id)
+
+    result_msg = (
+        f"OTP whitelist refresh: {updated} updated, {errors} error(s) "
+        f"(of {pending.count()} pending)"
+    )
+    logger.info(result_msg)
+    return result_msg

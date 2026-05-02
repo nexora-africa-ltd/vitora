@@ -151,6 +151,11 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.billing.tasks.poll_preauth_statuses",
         "schedule": crontab(minute="*/5"),
     },
+    # Billing: Refresh OTP whitelist statuses every 10 minutes
+    "billing-refresh-otp-whitelist-statuses": {
+        "task": "hmis.apps.billing.tasks.refresh_otp_whitelist_statuses",
+        "schedule": crontab(minute="*/10"),
+    },
     # Billing: Re-scrape SHA interventions catalog weekly (Sunday 3 AM)
     "billing-refresh-sha-interventions": {
         "task": "hmis.apps.billing.tasks.refresh_sha_interventions",
