@@ -500,8 +500,8 @@ class IntraOpVitalReadingCreateSerializer(serializers.ModelSerializer):
         if value is not None:
             try:
                 t = float(value) if isinstance(value, str) else value
-            except (ValueError, TypeError):
-                raise serializers.ValidationError("Temperature must be a number.")
+            except (ValueError, TypeError) as err:
+                raise serializers.ValidationError("Temperature must be a number.") from err
             if not (28.0 <= t <= 45.0):
                 raise serializers.ValidationError("Temperature must be between 28.0 and 45.0 °C.")
         return value

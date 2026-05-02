@@ -48,10 +48,15 @@ declare -A SECRETS=(
   ["database-url"]="${DATABASE_URL:-}"
   ["encryption-key"]="${ENCRYPTION_KEY:-}"
   ["django-secret-key"]="${DJANGO_SECRET_KEY:-}"
-  ["sha-client-secret"]="${SHA_CLIENT_SECRET:-}"
+  ["sha-username"]="${SHA_USERNAME:-}"
   ["sha-password"]="${SHA_PASSWORD:-}"
+  ["sha-consumer-key"]="${SHA_CONSUMER_KEY:-}"
+  ["sha-client-secret"]="${SHA_CLIENT_SECRET:-}"
+  ["sha-encrypted-pin"]="${SHA_ENCRYPTED_PIN:-}"
+  ["mpesa-consumer-key"]="${MPESA_CONSUMER_KEY:-}"
   ["mpesa-consumer-secret"]="${MPESA_CONSUMER_SECRET:-}"
   ["mpesa-passkey"]="${MPESA_PASSKEY:-}"
+  ["at-api-key"]="${AT_API_KEY:-}"
   ["tibabot-api-key"]="${TIBABOT_API_KEY:-}"
   ["tibabot-jwt-secret"]="${TIBABOT_JWT_SECRET:-}"
   ["tibabot-jwt-private-key"]="${TIBABOT_JWT_PRIVATE_KEY:-}"
@@ -69,12 +74,14 @@ for name in "${!SECRETS[@]}"; do
   if [[ -n "$value" ]]; then
     SECRET_ARGS+=("${name}=${value}")
   else
+    # Use placeholder to ensure secret exists (deploy fails if secretref is missing)
+    SECRET_ARGS+=("${name}=placeholder-set-real-value")
     SKIPPED+=("$name")
   fi
 done
 
 if [[ ${#SKIPPED[@]} -gt 0 ]]; then
-  echo "    Skipping secrets with empty values: ${SKIPPED[*]}"
+  echo "    Secrets with placeholder values (set real values): ${SKIPPED[*]}"
 fi
 
 if [[ ${#SECRET_ARGS[@]} -gt 0 ]]; then
@@ -113,10 +120,11 @@ az containerapp update \
     "SHA_AUTH_MODE=${SHA_AUTH_MODE:-legacy}" \
     "SHA_AUTH_BASE_URL=${SHA_AUTH_BASE_URL:-${SHA_API_BASE_URL:-https://uat.dha.go.ke}}" \
     "SHA_AUTH_TOKEN_ENDPOINT=${SHA_AUTH_TOKEN_ENDPOINT:-}" \
-    "SHA_CONSUMER_KEY=${SHA_CONSUMER_KEY:-1FL-DHABP05113}" \
+    "SHA_CONSUMER_KEY=secretref:sha-consumer-key" \
     "SHA_CLIENT_ID=${SHA_CLIENT_ID:-}" \
     "SHA_CLIENT_SECRET=secretref:sha-client-secret" \
-    "SHA_USERNAME=${SHA_USERNAME:-r6i6gOQwxHj4WS1jYeX}" \
+    "SHA_ENCRYPTED_PIN=secretref:sha-encrypted-pin" \
+    "SHA_USERNAME=secretref:sha-username" \
     "SHA_PASSWORD=secretref:sha-password" \
     "SHA_AGENT=${SHA_AGENT:-DHABP05113}" \
     "SHA_FHIR_BASE_URL=${SHA_FHIR_BASE_URL:-https://qa-mis.apeiro-digital.com}" \
@@ -127,7 +135,7 @@ az containerapp update \
     "FACILITY_COUNTY=${FACILITY_COUNTY:-Nairobi}" \
     "FACILITY_KRA_PIN=${FACILITY_KRA_PIN:-P000000000X}" \
     "MPESA_ENVIRONMENT=${MPESA_ENVIRONMENT:-sandbox}" \
-    "MPESA_CONSUMER_KEY=${MPESA_CONSUMER_KEY:-}" \
+    "MPESA_CONSUMER_KEY=secretref:mpesa-consumer-key" \
     "MPESA_CONSUMER_SECRET=secretref:mpesa-consumer-secret" \
     "MPESA_SHORTCODE=${MPESA_SHORTCODE:-174379}" \
     "MPESA_PASSKEY=secretref:mpesa-passkey" \
@@ -163,6 +171,8 @@ az containerapp update \
     "DJANGO_LOG_LEVEL=${DJANGO_LOG_LEVEL:-INFO}" \
     "SMS_BACKEND=${SMS_BACKEND:-hmis.apps.core.sms.backends.MockSMSBackend}" \
     "SMS_SENDER_ID=${SMS_SENDER_ID:-VitoraHMIS}" \
+    "AT_API_KEY=secretref:at-api-key" \
+    "AT_USERNAME=${AT_USERNAME:-sandbox}" \
     "WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-vitora-navy.vercel.app,staging.vitora.digital}" \
     "WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://vitora-navy.vercel.app,https://staging.vitora.digital}" \
     "METABASE_SITE_URL=${METABASE_SITE_URL:-https://vitora-metabase.agreeabledune-6cc420cc.eastus.azurecontainerapps.io}" \
