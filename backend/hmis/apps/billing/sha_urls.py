@@ -57,8 +57,10 @@ from hmis.apps.billing.sha_ilm_registry_views import (
     PatientContactListCreateView,
 )
 from hmis.apps.billing.sha_views import (
+    BeneficiaryContactsView,
     BiometricAuthorizeStatusView,
     BiometricAuthorizeView,
+    BiometricCancelView,
     ClientRegistryView,
     ConsentDetailView,
     ConsentSendOTPView,
@@ -115,6 +117,12 @@ urlpatterns = [
         BiometricAuthorizeStatusView.as_view(),
         name="consent-authorize-status",
     ),
+    path(
+        "consent/authorize/<str:auth_guid>/cancel/",
+        BiometricCancelView.as_view(),
+        name="consent-authorize-cancel",
+    ),
+    path("consent/contacts/", BeneficiaryContactsView.as_view(), name="consent-contacts"),
     path("consent/<int:pk>/", ConsentDetailView.as_view(), name="consent-detail"),
     # Pre-authorization (DHA HIE User Journey compliance)
     path("preauth/submit/", PreauthSubmitView.as_view(), name="preauth-submit"),

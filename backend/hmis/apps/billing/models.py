@@ -3580,6 +3580,29 @@ class ConsentToken(FacilityScopedModel):
         help_text="ID number used for OTP request",
     )
 
+    # Biometric flow fields
+    auth_guid = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Authorization GUID returned by DHA /api/v1/claims/authorize",
+    )
+    iframe_url = models.URLField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Biometric capture iframe URL (valid for 10 minutes)",
+    )
+    iframe_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the biometric iframe expires (10 min from creation)",
+    )
+    retry_count = models.IntegerField(
+        default=0,
+        help_text="Number of failed biometric matching attempts (max 3)",
+    )
+
     # Intervention codes sent with the OTP request (persisted so that
     # start-visit can re-use them without the frontend needing to resend).
     intervention_codes = models.JSONField(
