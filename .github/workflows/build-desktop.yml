@@ -1,0 +1,251 @@
+name: Build Desktop App
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch:
+    inputs:
+      skip_signing:
+        description: "Skip code signing (for testing)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # For creating releases
+
+env:
+  NODE_VERSION: "22"
+  RUST_TOOLCHAIN: "stable"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            node_target: win-x64
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            node_target: linux-x64
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            node_target: darwin-arm64
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: |
+            web-app/package-lock.json
+            desktop-app/package-lock.json
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop-app/src-tauri -> target
+
+      # Linux dependencies for Tauri
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      # Build Next.js web-app
+      - name: Install web-app dependencies
+        run: npm ci
+        working-directory: web-app
+
+      - name: Build web-app (standalone)
+        run: npm run build
+        working-directory: web-app
+        env:
+          NEXT_PUBLIC_API_URL: https://api.vitora.digital
+          NEXT_PUBLIC_POWERSYNC_URL: ""
+
+      # Prepare desktop-app
+      - name: Install desktop-app dependencies
+        run: npm ci
+        working-directory: desktop-app
+
+      - name: Bundle standalone Next.js server
+        run: npm run bundle-standalone
+        working-directory: desktop-app
+
+      - name: Download Node.js binary for sidecar
+        run: node scripts/download-node.js --target ${{ matrix.node_target }}
+        working-directory: desktop-app
+
+      # Code signing (Windows only)
+      - name: Import code signing certificate
+        if: matrix.platform == 'windows-latest' && !inputs.skip_signing
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $certBytes = [Convert]::FromBase64String($env:CERTIFICATE_BASE64)
+          $certPath = Join-Path $env:RUNNER_TEMP "certificate.pfx"
+          [IO.File]::WriteAllBytes($certPath, $certBytes)
+          $securePassword = ConvertTo-SecureString $env:CERTIFICATE_PASSWORD -AsPlainText -Force
+          Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
+          $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.HasPrivateKey }
+          echo "TAURI_SIGNING_CERTIFICATE_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      # Build Tauri
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: desktop-app
+          tauriScript: npm run tauri
+          args: --target ${{ matrix.target }} -c tauri.conf.production.json
+          tagName: ${{ github.ref_name }}
+          releaseName: "Vitora HMIS Desktop ${{ github.ref_name }}"
+          releaseBody: |
+            Desktop application release for Vitora HMIS.
+
+            ## Installation
+            - **Windows**: Download the `.msi` or `.exe` installer
+            - **Linux**: Download the `.deb` or `.AppImage`
+            - **macOS**: Download the `.dmg`
+
+            ## Auto-Update
+            Existing installations will auto-update within 24 hours.
+          releaseDraft: true
+          prerelease: false
+
+  # Generate updater endpoint JSON after all platforms build
+  publish-updater:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release artifacts info
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#desktop-v}"
+
+          # Wait for release to be created by tauri-action
+          sleep 30
+
+          # Get release info
+          RELEASE_JSON=$(gh release view "$TAG" --json assets,body --repo "$GITHUB_REPOSITORY")
+
+          # Extract artifact URLs and signatures
+          echo "$RELEASE_JSON" | jq -r '.assets[] | .name + " " + .url' > /tmp/assets.txt
+
+          # Generate updater JSON
+          node -e "
+          const fs = require('fs');
+          const assets = fs.readFileSync('/tmp/assets.txt', 'utf8').trim().split('\n');
+          const version = '${VERSION}';
+          const repoUrl = 'https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}';
+
+          function findAsset(pattern) {
+            const match = assets.find(a => a.match(pattern));
+            return match ? match.split(' ')[0] : null;
+          }
+
+          function getSignature(name) {
+            const sigAsset = assets.find(a => a.startsWith(name + '.sig'));
+            return sigAsset ? sigAsset.split(' ')[0] : '';
+          }
+
+          const platforms = {};
+
+          // Windows NSIS
+          const winNsis = findAsset(/\.exe$/);
+          if (winNsis) {
+            platforms['windows-x86_64'] = {
+              signature: '',
+              url: repoUrl + '/' + winNsis
+            };
+          }
+
+          // Linux AppImage
+          const linuxAppImage = findAsset(/\.AppImage$/);
+          if (linuxAppImage) {
+            platforms['linux-x86_64'] = {
+              signature: '',
+              url: repoUrl + '/' + linuxAppImage
+            };
+          }
+
+          // macOS
+          const macDmg = findAsset(/\.app\.tar\.gz$/);
+          if (macDmg) {
+            platforms['darwin-aarch64'] = {
+              signature: '',
+              url: repoUrl + '/' + macDmg
+            };
+          }
+
+          // Read signatures from .sig files
+          for (const [platform, info] of Object.entries(platforms)) {
+            const sigName = info.url.split('/').pop() + '.sig';
+            const sigAsset = assets.find(a => a.startsWith(sigName));
+            if (sigAsset) {
+              info.signature = sigAsset.split(' ')[1] || '';
+            }
+          }
+
+          const updater = {
+            version: version,
+            notes: 'Vitora HMIS Desktop ' + version,
+            pub_date: new Date().toISOString(),
+            platforms
+          };
+
+          fs.writeFileSync('/tmp/latest.json', JSON.stringify(updater, null, 2));
+          console.log(JSON.stringify(updater, null, 2));
+          "
+
+      - name: Upload updater manifest to Azure Blob
+        if: env.AZURE_STORAGE_CONNECTION_STRING != ''
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: |
+          az storage blob upload \
+            --container-name releases \
+            --name updates \
+            --file /tmp/latest.json \
+            --overwrite \
+            --content-type application/json \
+            --content-cache-control "max-age=300"
+
+      - name: Upload updater manifest as release asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" /tmp/latest.json --clobber --repo "$GITHUB_REPOSITORY"

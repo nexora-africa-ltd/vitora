@@ -123,6 +123,16 @@ export async function getSidecarPort(): Promise<number | null> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Check if this is the first run of the desktop app (no config saved yet).
+ * Always returns false in browser mode.
+ */
+export async function isFirstRun(): Promise<boolean> {
+  const invoke = getInvoke();
+  if (!invoke) return false;
+  return invoke<boolean>('is_first_run');
+}
+
+/**
  * Get the configured API base URL.
  * Returns default (https://api.vitora.digital) if not configured or not in desktop mode.
  */
