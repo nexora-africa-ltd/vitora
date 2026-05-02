@@ -8,8 +8,10 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
 
 pub mod commands;
+pub mod config;
 
 use commands::print_receipt;
+use config::{get_api_url, set_api_url, AppConfig};
 
 /// Manages the Node.js sidecar process lifecycle.
 pub struct SidecarState {
@@ -59,14 +61,24 @@ impl SidecarState {
             ));
         }
 
-        // In dev mode, use system node; in prod, use bundled node
+        // Resolve Node.js binary: Tauri externalBin places it adjacent to the exe
+        // with the target triple suffix. On dev, use system node.
         let node_bin = if cfg!(debug_assertions) {
             "node".to_string()
         } else {
-            let bundled = resource_dir.join("node").join("node");
+            // externalBin resolves to: <app_dir>/binaries/node-<target-triple>[.exe]
+            let bin_dir = resource_dir.join("binaries");
+            let node_name = if cfg!(target_os = "windows") {
+                format!("node-{}.exe", env!("TAURI_ENV_TARGET_TRIPLE"))
+            } else {
+                format!("node-{}", env!("TAURI_ENV_TARGET_TRIPLE"))
+            };
+            let bundled = bin_dir.join(&node_name);
             if bundled.exists() {
                 bundled.to_string_lossy().to_string()
             } else {
+                // Fallback: try system node
+                log::warn!("Bundled node not found at {:?}, falling back to system node", bundled);
                 "node".to_string()
             }
         };
@@ -75,6 +87,7 @@ impl SidecarState {
             .arg(server_js.to_string_lossy().to_string())
             .env("PORT", port.to_string())
             .env("HOSTNAME", "127.0.0.1")
+            .env("NEXT_PUBLIC_API_URL", AppConfig::load(app).api_url)
             .current_dir(&standalone_dir)
             .spawn()
             .map_err(|e| format!("Failed to spawn Node sidecar: {}", e))?;
@@ -157,50 +170,86 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_sidecar_port,
             print_receipt,
+            get_api_url,
+            set_api_url,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
-            let state = app.state::<SidecarState>();
 
             // In dev mode, don't spawn sidecar — use the running dev server
             if cfg!(debug_assertions) {
                 log::info!("Dev mode: using external dev server at http://127.0.0.1:3009");
+                // Show main window immediately in dev (no splash)
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                }
+                // Close splash if it exists in dev
+                if let Some(splash) = app.get_webview_window("splash") {
+                    let _ = splash.close();
+                }
                 return Ok(());
             }
 
-            // Spawn sidecar
+            // Production: spawn sidecar and show splash while loading
             log::info!("Spawning Node.js sidecar...");
-            match state.spawn_sidecar(&handle) {
-                Ok(port) => {
-                    log::info!("Sidecar spawned on port {}", port);
+            let handle_clone = handle.clone();
 
-                    // Wait for the sidecar to be ready (max 15s)
-                    match state.wait_for_ready(Duration::from_secs(15)) {
-                        Ok(()) => {
-                            log::info!("Sidecar is ready");
-                            // Navigate the main window to the sidecar URL
-                            if let Some(window) = app.get_webview_window("main") {
-                                let url = format!("http://127.0.0.1:{}", port);
-                                let _ = window.navigate(url.parse().unwrap());
+            // Spawn sidecar in a background thread to avoid blocking the event loop
+            std::thread::spawn(move || {
+                let state = handle_clone.state::<SidecarState>();
+
+                match state.spawn_sidecar(&handle_clone) {
+                    Ok(port) => {
+                        log::info!("Sidecar spawned on port {}", port);
+
+                        // Wait for the sidecar to be ready (max 20s)
+                        match state.wait_for_ready(Duration::from_secs(20)) {
+                            Ok(()) => {
+                                log::info!("Sidecar is ready on port {}", port);
+                                // Navigate main window to sidecar URL and show it
+                                if let Some(main_window) = handle_clone.get_webview_window("main") {
+                                    let url = format!("http://127.0.0.1:{}", port);
+                                    let _ = main_window.navigate(url.parse().unwrap());
+                                    let _ = main_window.show();
+                                }
+                                // Close splash
+                                if let Some(splash) = handle_clone.get_webview_window("splash") {
+                                    let _ = splash.close();
+                                }
                             }
-                        }
-                        Err(e) => {
-                            log::error!("Sidecar failed to start: {}", e);
-                            // Show error dialog
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.navigate(
-                                    "data:text/html,<h1>Failed to start Vitora</h1><p>The application server did not respond in time.</p>"
-                                        .parse()
-                                        .unwrap(),
-                                );
+                            Err(e) => {
+                                log::error!("Sidecar failed to become ready: {}", e);
+                                // Show error in main window
+                                if let Some(main_window) = handle_clone.get_webview_window("main") {
+                                    let error_html = format!(
+                                        "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>The application server did not respond in time.</p><p style='color:%23ef4444;font-size:12px'>{}</p></body></html>",
+                                        e
+                                    );
+                                    let _ = main_window.navigate(error_html.parse().unwrap());
+                                    let _ = main_window.show();
+                                }
+                                if let Some(splash) = handle_clone.get_webview_window("splash") {
+                                    let _ = splash.close();
+                                }
                             }
                         }
                     }
+                    Err(e) => {
+                        log::error!("Failed to spawn sidecar: {}", e);
+                        if let Some(main_window) = handle_clone.get_webview_window("main") {
+                            let error_html = format!(
+                                "data:text/html,<html><body style='font-family:sans-serif;padding:40px;background:%230f172a;color:%23f8fafc'><h1>Failed to start Vitora</h1><p style='color:%2394a3b8'>Could not start the application server.</p><p style='color:%23ef4444;font-size:12px'>{}</p></body></html>",
+                                e
+                            );
+                            let _ = main_window.navigate(error_html.parse().unwrap());
+                            let _ = main_window.show();
+                        }
+                        if let Some(splash) = handle_clone.get_webview_window("splash") {
+                            let _ = splash.close();
+                        }
+                    }
                 }
-                Err(e) => {
-                    log::error!("Failed to spawn sidecar: {}", e);
-                }
-            }
+            });
 
             Ok(())
         })

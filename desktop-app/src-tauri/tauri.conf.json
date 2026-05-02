@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "digital.vitora.hmis",
   "build": {
-    "frontendDist": "http://127.0.0.1:3009",
+    "frontendDist": "frontend",
     "devUrl": "http://127.0.0.1:3009",
     "beforeDevCommand": "",
     "beforeBuildCommand": ""
@@ -21,7 +21,20 @@
         "center": true,
         "resizable": true,
         "fullscreen": false,
-        "decorations": true
+        "decorations": true,
+        "visible": false
+      },
+      {
+        "label": "splash",
+        "title": "Vitora HMIS",
+        "url": "splash.html",
+        "width": 400,
+        "height": 320,
+        "center": true,
+        "resizable": false,
+        "decorations": false,
+        "transparent": false,
+        "alwaysOnTop": true
       }
     ],
     "security": {
@@ -43,6 +56,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "externalBin": [],
     "resources": [],
     "windows": {
       "certificateThumbprint": null,
