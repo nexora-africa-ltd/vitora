@@ -9,6 +9,9 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.ai.serializers import (
+    AIAdvisoryBulkSeedSerializer,
+    AIAdvisoryOrderLinkActionSerializer,
+    AIAdvisoryOrderLinkSerializer,
     AIChatMessageSerializer,
     AIChatSessionDetailResponseSerializer,
     AIChatSessionListResponseSerializer,
@@ -103,6 +106,46 @@ from hmis.apps.ai.serializers import (
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        AIAdvisoryBulkSeedSerializer,
+        frozenset(
+            {
+                "ai_result_id",
+                "ai_result_type",
+            }
+        ),
+    ),
+    (
+        AIAdvisoryOrderLinkActionSerializer,
+        frozenset(
+            {
+                "imaging_order_id",
+                "lab_order_id",
+                "prescription_id",
+                "status",
+            }
+        ),
+    ),
+    (
+        AIAdvisoryOrderLinkSerializer,
+        frozenset(
+            {
+                "actioned_at",
+                "actioned_by",
+                "ai_result_id",
+                "created_at",
+                "id",
+                "imaging_order_id",
+                "lab_order_id",
+                "order_number",
+                "prescription_id",
+                "status",
+                "suggestion_category",
+                "suggestion_index",
+                "suggestion_text",
+            }
+        ),
+    ),
     (
         AIChatMessageSerializer,
         frozenset(
@@ -1296,6 +1339,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "facility_capable",
                 "fhir_risk_assessment",
                 "mode",
+                "procedure_template",
                 "risk_scores",
                 "stored_id",
             }

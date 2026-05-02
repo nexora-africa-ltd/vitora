@@ -9,20 +9,64 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.encounters.serializers import (
+    ChronicConditionCreateSerializer,
+    ChronicConditionSerializer,
     ClaimedEncounterSerializer,
+    CurrentMedicationCreateSerializer,
+    CurrentMedicationSerializer,
     DiagnosisNestedSerializer,
     DiagnosisSerializer,
     EncounterListSerializer,
     EncounterSerializer,
+    FamilyHistoryCreateSerializer,
+    FamilyHistorySerializer,
     ICD10CodeSerializer,
     InlineCDSAlertSerializer,
     MedicationNestedSerializer,
     MedicationSerializer,
+    PastSurgeryCreateSerializer,
+    PastSurgerySerializer,
+    SocialHistoryObservationCreateSerializer,
+    SocialHistoryObservationSerializer,
     TreatmentPlanSerializer,
     TreatmentPlanTemplateSerializer,
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        ChronicConditionCreateSerializer,
+        frozenset(
+            {
+                "condition_name",
+                "encounter",
+                "icd10_code",
+                "notes",
+                "onset_date",
+                "status",
+            }
+        ),
+    ),
+    (
+        ChronicConditionSerializer,
+        frozenset(
+            {
+                "condition_name",
+                "created_at",
+                "encounter",
+                "icd10_code",
+                "id",
+                "notes",
+                "onset_date",
+                "patient",
+                "patient_name",
+                "recorded_by",
+                "recorded_by_username",
+                "status",
+                "status_display",
+                "updated_at",
+            }
+        ),
+    ),
     (
         ClaimedEncounterSerializer,
         frozenset(
@@ -47,6 +91,44 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "patient_name",
                 "status",
                 "visit_reason",
+            }
+        ),
+    ),
+    (
+        CurrentMedicationCreateSerializer,
+        frozenset(
+            {
+                "dosage",
+                "encounter",
+                "frequency",
+                "medication_name",
+                "notes",
+                "route",
+                "start_date",
+                "status",
+            }
+        ),
+    ),
+    (
+        CurrentMedicationSerializer,
+        frozenset(
+            {
+                "created_at",
+                "dosage",
+                "encounter",
+                "frequency",
+                "id",
+                "medication_name",
+                "notes",
+                "patient",
+                "patient_name",
+                "recorded_by",
+                "recorded_by_username",
+                "route",
+                "start_date",
+                "status",
+                "status_display",
+                "updated_at",
             }
         ),
     ),
@@ -215,6 +297,40 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        FamilyHistoryCreateSerializer,
+        frozenset(
+            {
+                "age_at_onset",
+                "condition_name",
+                "deceased",
+                "encounter",
+                "notes",
+                "relationship",
+            }
+        ),
+    ),
+    (
+        FamilyHistorySerializer,
+        frozenset(
+            {
+                "age_at_onset",
+                "condition_name",
+                "created_at",
+                "deceased",
+                "encounter",
+                "id",
+                "notes",
+                "patient",
+                "patient_name",
+                "recorded_by",
+                "recorded_by_username",
+                "relationship",
+                "relationship_display",
+                "updated_at",
+            }
+        ),
+    ),
+    (
         ICD10CodeSerializer,
         frozenset(
             {
@@ -280,6 +396,71 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "start_date",
                 "treatment_plan",
                 "updated_at",
+            }
+        ),
+    ),
+    (
+        PastSurgeryCreateSerializer,
+        frozenset(
+            {
+                "encounter",
+                "notes",
+                "outcome",
+                "procedure_date",
+                "procedure_name",
+            }
+        ),
+    ),
+    (
+        PastSurgerySerializer,
+        frozenset(
+            {
+                "created_at",
+                "encounter",
+                "id",
+                "notes",
+                "outcome",
+                "outcome_display",
+                "patient",
+                "patient_name",
+                "procedure_date",
+                "procedure_name",
+                "recorded_by",
+                "recorded_by_username",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        SocialHistoryObservationCreateSerializer,
+        frozenset(
+            {
+                "effective_date",
+                "encounter",
+                "observation_type",
+                "status",
+                "value_text",
+            }
+        ),
+    ),
+    (
+        SocialHistoryObservationSerializer,
+        frozenset(
+            {
+                "created_at",
+                "effective_date",
+                "encounter",
+                "id",
+                "observation_type",
+                "observation_type_display",
+                "patient",
+                "patient_name",
+                "recorded_by",
+                "recorded_by_username",
+                "status",
+                "status_display",
+                "updated_at",
+                "value_text",
             }
         ),
     ),

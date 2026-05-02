@@ -484,16 +484,16 @@ class TestSHAPreauthServicePoll:
 class TestConsentSendOTPAPI:
     """Tests for POST /api/sha/consent/send-otp/."""
 
-    @patch("hmis.apps.billing.services.sha_consent.SHAConsentService._make_request")
-    @patch("hmis.apps.billing.services.sha_consent.SHAAuthService")
-    def test_send_otp_api_success(
-        self, mock_auth_cls, mock_request, authenticated_client, sha_member
-    ):
+    @patch("hmis.apps.billing.services.ilm_lifecycle_service.IlmLifecycleService.send_visit_otp")
+    def test_send_otp_api_success(self, mock_send_otp, authenticated_client, sha_member):
         """Should send OTP and return 201."""
-        mock_request.return_value = {
-            "status": "success",
+        from hmis.apps.billing.services.ilm_lifecycle_service import IlmLifecycleResult
+
+        mock_result = Mock()
+        mock_result.payload = {
             "otp_reference": "api-otp-ref-123",
         }
+        mock_send_otp.return_value = mock_result
 
         response = authenticated_client.post(
             "/api/sha/consent/send-otp/",

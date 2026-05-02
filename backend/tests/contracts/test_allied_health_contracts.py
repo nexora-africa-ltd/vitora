@@ -9,6 +9,7 @@ Re-run the script to update after serializer changes:
 import pytest  # type: ignore
 
 from hmis.apps.allied_health.serializers import (
+    AlliedHealthClinicQueueStatsSerializer,
     AlliedHealthDashboardSerializer,
     AlliedHealthModuleStatsSerializer,
     ClinicQueueStatsSerializer,
@@ -22,6 +23,20 @@ from hmis.apps.allied_health.serializers import (
 )
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        AlliedHealthClinicQueueStatsSerializer,
+        frozenset(
+            {
+                "counselling",
+                "mental_health",
+                "nutrition",
+                "ot",
+                "physio",
+                "social_work",
+                "totals",
+            }
+        ),
+    ),
     (
         AlliedHealthDashboardSerializer,
         frozenset(

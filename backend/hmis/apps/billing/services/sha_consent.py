@@ -289,31 +289,11 @@ class SHAConsentService:
 
         from datetime import date as date_cls
 
-        # DHA expects the Client Registry ID (CR format), not raw national ID.
-        # Derive from the linked SHA member's SHA number.
+        # Use the identification_number stored on the consent token directly.
         patient_cr_id = consent.identification_number
-        if consent.sha_member and consent.sha_member.sha_number:
-            sha_num = consent.sha_member.sha_number
-            if sha_num.startswith("SHA-"):
-                patient_cr_id = f"CR{sha_num[4:]}"
-            elif sha_num.startswith("CR"):
-                patient_cr_id = sha_num
 
-        # DHA ILM requires service_type to match the intervention code category.
-        # Valid service types: CAPITATION, OUTPATIENT, INPATIENT, EMERGENCY
-        # Map known intervention prefixes to their expected service type.
-        resolved_service_type = service_type.upper() if service_type else "OUTPATIENT"
-        if intervention_codes:
-            first_code = intervention_codes[0] if intervention_codes else ""
-            # SHA-12-xxx = Consultation → CAPITATION
-            if first_code.startswith("SHA-12"):
-                resolved_service_type = "CAPITATION"
-            # SHA-07-xxx = Inpatient interventions
-            elif first_code.startswith("SHA-07"):
-                resolved_service_type = "INPATIENT"
-            # SHA-01-xxx = Emergency/Ambulance
-            elif first_code.startswith("SHA-01"):
-                resolved_service_type = "EMERGENCY"
+        # Pass service_type through as provided by the caller.
+        resolved_service_type = service_type if service_type else "outpatient"
 
         payload: dict[str, Any] = {
             "admission_date": admission_date or date_cls.today().isoformat(),

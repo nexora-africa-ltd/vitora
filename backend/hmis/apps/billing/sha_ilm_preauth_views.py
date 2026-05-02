@@ -636,21 +636,27 @@ class SHAPreauthListView(APIView):
     """GET /api/sha/ilm/preauth/local/?patient_pk=&claim_pk=
 
     Returns the cached SHAPreauth rows for browsing in the UI.
-    If no filter is provided, returns the most recent 200 preauths.
+    At least one filter (patient_pk, claim_pk, or status) is required.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = SHAPreauth.objects.all()
         patient = _resolve(Patient, request, "patient_pk")
         claim = _resolve(SHAClaim, request, "claim_pk")
+        status_filter = request.query_params.get("status")
+
+        if not patient and not claim and not status_filter:
+            return Response(
+                {"error": "At least one filter (patient_pk, claim_pk, or status) is required."},
+                status=400,
+            )
+
+        qs = SHAPreauth.objects.all()
         if patient:
             qs = qs.filter(patient=patient)
         if claim:
             qs = qs.filter(claim=claim)
-        # Filter by status if provided
-        status_filter = request.query_params.get("status")
         if status_filter and status_filter in dict(SHAPreauth.Status.choices):
             qs = qs.filter(status=status_filter)
         return Response({"results": [_serialize_preauth(p) for p in qs[:200]]})
