@@ -82,6 +82,11 @@
       "endpoints": [
         "https://releases.vitora.digital/updates"
       ]
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["vitora"]
+      }
     }
   }
 }
