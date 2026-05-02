@@ -92,6 +92,8 @@ interface FacilityFormState {
   sha_contracted: boolean;
   sha_contract_expiry: string;
   sha_facility_code: string;
+  workstation_id: string;
+  biometrics_agent_national_id: string;
   is_active: boolean;
   has_outpatient: boolean;
   has_inpatient: boolean;
@@ -116,6 +118,8 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     sha_contracted: facility.sha_contracted,
     sha_contract_expiry: facility.sha_contract_expiry ?? '',
     sha_facility_code: facility.sha_facility_code,
+    workstation_id: facility.workstation_id ?? '',
+    biometrics_agent_national_id: facility.biometrics_agent_national_id ?? '',
     is_active: facility.is_active,
     has_outpatient: facility.has_outpatient,
     has_inpatient: facility.has_inpatient,
@@ -609,6 +613,30 @@ export function FacilitySettingsTab() {
                 disabled={!canManageFacility || updateMutation.isPending}
                 onChange={(event) => setForm((prev) => prev ? { ...prev, sha_contract_expiry: event.target.value } : prev)}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="workstation-id">Biometric workstation ID</Label>
+              <Input
+                id="workstation-id"
+                placeholder="e.g. WS-001"
+                value={form.workstation_id}
+                disabled={!canManageFacility || updateMutation.isPending}
+                onChange={(event) => setForm((prev) => prev ? { ...prev, workstation_id: event.target.value } : prev)}
+              />
+              <p className="text-xs text-muted-foreground">Identifies this workstation for DHA biometric consent.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="biometrics-agent-id">Biometric agent national ID</Label>
+              <Input
+                id="biometrics-agent-id"
+                placeholder="National ID of the authorizing agent"
+                value={form.biometrics_agent_national_id}
+                disabled={!canManageFacility || updateMutation.isPending}
+                onChange={(event) => setForm((prev) => prev ? { ...prev, biometrics_agent_national_id: event.target.value } : prev)}
+              />
+              <p className="text-xs text-muted-foreground">National ID of the staff member registered with DHA for biometric authorization.</p>
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-primary/10 px-4 py-3">

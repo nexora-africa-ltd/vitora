@@ -819,6 +819,28 @@ async function getBiometricAuthStatus(authGuid: string): Promise<{
   return response.data;
 }
 
+/**
+ * Cancel an in-progress biometric authorization.
+ * Used when user cancels/retries or timeout expires.
+ */
+async function cancelBiometricAuth(authGuid: string): Promise<{ status: string; message: string }> {
+  const response = await apiClient.post(`/api/sha/consent/authorize/${authGuid}/cancel/`);
+  return response.data;
+}
+
+/**
+ * Retrieve beneficiary contacts from DHA HIE (masked phone numbers).
+ * User selects a contact to receive the OTP.
+ */
+async function getBeneficiaryContacts(beneficiaryCrId: string): Promise<{
+  contacts: Array<{ id: string; value: string; contact_type: string }>;
+}> {
+  const response = await apiClient.get('/api/sha/consent/contacts/', {
+    params: { beneficiary_cr_id: beneficiaryCrId },
+  });
+  return response.data;
+}
+
 // ============================================================================
 // SHA Remittance API
 // ============================================================================
@@ -1545,6 +1567,8 @@ export const shaApi = {
   getConsentDetail,
   authorizeBiometric,
   getBiometricAuthStatus,
+  cancelBiometricAuth,
+  getBeneficiaryContacts,
   pollDoctorConsent,
 
   // DHA HIE Pre-authorization
