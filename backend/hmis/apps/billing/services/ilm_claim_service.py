@@ -89,9 +89,10 @@ CLOSE_PATH = "/api/v1/claims/close"
 
 @dataclass
 class StartVisitParams:
-    otp: str
-    patient_id: str
-    intervention_codes: list[str]
+    otp: str = ""
+    auth_guid: str = ""  # Biometric authorization GUID (alternative to OTP)
+    patient_id: str = ""
+    intervention_codes: list[str] = field(default_factory=list)
     service_type: str = "OUTPATIENT"  # OUTPATIENT | INPATIENT
     admission_date: str | None = None  # ISO date, required for INPATIENT
     estimated_days_of_admission: int | None = None
@@ -163,12 +164,21 @@ class IlmClaimService:
         *,
         user: Any = None,
     ) -> IlmClaimResult:
+        # DHA accepts either otp (OTP consent) or auth_guid (biometric consent)
+        if not params.otp and not params.auth_guid:
+            raise ValueError("Either otp or auth_guid must be provided")
+        if params.otp and params.auth_guid:
+            raise ValueError("Provide either otp or auth_guid, not both")
+
         body: dict[str, Any] = {
-            "otp": params.otp,
             "patient_id": params.patient_id,
             "intervention_codes": list(params.intervention_codes),
             "service_type": params.service_type,
         }
+        if params.otp:
+            body["otp"] = params.otp
+        else:
+            body["auth_guid"] = params.auth_guid
         if params.service_type.upper() == "INPATIENT":
             if not params.admission_date:
                 raise ValueError("admission_date is required for INPATIENT visits")

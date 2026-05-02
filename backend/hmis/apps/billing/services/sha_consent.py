@@ -12,10 +12,12 @@ Reference: https://hie-docs.dha.go.ke/docs/userJourney
 import contextlib
 import logging
 import time
+from datetime import timedelta
 from typing import Any
 
 import requests
 from django.conf import settings
+from django.utils import timezone
 
 from hmis.apps.billing.models import ConsentToken, SHAMember
 from hmis.apps.billing.services.sha_auth import SHAAuthService
@@ -218,7 +220,8 @@ class SHAConsentService:
     def start_visit(
         self,
         consent: ConsentToken,
-        otp_code: str,
+        otp_code: str = "",
+        auth_guid: str = "",
         intervention_codes: list[str] | None = None,
         service_type: str = "outpatient",
         admission_date: str = "",
@@ -229,21 +232,16 @@ class SHAConsentService:
         Start a visit session with DHA.
 
         Calls POST /api/v1/claims/visit — the DHA combined endpoint that
-        validates the OTP and starts the visit in a single call.
+        validates the OTP (or biometric auth_guid) and starts the visit
+        in a single call.
 
-        DHA Request:
-            {
-              "admission_date": "2026-04-29",
-              "estimated_days_of_admission": 1,
-              "intervention_codes": ["SHA-01", "SHA-02"],
-              "otp": "123456",
-              "patient_id": "12345678",
-              "service_type": "outpatient"
-            }
+        DHA accepts either `otp` (OTP consent) or `auth_guid` (biometric
+        consent) — exactly one must be provided.
 
         Args:
             consent: ConsentToken instance (PENDING or VALIDATED).
-            otp_code: The OTP code entered by the patient.
+            otp_code: The OTP code entered by the patient (OTP flow).
+            auth_guid: Biometric authorization GUID (biometric flow).
             intervention_codes: List of SHA intervention codes for this visit.
             service_type: Type of service (outpatient, inpatient, emergency).
             admission_date: Admission date (ISO format). Defaults to today.
@@ -256,6 +254,16 @@ class SHAConsentService:
         Raises:
             SHAConsentError: If API call fails or consent state is invalid.
         """
+        if not otp_code and not auth_guid:
+            raise SHAConsentError(
+                "Either otp_code or auth_guid must be provided",
+                code="missing_consent_credential",
+            )
+        if otp_code and auth_guid:
+            raise SHAConsentError(
+                "Provide either otp_code or auth_guid, not both",
+                code="ambiguous_consent_credential",
+            )
         if consent.status not in (
             ConsentToken.ConsentStatus.PENDING,
             ConsentToken.ConsentStatus.VALIDATED,
@@ -311,10 +319,14 @@ class SHAConsentService:
             "admission_date": admission_date or date_cls.today().isoformat(),
             "estimated_days_of_admission": estimated_days_of_admission or 1,
             "intervention_codes": intervention_codes or [],
-            "otp": otp_code,
             "patient_id": patient_cr_id,
             "service_type": resolved_service_type,
         }
+        # DHA accepts either otp or auth_guid — exactly one
+        if otp_code:
+            payload["otp"] = otp_code
+        else:
+            payload["auth_guid"] = auth_guid
 
         response_data = self._make_request("POST", endpoint, json=payload)
 
@@ -398,7 +410,10 @@ class SHAConsentService:
             sha_member=sha_member,
             consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
             status=ConsentToken.ConsentStatus.PENDING,
-            otp_reference=auth_guid,  # Store auth_guid as reference
+            otp_reference=auth_guid,  # Legacy field kept for backwards compat
+            auth_guid=auth_guid,
+            iframe_url=iframe_url,
+            iframe_expires_at=timezone.now() + timedelta(minutes=10),
             identification_number=agent_national_id,
             created_by=user,
             facility=facility,
@@ -415,6 +430,7 @@ class SHAConsentService:
             "consent_id": consent.id,
             "auth_guid": auth_guid,
             "iframe_url": iframe_url,
+            "iframe_expires_at": consent.iframe_expires_at.isoformat(),
             "status": "PENDING",
         }
 
@@ -464,6 +480,91 @@ class SHAConsentService:
             "status": status_value,
             "consent_token": response_data.get("consent_token", ""),
         }
+
+    def cancel_authorization(self, auth_guid: str) -> dict[str, Any]:
+        """
+        Cancel a pending biometric authorization.
+
+        Used when the iframe expires (10-min window) or when the user
+        wants to abort and start fresh. Calls DELETE on the DHA authorize
+        endpoint and marks the local ConsentToken as FAILED.
+
+        Args:
+            auth_guid: The authorization GUID to cancel.
+
+        Returns:
+            Dict with auth_guid and final status.
+
+        Raises:
+            SHAConsentError: If the cancel call fails.
+        """
+        endpoint = self._get_endpoint("authorize_biometric")
+        if not endpoint:
+            raise SHAConsentError(
+                "Biometric authorize endpoint not configured",
+                code="endpoint_not_configured",
+            )
+
+        url = f"{endpoint}/{auth_guid}/cancel"
+        with contextlib.suppress(SHAConsentError):
+            self._make_request("POST", url)
+
+        # Mark the local ConsentToken as FAILED
+        consent = ConsentToken.objects.filter(
+            auth_guid=auth_guid,
+            consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+        ).first()
+        if not consent:
+            # Fallback: look by otp_reference (legacy records)
+            consent = ConsentToken.objects.filter(
+                otp_reference=auth_guid,
+                consent_method=ConsentToken.ConsentMethod.BIOMETRIC,
+            ).first()
+
+        if consent and consent.status == ConsentToken.ConsentStatus.PENDING:
+            consent.mark_failed()
+            logger.info("Biometric consent %s cancelled (auth_guid: %s)", consent.id, auth_guid)
+
+        return {
+            "auth_guid": auth_guid,
+            "status": "CANCELLED",
+        }
+
+    def get_beneficiary_contacts(self, beneficiary_cr_id: str) -> list[dict[str, Any]]:
+        """
+        Retrieve masked beneficiary contacts from DHA HIE.
+
+        Calls GET /api/v1/patients/contacts to get the list of registered
+        contacts (with masked phone numbers like "+254714***898") and their
+        IDs. The user can then select which contact to send the OTP to.
+
+        Args:
+            beneficiary_cr_id: The patient's Client Registry ID.
+
+        Returns:
+            List of contact dicts with id, masked value, contact type.
+
+        Raises:
+            SHAConsentError: If the contacts API call fails.
+        """
+        endpoint = self._get_endpoint("patient_contacts")
+        if not endpoint:
+            raise SHAConsentError(
+                "Patient contacts endpoint not configured",
+                code="endpoint_not_configured",
+            )
+
+        url = f"{endpoint}?beneficiary_cr_id={beneficiary_cr_id}"
+        response_data = self._make_request("GET", url)
+
+        # DHA returns {contacts: [...]} or a flat list
+        contacts = (
+            response_data
+            if isinstance(response_data, list)
+            else response_data.get("contacts", response_data.get("results", []))
+        )
+
+        return contacts
 
     # ------------------------------------------------------------------
     # Internal helpers

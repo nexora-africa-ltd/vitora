@@ -3164,7 +3164,7 @@ class StartVisitView(APIView):
         },
     )
     def post(self, request):
-        """Start a visit by validating OTP + creating visit session with DHA."""
+        """Start a visit by validating OTP or biometric auth_guid + creating visit session with DHA."""
         from hmis.apps.billing.models import ConsentToken
         from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
 
@@ -3179,6 +3179,7 @@ class StartVisitView(APIView):
 
         consent_id = request.data.get("consent_id")
         otp_code = request.data.get("otp_code", "")
+        auth_guid = request.data.get("auth_guid", "")
         intervention_codes = request.data.get("intervention_codes") or []
         service_type = (request.data.get("service_type", "outpatient") or "outpatient").upper()
         admission_date = request.data.get("admission_date", "")
@@ -3190,9 +3191,14 @@ class StartVisitView(APIView):
                 {"error": "consent_id is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not otp_code:
+        if not otp_code and not auth_guid:
             return Response(
-                {"error": "otp_code is required"},
+                {"error": "Either otp_code or auth_guid is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if otp_code and auth_guid:
+            return Response(
+                {"error": "Provide either otp_code or auth_guid, not both"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -3224,6 +3230,7 @@ class StartVisitView(APIView):
             visit_data = service.start_visit(
                 consent=consent,
                 otp_code=otp_code,
+                auth_guid=auth_guid,
                 intervention_codes=intervention_codes,
                 service_type=service_type,
                 admission_date=admission_date,
@@ -3387,6 +3394,101 @@ class BiometricAuthorizeStatusView(APIView):
             return Response(result, status=status.HTTP_200_OK)
         except SHAConsentError as e:
             logger.warning("Biometric status check failed: %s", e.message)
+            return Response(
+                {"error": e.message, "code": e.code},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class BiometricCancelView(APIView):
+    """
+    Cancel a pending biometric authorization.
+
+    POST /api/sha/consent/authorize/{auth_guid}/cancel/
+
+    Used when the iframe expires (10-min window) or the user wants to abort.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="BiometricCancelResponse",
+                fields={
+                    "auth_guid": serializers.CharField(),
+                    "status": serializers.CharField(),
+                },
+            )
+        },
+    )
+    def post(self, request, auth_guid):
+        """Cancel a pending biometric authorization."""
+        from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+
+        try:
+            service = SHAConsentService()
+            result = service.cancel_authorization(auth_guid)
+            return Response(result, status=status.HTTP_200_OK)
+        except SHAConsentError as e:
+            logger.warning("Biometric cancel failed: %s", e.message)
+            return Response(
+                {"error": e.message, "code": e.code},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class BeneficiaryContactsView(APIView):
+    """
+    Retrieve masked beneficiary contacts from DHA HIE.
+
+    GET /api/sha/consent/contacts/?beneficiary_cr_id=...
+
+    Returns a list of registered contacts with masked phone numbers.
+    The user selects which contact to send the OTP to.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            {
+                "name": "beneficiary_cr_id",
+                "in": "query",
+                "required": True,
+                "schema": {"type": "string"},
+                "description": "Patient's Client Registry ID",
+            }
+        ],
+        responses={
+            200: inline_serializer(
+                name="BeneficiaryContactsResponse",
+                fields={
+                    "contacts": serializers.ListField(
+                        child=serializers.DictField(),
+                        help_text="List of contacts with masked values and IDs",
+                    ),
+                },
+            )
+        },
+    )
+    def get(self, request):
+        """Retrieve beneficiary contacts for OTP target selection."""
+        from hmis.apps.billing.services.sha_consent import SHAConsentError, SHAConsentService
+
+        beneficiary_cr_id = request.query_params.get("beneficiary_cr_id", "")
+        if not beneficiary_cr_id:
+            return Response(
+                {"error": "beneficiary_cr_id query parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            service = SHAConsentService()
+            contacts = service.get_beneficiary_contacts(beneficiary_cr_id)
+            return Response({"contacts": contacts}, status=status.HTTP_200_OK)
+        except SHAConsentError as e:
+            logger.warning("Failed to fetch beneficiary contacts: %s", e.message)
             return Response(
                 {"error": e.message, "code": e.code},
                 status=status.HTTP_400_BAD_REQUEST,

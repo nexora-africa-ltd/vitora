@@ -2767,6 +2767,13 @@ class Facility(TimeStampedModel):
         default="",
         help_text="SHA-specific facility code used in claims submission.",
     )
+    biometrics_agent_national_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="National ID of the biometrics agent registered with SHA "
+        "for this facility. Required for biometric consent calls.",
+    )
 
     # ------------------------------------------------------------------
     # Enabled Modules (Capability-Based Experience)
