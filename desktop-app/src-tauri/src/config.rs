@@ -76,6 +76,12 @@ pub fn get_api_url(app: AppHandle) -> String {
     AppConfig::load(&app).api_url
 }
 
+/// Tauri command: check if this is a first-run (no config saved yet).
+#[tauri::command]
+pub fn is_first_run(app: AppHandle) -> bool {
+    AppConfig::is_first_run(&app)
+}
+
 /// Tauri command: set and persist the API URL.
 #[tauri::command]
 pub fn set_api_url(app: AppHandle, url: String) -> Result<String, String> {
