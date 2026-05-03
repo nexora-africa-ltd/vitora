@@ -30,24 +30,28 @@ _thread_local = threading.local()
 
 
 @contextmanager
-def tibabot_user_context(user: AbstractBaseUser):
+def tibabot_user_context(user: AbstractBaseUser, facility=None):
     """
     Context manager that sets the current user for TibaBot JWT auth.
 
     Usage in views::
 
-        with tibabot_user_context(request.user):
+        with tibabot_user_context(request.user, request.facility):
             client = get_tibabot_client()
             result = client.clinical_chat(data)
 
     The ``TibaBotClient._request`` method will automatically mint a JWT
     and include it as ``Authorization: Bearer <jwt>`` on the request.
+    The facility (from TenantMiddleware) is used to resolve the per-facility
+    API key.
     """
     _thread_local.tibabot_user = user
+    _thread_local.tibabot_facility = facility
     try:
         yield
     finally:
         _thread_local.tibabot_user = None
+        _thread_local.tibabot_facility = None
 
 
 def _get_current_user() -> AbstractBaseUser | None:
@@ -55,28 +59,49 @@ def _get_current_user() -> AbstractBaseUser | None:
     return getattr(_thread_local, "tibabot_user", None)
 
 
+def _get_current_facility():
+    """Get the facility set by the nearest ``tibabot_user_context``."""
+    return getattr(_thread_local, "tibabot_facility", None)
+
+
 def _resolve_facility_api_key(user: AbstractBaseUser) -> str | None:
     """
-    Look up a per-facility TibaBot API key for the user's primary facility.
+    Look up a per-facility TibaBot API key.
+
+    Resolution order:
+    1. Facility from thread-local (set by TenantMiddleware via request.facility)
+    2. Fallback to user's staff_profile.primary_facility
 
     Returns the key string if found and active, otherwise ``None``
     (caller falls back to the session-level default from settings).
     """
     try:
-        profile = getattr(user, "staff_profile", None)
-        if profile is None:
-            logger.info("TibaBot key resolve: user %s has no staff_profile", user)
-            return None
-        facility = getattr(profile, "primary_facility", None)
+        # 1. Prefer request-scoped facility (from TenantMiddleware / X-Facility-Id)
+        facility = _get_current_facility()
+        source = "request"
+
+        # 2. Fallback to user's primary facility from staff profile
         if facility is None:
-            logger.info("TibaBot key resolve: user %s has no primary_facility", user)
+            profile = getattr(user, "staff_profile", None)
+            if profile is None:
+                logger.info("TibaBot key resolve: user %s has no staff_profile", user)
+                return None
+            facility = getattr(profile, "primary_facility", None)
+            source = "staff_profile"
+
+        if facility is None:
+            logger.info(
+                "TibaBot key resolve: user %s has no facility (checked request + profile)", user
+            )
             return None
+
         fk = getattr(facility, "tibabot_key", None)
         if fk is None:
             logger.info(
-                "TibaBot key resolve: facility %s (pk=%s) has no tibabot_key record",
+                "TibaBot key resolve: facility %s (pk=%s, source=%s) has no tibabot_key record",
                 facility.name,
                 facility.pk,
+                source,
             )
             return None
         if not fk.is_active:
@@ -86,9 +111,10 @@ def _resolve_facility_api_key(user: AbstractBaseUser) -> str | None:
             logger.info("TibaBot key resolve: facility %s key is empty", facility.name)
             return None
         logger.info(
-            "TibaBot key resolve: using per-facility key for %s (hash=%s)",
+            "TibaBot key resolve: using per-facility key for %s (hash=%s, source=%s)",
             facility.name,
             fk.key_hash,
+            source,
         )
         return fk.api_key
     except Exception:

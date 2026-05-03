@@ -52,7 +52,8 @@ class AIFeatureGatedMixin:
     def dispatch(self, request, *args, **kwargs):  # type: ignore[override]
         user = getattr(request, "user", None)
         if user is not None and getattr(user, "is_authenticated", False):
-            with tibabot_user_context(user):
+            facility = getattr(request, "facility", None)
+            with tibabot_user_context(user, facility):
                 return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]
         return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]
 
