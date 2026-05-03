@@ -1332,7 +1332,8 @@ async function ilmDischarge(body: {
   discharge_date: string;
   discharge_reason: string;
   invoice_number: string;
-  otp: string;
+  otp?: string;
+  auth_guid?: string;
 }) {
   const response = await apiClient.post(`${ILM_BASE}/lifecycle/discharge/`, body);
   return parseResponse(IlmLifecycleResponseSchema, response.data, {

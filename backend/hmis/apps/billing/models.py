@@ -2455,6 +2455,24 @@ class SHAClaim(FacilityScopedModel):
                 for doc_type in entry["missing"]:
                     errors.append(f"Missing required document '{doc_type}' for intervention {code}")
 
+        # Check per-diem interventions have a tariff for this facility's KEPH level
+        from django.conf import settings as django_settings
+
+        facility_level_str = getattr(django_settings, "FACILITY_LEVEL", "L3")
+        keph_level_num = int(facility_level_str.replace("L", "")) if facility_level_str else 3
+        active_interventions = self.claim_interventions.filter(
+            status=SHAClaimIntervention.InterventionStatus.ACTIVE,
+        )
+        for intervention in active_interventions:
+            if intervention.is_per_diem:
+                tariff = intervention.tariff_for_level(keph_level_num)
+                if not tariff:
+                    errors.append(
+                        f"Per-diem intervention {intervention.intervention_code} has no "
+                        f"tariff defined for facility level {facility_level_str}. "
+                        f"Cannot compute per-diem billing."
+                    )
+
         # Check consent token for SHIF-flow claims (non-emergency)
         if self.claim_flow == self.ClaimFlow.SHIF and not self.is_emergency_claim:
             has_valid_consent = (
@@ -2752,6 +2770,56 @@ class SHAClaimIntervention(models.Model):
         help_text="Tariff amount for this intervention per HIE response",
     )
 
+    # -------------------------------------------------------------------------
+    # DHA Routing Flags (from GET /api/v1/patients/benefits/interventions)
+    # These determine which scenario flow applies (per-diem vs FFS, preauth
+    # type, elective vs normal, inpatient vs outpatient).
+    # -------------------------------------------------------------------------
+    class PaymentMechanism(models.TextChoices):
+        PER_DIEM = "PER_DIEM", "Per Diem"
+        FEE_FOR_SERVICE = "FEE_FOR_SERVICE", "Fee for Service"
+        CAPITATION = "CAPITATION", "Capitation"
+
+    class AccessPoint(models.TextChoices):
+        IP = "IP", "Inpatient"
+        OP = "OP", "Outpatient"
+        BOTH = "BOTH", "Both"
+
+    payment_mechanism = models.CharField(
+        max_length=20,
+        choices=PaymentMechanism.choices,
+        blank=True,
+        help_text="PER_DIEM, FEE_FOR_SERVICE, or CAPITATION — drives billing flow",
+    )
+    access_point = models.CharField(
+        max_length=4,
+        choices=AccessPoint.choices,
+        blank=True,
+        help_text="IP (inpatient), OP (outpatient), or BOTH",
+    )
+    needs_preauth = models.BooleanField(
+        default=False,
+        help_text="True if this intervention requires pre-authorization",
+    )
+    needs_manual_preauth_approval = models.BooleanField(
+        default=False,
+        help_text="True if elective preauth (doctor approval required before visit)",
+    )
+
+    # Preauth type flags (mutually exclusive — normal if all false)
+    is_surgical_preauth = models.BooleanField(default=False)
+    is_renal_preauth = models.BooleanField(default=False)
+    is_oncology_preauth = models.BooleanField(default=False)
+    is_imaging_preauth = models.BooleanField(default=False)
+    is_optical_preauth = models.BooleanField(default=False)
+
+    # Hospital Level Tariffs (per KEPH level)
+    level2_tariff = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    level3_tariff = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    level4_tariff = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    level5_tariff = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    level6_tariff = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -2768,6 +2836,40 @@ class SHAClaimIntervention(models.Model):
 
     def __str__(self):
         return f"{self.claim.claim_number} - {self.intervention_code} ({self.get_status_display()})"
+
+    @property
+    def preauth_type(self) -> str:
+        """Derive the preauth form type from DHA flags."""
+        if self.is_surgical_preauth:
+            return "surgical"
+        if self.is_renal_preauth:
+            return "renal"
+        if self.is_oncology_preauth:
+            return "oncology"
+        if self.is_imaging_preauth:
+            return "imaging"
+        if self.is_optical_preauth:
+            return "optical"
+        return "normal"
+
+    @property
+    def is_per_diem(self) -> bool:
+        return self.payment_mechanism == self.PaymentMechanism.PER_DIEM
+
+    @property
+    def is_elective_preauth(self) -> bool:
+        return self.needs_preauth and self.needs_manual_preauth_approval
+
+    def tariff_for_level(self, keph_level: int):
+        """Return the tariff ceiling for the given KEPH level (2-6)."""
+        mapping = {
+            2: self.level2_tariff,
+            3: self.level3_tariff,
+            4: self.level4_tariff,
+            5: self.level5_tariff,
+            6: self.level6_tariff,
+        }
+        return mapping.get(keph_level, self.tariff_amount)
 
     def retire(self) -> None:
         """Mark intervention as retired."""

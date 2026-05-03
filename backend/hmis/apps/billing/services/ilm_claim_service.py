@@ -657,6 +657,14 @@ class IlmClaimService:
             tariff_amount = payload.get("tariff_amount") or payload.get("overall_tariff")
             benefit_code = intervention_code.rsplit("-", 1)[0] if "-" in intervention_code else ""
 
+            # DHA routing flags (from /api/v1/patients/benefits/interventions)
+            payment_mechanism = (
+                payload.get("paymentMechanism") or payload.get("payment_mechanism") or ""
+            )
+            access_point = payload.get("accessPoint") or payload.get("access_point") or ""
+            needs_preauth = bool(payload.get("needsPreauth", False))
+            needs_manual = bool(payload.get("needsManualPreauthApproval", False))
+
             SHAClaimIntervention.objects.update_or_create(
                 claim=claim,
                 intervention_code=intervention_code,
@@ -667,6 +675,22 @@ class IlmClaimService:
                     "required_document_types": list(document_types),
                     "dha_intervention_id": str(dha_id)[:64],
                     "tariff_amount": tariff_amount,
+                    # Routing flags
+                    "payment_mechanism": str(payment_mechanism)[:20],
+                    "access_point": str(access_point)[:4],
+                    "needs_preauth": needs_preauth,
+                    "needs_manual_preauth_approval": needs_manual,
+                    "is_surgical_preauth": bool(payload.get("isSurgicalPreauth", False)),
+                    "is_renal_preauth": bool(payload.get("isRenalPreauth", False)),
+                    "is_oncology_preauth": bool(payload.get("isOncologyPreauth", False)),
+                    "is_imaging_preauth": bool(payload.get("isImagingPreauth", False)),
+                    "is_optical_preauth": bool(payload.get("isOpticalPreauth", False)),
+                    # Level tariffs
+                    "level2_tariff": payload.get("level2Tariff"),
+                    "level3_tariff": payload.get("level3Tariff"),
+                    "level4_tariff": payload.get("level4Tariff"),
+                    "level5_tariff": payload.get("level5Tariff"),
+                    "level6_tariff": payload.get("level6Tariff"),
                 },
             )
         except Exception:

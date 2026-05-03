@@ -91,7 +91,8 @@ class DischargeParams:
     discharge_date: str  # ISO 8601 yyyy-mm-dd
     discharge_reason: str  # RECOVERED | DECEASED | TRANSFERRED | DAMA | ...
     invoice_number: str
-    otp: str
+    otp: str = ""
+    auth_guid: str = ""  # Biometric auth GUID (alternative to OTP)
 
 
 @dataclass
@@ -296,13 +297,16 @@ class IlmLifecycleService:
         facility: Any = None,
         user: Any = None,
     ) -> IlmLifecycleResult:
-        body = {
+        body: dict[str, str] = {
             "consent_token": params.consent_token,
             "discharge_date": params.discharge_date,
             "discharge_reason": params.discharge_reason,
             "invoice_number": params.invoice_number,
-            "otp": params.otp,
         }
+        if params.auth_guid:
+            body["auth_guid"] = params.auth_guid
+        else:
+            body["otp"] = params.otp
         response = self.client.post(
             DISCHARGE_PATH,
             json_body=body,

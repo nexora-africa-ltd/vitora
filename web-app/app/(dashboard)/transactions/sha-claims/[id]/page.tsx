@@ -34,6 +34,7 @@ import { ClaimStatusBadge } from '@/components/billing/sha/ClaimComponents';
 import { ConsentPanel } from '@/components/billing/sha/ConsentPanel';
 import { PreauthPanel } from '@/components/billing/sha/PreauthPanel';
 import { ClaimILMPanel } from '@/components/billing/sha/ClaimILMPanel';
+import { DischargePanel } from '@/components/billing/sha/DischargePanel';
 import { ClaimFlowBadge } from '@/components/billing/sha/ClaimFlowBadge';
 import { InterventionsList } from '@/components/billing/sha/InterventionsList';
 import { TimeBarBadge } from '@/components/billing/sha/TimeBarBadge';
@@ -111,6 +112,7 @@ export default function ClaimDetailPage() {
   const submitMutation = useSubmitClaim();
   const resubmitMutation = useResubmitClaim();
   const [consentTokenId, setConsentTokenId] = useState<number | undefined>();
+  const [consentTokenStr, setConsentTokenStr] = useState('');
   const flowInfo = useClaimFlow(claim);
 
   const handleSubmit = async () => {
@@ -476,13 +478,18 @@ export default function ClaimDetailPage() {
           <ConsentPanel
             shaMemberId={claim.sha_member}
             flow={flowInfo.flow}
-            onConsentObtained={(id) => setConsentTokenId(id)}
+            onConsentObtained={(id, token) => {
+              setConsentTokenId(id);
+              setConsentTokenStr(token);
+            }}
           />
           {flowInfo.requiresPreauth && (
             <PreauthPanel
               claimId={claim.id}
               consentTokenId={consentTokenId}
               diagnosisCodes={claim.primary_diagnosis_code ? [claim.primary_diagnosis_code] : []}
+              isElective={flowInfo.isElectivePreauth}
+              shaMemberId={typeof claim.sha_member === 'number' ? claim.sha_member : undefined}
               onPreauthComplete={() => refetch()}
             />
           )}
@@ -516,6 +523,7 @@ export default function ClaimDetailPage() {
         <InterventionsList
           claimId={claim.id}
           interventions={claim.claim_interventions}
+          facilityLevel={claim.facility_level ? parseInt(claim.facility_level.replace('L', ''), 10) : undefined}
           onChange={() => refetch()}
         />
       )}
@@ -527,6 +535,16 @@ export default function ClaimDetailPage() {
             ?.filter((i) => i.status === 'active')
             .map((i) => i.intervention_code) ?? []
         }
+        onChange={() => refetch()}
+      />
+
+      {/* Inpatient Discharge Panel (per-diem & FFS inpatient) */}
+      <DischargePanel
+        claimId={claim.id}
+        flow={flowInfo}
+        consentToken={consentTokenStr}
+        patientExternalId={claim.dha_external_id ?? ''}
+        invoiceNumber={claim.invoice_number ?? ''}
         onChange={() => refetch()}
       />
 
