@@ -533,6 +533,7 @@ export interface ConsentToken {
 export interface SendOTPRequest {
   sha_member_id: number;
   intervention_codes?: string[];
+  beneficiary_contact_id?: string;
 }
 
 export interface SendOTPResponse {

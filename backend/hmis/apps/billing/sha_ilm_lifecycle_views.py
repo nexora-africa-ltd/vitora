@@ -307,6 +307,7 @@ class IlmOtpWhitelistCallbackView(APIView):
             result = IlmLifecycleService().list_otp_whitelist_status(
                 beneficiary_cr_id=str(beneficiary_cr_id),
                 facility_fr_code=str(request.query_params.get("facility_fr_code") or ""),
+                facility_id_type=str(request.query_params.get("facility_id_type") or "fr-code"),
                 guid=str(request.query_params.get("guid") or ""),
                 facility=_facility(request),
                 user=request.user,

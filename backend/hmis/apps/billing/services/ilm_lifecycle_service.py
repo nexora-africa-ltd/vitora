@@ -413,13 +413,15 @@ class IlmLifecycleService:
         *,
         beneficiary_cr_id: str,
         facility_fr_code: str = "",
+        facility_id_type: str = "fr-code",
         guid: str = "",
         facility: Any = None,
         user: Any = None,
     ) -> IlmLifecycleResult:
         params: dict[str, Any] = {"beneficiary_cr_id": beneficiary_cr_id}
         if facility_fr_code:
-            params["facility_fr_code"] = facility_fr_code
+            params["facility_id"] = facility_fr_code
+            params["facility_id_type"] = facility_id_type
         if guid:
             params["guid"] = guid
         response = self.client.get(

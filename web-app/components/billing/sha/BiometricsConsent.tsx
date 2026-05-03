@@ -2,7 +2,7 @@
  * DHA HIE Biometrics Consent Component
  *
  * Implements the biometric fingerprint authorization flow:
- * 1. Detect Hardware Server (GET https://localhost:18065/status)
+ * 1. Detect Hardware Server (GET http://localhost:18065/status)
  * 2. POST /api/sha/consent/authorize/ → get auth_guid + iframe_url
  * 3. Render iframe for fingerprint capture
  * 4. Poll authorization status until AUTHORIZED or timeout
@@ -45,7 +45,7 @@ interface BiometricsConsentProps {
 
 type BiometricStep = 'detecting' | 'ready' | 'authorizing' | 'polling' | 'authorized' | 'failed';
 
-const HARDWARE_SERVER_URL = 'https://localhost:18065/status';
+const HARDWARE_SERVER_URL = 'http://localhost:18065/status';
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 120000; // 2 minutes
 

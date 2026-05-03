@@ -44,6 +44,8 @@ interface OtpWhitelistRequestSheetProps {
   facilityFrCode: string;
   /** Beneficiary name (for display) */
   beneficiaryName?: string;
+  /** Patient date of birth (ISO string) — used to auto-select CHILD_BELOW_7_YEARS */
+  patientDateOfBirth?: string;
 }
 
 /**
@@ -83,6 +85,7 @@ export function OtpWhitelistRequestSheet({
   shaNumber,
   facilityFrCode,
   beneficiaryName,
+  patientDateOfBirth,
 }: OtpWhitelistRequestSheetProps) {
   const [reasonType, setReasonType] = useState('BIOMETRIC_FAILURE');
   const [reason, setReason] = useState('');
@@ -97,6 +100,22 @@ export function OtpWhitelistRequestSheet({
   // Editable fields pre-populated from props
   const [crId, setCrId] = useState('');
   const [frCode, setFrCode] = useState('');
+
+  // Auto-select CHILD_BELOW_7_YEARS when patient is under 7
+  useEffect(() => {
+    if (open && patientDateOfBirth) {
+      const dob = new Date(patientDateOfBirth);
+      const now = new Date();
+      const age = now.getFullYear() - dob.getFullYear() -
+        (now < new Date(now.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+      if (age < 7) {
+        setReasonType('CHILD_BELOW_7_YEARS');
+        if (!reason) {
+          setReason('Patient is below 7 years of age — undeveloped fingerprints.');
+        }
+      }
+    }
+  }, [open, patientDateOfBirth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync from props when sheet opens
   useEffect(() => {

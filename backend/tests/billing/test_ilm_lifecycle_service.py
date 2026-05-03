@@ -150,7 +150,8 @@ class TestOtpWhitelist:
         )
         params = client.get.call_args.kwargs["params"]
         assert params["beneficiary_cr_id"] == "CR-1"
-        assert params["facility_fr_code"] == "FR-1"
+        assert params["facility_id"] == "FR-1"
+        assert params["facility_id_type"] == "fr-code"
 
 
 @pytest.mark.django_db

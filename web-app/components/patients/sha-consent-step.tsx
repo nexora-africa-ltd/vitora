@@ -67,6 +67,8 @@ interface SHAConsentStepProps {
   onComplete?: (result: { consented: boolean; consentId?: number }) => void;
   /** Whether to auto-check on mount */
   autoCheck?: boolean;
+  /** Patient date of birth (ISO string) — used for minor detection in OTP/whitelist flows */
+  patientDateOfBirth?: string;
   /** Custom className */
   className?: string;
 }
@@ -171,6 +173,7 @@ export function SHAConsentStep({
   encounterId,
   onComplete,
   autoCheck = true,
+  patientDateOfBirth,
   className,
 }: SHAConsentStepProps) {
   const [step, setStep] = useState<StepState>('checking');
@@ -378,6 +381,7 @@ export function SHAConsentStep({
       {
         sha_member_id: memberId,
         ...(selectedIntervention ? { intervention_codes: [selectedIntervention.code] } : {}),
+        ...(selectedContactId ? { beneficiary_contact_id: selectedContactId } : {}),
       },
       {
         onSuccess: (response) => {
@@ -664,6 +668,7 @@ export function SHAConsentStep({
               beneficiaryCrId={shaMember.sha_member_number}
               onSelect={setSelectedContactId}
               selectedContactId={selectedContactId}
+              patientDateOfBirth={patientDateOfBirth}
             />
           )}
 
@@ -791,6 +796,7 @@ export function SHAConsentStep({
             shaNumber={shaMember?.sha_member_number || shaMember?.sha_number || ''}
             facilityFrCode={facilityDetail?.sha_facility_code || ''}
             beneficiaryName={eligibilityInfo?.verifiedName}
+            patientDateOfBirth={patientDateOfBirth}
           />
         </div>
       )}
@@ -830,6 +836,7 @@ export function SHAConsentStep({
               beneficiaryCrId={shaMember.sha_member_number}
               onSelect={setSelectedContactId}
               selectedContactId={selectedContactId}
+              patientDateOfBirth={patientDateOfBirth}
             />
           )}
 
@@ -875,6 +882,7 @@ export function SHAConsentStep({
             shaNumber={shaMember?.sha_member_number || shaMember?.sha_number || ''}
             facilityFrCode={facilityDetail?.sha_facility_code || ''}
             beneficiaryName={eligibilityInfo?.verifiedName}
+            patientDateOfBirth={patientDateOfBirth}
           />
         </div>
       )}
