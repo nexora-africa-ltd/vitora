@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Building2,
   User,
@@ -14,6 +14,8 @@ import {
   RefreshCw,
   ExternalLink,
   Info,
+  XCircle,
+  Loader2,
 } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { Button } from '@/components/ui/button';
@@ -25,7 +27,21 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { FacilityValidation, PractitionerValidation } from '@/components/billing/sha';
 import { useToast } from '@/lib/hooks/use-toast';
+import { apiClient } from '@/lib/api/client';
 import type { FacilityInfo, PractitionerInfo } from '@/lib/types/sha';
+
+interface SHAHealthStatus {
+  configured: boolean;
+  auth_mode: string;
+  token_valid: boolean;
+  token_error: string | null;
+  services: {
+    client_registry: boolean;
+    terminology: boolean;
+    claims_submission: boolean;
+  };
+  timestamp: string;
+}
 
 export function SHASettingsTab() {
   const { toast } = useToast();
@@ -33,6 +49,27 @@ export function SHASettingsTab() {
   const [practitionerLicense, setPractitionerLicense] = useState('');
   const [validatedFacility, setValidatedFacility] = useState<FacilityInfo | null>(null);
   const [validatedPractitioner, setValidatedPractitioner] = useState<PractitionerInfo | null>(null);
+  const [healthStatus, setHealthStatus] = useState<SHAHealthStatus | null>(null);
+  const [healthLoading, setHealthLoading] = useState(true);
+  const [healthError, setHealthError] = useState<string | null>(null);
+
+  const fetchHealth = useCallback(async () => {
+    setHealthLoading(true);
+    setHealthError(null);
+    try {
+      const response = await apiClient.get('/api/sha/health/');
+      setHealthStatus(response.data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to check DHA connectivity';
+      setHealthError(message);
+    } finally {
+      setHealthLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHealth();
+  }, [fetchHealth]);
 
   const handleFacilityValidated = (info: FacilityInfo) => {
     setValidatedFacility(info);
@@ -50,60 +87,120 @@ export function SHASettingsTab() {
     });
   };
 
+  const getStatusIcon = (ok: boolean | undefined) => {
+    if (ok === undefined) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
+    return ok
+      ? <CheckCircle2 className="h-5 w-5 text-green-600" />
+      : <XCircle className="h-5 w-5 text-destructive" />;
+  };
+
+  const getStatusText = (ok: boolean | undefined, activeLabel = 'Connected', inactiveLabel = 'Disconnected') => {
+    if (ok === undefined) return 'Checking...';
+    return ok ? activeLabel : inactiveLabel;
+  };
+
   return (
     <div className="space-y-6">
       {/* SHA Integration Status */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <SHALogo size="md" />
-            <CardTitle>SHA Integration Status</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <SHALogo size="md" />
+              <CardTitle>SHA Integration Status</CardTitle>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={fetchHealth}
+              disabled={healthLoading}
+              title="Refresh status"
+            >
+              <RefreshCw className={`h-4 w-4 ${healthLoading ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
           <CardDescription>
-            Current status of Social Health Authority integration
+            Live status of Social Health Authority integration ({healthStatus?.auth_mode || '...'} mode)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {healthError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Health Check Failed</AlertTitle>
+              <AlertDescription>{healthError}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid gap-4 md:grid-cols-3">
             <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                {healthLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : getStatusIcon(healthStatus?.token_valid)}
               </div>
               <div>
                 <p className="text-sm font-medium">API Connection</p>
-                <p className="text-xs text-muted-foreground">Connected</p>
+                <p className="text-xs text-muted-foreground">
+                  {healthLoading ? 'Checking...' : getStatusText(healthStatus?.token_valid)}
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                {healthLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : getStatusIcon(healthStatus?.services.client_registry)}
               </div>
               <div>
                 <p className="text-sm font-medium">Client Registry</p>
-                <p className="text-xs text-muted-foreground">Active</p>
+                <p className="text-xs text-muted-foreground">
+                  {healthLoading ? 'Checking...' : getStatusText(healthStatus?.services.client_registry, 'Active', 'Not configured')}
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                {healthLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : getStatusIcon(healthStatus?.services.claims_submission)}
               </div>
               <div>
                 <p className="text-sm font-medium">Claims Submission</p>
-                <p className="text-xs text-muted-foreground">Enabled</p>
+                <p className="text-xs text-muted-foreground">
+                  {healthLoading ? 'Checking...' : getStatusText(healthStatus?.services.claims_submission, 'Enabled', 'Unavailable')}
+                </p>
               </div>
             </div>
           </div>
 
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertTitle>SHA Integration Active</AlertTitle>
-            <AlertDescription>
-              Your facility is connected to SHA systems. You can verify patient eligibility,
-              submit claims, and use standardized terminologies (ICD-11, LOINC).
-            </AlertDescription>
-          </Alert>
+          {healthStatus?.token_error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Authentication Error</AlertTitle>
+              <AlertDescription className="font-mono text-xs">
+                {healthStatus.token_error}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {healthStatus && !healthStatus.token_error && healthStatus.configured && healthStatus.token_valid && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>SHA Integration Active</AlertTitle>
+              <AlertDescription>
+                Your facility is connected to SHA systems. You can verify patient eligibility,
+                submit claims, and use standardized terminologies (ICD-11, LOINC).
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {healthStatus && !healthStatus.configured && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Not Configured</AlertTitle>
+              <AlertDescription>
+                DHA HIE credentials are not configured. Contact your system administrator to set up
+                SHA_CLIENT_ID, SHA_CLIENT_SECRET, and SHA_AUTH_BASE_URL.
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 

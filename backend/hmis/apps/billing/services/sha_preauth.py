@@ -254,7 +254,7 @@ class SHAPreauthService:
             try:
                 token = self.auth_service.get_token()
                 headers = {
-                    "Authorization": f"Bearer {token.token}",
+                    "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                 }
@@ -268,7 +268,7 @@ class SHAPreauthService:
                 )
 
                 if response.status_code == 401 and attempt < retries - 1:
-                    self.auth_service.refresh_token()
+                    self.auth_service.get_token(force_refresh=True)
                     continue
 
                 if response.status_code >= 500 and attempt < retries - 1:

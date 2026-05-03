@@ -21,7 +21,7 @@ class SHAToken:
 
     token: str
     obtained_at: datetime
-    expires_in_seconds: int = 18  # Default 1 hour
+    expires_in_seconds: int = 3600  # Default 1 hour
 
     @property
     def expires_at(self) -> datetime:
@@ -252,7 +252,7 @@ class SHAAuthService:
                 },
                 timeout=self.timeout,
             )
-            return self._extract_token_from_response(response, default_expiry=19)
+            return self._extract_token_from_response(response, default_expiry=1800)
         except requests.Timeout:
             raise SHAAuthError("Authentication request timed out", status_code=0)
         except requests.RequestException as exc:
