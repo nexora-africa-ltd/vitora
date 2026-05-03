@@ -11,10 +11,11 @@
  *   - skip consent for ECCIF (emergency, possibly unidentified patient)
  */
 import { useMemo } from 'react';
-import type { Claim, ClaimFlow } from '@/lib/types/sha';
+import type { Claim, ClaimFlow, PaymentMechanism } from '@/lib/types/sha';
 
 export type AddLineEndpoint = 'add_intervention' | 'add_virtual_claim_line';
 export type InterventionCatalog = 'SHIF' | 'PHC' | 'ECCIF_BUNDLE';
+export type PreauthType = 'normal' | 'surgical' | 'renal' | 'oncology' | 'imaging' | 'optical';
 
 export interface ClaimFlowInfo {
   /** Routed flow. Falls back to 'shif' when the backend hasn't classified yet. */
@@ -37,9 +38,28 @@ export interface ClaimFlowInfo {
   badgeLabel: string;
   /** Long human-readable explanation suitable for tooltips/help text. */
   description: string;
+
+  // --- Per-intervention routing (Phase 1 HIE gap closure) ---
+  /** Payment mechanism of primary active intervention (null if no interventions yet). */
+  paymentMechanism: PaymentMechanism | null;
+  /** True if primary intervention uses PER_DIEM billing (auto-generates line items). */
+  isPerDiem: boolean;
+  /** True if primary intervention uses FEE_FOR_SERVICE (manual billing lines). */
+  isFFS: boolean;
+  /** True if primary intervention is elective preauth (doctor approval required). */
+  isElectivePreauth: boolean;
+  /** Derived preauth form type from intervention flags. */
+  preauthType: PreauthType;
+  /** True if any active intervention has needs_preauth from DHA flags. */
+  interventionRequiresPreauth: boolean;
 }
 
-const FLOW_RULES: Record<ClaimFlow, Omit<ClaimFlowInfo, 'flow' | 'isFlowResolved'>> = {
+type BaseFlowRules = Omit<
+  ClaimFlowInfo,
+  'flow' | 'isFlowResolved' | 'paymentMechanism' | 'isPerDiem' | 'isFFS' | 'isElectivePreauth' | 'preauthType' | 'interventionRequiresPreauth'
+>;
+
+const FLOW_RULES: Record<ClaimFlow, BaseFlowRules> = {
   shif: {
     requiresConsent: true,
     requiresPreauth: true,
@@ -76,6 +96,24 @@ const FLOW_RULES: Record<ClaimFlow, Omit<ClaimFlowInfo, 'flow' | 'isFlowResolved
 };
 
 /**
+ * Derive the preauth type from an intervention's flags.
+ */
+function derivePreauthType(intervention: {
+  is_surgical_preauth?: boolean;
+  is_renal_preauth?: boolean;
+  is_oncology_preauth?: boolean;
+  is_imaging_preauth?: boolean;
+  is_optical_preauth?: boolean;
+}): PreauthType {
+  if (intervention.is_surgical_preauth) return 'surgical';
+  if (intervention.is_renal_preauth) return 'renal';
+  if (intervention.is_oncology_preauth) return 'oncology';
+  if (intervention.is_imaging_preauth) return 'imaging';
+  if (intervention.is_optical_preauth) return 'optical';
+  return 'normal';
+}
+
+/**
  * Parse the claim's `claim_flow` field, defaulting to 'shif' when missing
  * (the safest default — full consent + preauth UX).
  */
@@ -90,10 +128,39 @@ export function resolveClaimFlow(
 }
 
 export function useClaimFlow(
-  claim: Pick<Claim, 'claim_flow'> | null | undefined,
+  claim: Pick<Claim, 'claim_flow' | 'claim_interventions'> | null | undefined,
 ): ClaimFlowInfo {
   return useMemo(() => {
     const { flow, isFlowResolved } = resolveClaimFlow(claim);
-    return { flow, isFlowResolved, ...FLOW_RULES[flow] };
-  }, [claim?.claim_flow]);
+    const rules = FLOW_RULES[flow];
+
+    // Derive per-intervention routing from the primary active intervention
+    const activeInterventions = claim?.claim_interventions?.filter(
+      (i) => i.status === 'active'
+    ) ?? [];
+    const primary = activeInterventions[0];
+
+    const paymentMechanism = (primary?.payment_mechanism as PaymentMechanism) || null;
+    const isPerDiem = paymentMechanism === 'PER_DIEM';
+    const isFFS = paymentMechanism === 'FEE_FOR_SERVICE';
+    const isElectivePreauth = !!(primary?.needs_preauth && primary?.needs_manual_preauth_approval);
+    const preauthType: PreauthType = primary ? derivePreauthType(primary) : 'normal';
+    const interventionRequiresPreauth = activeInterventions.some((i) => i.needs_preauth);
+
+    return {
+      flow,
+      isFlowResolved,
+      ...rules,
+      // Override requiresPreauth based on actual intervention flags when available
+      requiresPreauth: activeInterventions.length > 0
+        ? interventionRequiresPreauth
+        : rules.requiresPreauth,
+      paymentMechanism,
+      isPerDiem,
+      isFFS,
+      isElectivePreauth,
+      preauthType,
+      interventionRequiresPreauth,
+    };
+  }, [claim?.claim_flow, claim?.claim_interventions]);
 }

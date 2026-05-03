@@ -391,6 +391,9 @@ export interface ICD11Code {
   is_active: boolean;
 }
 
+export type PaymentMechanism = 'PER_DIEM' | 'FEE_FOR_SERVICE' | 'CAPITATION';
+export type InterventionAccessPoint = 'IP' | 'OP' | 'BOTH';
+
 export interface SHAIntervention {
   id: number;
   code: string;
@@ -402,6 +405,22 @@ export interface SHAIntervention {
   facility_level: number;
   requires_preauthorization: boolean;
   is_active: boolean;
+  // DHA routing flags (from GET /api/v1/patients/benefits/interventions)
+  payment_mechanism?: PaymentMechanism;
+  access_point?: InterventionAccessPoint;
+  needs_preauth?: boolean;
+  needs_manual_preauth_approval?: boolean;
+  is_surgical_preauth?: boolean;
+  is_renal_preauth?: boolean;
+  is_oncology_preauth?: boolean;
+  is_imaging_preauth?: boolean;
+  is_optical_preauth?: boolean;
+  // Hospital Level Tariffs (per KEPH level)
+  level2_tariff?: number | string | null;
+  level3_tariff?: number | string | null;
+  level4_tariff?: number | string | null;
+  level5_tariff?: number | string | null;
+  level6_tariff?: number | string | null;
 }
 
 export interface ICHICode {
@@ -754,6 +773,25 @@ export interface Claim {
     required_document_types: string[];
     dha_intervention_id?: string;
     tariff_amount?: string | null;
+    // DHA routing flags
+    payment_mechanism?: PaymentMechanism;
+    access_point?: InterventionAccessPoint;
+    needs_preauth?: boolean;
+    needs_manual_preauth_approval?: boolean;
+    is_surgical_preauth?: boolean;
+    is_renal_preauth?: boolean;
+    is_oncology_preauth?: boolean;
+    is_imaging_preauth?: boolean;
+    is_optical_preauth?: boolean;
+    level2_tariff?: string | null;
+    level3_tariff?: string | null;
+    level4_tariff?: string | null;
+    level5_tariff?: string | null;
+    level6_tariff?: string | null;
+    // Computed properties
+    preauth_type?: string;
+    is_per_diem?: boolean;
+    is_elective_preauth?: boolean;
     created_at?: string;
     updated_at?: string;
   }>;

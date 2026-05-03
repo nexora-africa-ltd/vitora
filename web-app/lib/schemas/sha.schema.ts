@@ -348,6 +348,22 @@ export const SHAInterventionSchema = z.object({
   facility_level: z.number(),
   requires_preauthorization: z.boolean(),
   is_active: z.boolean(),
+  // DHA routing flags
+  payment_mechanism: z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional(),
+  access_point: z.enum(['IP', 'OP', 'BOTH']).optional(),
+  needs_preauth: z.boolean().optional(),
+  needs_manual_preauth_approval: z.boolean().optional(),
+  is_surgical_preauth: z.boolean().optional(),
+  is_renal_preauth: z.boolean().optional(),
+  is_oncology_preauth: z.boolean().optional(),
+  is_imaging_preauth: z.boolean().optional(),
+  is_optical_preauth: z.boolean().optional(),
+  // Hospital Level Tariffs
+  level2_tariff: z.union([z.number(), z.string(), z.null()]).optional(),
+  level3_tariff: z.union([z.number(), z.string(), z.null()]).optional(),
+  level4_tariff: z.union([z.number(), z.string(), z.null()]).optional(),
+  level5_tariff: z.union([z.number(), z.string(), z.null()]).optional(),
+  level6_tariff: z.union([z.number(), z.string(), z.null()]).optional(),
 });
 
 export type SHAInterventionSchemaType = z.infer<typeof SHAInterventionSchema>;
@@ -547,6 +563,25 @@ export const ClaimSchema = z.object({
     required_document_types: z.array(z.string()),
     dha_intervention_id: z.string().optional().default(''),
     tariff_amount: z.string().nullable().optional(),
+    // DHA routing flags
+    payment_mechanism: z.enum(['PER_DIEM', 'FEE_FOR_SERVICE', 'CAPITATION']).optional(),
+    access_point: z.enum(['IP', 'OP', 'BOTH']).optional(),
+    needs_preauth: z.boolean().optional(),
+    needs_manual_preauth_approval: z.boolean().optional(),
+    is_surgical_preauth: z.boolean().optional(),
+    is_renal_preauth: z.boolean().optional(),
+    is_oncology_preauth: z.boolean().optional(),
+    is_imaging_preauth: z.boolean().optional(),
+    is_optical_preauth: z.boolean().optional(),
+    level2_tariff: z.string().nullable().optional(),
+    level3_tariff: z.string().nullable().optional(),
+    level4_tariff: z.string().nullable().optional(),
+    level5_tariff: z.string().nullable().optional(),
+    level6_tariff: z.string().nullable().optional(),
+    // Computed properties
+    preauth_type: z.string().optional(),
+    is_per_diem: z.boolean().optional(),
+    is_elective_preauth: z.boolean().optional(),
     created_at: z.string(),
     updated_at: z.string(),
   })).optional().default([]),

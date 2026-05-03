@@ -3,6 +3,7 @@
 > **Source**: [DHA Health Information Exchange Documentation](https://hie-docs.dha.go.ke/docs/scenarios/overview)
 > **Scraped**: 2026-05-01 20:37 UTC
 > **Purpose**: Offline reference for Vitora HMIS SHA integration development
+> **COMPLIANT** ✔
 
 ---
 

@@ -395,6 +395,10 @@ class SHAClaimSerializer(serializers.ModelSerializer):
 class SHAClaimInterventionSerializer(serializers.ModelSerializer):
     """Serializer for claim interventions tracked from DHA HIE."""
 
+    preauth_type = serializers.CharField(read_only=True)
+    is_per_diem = serializers.BooleanField(read_only=True)
+    is_elective_preauth = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = SHAClaimIntervention
         fields = [
@@ -406,6 +410,25 @@ class SHAClaimInterventionSerializer(serializers.ModelSerializer):
             "required_document_types",
             "dha_intervention_id",
             "tariff_amount",
+            # DHA routing flags
+            "payment_mechanism",
+            "access_point",
+            "needs_preauth",
+            "needs_manual_preauth_approval",
+            "is_surgical_preauth",
+            "is_renal_preauth",
+            "is_oncology_preauth",
+            "is_imaging_preauth",
+            "is_optical_preauth",
+            "level2_tariff",
+            "level3_tariff",
+            "level4_tariff",
+            "level5_tariff",
+            "level6_tariff",
+            # Computed properties
+            "preauth_type",
+            "is_per_diem",
+            "is_elective_preauth",
             "created_at",
             "updated_at",
         ]

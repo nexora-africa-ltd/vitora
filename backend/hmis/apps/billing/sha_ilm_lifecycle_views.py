@@ -185,19 +185,29 @@ class IlmDischargeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        required = ("consent_token", "discharge_date", "discharge_reason", "invoice_number", "otp")
+        # consent_token, discharge_date, discharge_reason, invoice_number always required.
+        # Either otp OR auth_guid must be provided (biometric alternative to OTP).
+        required = ("consent_token", "discharge_date", "discharge_reason", "invoice_number")
         for key in required:
             if not request.data.get(key):
                 return Response(
                     {"error": f"{key} is required."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+        otp = str(request.data.get("otp", ""))
+        auth_guid = str(request.data.get("auth_guid", ""))
+        if not otp and not auth_guid:
+            return Response(
+                {"error": "Either otp or auth_guid is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         params = DischargeParams(
             consent_token=str(request.data["consent_token"]),
             discharge_date=str(request.data["discharge_date"]),
             discharge_reason=str(request.data["discharge_reason"]),
             invoice_number=str(request.data["invoice_number"]),
-            otp=str(request.data["otp"]),
+            otp=otp,
+            auth_guid=auth_guid,
         )
         try:
             result = IlmLifecycleService().discharge_inpatient(

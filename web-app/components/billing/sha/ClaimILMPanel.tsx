@@ -91,6 +91,28 @@ export function ClaimILMPanel({ claimId, flow, existingInterventions = [], onCha
         {flow && (
           <p className="text-xs text-muted-foreground">{flow.description}</p>
         )}
+        {flow?.isPerDiem && (
+          <Alert>
+            <AlertTitle>Per Diem Billing</AlertTitle>
+            <AlertDescription>
+              This intervention uses per-day tariff billing. Line items are automatically
+              computed from accrued admission days at discharge. Manual line items are not
+              required. Use &ldquo;Transfer Ward&rdquo; on the Interventions panel to switch
+              between wards (e.g., General Ward → ICU).
+            </AlertDescription>
+          </Alert>
+        )}
+        {flow?.isPerDiem && (
+          <Alert>
+            <AlertTitle>Per Diem Billing</AlertTitle>
+            <AlertDescription>
+              This intervention uses per-day tariff billing. Line items are automatically
+              computed from accrued admission days at discharge. Manual line items are not
+              required. Use &ldquo;Transfer Ward&rdquo; on the Interventions panel to switch
+              between wards (e.g., General Ward → ICU).
+            </AlertDescription>
+          </Alert>
+        )}
         {error && (
           <Alert variant="destructive">
             <AlertTitle>ILM call failed</AlertTitle>
@@ -288,17 +310,23 @@ export function ClaimILMPanel({ claimId, flow, existingInterventions = [], onCha
                 onChange={(e) => setInvoiceNumber(e.target.value)}
               />
             </div>
-            <Button
-              disabled={busy !== null || !invoiceNumber}
-              onClick={() =>
-                run('submit', () =>
-                  shaApi.ilmSubmit(claimId, { invoice_number: invoiceNumber }),
-                )
-              }
-            >
-              {busy === 'submit' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-              Submit
-            </Button>
+            {flow?.supportsInpatientDischarge ? (
+              <p className="text-xs text-muted-foreground max-w-xs">
+                Inpatient claims are submitted via the Discharge panel below.
+              </p>
+            ) : (
+              <Button
+                disabled={busy !== null || !invoiceNumber}
+                onClick={() =>
+                  run('submit', () =>
+                    shaApi.ilmSubmit(claimId, { invoice_number: invoiceNumber }),
+                  )
+                }
+              >
+                {busy === 'submit' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                Submit
+              </Button>
+            )}
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">

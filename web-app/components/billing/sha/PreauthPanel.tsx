@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { shaApi } from '@/lib/api/sha';
 import { useSubmitPreauth, usePreauthStatus } from '@/lib/hooks/use-sha';
 import type { PreauthDecision } from '@/lib/types/sha';
 import { format, parseISO } from 'date-fns';
@@ -42,6 +43,10 @@ interface PreauthPanelProps {
   preauthId?: number;
   /** Primary diagnosis code from encounter */
   diagnosisCodes?: string[];
+  /** Whether this is an elective preauth (requires patient OTP authorize) */
+  isElective?: boolean;
+  /** SHA member ID (needed for biometric authorize in elective flow) */
+  shaMemberId?: number;
   /** Callback on successful preauth */
   onPreauthComplete?: (preauthId: number, decision: PreauthDecision) => void;
   /** Custom class name */
@@ -94,6 +99,8 @@ export function PreauthPanel({
   consentTokenId,
   preauthId: initialPreauthId,
   diagnosisCodes = [],
+  isElective = false,
+  shaMemberId,
   onPreauthComplete,
   className,
 }: PreauthPanelProps) {
@@ -103,6 +110,11 @@ export function PreauthPanel({
   const [scheduledDate, setScheduledDate] = useState('');
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Elective preauth authorization state
+  const [electiveAuthGuid, setElectiveAuthGuid] = useState('');
+  const [electiveAuthorized, setElectiveAuthorized] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
 
   const submitPreauth = useSubmitPreauth();
   const { data: preauthStatus } = usePreauthStatus(preauthId);
@@ -121,6 +133,10 @@ export function PreauthPanel({
     }
     if (!procedureCode.trim()) {
       setError('Procedure code is required.');
+      return;
+    }
+    if (isElective && !electiveAuthorized) {
+      setError('Elective pre-authorizations require patient authorization (OTP or biometric) before submission.');
       return;
     }
 
@@ -280,9 +296,92 @@ export function PreauthPanel({
           <p className="text-sm text-destructive">{error}</p>
         )}
 
+        {/* Elective preauth: require patient authorize step first */}
+        {isElective && !electiveAuthorized && (
+          <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10 p-3 space-y-2">
+            <p className="text-sm text-amber-800 dark:text-amber-400 flex items-center gap-1">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              Elective pre-authorizations require patient authorization before submission.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <Label htmlFor="elective-auth-guid" className="text-xs">Auth GUID (from biometric consent)</Label>
+                <Input
+                  id="elective-auth-guid"
+                  value={electiveAuthGuid}
+                  onChange={(e) => setElectiveAuthGuid(e.target.value)}
+                  placeholder="Paste auth_guid or initiate biometric"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="flex gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={authBusy || !electiveAuthGuid}
+                  onClick={async () => {
+                    setAuthBusy(true);
+                    setError(null);
+                    try {
+                      const result = await shaApi.getBiometricAuthStatus(electiveAuthGuid);
+                      if (result.status === 'AUTHORIZED') {
+                        setElectiveAuthorized(true);
+                      } else {
+                        setError(`Authorization status: ${result.status}. Patient must complete biometric.`);
+                      }
+                    } catch (e: any) {
+                      setError(e?.message ?? 'Failed to verify authorization');
+                    } finally {
+                      setAuthBusy(false);
+                    }
+                  }}
+                >
+                  {authBusy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                  Verify
+                </Button>
+                {shaMemberId && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={authBusy}
+                    onClick={async () => {
+                      setAuthBusy(true);
+                      setError(null);
+                      try {
+                        const result = await shaApi.authorizeBiometric({
+                          sha_member_id: shaMemberId,
+                          workstation_id: 'web-app',
+                          agent_national_id: '',
+                        });
+                        setElectiveAuthGuid(result.auth_guid);
+                      } catch (e: any) {
+                        setError(e?.message ?? 'Failed to initiate biometric');
+                      } finally {
+                        setAuthBusy(false);
+                      }
+                    }}
+                  >
+                    {authBusy && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                    Initiate Biometric
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isElective && electiveAuthorized && (
+          <div className="rounded-md bg-green-50 dark:bg-green-900/10 p-2">
+            <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Patient authorized for elective pre-authorization.
+            </p>
+          </div>
+        )}
+
         <Button
           onClick={handleSubmit}
-          disabled={submitPreauth.isPending || !consentTokenId}
+          disabled={submitPreauth.isPending || !consentTokenId || (isElective && !electiveAuthorized)}
           size="sm"
         >
           {submitPreauth.isPending ? (
