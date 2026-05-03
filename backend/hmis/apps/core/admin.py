@@ -809,6 +809,10 @@ class FacilityInline(admin.TabularInline):
     readonly_fields = ["mfl_code", "name"]
     show_change_link = True
 
+    def has_add_permission(self, request, obj=None):
+        """Prevent adding facilities inline — required fields (county, sub_county, ownership) are not shown."""
+        return False
+
 
 class OrgStaffInline(admin.TabularInline):
     """Read-only inline showing staff assigned to this organization."""
@@ -858,7 +862,7 @@ class OrganizationAdmin(admin.ModelAdmin):
     search_fields = ["name", "slug", "contact_email"]
     prepopulated_fields = {"slug": ("name",)}
     ordering = ["name"]
-    readonly_fields = ["created_at", "updated_at"]
+    readonly_fields = ["created_at", "updated_at", "tibabot_keys_summary"]
     inlines = [FacilityInline, OrgStaffInline]
 
     fieldsets = (
