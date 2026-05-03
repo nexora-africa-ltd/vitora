@@ -45,21 +45,36 @@ class AIFeatureGatedMixin:
     Additionally sets ``tibabot_user_context`` for the request lifecycle
     so that all ``TibaBotClient`` calls within the view automatically
     include the user-identity JWT in the ``Authorization: Bearer`` header.
+
+    Note: The context is set up in ``initial()`` (after DRF authentication
+    runs) rather than ``dispatch()`` because for cookie-based JWT auth,
+    ``request.user`` is AnonymousUser until ``perform_authentication()``
+    executes inside DRF's dispatch flow.
     """
 
     ai_feature_flag: str | None = None
-
-    def dispatch(self, request, *args, **kwargs):  # type: ignore[override]
-        user = getattr(request, "user", None)
-        if user is not None and getattr(user, "is_authenticated", False):
-            facility = getattr(request, "facility", None)
-            with tibabot_user_context(user, facility):
-                return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]
-        return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]
+    _tibabot_ctx = None
 
     def initial(self, request, *args, **kwargs):  # type: ignore[override]
+        # Run DRF authentication, permissions, throttling first
+        super().initial(request, *args, **kwargs)  # type: ignore[misc]
+
+        # Feature gate checks (after auth so 401 takes precedence over 404)
         if not is_ai_enabled():
             raise NotFound("AI features are not enabled for this facility.")
         if self.ai_feature_flag and not is_feature_enabled(self.ai_feature_flag):
             raise NotFound("This AI feature is not enabled for this facility.")
-        super().initial(request, *args, **kwargs)  # type: ignore[misc]
+
+        # Set up user context for TibaBot client (user is now authenticated)
+        user = getattr(request, "user", None)
+        if user is not None and getattr(user, "is_authenticated", False):
+            facility = getattr(request, "facility", None)
+            self._tibabot_ctx = tibabot_user_context(user, facility)
+            self._tibabot_ctx.__enter__()
+
+    def finalize_response(self, request, response, *args, **kwargs):  # type: ignore[override]
+        # Tear down the user context after the response is built
+        if self._tibabot_ctx is not None:
+            self._tibabot_ctx.__exit__(None, None, None)
+            self._tibabot_ctx = None
+        return super().finalize_response(request, response, *args, **kwargs)  # type: ignore[misc]
