@@ -65,18 +65,34 @@ def _resolve_facility_api_key(user: AbstractBaseUser) -> str | None:
     try:
         profile = getattr(user, "staff_profile", None)
         if profile is None:
+            logger.info("TibaBot key resolve: user %s has no staff_profile", user)
             return None
         facility = getattr(profile, "primary_facility", None)
         if facility is None:
+            logger.info("TibaBot key resolve: user %s has no primary_facility", user)
             return None
         fk = getattr(facility, "tibabot_key", None)
         if fk is None:
+            logger.info(
+                "TibaBot key resolve: facility %s (pk=%s) has no tibabot_key record",
+                facility.name,
+                facility.pk,
+            )
             return None
-        if fk.is_active and fk.api_key:
-            return fk.api_key
+        if not fk.is_active:
+            logger.info("TibaBot key resolve: facility %s key is inactive", facility.name)
+            return None
+        if not fk.api_key:
+            logger.info("TibaBot key resolve: facility %s key is empty", facility.name)
+            return None
+        logger.info(
+            "TibaBot key resolve: using per-facility key for %s (hash=%s)",
+            facility.name,
+            fk.key_hash,
+        )
+        return fk.api_key
     except Exception:
-        # DB not migrated yet, relation missing, etc. — fall back silently.
-        logger.debug("Could not resolve per-facility TibaBot key", exc_info=True)
+        logger.warning("Could not resolve per-facility TibaBot key", exc_info=True)
     return None
 
 
