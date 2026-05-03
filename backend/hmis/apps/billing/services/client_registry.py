@@ -387,11 +387,10 @@ class ClientRegistryService:
 
             logger.debug(f"CR fetch response status: {response.status_code}")
 
-            # Token may be expired. Clear cache and retry once with a fresh token
-            # before surfacing 401 to the caller (mirrors sha_eligibility behaviour).
+            # Token may be expired. Force refresh and retry once
+            # before surfacing 401 to the caller.
             if response.status_code == 401:
                 logger.info("CR fetch got 401; refreshing token and retrying once")
-                self.auth_service.clear_token_cache()
                 headers = self.auth_service.get_auth_headers(force_refresh=True)
                 response = requests.get(
                     f"{self.api_base_url}{self.fetch_endpoint}",

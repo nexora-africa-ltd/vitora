@@ -72,6 +72,7 @@ from hmis.apps.billing.sha_views import (
     PreauthStatusView,
     PreauthSubmitView,
     SHAClaimViewSet,
+    SHAHealthCheckView,
     SHAMemberViewSet,
     SHARemittanceViewSet,
     SHATariffViewSet,
@@ -135,6 +136,7 @@ urlpatterns = [
     path("webhook/", SHAWebhookView.as_view(), name="sha-webhook"),
     path("callback/", SHAWebhookView.as_view(), name="sha-callback"),  # Alias for webhook
     path("validate/", SHAValidateView.as_view(), name="sha-validate"),
+    path("health/", SHAHealthCheckView.as_view(), name="sha-health-check"),
     # ----- DHA HIE Middleware (ILM) — Phase 2 pre-visit registries -----
     path(
         "ilm/registries/facility-search/",

@@ -2784,6 +2784,88 @@ class SHAValidateView(APIView):
 
 
 # ---------------------------------------------------------------------------
+# DHA HIE Health Check (Internal)
+# ---------------------------------------------------------------------------
+
+
+class SHAHealthCheckView(APIView):
+    """
+    Health check endpoint for DHA HIE authentication and connectivity.
+
+    Returns the status of each DHA integration subsystem:
+    - configured: whether required credentials are set
+    - token_valid: whether a token can be obtained
+    - auth_mode: current authentication mode (legacy/ilm)
+
+    GET /api/sha/health/
+    """
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="SHAHealthCheckResponse",
+                fields={
+                    "configured": serializers.BooleanField(),
+                    "auth_mode": serializers.CharField(),
+                    "token_valid": serializers.BooleanField(),
+                    "token_error": serializers.CharField(allow_null=True),
+                    "services": serializers.DictField(),
+                    "timestamp": serializers.CharField(),
+                },
+            )
+        },
+        description="Check DHA HIE authentication and connectivity status.",
+    )
+    def get(self, request):
+        """Check DHA HIE authentication health."""
+        from hmis.apps.billing.services.client_registry import ClientRegistryService
+        from hmis.apps.billing.services.sha_auth import SHAAuthError, SHAAuthService
+        from hmis.apps.billing.services.terminology import TerminologyService
+
+        auth_service = SHAAuthService()
+        configured = auth_service.is_configured()
+        auth_mode = auth_service.auth_mode
+        token_valid = False
+        token_error = None
+
+        if configured:
+            try:
+                auth_service.get_token(force_refresh=True)
+                token_valid = True
+            except SHAAuthError as exc:
+                token_error = str(exc)
+            except Exception as exc:
+                token_error = f"Unexpected error: {type(exc).__name__}"
+
+        # Check subsystem configuration
+        services = {}
+        try:
+            cr_service = ClientRegistryService()
+            services["client_registry"] = cr_service.is_configured()
+        except Exception:
+            services["client_registry"] = False
+
+        try:
+            term_service = TerminologyService()
+            services["terminology"] = term_service.is_configured()
+        except Exception:
+            services["terminology"] = False
+
+        services["claims_submission"] = configured and token_valid
+
+        return Response(
+            {
+                "configured": configured,
+                "auth_mode": auth_mode,
+                "token_valid": token_valid,
+                "token_error": token_error,
+                "services": services,
+                "timestamp": timezone.now().isoformat(),
+            }
+        )
+
+
+# ---------------------------------------------------------------------------
 # DHA HIE Consent & Preauth Views (User Journey Compliance)
 # ---------------------------------------------------------------------------
 

@@ -329,8 +329,8 @@ class SHAEligibilityService:
 
                 # Handle auth errors
                 if response.status_code == 401:
-                    # Token might be expired, clear cache and retry
-                    self.auth_service.clear_token_cache()
+                    # Token might be expired, force refresh and retry
+                    self.auth_service.get_token(force_refresh=True)
                     if attempt < self.max_retries - 1:
                         continue
                     raise SHAAuthError("Authentication failed", status_code=401)
