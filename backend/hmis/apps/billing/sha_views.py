@@ -2973,9 +2973,11 @@ class ConsentSendOTPView(APIView):
             )
 
         # Use the ILM lifecycle service to send OTP via /api/v1/claims/otp
+        beneficiary_contact_id = serializer.validated_data.get("beneficiary_contact_id") or ""
         params = VisitOtpParams(
             intervention_codes=intervention_codes,
             patient_id=patient_cr_id,
+            beneficiary_contact_id=beneficiary_contact_id,
         )
 
         try:

@@ -33,6 +33,8 @@ interface ContactPickerProps {
   onSelect: (contactId: string) => void;
   /** Currently selected contact ID */
   selectedContactId?: string;
+  /** Patient date of birth (ISO string) — used to show minor hint */
+  patientDateOfBirth?: string;
   /** Custom className */
   className?: string;
 }
@@ -45,11 +47,22 @@ export function ContactPicker({
   beneficiaryCrId,
   onSelect,
   selectedContactId,
+  patientDateOfBirth,
   className,
 }: ContactPickerProps) {
   const [contacts, setContacts] = useState<BeneficiaryContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Determine if patient is a minor (under 18)
+  const isMinor = (() => {
+    if (!patientDateOfBirth) return false;
+    const dob = new Date(patientDateOfBirth);
+    const now = new Date();
+    const age = now.getFullYear() - dob.getFullYear() -
+      (now < new Date(now.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+    return age < 18;
+  })();
 
   useEffect(() => {
     if (!beneficiaryCrId) {
@@ -125,6 +138,11 @@ export function ContactPicker({
   return (
     <div className={cn('space-y-2', className)}>
       <Label className="text-xs font-medium">Select OTP recipient</Label>
+      {isMinor && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          Patient is a minor — select the parent/guardian contact for consent.
+        </p>
+      )}
       <RadioGroup
         value={selectedContactId}
         onValueChange={onSelect}

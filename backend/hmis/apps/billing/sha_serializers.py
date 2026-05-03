@@ -591,6 +591,12 @@ class SendOTPSerializer(serializers.Serializer):
         required=False,
         help_text="SHA intervention codes for this visit (e.g. ['SHA-06-001'])",
     )
+    beneficiary_contact_id = serializers.CharField(
+        max_length=100,
+        required=False,
+        default="",
+        help_text="Optional contact ID from GET /api/sha/consent/contacts/ to target a specific phone number for OTP delivery",
+    )
 
 
 class ValidateOTPSerializer(serializers.Serializer):
