@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +32,7 @@ export function CommentInput({
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -142,6 +144,16 @@ export function CommentInput({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Calculate dropdown position relative to viewport (for portal rendering)
+  useEffect(() => {
+    if (mentionQuery !== null && textareaRef.current) {
+      const rect = textareaRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.top, left: rect.left });
+    } else {
+      setDropdownPos(null);
+    }
+  }, [mentionQuery]);
+
   return (
     <div className="relative">
       <div className="flex gap-2 items-end">
@@ -166,28 +178,31 @@ export function CommentInput({
         </Button>
       </div>
 
-      {/* @mention autocomplete dropdown */}
-      {mentionQuery !== null && suggestions.length > 0 && (
-        <div
-          ref={dropdownRef}
-          className="absolute bottom-full left-0 mb-1 w-64 max-h-48 overflow-y-auto bg-popover border border-border rounded-md shadow-md z-50"
-        >
-          {suggestions.map((user, index) => (
-            <button
-              key={user.id}
-              onClick={() => insertMention(user)}
-              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent transition-colors ${
-                index === mentionIndex ? 'bg-accent' : ''
-              }`}
-            >
-              <span className="font-medium">@{user.username}</span>
-              <span className="text-muted-foreground text-xs truncate">
-                {user.full_name}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* @mention autocomplete dropdown (portaled to avoid overflow clipping in dialogs) */}
+      {mentionQuery !== null && suggestions.length > 0 && dropdownPos &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{ top: dropdownPos.top, left: dropdownPos.left }}
+            className="fixed w-64 max-h-48 overflow-y-auto bg-popover border border-border rounded-md shadow-md z-[100] -translate-y-full"
+          >
+            {suggestions.map((user, index) => (
+              <button
+                key={user.id}
+                onClick={() => insertMention(user)}
+                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent transition-colors ${
+                  index === mentionIndex ? 'bg-accent' : ''
+                }`}
+              >
+                <span className="font-medium">@{user.username}</span>
+                <span className="text-muted-foreground text-xs truncate">
+                  {user.full_name}
+                </span>
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
