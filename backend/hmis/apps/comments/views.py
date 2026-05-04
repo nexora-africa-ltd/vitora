@@ -238,7 +238,7 @@ class ClinicalCommentViewSet(viewsets.ModelViewSet):
             )
 
         # Return updated reactions summary
-        reactions = (
+        reactions_qs = (
             CommentReaction.objects.filter(comment=comment)
             .values("emoji")
             .annotate(count=Count("id"))
@@ -249,11 +249,21 @@ class ClinicalCommentViewSet(viewsets.ModelViewSet):
                 "emoji", flat=True
             )
         )
+        reactions_result = []
+        for r in reactions_qs:
+            user_ids = list(
+                CommentReaction.objects.filter(comment=comment, emoji=r["emoji"]).values_list(
+                    "user_id", flat=True
+                )
+            )
+            reactions_result.append(
+                {"emoji": r["emoji"], "count": r["count"], "user_ids": user_ids}
+            )
 
         return Response(
             {
                 "comment_id": comment.pk,
-                "reactions": [{"emoji": r["emoji"], "count": r["count"]} for r in reactions],
+                "reactions": reactions_result,
                 "user_reactions": user_reactions,
             }
         )

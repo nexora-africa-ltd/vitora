@@ -27,7 +27,6 @@ import {
   Coffee,
   Settings,
   Trash2,
-  MessageCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -58,12 +57,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -1249,6 +1242,10 @@ export default function WeeklyRosterPage() {
                                 isToday ? 'bg-primary/5' : ''
                               } ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50`}
                               onClick={() => handleCellClick(staff.id, date)}
+                              onContextMenu={hasSavedShift ? (e) => {
+                                e.preventDefault();
+                                setCommentShift(savedShift);
+                              } : undefined}
                             >
                               <div className="relative inline-block">
                                 {cell.type && shiftInfo ? (
@@ -1294,25 +1291,6 @@ export default function WeeklyRosterPage() {
                               </div>
                             </td>
                           );
-
-                          // Wrap saved shifts with ContextMenu for right-click / long-press comments
-                          if (hasSavedShift) {
-                            return (
-                              <ContextMenu key={date}>
-                                <ContextMenuTrigger asChild>
-                                  {cellContent}
-                                </ContextMenuTrigger>
-                                <ContextMenuContent>
-                                  <ContextMenuItem
-                                    onClick={() => setCommentShift(savedShift)}
-                                  >
-                                    <MessageCircle className="h-4 w-4 mr-2" />
-                                    Shift Notes
-                                  </ContextMenuItem>
-                                </ContextMenuContent>
-                              </ContextMenu>
-                            );
-                          }
 
                           return cellContent;
                         })}
