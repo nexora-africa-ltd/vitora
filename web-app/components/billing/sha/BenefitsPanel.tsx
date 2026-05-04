@@ -1,15 +1,19 @@
 /**
  * SHA Benefits & Interventions Panel
  *
- * Displays a patient's SHA benefit packages and covered interventions
- * fetched from the DHA ILM API. Shows structured data in collapsible
- * sections instead of raw JSON.
+ * Architecture (per DHA docs - Benefits & Intervention Codes):
+ *   Level 1: Benefit Package (SHA-XX) — 14 broad categories
+ *   Level 2: Intervention (SHA-XX-YYY) — specific billable services
+ *
+ * Flow:
+ *   1. Fetch benefit packages via ilmBenefits (is_unique_benefit=true)
+ *   2. On expand, fetch interventions via ilmBenefitInterventions(sub_benefit_code=SHA-XX)
  *
  * Used on: Patient detail page (below EligibilityBanner), Lookup page
  */
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -20,7 +24,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -46,79 +50,92 @@ interface BenefitsPanelProps {
   compact?: boolean;
 }
 
-interface BenefitItem {
-  benefitCode?: string;
-  benefitName?: string;
-  benefit_code?: string;
-  benefit_name?: string;
+/** Benefit package from is_unique_benefit=true response */
+interface BenefitPackageItem {
+  parentBenefit?: string;
+  parentBenefitCode?: string;
+  code?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+/** Sub-benefit from sub-benefits endpoint */
+interface SubBenefitItem {
+  code?: string;
+  name?: string;
+  parentBenefit?: string;
+  parentBenefitCode?: string;
+  accessPoint?: string;
+  active?: boolean;
   status?: string;
   [key: string]: unknown;
 }
 
-interface SubBenefitItem {
-  subBenefitCode?: string;
-  subBenefitName?: string;
-  sub_benefit_code?: string;
-  sub_benefit_name?: string;
-  [key: string]: unknown;
-}
-
+/** Intervention from benefit-interventions endpoint */
 interface InterventionItem {
-  interventionCode?: string;
-  interventionName?: string;
-  intervention_code?: string;
-  intervention_name?: string;
-  packageName?: string;
-  package_name?: string;
+  code?: string;
+  name?: string;
+  benefitCode?: string;
+  benefitName?: string;
+  parentBenefitCode?: string;
+  parentBenefitName?: string;
   paymentMechanism?: string;
-  payment_mechanism?: string;
-  price?: number;
+  overallTariff?: number;
+  accessPoint?: string;
+  needsPreauth?: boolean;
+  active?: boolean;
   [key: string]: unknown;
 }
 
 // ============================================================================
-// Helper: Extract items from DHA response (can be nested in different ways)
+// Helpers
 // ============================================================================
 
+/**
+ * Extract array items from DHA/ILM response payloads.
+ * Handles: direct array, { results: [...] }, { data: [...] },
+ * and the double-nested { results: [{ results: [...] }] } from is_unique_benefit.
+ */
 function extractItems<T>(data: unknown): T[] {
   if (!data) return [];
   if (Array.isArray(data)) return data as T[];
   if (typeof data === 'object' && data !== null) {
     const obj = data as Record<string, unknown>;
-    // DHA responses sometimes wrap in { data: [...] } or { results: [...] }
     if (Array.isArray(obj.data)) return obj.data as T[];
-    if (Array.isArray(obj.results)) return obj.results as T[];
+    if (Array.isArray(obj.results)) {
+      const results = obj.results as unknown[];
+      // Handle double-nested: { results: [{ results: [...] }] }
+      if (
+        results.length === 1 &&
+        typeof results[0] === 'object' &&
+        results[0] !== null &&
+        Array.isArray((results[0] as Record<string, unknown>).results)
+      ) {
+        return (results[0] as Record<string, unknown>).results as T[];
+      }
+      return results as T[];
+    }
     if (Array.isArray(obj.benefits)) return obj.benefits as T[];
-    if (Array.isArray(obj.subBenefits)) return obj.subBenefits as T[];
     if (Array.isArray(obj.interventions)) return obj.interventions as T[];
-    // If it's a single object, wrap in array
     if (Object.keys(obj).length > 0 && !obj.error) return [obj as T];
   }
   return [];
 }
 
-function getBenefitCode(item: BenefitItem): string {
-  return item.benefitCode || item.benefit_code || 'Unknown';
+function getField(item: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const val = item[key];
+    if (typeof val === 'string' && val.trim()) return val.trim();
+  }
+  return '';
 }
 
-function getBenefitName(item: BenefitItem): string {
-  return item.benefitName || item.benefit_name || getBenefitCode(item);
+function getBenefitCode(item: BenefitPackageItem): string {
+  return getField(item, 'parentBenefitCode', 'parent_benefit_code', 'code');
 }
 
-function getSubBenefitCode(item: SubBenefitItem): string {
-  return item.subBenefitCode || item.sub_benefit_code || 'Unknown';
-}
-
-function getSubBenefitName(item: SubBenefitItem): string {
-  return item.subBenefitName || item.sub_benefit_name || getSubBenefitCode(item);
-}
-
-function getInterventionCode(item: InterventionItem): string {
-  return item.interventionCode || item.intervention_code || '';
-}
-
-function getInterventionName(item: InterventionItem): string {
-  return item.interventionName || item.intervention_name || getInterventionCode(item) || 'Unknown Intervention';
+function getBenefitName(item: BenefitPackageItem): string {
+  return getField(item, 'parentBenefit', 'parent_benefit', 'name') || getBenefitCode(item) || 'Unknown Benefit';
 }
 
 // ============================================================================
@@ -144,15 +161,16 @@ export function BenefitsPanel({
     queryFn: () =>
       shaApi.ilmBenefits({
         patient_id: crNumber,
+        is_unique_benefit: true,
         patient_pk: patientPk,
         sha_member_id: shaMemberId,
       }),
     enabled: !!crNumber,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
 
-  const benefits = extractItems<BenefitItem>(benefitsResponse?.data);
+  const benefits = extractItems<BenefitPackageItem>(benefitsResponse?.data);
 
   if (isLoading) {
     return <BenefitsSkeleton compact={compact} className={className} />;
@@ -170,7 +188,7 @@ export function BenefitsPanel({
   }
 
   if (benefits.length === 0) {
-    return null; // Don't show empty panel
+    return null;
   }
 
   const content = (
@@ -221,7 +239,7 @@ export function BenefitsPanel({
 }
 
 // ============================================================================
-// Benefit Accordion (expandable to show interventions)
+// Benefit Accordion — expands to fetch sub-benefits, each with interventions
 // ============================================================================
 
 function BenefitAccordion({
@@ -230,16 +248,35 @@ function BenefitAccordion({
   patientPk,
   shaMemberId,
 }: {
-  benefit: BenefitItem;
+  benefit: BenefitPackageItem;
   crNumber: string;
   patientPk?: number;
   shaMemberId?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
-
   const code = getBenefitCode(benefit);
   const name = getBenefitName(benefit);
-  const status = benefit.status;
+
+  // Fetch sub-benefits filtered by this parent benefit code
+  const {
+    data: subBenefitsResponse,
+    isLoading,
+  } = useQuery({
+    queryKey: ['sha-sub-benefits', crNumber, code, patientPk],
+    queryFn: () =>
+      shaApi.ilmSubBenefits({
+        patient_id: crNumber,
+        parent_benefit_code: code,
+        patient_pk: patientPk,
+        sha_member_id: shaMemberId,
+      }),
+    enabled: expanded && !!crNumber && !!code,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const subBenefits = expanded
+    ? extractItems<SubBenefitItem>(subBenefitsResponse?.data)
+    : [];
 
   return (
     <div className="rounded-md border bg-muted/20">
@@ -255,33 +292,40 @@ function BenefitAccordion({
         )}
         <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
         <span className="text-sm font-medium truncate flex-1">{name}</span>
-        {code && code !== name && (
+        {code && (
           <Badge variant="outline" size="sm" className="font-mono shrink-0">
             {code}
-          </Badge>
-        )}
-        {status && (
-          <Badge
-            variant={status === 'ACTIVE' ? 'default' : 'secondary'}
-            size="sm"
-            className={cn(
-              'shrink-0',
-              status === 'ACTIVE' && 'bg-green-600 hover:bg-green-700'
-            )}
-          >
-            {status}
           </Badge>
         )}
       </button>
 
       {expanded && (
         <div className="px-3 pb-2 pt-1 border-t border-border/50">
-          <InterventionsList
-            crNumber={crNumber}
-            benefitCode={code}
-            patientPk={patientPk}
-            shaMemberId={shaMemberId}
-          />
+          {isLoading ? (
+            <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading sub-benefits...
+            </div>
+          ) : subBenefits.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-1">
+              No sub-benefits available for this package.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              <p className="text-[10px] text-muted-foreground mb-1">
+                {subBenefits.length} sub-benefit{subBenefits.length !== 1 ? 's' : ''}
+              </p>
+              {subBenefits.map((sub, idx) => (
+                <SubBenefitAccordion
+                  key={sub.code || idx}
+                  subBenefit={sub}
+                  crNumber={crNumber}
+                  patientPk={patientPk}
+                  shaMemberId={shaMemberId}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -289,75 +333,10 @@ function BenefitAccordion({
 }
 
 // ============================================================================
-// Interventions List (fetched on expand)
+// Sub-Benefit Accordion — expands to fetch interventions
 // ============================================================================
 
-function InterventionsList({
-  crNumber,
-  benefitCode,
-  patientPk,
-  shaMemberId,
-}: {
-  crNumber: string;
-  benefitCode: string;
-  patientPk?: number;
-  shaMemberId?: number;
-}) {
-  // First fetch sub-benefits for this benefit code
-  const {
-    data: subBenefitsResponse,
-    isLoading: subBenefitsLoading,
-  } = useQuery({
-    queryKey: ['sha-sub-benefits', crNumber, benefitCode, patientPk],
-    queryFn: () =>
-      shaApi.ilmSubBenefits({
-        patient_id: crNumber,
-        patient_pk: patientPk,
-        sha_member_id: shaMemberId,
-      }),
-    enabled: !!crNumber,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const subBenefits = extractItems<SubBenefitItem>(subBenefitsResponse?.data);
-
-  if (subBenefitsLoading) {
-    return (
-      <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-        <Loader2 className="h-3 w-3 animate-spin" />
-        Loading interventions...
-      </div>
-    );
-  }
-
-  if (subBenefits.length === 0) {
-    return (
-      <p className="text-xs text-muted-foreground py-1">
-        No sub-benefits found for this package.
-      </p>
-    );
-  }
-
-  return (
-    <div className="space-y-1.5">
-      {subBenefits.map((sub, idx) => (
-        <SubBenefitSection
-          key={getSubBenefitCode(sub) || idx}
-          subBenefit={sub}
-          crNumber={crNumber}
-          patientPk={patientPk}
-          shaMemberId={shaMemberId}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ============================================================================
-// Sub-benefit Section (expandable to show specific interventions)
-// ============================================================================
-
-function SubBenefitSection({
+function SubBenefitAccordion({
   subBenefit,
   crNumber,
   patientPk,
@@ -369,14 +348,14 @@ function SubBenefitSection({
   shaMemberId?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const code = getSubBenefitCode(subBenefit);
-  const name = getSubBenefitName(subBenefit);
+  const code = getField(subBenefit as Record<string, unknown>, 'code', 'benefit_code', 'benefitCode');
+  const name = getField(subBenefit as Record<string, unknown>, 'name', 'benefit_name', 'benefitName') || code || 'Unknown Sub-Benefit';
 
   const {
     data: interventionsResponse,
     isLoading,
   } = useQuery({
-    queryKey: ['sha-interventions', crNumber, code, patientPk],
+    queryKey: ['sha-benefit-interventions', crNumber, code, patientPk],
     queryFn: () =>
       shaApi.ilmBenefitInterventions({
         patient_id: crNumber,
@@ -388,7 +367,9 @@ function SubBenefitSection({
     staleTime: 5 * 60 * 1000,
   });
 
-  const interventions = expanded ? extractItems<InterventionItem>(interventionsResponse?.data) : [];
+  const interventions = expanded
+    ? extractItems<InterventionItem>(interventionsResponse?.data)
+    : [];
 
   return (
     <div className="rounded border border-border/50 bg-background">
@@ -413,7 +394,7 @@ function SubBenefitSection({
           {isLoading ? (
             <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
-              Loading...
+              Loading interventions...
             </div>
           ) : interventions.length === 0 ? (
             <p className="text-xs text-muted-foreground py-1">
@@ -423,7 +404,7 @@ function SubBenefitSection({
             <div className="space-y-1">
               {interventions.map((intervention, idx) => (
                 <InterventionRow
-                  key={getInterventionCode(intervention) || idx}
+                  key={intervention.code || idx}
                   intervention={intervention}
                 />
               ))}
@@ -436,15 +417,16 @@ function SubBenefitSection({
 }
 
 // ============================================================================
-// Individual Intervention Row
+// Intervention Row
 // ============================================================================
 
 function InterventionRow({ intervention }: { intervention: InterventionItem }) {
-  const code = getInterventionCode(intervention);
-  const name = getInterventionName(intervention);
-  const packageName = intervention.packageName || intervention.package_name;
-  const paymentMech = intervention.paymentMechanism || intervention.payment_mechanism;
-  const price = intervention.price;
+  const item = intervention as Record<string, unknown>;
+  const code = getField(item, 'code', 'intervention_code', 'interventionCode');
+  const name = getField(item, 'name', 'intervention_name', 'interventionName') || code || 'Unknown Intervention';
+  const paymentMech = getField(item, 'paymentMechanism', 'payment_mechanism');
+  const tariff = (item.overallTariff ?? item.overall_tariff) as number | undefined;
+  const needsPreauth = (item.needsPreauth ?? item.needs_preauth) as boolean | undefined;
 
   return (
     <div className="flex items-center gap-2 rounded px-2 py-1 hover:bg-muted/20 text-xs">
@@ -453,19 +435,19 @@ function InterventionRow({ intervention }: { intervention: InterventionItem }) {
       {code && (
         <span className="font-mono text-[10px] text-muted-foreground shrink-0">{code}</span>
       )}
-      {paymentMech && (
-        <Badge variant="outline" size="sm" className="text-[10px] h-4 shrink-0">
-          {paymentMech}
+      {needsPreauth && (
+        <Badge variant="outline" size="sm" className="text-[10px] h-4 shrink-0 border-amber-400 text-amber-600 dark:text-amber-400">
+          Preauth
         </Badge>
       )}
-      {price != null && price > 0 && (
-        <span className="text-[10px] font-medium text-muted-foreground shrink-0">
-          KES {price.toLocaleString()}
-        </span>
+      {paymentMech && (
+        <Badge variant="outline" size="sm" className="text-[10px] h-4 shrink-0">
+          {paymentMech === 'FEE_FOR_SERVICE' ? 'FFS' : paymentMech === 'PER_DIEM' ? 'Per Diem' : paymentMech}
+        </Badge>
       )}
-      {packageName && !name.includes(packageName) && (
-        <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">
-          ({packageName})
+      {tariff != null && tariff > 0 && (
+        <span className="text-[10px] font-medium text-muted-foreground shrink-0">
+          KES {tariff.toLocaleString()}
         </span>
       )}
     </div>

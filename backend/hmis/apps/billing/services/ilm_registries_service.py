@@ -272,12 +272,15 @@ class IlmRegistriesService:
         self,
         *,
         patient_id: str,
+        parent_benefit_code: str | None = None,
         patient: Any = None,
         sha_member: Any = None,
         facility: Any = None,
         user: Any = None,
     ) -> IlmRegistryResult:
-        params = {"patient_id": patient_id}
+        params: dict[str, Any] = {"patient_id": patient_id}
+        if parent_benefit_code:
+            params["parent_benefit_code"] = parent_benefit_code
         response = self.client.get(
             PATIENT_SUB_BENEFITS_PATH, params=params, facility=facility, user=user
         )

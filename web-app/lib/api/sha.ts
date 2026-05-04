@@ -1089,6 +1089,7 @@ async function ilmBenefits(params: {
 
 async function ilmSubBenefits(params: {
   patient_id: string;
+  parent_benefit_code?: string;
   patient_pk?: number;
   sha_member_id?: number;
 }): Promise<IlmRegistryResponse> {
