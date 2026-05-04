@@ -63,7 +63,7 @@ import { PatientPastSurgeriesTab } from '@/components/patients/past-surgeries';
 import { PatientFamilyHistoryTab } from '@/components/patients/family-history';
 import { PatientAlliedHealthTab } from '@/components/patients/allied-health';
 import { PatientAuditTrail } from '@/components/patients/patient-audit-trail';
-import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
+import { EligibilityBanner, DependentsView, BenefitsPanel } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { PendingSyncBadge, isPendingSync } from '@/components/shared/pending-sync-badge';
@@ -233,6 +233,15 @@ export default function PatientDetailPage() {
 
         {/* SHA Eligibility Banner */}
         <EligibilityBanner patientId={patientId} />
+
+        {/* SHA Benefits & Interventions Panel */}
+        {shaMember?.sha_number && (
+          <BenefitsPanel
+            crNumber={shaMember.sha_number}
+            patientPk={patientId}
+            shaMemberId={shaMember.id}
+          />
+        )}
 
         {/* SHA Dependents Section - Only for Principal Members */}
         {isPrincipalMember && shaMember && (

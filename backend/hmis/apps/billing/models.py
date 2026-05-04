@@ -3479,6 +3479,63 @@ class FacilityBillingConfig(models.Model):
     )
 
     # ------------------------------------------------------------------
+    # SHA/DHA ILM API Credentials (per-facility multi-tenant support)
+    # ------------------------------------------------------------------
+
+    class SHAEnvironment(models.TextChoices):
+        SANDBOX = "sandbox", "Sandbox (UAT)"
+        PRODUCTION = "production", "Production"
+
+    sha_consumer_key_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="DHA ILM API consumer key (KMS-encrypted).",
+    )
+    sha_client_id_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="DHA ILM OAuth client ID (KMS-encrypted).",
+    )
+    sha_client_secret_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="DHA ILM OAuth client secret (KMS-encrypted).",
+    )
+    sha_username_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="DHA ILM Basic Auth username (KMS-encrypted).",
+    )
+    sha_password_encrypted = models.TextField(
+        blank=True,
+        default="",
+        help_text="DHA ILM Basic Auth password (KMS-encrypted).",
+    )
+    sha_encrypted_pin = models.TextField(
+        blank=True,
+        default="",
+        help_text="Pre-encrypted DHA PIN (stored as-is, already encrypted by DHA).",
+    )
+    sha_agent_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="DHA agent identifier (e.g., DHABP05113).",
+    )
+    sha_facility_fr_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Facility Registry code for DHA/ILM API calls.",
+    )
+    sha_api_environment = models.CharField(
+        max_length=20,
+        choices=SHAEnvironment.choices,
+        default=SHAEnvironment.SANDBOX,
+        help_text="DHA ILM API environment (sandbox or production).",
+    )
+
+    # ------------------------------------------------------------------
     # Audit
     # ------------------------------------------------------------------
 
@@ -3598,6 +3655,106 @@ class FacilityBillingConfig(models.Model):
             return None
         delta = (self.sha_contract_end - date.today()).days
         return max(delta, 0)
+
+    # ------------------------------------------------------------------
+    # KMS-encrypted SHA/DHA ILM credential properties
+    # ------------------------------------------------------------------
+
+    @property
+    def sha_consumer_key(self) -> str:
+        if not self.sha_consumer_key_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        return get_kms_provider().decrypt_string(self.sha_consumer_key_encrypted)
+
+    @sha_consumer_key.setter
+    def sha_consumer_key(self, value: str) -> None:
+        if not value:
+            self.sha_consumer_key_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.sha_consumer_key_encrypted = get_kms_provider().encrypt_string(value)
+
+    @property
+    def sha_client_id(self) -> str:
+        if not self.sha_client_id_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        return get_kms_provider().decrypt_string(self.sha_client_id_encrypted)
+
+    @sha_client_id.setter
+    def sha_client_id(self, value: str) -> None:
+        if not value:
+            self.sha_client_id_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.sha_client_id_encrypted = get_kms_provider().encrypt_string(value)
+
+    @property
+    def sha_client_secret(self) -> str:
+        if not self.sha_client_secret_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        return get_kms_provider().decrypt_string(self.sha_client_secret_encrypted)
+
+    @sha_client_secret.setter
+    def sha_client_secret(self, value: str) -> None:
+        if not value:
+            self.sha_client_secret_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.sha_client_secret_encrypted = get_kms_provider().encrypt_string(value)
+
+    @property
+    def sha_username(self) -> str:
+        if not self.sha_username_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        return get_kms_provider().decrypt_string(self.sha_username_encrypted)
+
+    @sha_username.setter
+    def sha_username(self, value: str) -> None:
+        if not value:
+            self.sha_username_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.sha_username_encrypted = get_kms_provider().encrypt_string(value)
+
+    @property
+    def sha_password(self) -> str:
+        if not self.sha_password_encrypted:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        return get_kms_provider().decrypt_string(self.sha_password_encrypted)
+
+    @sha_password.setter
+    def sha_password(self, value: str) -> None:
+        if not value:
+            self.sha_password_encrypted = ""
+            return
+        from hmis.apps.core.kms import get_kms_provider
+
+        self.sha_password_encrypted = get_kms_provider().encrypt_string(value)
+
+    @property
+    def has_sha_credentials(self) -> bool:
+        """Return True if the minimum required SHA/DHA ILM credentials are configured."""
+        return bool(
+            self.sha_consumer_key
+            and self.sha_client_id
+            and self.sha_client_secret
+            and self.sha_username
+            and self.sha_password
+        )
 
     def get_service_price(self, service_code: str) -> Decimal | None:
         """Get overridden price for a service, or None to use default."""
