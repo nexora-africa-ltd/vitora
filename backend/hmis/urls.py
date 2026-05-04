@@ -490,6 +490,10 @@ urlpatterns = [
     path("api/procedures/", include("hmis.apps.procedures.urls", namespace="procedures")),
     # Theatre / Operating Room API
     path("api/theatre/", include("hmis.apps.theatre.urls", namespace="theatre")),
+    # Blood Bank API
+    path("api/blood-bank/", include("hmis.apps.blood_bank.urls", namespace="blood_bank")),
+    # Dialysis API
+    path("api/dialysis/", include("hmis.apps.dialysis.urls", namespace="dialysis")),
     # Quality Measures & Reporting API
     path("api/quality/", include("hmis.apps.quality.urls", namespace="quality")),
     # Clinical Decision Support (CDS) API

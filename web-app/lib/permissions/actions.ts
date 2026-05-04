@@ -85,6 +85,19 @@ export const ACTION_PERMISSIONS = {
   'last_office.release_body': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'ADMIN', 'MORTUARY_ATTENDANT'],
   'last_office.void_record': ['DOCTOR', 'CONSULTANT', 'ADMIN'],
 
+  // === Blood Bank Module ===
+  'blood_bank.view_dashboard': ['DOCTOR', 'CONSULTANT', 'LAB_TECH', 'NURSE', 'ADMIN'],
+  'blood_bank.view_donors': ['LAB_TECH', 'NURSE', 'DOCTOR', 'ADMIN'],
+  'blood_bank.view_units': ['LAB_TECH', 'NURSE', 'DOCTOR', 'ADMIN'],
+  'blood_bank.view_requests': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'LAB_TECH', 'ADMIN'],
+  'blood_bank.view_crossmatch': ['LAB_TECH', 'DOCTOR', 'ADMIN'],
+
+  // === Dialysis Module ===
+  'dialysis.view_dashboard': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'dialysis.view_sessions': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'dialysis.view_orders': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'dialysis.view_accesses': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+
   // === Pharmacy Module ===
   'pharmacy.view_dashboard': ['PHARMACIST', 'PHARMACY_TECH', 'ADMIN'],
   'pharmacy.view_prescriptions': ['PHARMACIST', 'PHARMACY_TECH', 'NURSE', 'DOCTOR'],

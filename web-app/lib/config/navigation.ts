@@ -76,6 +76,8 @@ import {
   Monitor,
   UserPlus,
   BotIcon,
+  Droplets,
+  CircleDot,
 } from 'lucide-react';
 
 import {
@@ -275,6 +277,31 @@ const _allNavItems: NavItemType[] = [
     children: [
       { label: 'Records', href: '/last-office', icon: ClipboardList, actionKey: 'last_office.view_records' },
       { label: 'Record Death', href: '/last-office/new', icon: Skull, actionKey: 'last_office.record_death' },
+    ],
+  },
+  {
+    label: 'Blood Bank',
+    icon: Droplets,
+    moduleKey: 'blood_bank',
+    facilityModule: 'blood_bank',
+    children: [
+      { label: 'Dashboard', href: '/blood-bank', icon: LayoutDashboard, actionKey: 'blood_bank.view_dashboard' },
+      { label: 'Donors', href: '/blood-bank/donors', icon: UserPlus, actionKey: 'blood_bank.view_donors' },
+      { label: 'Units', href: '/blood-bank/units', icon: Package, actionKey: 'blood_bank.view_units' },
+      { label: 'Requests', href: '/blood-bank/requests', icon: ClipboardList, actionKey: 'blood_bank.view_requests' },
+      { label: 'Cross-Match', href: '/blood-bank/crossmatch', icon: Target, actionKey: 'blood_bank.view_crossmatch' },
+    ],
+  },
+  {
+    label: 'Dialysis',
+    icon: CircleDot,
+    moduleKey: 'dialysis',
+    facilityModule: 'dialysis',
+    children: [
+      { label: 'Dashboard', href: '/dialysis', icon: LayoutDashboard, actionKey: 'dialysis.view_dashboard' },
+      { label: 'Sessions', href: '/dialysis/sessions', icon: Activity, actionKey: 'dialysis.view_sessions' },
+      { label: 'Orders', href: '/dialysis/orders', icon: ClipboardList, actionKey: 'dialysis.view_orders' },
+      { label: 'Vascular Access', href: '/dialysis/accesses', icon: CircleDot, actionKey: 'dialysis.view_accesses' },
     ],
   },
   {
