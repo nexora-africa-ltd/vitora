@@ -27,6 +27,7 @@ import {
   Coffee,
   Settings,
   Trash2,
+  MessageSquare,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -52,6 +53,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -74,6 +81,7 @@ import {
   SHIFT_PRINT_COLORS,
   type RosterStaffRow,
 } from '@/lib/documents/print-roster';
+import { CommentThread } from '@/components/comments/comment-thread';
 
 // =============================================================================
 // Constants
@@ -158,6 +166,8 @@ export default function WeeklyRosterPage() {
   const [paintType, setPaintType] = useState<ShiftType>('DAY');
   const [departmentFilter, setDepartmentFilter] = useState('');
 
+  // Shift comments dialog
+  const [commentShift, setCommentShift] = useState<ShiftListItem | null>(null);
   // Draft assignments (unsaved changes)
   // Map<CellKey, ShiftType | null>  — null means "remove existing"
   const [draft, setDraft] = useState<Map<CellKey, ShiftType | null>>(new Map());
@@ -1221,7 +1231,7 @@ export default function WeeklyRosterPage() {
                               key={date}
                               className={`px-1 py-1 text-center ${canManageSchedules ? 'cursor-pointer' : ''} transition-colors ${
                                 isToday ? 'bg-primary/5' : ''
-                              } ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50`}
+                              } ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50 group/cell`}
                               onClick={() => handleCellClick(staff.id, date)}
                             >
                               <div className="relative inline-block">
@@ -1240,6 +1250,19 @@ export default function WeeklyRosterPage() {
                                   </div>
                                 ) : (
                                   <div className="h-6 w-full rounded hover:bg-muted/60 transition-colors" />
+                                )}
+                                {/* Comment button on saved (non-draft) shifts */}
+                                {existingShifts.get(cellKey(staff.id, date)) && !cell.isDraft && !cell.isRemoval && (
+                                  <button
+                                    className="absolute -bottom-1 -right-1 hidden group-hover/cell:flex h-3.5 w-3.5 items-center justify-center rounded-full bg-muted border border-border shadow-sm hover:bg-primary/10"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCommentShift(existingShifts.get(cellKey(staff.id, date))!);
+                                    }}
+                                    title="Shift notes"
+                                  >
+                                    <MessageSquare className="h-2 w-2 text-muted-foreground" />
+                                  </button>
                                 )}
                                 {conflict && (
                                   <TooltipProvider delayDuration={200}>
@@ -1305,6 +1328,22 @@ export default function WeeklyRosterPage() {
           </div>
         )}
       </div>
+
+      {/* Shift Comments Dialog */}
+      <Dialog open={!!commentShift} onOpenChange={(open) => { if (!open) setCommentShift(null); }}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              Shift Notes — {commentShift?.staff_resource_name} ({commentShift?.shift_type}, {commentShift?.shift_date})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {commentShift && (
+              <CommentThread entityType="shift" entityId={commentShift.id} />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PullToRefresh>
   );
 }

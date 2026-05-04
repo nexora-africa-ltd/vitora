@@ -34,6 +34,8 @@ function getBaseUrl(entityType: CommentableEntity, entityId: number | string): s
       return `/api/pharmacy/prescriptions/${entityId}/comments/`;
     case 'admission':
       return `/api/admissions/${entityId}/comments/`;
+    case 'shift':
+      return `/api/scheduling/shifts/${entityId}/comments/`;
   }
 }
 

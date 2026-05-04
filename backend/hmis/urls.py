@@ -409,6 +409,24 @@ urlpatterns = [
         ClinicalCommentViewSet.as_view({"post": "react"}),
         name="admission-comments-react",
     ),
+    # Clinical comments nested under shifts (scheduling)
+    path(
+        "api/scheduling/shifts/<int:shift_pk>/comments/",
+        ClinicalCommentViewSet.as_view({"get": "list", "post": "create"}),
+        name="shift-comments-list",
+    ),
+    path(
+        "api/scheduling/shifts/<int:shift_pk>/comments/<int:pk>/",
+        ClinicalCommentViewSet.as_view(
+            {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="shift-comments-detail",
+    ),
+    path(
+        "api/scheduling/shifts/<int:shift_pk>/comments/<int:pk>/react/",
+        ClinicalCommentViewSet.as_view({"post": "react"}),
+        name="shift-comments-react",
+    ),
     # @mention autocomplete (org-scoped)
     path(
         "api/comments/mentions/",

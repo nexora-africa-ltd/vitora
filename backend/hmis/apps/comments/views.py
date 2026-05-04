@@ -36,6 +36,7 @@ COMMENTABLE_MODELS = {
     "order_pk": ("laboratory", "laborder"),
     "prescription_pk": ("pharmacy", "prescription"),
     "admission_pk": ("inpatient", "admission"),
+    "shift_pk": ("scheduling", "shift"),
 }
 
 
@@ -271,8 +272,6 @@ def mention_suggestions(request):
     Limited to 10 results.
     """
     query = request.query_params.get("q", "").strip()
-    if len(query) < 1:
-        return Response([])
 
     # Get the requesting user's organization
     org_id = None
@@ -288,14 +287,17 @@ def mention_suggestions(request):
         # If no org, return empty (shouldn't happen for authenticated staff)
         return Response([])
 
-    # Search by username, first_name, or last_name
-    from django.db.models import Q
+    # Search by username, first_name, or last_name (if query provided)
+    if query:
+        from django.db.models import Q
 
-    qs = qs.filter(
-        Q(username__icontains=query)
-        | Q(first_name__icontains=query)
-        | Q(last_name__icontains=query)
-    )[:10]
+        qs = qs.filter(
+            Q(username__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+        )
+
+    qs = qs.order_by("first_name", "last_name")[:10]
 
     serializer = MentionSuggestionSerializer(qs, many=True)
     return Response(serializer.data)
