@@ -15,6 +15,7 @@ import { MFAGraceBanner } from '@/components/auth/mfa-grace-banner';
 import { OnboardingBanner } from '@/components/auth/onboarding-banner';
 import { OfflineBanner } from '@/components/shared/offline-banner';
 import { GlobalPeekPanel } from '@/components/shared/global-peek-panel';
+import { PushNotificationPrompt } from '@/components/notifications/push-notification-prompt';
 import { cn } from '@/lib/utils/cn';
 import { usePageContextForAI } from '@/lib/hooks/use-page-context-for-ai';
 import { useSwipeSidebar } from '@/lib/hooks/use-swipe-sidebar';
@@ -112,6 +113,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <PermissionDebugPanel />
               {/* Sync current page route into AI chat context */}
               <AIPageContextSync />
+              {/* Push notification prompt (shows once per session) */}
+              <PushNotificationPrompt />
             </div>
           </IdleTimerProvider>
         </AIChatProvider>

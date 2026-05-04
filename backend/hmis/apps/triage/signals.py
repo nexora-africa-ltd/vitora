@@ -159,3 +159,64 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
         },
         facility_id=getattr(encounter, "facility_id", None),
     )
+
+    # Notify clinicians about urgent triage assessments
+    if created:
+        _notify_urgent_triage(instance, encounter)
+
+
+def _notify_urgent_triage(instance, encounter):
+    """Send notification for RED/ORANGE triage category patients."""
+    try:
+        category = getattr(instance, "triage_category", None)
+        if not category or category not in ("RED", "ORANGE"):
+            return
+
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.services.notification_service import notify_users
+
+        User = get_user_model()
+
+        facility_id = getattr(encounter, "facility_id", None)
+        if not facility_id:
+            return
+
+        # Notify doctors and clinical officers in the same facility
+        clinicians = User.objects.filter(
+            staff_profile__facilities__id=facility_id,
+            staff_profile__primary_role__code__in=[
+                "DOCTOR",
+                "CLINICAL_OFFICER",
+                "CLINICAL_SENIOR",
+            ],
+            is_active=True,
+        ).distinct()
+
+        if not clinicians.exists():
+            return
+
+        patient_name = ""
+        if encounter.patient:
+            patient_name = f"{encounter.patient.first_name} {encounter.patient.last_name}"
+
+        priority = "critical" if category == "RED" else "high"
+        title = f"{'EMERGENCY' if category == 'RED' else 'Urgent'}: Triage {category}"
+        message = f"Patient {patient_name} triaged as {category} — requires immediate attention."
+
+        notify_users(
+            users=clinicians,
+            notification_type="triage_urgent",
+            priority=priority,
+            title=title,
+            message=message,
+            related_model="Encounter",
+            related_id=encounter.id,
+            action_url=f"/encounters/{encounter.id}",
+        )
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "Failed to notify urgent triage for assessment %s", instance.id
+        )

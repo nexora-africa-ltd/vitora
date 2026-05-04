@@ -43,6 +43,49 @@ def send_push_on_notification_create(sender, instance, created, **kwargs):
         logger.exception("Failed to send push notification for Notification %s", instance.pk)
 
 
+# ============================================================================
+# WebSocket Broadcast on Notification Create
+# ============================================================================
+
+
+@receiver(post_save, sender="core.Notification")
+def broadcast_notification_via_websocket(sender, instance, created, **kwargs):
+    """Broadcast new notification to user's WebSocket channel for instant delivery."""
+    if not created:
+        return
+
+    try:
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+
+        channel_layer = get_channel_layer()
+        if channel_layer is None:
+            return
+
+        group_name = f"notifications_user_{instance.user_id}"
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                "type": "notification.new",
+                "notification": {
+                    "id": instance.pk,
+                    "notification_type": instance.notification_type,
+                    "priority": instance.priority,
+                    "title": instance.title,
+                    "message": instance.message[:200],
+                    "related_model": instance.related_model or None,
+                    "related_id": instance.related_id,
+                    "action_url": instance.action_url or None,
+                    "is_read": False,
+                    "read_at": None,
+                    "created_at": instance.created_at.isoformat() if instance.created_at else None,
+                },
+            },
+        )
+    except Exception:
+        logger.exception("Failed to broadcast notification %s via WebSocket", instance.pk)
+
+
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
     """Log successful user login."""

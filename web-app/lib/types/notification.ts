@@ -20,9 +20,9 @@ export interface Notification {
   priority: NotificationPriority;
   title: string;
   message: string;
-  related_model?: string;
-  related_id?: number;
-  action_url?: string;
+  related_model?: string | null;
+  related_id?: number | null;
+  action_url?: string | null;
   is_read: boolean;
   read_at: string | null;
   created_at: string;

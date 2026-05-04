@@ -46,6 +46,9 @@ def mark_source_encounter_referred(sender, instance, created, **kwargs):
     )
     encounter.save(update_fields=["disposition", "disposition_notes", "updated_at"])
 
+    # Notify target department staff about incoming referral
+    _notify_referral_created(instance)
+
 
 @receiver(post_save, sender=ClinicalReferral)
 def handle_referral_accepted(sender, instance, created, **kwargs):
@@ -71,6 +74,9 @@ def handle_referral_accepted(sender, instance, created, **kwargs):
     # Skip if already linked to a downstream record
     if instance.linked_object_id:
         return
+
+    # Notify referring clinician that referral was accepted
+    _notify_referral_accepted(instance)
 
     # Route based on referral type
     if instance.is_allied_health:
@@ -365,3 +371,91 @@ def _map_priority(referral_priority):
     """Map referral priority to module-specific priority."""
     # Most modules use the same choices
     return referral_priority
+
+
+# ---------------------------------------------------------------------------
+# Notification helpers
+# ---------------------------------------------------------------------------
+
+
+def _notify_referral_created(instance):
+    """Notify staff in the target department about an incoming referral."""
+    try:
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.services.notification_service import notify_users
+
+        User = get_user_model()
+
+        facility_id = getattr(instance, "facility_id", None)
+        if not facility_id:
+            return
+
+        # Try to find staff in the target department/service
+        target_service = instance.target_service or ""
+        patient = getattr(instance.encounter, "patient", None) if instance.encounter else None
+        patient_name = f"{patient.first_name} {patient.last_name}" if patient else "a patient"
+
+        # Find staff associated with target department
+        target_dept = getattr(instance, "target_department", None)
+        if target_dept:
+            staff = User.objects.filter(
+                staff_profile__facilities__id=facility_id,
+                staff_profile__department=target_dept,
+                is_active=True,
+            ).distinct()
+        else:
+            # Fallback: notify all clinicians in facility
+            staff = User.objects.filter(
+                staff_profile__facilities__id=facility_id,
+                staff_profile__primary_role__code__in=[
+                    "DOCTOR",
+                    "CLINICAL_OFFICER",
+                    "CLINICAL_SENIOR",
+                ],
+                is_active=True,
+            ).distinct()[:10]  # Limit to avoid spam
+
+        if not staff:
+            return
+
+        priority = "high" if instance.priority in ("URGENT", "EMERGENCY") else "normal"
+        notify_users(
+            users=staff,
+            notification_type="referral_received",
+            priority=priority,
+            title=f"Referral Received: {target_service}",
+            message=f"New referral for {patient_name} to {target_service}.",
+            related_model="ClinicalReferral",
+            related_id=instance.id,
+            action_url=f"/referrals/{instance.id}",
+        )
+    except Exception:
+        logger.exception("Failed to notify referral created for %s", instance.id)
+
+
+def _notify_referral_accepted(instance):
+    """Notify referring clinician that their referral was accepted."""
+    try:
+        from hmis.apps.core.services.notification_service import notify_user
+
+        # Notify the referring clinician
+        referred_by = getattr(instance, "referred_by", None)
+        if not referred_by:
+            return
+
+        patient = getattr(instance.encounter, "patient", None) if instance.encounter else None
+        patient_name = f"{patient.first_name} {patient.last_name}" if patient else "a patient"
+
+        notify_user(
+            user=referred_by,
+            notification_type="referral_status_update",
+            priority="normal",
+            title="Referral Accepted",
+            message=f"Your referral for {patient_name} to {instance.target_service} has been accepted.",
+            related_model="ClinicalReferral",
+            related_id=instance.id,
+            action_url=f"/referrals/{instance.id}",
+        )
+    except Exception:
+        logger.exception("Failed to notify referral accepted for %s", instance.id)
