@@ -303,6 +303,7 @@ export function FacilitySettingsTab() {
     },
     onSuccess: (updatedFacility) => {
       queryClient.setQueryData(['facility', updatedFacility.id], updatedFacility);
+      queryClient.invalidateQueries({ queryKey: ['facility-detail', updatedFacility.id] });
       queryClient.invalidateQueries({ queryKey: ['debug-facilities'] });
 
       const nextUserFacility = toUserFacility(updatedFacility);

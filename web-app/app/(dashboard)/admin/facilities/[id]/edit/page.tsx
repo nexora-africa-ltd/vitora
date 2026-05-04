@@ -24,7 +24,9 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
-import { facilitiesApi } from '@/lib/api/facilities';
+import { facilitiesApi, toUserFacility } from '@/lib/api/facilities';
+import { useAuth } from '@/lib/auth/context';
+import { useFacility } from '@/lib/context/facility-context';
 import type { FacilityLevel, FacilityOwnership, FacilityUpdateData } from '@/lib/types/facility';
 
 const LEVELS: { value: FacilityLevel; label: string }[] = [
@@ -64,6 +66,8 @@ export default function EditFacilityPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const facilityId = parseInt(params.id as string);
+  const { updateUserFacility } = useAuth();
+  const { facility: activeFacility, facilityOverride, isUsingFacilityOverride, setFacilityOverride } = useFacility();
 
   const { data: facility, isLoading } = useQuery({
     queryKey: ['facility', facilityId],
@@ -137,9 +141,20 @@ export default function EditFacilityPage() {
 
   const updateFacility = useMutation({
     mutationFn: (data: FacilityUpdateData) => facilitiesApi.update(facilityId, data),
-    onSuccess: () => {
+    onSuccess: (updatedFacility) => {
       queryClient.invalidateQueries({ queryKey: ['facility', facilityId] });
+      queryClient.invalidateQueries({ queryKey: ['facility-detail', facilityId] });
       queryClient.invalidateQueries({ queryKey: ['facilities'] });
+
+      // Propagate module changes to auth/facility context so sidebar updates immediately
+      const nextUserFacility = toUserFacility(updatedFacility);
+      if (activeFacility?.id === facilityId && !isUsingFacilityOverride) {
+        updateUserFacility(nextUserFacility);
+      }
+      if (isUsingFacilityOverride && facilityOverride?.id === facilityId) {
+        setFacilityOverride(nextUserFacility);
+      }
+
       toast({ title: 'Facility updated', description: `${formData.name} has been saved.` });
       router.push(`/admin/facilities/${facilityId}`);
     },

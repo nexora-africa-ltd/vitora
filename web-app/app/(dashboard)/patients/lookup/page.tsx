@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/shared/page-header';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
+import { BenefitsPanel } from '@/components/billing/sha';
 import { usePatients } from '@/lib/hooks/use-patients';
 import { useFetchFromCR } from '@/lib/hooks/use-sha';
 import { shaApi } from '@/lib/api/sha';
@@ -472,6 +473,16 @@ function CRResultCard({
           <p className="text-xs text-muted-foreground">No eligibility data available.</p>
         )}
       </CardContent>
+
+      {/* SHA Benefits & Interventions */}
+      {eligibility?.is_eligible && eligibility?.sha_number && (
+        <CardContent className="py-3 border-t">
+          <BenefitsPanel
+            crNumber={eligibility.sha_number}
+            compact
+          />
+        </CardContent>
+      )}
 
       {/* Dependants */}
       {totalDependants > 0 && (

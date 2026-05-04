@@ -46,6 +46,9 @@ export { PFMSToggle } from './PFMSToggle';
 // Dependents View for Principal Members
 export { DependentsView } from './DependentsView';
 
+// Benefits & Interventions Panel
+export { BenefitsPanel } from './BenefitsPanel';
+
 // Facility & Practitioner Validation
 export {
   FacilityValidation,

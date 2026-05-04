@@ -69,8 +69,14 @@ class SHAAuthService:
     # Class-level token cache for efficiency, keyed by auth configuration.
     _token_cache: dict[str, SHAToken] = {}
 
-    def __init__(self):
-        """Initialize SHAAuthService with settings from Django config."""
+    def __init__(self, facility=None):
+        """Initialize SHAAuthService with settings from Django config.
+
+        Args:
+            facility: Optional Facility instance. If provided and the facility has
+                      SHA credentials configured in its FacilityBillingConfig,
+                      those take priority over global settings.
+        """
         self.base_url = settings.SHA_API_BASE_URL.rstrip("/")
         self.auth_mode = getattr(settings, "SHA_AUTH_MODE", "legacy").strip().lower()
         self.auth_base_url = getattr(settings, "SHA_AUTH_BASE_URL", self.base_url).rstrip("/")
@@ -79,12 +85,42 @@ class SHAAuthService:
             "SHA_AUTH_TOKEN_ENDPOINT",
             "/api/v1/tenants/token" if self.auth_mode == "ilm" else "/v1/hie-auth",
         )
-        self.consumer_key = settings.SHA_CONSUMER_KEY
-        self.client_id = getattr(settings, "SHA_CLIENT_ID", "") or self.consumer_key
-        self.client_secret = getattr(settings, "SHA_CLIENT_SECRET", "")
-        self.username = settings.SHA_USERNAME
-        self.password = settings.SHA_PASSWORD
         self.timeout = getattr(settings, "SHA_API_TIMEOUT", 19)
+
+        # Resolve credentials: facility-specific > global env vars
+        creds = self._resolve_credentials(facility)
+        self.consumer_key = creds["consumer_key"]
+        self.client_id = creds["client_id"]
+        self.client_secret = creds["client_secret"]
+        self.username = creds["username"]
+        self.password = creds["password"]
+
+    @staticmethod
+    def _resolve_credentials(facility) -> dict:
+        """Resolve SHA credentials with facility-specific override > global fallback."""
+        if facility is not None:
+            try:
+                billing_config = facility.billing_config
+                if billing_config.has_sha_credentials:
+                    return {
+                        "consumer_key": billing_config.sha_consumer_key,
+                        "client_id": billing_config.sha_client_id,
+                        "client_secret": billing_config.sha_client_secret,
+                        "username": billing_config.sha_username,
+                        "password": billing_config.sha_password,
+                    }
+            except Exception:
+                pass  # No billing_config or incomplete — fall through to global
+
+        # Global fallback from env vars
+        consumer_key = getattr(settings, "SHA_CONSUMER_KEY", "")
+        return {
+            "consumer_key": consumer_key,
+            "client_id": getattr(settings, "SHA_CLIENT_ID", "") or consumer_key,
+            "client_secret": getattr(settings, "SHA_CLIENT_SECRET", ""),
+            "username": getattr(settings, "SHA_USERNAME", ""),
+            "password": getattr(settings, "SHA_PASSWORD", ""),
+        }
 
     def _cache_key(self) -> str:
         """Build a stable cache key for the active auth mode and credentials."""

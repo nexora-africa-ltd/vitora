@@ -596,6 +596,7 @@ class FacilityBillingConfigSerializer(serializers.ModelSerializer):
     sha_accreditation_days_remaining = serializers.IntegerField(read_only=True)
     sha_contract_days_remaining = serializers.IntegerField(read_only=True)
     has_mpesa_credentials = serializers.BooleanField(read_only=True)
+    has_sha_credentials = serializers.BooleanField(read_only=True)
 
     class Meta:
         from hmis.apps.billing.models import FacilityBillingConfig
@@ -639,11 +640,23 @@ class FacilityBillingConfigSerializer(serializers.ModelSerializer):
             "mpesa_callback_url",
             "mpesa_environment",
             "has_mpesa_credentials",
+            # SHA/DHA ILM (non-secret only — secrets are write-only)
+            "sha_agent_code",
+            "sha_facility_fr_code",
+            "sha_api_environment",
+            "sha_encrypted_pin",
+            "has_sha_credentials",
             # Timestamps
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "has_mpesa_credentials"]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "has_mpesa_credentials",
+            "has_sha_credentials",
+        ]
 
 
 class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
@@ -661,6 +674,22 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
         write_only=True, required=False, allow_blank=True, default=""
     )
     mpesa_passkey = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, default=""
+    )
+    # SHA/DHA ILM write-only secret fields
+    sha_consumer_key = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, default=""
+    )
+    sha_client_id = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, default=""
+    )
+    sha_client_secret = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, default=""
+    )
+    sha_username = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, default=""
+    )
+    sha_password = serializers.CharField(
         write_only=True, required=False, allow_blank=True, default=""
     )
 
@@ -696,37 +725,72 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
             "mpesa_shortcode",
             "mpesa_callback_url",
             "mpesa_environment",
+            # SHA/DHA ILM API credentials (write-only — goes through KMS)
+            "sha_consumer_key",
+            "sha_client_id",
+            "sha_client_secret",
+            "sha_username",
+            "sha_password",
+            "sha_agent_code",
+            "sha_facility_fr_code",
+            "sha_encrypted_pin",
+            "sha_api_environment",
         ]
 
     def create(self, validated_data):
         # Pop secrets and set via KMS property setters
-        secrets = {
+        mpesa_secrets = {
             k: validated_data.pop(k, "")
             for k in ("mpesa_consumer_key", "mpesa_consumer_secret", "mpesa_passkey")
         }
+        sha_secrets = {
+            k: validated_data.pop(k, "")
+            for k in (
+                "sha_consumer_key",
+                "sha_client_id",
+                "sha_client_secret",
+                "sha_username",
+                "sha_password",
+            )
+        }
         instance = super().create(validated_data)
-        for attr, value in secrets.items():
+
+        update_fields = []
+        for attr, value in mpesa_secrets.items():
             if value:
                 setattr(instance, attr, value)
-        if any(secrets.values()):
-            instance.save(
-                update_fields=[
-                    "mpesa_consumer_key_encrypted",
-                    "mpesa_consumer_secret_encrypted",
-                    "mpesa_passkey_encrypted",
-                ]
-            )
+                update_fields.append(f"{attr}_encrypted")
+        for attr, value in sha_secrets.items():
+            if value:
+                setattr(instance, attr, value)
+                update_fields.append(f"{attr}_encrypted")
+        if update_fields:
+            instance.save(update_fields=update_fields)
         return instance
 
     def update(self, instance, validated_data):
         # Pop secrets and set via KMS property setters
-        secrets = {
+        mpesa_secrets = {
             k: validated_data.pop(k, "")
             for k in ("mpesa_consumer_key", "mpesa_consumer_secret", "mpesa_passkey")
         }
+        sha_secrets = {
+            k: validated_data.pop(k, "")
+            for k in (
+                "sha_consumer_key",
+                "sha_client_id",
+                "sha_client_secret",
+                "sha_username",
+                "sha_password",
+            )
+        }
         instance = super().update(instance, validated_data)
         changed = []
-        for attr, value in secrets.items():
+        for attr, value in mpesa_secrets.items():
+            if value:
+                setattr(instance, attr, value)
+                changed.append(f"{attr}_encrypted")
+        for attr, value in sha_secrets.items():
             if value:
                 setattr(instance, attr, value)
                 changed.append(f"{attr}_encrypted")
