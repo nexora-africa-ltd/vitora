@@ -33,8 +33,8 @@ class ClinicalComment(FacilityScopedModel, TimeStampedModel):
         ContentType,
         on_delete=models.CASCADE,
         limit_choices_to={
-            "app_label__in": ["encounters", "laboratory", "pharmacy"],
-            "model__in": ["encounter", "laborder", "prescription"],
+            "app_label__in": ["encounters", "laboratory", "pharmacy", "inpatient"],
+            "model__in": ["encounter", "laborder", "prescription", "admission"],
         },
     )
     object_id = models.PositiveBigIntegerField()
@@ -113,3 +113,42 @@ class ClinicalComment(FacilityScopedModel, TimeStampedModel):
         if self.is_deleted:
             return "[deleted]"
         return self.body
+
+
+class CommentReaction(models.Model):
+    """
+    An emoji reaction on a clinical comment.
+
+    Constraints: One reaction per emoji per user per comment.
+    Common emojis: 👍 ❤️ 😂 😮 😢 🎉 ✅ ❌
+    """
+
+    comment = models.ForeignKey(
+        ClinicalComment,
+        on_delete=models.CASCADE,
+        related_name="reactions",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comment_reactions",
+    )
+    emoji = models.CharField(
+        max_length=8,
+        help_text="Unicode emoji character(s).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["comment", "user", "emoji"],
+                name="unique_reaction_per_user_per_emoji",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["comment"], name="reaction_comment_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.emoji} by {self.user_id} on comment {self.comment_id}"

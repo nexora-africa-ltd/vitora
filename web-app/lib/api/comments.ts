@@ -8,13 +8,17 @@ import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   ClinicalCommentSchema,
+  MentionSuggestionSchema,
   PaginatedCommentsSchema,
+  ReactionToggleResponseSchema,
 } from '@/lib/schemas/comments.schema';
 import type {
   ClinicalComment,
   ClinicalCommentCreate,
   CommentableEntity,
+  MentionSuggestion,
   PaginatedComments,
+  ReactionToggleResponse,
 } from '@/lib/types/comments';
 
 /**
@@ -28,6 +32,8 @@ function getBaseUrl(entityType: CommentableEntity, entityId: number | string): s
       return `/api/lab/orders/${entityId}/comments/`;
     case 'prescription':
       return `/api/pharmacy/prescriptions/${entityId}/comments/`;
+    case 'admission':
+      return `/api/admissions/${entityId}/comments/`;
   }
 }
 
@@ -94,5 +100,35 @@ export const commentsApi = {
   ): Promise<void> => {
     const url = `${getBaseUrl(entityType, entityId)}${commentId}/`;
     await apiClient.delete(url);
+  },
+
+  /**
+   * Toggle a reaction (emoji) on a comment.
+   * If the reaction exists, it is removed; otherwise it is added.
+   */
+  react: async (
+    entityType: CommentableEntity,
+    entityId: number | string,
+    commentId: number,
+    emoji: string
+  ): Promise<ReactionToggleResponse> => {
+    const url = `${getBaseUrl(entityType, entityId)}${commentId}/react/`;
+    const response = await apiClient.post<ReactionToggleResponse>(url, { emoji });
+    return parseResponse(ReactionToggleResponseSchema, response.data, {
+      context: `commentsApi.react(${entityType}, ${entityId}, ${commentId})`,
+    });
+  },
+
+  /**
+   * Search for mentionable users (org-scoped).
+   */
+  mentionSearch: async (query: string): Promise<MentionSuggestion[]> => {
+    const response = await apiClient.get<MentionSuggestion[]>('/api/comments/mentions/', {
+      params: { q: query },
+    });
+    const { z } = await import('zod');
+    return parseResponse(z.array(MentionSuggestionSchema), response.data, {
+      context: `commentsApi.mentionSearch(${query})`,
+    });
   },
 };

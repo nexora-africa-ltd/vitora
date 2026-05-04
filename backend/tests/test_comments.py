@@ -370,3 +370,293 @@ class TestCommentDomainEvents:
         mock_publish.assert_called()
         call_args = mock_publish.call_args_list[0]
         assert call_args[0][0] == "comments.comment.created"
+
+
+class TestCommentReactions:
+    """Tests for emoji reactions on comments."""
+
+    def test_add_reaction(self, authenticated_client, sample_encounter, sample_comment):
+        """Should add a reaction to a comment."""
+        url = f"/api/encounters/{sample_encounter.id}/comments/{sample_comment.id}/react/"
+        response = authenticated_client.post(url, {"emoji": "👍"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["comment_id"] == sample_comment.id
+        assert any(r["emoji"] == "👍" and r["count"] == 1 for r in response.data["reactions"])
+        assert "👍" in response.data["user_reactions"]
+
+    def test_toggle_off_reaction(self, authenticated_client, sample_encounter, sample_comment):
+        """Should remove reaction when toggled again."""
+        url = f"/api/encounters/{sample_encounter.id}/comments/{sample_comment.id}/react/"
+        # Add
+        authenticated_client.post(url, {"emoji": "👍"})
+        # Toggle off
+        response = authenticated_client.post(url, {"emoji": "👍"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["reactions"] == []
+        assert response.data["user_reactions"] == []
+
+    def test_multiple_users_react(
+        self,
+        authenticated_client,
+        api_client,
+        sample_encounter,
+        sample_comment,
+        another_user_with_profile,
+    ):
+        """Multiple users can react with same emoji."""
+        url = f"/api/encounters/{sample_encounter.id}/comments/{sample_comment.id}/react/"
+        # User 1
+        authenticated_client.post(url, {"emoji": "❤️"})
+        # User 2
+        api_client.force_authenticate(user=another_user_with_profile)
+        response = api_client.post(url, {"emoji": "❤️"})
+        assert response.status_code == status.HTTP_200_OK
+        heart_reaction = next(r for r in response.data["reactions"] if r["emoji"] == "❤️")
+        assert heart_reaction["count"] == 2
+
+    def test_multiple_emojis_on_same_comment(
+        self, authenticated_client, sample_encounter, sample_comment
+    ):
+        """A user can react with different emojis."""
+        url = f"/api/encounters/{sample_encounter.id}/comments/{sample_comment.id}/react/"
+        authenticated_client.post(url, {"emoji": "👍"})
+        response = authenticated_client.post(url, {"emoji": "🎉"})
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["reactions"]) == 2
+        assert "👍" in response.data["user_reactions"]
+        assert "🎉" in response.data["user_reactions"]
+
+    def test_empty_emoji_rejected(self, authenticated_client, sample_encounter, sample_comment):
+        """Should reject empty emoji."""
+        url = f"/api/encounters/{sample_encounter.id}/comments/{sample_comment.id}/react/"
+        response = authenticated_client.post(url, {"emoji": ""})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_reactions_in_comment_serializer(
+        self, authenticated_client, sample_encounter, sample_comment
+    ):
+        """Comment list should include reactions data."""
+        from hmis.apps.comments.models import CommentReaction
+
+        CommentReaction.objects.create(
+            comment=sample_comment, user=sample_comment.author, emoji="✅"
+        )
+        url = f"/api/encounters/{sample_encounter.id}/comments/"
+        response = authenticated_client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get("results", response.data)
+        comment_data = next(c for c in results if c["id"] == sample_comment.id)
+        assert "reactions" in comment_data
+        assert any(r["emoji"] == "✅" for r in comment_data["reactions"])
+
+
+class TestMentionSuggestions:
+    """Tests for @mention autocomplete endpoint."""
+
+    def test_search_by_username(self, authenticated_client, another_user_with_profile):
+        """Should find user by username prefix."""
+        response = authenticated_client.get("/api/comments/mentions/", {"q": "drj"})
+        assert response.status_code == status.HTTP_200_OK
+        usernames = [u["username"] for u in response.data]
+        assert "drjones" in usernames
+
+    def test_search_by_first_name(self, authenticated_client, another_user_with_profile):
+        """Should find user by first name."""
+        response = authenticated_client.get("/api/comments/mentions/", {"q": "Jan"})
+        assert response.status_code == status.HTTP_200_OK
+        usernames = [u["username"] for u in response.data]
+        assert "drjones" in usernames
+
+    def test_search_by_last_name(self, authenticated_client, another_user_with_profile):
+        """Should find user by last name."""
+        response = authenticated_client.get("/api/comments/mentions/", {"q": "Jon"})
+        assert response.status_code == status.HTTP_200_OK
+        usernames = [u["username"] for u in response.data]
+        assert "drjones" in usernames
+
+    def test_excludes_self(self, authenticated_client, test_user):
+        """Should not include the requesting user in suggestions."""
+        response = authenticated_client.get("/api/comments/mentions/", {"q": test_user.username})
+        assert response.status_code == status.HTTP_200_OK
+        user_ids = [u["id"] for u in response.data]
+        assert test_user.id not in user_ids
+
+    def test_org_scoped_no_cross_org(
+        self, authenticated_client, db, sample_role, sample_department
+    ):
+        """Should NOT return users from a different organization."""
+        from hmis.apps.core.models import Organization, StaffProfile
+
+        other_org = Organization.objects.create(name="Other Org", slug="other-org")
+        other_user = User.objects.create_user(
+            username="otherdoc",
+            email="other@other.org",
+            password="pass123",
+            first_name="Other",
+            last_name="Doctor",
+        )
+        StaffProfile.objects.create(
+            user=other_user,
+            employee_id="OTHER-001",
+            organization=other_org,
+            primary_role=sample_role,
+            primary_department=sample_department,
+            date_joined="2026-01-01",
+        )
+        response = authenticated_client.get("/api/comments/mentions/", {"q": "otherdoc"})
+        assert response.status_code == status.HTTP_200_OK
+        usernames = [u["username"] for u in response.data]
+        assert "otherdoc" not in usernames
+
+    def test_empty_query_returns_nothing(self, authenticated_client):
+        """Empty query should return no results."""
+        response = authenticated_client.get("/api/comments/mentions/", {"q": ""})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == []
+
+    def test_unauthenticated_rejected(self, api_client):
+        """Should reject unauthenticated requests."""
+        response = api_client.get("/api/comments/mentions/", {"q": "test"})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+class TestCommentWebSocketBroadcast:
+    """Tests for WebSocket broadcast on comment events."""
+
+    def test_create_broadcasts_to_websocket(
+        self, mocker, sample_encounter, test_user, encounter_content_type
+    ):
+        """Creating a comment should broadcast via WebSocket."""
+        mock_broadcast = mocker.patch("hmis.apps.comments.signals.broadcast_comment_event")
+        ClinicalComment.objects.create(
+            content_type=encounter_content_type,
+            object_id=sample_encounter.id,
+            author=test_user,
+            body="WS test",
+            facility=sample_encounter.facility,
+        )
+        mock_broadcast.assert_called_once()
+        args = mock_broadcast.call_args[0]
+        assert args[0] == "encounter"  # content_type_model
+        assert args[1] == sample_encounter.id  # object_id
+        assert args[2] == "created"  # event_type
+        assert args[3]["body"] == "WS test"
+
+    def test_update_broadcasts_to_websocket(self, mocker, sample_comment):
+        """Editing a comment should broadcast 'updated' event."""
+        mock_broadcast = mocker.patch("hmis.apps.comments.signals.broadcast_comment_event")
+        sample_comment.body = "Edited body"
+        sample_comment.is_edited = True
+        sample_comment.save()
+        mock_broadcast.assert_called_once()
+        args = mock_broadcast.call_args[0]
+        assert args[2] == "updated"
+        assert args[3]["body"] == "Edited body"
+        assert args[3]["is_edited"] is True
+
+    def test_delete_broadcasts_to_websocket(self, mocker, sample_comment):
+        """Soft-deleting a comment should broadcast 'deleted' event."""
+        mock_broadcast = mocker.patch("hmis.apps.comments.signals.broadcast_comment_event")
+        sample_comment.is_deleted = True
+        sample_comment.body = "[deleted]"
+        sample_comment.save()
+        mock_broadcast.assert_called_once()
+        args = mock_broadcast.call_args[0]
+        assert args[2] == "deleted"
+        assert args[3] == {"id": sample_comment.pk}
+
+    def test_reaction_broadcasts_to_websocket(
+        self, mocker, authenticated_client, sample_encounter, sample_comment
+    ):
+        """Adding a reaction should broadcast via WebSocket."""
+        mock_broadcast = mocker.patch("hmis.apps.comments.views.broadcast_comment_event")
+        url = f"/api/encounters/{sample_encounter.id}/comments/{sample_comment.id}/react/"
+        authenticated_client.post(url, {"emoji": "👍"})
+        mock_broadcast.assert_called_once()
+        args = mock_broadcast.call_args[0]
+        assert args[2] == "reaction_added"
+        assert args[3]["emoji"] == "👍"
+
+
+class TestAdmissionComments:
+    """Tests for comments on inpatient admissions."""
+
+    @pytest.fixture
+    def sample_admission(
+        self,
+        db,
+        sample_patient,
+        sample_encounter,
+        sample_facility,
+        sample_organization,
+        test_user,
+    ):
+        """Create a sample admission for comment tests."""
+        from datetime import date
+
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.inpatient.models import Admission, Ward
+
+        ward = Ward.objects.create(
+            name="Medical Ward",
+            code="MW001",
+            ward_type="GENERAL",
+            capacity=10,
+            daily_rate=1500,
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        bed = ward.beds.first()
+        ipd_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="IPD",
+            chief_complaint="Pneumonia admission",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        return Admission.objects.create(
+            patient=sample_patient,
+            opd_encounter=sample_encounter,
+            ipd_encounter=ipd_encounter,
+            admission_date=date(2026, 5, 1),
+            admitting_diagnosis="J18.9",
+            admitting_diagnosis_text="Pneumonia",
+            admitting_officer=test_user,
+            attending_doctor=test_user,
+            ward=ward,
+            bed=bed,
+            payer_type="CASH",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+    def test_create_comment_on_admission(self, authenticated_client, sample_admission):
+        """Should create a comment on an admission."""
+        url = f"/api/admissions/{sample_admission.id}/comments/"
+        response = authenticated_client.post(url, {"body": "Patient stable overnight."})
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["body"] == "Patient stable overnight."
+        assert response.data["author"]["username"] == "testuser"
+
+    def test_list_admission_comments(self, authenticated_client, sample_admission):
+        """Should list comments on an admission."""
+        url = f"/api/admissions/{sample_admission.id}/comments/"
+        authenticated_client.post(url, {"body": "First note."})
+        authenticated_client.post(url, {"body": "Second note."})
+
+        response = authenticated_client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get("results", response.data)
+        assert len(results) == 2
+
+    def test_admission_comment_uses_admission_facility(
+        self, authenticated_client, sample_admission
+    ):
+        """Comment should auto-resolve facility from the admission."""
+        url = f"/api/admissions/{sample_admission.id}/comments/"
+        response = authenticated_client.post(url, {"body": "Test facility scoping."})
+        assert response.status_code == status.HTTP_201_CREATED
+
+        comment = ClinicalComment.objects.get(id=response.data["id"])
+        assert comment.facility_id == sample_admission.facility_id
+        assert comment.organization_id == sample_admission.organization_id

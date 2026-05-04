@@ -12,6 +12,7 @@ import {
   Clock,
   FileText,
   LogOut,
+  MessageCircle,
   MoveRight,
   Stethoscope,
   User,
@@ -75,6 +76,9 @@ import { DeliveryTab } from '@/components/mch/delivery-tab';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/inpatient-ai-context';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useAuth } from '@/lib/auth/context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { CommentThread } from '@/components/comments';
 import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
 
@@ -813,7 +817,7 @@ export default function AdmissionDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className={`w-full grid h-auto ${isMaternityCase ? 'grid-cols-7' : 'grid-cols-5'}`}>
+        <TabsList className={`w-full grid h-auto ${isMaternityCase ? 'grid-cols-8' : 'grid-cols-6'}`}>
           <TabsTrigger value="overview" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Info</span>
             <span className="hidden sm:inline">Overview</span>
@@ -831,6 +835,11 @@ export default function AdmissionDetailPage() {
             <span className="hidden sm:inline">Nursing Kardex</span>
           </TabsTrigger>
           <TabsTrigger value="orders" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">Orders</TabsTrigger>
+          <TabsTrigger value="comments" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+            <MessageCircle className="h-3.5 w-3.5 mr-1 hidden sm:inline" />
+            <span className="sm:hidden">Notes</span>
+            <span className="hidden sm:inline">Comments</span>
+          </TabsTrigger>
           {isMaternityCase && (
             <TabsTrigger value="partograph" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
               <span className="sm:hidden">Parto</span>
@@ -1318,6 +1327,21 @@ export default function AdmissionDetailPage() {
           />
         </TabsContent>
 
+        {/* Comments Tab */}
+        <TabsContent value="comments" className="space-y-4">
+          <Card>
+            <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                Clinical Comments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <AdmissionComments admissionId={admission.id} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Observation Charts Tab */}
         <TabsContent value="charts" className="space-y-6">
           <VitalsTrendChart
@@ -1598,4 +1622,17 @@ function getStatusVariant(status: string): 'default' | 'secondary' | 'destructiv
     default:
       return 'secondary';
   }
+}
+
+function AdmissionComments({ admissionId }: { admissionId: number }) {
+  const { user } = useAuth();
+  const { isAdmin } = usePermissions();
+  return (
+    <CommentThread
+      entityType="admission"
+      entityId={admissionId}
+      currentUserId={user?.id}
+      isAdmin={isAdmin}
+    />
+  );
 }

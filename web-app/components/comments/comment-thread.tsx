@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MessageSquare } from 'lucide-react';
 import { commentsApi } from '@/lib/api/comments';
 import type { CommentableEntity, ClinicalComment } from '@/lib/types/comments';
+import { useCommentSocket } from '@/lib/hooks/use-websocket';
 import { CommentItem } from './comment-item';
 import { CommentInput } from './comment-input';
 
@@ -32,6 +33,9 @@ export function CommentThread({
   const [expandedReplies, setExpandedReplies] = useState<Record<number, ClinicalComment[]>>({});
 
   const queryKey = ['comments', entityType, entityId];
+
+  // Real-time WebSocket subscription — invalidates cache on events
+  useCommentSocket(entityType, entityId);
 
   // Fetch top-level comments
   const { data, isLoading, error } = useQuery({
@@ -66,6 +70,15 @@ export function CommentThread({
     },
   });
 
+  // React mutation
+  const reactMutation = useMutation({
+    mutationFn: (variables: { commentId: number; emoji: string }) =>
+      commentsApi.react(entityType, entityId, variables.commentId, variables.emoji),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   const handleCreate = useCallback(
     async (body: string) => {
       await createMutation.mutateAsync({ body });
@@ -95,6 +108,13 @@ export function CommentThread({
       await deleteMutation.mutateAsync(commentId);
     },
     [deleteMutation]
+  );
+
+  const handleReact = useCallback(
+    async (commentId: number, emoji: string) => {
+      await reactMutation.mutateAsync({ commentId, emoji });
+    },
+    [reactMutation]
   );
 
   const handleLoadReplies = useCallback(
@@ -146,6 +166,7 @@ export function CommentThread({
               onReply={handleReply}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onReact={handleReact}
               onLoadReplies={comment.replies_count > 0 ? handleLoadReplies : undefined}
             />
             {/* Expanded replies */}
@@ -159,6 +180,7 @@ export function CommentThread({
                   onReply={handleReply}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onReact={handleReact}
                   onLoadReplies={reply.replies_count > 0 ? handleLoadReplies : undefined}
                 />
                 {/* Nested replies (depth 2) */}
@@ -172,6 +194,7 @@ export function CommentThread({
                       onReply={handleReply}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      onReact={handleReact}
                       onLoadReplies={
                         nestedReply.replies_count > 0 ? handleLoadReplies : undefined
                       }

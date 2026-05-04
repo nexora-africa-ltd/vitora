@@ -2,7 +2,7 @@
  * TypeScript interfaces for Clinical Comments.
  */
 
-export type CommentableEntity = 'encounter' | 'lab-order' | 'prescription';
+export type CommentableEntity = 'encounter' | 'lab-order' | 'prescription' | 'admission';
 
 export interface CommentAuthor {
   id: number;
@@ -10,6 +10,12 @@ export interface CommentAuthor {
   first_name: string;
   last_name: string;
   full_name: string;
+}
+
+export interface CommentReaction {
+  emoji: string;
+  count: number;
+  user_ids: number[];
 }
 
 export interface ClinicalComment {
@@ -24,6 +30,7 @@ export interface ClinicalComment {
   created_at: string;
   edited_at: string | null;
   replies_count: number;
+  reactions: CommentReaction[];
 }
 
 export interface ClinicalCommentCreate {
@@ -36,4 +43,18 @@ export interface PaginatedComments {
   next: string | null;
   previous: string | null;
   results: ClinicalComment[];
+}
+
+export interface MentionSuggestion {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+}
+
+export interface ReactionToggleResponse {
+  comment_id: number;
+  reactions: CommentReaction[];
+  user_reactions: string[];
 }

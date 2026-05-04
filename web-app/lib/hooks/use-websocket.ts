@@ -1846,3 +1846,64 @@ export function getConnectionStatusColor(
       return 'gray';
   }
 }
+
+// =============================================================================
+// Clinical Comments WebSocket Hook
+// =============================================================================
+
+export type CommentEventType =
+  | 'comment.created'
+  | 'comment.updated'
+  | 'comment.deleted'
+  | 'comment.reaction_added'
+  | 'comment.reaction_removed';
+
+export interface CommentWebSocketMessage {
+  event: CommentEventType;
+  data: Record<string, unknown>;
+}
+
+/**
+ * WebSocket hook for real-time comment updates on a specific entity.
+ *
+ * Automatically invalidates the React Query ['comments', entityType, entityId] cache
+ * when comment events occur (create, update, delete, reaction).
+ *
+ * @param entityType - 'encounter' | 'lab-order' | 'prescription'
+ * @param entityId - The entity ID to subscribe to (null/undefined to disable)
+ */
+export function useCommentSocket(
+  entityType: string | null,
+  entityId: number | string | null | undefined,
+  options: UseWebSocketOptions = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url =
+    entityType && entityId
+      ? getWebSocketUrl(`/ws/comments/${entityType}/${entityId}/`)
+      : null;
+
+  const handleMessage = useCallback(
+    (message: WebSocketMessage) => {
+      if (!entityType || !entityId) return;
+
+      const commentMessage = message as unknown as CommentWebSocketMessage;
+      console.log(
+        `[WebSocket] Comment ${entityType}/${entityId} event:`,
+        commentMessage.event
+      );
+
+      // Invalidate the comments query for this entity
+      queryClient.invalidateQueries({ queryKey: ['comments', entityType, entityId] });
+
+      options.onMessage?.(message);
+    },
+    [entityType, entityId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
