@@ -153,3 +153,60 @@ def publish_encounter_event(sender, instance, created, **kwargs):
         facility_id=getattr(instance, "facility_id", None),
         organization_id=getattr(instance, "organization_id", None),
     )
+
+    # Notify about critical vitals when encounter is updated
+    if not created and hasattr(instance, "has_critical_vitals"):
+        _notify_critical_vitals(instance)
+
+
+def _notify_critical_vitals(instance):
+    """Notify clinicians if encounter has critical vital signs."""
+    try:
+        if not instance.has_critical_vitals():
+            return
+
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.services.notification_service import notify_users
+
+        User = get_user_model()
+
+        facility_id = getattr(instance, "facility_id", None)
+        if not facility_id:
+            return
+
+        # Notify doctors and nurses in the facility
+        clinicians = User.objects.filter(
+            staff_profile__facilities__id=facility_id,
+            staff_profile__primary_role__code__in=[
+                "DOCTOR",
+                "CLINICAL_OFFICER",
+                "NURSE",
+                "CLINICAL_SENIOR",
+            ],
+            is_active=True,
+        ).distinct()[:15]
+
+        if not clinicians:
+            return
+
+        patient = instance.patient
+        patient_name = f"{patient.first_name} {patient.last_name}" if patient else "Unknown"
+        alerts = (
+            instance.get_alerts()
+            if hasattr(instance, "get_alerts")
+            else ["Critical vitals detected"]
+        )
+
+        notify_users(
+            users=clinicians,
+            notification_type="critical_vital",
+            priority="critical",
+            title=f"CRITICAL: Vitals Alert - {patient_name}",
+            message="; ".join(alerts[:3]),
+            related_model="Encounter",
+            related_id=instance.id,
+            action_url=f"/encounters/{instance.id}",
+        )
+    except Exception:
+        logger.exception("Failed to notify critical vitals for encounter %s", instance.id)

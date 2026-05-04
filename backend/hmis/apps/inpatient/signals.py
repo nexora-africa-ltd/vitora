@@ -48,6 +48,9 @@ def close_source_opd_encounter_on_admission(sender, instance, created, **kwargs)
             exc,
         )
 
+    # Notify ward nursing staff about new admission
+    _notify_admission_created(instance)
+
 
 # Fields to track for ward constraint changes
 WARD_CONSTRAINT_FIELDS = {
@@ -212,3 +215,97 @@ def notify_compatibility_violation(sender, instance, created, **kwargs):
             },
             facility_id=getattr(instance, "facility_id", None),
         )
+
+
+# ---------------------------------------------------------------------------
+# Notification helpers
+# ---------------------------------------------------------------------------
+
+
+def _notify_admission_created(instance):
+    """Notify ward nursing staff about a new admission."""
+    try:
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.services.notification_service import notify_users
+
+        User = get_user_model()
+
+        facility_id = getattr(instance, "facility_id", None)
+        ward = getattr(instance, "ward", None)
+        if not facility_id or not ward:
+            return
+
+        # Find nurses assigned to this ward or facility
+        nurses = User.objects.filter(
+            staff_profile__facilities__id=facility_id,
+            staff_profile__primary_role__code__in=["NURSE", "IPD_NURSE", "CHARGE_NURSE"],
+            is_active=True,
+        ).distinct()
+
+        if not nurses.exists():
+            return
+
+        patient = instance.patient
+        patient_name = f"{patient.first_name} {patient.last_name}" if patient else "a patient"
+        ward_name = ward.name if ward else "Unknown Ward"
+
+        notify_users(
+            users=nurses,
+            notification_type="admission_created",
+            priority="normal",
+            title=f"New Admission: {ward_name}",
+            message=f"{patient_name} has been admitted to {ward_name}.",
+            related_model="Admission",
+            related_id=instance.id,
+            action_url=f"/inpatient/admissions/{instance.id}",
+        )
+    except Exception:
+        logger.exception("Failed to notify admission for %s", instance.id)
+
+
+# ---------------------------------------------------------------------------
+# Notification helpers
+# ---------------------------------------------------------------------------
+
+
+def _notify_admission_created(instance):
+    """Notify ward nursing staff about a new admission."""
+    try:
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.services.notification_service import notify_users
+
+        User = get_user_model()
+
+        facility_id = getattr(instance, "facility_id", None)
+        ward = getattr(instance, "ward", None)
+        if not facility_id or not ward:
+            return
+
+        # Find nurses assigned to this ward or facility
+        nurses = User.objects.filter(
+            staff_profile__facilities__id=facility_id,
+            staff_profile__primary_role__code__in=["NURSE", "IPD_NURSE", "CHARGE_NURSE"],
+            is_active=True,
+        ).distinct()
+
+        if not nurses.exists():
+            return
+
+        patient = instance.patient
+        patient_name = f"{patient.first_name} {patient.last_name}" if patient else "a patient"
+        ward_name = ward.name if ward else "Unknown Ward"
+
+        notify_users(
+            users=nurses,
+            notification_type="admission_created",
+            priority="normal",
+            title=f"New Admission: {ward_name}",
+            message=f"{patient_name} has been admitted to {ward_name}.",
+            related_model="Admission",
+            related_id=instance.id,
+            action_url=f"/inpatient/admissions/{instance.id}",
+        )
+    except Exception:
+        logger.exception("Failed to notify admission for %s", instance.id)

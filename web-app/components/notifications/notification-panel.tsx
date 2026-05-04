@@ -53,6 +53,7 @@ import {
   useMarkNotificationRead,
   useMarkAllRead,
 } from '@/lib/hooks/use-notifications';
+import { useNotificationSocket } from '@/lib/hooks/use-websocket';
 import type { Notification, NotificationPriority } from '@/lib/types/notification';
 
 /** Get icon component based on notification type */
@@ -257,6 +258,9 @@ export function NotificationPanel() {
   const router = useRouter();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Real-time WebSocket — invalidates queries on new notifications
+  useNotificationSocket();
 
   // Queries - enable when either popover or expanded view is open
   const { data: notificationsData, isLoading: isLoadingNotifications } = useNotifications(

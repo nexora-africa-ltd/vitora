@@ -220,6 +220,9 @@ def publish_shift_event(sender, instance, created, **kwargs):
         organization_id=getattr(instance, "organization_id", None),
     )
 
+    # --- In-app notifications for shift events ---
+    _notify_shift_event(instance, created)
+
 
 # ---------------------------------------------------------------------------
 # Shift Swap Request events
@@ -263,6 +266,112 @@ def publish_swap_event(sender, instance, created, **kwargs):
         facility_id=getattr(instance, "facility_id", None),
         organization_id=getattr(instance, "organization_id", None),
     )
+
+    # --- In-app notifications for swap events ---
+    _notify_swap_event(instance, created)
+
+
+# ---------------------------------------------------------------------------
+# Shift & Swap Notification Helpers
+# ---------------------------------------------------------------------------
+
+
+def _notify_shift_event(instance, created):
+    """Create in-app notifications for shift assignment/cancellation."""
+    from hmis.apps.core.services.notification_service import (
+        get_user_from_staff_resource,
+        notify_user,
+    )
+
+    user = get_user_from_staff_resource(instance.staff_resource)
+    if not user:
+        return
+
+    # Skip non-working shift types
+    non_working = {"OFF", "DAY_OFF", "NIGHT_OFF", "AFTERNOON_OFF", "LEAVE", "SICK_LEAVE", "REST"}
+    if instance.shift_type in non_working:
+        return
+
+    if created:
+        shift_display = instance.get_shift_type_display()
+        date_str = instance.shift_date.strftime("%a %b %d")
+        notify_user(
+            user=user,
+            notification_type="shift_assigned",
+            priority="normal",
+            title="New Shift Assigned",
+            message=f"You have been assigned a {shift_display} shift on {date_str}.",
+            related_model="Shift",
+            related_id=instance.id,
+            action_url="/scheduling/my-shifts",
+            deduplicate=True,
+        )
+    elif instance.status == "CANCELLED":
+        date_str = instance.shift_date.strftime("%a %b %d")
+        notify_user(
+            user=user,
+            notification_type="shift_cancelled",
+            priority="high",
+            title="Shift Cancelled",
+            message=f"Your shift on {date_str} has been cancelled.",
+            related_model="Shift",
+            related_id=instance.id,
+            action_url="/scheduling/my-shifts",
+        )
+
+
+def _notify_swap_event(instance, created):
+    """Create in-app notifications for swap request lifecycle."""
+    from hmis.apps.core.services.notification_service import (
+        get_user_from_staff_resource,
+        notify_user,
+    )
+
+    if created:
+        # Notify target staff member about incoming swap request
+        target_resource = getattr(instance, "target_shift", None)
+        if target_resource:
+            target_resource = getattr(target_resource, "staff_resource", None)
+        if target_resource:
+            target_user = get_user_from_staff_resource(target_resource)
+            if target_user:
+                notify_user(
+                    user=target_user,
+                    notification_type="swap_request",
+                    priority="normal",
+                    title="Shift Swap Request",
+                    message="A colleague has requested to swap shifts with you.",
+                    related_model="ShiftSwapRequest",
+                    related_id=instance.id,
+                    action_url="/scheduling/my-shifts",
+                )
+    elif instance.status in ("ACCEPTED", "APPROVED", "COMPLETED"):
+        # Notify requester that swap was accepted
+        requester = instance.requester
+        if requester:
+            notify_user(
+                user=requester,
+                notification_type="swap_request",
+                priority="normal",
+                title=f"Swap Request {instance.get_status_display()}",
+                message=f"Your shift swap request has been {instance.status.lower()}.",
+                related_model="ShiftSwapRequest",
+                related_id=instance.id,
+                action_url="/scheduling/my-shifts",
+            )
+    elif instance.status == "REJECTED":
+        requester = instance.requester
+        if requester:
+            notify_user(
+                user=requester,
+                notification_type="swap_request",
+                priority="normal",
+                title="Swap Request Rejected",
+                message="Your shift swap request was rejected.",
+                related_model="ShiftSwapRequest",
+                related_id=instance.id,
+                action_url="/scheduling/my-shifts",
+            )
 
 
 # ---------------------------------------------------------------------------

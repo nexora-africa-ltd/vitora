@@ -224,6 +224,9 @@ def broadcast_payment_change(sender, instance, created, **kwargs):
         organization_id=getattr(instance, "organization_id", None),
     )
 
+    # Notify billing staff about new payment
+    _notify_payment_received(instance)
+
     try:
         from hmis.apps.billing.websockets import broadcast_payment_received
 
@@ -295,3 +298,77 @@ def publish_preauth_event(sender, instance, created, **kwargs):
         facility_id=instance.facility_id,
         organization_id=instance.organization_id,
     )
+
+    # Notify relevant staff about preauth decisions
+    if not created and instance.decision in ("APPROVED", "DENIED"):
+        _notify_preauth_decision(instance)
+
+
+# ---------------------------------------------------------------------------
+# Notification helpers
+# ---------------------------------------------------------------------------
+
+
+def _notify_payment_received(instance):
+    """Notify billing staff about a payment received."""
+    try:
+        from hmis.apps.core.services.notification_service import notify_user
+
+        invoice = getattr(instance, "invoice", None)
+        if not invoice:
+            return
+
+        # Notify the user who created the invoice (cashier/billing staff)
+        created_by = getattr(invoice, "created_by", None)
+        if not created_by:
+            return
+
+        amount = getattr(instance, "amount", 0)
+        patient_name = ""
+        if invoice.patient:
+            patient_name = f"{invoice.patient.first_name} {invoice.patient.last_name}"
+
+        notify_user(
+            user=created_by,
+            notification_type="payment_received",
+            priority="normal",
+            title="Payment Received",
+            message=f"Payment of KES {amount} received for {patient_name} ({invoice.invoice_number}).",
+            related_model="Invoice",
+            related_id=invoice.id,
+            action_url=f"/billing/invoices/{invoice.id}",
+            deduplicate=True,
+        )
+    except Exception:
+        logger.exception("Failed to notify payment for %s", instance.id)
+
+
+def _notify_preauth_decision(instance):
+    """Notify staff about SHA preauthorization decision."""
+    try:
+        from hmis.apps.core.services.notification_service import notify_user
+
+        # Find the clinician or staff who submitted the preauth
+        claim = getattr(instance, "claim", None)
+        if not claim:
+            return
+
+        submitted_by = getattr(claim, "submitted_by", None) or getattr(claim, "created_by", None)
+        if not submitted_by:
+            return
+
+        status = instance.decision.lower()
+        priority = "high" if instance.decision == "DENIED" else "normal"
+
+        notify_user(
+            user=submitted_by,
+            notification_type="sha_claim_update",
+            priority=priority,
+            title=f"Preauthorization {instance.decision.title()}",
+            message=f"Preauth {instance.preauth_reference} has been {status}.",
+            related_model="PreauthRequest",
+            related_id=instance.id,
+            action_url="/billing/sha-claims",
+        )
+    except Exception:
+        logger.exception("Failed to notify preauth decision for %s", instance.id)

@@ -1907,3 +1907,46 @@ export function useCommentSocket(
     onMessage: handleMessage,
   });
 }
+
+// =============================================================================
+// Notification WebSocket Hook
+// =============================================================================
+
+/** Message shape for the notification WebSocket consumer */
+interface NotificationWebSocketMessage {
+  type: string;
+  notification?: Record<string, unknown>;
+}
+
+/**
+ * WebSocket hook for real-time notification delivery.
+ *
+ * Connects to /ws/notifications/ and invalidates notification queries
+ * when the backend pushes a new notification. This provides instant
+ * badge updates and notification list refresh without waiting for polling.
+ */
+export function useNotificationSocket(
+  options: UseWebSocketOptions = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = getWebSocketUrl('/ws/notifications/');
+
+  const handleMessage = useCallback(
+    (message: WebSocketMessage) => {
+      const msg = message as unknown as NotificationWebSocketMessage;
+      if (msg.type === 'new_notification') {
+        // Invalidate notification queries for instant badge + list refresh
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      }
+
+      options.onMessage?.(message);
+    },
+    [queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}

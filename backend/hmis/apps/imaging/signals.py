@@ -3,6 +3,7 @@ Imaging signals for Vitora HMIS.
 
 This module contains Django signals for imaging-billing integration:
 - Auto-create invoice item when imaging order item is created
+- Notify ordering clinician when imaging results are ready
 """
 
 import logging
@@ -105,3 +106,42 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
         )
     except Exception as e:
         logger.error(f"Failed to create invoice item for imaging order item {instance.id}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Imaging Order Status → Notification
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender="imaging.ImagingOrder")
+def notify_imaging_results_ready(sender, instance, created, **kwargs):
+    """Notify ordering clinician when imaging results are reported."""
+    if created:
+        return
+
+    if instance.status != "REPORTED":
+        return
+
+    try:
+        from hmis.apps.core.services.notification_service import notify_user
+
+        ordered_by = getattr(instance, "ordered_by", None)
+        if not ordered_by:
+            return
+
+        patient = getattr(instance, "patient", None)
+        patient_name = f"{patient.first_name} {patient.last_name}" if patient else "a patient"
+
+        notify_user(
+            user=ordered_by,
+            notification_type="imaging_result_ready",
+            priority="normal",
+            title="Imaging Results Ready",
+            message=f"Imaging results for {patient_name} ({instance.order_number}) are ready for review.",
+            related_model="ImagingOrder",
+            related_id=instance.id,
+            action_url=f"/imaging/orders/{instance.id}",
+            deduplicate=True,
+        )
+    except Exception:
+        logger.exception("Failed to notify imaging results for order %s", instance.id)

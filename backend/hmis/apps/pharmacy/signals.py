@@ -136,6 +136,7 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
 def broadcast_prescription_on_create(sender, instance, created, **kwargs):
     """
     Broadcast WebSocket event and publish domain event when a prescription is created.
+    Also notifies pharmacy staff (via notification) about new prescriptions.
     """
     if not created:
         return
@@ -152,6 +153,9 @@ def broadcast_prescription_on_create(sender, instance, created, **kwargs):
         facility_id=getattr(instance, "facility_id", None),
         organization_id=getattr(instance, "organization_id", None),
     )
+
+    # Notify pharmacy staff about new prescription
+    _notify_prescription_created(instance)
 
     try:
         from hmis.apps.pharmacy.websockets import broadcast_prescription_created
@@ -321,6 +325,7 @@ def broadcast_stock_level_change(sender, instance, **kwargs):
                 facility_id=facility_id,
             )
             broadcast_stock_critical(instance, facility_id)
+            _notify_stock_alert(instance, critical=True)
         elif (
             instance.quantity_available > 0
             and instance.drug
@@ -338,5 +343,104 @@ def broadcast_stock_level_change(sender, instance, **kwargs):
                 facility_id=facility_id,
             )
             broadcast_stock_low_warning(instance, facility_id)
+            _notify_stock_alert(instance, critical=False)
     except Exception as e:
         logger.error(f"Failed to broadcast stock level change for batch {instance.id}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Notification helpers
+# ---------------------------------------------------------------------------
+
+
+def _notify_prescription_created(instance):
+    """Notify pharmacists about a new prescription requiring dispensing."""
+    try:
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.services.notification_service import notify_users
+
+        User = get_user_model()
+
+        # Find pharmacists in the same facility
+        facility_id = getattr(instance, "facility_id", None)
+        if not facility_id:
+            return
+
+        pharmacists = User.objects.filter(
+            staff_profile__facilities__id=facility_id,
+            staff_profile__primary_role__code__in=["PHARMACIST", "PHARMACY_TECH"],
+            is_active=True,
+        ).distinct()
+
+        if not pharmacists.exists():
+            return
+
+        patient_name = ""
+        if instance.patient:
+            patient_name = f"{instance.patient.first_name} {instance.patient.last_name}"
+
+        notify_users(
+            users=pharmacists,
+            notification_type="prescription_ready",
+            priority="normal",
+            title="New Prescription",
+            message=f"New prescription for {patient_name} is ready for dispensing.",
+            related_model="Prescription",
+            related_id=instance.id,
+            action_url=f"/pharmacy/prescriptions/{instance.id}",
+        )
+    except Exception:
+        logger.exception("Failed to notify pharmacists for prescription %s", instance.id)
+
+
+def _notify_stock_alert(instance, critical: bool):
+    """Notify pharmacy managers about stock level alerts."""
+    try:
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.core.services.notification_service import notify_users
+
+        User = get_user_model()
+
+        facility_id = getattr(instance, "facility_id", None) or getattr(
+            instance.drug, "facility_id", None
+        )
+        if not facility_id:
+            return
+
+        # Notify pharmacists and managers
+        staff = User.objects.filter(
+            staff_profile__facilities__id=facility_id,
+            staff_profile__primary_role__code__in=[
+                "PHARMACIST",
+                "PHARMACY_TECH",
+                "ADMIN",
+                "ORG-ADMIN",
+            ],
+            is_active=True,
+        ).distinct()
+
+        if not staff.exists():
+            return
+
+        drug_name = instance.drug.generic_name if instance.drug else "Unknown"
+        priority = "critical" if critical else "high"
+        title = f"{'CRITICAL: ' if critical else ''}Low Stock Alert"
+        message = (
+            f"{drug_name} is {'out of stock' if critical else 'running low'} "
+            f"(remaining: {instance.quantity_available})."
+        )
+
+        notify_users(
+            users=staff,
+            notification_type="low_stock",
+            priority=priority,
+            title=title,
+            message=message,
+            related_model="StockBatch",
+            related_id=instance.id,
+            action_url="/pharmacy/inventory",
+        )
+    except Exception:
+        logger.exception("Failed to notify about stock alert for batch %s", instance.id)
