@@ -50,6 +50,9 @@ import { laboratoryApi } from '@/lib/api/laboratory';
 import { useDiagnosticReports } from '@/lib/hooks/use-laboratory';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { useAuth } from '@/lib/auth/context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { CommentThread } from '@/components/comments';
 
 interface LabOrderDetailProps {
   orderNumber: string;
@@ -575,7 +578,29 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
           </CardContent>
         </Card>
       )}
+      {/* Clinical Comments */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Comments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LabOrderComments orderId={order.id} />
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function LabOrderComments({ orderId }: { orderId: number }) {
+  const { user } = useAuth();
+  const { isAdmin } = usePermissions();
+  return (
+    <CommentThread
+      entityType="lab-order"
+      entityId={orderId}
+      currentUserId={user?.id}
+      isAdmin={isAdmin}
+    />
   );
 }
 

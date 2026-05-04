@@ -281,6 +281,14 @@ class ImagingEvents:
     RESULT_COMPLETED = "imaging.result.completed"
 
 
+class CommentEvents:
+    """Clinical Comments domain event types."""
+
+    COMMENT_CREATED = "comments.comment.created"
+    COMMENT_UPDATED = "comments.comment.updated"
+    COMMENT_DELETED = "comments.comment.deleted"
+
+
 class TheatreEvents:
     """Theatre / Operating Room domain event types."""
 

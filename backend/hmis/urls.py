@@ -15,6 +15,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenVerifyView
 
+from hmis.apps.comments.views import ClinicalCommentViewSet
 from hmis.apps.core.cookie_auth import (
     CookieLoginView,
     CookieLogoutView,
@@ -284,6 +285,19 @@ urlpatterns = [
         ),
         name="encounter-diagnoses-detail",
     ),
+    # Clinical comments nested under encounters
+    path(
+        "api/encounters/<int:encounter_pk>/comments/",
+        ClinicalCommentViewSet.as_view({"get": "list", "post": "create"}),
+        name="encounter-comments-list",
+    ),
+    path(
+        "api/encounters/<int:encounter_pk>/comments/<int:pk>/",
+        ClinicalCommentViewSet.as_view(
+            {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="encounter-comments-detail",
+    ),
     # SNOMED CT search endpoint
     path(
         "api/encounters/snomed/search/",
@@ -335,6 +349,32 @@ urlpatterns = [
         "api/encounters/<int:encounter_pk>/lab-orders/",
         EncounterLabOrderViewSet.as_view({"get": "list"}),
         name="encounter-lab-orders-list",
+    ),
+    # Clinical comments nested under lab orders
+    path(
+        "api/lab/orders/<int:order_pk>/comments/",
+        ClinicalCommentViewSet.as_view({"get": "list", "post": "create"}),
+        name="lab-order-comments-list",
+    ),
+    path(
+        "api/lab/orders/<int:order_pk>/comments/<int:pk>/",
+        ClinicalCommentViewSet.as_view(
+            {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="lab-order-comments-detail",
+    ),
+    # Clinical comments nested under prescriptions
+    path(
+        "api/pharmacy/prescriptions/<int:prescription_pk>/comments/",
+        ClinicalCommentViewSet.as_view({"get": "list", "post": "create"}),
+        name="prescription-comments-list",
+    ),
+    path(
+        "api/pharmacy/prescriptions/<int:prescription_pk>/comments/<int:pk>/",
+        ClinicalCommentViewSet.as_view(
+            {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="prescription-comments-detail",
     ),
     # Pharmacy API
     path("api/pharmacy/", include("hmis.apps.pharmacy.urls", namespace="pharmacy")),

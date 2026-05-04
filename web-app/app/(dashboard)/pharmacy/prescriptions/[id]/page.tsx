@@ -54,6 +54,9 @@ import { PrescriptionStatus } from '@/lib/types/pharmacy';
 import { useState } from 'react';
 import { useToast } from '@/lib/hooks/use-toast';
 import { PrescriptionPrintButton } from '@/components/pharmacy';
+import { useAuth } from '@/lib/auth/context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { CommentThread } from '@/components/comments';
 
 // Status badge colors
 const STATUS_COLORS: Record<PrescriptionStatus, string> = {
@@ -81,6 +84,8 @@ export default function PrescriptionDetailPage() {
 
   const { data: prescription, isLoading, error } = usePrescription(prescriptionId);
   const cancelMutation = useCancelPrescription();
+  const { user } = useAuth();
+  const { isAdmin } = usePermissions();
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -353,6 +358,21 @@ export default function PrescriptionDetailPage() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* Clinical Comments */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Comments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CommentThread
+            entityType="prescription"
+            entityId={prescriptionId}
+            currentUserId={user?.id}
+            isAdmin={isAdmin}
+          />
         </CardContent>
       </Card>
 

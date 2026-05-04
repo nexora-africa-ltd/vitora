@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import {
   PlayCircle, User, Calendar, Stethoscope, Eye,
   ClipboardList, FileText, Beaker, ScanLine, Pill, Scissors,
-  HeartHandshake, ArrowRightLeft, ScrollText, ShieldCheck,
+  HeartHandshake, ArrowRightLeft, ScrollText, ShieldCheck, MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,6 +55,9 @@ import { VitalsTrendChart } from '@/components/shared/vitals-trend-chart';
 import { InvestigationSuggestionsPanel } from '@/components/encounters/investigation-suggestions-panel';
 import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { useAuth } from '@/lib/auth/context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { CommentThread } from '@/components/comments';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { AIQuickAction } from '@/lib/types/ai';
@@ -164,6 +167,10 @@ export default function EncounterDetailPage() {
   // Real-time WebSocket subscription for lab result updates
   // Automatically invalidates lab orders cache when results are verified
   useLabEncounterSocket(encounterId);
+
+  // Auth context for comments
+  const { user } = useAuth();
+  const { isAdmin } = usePermissions();
 
   // =========================================================================
   // AI Chat Widget — encounter-aware context wiring
@@ -476,6 +483,16 @@ export default function EncounterDetailPage() {
             </TooltipTrigger>
             <TooltipContent><p>Medical history & audit trail</p></TooltipContent>
           </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TabsTrigger value="comments" className="text-xs sm:text-sm">
+                <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                <span className="sm:hidden">Notes</span>
+                <span className="hidden sm:inline">Comments</span>
+              </TabsTrigger>
+            </TooltipTrigger>
+            <TooltipContent><p>Clinical comments & team discussion</p></TooltipContent>
+          </Tooltip>
         </TabsList>
         </TooltipProvider>
 
@@ -769,6 +786,26 @@ export default function EncounterDetailPage() {
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+        </TabsContent>
+
+        {/* Clinical Comments */}
+        <TabsContent value="comments">
+          <Card>
+            <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                Clinical Comments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <CommentThread
+                entityType="encounter"
+                entityId={encounterId}
+                currentUserId={user?.id}
+                isAdmin={isAdmin}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
