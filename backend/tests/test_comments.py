@@ -508,11 +508,14 @@ class TestMentionSuggestions:
         usernames = [u["username"] for u in response.data]
         assert "otherdoc" not in usernames
 
-    def test_empty_query_returns_nothing(self, authenticated_client):
-        """Empty query should return no results."""
+    def test_empty_query_returns_org_staff(self, authenticated_client, another_user_with_profile):
+        """Empty query should return org staff (for immediate dropdown on @ trigger)."""
         response = authenticated_client.get("/api/comments/mentions/", {"q": ""})
         assert response.status_code == status.HTTP_200_OK
-        assert response.data == []
+        # Should include the other user in the same org
+        assert len(response.data) >= 1
+        usernames = [u["username"] for u in response.data]
+        assert "drjones" in usernames
 
     def test_unauthenticated_rejected(self, api_client):
         """Should reject unauthenticated requests."""
@@ -660,3 +663,59 @@ class TestAdmissionComments:
         comment = ClinicalComment.objects.get(id=response.data["id"])
         assert comment.facility_id == sample_admission.facility_id
         assert comment.organization_id == sample_admission.organization_id
+
+
+class TestShiftComments:
+    """Tests for comments on scheduling shifts."""
+
+    @pytest.fixture
+    def sample_shift(self, db, sample_facility, sample_organization, test_user):
+        """Create a sample shift for comment tests."""
+        from datetime import date, time
+
+        from hmis.apps.scheduling.models import Resource, Shift
+
+        resource = Resource.objects.create(
+            name="Dr. Test",
+            resource_type="STAFF",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+        return Shift.objects.create(
+            staff_resource=resource,
+            shift_date=date(2026, 6, 1),
+            start_time=time(8, 0),
+            end_time=time(16, 0),
+            shift_type="DAY",
+            status="SCHEDULED",
+            facility=sample_facility,
+            organization=sample_organization,
+        )
+
+    def test_create_comment_on_shift(self, authenticated_client, sample_shift):
+        """Should create a comment on a shift."""
+        url = f"/api/scheduling/shifts/{sample_shift.id}/comments/"
+        response = authenticated_client.post(url, {"body": "Swap request for this shift."})
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["body"] == "Swap request for this shift."
+
+    def test_list_shift_comments(self, authenticated_client, sample_shift):
+        """Should list comments on a shift."""
+        url = f"/api/scheduling/shifts/{sample_shift.id}/comments/"
+        authenticated_client.post(url, {"body": "First note."})
+        authenticated_client.post(url, {"body": "Second note."})
+
+        response = authenticated_client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get("results", response.data)
+        assert len(results) == 2
+
+    def test_shift_comment_uses_shift_facility(self, authenticated_client, sample_shift):
+        """Comment should auto-resolve facility from the shift."""
+        url = f"/api/scheduling/shifts/{sample_shift.id}/comments/"
+        response = authenticated_client.post(url, {"body": "Facility scoping."})
+        assert response.status_code == status.HTTP_201_CREATED
+
+        comment = ClinicalComment.objects.get(id=response.data["id"])
+        assert comment.facility_id == sample_shift.facility_id
+        assert comment.organization_id == sample_shift.organization_id

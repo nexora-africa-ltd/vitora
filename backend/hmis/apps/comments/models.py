@@ -33,8 +33,8 @@ class ClinicalComment(FacilityScopedModel, TimeStampedModel):
         ContentType,
         on_delete=models.CASCADE,
         limit_choices_to={
-            "app_label__in": ["encounters", "laboratory", "pharmacy", "inpatient"],
-            "model__in": ["encounter", "laborder", "prescription", "admission"],
+            "app_label__in": ["encounters", "laboratory", "pharmacy", "inpatient", "scheduling"],
+            "model__in": ["encounter", "laborder", "prescription", "admission", "shift"],
         },
     )
     object_id = models.PositiveBigIntegerField()

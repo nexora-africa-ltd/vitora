@@ -34,11 +34,11 @@ export function CommentInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch mention suggestions when typing @
+  // Fetch mention suggestions when typing @ (fires even with empty string after @)
   const { data: suggestions = [] } = useQuery<MentionSuggestion[]>({
     queryKey: ['mention-suggestions', mentionQuery],
-    queryFn: () => commentsApi.mentionSearch(mentionQuery!),
-    enabled: !!mentionQuery && mentionQuery.length >= 1,
+    queryFn: () => commentsApi.mentionSearch(mentionQuery ?? ''),
+    enabled: mentionQuery !== null,
     staleTime: 10_000,
   });
 

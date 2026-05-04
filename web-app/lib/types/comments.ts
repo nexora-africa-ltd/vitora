@@ -2,7 +2,7 @@
  * TypeScript interfaces for Clinical Comments.
  */
 
-export type CommentableEntity = 'encounter' | 'lab-order' | 'prescription' | 'admission';
+export type CommentableEntity = 'encounter' | 'lab-order' | 'prescription' | 'admission' | 'shift';
 
 export interface CommentAuthor {
   id: number;
