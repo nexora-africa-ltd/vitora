@@ -1267,6 +1267,12 @@ export default function WeeklyRosterPage() {
                                 ) : (
                                   <div className="h-6 w-full rounded hover:bg-muted/60 transition-colors" />
                                 )}
+                                {/* Comment indicator dot */}
+                                {savedShift && (savedShift.comments_count ?? 0) > 0 && (
+                                  <span className="absolute -bottom-0.5 -left-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-blue-500 text-white text-[7px] font-bold" title={`${savedShift.comments_count} note(s)`}>
+                                    {savedShift.comments_count}
+                                  </span>
+                                )}
                                 {conflict && (
                                   <TooltipProvider delayDuration={200}>
                                     <Tooltip>

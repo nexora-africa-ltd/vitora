@@ -15,7 +15,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenVerifyView
 
-from hmis.apps.comments.views import ClinicalCommentViewSet, mention_suggestions
+from hmis.apps.comments.views import ClinicalCommentViewSet, comment_count, mention_suggestions
 from hmis.apps.core.cookie_auth import (
     CookieLoginView,
     CookieLogoutView,
@@ -432,6 +432,12 @@ urlpatterns = [
         "api/comments/mentions/",
         mention_suggestions,
         name="comment-mention-suggestions",
+    ),
+    # Comment count (lightweight)
+    path(
+        "api/comments/count/",
+        comment_count,
+        name="comment-count",
     ),
     # Pharmacy API
     path("api/pharmacy/", include("hmis.apps.pharmacy.urls", namespace="pharmacy")),

@@ -18,6 +18,7 @@ This module contains ViewSets for:
 import logging
 from datetime import datetime, timedelta
 
+from django.db import models
 from django.utils import timezone
 from django_filters import rest_framework as filters
 from drf_spectacular.types import OpenApiTypes
@@ -1272,6 +1273,29 @@ class ShiftViewSet(TenantScopedViewMixin, ReadOnCreateMixin, viewsets.ModelViewS
 
             return EmergencyClockInSerializer
         return ShiftSerializer
+
+    def get_queryset(self):
+        """Annotate comments_count for list action."""
+        qs = super().get_queryset()
+        if self.action == "list":
+            from django.contrib.contenttypes.models import ContentType
+
+            from hmis.apps.comments.models import ClinicalComment
+
+            shift_ct = ContentType.objects.get_for_model(Shift)
+            qs = qs.annotate(
+                comments_count=models.Subquery(
+                    ClinicalComment.objects.filter(
+                        content_type=shift_ct,
+                        object_id=models.OuterRef("pk"),
+                    )
+                    .values("object_id")
+                    .annotate(cnt=models.Count("id"))
+                    .values("cnt"),
+                    output_field=models.IntegerField(),
+                )
+            )
+        return qs
 
     def perform_create(self, serializer):
         """Create shift with tenant scoping and audit."""
