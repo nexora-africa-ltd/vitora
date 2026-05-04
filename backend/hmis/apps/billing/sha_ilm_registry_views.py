@@ -276,9 +276,11 @@ class IlmSubBenefitsView(APIView):
                 {"error": "patient_id is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        parent_benefit_code = request.query_params.get("parent_benefit_code")
         try:
             result = IlmRegistriesService().fetch_sub_benefits(
                 patient_id=patient_id,
+                parent_benefit_code=parent_benefit_code,
                 patient=_resolve_patient(request),
                 sha_member=_resolve_sha_member(request),
                 facility=_facility(request),
