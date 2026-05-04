@@ -23,7 +23,7 @@ interface CommentInputProps {
 
 export function CommentInput({
   onSubmit,
-  placeholder = 'Write a comment... Use @username to mention someone.',
+  placeholder = 'Write a comment... Use @username to mention. Shift+Enter for new line.',
   autoFocus = false,
   disabled = false,
 }: CommentInputProps) {
@@ -124,8 +124,8 @@ export function CommentInput({
         }
       }
 
-      // Ctrl+Enter to submit
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      // Enter to submit (Shift+Enter for newline)
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
       }
