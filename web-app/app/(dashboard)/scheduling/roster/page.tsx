@@ -27,7 +27,7 @@ import {
   Coffee,
   Settings,
   Trash2,
-  MessageSquare,
+  MessageCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -59,6 +59,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -82,6 +88,7 @@ import {
   type RosterStaffRow,
 } from '@/lib/documents/print-roster';
 import { CommentThread } from '@/components/comments/comment-thread';
+import { HelpPopover } from '@/components/shared/help-popover';
 
 // =============================================================================
 // Constants
@@ -894,7 +901,7 @@ export default function WeeklyRosterPage() {
       <div className="space-y-4">
         <PageHeader
           title="Weekly Roster"
-          helpContent="Plan shifts for the week ahead. Click cells to assign shift types. Use the paint brush selector to choose a shift type, then click staff×day cells. Save when done."
+          helpContent="Plan shifts for the week ahead. Click cells to assign shift types. Use the paint brush selector to choose a shift type, then click staff×day cells. Save when done. Right-click (or long-press on mobile) any saved shift to add notes/comments."
           actions={
             <div className="flex items-center gap-2">
               {canManageSchedules && (
@@ -1170,6 +1177,12 @@ export default function WeeklyRosterPage() {
         {/* Roster Grid */}
         <Card>
           <CardContent className="p-0">
+            <div className="flex items-center justify-end px-3 pt-2">
+              <HelpPopover
+                content="Right-click (or long-press on mobile) any saved shift to add notes and comments."
+                size="sm"
+              />
+            </div>
             {isLoading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1226,12 +1239,15 @@ export default function WeeklyRosterPage() {
                           const shiftInfo = cell.type ? SHIFT_MAP[cell.type] : null;
                           const conflict = conflictMap.get(cellKey(staff.id, date));
 
-                          return (
+                          const savedShift = existingShifts.get(cellKey(staff.id, date));
+                          const hasSavedShift = !!savedShift && !cell.isDraft && !cell.isRemoval;
+
+                          const cellContent = (
                             <td
                               key={date}
                               className={`px-1 py-1 text-center ${canManageSchedules ? 'cursor-pointer' : ''} transition-colors ${
                                 isToday ? 'bg-primary/5' : ''
-                              } ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50 group/cell`}
+                              } ${conflict ? 'bg-orange-50 dark:bg-orange-950/20' : ''} hover:bg-muted/50`}
                               onClick={() => handleCellClick(staff.id, date)}
                             >
                               <div className="relative inline-block">
@@ -1250,19 +1266,6 @@ export default function WeeklyRosterPage() {
                                   </div>
                                 ) : (
                                   <div className="h-6 w-full rounded hover:bg-muted/60 transition-colors" />
-                                )}
-                                {/* Comment button on saved (non-draft) shifts */}
-                                {existingShifts.get(cellKey(staff.id, date)) && !cell.isDraft && !cell.isRemoval && (
-                                  <button
-                                    className="absolute -bottom-1 -right-1 hidden group-hover/cell:flex h-3.5 w-3.5 items-center justify-center rounded-full bg-muted border border-border shadow-sm hover:bg-primary/10"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCommentShift(existingShifts.get(cellKey(staff.id, date))!);
-                                    }}
-                                    title="Shift notes"
-                                  >
-                                    <MessageSquare className="h-2 w-2 text-muted-foreground" />
-                                  </button>
                                 )}
                                 {conflict && (
                                   <TooltipProvider delayDuration={200}>
@@ -1285,6 +1288,27 @@ export default function WeeklyRosterPage() {
                               </div>
                             </td>
                           );
+
+                          // Wrap saved shifts with ContextMenu for right-click / long-press comments
+                          if (hasSavedShift) {
+                            return (
+                              <ContextMenu key={date}>
+                                <ContextMenuTrigger asChild>
+                                  {cellContent}
+                                </ContextMenuTrigger>
+                                <ContextMenuContent>
+                                  <ContextMenuItem
+                                    onClick={() => setCommentShift(savedShift)}
+                                  >
+                                    <MessageCircle className="h-4 w-4 mr-2" />
+                                    Shift Notes
+                                  </ContextMenuItem>
+                                </ContextMenuContent>
+                              </ContextMenu>
+                            );
+                          }
+
+                          return cellContent;
                         })}
                       </tr>
                     ))}
