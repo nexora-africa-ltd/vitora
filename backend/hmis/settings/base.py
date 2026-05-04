@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     "hmis.apps.moh_reporting.apps.MohReportingConfig",
     "hmis.apps.inventory.apps.InventoryConfig",
     "hmis.apps.theatre.apps.TheatreConfig",
+    "hmis.apps.comments.apps.CommentsConfig",
 ]
 
 MIDDLEWARE = [
