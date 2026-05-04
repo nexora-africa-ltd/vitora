@@ -12,6 +12,12 @@ export const CommentAuthorSchema = z.object({
   full_name: z.string(),
 });
 
+export const CommentReactionSchema = z.object({
+  emoji: z.string(),
+  count: z.number(),
+  user_ids: z.array(z.number()),
+});
+
 export const ClinicalCommentSchema = z.object({
   id: z.number(),
   parent: z.number().nullable(),
@@ -24,6 +30,7 @@ export const ClinicalCommentSchema = z.object({
   created_at: z.string(),
   edited_at: z.string().nullable(),
   replies_count: z.number(),
+  reactions: z.array(CommentReactionSchema),
 });
 
 export const PaginatedCommentsSchema = z.object({
@@ -31,4 +38,18 @@ export const PaginatedCommentsSchema = z.object({
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(ClinicalCommentSchema),
+});
+
+export const MentionSuggestionSchema = z.object({
+  id: z.number(),
+  username: z.string(),
+  first_name: z.string(),
+  last_name: z.string(),
+  full_name: z.string(),
+});
+
+export const ReactionToggleResponseSchema = z.object({
+  comment_id: z.number(),
+  reactions: z.array(CommentReactionSchema),
+  user_reactions: z.array(z.string()),
 });

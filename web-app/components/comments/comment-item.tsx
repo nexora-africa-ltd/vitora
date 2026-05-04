@@ -2,16 +2,23 @@
 
 /**
  * CommentItem — renders a single comment with author info, timestamp,
- * reply button, edit/delete controls (if author), and nested replies.
+ * reply button, edit/delete controls (if author), reactions, and nested replies.
  */
 
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Pencil, Trash2, CornerDownRight } from 'lucide-react';
+import { MessageSquare, Pencil, Trash2, CornerDownRight, SmilePlus } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import type { ClinicalComment } from '@/lib/types/comments';
 import { CommentInput } from './comment-input';
+
+const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '🎉', '✅', '👀', '🙏'];
 
 interface CommentItemProps {
   comment: ClinicalComment;
@@ -21,6 +28,7 @@ interface CommentItemProps {
   onReply: (parentId: number, body: string) => Promise<void>;
   onEdit: (commentId: number, body: string) => Promise<void>;
   onDelete: (commentId: number) => Promise<void>;
+  onReact?: (commentId: number, emoji: string) => Promise<void>;
   onLoadReplies?: (parentId: number) => void;
 }
 
@@ -32,11 +40,13 @@ export function CommentItem({
   onReply,
   onEdit,
   onDelete,
+  onReact,
   onLoadReplies,
 }: CommentItemProps) {
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const isAuthor = currentUserId === comment.author.id;
   const canModify = isAuthor && !comment.is_deleted;
@@ -62,6 +72,11 @@ export function CommentItem({
       await onEdit(comment.id, editBody.trim());
     }
     setIsEditing(false);
+  };
+
+  const handleReact = (emoji: string) => {
+    onReact?.(comment.id, emoji);
+    setShowEmojiPicker(false);
   };
 
   return (
@@ -110,9 +125,58 @@ export function CommentItem({
               </p>
             )}
 
+            {/* Reactions display */}
+            {comment.reactions && comment.reactions.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {comment.reactions.map((reaction) => {
+                  const hasReacted = currentUserId ? reaction.user_ids.includes(currentUserId) : false;
+                  return (
+                    <button
+                      key={reaction.emoji}
+                      onClick={() => handleReact(reaction.emoji)}
+                      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
+                        hasReacted
+                          ? 'bg-primary/10 border-primary/30 text-primary'
+                          : 'bg-muted/50 border-border hover:bg-muted'
+                      }`}
+                    >
+                      <span>{reaction.emoji}</span>
+                      <span className="font-medium">{reaction.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Action buttons */}
             {!comment.is_deleted && !isEditing && (
               <div className="flex items-center gap-1 mt-1">
+                {onReact && (
+                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <SmilePlus className="h-3 w-3" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-2" side="top" align="start">
+                      <div className="flex gap-1">
+                        {QUICK_EMOJIS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => handleReact(emoji)}
+                            className="p-1 hover:bg-muted rounded text-lg leading-none"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

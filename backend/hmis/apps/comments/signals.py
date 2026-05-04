@@ -3,6 +3,7 @@ Signals for Clinical Comments.
 
 Handles:
 - Domain event publishing (COMMENT_CREATED, COMMENT_UPDATED)
+- WebSocket broadcast to connected clients
 - Notification creation for reply-to-parent-author
 - Mention notifications are handled in views.py after M2M is set
 """
@@ -11,6 +12,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from hmis.apps.comments.models import ClinicalComment
+from hmis.apps.comments.websockets import broadcast_comment_event
 from hmis.apps.core.events import publish_event
 from hmis.apps.core.events.types import CommentEvents
 
@@ -42,6 +44,37 @@ def publish_comment_event(sender, instance, created, **kwargs):
         facility_id=instance.facility_id,
         organization_id=instance.organization_id,
     )
+
+
+@receiver(post_save, sender=ClinicalComment)
+def broadcast_comment_to_websocket(sender, instance, created, **kwargs):
+    """Broadcast comment events to connected WebSocket clients."""
+    if not instance.content_type_id:
+        return
+
+    content_type_model = instance.content_type.model
+
+    if instance.is_deleted:
+        ws_event_type = "deleted"
+        data = {"id": instance.pk}
+    elif created:
+        ws_event_type = "created"
+        data = {
+            "id": instance.pk,
+            "parent_id": instance.parent_id,
+            "author_id": instance.author_id,
+            "author_name": instance.author.get_full_name() or instance.author.username,
+            "body": instance.body,
+        }
+    else:
+        ws_event_type = "updated"
+        data = {
+            "id": instance.pk,
+            "body": instance.body,
+            "is_edited": instance.is_edited,
+        }
+
+    broadcast_comment_event(content_type_model, instance.object_id, ws_event_type, data)
 
 
 @receiver(post_save, sender=ClinicalComment)

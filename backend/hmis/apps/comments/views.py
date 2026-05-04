@@ -5,25 +5,37 @@ Supports nested routing under encounters, lab orders, and prescriptions:
 - /api/encounters/{id}/comments/
 - /api/lab/orders/{id}/comments/
 - /api/pharmacy/prescriptions/{id}/comments/
+
+Also provides:
+- /api/comments/mentions/ — staff autocomplete for @mentions (org-scoped)
+- Reaction toggle (POST /api/{entity}/comments/{id}/react/)
 """
 
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Count
 from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 
-from hmis.apps.comments.models import ClinicalComment
+from hmis.apps.comments.models import ClinicalComment, CommentReaction
 from hmis.apps.comments.serializers import (
     ClinicalCommentCreateSerializer,
     ClinicalCommentSerializer,
     ClinicalCommentUpdateSerializer,
+    MentionSuggestionSerializer,
 )
 from hmis.apps.comments.utils import parse_mentions
+from hmis.apps.comments.websockets import broadcast_comment_event
+
+User = get_user_model()
 
 # Map URL kwarg names to (app_label, model_name)
 COMMENTABLE_MODELS = {
     "encounter_pk": ("encounters", "encounter"),
     "order_pk": ("laboratory", "laborder"),
     "prescription_pk": ("pharmacy", "prescription"),
+    "admission_pk": ("inpatient", "admission"),
 }
 
 
@@ -179,3 +191,111 @@ class ClinicalCommentViewSet(viewsets.ModelViewSet):
         instance.mentions.clear()
         instance.save(update_fields=["is_deleted", "body", "updated_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"], url_path="react")
+    def react(self, request, **kwargs):
+        """
+        Toggle a reaction (emoji) on a comment.
+
+        POST body: {"emoji": "👍"}
+        If the reaction already exists for this user+emoji, it is removed (toggle off).
+        Returns the updated reactions summary for the comment.
+        """
+        comment = self.get_object()
+        emoji = request.data.get("emoji", "").strip()
+
+        if not emoji or len(emoji) > 8:
+            return Response(
+                {"error": "A valid emoji is required (max 8 chars)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Toggle logic
+        existing = CommentReaction.objects.filter(
+            comment=comment, user=request.user, emoji=emoji
+        ).first()
+
+        if existing:
+            existing.delete()
+            ws_event = "reaction_removed"
+        else:
+            CommentReaction.objects.create(comment=comment, user=request.user, emoji=emoji)
+            ws_event = "reaction_added"
+
+        # Broadcast to WebSocket
+        if comment.content_type_id:
+            broadcast_comment_event(
+                comment.content_type.model,
+                comment.object_id,
+                ws_event,
+                {
+                    "comment_id": comment.pk,
+                    "emoji": emoji,
+                    "user_id": request.user.id,
+                    "user_name": request.user.get_full_name() or request.user.username,
+                },
+            )
+
+        # Return updated reactions summary
+        reactions = (
+            CommentReaction.objects.filter(comment=comment)
+            .values("emoji")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
+        user_reactions = list(
+            CommentReaction.objects.filter(comment=comment, user=request.user).values_list(
+                "emoji", flat=True
+            )
+        )
+
+        return Response(
+            {
+                "comment_id": comment.pk,
+                "reactions": [{"emoji": r["emoji"], "count": r["count"]} for r in reactions],
+                "user_reactions": user_reactions,
+            }
+        )
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def mention_suggestions(request):
+    """
+    Return a list of staff users for @mention autocomplete.
+
+    Query params:
+        q (str): Search term (matches username, first_name, or last_name)
+
+    Returns users in the same organization as the requesting user.
+    Limited to 10 results.
+    """
+    query = request.query_params.get("q", "").strip()
+    if len(query) < 1:
+        return Response([])
+
+    # Get the requesting user's organization
+    org_id = None
+    if hasattr(request.user, "staff_profile") and request.user.staff_profile:
+        org_id = request.user.staff_profile.organization_id
+
+    qs = User.objects.filter(is_active=True).exclude(id=request.user.id)
+
+    # Scope to same organization (CRITICAL: prevent cross-org mentions)
+    if org_id:
+        qs = qs.filter(staff_profile__organization_id=org_id)
+    else:
+        # If no org, return empty (shouldn't happen for authenticated staff)
+        return Response([])
+
+    # Search by username, first_name, or last_name
+    from django.db.models import Q
+
+    qs = qs.filter(
+        Q(username__icontains=query)
+        | Q(first_name__icontains=query)
+        | Q(last_name__icontains=query)
+    )[:10]
+
+    serializer = MentionSuggestionSerializer(qs, many=True)
+    return Response(serializer.data)

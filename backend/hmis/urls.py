@@ -15,7 +15,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenVerifyView
 
-from hmis.apps.comments.views import ClinicalCommentViewSet
+from hmis.apps.comments.views import ClinicalCommentViewSet, mention_suggestions
 from hmis.apps.core.cookie_auth import (
     CookieLoginView,
     CookieLogoutView,
@@ -298,6 +298,11 @@ urlpatterns = [
         ),
         name="encounter-comments-detail",
     ),
+    path(
+        "api/encounters/<int:encounter_pk>/comments/<int:pk>/react/",
+        ClinicalCommentViewSet.as_view({"post": "react"}),
+        name="encounter-comments-react",
+    ),
     # SNOMED CT search endpoint
     path(
         "api/encounters/snomed/search/",
@@ -363,6 +368,11 @@ urlpatterns = [
         ),
         name="lab-order-comments-detail",
     ),
+    path(
+        "api/lab/orders/<int:order_pk>/comments/<int:pk>/react/",
+        ClinicalCommentViewSet.as_view({"post": "react"}),
+        name="lab-order-comments-react",
+    ),
     # Clinical comments nested under prescriptions
     path(
         "api/pharmacy/prescriptions/<int:prescription_pk>/comments/",
@@ -375,6 +385,35 @@ urlpatterns = [
             {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
         ),
         name="prescription-comments-detail",
+    ),
+    path(
+        "api/pharmacy/prescriptions/<int:prescription_pk>/comments/<int:pk>/react/",
+        ClinicalCommentViewSet.as_view({"post": "react"}),
+        name="prescription-comments-react",
+    ),
+    # Clinical comments nested under admissions
+    path(
+        "api/admissions/<int:admission_pk>/comments/",
+        ClinicalCommentViewSet.as_view({"get": "list", "post": "create"}),
+        name="admission-comments-list",
+    ),
+    path(
+        "api/admissions/<int:admission_pk>/comments/<int:pk>/",
+        ClinicalCommentViewSet.as_view(
+            {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="admission-comments-detail",
+    ),
+    path(
+        "api/admissions/<int:admission_pk>/comments/<int:pk>/react/",
+        ClinicalCommentViewSet.as_view({"post": "react"}),
+        name="admission-comments-react",
+    ),
+    # @mention autocomplete (org-scoped)
+    path(
+        "api/comments/mentions/",
+        mention_suggestions,
+        name="comment-mention-suggestions",
     ),
     # Pharmacy API
     path("api/pharmacy/", include("hmis.apps.pharmacy.urls", namespace="pharmacy")),
