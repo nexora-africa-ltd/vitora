@@ -41,6 +41,7 @@ import {
   useSubmitLabOrder,
 } from '@/lib/hooks/use-laboratory';
 import { useToast, useLabOrderSocket } from '@/lib/hooks';
+import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { LabResultsBadge } from './lab-results-badge';
@@ -579,15 +580,29 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
         </Card>
       )}
       {/* Clinical Comments */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Comments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LabOrderComments orderId={order.id} />
-        </CardContent>
-      </Card>
+      <LabOrderCommentsCard orderId={order.id} />
     </div>
+  );
+}
+
+function LabOrderCommentsCard({ orderId }: { orderId: number }) {
+  const commentCount = useCommentCount('lab-order', orderId);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          Comments
+          {commentCount > 0 && (
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px] rounded-full">
+              {commentCount}
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <LabOrderComments orderId={orderId} />
+      </CardContent>
+    </Card>
   );
 }
 

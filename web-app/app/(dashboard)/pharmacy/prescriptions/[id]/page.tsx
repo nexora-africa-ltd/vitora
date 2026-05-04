@@ -57,6 +57,7 @@ import { PrescriptionPrintButton } from '@/components/pharmacy';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { CommentThread } from '@/components/comments';
+import { useCommentCount } from '@/lib/hooks/use-comment-count';
 
 // Status badge colors
 const STATUS_COLORS: Record<PrescriptionStatus, string> = {
@@ -86,6 +87,7 @@ export default function PrescriptionDetailPage() {
   const cancelMutation = useCancelPrescription();
   const { user } = useAuth();
   const { isAdmin } = usePermissions();
+  const commentCount = useCommentCount('prescription', prescriptionId);
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -364,7 +366,14 @@ export default function PrescriptionDetailPage() {
       {/* Clinical Comments */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Comments</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            Comments
+            {commentCount > 0 && (
+              <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px] rounded-full">
+                {commentCount}
+              </Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <CommentThread

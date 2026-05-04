@@ -999,6 +999,7 @@ class ShiftListSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
     room_name = serializers.SerializerMethodField()
     clinic_name = serializers.SerializerMethodField()
+    comments_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         """Meta options for ShiftListSerializer."""
@@ -1023,6 +1024,7 @@ class ShiftListSerializer(serializers.ModelSerializer):
             "room_name",
             "clinic",
             "clinic_name",
+            "comments_count",
         ]
 
     def get_department(self, obj) -> str:

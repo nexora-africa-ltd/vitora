@@ -57,6 +57,7 @@ import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { CommentThread } from '@/components/comments';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
@@ -171,6 +172,7 @@ export default function EncounterDetailPage() {
   // Auth context for comments
   const { user } = useAuth();
   const { isAdmin } = usePermissions();
+  const commentCount = useCommentCount('encounter', encounterId);
 
   // =========================================================================
   // AI Chat Widget — encounter-aware context wiring
@@ -489,6 +491,11 @@ export default function EncounterDetailPage() {
                 <MessageCircle className="h-3.5 w-3.5 mr-1" />
                 <span className="sm:hidden">Notes</span>
                 <span className="hidden sm:inline">Comments</span>
+                {commentCount > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] rounded-full">
+                    {commentCount}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TooltipTrigger>
             <TooltipContent><p>Clinical comments & team discussion</p></TooltipContent>

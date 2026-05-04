@@ -133,4 +133,14 @@ export const commentsApi = {
       context: `commentsApi.mentionSearch(${query})`,
     });
   },
+
+  /**
+   * Get comment count for an entity (lightweight, no full comment data).
+   */
+  count: async (entityType: CommentableEntity, entityId: number | string): Promise<number> => {
+    const response = await apiClient.get<{ count: number }>('/api/comments/count/', {
+      params: { entity_type: entityType, entity_id: entityId },
+    });
+    return response.data.count ?? 0;
+  },
 };

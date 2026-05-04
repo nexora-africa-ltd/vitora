@@ -269,6 +269,7 @@ export interface ShiftListItem {
   room_name: string | null;
   clinic: number | null;
   clinic_name: string | null;
+  comments_count?: number;
 }
 
 export interface Shift extends Omit<ShiftListItem, 'department'> {

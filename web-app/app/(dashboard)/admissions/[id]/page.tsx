@@ -78,6 +78,7 @@ import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/i
 import { useToast } from '@/lib/hooks/use-toast';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { CommentThread } from '@/components/comments';
 import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
@@ -168,6 +169,7 @@ export default function AdmissionDetailPage() {
   const admissionId = Number(params.id);
 
   const { data: admission, isLoading, error } = useAdmission(admissionId);
+  const admissionCommentCount = useCommentCount('admission', admissionId);
   const { data: wardRounds, isLoading: wardRoundsLoading } = useAdmissionWardRounds(admissionId);
   const sourceEncounterId = admission?.source_encounter ?? admission?.opd_encounter ?? 0;
   const { data: sourceEncounter } = useEncounter(sourceEncounterId);
@@ -839,6 +841,11 @@ export default function AdmissionDetailPage() {
             <MessageCircle className="h-3.5 w-3.5 mr-1 hidden sm:inline" />
             <span className="sm:hidden">Notes</span>
             <span className="hidden sm:inline">Comments</span>
+            {admissionCommentCount > 0 && (
+              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] rounded-full">
+                {admissionCommentCount}
+              </Badge>
+            )}
           </TabsTrigger>
           {isMaternityCase && (
             <TabsTrigger value="partograph" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">

@@ -301,3 +301,48 @@ def mention_suggestions(request):
 
     serializer = MentionSuggestionSerializer(qs, many=True)
     return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def comment_count(request):
+    """
+    Return the comment count for a given entity.
+
+    Query params:
+        entity_type (str): One of 'encounter', 'lab-order', 'prescription', 'admission', 'shift'
+        entity_id (int): The primary key of the entity
+
+    Returns: { "count": N }
+    """
+    entity_type = request.query_params.get("entity_type", "")
+    entity_id = request.query_params.get("entity_id")
+
+    if not entity_type or not entity_id:
+        return Response(
+            {"error": "entity_type and entity_id required"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Map entity_type to (app_label, model_name) — same as COMMENTABLE_MODELS
+    TYPE_MAP = {
+        "encounter": ("encounters", "encounter"),
+        "lab-order": ("laboratory", "laborder"),
+        "prescription": ("pharmacy", "prescription"),
+        "admission": ("inpatient", "admission"),
+        "shift": ("scheduling", "shift"),
+    }
+
+    mapping = TYPE_MAP.get(entity_type)
+    if not mapping:
+        return Response(
+            {"error": f"Invalid entity_type: {entity_type}"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    app_label, model_name = mapping
+    try:
+        ct = ContentType.objects.get(app_label=app_label, model=model_name)
+    except ContentType.DoesNotExist:
+        return Response({"count": 0})
+
+    count = ClinicalComment.objects.filter(content_type=ct, object_id=entity_id).count()
+    return Response({"count": count})
