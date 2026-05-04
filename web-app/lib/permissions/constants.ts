@@ -47,6 +47,8 @@ export const MODULE_PERMISSIONS = {
     'patients.release_body',
     'patients.void_death_record',
   ],
+  blood_bank: 'blood_bank.view_bloodunit',
+  dialysis: 'dialysis.view_dialysissession',
   pharmacy: 'pharmacy.view_prescription',
   laboratory: 'laboratory.view_laborder',
   imaging: 'imaging.view_imagingorder',

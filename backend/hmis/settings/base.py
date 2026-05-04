@@ -93,6 +93,8 @@ INSTALLED_APPS = [
     "hmis.apps.inventory.apps.InventoryConfig",
     "hmis.apps.theatre.apps.TheatreConfig",
     "hmis.apps.comments.apps.CommentsConfig",
+    "hmis.apps.blood_bank.apps.BloodBankConfig",
+    "hmis.apps.dialysis.apps.DialysisConfig",
 ]
 
 MIDDLEWARE = [
