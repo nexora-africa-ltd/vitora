@@ -81,13 +81,13 @@ jobs:
             SHA_USERNAME=secretref:sha-username
             SHA_PASSWORD=secretref:sha-password
             SHA_CONSUMER_KEY=secretref:sha-consumer-key
-            SHA_CLIENT_ID=${{ vars.SHA_CLIENT_ID || '' }}
+            SHA_CLIENT_ID=${{ vars.SHA_CLIENT_ID || 'vitora' }}
             SHA_CLIENT_SECRET=secretref:sha-client-secret
             SHA_ENCRYPTED_PIN=secretref:sha-encrypted-pin
             SHA_AGENT=DHABP05113
             SHA_FHIR_BASE_URL=https://qa-mis.apeiro-digital.com
             SHA_API_TIMEOUT=30
-            SHA_FACILITY_FR_CODE=${{ vars.SHA_FACILITY_FR_CODE }}
+            SHA_FACILITY_FR_CODE=${{ vars.SHA_FACILITY_FR_CODE || 'DEFAULT_FR_CODE' }}
             SHA_TIBERBU_BASE_URL=${{ vars.SHA_TIBERBU_BASE_URL }}
             ILM_BASE_URL=${{ vars.ILM_BASE_URL }}
             ILM_REQUEST_TIMEOUT=30
