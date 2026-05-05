@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePushSubscription } from '@/lib/hooks/use-push-subscription';
@@ -24,6 +24,7 @@ export function PushNotificationPrompt() {
     usePushSubscription();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const autoSubscribeAttempted = useRef(false);
 
   useEffect(() => {
     // Check if already dismissed this session
@@ -40,19 +41,36 @@ export function PushNotificationPrompt() {
     return () => clearTimeout(timer);
   }, []);
 
+  // If permission already granted but not subscribed, auto-subscribe (once)
+  useEffect(() => {
+    if (
+      permission === 'granted' &&
+      !isSubscribed &&
+      !isSubscribing &&
+      !isLoading &&
+      isSupported &&
+      !autoSubscribeAttempted.current
+    ) {
+      autoSubscribeAttempted.current = true;
+      subscribe();
+    }
+  }, [permission, isSubscribed, isSubscribing, isLoading, isSupported, subscribe]);
+
   // Don't render if:
   // - Still loading state
   // - Not supported
   // - Already subscribed
+  // - Permission already granted (auto-subscribe handles it)
   // - Permission already denied (can't ask again)
   // - Already dismissed
-  if (isLoading || !isSupported || isSubscribed || permission === 'denied' || dismissed) {
-    return null;
-  }
-
-  // If permission already granted but not subscribed, auto-subscribe
-  if (permission === 'granted' && !isSubscribed && !isSubscribing) {
-    subscribe();
+  if (
+    isLoading ||
+    !isSupported ||
+    isSubscribed ||
+    permission === 'granted' ||
+    permission === 'denied' ||
+    dismissed
+  ) {
     return null;
   }
 
