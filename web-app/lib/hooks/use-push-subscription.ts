@@ -49,6 +49,8 @@ export function usePushSubscription() {
     enabled: isSupported,
     staleTime: Infinity,
     retry: false,
+    throwOnError: false,
+    meta: { skipGlobalErrorHandler: true },
   });
 
   // Check current subscription state
@@ -98,6 +100,13 @@ export function usePushSubscription() {
       setIsSubscribed(true);
       queryClient.invalidateQueries({ queryKey: ['push-subscriptions'] });
     },
+    onError: (error) => {
+      // Push service errors (AbortError) are expected in dev/localhost
+      // where the push service endpoint is unreachable. Swallow silently.
+      console.warn('[Push] Subscription failed:', error.message);
+    },
+    // Prevent bubbling to global error handler
+    throwOnError: false,
   });
 
   // Unsubscribe mutation

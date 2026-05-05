@@ -84,7 +84,9 @@ export function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions,
     queryCache: new QueryCache({
-      onError: (error) => {
+      onError: (error, query) => {
+        // Allow queries to opt out of global error logging
+        if (query.meta?.skipGlobalErrorHandler) return;
         handleGlobalError(error);
       },
     }),
