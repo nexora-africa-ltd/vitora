@@ -29,6 +29,8 @@ import {
   Heart,
   Scissors,
   MoreHorizontal,
+  Droplets,
+  CircleDot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,8 +48,11 @@ import { usePatientEmergencyContacts } from '@/lib/hooks/use-patients';
 import { usePatientPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { usePatientLabOrders } from '@/lib/hooks/use-laboratory';
 import { usePatientProcedureOrders } from '@/lib/hooks/use-procedures';
+import { useBloodRequests } from '@/lib/hooks/use-blood-bank';
+import { useDialysisOrders } from '@/lib/hooks/use-dialysis';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useFacility } from '@/lib/context/facility-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format';
 import { PatientEncounters } from '@/components/patients/patient-encounters';
@@ -93,6 +98,7 @@ export default function PatientDetailPage() {
   // Use patient context instead of independent fetch
   const { patient, isLoading, error } = usePatientContext();
   const { canEditPatient } = usePermissions();
+  const { hasModule } = useFacility();
   const { data: emergencyContacts } = usePatientEmergencyContacts(patientId);
 
   // Pull-to-refresh support
@@ -227,6 +233,24 @@ export default function PatientDetailPage() {
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
+            </Button>
+          )}
+          {hasModule('blood_bank') && (
+            <Button variant="outline" asChild className="w-full sm:w-auto">
+              <Link href={`/blood-bank/requests/new?patient=${patient.id}`}>
+                <Droplets className="mr-2 h-4 w-4" />
+                <span className="sm:hidden">Blood</span>
+                <span className="hidden sm:inline">Request Blood</span>
+              </Link>
+            </Button>
+          )}
+          {hasModule('dialysis') && (
+            <Button variant="outline" asChild className="w-full sm:w-auto">
+              <Link href={`/dialysis/sessions/new?patient=${patient.id}`}>
+                <CircleDot className="mr-2 h-4 w-4" />
+                <span className="sm:hidden">Dialysis</span>
+                <span className="hidden sm:inline">Schedule Dialysis</span>
+              </Link>
             </Button>
           )}
         </div>
@@ -633,7 +657,7 @@ export default function PatientDetailPage() {
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="imaging" className="border-b-0">
+              <AccordionItem value="imaging" className={!hasModule('blood_bank') && !hasModule('dialysis') ? 'border-b-0' : ''}>
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-2">
                     <ScanLine className="h-4 w-4 text-muted-foreground" />
@@ -644,6 +668,34 @@ export default function PatientDetailPage() {
                   <PatientImagingSection patientId={patientId} />
                 </AccordionContent>
               </AccordionItem>
+
+              {hasModule('blood_bank') && (
+                <AccordionItem value="blood-bank" className={!hasModule('dialysis') ? 'border-b-0' : ''}>
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <Droplets className="h-4 w-4 text-muted-foreground" />
+                      <span>Blood Requests</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <PatientBloodRequestsSection patientId={patientId} />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+
+              {hasModule('dialysis') && (
+                <AccordionItem value="dialysis" className="border-b-0">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <CircleDot className="h-4 w-4 text-muted-foreground" />
+                      <span>Dialysis Orders</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <PatientDialysisOrdersSection patientId={patientId} />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
             </Accordion>
           </TabsContent>
 
@@ -1030,6 +1082,171 @@ function PatientProceduresSection({
             View all {procedureOrders.length} procedure orders
           </Button>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
+// Blood Requests Section
+// =============================================================================
+
+function PatientBloodRequestsSection({ patientId }: { patientId: number }) {
+  const router = useRouter();
+  const { data, isLoading } = useBloodRequests({ patient: patientId, page_size: 10 });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 py-8">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const requests = data?.results ?? [];
+
+  if (!requests.length) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <EmptyState
+            icon={Droplets}
+            title="No blood requests"
+            description="This patient has no blood product requests."
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base sm:text-lg">
+          Blood Requests ({requests.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {requests.map((req) => (
+          <div
+            key={req.id}
+            className="flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+            onClick={() => router.push(`/blood-bank/requests`)}
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">
+                {req.request_number} — {req.blood_group} {req.component}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {req.units_requested} unit(s) • {req.urgency} • {formatDate(req.created_at)}
+              </p>
+            </div>
+            <Badge
+              className={cn(
+                'w-fit shrink-0 self-start sm:self-auto',
+                req.status === 'PENDING' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' :
+                req.status === 'READY' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' :
+                req.status === 'ISSUED' || req.status === 'TRANSFUSED' ? 'bg-primary/15 text-primary' :
+                'bg-muted text-muted-foreground'
+              )}
+            >
+              {req.status}
+            </Badge>
+          </div>
+        ))}
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => router.push(`/blood-bank/requests/new?patient=${patientId}`)}
+        >
+          + New Blood Request
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
+// Dialysis Orders Section
+// =============================================================================
+
+function PatientDialysisOrdersSection({ patientId }: { patientId: number }) {
+  const router = useRouter();
+  const { data, isLoading } = useDialysisOrders({ patient: patientId, page_size: 10 });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 py-8">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const orders = data?.results ?? [];
+
+  if (!orders.length) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <EmptyState
+            icon={CircleDot}
+            title="No dialysis orders"
+            description="This patient has no dialysis prescriptions."
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base sm:text-lg">
+          Dialysis Orders ({orders.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {orders.map((order) => (
+          <div
+            key={order.id}
+            className="flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+            onClick={() => router.push(`/dialysis/orders/${order.id}`)}
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">
+                {order.dialysis_type} — {order.frequency}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Duration: {order.target_duration_minutes}min • Started {formatDate(order.start_date)}
+              </p>
+            </div>
+            <Badge
+              className={cn(
+                'w-fit shrink-0 self-start sm:self-auto',
+                order.status === 'ACTIVE' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' :
+                order.status === 'SUSPENDED' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' :
+                'bg-muted text-muted-foreground'
+              )}
+            >
+              {order.status}
+            </Badge>
+          </div>
+        ))}
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => router.push(`/dialysis/orders/new?patient=${patientId}`)}
+        >
+          + New Dialysis Order
+        </Button>
       </CardContent>
     </Card>
   );

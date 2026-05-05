@@ -1528,6 +1528,19 @@ class DeathRecordViewSet(ReadOnCreateMixin, NestedTenantScopeMixin, viewsets.Mod
     ordering_fields = ["date_of_death", "created_at", "status"]
     ordering = ["-date_of_death"]
     tenant_facility_chain = "patient__registered_at_facility"
+
+    def get_permissions(self):
+        from .permissions import CanCertifyDeath, CanReleaseBody, CanVoidDeathRecord
+
+        permissions = [IsAuthenticated()]
+        if self.action == "certify":
+            permissions.append(CanCertifyDeath())
+        elif self.action == "release_body":
+            permissions.append(CanReleaseBody())
+        elif self.action == "void":
+            permissions.append(CanVoidDeathRecord())
+        return permissions
+
     tenant_org_chain = "patient__organization"
 
     def get_serializer_class(self):

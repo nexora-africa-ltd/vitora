@@ -7,6 +7,8 @@ Action serializers for workflow transitions.
 
 from rest_framework import serializers
 
+from hmis.apps.blood_bank.models import CrossMatch
+
 from .models import (
     AnesthesiaRecord,
     IntraOpVitalReading,
@@ -354,6 +356,30 @@ class WHOSignInSerializer(serializers.Serializer):
     blood_loss_risk = serializers.CharField(required=False, default="", allow_blank=True)
     iv_access_adequate = serializers.BooleanField(required=False, default=False)
     blood_products_available = serializers.BooleanField(required=False, default=False)
+    cross_match = serializers.PrimaryKeyRelatedField(
+        queryset=CrossMatch.objects.filter(result="COMPATIBLE"),
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Completed cross-match ID (required when blood_loss_risk is HIGH)",
+    )
+
+    def validate(self, attrs):
+        blood_loss_risk = attrs.get("blood_loss_risk", "").upper()
+        if blood_loss_risk == "HIGH":
+            if not attrs.get("blood_products_available"):
+                raise serializers.ValidationError(
+                    {
+                        "blood_products_available": "Must confirm blood products are available when blood loss risk is HIGH."
+                    }
+                )
+            if not attrs.get("cross_match"):
+                raise serializers.ValidationError(
+                    {
+                        "cross_match": "A completed compatible cross-match is required when blood loss risk is HIGH."
+                    }
+                )
+        return attrs
 
 
 class WHOTimeOutSerializer(serializers.Serializer):

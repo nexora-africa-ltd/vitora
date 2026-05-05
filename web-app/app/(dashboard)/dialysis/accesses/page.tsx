@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -93,11 +94,13 @@ export default function VascularAccessPage() {
           title="Vascular Access"
           helpContent="Track patient vascular access sites for dialysis. Monitor AV fistulas, grafts, and central venous catheters."
           actions={
-            <Button onClick={() => router.push('/dialysis/accesses/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">New Access</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            <PermissionGate action="dialysis.manage">
+              <Button onClick={() => router.push('/dialysis/accesses/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">New Access</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            </PermissionGate>
           }
         />
 

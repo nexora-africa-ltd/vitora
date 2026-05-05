@@ -162,6 +162,11 @@ class BloodUnit(FacilityScopedModel, TimeStampedModel):
 
     class Meta:
         ordering = ["-collection_date"]
+        permissions = [
+            ("manage_blood_bank", "Can manage blood bank inventory and units"),
+            ("issue_blood_unit", "Can issue blood units to patients"),
+            ("perform_crossmatch", "Can perform cross-matching tests"),
+        ]
 
     def __str__(self):
         return f"{self.unit_number} ({self.blood_group} {self.get_component_display()})"

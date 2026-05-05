@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -99,11 +100,13 @@ export default function BloodDonorsPage() {
           title="Blood Donors"
           helpContent="Register and manage blood donors. Track eligibility based on donation intervals."
           actions={
-            <Button onClick={() => router.push('/blood-bank/donors/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Register Donor</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            <PermissionGate action="blood_bank.manage">
+              <Button onClick={() => router.push('/blood-bank/donors/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Register Donor</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            </PermissionGate>
           }
         />
 

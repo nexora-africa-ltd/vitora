@@ -20,6 +20,8 @@ import {
   Plus,
   CalendarClock,
   Shuffle,
+  Droplets,
+  CircleDot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,6 +80,7 @@ import { buildAdmissionAIClinicalNotes, getLatestWardRound } from '@/lib/utils/i
 import { useToast } from '@/lib/hooks/use-toast';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useFacility } from '@/lib/context/facility-context';
 import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { CommentThread } from '@/components/comments';
 import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
@@ -166,6 +169,7 @@ export default function AdmissionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { hasModule } = useFacility();
   const admissionId = Number(params.id);
 
   const { data: admission, isLoading, error } = useAdmission(admissionId);
@@ -735,6 +739,27 @@ export default function AdmissionDetailPage() {
             </Link>
           </Button>
           </PermissionGate>
+
+          {/* Blood Bank — only when module enabled */}
+          {hasModule('blood_bank') && (
+            <Button variant="outline" asChild>
+              <Link href={`/blood-bank/requests/new?patient=${admission.patient}`}>
+                <Droplets className="h-4 w-4 mr-2" />
+                Request Blood
+              </Link>
+            </Button>
+          )}
+
+          {/* Dialysis — only when module enabled */}
+          {hasModule('dialysis') && (
+            <Button variant="outline" asChild>
+              <Link href={`/dialysis/orders/new?patient=${admission.patient}`}>
+                <CircleDot className="h-4 w-4 mr-2" />
+                Dialysis Order
+              </Link>
+            </Button>
+          )}
+
           <PermissionGate action="inpatient.discharge">
           <Button variant="default" asChild>
             <Link href={`/admissions/${admission.id}/discharge`}>

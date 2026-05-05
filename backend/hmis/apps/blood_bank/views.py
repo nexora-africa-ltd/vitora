@@ -18,6 +18,7 @@ from .models import (
     RequestStatus,
     UnitStatus,
 )
+from .permissions import CanIssueBloodUnit, CanManageBloodBank, CanPerformCrossMatch
 from .serializers import (
     BloodDonorCreateSerializer,
     BloodDonorDetailSerializer,
@@ -83,6 +84,12 @@ class BloodDonorViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
     ordering_fields = ["created_at", "last_donation_date", "blood_group"]
     tenant_scope = "facility"
 
+    def get_permissions(self):
+        permissions = [IsAuthenticated()]
+        if self.action not in ("list", "retrieve"):
+            permissions.append(CanManageBloodBank())
+        return permissions
+
     def get_serializer_class(self):
         if self.action == "create":
             return BloodDonorCreateSerializer
@@ -101,6 +108,15 @@ class BloodUnitViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelV
     search_fields = ["unit_number", "donor__first_name", "donor__last_name"]
     ordering_fields = ["collection_date", "expiry_date", "blood_group", "status"]
     tenant_scope = "facility"
+
+    def get_permissions(self):
+        permissions = [IsAuthenticated()]
+        if self.action in ("mark_available", "quarantine") or self.action not in (
+            "list",
+            "retrieve",
+        ):
+            permissions.append(CanManageBloodBank())
+        return permissions
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -148,6 +164,12 @@ class BloodRequestViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mod
     ordering_fields = ["created_at", "urgency", "status"]
     tenant_scope = "facility"
 
+    def get_permissions(self):
+        permissions = [IsAuthenticated()]
+        if self.action not in ("list", "retrieve"):
+            permissions.append(CanManageBloodBank())
+        return permissions
+
     def get_serializer_class(self):
         if self.action == "create":
             return BloodRequestCreateSerializer
@@ -177,6 +199,12 @@ class CrossMatchViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
     permission_classes = [IsAuthenticated]
     search_fields = ["blood_unit__unit_number", "blood_request__request_number"]
     tenant_scope = "facility"
+
+    def get_permissions(self):
+        permissions = [IsAuthenticated()]
+        if self.action not in ("list", "retrieve"):
+            permissions.append(CanPerformCrossMatch())
+        return permissions
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -214,6 +242,12 @@ class BloodIssueViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
     permission_classes = [IsAuthenticated]
     search_fields = ["blood_unit__unit_number", "blood_request__request_number"]
     tenant_scope = "facility"
+
+    def get_permissions(self):
+        permissions = [IsAuthenticated()]
+        if self.action not in ("list", "retrieve"):
+            permissions.append(CanIssueBloodUnit())
+        return permissions
 
     def get_serializer_class(self):
         if self.action == "create":

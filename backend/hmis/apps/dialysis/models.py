@@ -211,6 +211,10 @@ class DialysisSession(FacilityScopedModel, TimeStampedModel):
 
     class Meta:
         ordering = ["-scheduled_date", "-start_time"]
+        permissions = [
+            ("manage_dialysis", "Can manage dialysis orders and sessions"),
+            ("perform_dialysis", "Can start, complete, or abort dialysis sessions"),
+        ]
 
     def __str__(self):
         return f"{self.session_number} - {self.patient} ({self.get_status_display()})"

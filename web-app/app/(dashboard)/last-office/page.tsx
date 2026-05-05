@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Search, Calendar, User, Skull, PackageCheck, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -119,13 +120,15 @@ export default function LastOfficePage() {
           title="Last Office"
           helpContent="Manage death records, morgue status, body release, and civil registry reporting."
           actions={
-            <Button asChild>
-              <Link href="/last-office/new">
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Record Death</span>
-                <span className="sm:hidden">New</span>
-              </Link>
-            </Button>
+            <PermissionGate action="last_office.record_death">
+              <Button asChild>
+                <Link href="/last-office/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Record Death</span>
+                  <span className="sm:hidden">New</span>
+                </Link>
+              </Button>
+            </PermissionGate>
           }
         />
 

@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import {
   PlayCircle, User, Calendar, Stethoscope, Eye,
   ClipboardList, FileText, Beaker, ScanLine, Pill, Scissors,
-  HeartHandshake, ArrowRightLeft, ScrollText, ShieldCheck, MessageCircle,
+  HeartHandshake, ArrowRightLeft, ScrollText, ShieldCheck, MessageCircle, Droplets,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,6 +57,7 @@ import { usePatientVitalsHistory } from '@/lib/hooks/use-patients';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAuth } from '@/lib/auth/context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useFacility } from '@/lib/context/facility-context';
 import { useCommentCount } from '@/lib/hooks/use-comment-count';
 import { CommentThread } from '@/components/comments';
 import Link from 'next/link';
@@ -172,6 +173,7 @@ export default function EncounterDetailPage() {
   // Auth context for comments
   const { user } = useAuth();
   const { isAdmin } = usePermissions();
+  const { hasModule } = useFacility();
   const commentCount = useCommentCount('encounter', encounterId);
 
   // =========================================================================
@@ -336,6 +338,16 @@ export default function EncounterDetailPage() {
       )}
 
       {/* Admission referrals are now created through the Referrals tab */}
+
+      {/* Blood Bank — only visible when module enabled */}
+      {hasModule('blood_bank') && encounter.patient && (
+        <Button variant="outline" className="w-full sm:w-auto" asChild>
+          <Link href={`/blood-bank/requests/new?patient=${encounter.patient}&encounter=${encounter.id}`}>
+            <Droplets className="h-4 w-4 mr-2" />
+            Request Blood
+          </Link>
+        </Button>
+      )}
     </>
   );
 

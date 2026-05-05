@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -97,11 +98,13 @@ export default function BloodUnitsPage() {
           title="Blood Units"
           helpContent="Track blood unit inventory, screening status, and expiry. Units move through: Collected → Testing → Available → Issued."
           actions={
-            <Button onClick={() => router.push('/blood-bank/units/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Add Unit</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            <PermissionGate action="blood_bank.manage">
+              <Button onClick={() => router.push('/blood-bank/units/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Add Unit</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            </PermissionGate>
           }
         />
 

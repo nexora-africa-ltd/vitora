@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Calendar, Clock, User, FileText, ShieldCheck, AlertTriangle, XCircle, Building2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -180,16 +181,20 @@ export default function DeathRecordDetailPage() {
         {!record.is_voided && (
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
             {!record.is_certified && (
-              <Button onClick={() => setCertifyOpen(true)}>
-                <ShieldCheck className="h-4 w-4 mr-2" />
-                Certify Death
-              </Button>
+              <PermissionGate action="last_office.certify">
+                <Button onClick={() => setCertifyOpen(true)}>
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Certify Death
+                </Button>
+              </PermissionGate>
             )}
             {record.is_certified && !record.is_released && (
-              <Button onClick={() => setReleaseOpen(true)}>
-                <User className="h-4 w-4 mr-2" />
-                Release Body
-              </Button>
+              <PermissionGate action="last_office.release_body">
+                <Button onClick={() => setReleaseOpen(true)}>
+                  <User className="h-4 w-4 mr-2" />
+                  Release Body
+                </Button>
+              </PermissionGate>
             )}
             {record.is_certified && record.status !== 'REPORTED_TO_CIVIL_REGISTRY' && record.status !== 'RELEASED_TO_FAMILY' && (
               <Button variant="outline" onClick={handleReport} disabled={reportMutation.isPending}>
@@ -198,10 +203,12 @@ export default function DeathRecordDetailPage() {
               </Button>
             )}
             {!record.is_released && (
-              <Button variant="destructive" onClick={() => setVoidOpen(true)}>
-                <XCircle className="h-4 w-4 mr-2" />
-                Void Record
-              </Button>
+              <PermissionGate action="last_office.void_record">
+                <Button variant="destructive" onClick={() => setVoidOpen(true)}>
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Void Record
+                </Button>
+              </PermissionGate>
             )}
           </div>
         )}
