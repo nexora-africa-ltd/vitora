@@ -354,6 +354,16 @@ export interface FacilityBillingConfigCreateData {
   mpesa_shortcode?: string;
   mpesa_callback_url?: string;
   mpesa_environment?: string;
+  // SHA/DHA ILM API credentials (per-facility)
+  sha_consumer_key?: string;
+  sha_client_id?: string;
+  sha_client_secret?: string;
+  sha_username?: string;
+  sha_password?: string;
+  sha_agent_code?: string;
+  sha_facility_fr_code?: string;
+  sha_encrypted_pin?: string;
+  sha_api_environment?: string;
 }
 
 export interface FacilityBillingConfigUpdateData extends Partial<Omit<FacilityBillingConfigCreateData, 'facility'>> {}
