@@ -6,6 +6,7 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   Timer,
   TrendingUp,
   CalendarDays,
@@ -38,11 +39,21 @@ import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { AttendanceTrendsChart } from '@/components/scheduling/attendance-trends-chart';
 import { QRScannerDialog } from '@/components/scheduling/qr-clock-in';
 import { PayrollExportDialog } from '@/components/scheduling/payroll-export';
-import type { ShiftListItem, AttendanceStats } from '@/lib/types/scheduling';
+import { EmergencyClockInDialog } from '@/components/dashboard/emergency-clock-in-dialog';
+import type { ShiftListItem, AttendanceStats, EmergencyClockInPayload } from '@/lib/types/scheduling';
 
 // =============================================================================
 // Helpers
 // =============================================================================
+
+function isPastShiftEndTime(shift: { start_time: string; end_time: string }): boolean {
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const start = new Date(`${today}T${shift.start_time}`);
+  let end = new Date(`${today}T${shift.end_time}`);
+  if (end <= start) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+  return now > end;
+}
 
 function formatTime(timeStr: string): string {
   const [h, m] = timeStr.split(':');
@@ -153,6 +164,7 @@ function StatsCards({ stats, isLoading }: { stats: AttendanceStats | null; isLoa
 export default function MyShiftsPage() {
   const queryClient = useQueryClient();
   const { refresh, isRefreshing } = usePageRefresh();
+  const [emergencyDialogOpen, setEmergencyDialogOpen] = useState(false);
 
   // Date range (default last 30 days)
   const [fromDate, setFromDate] = useState(() => {
@@ -234,14 +246,31 @@ export default function MyShiftsPage() {
     onError: () => toast.error('Failed to resume shift'),
   });
 
+  const emergencyClockInMutation = useMutation({
+    mutationFn: (payload: EmergencyClockInPayload) => attendanceApi.emergencyClockIn(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-shift-today'] });
+      queryClient.invalidateQueries({ queryKey: ['my-shift-upcoming'] });
+      queryClient.invalidateQueries({ queryKey: ['my-shift-history'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduling-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['roster-shifts'] });
+      setEmergencyDialogOpen(false);
+      toast.success('Emergency clock-in successful');
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error));
+    },
+  });
+
   const todayShift = todayData?.shifts?.[0];
   const todayStatus = todayData?.attendance_status ?? 'NO_SHIFT';
   const stats = historyData?.stats ?? null;
   const history = historyData?.results ?? [];
   const upcoming = upcomingData?.results ?? [];
-  const isPending = clockInMutation.isPending || clockOutMutation.isPending || takeBreakMutation.isPending || resumeMutation.isPending;
+  const isPending = clockInMutation.isPending || clockOutMutation.isPending || takeBreakMutation.isPending || resumeMutation.isPending || emergencyClockInMutation.isPending;
 
   return (
+    <>
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="space-y-6">
         <PageHeader
@@ -249,14 +278,27 @@ export default function MyShiftsPage() {
           helpContent="View your shift schedule, clock in/out, and track your attendance history and trends."
           actions={
             todayShift && (todayStatus === 'UPCOMING' || todayStatus === 'SHOULD_CLOCK_IN') ? (
-              <Button
-                size="sm"
-                onClick={() => clockInMutation.mutate(todayShift.id)}
-                disabled={isPending}
-              >
-                <LogIn className="h-4 w-4 mr-1" />
-                Clock In
-              </Button>
+              isPastShiftEndTime(todayShift) ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                  onClick={() => setEmergencyDialogOpen(true)}
+                  disabled={isPending}
+                >
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Emergency </span>Clock-In
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => clockInMutation.mutate(todayShift.id)}
+                  disabled={isPending}
+                >
+                  <LogIn className="h-4 w-4 mr-1" />
+                  Clock In
+                </Button>
+              )
             ) : todayShift && todayStatus === 'CLOCKED_IN' ? (
               <div className="flex items-center gap-2">
                 <Button
@@ -503,5 +545,13 @@ export default function MyShiftsPage() {
         </Card>
       </div>
     </PullToRefresh>
+
+    <EmergencyClockInDialog
+      open={emergencyDialogOpen}
+      onOpenChange={setEmergencyDialogOpen}
+      onConfirm={(payload) => emergencyClockInMutation.mutate(payload)}
+      isPending={emergencyClockInMutation.isPending}
+    />
+    </>
   );
 }

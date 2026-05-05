@@ -83,6 +83,18 @@ function getTimeUntilShift(shift: Shift): { label: string; isOverdue: boolean; m
   return { label: `started ${formatDuration(Math.abs(diffMin))} ago`, isOverdue: true, minutes: diffMin };
 }
 
+function isPastShiftEndTime(shift: Shift): boolean {
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const start = new Date(`${today}T${shift.start_time}`);
+  let end = new Date(`${today}T${shift.end_time}`);
+
+  // Handle overnight shifts
+  if (end <= start) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+
+  return now > end;
+}
+
 // =============================================================================
 // Shift Greeting Line
 // =============================================================================
@@ -382,9 +394,15 @@ export function TodayAssignmentCard() {
                 </p>
               )}
               {status === 'SHOULD_CLOCK_IN' && timeInfo && (
-                <p className="text-xs text-destructive font-medium">
-                  Shift {timeInfo.label} — please clock in
-                </p>
+                isPastShiftEndTime(shift) ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                    Shift has ended — use emergency clock-in if needed
+                  </p>
+                ) : (
+                  <p className="text-xs text-destructive font-medium">
+                    Shift {timeInfo.label} — please clock in
+                  </p>
+                )
               )}
               {status === 'CLOCKED_IN' && progress && (
                 <div className="space-y-1.5">
@@ -429,15 +447,28 @@ export function TodayAssignmentCard() {
           {/* Actions */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {(status === 'UPCOMING' || status === 'SHOULD_CLOCK_IN') && (
-              <Button
-                size="sm"
-                variant={status === 'SHOULD_CLOCK_IN' ? 'default' : 'outline'}
-                onClick={() => setClockInDialogOpen(true)}
-                disabled={isPending}
-              >
-                <LogIn className="h-4 w-4 mr-1" />
-                Clock In
-              </Button>
+              isPastShiftEndTime(shift) ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                  onClick={() => setEmergencyDialogOpen(true)}
+                  disabled={isPending}
+                >
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Emergency </span>Clock-In
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant={status === 'SHOULD_CLOCK_IN' ? 'default' : 'outline'}
+                  onClick={() => setClockInDialogOpen(true)}
+                  disabled={isPending}
+                >
+                  <LogIn className="h-4 w-4 mr-1" />
+                  Clock In
+                </Button>
+              )
             )}
             {status === 'CLOCKED_IN' && (
               <>
@@ -499,6 +530,13 @@ export function TodayAssignmentCard() {
       onOpenChange={setClockInDialogOpen}
       onConfirm={(payload) => clockInMutation.mutate({ shiftId: shift.id, payload })}
       isPending={clockInMutation.isPending}
+    />
+
+    <EmergencyClockInDialog
+      open={emergencyDialogOpen}
+      onOpenChange={setEmergencyDialogOpen}
+      onConfirm={(payload) => emergencyClockInMutation.mutate(payload)}
+      isPending={emergencyClockInMutation.isPending}
     />
     </>
   );
