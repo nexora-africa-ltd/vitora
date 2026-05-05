@@ -1,4 +1,6 @@
-"""HL7 message read-only ViewSet."""
+"""HL7 endpoint and message ViewSets."""
+
+import time
 
 from django_filters import rest_framework as filters
 from rest_framework import status, viewsets
@@ -6,10 +8,98 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 
-from .models import HL7Message, HL7MessageStatus
-from .serializers import HL7MessageListSerializer, HL7MessageSerializer
+from .models import HL7Endpoint, HL7EndpointType, HL7Message, HL7MessageStatus
+from .serializers import (
+    HL7EndpointCreateSerializer,
+    HL7EndpointListSerializer,
+    HL7EndpointSerializer,
+    HL7EndpointTestSerializer,
+    HL7MessageListSerializer,
+    HL7MessageSerializer,
+)
+
+# ─── HL7 Endpoint ViewSet ────────────────────────────────────────────────────
+
+
+class HL7EndpointFilter(filters.FilterSet):
+    """Filter for HL7 endpoints."""
+
+    endpoint_type = filters.ChoiceFilter(choices=HL7EndpointType.choices)
+    is_active = filters.BooleanFilter()
+
+    class Meta:
+        model = HL7Endpoint
+        fields = ["endpoint_type", "is_active"]
+
+
+class HL7EndpointViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
+    """
+    CRUD ViewSet for facility-scoped HL7 endpoints.
+
+    Allows facility admins to configure external LIS/RIS/PAS connections.
+    Includes a test_connection action to verify reachability.
+    """
+
+    queryset = HL7Endpoint.objects.all()
+    permission_classes = [IsAuthenticated]
+    filterset_class = HL7EndpointFilter
+    search_fields = ["name", "mllp_host", "receiving_facility"]
+    ordering_fields = ["name", "created_at", "is_active"]
+    ordering = ["name"]
+    tenant_scope = "facility"
+
+    def get_serializer_class(self):  # type: ignore[override]
+        if self.action == "list":
+            return HL7EndpointListSerializer
+        if self.action in ("create", "update", "partial_update"):
+            return HL7EndpointCreateSerializer
+        if self.action == "test_connection":
+            return HL7EndpointTestSerializer
+        return HL7EndpointSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    @action(detail=True, methods=["post"])
+    def test_connection(self, request, pk=None):
+        """
+        Test MLLP connectivity to this endpoint.
+
+        Attempts a TCP connection and measures latency.
+        Does NOT send an HL7 message.
+        """
+        endpoint = self.get_object()
+        start = time.time()
+        error = ""
+        success = False
+
+        try:
+            import socket
+
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(endpoint.timeout)
+            sock.connect((endpoint.mllp_host, endpoint.mllp_port))
+            sock.close()
+            success = True
+        except Exception as exc:
+            error = str(exc)
+
+        latency_ms = (time.time() - start) * 1000
+
+        return Response({"success": success, "latency_ms": round(latency_ms, 2), "error": error})
+
+    @action(detail=True, methods=["post"])
+    def toggle_active(self, request, pk=None):
+        """Toggle endpoint active/inactive status."""
+        endpoint = self.get_object()
+        endpoint.is_active = not endpoint.is_active
+        endpoint.save(update_fields=["is_active", "updated_at"])
+        return Response(HL7EndpointSerializer(endpoint).data)
+
+
+# ─── HL7 Message ViewSet ─────────────────────────────────────────────────────
 
 
 class HL7MessageFilter(filters.FilterSet):

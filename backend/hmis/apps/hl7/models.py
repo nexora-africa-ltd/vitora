@@ -1,13 +1,119 @@
 """
 HL7 v2 message persistence models.
 
-Provides HL7Message model for tracking outbound/inbound HL7 messages
-with status tracking, retry support, and audit.
+Provides HL7Endpoint (facility-scoped connection config) and HL7Message
+(outbound/inbound message tracking with status and retry support).
 """
 
 from django.db import models
 
 from hmis.apps.core.mixins import FacilityScopedModel
+
+
+class HL7EndpointType(models.TextChoices):
+    """Type of HL7 endpoint."""
+
+    LIS = "LIS", "Laboratory Information System"
+    RIS = "RIS", "Radiology Information System"
+    PAS = "PAS", "Patient Administration System"
+    PHARMACY = "PHARMACY", "Pharmacy System"
+    OTHER = "OTHER", "Other"
+
+
+class HL7Endpoint(FacilityScopedModel):
+    """
+    Facility-scoped HL7/MLLP endpoint configuration.
+
+    Each facility can configure one or more external systems to
+    communicate with via HL7 v2 over MLLP. The queue service
+    resolves the appropriate endpoint at send time based on
+    the facility context.
+    """
+
+    name = models.CharField(
+        max_length=150,
+        help_text="Human-readable name (e.g., 'Lancet Lab', 'PathCare')",
+    )
+    endpoint_type = models.CharField(
+        max_length=20,
+        choices=HL7EndpointType.choices,
+        default=HL7EndpointType.LIS,
+    )
+    mllp_host = models.CharField(
+        max_length=255,
+        help_text="MLLP hostname or IP address",
+    )
+    mllp_port = models.PositiveIntegerField(
+        default=2575,
+        help_text="MLLP TCP port",
+    )
+    receiving_application = models.CharField(
+        max_length=100,
+        default="LAB_LIS",
+        help_text="HL7 MSH-5 Receiving Application",
+    )
+    receiving_facility = models.CharField(
+        max_length=100,
+        default="EXTERNAL_LAB",
+        help_text="HL7 MSH-6 Receiving Facility",
+    )
+    sending_application = models.CharField(
+        max_length=100,
+        default="VITORA_HMIS",
+        help_text="HL7 MSH-3 Sending Application",
+    )
+    sending_facility = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="HL7 MSH-4 Sending Facility (defaults to facility name)",
+    )
+    lis_code_system = models.CharField(
+        max_length=50,
+        default="LIS_DEFAULT",
+        help_text="External code system for test mapping",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this endpoint is currently active for message routing",
+    )
+    use_ssl = models.BooleanField(
+        default=False,
+        help_text="Use TLS/SSL for MLLP connection",
+    )
+    timeout = models.FloatField(
+        default=30.0,
+        help_text="Connection timeout in seconds",
+    )
+    max_retries = models.PositiveIntegerField(
+        default=5,
+        help_text="Maximum retry attempts for failed messages",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Internal notes about this endpoint",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "HL7 Endpoint"
+        verbose_name_plural = "HL7 Endpoints"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "mllp_host", "mllp_port"],
+                name="unique_facility_endpoint",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.mllp_host}:{self.mllp_port})"
+
+    @property
+    def address(self) -> str:
+        """Return host:port string."""
+        return f"{self.mllp_host}:{self.mllp_port}"
 
 
 class HL7MessageDirection(models.TextChoices):
@@ -90,6 +196,14 @@ class HL7Message(FacilityScopedModel):
     )
 
     # Destination
+    endpoint = models.ForeignKey(
+        HL7Endpoint,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="messages",
+        help_text="Resolved HL7 endpoint (facility-scoped)",
+    )
     destination_host = models.CharField(
         max_length=255,
         blank=True,

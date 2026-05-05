@@ -3,14 +3,23 @@ HL7 message queue service.
 
 Handles enqueuing, sending, and retrying HL7 messages via MLLP.
 Uses the existing MLLPClient from laboratory.services for transport.
+
+Endpoint resolution order:
+1. Explicit destination_host/port passed to enqueue()
+2. Facility-scoped HL7Endpoint from the database (by endpoint_type)
+3. Global settings fallback (MLLP_HOST / MLLP_PORT)
 """
 
 import logging
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.utils import timezone
 
 from hmis.apps.hl7.models import HL7Message, HL7MessageStatus
+
+if TYPE_CHECKING:
+    from hmis.apps.hl7.models import HL7Endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +28,28 @@ class HL7QueueService:
     """Queue and retry service for HL7 messages."""
 
     RETRY_BACKOFF_MINUTES = [1, 5, 15, 60, 240]  # Exponential backoff schedule
+
+    @classmethod
+    def resolve_endpoint(
+        cls,
+        facility_id: int | None = None,
+        endpoint_type: str = "LIS",
+    ) -> "HL7Endpoint | None":
+        """
+        Resolve the active HL7 endpoint for a facility and type.
+
+        Returns None if no matching endpoint is found.
+        """
+        from hmis.apps.hl7.models import HL7Endpoint
+
+        if not facility_id:
+            return None
+
+        return HL7Endpoint.objects.filter(
+            facility_id=facility_id,
+            endpoint_type=endpoint_type,
+            is_active=True,
+        ).first()
 
     @classmethod
     def enqueue(
@@ -30,19 +61,36 @@ class HL7QueueService:
         resource_id: int | None = None,
         destination_host: str = "",
         destination_port: int | None = None,
+        facility_id: int | None = None,
+        endpoint_type: str = "LIS",
     ) -> HL7Message:
         """
         Enqueue an HL7 message for delivery.
 
-        The message is saved immediately. If HL7 integration is enabled
-        and auto-send is on, it will be sent right away. Otherwise, it
-        sits in PENDING status for the retry worker to pick up.
+        Endpoint resolution order:
+        1. Explicit destination_host/port (if provided)
+        2. Facility-scoped HL7Endpoint from DB
+        3. Global settings fallback
 
         Returns:
             The created HL7Message instance.
         """
-        host = destination_host or getattr(settings, "HL7_MLLP_HOST", "")
-        port = destination_port or getattr(settings, "HL7_MLLP_PORT", None)
+        endpoint = None
+        host = destination_host
+        port = destination_port
+
+        # Resolve from facility endpoint if not explicitly provided
+        if not host and facility_id:
+            endpoint = cls.resolve_endpoint(facility_id, endpoint_type)
+            if endpoint:
+                host = endpoint.mllp_host
+                port = endpoint.mllp_port
+
+        # Fall back to global settings
+        if not host:
+            host = getattr(settings, "HL7_MLLP_HOST", "") or getattr(settings, "MLLP_HOST", "")
+        if not port:
+            port = getattr(settings, "HL7_MLLP_PORT", None) or getattr(settings, "MLLP_PORT", None)
 
         msg = HL7Message.objects.create(
             message_type=message_type,
@@ -50,8 +98,10 @@ class HL7QueueService:
             message_control_id=message_control_id,
             resource_type=resource_type,
             resource_id=resource_id,
-            destination_host=host,
+            endpoint=endpoint,
+            destination_host=host or "",
             destination_port=port,
+            facility_id=facility_id,
         )
 
         # Auto-send if integration enabled and host configured

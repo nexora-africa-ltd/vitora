@@ -1,9 +1,12 @@
 /**
  * HL7 v2 messaging type definitions.
  *
- * Read-only types for HL7 message monitoring.
+ * Types for HL7 endpoint CRUD and message monitoring.
  * Based on backend model at hmis/apps/hl7/models.py
  */
+
+// HL7 endpoint type
+export type HL7EndpointType = 'LIS' | 'RIS' | 'PAS' | 'PHARMACY' | 'OTHER';
 
 // HL7 message direction
 export type HL7MessageDirection = 'IN' | 'OUT';
@@ -16,6 +19,86 @@ export type HL7MessageStatus =
   | 'ACK'
   | 'FAILED'
   | 'DEAD';
+
+/**
+ * HL7 Endpoint (facility-scoped connection config)
+ */
+export interface HL7Endpoint {
+  id: number;
+  name: string;
+  endpoint_type: HL7EndpointType;
+  mllp_host: string;
+  mllp_port: number;
+  receiving_application: string;
+  receiving_facility: string;
+  sending_application: string;
+  sending_facility: string;
+  lis_code_system: string;
+  is_active: boolean;
+  use_ssl: boolean;
+  timeout: number;
+  max_retries: number;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
+/**
+ * HL7 Endpoint list item (lightweight)
+ */
+export interface HL7EndpointListItem {
+  id: number;
+  name: string;
+  endpoint_type: HL7EndpointType;
+  mllp_host: string;
+  mllp_port: number;
+  receiving_facility: string;
+  is_active: boolean;
+  created_at: string;
+  message_count: number;
+}
+
+/**
+ * HL7 Endpoint create/update payload
+ */
+export interface HL7EndpointPayload {
+  name: string;
+  endpoint_type: HL7EndpointType;
+  mllp_host: string;
+  mllp_port: number;
+  receiving_application?: string;
+  receiving_facility?: string;
+  sending_application?: string;
+  sending_facility?: string;
+  lis_code_system?: string;
+  is_active?: boolean;
+  use_ssl?: boolean;
+  timeout?: number;
+  max_retries?: number;
+  notes?: string;
+}
+
+/**
+ * HL7 Endpoint connection test result
+ */
+export interface HL7EndpointTestResult {
+  success: boolean;
+  latency_ms: number;
+  error: string;
+}
+
+/**
+ * HL7 Endpoint list params
+ */
+export interface HL7EndpointListParams {
+  page?: number;
+  page_size?: number;
+  endpoint_type?: HL7EndpointType;
+  is_active?: boolean;
+  search?: string;
+  ordering?: string;
+}
 
 /**
  * HL7 message detail (full serializer)
