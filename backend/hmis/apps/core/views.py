@@ -1463,7 +1463,12 @@ class PushSubscriptionViewSet(viewsets.ModelViewSet):
                 user_agent=self.request.META.get("HTTP_USER_AGENT", "")[:300],
             )
 
-    @action(detail=False, methods=["get"], url_path="vapid-key")
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="vapid-key",
+        permission_classes=[AllowAny],
+    )
     def vapid_key(self, request):
         """Return the VAPID public key for client-side PushManager.subscribe()."""
         key = django_settings.VAPID_PUBLIC_KEY

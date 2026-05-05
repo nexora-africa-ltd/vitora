@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 
 from .models import DialysisOrder, DialysisSession, OrderStatus, SessionStatus, VascularAccess
+from .permissions import CanManageDialysis, CanPerformDialysis
 from .serializers import (
     DialysisOrderCreateSerializer,
     DialysisOrderDetailSerializer,
@@ -72,6 +73,12 @@ class VascularAccessViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.M
     ordering_fields = ["placed_date", "created_at"]
     tenant_scope = "facility"
 
+    def get_permissions(self):
+        permissions = [IsAuthenticated()]
+        if self.action not in ("list", "retrieve"):
+            permissions.append(CanManageDialysis())
+        return permissions
+
     def get_serializer_class(self):
         if self.action == "create":
             return VascularAccessCreateSerializer
@@ -90,6 +97,12 @@ class DialysisOrderViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
     search_fields = ["patient__first_name", "patient__last_name", "patient__mrn"]
     ordering_fields = ["created_at", "start_date", "status"]
     tenant_scope = "facility"
+
+    def get_permissions(self):
+        permissions = [IsAuthenticated()]
+        if self.action not in ("list", "retrieve"):
+            permissions.append(CanManageDialysis())
+        return permissions
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -135,6 +148,16 @@ class DialysisSessionViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.
     search_fields = ["session_number", "patient__first_name", "patient__last_name", "patient__mrn"]
     ordering_fields = ["scheduled_date", "start_time", "status", "created_at"]
     tenant_scope = "facility"
+
+    SESSION_ACTIONS = {"start", "complete", "abort"}
+
+    def get_permissions(self):
+        permissions = [IsAuthenticated()]
+        if self.action in self.SESSION_ACTIONS:
+            permissions.append(CanPerformDialysis())
+        elif self.action not in ("list", "retrieve"):
+            permissions.append(CanManageDialysis())
+        return permissions
 
     def get_serializer_class(self):
         if self.action == "create":

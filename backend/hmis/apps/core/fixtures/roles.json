@@ -891,6 +891,64 @@
           "update": true,
           "delete": true,
           "approve_swap": true
+        },
+        "BloodDonor": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_blood_bank": true
+        },
+        "BloodUnit": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_blood_bank": true,
+          "issue_blood_unit": true
+        },
+        "BloodRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_blood_bank": true
+        },
+        "CrossMatch": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "perform_crossmatch": true
+        },
+        "BloodIssue": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "issue_blood_unit": true
+        },
+        "VascularAccess": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_dialysis": true
+        },
+        "DialysisOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_dialysis": true
+        },
+        "DialysisSession": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "manage_dialysis": true,
+          "perform_dialysis": true
         }
       },
       "hierarchy_level": 0,
@@ -1400,6 +1458,59 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "BloodDonor": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodUnit": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "CrossMatch": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodIssue": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "VascularAccess": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true
+        },
+        "DialysisOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true
+        },
+        "DialysisSession": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true,
+          "perform_dialysis": true
         }
       },
       "hierarchy_level": 2,
@@ -1726,6 +1837,67 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "BloodDonor": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodUnit": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "CrossMatch": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodIssue": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "VascularAccess": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true
+        },
+        "DialysisOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true
+        },
+        "DialysisSession": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true,
+          "perform_dialysis": true
+        },
+        "DeathRecord": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "certify_death": true,
+          "release_body": true
         }
       },
       "hierarchy_level": 2,
@@ -2180,6 +2352,59 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "BloodDonor": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodUnit": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "CrossMatch": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodIssue": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "VascularAccess": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true
+        },
+        "DialysisOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true
+        },
+        "DialysisSession": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true,
+          "perform_dialysis": true
         }
       },
       "hierarchy_level": 3,
@@ -2495,6 +2720,63 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "BloodDonor": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodUnit": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodRequest": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "CrossMatch": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "BloodIssue": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "VascularAccess": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "DialysisOrder": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "DialysisSession": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_dialysis": true,
+          "perform_dialysis": true
+        },
+        "DeathRecord": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 4,
@@ -2630,6 +2912,42 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "BloodDonor": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "BloodUnit": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true,
+          "issue_blood_unit": true
+        },
+        "BloodRequest": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "CrossMatch": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "perform_crossmatch": true
+        },
+        "BloodIssue": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "issue_blood_unit": true
         }
       },
       "hierarchy_level": 4,
@@ -4136,6 +4454,42 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "BloodDonor": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "BloodUnit": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true,
+          "issue_blood_unit": true
+        },
+        "BloodRequest": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "CrossMatch": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "perform_crossmatch": true
+        },
+        "BloodIssue": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "issue_blood_unit": true
         }
       },
       "hierarchy_level": 3,
@@ -4259,6 +4613,42 @@
           "update": false,
           "delete": false,
           "approve_swap": false
+        },
+        "BloodDonor": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "BloodUnit": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true,
+          "issue_blood_unit": true
+        },
+        "BloodRequest": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "manage_blood_bank": true
+        },
+        "CrossMatch": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "perform_crossmatch": true
+        },
+        "BloodIssue": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "issue_blood_unit": true
         }
       },
       "hierarchy_level": 5,

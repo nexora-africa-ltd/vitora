@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -114,11 +115,13 @@ export default function BloodRequestsPage() {
           title="Blood Requests"
           helpContent="View and manage blood product requests. Track from request through cross-matching to transfusion."
           actions={
-            <Button onClick={() => router.push('/blood-bank/requests/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">New Request</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            <PermissionGate action="blood_bank.create_request">
+              <Button onClick={() => router.push('/blood-bank/requests/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">New Request</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            </PermissionGate>
           }
         />
 

@@ -13,6 +13,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from hmis.apps.blood_bank.models import BloodIssue, CrossMatch
 from hmis.apps.core.mixins import FacilityScopedModel, resolve_tenant_from_related
 from hmis.apps.core.models import TimeStampedModel
 
@@ -435,6 +436,14 @@ class WHOSafetyChecklist(TimeStampedModel):
     blood_loss_risk = models.CharField(max_length=20, blank=True, default="")
     iv_access_adequate = models.BooleanField(default=False)
     blood_products_available = models.BooleanField(default=False)
+    cross_match = models.ForeignKey(
+        CrossMatch,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="who_checklists",
+        help_text="Completed cross-match (required when blood_loss_risk is HIGH)",
+    )
 
     # =====================================================================
     #  TIME-OUT  (Before Skin Incision)
@@ -620,7 +629,15 @@ class AnesthesiaRecord(TimeStampedModel):
     # Fluids
     crystalloid_volume = models.IntegerField(default=0, help_text="mL")
     colloid_volume = models.IntegerField(default=0, help_text="mL")
-    blood_products = models.TextField(blank=True, default="")
+    blood_products = models.TextField(
+        blank=True, default="", help_text="Legacy free-text field (prefer blood_issues M2M)"
+    )
+    blood_issues = models.ManyToManyField(
+        BloodIssue,
+        blank=True,
+        related_name="anesthesia_records",
+        help_text="Blood products issued during surgery",
+    )
 
     # Blood loss
     estimated_blood_loss = models.IntegerField(default=0, help_text="mL")

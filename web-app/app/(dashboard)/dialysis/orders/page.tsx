@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -92,11 +93,13 @@ export default function DialysisOrdersPage() {
           title="Dialysis Orders"
           helpContent="Standing dialysis prescriptions define treatment parameters (flow rates, duration, frequency) for ongoing patients."
           actions={
-            <Button onClick={() => router.push('/dialysis/orders/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">New Order</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            <PermissionGate action="dialysis.create_order">
+              <Button onClick={() => router.push('/dialysis/orders/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">New Order</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            </PermissionGate>
           }
         />
 

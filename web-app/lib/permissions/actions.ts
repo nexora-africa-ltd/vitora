@@ -91,12 +91,19 @@ export const ACTION_PERMISSIONS = {
   'blood_bank.view_units': ['LAB_TECH', 'NURSE', 'DOCTOR', 'ADMIN'],
   'blood_bank.view_requests': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'LAB_TECH', 'ADMIN'],
   'blood_bank.view_crossmatch': ['LAB_TECH', 'DOCTOR', 'ADMIN'],
+  'blood_bank.manage': ['LAB_TECH', 'LAB_SCIENTIST', 'PHLEBOTOMIST', 'ADMIN'],
+  'blood_bank.create_request': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'blood_bank.issue_unit': ['LAB_TECH', 'LAB_SCIENTIST', 'ADMIN'],
+  'blood_bank.perform_crossmatch': ['LAB_TECH', 'LAB_SCIENTIST', 'PHLEBOTOMIST', 'ADMIN'],
 
   // === Dialysis Module ===
   'dialysis.view_dashboard': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
   'dialysis.view_sessions': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
   'dialysis.view_orders': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
   'dialysis.view_accesses': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'dialysis.manage': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'ADMIN'],
+  'dialysis.create_order': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'ADMIN'],
+  'dialysis.perform_session': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
 
   // === Pharmacy Module ===
   'pharmacy.view_dashboard': ['PHARMACIST', 'PHARMACY_TECH', 'ADMIN'],

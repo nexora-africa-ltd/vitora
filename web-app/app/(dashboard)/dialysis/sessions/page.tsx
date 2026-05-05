@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -93,11 +94,13 @@ export default function DialysisSessionsPage() {
           title="Dialysis Sessions"
           helpContent="Track individual dialysis treatment sessions. Sessions progress: Scheduled → In Progress → Completed."
           actions={
-            <Button onClick={() => router.push('/dialysis/sessions/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">New Session</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            <PermissionGate action="dialysis.perform_session">
+              <Button onClick={() => router.push('/dialysis/sessions/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">New Session</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            </PermissionGate>
           }
         />
 
