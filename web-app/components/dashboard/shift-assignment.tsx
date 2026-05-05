@@ -52,9 +52,9 @@ function formatDuration(minutes: number): string {
 
 function getShiftProgress(shift: Shift): { percent: number; elapsed: string; remaining: string } {
   const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const start = new Date(`${today}T${shift.start_time}`);
-  let end = new Date(`${today}T${shift.end_time}`);
+  const date = shift.shift_date;
+  const start = new Date(`${date}T${shift.start_time}`);
+  let end = new Date(`${date}T${shift.end_time}`);
 
   // Handle overnight shifts
   if (end <= start) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
@@ -73,8 +73,8 @@ function getShiftProgress(shift: Shift): { percent: number; elapsed: string; rem
 
 function getTimeUntilShift(shift: Shift): { label: string; isOverdue: boolean; minutes: number } {
   const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const start = new Date(`${today}T${shift.start_time}`);
+  const date = shift.shift_date;
+  const start = new Date(`${date}T${shift.start_time}`);
   const diffMin = (start.getTime() - now.getTime()) / 60000;
 
   if (diffMin > 0) {
@@ -85,9 +85,9 @@ function getTimeUntilShift(shift: Shift): { label: string; isOverdue: boolean; m
 
 function isPastShiftEndTime(shift: Shift): boolean {
   const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const start = new Date(`${today}T${shift.start_time}`);
-  let end = new Date(`${today}T${shift.end_time}`);
+  const date = shift.shift_date;
+  const start = new Date(`${date}T${shift.start_time}`);
+  let end = new Date(`${date}T${shift.end_time}`);
 
   // Handle overnight shifts
   if (end <= start) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);

@@ -76,6 +76,11 @@ const MPESA_ENVIRONMENTS = [
   { value: 'production', label: 'Production (Live)' },
 ] as const;
 
+const SHA_ENVIRONMENTS = [
+  { value: 'sandbox', label: 'Sandbox (Testing)' },
+  { value: 'production', label: 'Production (Live)' },
+] as const;
+
 // ---------------------------------------------------------------------------
 // Form state
 // ---------------------------------------------------------------------------
@@ -99,6 +104,16 @@ interface FormState {
   mpesa_shortcode: string;
   mpesa_callback_url: string;
   mpesa_environment: string;
+  // SHA/DHA ILM API credentials
+  sha_consumer_key: string;
+  sha_client_id: string;
+  sha_client_secret: string;
+  sha_username: string;
+  sha_password: string;
+  sha_agent_code: string;
+  sha_facility_fr_code: string;
+  sha_encrypted_pin: string;
+  sha_api_environment: string;
 }
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -121,6 +136,16 @@ function configToForm(cfg: FacilityBillingConfig): FormState {
     mpesa_shortcode: cfg.mpesa_shortcode ?? '',
     mpesa_callback_url: cfg.mpesa_callback_url ?? '',
     mpesa_environment: cfg.mpesa_environment ?? 'sandbox',
+    // SHA secrets are write-only — never returned by GET, always empty in form
+    sha_consumer_key: '',
+    sha_client_id: '',
+    sha_client_secret: '',
+    sha_username: '',
+    sha_password: '',
+    sha_agent_code: cfg.sha_agent_code ?? '',
+    sha_facility_fr_code: cfg.sha_facility_fr_code ?? '',
+    sha_encrypted_pin: cfg.sha_encrypted_pin ?? '',
+    sha_api_environment: cfg.sha_api_environment ?? 'sandbox',
   };
 }
 
@@ -138,11 +163,22 @@ function formToPayload(form: FormState): FacilityBillingConfigUpdateData {
     mpesa_shortcode: form.mpesa_shortcode,
     mpesa_callback_url: form.mpesa_callback_url,
     mpesa_environment: form.mpesa_environment,
+    // SHA non-secret fields always sent
+    sha_agent_code: form.sha_agent_code,
+    sha_facility_fr_code: form.sha_facility_fr_code,
+    sha_encrypted_pin: form.sha_encrypted_pin,
+    sha_api_environment: form.sha_api_environment,
   };
   // Only send secrets when user has entered new values
   if (form.mpesa_consumer_key) payload.mpesa_consumer_key = form.mpesa_consumer_key;
   if (form.mpesa_consumer_secret) payload.mpesa_consumer_secret = form.mpesa_consumer_secret;
   if (form.mpesa_passkey) payload.mpesa_passkey = form.mpesa_passkey;
+  // SHA secrets
+  if (form.sha_consumer_key) payload.sha_consumer_key = form.sha_consumer_key;
+  if (form.sha_client_id) payload.sha_client_id = form.sha_client_id;
+  if (form.sha_client_secret) payload.sha_client_secret = form.sha_client_secret;
+  if (form.sha_username) payload.sha_username = form.sha_username;
+  if (form.sha_password) payload.sha_password = form.sha_password;
   return payload;
 }
 
@@ -285,6 +321,7 @@ export default function PaymentsConfigPage() {
   }, [form, configQuery.data]);
 
   const hasMpesaCreds = configQuery.data?.has_mpesa_credentials ?? false;
+  const hasShaCreds = configQuery.data?.has_sha_credentials ?? false;
 
   const errors = useMemo<FormErrors>(() => (form ? validate(form, hasMpesaCreds) : {}), [form, hasMpesaCreds]);
   const hasErrors = Object.keys(errors).length > 0;
@@ -469,6 +506,9 @@ export default function PaymentsConfigPage() {
           <Badge variant={hasMpesaCreds ? 'default' : 'outline'} className="shrink-0 w-fit">
             {hasMpesaCreds ? 'M-Pesa Active' : 'M-Pesa Not Configured'}
           </Badge>
+          <Badge variant={hasShaCreds ? 'default' : 'outline'} className="shrink-0 w-fit">
+            {hasShaCreds ? 'SHA Active' : 'SHA Not Configured'}
+          </Badge>
         </div>
       </div>
 
@@ -503,6 +543,11 @@ export default function PaymentsConfigPage() {
             <span className="sm:hidden">Bank</span>
             <span className="hidden sm:inline">Bank Accounts</span>
             {touched && bankTabHasErrors && <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />}
+          </TabsTrigger>
+          <TabsTrigger value="sha" className="gap-1.5 text-xs sm:text-sm">
+            <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">SHA</span>
+            <span className="hidden sm:inline">SHA/DHA Credentials</span>
           </TabsTrigger>
         </TabsList>
 
@@ -892,6 +937,186 @@ export default function PaymentsConfigPage() {
                     className={touched && errors.bank_account_number ? 'border-destructive' : ''}
                   />
                   <FieldError msg={touched ? errors.bank_account_number : undefined} />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end border-t pt-4">
+              <Button
+                onClick={handleSave}
+                disabled={!isDirty || isPending}
+                size="sm"
+              >
+                {updateMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Save
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        {/* ================================================================ */}
+        {/* TAB 4: SHA/DHA Credentials */}
+        {/* ================================================================ */}
+
+        <TabsContent value="sha" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">SHA/DHA ILM Credentials</CardTitle>
+                <HelpPopover content="Per-facility DHA Health Information Exchange credentials used for SHA claims submission, preauthorizations, and eligibility checks. All secrets are encrypted at rest." />
+                {hasShaCreds && (
+                  <Badge variant="default" className="ml-auto gap-1">
+                    <ShieldCheck className="h-3 w-3" /> Configured
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertTitle className="text-sm">Encrypted credentials</AlertTitle>
+                <AlertDescription className="text-xs">
+                  All secret fields (consumer key, client ID, client secret, username, password) are encrypted at rest
+                  using KMS. They are never returned in API responses — leave blank to keep existing values.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSecrets(!showSecrets)}
+                >
+                  {showSecrets ? (
+                    <><EyeOff className="mr-1.5 h-3.5 w-3.5" /> Hide secrets</>
+                  ) : (
+                    <><Eye className="mr-1.5 h-3.5 w-3.5" /> Show secrets</>
+                  )}
+                </Button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="sha-api-environment">Environment</Label>
+                  <Select
+                    value={form.sha_api_environment}
+                    onValueChange={(v) => updateField('sha_api_environment', v)}
+                    disabled={isPending}
+                  >
+                    <SelectTrigger id="sha-api-environment">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHA_ENVIRONMENTS.map((env) => (
+                        <SelectItem key={env.value} value={env.value}>
+                          {env.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sha-agent-code">Agent code</Label>
+                  <Input
+                    id="sha-agent-code"
+                    value={form.sha_agent_code}
+                    onChange={(e) => updateField('sha_agent_code', e.target.value)}
+                    placeholder="e.g. DHABP05113"
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sha-facility-fr-code">Facility FR code</Label>
+                  <Input
+                    id="sha-facility-fr-code"
+                    value={form.sha_facility_fr_code}
+                    onChange={(e) => updateField('sha_facility_fr_code', e.target.value)}
+                    placeholder="Facility Registry code from DHA"
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sha-encrypted-pin">Encrypted PIN</Label>
+                  <Input
+                    id="sha-encrypted-pin"
+                    type={showSecrets ? 'text' : 'password'}
+                    value={form.sha_encrypted_pin}
+                    onChange={(e) => updateField('sha_encrypted_pin', e.target.value)}
+                    placeholder={hasShaCreds ? '••••••••  (saved — leave blank to keep)' : 'Pre-encrypted DHA PIN'}
+                    autoComplete="off"
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sha-consumer-key">Consumer key</Label>
+                  <Input
+                    id="sha-consumer-key"
+                    type={showSecrets ? 'text' : 'password'}
+                    value={form.sha_consumer_key}
+                    onChange={(e) => updateField('sha_consumer_key', e.target.value)}
+                    placeholder={hasShaCreds ? '••••••••  (saved — leave blank to keep)' : 'DHA ILM API consumer key'}
+                    autoComplete="off"
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sha-client-id">Client ID</Label>
+                  <Input
+                    id="sha-client-id"
+                    type={showSecrets ? 'text' : 'password'}
+                    value={form.sha_client_id}
+                    onChange={(e) => updateField('sha_client_id', e.target.value)}
+                    placeholder={hasShaCreds ? '••••••••  (saved — leave blank to keep)' : 'OAuth client ID'}
+                    autoComplete="off"
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sha-client-secret">Client secret</Label>
+                  <Input
+                    id="sha-client-secret"
+                    type={showSecrets ? 'text' : 'password'}
+                    value={form.sha_client_secret}
+                    onChange={(e) => updateField('sha_client_secret', e.target.value)}
+                    placeholder={hasShaCreds ? '••••••••  (saved — leave blank to keep)' : 'OAuth client secret'}
+                    autoComplete="off"
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sha-username">Username</Label>
+                  <Input
+                    id="sha-username"
+                    type={showSecrets ? 'text' : 'password'}
+                    value={form.sha_username}
+                    onChange={(e) => updateField('sha_username', e.target.value)}
+                    placeholder={hasShaCreds ? '••••••••  (saved — leave blank to keep)' : 'Basic Auth username'}
+                    autoComplete="off"
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sha-password">Password</Label>
+                  <Input
+                    id="sha-password"
+                    type={showSecrets ? 'text' : 'password'}
+                    value={form.sha_password}
+                    onChange={(e) => updateField('sha_password', e.target.value)}
+                    placeholder={hasShaCreds ? '••••••••  (saved — leave blank to keep)' : 'Basic Auth password'}
+                    autoComplete="off"
+                    disabled={isPending}
+                  />
                 </div>
               </div>
             </CardContent>

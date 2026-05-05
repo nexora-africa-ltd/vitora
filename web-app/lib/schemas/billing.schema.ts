@@ -626,6 +626,12 @@ export const FacilityBillingConfigSchema = z.object({
   mpesa_callback_url: z.string().optional().default(''),
   mpesa_environment: z.string().optional().default('sandbox'),
   has_mpesa_credentials: z.boolean().optional().default(false),
+  // SHA/DHA ILM (non-secret fields only — secrets are write-only)
+  sha_agent_code: z.string().optional().default(''),
+  sha_facility_fr_code: z.string().optional().default(''),
+  sha_api_environment: z.string().optional().default('sandbox'),
+  sha_encrypted_pin: z.string().optional().default(''),
+  has_sha_credentials: z.boolean().optional().default(false),
   // Timestamps
   created_at: z.string(),
   updated_at: z.string(),
