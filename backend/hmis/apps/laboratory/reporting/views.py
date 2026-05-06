@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin, resolve_request_tenant
 
 from .engine import TATReportingEngine
 from .models import TATSLATarget, TATSnapshot, WorkloadSnapshot
@@ -96,7 +96,10 @@ class WorkloadSnapshotViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewS
 
 
 def _get_facility_id(request):
-    """Extract facility ID from request (set by TenantMiddleware)."""
+    """Extract facility ID from request (resolved after DRF authentication)."""
+    # DRF JWT auth runs inside the view, so middleware may not have resolved
+    # the tenant yet. Call resolve_request_tenant to ensure it's set.
+    resolve_request_tenant(request)
     facility = getattr(request, "facility", None)
     if facility:
         return facility.id
