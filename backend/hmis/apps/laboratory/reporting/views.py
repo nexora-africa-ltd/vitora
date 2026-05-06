@@ -95,6 +95,18 @@ class WorkloadSnapshotViewSet(TenantScopedViewMixin, viewsets.ReadOnlyModelViewS
     filterset_fields = ["date", "technician"]
 
 
+def _get_facility_id(request):
+    """Extract facility ID from request (set by TenantMiddleware)."""
+    facility = getattr(request, "facility", None)
+    if facility:
+        return facility.id
+    # Fallback to query param
+    fid = request.query_params.get("facility")
+    if fid:
+        return int(fid)
+    return None
+
+
 class SLAComplianceReportView(APIView):
     """Enhanced SLA compliance report with percentiles."""
 
@@ -102,10 +114,10 @@ class SLAComplianceReportView(APIView):
 
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
-        facility_id = getattr(request, "facility_id", None) or request.query_params.get("facility")
+        facility_id = _get_facility_id(request)
         if not facility_id:
             return Response({"error": "Facility context required"}, status=400)
-        data = TATReportingEngine.sla_compliance_report(int(facility_id), start_date, end_date)
+        data = TATReportingEngine.sla_compliance_report(facility_id, start_date, end_date)
         return Response(data)
 
 
@@ -116,10 +128,10 @@ class TATTrendReportView(APIView):
 
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
-        facility_id = getattr(request, "facility_id", None) or request.query_params.get("facility")
+        facility_id = _get_facility_id(request)
         if not facility_id:
             return Response({"error": "Facility context required"}, status=400)
-        data = TATReportingEngine.tat_trend_report(int(facility_id), start_date, end_date)
+        data = TATReportingEngine.tat_trend_report(facility_id, start_date, end_date)
         return Response(data)
 
 
@@ -129,10 +141,10 @@ class ActiveBreachesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        facility_id = getattr(request, "facility_id", None) or request.query_params.get("facility")
+        facility_id = _get_facility_id(request)
         if not facility_id:
             return Response({"error": "Facility context required"}, status=400)
-        data = TATReportingEngine.active_breaches(int(facility_id))
+        data = TATReportingEngine.active_breaches(facility_id)
         return Response(data)
 
 
@@ -143,10 +155,10 @@ class TechnicianEfficiencyView(APIView):
 
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
-        facility_id = getattr(request, "facility_id", None) or request.query_params.get("facility")
+        facility_id = _get_facility_id(request)
         if not facility_id:
             return Response({"error": "Facility context required"}, status=400)
-        data = TATReportingEngine.technician_efficiency(int(facility_id), start_date, end_date)
+        data = TATReportingEngine.technician_efficiency(facility_id, start_date, end_date)
         return Response(data)
 
 
@@ -157,8 +169,8 @@ class WorkloadKPIReportView(APIView):
 
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
-        facility_id = getattr(request, "facility_id", None) or request.query_params.get("facility")
+        facility_id = _get_facility_id(request)
         if not facility_id:
             return Response({"error": "Facility context required"}, status=400)
-        data = TATReportingEngine.workload_kpi_report(int(facility_id), start_date, end_date)
+        data = TATReportingEngine.workload_kpi_report(facility_id, start_date, end_date)
         return Response(data)
