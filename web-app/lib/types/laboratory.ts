@@ -986,3 +986,97 @@ export interface AnalyzerDashboard {
   failed_messages_today: number;
   channel_statuses: ChannelHealthStatus[];
 }
+
+// =============================================================================
+// Lab Settings Types
+// =============================================================================
+
+export interface SpecimenRejectionReason {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  requires_recollection: boolean;
+  is_active: boolean;
+  display_order: number;
+}
+
+export type CommentTemplateCategory = 'GENERAL' | 'CRITICAL' | 'FOLLOW_UP' | 'METHODOLOGY' | 'QUALITY';
+
+export interface ResultCommentTemplate {
+  id: number;
+  code: string;
+  name: string;
+  text: string;
+  category: CommentTemplateCategory;
+  category_display: string;
+  applicable_tests: number[];
+  is_active: boolean;
+  display_order: number;
+}
+
+export interface ReferralLab {
+  id: number;
+  code: string;
+  name: string;
+  address: string;
+  contact_person: string;
+  phone: string;
+  email: string;
+  website: string;
+  tests_offered: string;
+  default_tat_days: number;
+  courier_schedule: string;
+  notes: string;
+  is_active: boolean;
+}
+
+export type LabelSize = 'SMALL' | 'MEDIUM' | 'LARGE';
+
+export interface SampleLabelTemplate {
+  id: number;
+  name: string;
+  label_size: LabelSize;
+  label_size_display: string;
+  include_barcode: boolean;
+  include_patient_name: boolean;
+  include_mrn: boolean;
+  include_dob: boolean;
+  include_collection_date: boolean;
+  include_test_name: boolean;
+  include_specimen_type: boolean;
+  include_priority: boolean;
+  copies_per_specimen: number;
+  is_default: boolean;
+  is_active: boolean;
+}
+
+export type BarcodeFormat = 'CODE128' | 'CODE39' | 'QR';
+
+export interface LabBarcodeConfig {
+  id: number;
+  prefix: string;
+  sequence_length: number;
+  include_date: boolean;
+  date_format: string;
+  separator: string;
+  barcode_format: BarcodeFormat;
+  barcode_format_display: string;
+  current_sequence: number;
+  sample_barcode: string;
+}
+
+export interface LabWorkflowSettings {
+  id: number;
+  auto_release_normal_results: boolean;
+  require_double_verification_critical: boolean;
+  auto_print_on_verify: boolean;
+  auto_print_labels_on_collect: boolean;
+  notify_clinician_on_critical: boolean;
+  notify_clinician_on_complete: boolean;
+  require_specimen_receipt: boolean;
+  specimen_rejection_requires_supervisor: boolean;
+  tat_warning_threshold_percent: number;
+  allow_duplicate_orders: boolean;
+  require_clinical_notes: boolean;
+}

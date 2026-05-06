@@ -11,16 +11,22 @@ from .views import (
     EncounterLabOrderViewSet,
     InstrumentViewSet,
     LabAttachmentViewSet,
+    LabBarcodeConfigViewSet,
     LabCriticalValuesReportView,
     LabOrderViewSet,
     LabQueueViewSet,
     LabResultViewSet,
     LabSampleRejectionReportView,
     LabTurnaroundTimeReportView,
+    LabWorkflowSettingsViewSet,
     LabWorkloadReportView,
     LOINCCodeViewSet,
     PatientLabOrderViewSet,
     PatientLabResultViewSet,
+    ReferralLabViewSet,
+    ResultCommentTemplateViewSet,
+    SampleLabelTemplateViewSet,
+    SpecimenRejectionReasonViewSet,
     SpecimenViewSet,
     TestCatalogViewSet,
 )
@@ -36,6 +42,17 @@ router.register(r"instruments", InstrumentViewSet, basename="instrument")
 router.register(r"analyzer-runs", AnalyzerRunViewSet, basename="analyzer-run")
 router.register(r"diagnostic-reports", DiagnosticReportViewSet, basename="diagnostic-report")
 router.register(r"specimens", SpecimenViewSet, basename="specimen")
+# Settings
+router.register(
+    r"settings/rejection-reasons", SpecimenRejectionReasonViewSet, basename="rejection-reason"
+)
+router.register(
+    r"settings/comment-templates", ResultCommentTemplateViewSet, basename="comment-template"
+)
+router.register(r"settings/referral-labs", ReferralLabViewSet, basename="referral-lab")
+router.register(r"settings/label-templates", SampleLabelTemplateViewSet, basename="label-template")
+router.register(r"settings/barcode-config", LabBarcodeConfigViewSet, basename="barcode-config")
+router.register(r"settings/workflow", LabWorkflowSettingsViewSet, basename="workflow-settings")
 
 urlpatterns = [
     path("reports/turnaround-time/", LabTurnaroundTimeReportView.as_view(), name="lab-report-tat"),

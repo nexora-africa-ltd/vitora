@@ -8,14 +8,20 @@ from .models import (
     AnalyzerRun,
     DiagnosticReport,
     Instrument,
+    LabBarcodeConfig,
     LabOrder,
     LabOrderItem,
     LabQueue,
     LabResult,
     LabResultAttachment,
+    LabWorkflowSettings,
     LOINCCode,
+    ReferralLab,
+    ResultCommentTemplate,
     ResultValidation,
+    SampleLabelTemplate,
     Specimen,
+    SpecimenRejectionReason,
     TestCatalog,
 )
 
@@ -1197,3 +1203,146 @@ class SpecimenSerializer(serializers.ModelSerializer):
     def get_order_item_ids(self, obj) -> list[int]:
         """Get list of linked order item IDs."""
         return list(obj.order_items.values_list("id", flat=True))
+
+
+# =============================================================================
+# Lab Settings Serializers
+# =============================================================================
+
+
+class SpecimenRejectionReasonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpecimenRejectionReason
+        fields = [
+            "id",
+            "code",
+            "name",
+            "description",
+            "requires_recollection",
+            "is_active",
+            "display_order",
+        ]
+        read_only_fields = ["id"]
+
+
+class ResultCommentTemplateSerializer(serializers.ModelSerializer):
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
+
+    class Meta:
+        model = ResultCommentTemplate
+        fields = [
+            "id",
+            "code",
+            "name",
+            "text",
+            "category",
+            "category_display",
+            "applicable_tests",
+            "is_active",
+            "display_order",
+        ]
+        read_only_fields = ["id", "category_display"]
+
+
+class ReferralLabSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReferralLab
+        fields = [
+            "id",
+            "code",
+            "name",
+            "address",
+            "contact_person",
+            "phone",
+            "email",
+            "website",
+            "tests_offered",
+            "default_tat_days",
+            "courier_schedule",
+            "notes",
+            "is_active",
+        ]
+        read_only_fields = ["id"]
+
+
+class SampleLabelTemplateSerializer(serializers.ModelSerializer):
+    label_size_display = serializers.CharField(source="get_label_size_display", read_only=True)
+
+    class Meta:
+        model = SampleLabelTemplate
+        fields = [
+            "id",
+            "name",
+            "label_size",
+            "label_size_display",
+            "include_barcode",
+            "include_patient_name",
+            "include_mrn",
+            "include_dob",
+            "include_collection_date",
+            "include_test_name",
+            "include_specimen_type",
+            "include_priority",
+            "copies_per_specimen",
+            "is_default",
+            "is_active",
+        ]
+        read_only_fields = ["id", "label_size_display"]
+
+
+class LabBarcodeConfigSerializer(serializers.ModelSerializer):
+    barcode_format_display = serializers.CharField(
+        source="get_barcode_format_display", read_only=True
+    )
+    sample_barcode = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LabBarcodeConfig
+        fields = [
+            "id",
+            "prefix",
+            "sequence_length",
+            "include_date",
+            "date_format",
+            "separator",
+            "barcode_format",
+            "barcode_format_display",
+            "current_sequence",
+            "sample_barcode",
+        ]
+        read_only_fields = ["id", "barcode_format_display", "current_sequence", "sample_barcode"]
+
+    def get_sample_barcode(self, obj) -> str:
+        """Generate a preview barcode without incrementing the counter."""
+        seq = str(obj.current_sequence + 1).zfill(obj.sequence_length)
+        parts = [obj.prefix]
+        if obj.include_date:
+            from datetime import datetime
+
+            today = datetime.now()
+            if obj.date_format == "YYMMDD":
+                parts.append(today.strftime("%y%m%d"))
+            else:
+                parts.append(today.strftime("%Y%m%d"))
+        parts.append(seq)
+        return obj.separator.join(parts)
+
+
+class LabWorkflowSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LabWorkflowSettings
+        fields = [
+            "id",
+            "auto_release_normal_results",
+            "require_double_verification_critical",
+            "auto_print_on_verify",
+            "auto_print_labels_on_collect",
+            "notify_clinician_on_critical",
+            "notify_clinician_on_complete",
+            "require_specimen_receipt",
+            "specimen_rejection_requires_supervisor",
+            "tat_warning_threshold_percent",
+            "allow_duplicate_orders",
+            "require_clinical_notes",
+        ]
+        read_only_fields = ["id"]
