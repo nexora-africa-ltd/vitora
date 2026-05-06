@@ -341,6 +341,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Analyzers', href: '/laboratory/analyzers', icon: Cpu, actionKey: 'laboratory.view_dashboard' },
       { label: 'Microbiology', href: '/laboratory/microbiology', icon: Bug, actionKey: 'laboratory.view_dashboard' },
       { label: 'EQA / PT', href: '/laboratory/qc/eqa', icon: Award, actionKey: 'laboratory.view_dashboard' },
+      { label: 'Settings', href: '/laboratory/settings', icon: Settings, actionKey: 'laboratory.view_dashboard' },
     ],
   },
   {
