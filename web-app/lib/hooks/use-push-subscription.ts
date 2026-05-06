@@ -74,6 +74,8 @@ export function usePushSubscription() {
       });
   }, [isSupported]);
 
+  const isVapidReady = !!vapidData?.vapid_public_key;
+
   // Subscribe mutation
   const subscribeMutation = useMutation({
     mutationFn: async () => {
@@ -107,6 +109,7 @@ export function usePushSubscription() {
     },
     // Prevent bubbling to global error handler
     throwOnError: false,
+    meta: { skipGlobalErrorHandler: true },
   });
 
   // Unsubscribe mutation
@@ -138,6 +141,7 @@ export function usePushSubscription() {
 
   return {
     isSupported,
+    isVapidReady,
     permission,
     isSubscribed,
     isLoading,
