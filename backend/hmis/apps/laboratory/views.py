@@ -19,7 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from hmis.apps.core.mixins import NestedTenantScopeMixin, TenantScopedViewMixin
+from hmis.apps.core.mixins import NestedTenantScopeMixin, ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import RequiresActiveShiftPermission
 
 from .models import (
@@ -1241,7 +1241,7 @@ class InstrumentFilter(filters.FilterSet):
         return queryset.filter(models.Q(code__icontains=value) | models.Q(name__icontains=value))
 
 
-class InstrumentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+class InstrumentViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for laboratory instruments.
 
@@ -1756,6 +1756,14 @@ class LabBarcodeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """Return the single config for current facility, creating default if needed."""
+        self._resolve_tenant_context()
+        if not getattr(request, "facility", None):
+            return Response(
+                {
+                    "detail": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=400,
+            )
         config, _created = LabBarcodeConfig.objects.get_or_create(
             facility=request.facility,
             defaults={"organization": request.facility.organization},
@@ -1780,6 +1788,14 @@ class LabWorkflowSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """Return the single settings for current facility, creating default if needed."""
+        self._resolve_tenant_context()
+        if not getattr(request, "facility", None):
+            return Response(
+                {
+                    "detail": "No facility context. Set X-Facility-ID header or assign a primary facility."
+                },
+                status=400,
+            )
         settings, _created = LabWorkflowSettings.objects.get_or_create(
             facility=request.facility,
             defaults={"organization": request.facility.organization},

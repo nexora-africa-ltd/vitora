@@ -36,12 +36,16 @@ class InstrumentChannelListSerializer(serializers.ModelSerializer):
             "direction_display",
             "host",
             "port",
+            "encoding",
+            "config",
+            "field_mapping",
             "is_active",
             "connection_status",
             "connection_status_display",
             "last_activity_at",
             "last_error",
             "created_at",
+            "updated_at",
         ]
         read_only_fields = [
             "id",
@@ -50,6 +54,7 @@ class InstrumentChannelListSerializer(serializers.ModelSerializer):
             "last_activity_at",
             "last_error",
             "created_at",
+            "updated_at",
         ]
 
 
