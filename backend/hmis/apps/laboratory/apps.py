@@ -15,6 +15,7 @@ class LaboratoryConfig(AppConfig):
     def ready(self):
         """Import signals when the app is ready."""
         import hmis.apps.laboratory.autoverify.signals  # noqa: F401
+        import hmis.apps.laboratory.microbiology.signals  # noqa: F401
         import hmis.apps.laboratory.qc.signals  # noqa: F401
         import hmis.apps.laboratory.reporting.signals  # noqa: F401
         import hmis.apps.laboratory.signals  # noqa: F401

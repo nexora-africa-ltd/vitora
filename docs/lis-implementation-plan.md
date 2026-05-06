@@ -177,15 +177,19 @@ Pre-built configuration templates for common Kenya lab analyzers:
 
 ---
 
-### Phase L4: Microbiology Module — 2 sprints
+### Phase L4: Microbiology Module — 2 sprints ✅ COMPLETE
 
 Priority: **MEDIUM** (separate workflow from routine chemistry/hematology)
+
+> **Implemented**: May 2026 — Full backend (`laboratory/microbiology/` sub-module: Organism, Antibiotic, CultureResult, AntibioticSensitivity, Antibiogram models, multi-step culture workflow with state transitions, WHONET CSV export, cumulative antibiogram generation, domain events, 48 tests) + frontend (list page with cultures/antibiogram tabs, detail page with workflow actions & sensitivity testing, React Query hooks, Zod schemas). See `backend/hmis/apps/laboratory/microbiology/` and `web-app/app/(dashboard)/laboratory/microbiology/`.
 
 #### L4.1 Culture & Sensitivity Workflow
 
 ```
 New Models:
-- CultureResult (lab_result FK, organism, colony_count, morphology)
+- Organism (global reference: genus, species, gram_stain, organism_type)
+- Antibiotic (global reference: code, name, class, disk_content)
+- CultureResult (lab_result FK, organism, colony_count, morphology, multi-step status workflow)
 - AntibioticSensitivity (culture FK, antibiotic, zone_diameter, mic, interpretation: S|I|R)
 - Antibiogram (facility FK, year, organism, antibiotic, percent_sensitive, sample_size)
 ```
@@ -285,7 +289,7 @@ New Models:
 | L1 (QC) | 3 sprints | High (accreditation) | ✅ Done | None |
 | L2 (Delta/Auto-verify) | 2 sprints | High (efficiency) | P0 — Next | None |
 | L3 (Analyzer Interface) | 2 sprints | Medium (automation) | P2 | L1 (QC validates results) |
-| L4 (Microbiology) | 2 sprints | Medium (completeness) | P2 | None |
+| L4 (Microbiology) | 2 sprints | Medium (completeness) | ✅ Done | None |
 | L5 (Reporting) | 1 sprint | Medium (management) | P1 | L1 + L2 |
 | L6 (Advanced) | 1 sprint | Low (differentiator) | P3 | L2 |
 
@@ -382,6 +386,7 @@ New Models:
 2. ~~**Phase L1**: QC System (materials, lots, targets, Westgard, EQA)~~ ✅
 3. ~~**Phase L2**: Delta Checks & Auto-Verification (engine + rules + management command)~~ ✅
 4. ~~**Phase L5**: TAT/SLA monitoring, workload KPIs, technician efficiency (reporting sub-module)~~ ✅
-5. **Next sprint**: L3 (Analyzer Integration — HL7/ASTM bi-directional)
-6. **Parallel**: Identify pilot facility for analyzer interfacing (Phase L3)
-7. **Future**: L4 (Microbiology), L5.3 (Worksheet/Label printing), L6 (Advanced)
+5. ~~**Phase L4**: Microbiology Module (cultures, AST, antibiogram, WHONET export)~~ ✅
+6. **Next sprint**: L3 (Analyzer Integration — HL7/ASTM bi-directional)
+7. **Parallel**: Identify pilot facility for analyzer interfacing (Phase L3)
+8. **Future**: L5.3 (Worksheet/Label printing), L6 (Advanced)

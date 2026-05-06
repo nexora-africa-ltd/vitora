@@ -829,3 +829,104 @@ export const WorkloadKPIReportSchema = z.object({
     })
   ),
 });
+
+// ============================================================================
+// Microbiology (Phase L4)
+// ============================================================================
+
+export const OrganismSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  genus: z.string(),
+  species: z.string(),
+  gram_stain: z.enum(['POSITIVE', 'NEGATIVE', 'VARIABLE', 'NA']),
+  organism_type: z.enum(['BACTERIA', 'FUNGUS', 'PARASITE', 'VIRUS', 'MYCOBACTERIA', 'OTHER']),
+  is_active: z.boolean(),
+});
+
+export const AntibioticSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  antibiotic_class: z.string(),
+  disk_content: z.string(),
+  is_active: z.boolean(),
+});
+
+export const AntibioticSensitivitySchema = z.object({
+  id: z.number(),
+  culture: z.number(),
+  antibiotic: z.number(),
+  antibiotic_name: z.string(),
+  antibiotic_code: z.string(),
+  zone_diameter: z.number().nullable(),
+  mic: z.number().nullable(),
+  interpretation: z.enum(['S', 'I', 'R']),
+  interpretation_display: z.string(),
+  test_method: z.enum(['DISK', 'MIC_BROTH', 'MIC_ETEST', 'VITEK', 'OTHER']),
+  test_method_display: z.string(),
+  breakpoint_standard: z.enum(['CLSI', 'EUCAST', 'OTHER']),
+  tested_by: z.number().nullable(),
+  tested_by_name: z.string().nullable(),
+  tested_at: z.string().nullable(),
+  notes: z.string(),
+  created_at: z.string(),
+});
+
+export const CultureResultSchema = z.object({
+  id: z.number(),
+  lab_result: z.number(),
+  specimen: z.number().nullable(),
+  status: z.enum(['INOCULATED', 'INCUBATING', 'READING', 'PRELIMINARY', 'FINAL', 'NO_GROWTH', 'CANCELLED']),
+  status_display: z.string(),
+  culture_medium: z.string(),
+  incubation_temperature: z.number().nullable(),
+  incubation_atmosphere: z.string(),
+  incubation_hours: z.number().nullable(),
+  inoculated_by: z.number().nullable(),
+  inoculated_by_name: z.string().nullable(),
+  inoculated_at: z.string().nullable(),
+  read_by: z.number().nullable(),
+  read_by_name: z.string().nullable(),
+  read_at: z.string().nullable(),
+  colony_count: z.string(),
+  morphology: z.string(),
+  gram_stain_result: z.string(),
+  microscopy_notes: z.string(),
+  organism: z.number().nullable(),
+  organism_name: z.string().nullable(),
+  organism_code: z.string().nullable(),
+  identification_method: z.string(),
+  preliminary_report: z.string(),
+  preliminary_reported_at: z.string().nullable(),
+  final_report: z.string(),
+  final_reported_at: z.string().nullable(),
+  clinical_notes: z.string(),
+  is_significant: z.boolean(),
+  is_complete: z.boolean(),
+  days_incubating: z.number().nullable(),
+  sensitivities: z.array(AntibioticSensitivitySchema),
+  lab_order_number: z.string().nullable(),
+  patient_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const AntibiogramSchema = z.object({
+  id: z.number(),
+  year: z.number(),
+  organism: z.number(),
+  organism_name: z.string(),
+  organism_code: z.string(),
+  antibiotic: z.number(),
+  antibiotic_name: z.string(),
+  antibiotic_code: z.string(),
+  total_isolates: z.number(),
+  sensitive_count: z.number(),
+  intermediate_count: z.number(),
+  resistant_count: z.number(),
+  percent_sensitive: z.number().nullable(),
+  percent_resistant: z.number().nullable(),
+  generated_at: z.string(),
+});

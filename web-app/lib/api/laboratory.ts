@@ -984,3 +984,196 @@ export const laboratoryApi = {
     });
   },
 };
+
+// ============================================================================
+// Microbiology API (Phase L4)
+// ============================================================================
+
+import {
+  Organism,
+  Antibiotic,
+  CultureResult,
+  AntibioticSensitivity,
+  Antibiogram,
+  CultureResultCreateData,
+  CultureIncubateData,
+  CultureReadingData,
+  CultureReportData,
+  SensitivityCreateData,
+} from '@/lib/types/laboratory';
+import {
+  OrganismSchema,
+  AntibioticSchema,
+  CultureResultSchema,
+  AntibioticSensitivitySchema,
+  AntibiogramSchema,
+} from '@/lib/schemas/laboratory.schema';
+
+const PaginatedOrganismSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(OrganismSchema),
+});
+
+const PaginatedAntibioticSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(AntibioticSchema),
+});
+
+const PaginatedCultureResultSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(CultureResultSchema),
+});
+
+const PaginatedAntibiogramSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(AntibiogramSchema),
+});
+
+export const microbiologyApi = {
+  // ============ Organisms ============
+
+  async listOrganisms(params?: { gram_stain?: string; organism_type?: string; search?: string }): Promise<PaginatedResponse<Organism>> {
+    const response = await apiClient.get('/api/lab/microbiology/organisms/', { params });
+    return parseResponse(PaginatedOrganismSchema, response.data, {
+      context: 'microbiologyApi.listOrganisms',
+    });
+  },
+
+  async createOrganism(data: Partial<Organism>): Promise<Organism> {
+    const response = await apiClient.post('/api/lab/microbiology/organisms/', data);
+    return parseResponse(OrganismSchema, response.data, {
+      context: 'microbiologyApi.createOrganism',
+    });
+  },
+
+  // ============ Antibiotics ============
+
+  async listAntibiotics(params?: { antibiotic_class?: string; search?: string }): Promise<PaginatedResponse<Antibiotic>> {
+    const response = await apiClient.get('/api/lab/microbiology/antibiotics/', { params });
+    return parseResponse(PaginatedAntibioticSchema, response.data, {
+      context: 'microbiologyApi.listAntibiotics',
+    });
+  },
+
+  async createAntibiotic(data: Partial<Antibiotic>): Promise<Antibiotic> {
+    const response = await apiClient.post('/api/lab/microbiology/antibiotics/', data);
+    return parseResponse(AntibioticSchema, response.data, {
+      context: 'microbiologyApi.createAntibiotic',
+    });
+  },
+
+  // ============ Culture Results ============
+
+  async listCultures(params?: { status?: string; organism?: number; search?: string; page?: number }): Promise<PaginatedResponse<CultureResult>> {
+    const response = await apiClient.get('/api/lab/microbiology/cultures/', { params });
+    return parseResponse(PaginatedCultureResultSchema, response.data, {
+      context: 'microbiologyApi.listCultures',
+    });
+  },
+
+  async getCulture(id: number): Promise<CultureResult> {
+    const response = await apiClient.get(`/api/lab/microbiology/cultures/${id}/`);
+    return parseResponse(CultureResultSchema, response.data, {
+      context: 'microbiologyApi.getCulture',
+    });
+  },
+
+  async createCulture(data: CultureResultCreateData): Promise<CultureResult> {
+    const response = await apiClient.post('/api/lab/microbiology/cultures/', data);
+    return parseResponse(CultureResultSchema, response.data, {
+      context: 'microbiologyApi.createCulture',
+    });
+  },
+
+  async incubateCulture(id: number, data: CultureIncubateData): Promise<CultureResult> {
+    const response = await apiClient.post(`/api/lab/microbiology/cultures/${id}/incubate/`, data);
+    return parseResponse(CultureResultSchema, response.data, {
+      context: 'microbiologyApi.incubateCulture',
+    });
+  },
+
+  async readCulture(id: number, data: CultureReadingData): Promise<CultureResult> {
+    const response = await apiClient.post(`/api/lab/microbiology/cultures/${id}/read/`, data);
+    return parseResponse(CultureResultSchema, response.data, {
+      context: 'microbiologyApi.readCulture',
+    });
+  },
+
+  async reportPreliminary(id: number, data: CultureReportData): Promise<CultureResult> {
+    const response = await apiClient.post(`/api/lab/microbiology/cultures/${id}/report-preliminary/`, data);
+    return parseResponse(CultureResultSchema, response.data, {
+      context: 'microbiologyApi.reportPreliminary',
+    });
+  },
+
+  async reportFinal(id: number, data: CultureReportData): Promise<CultureResult> {
+    const response = await apiClient.post(`/api/lab/microbiology/cultures/${id}/report-final/`, data);
+    return parseResponse(CultureResultSchema, response.data, {
+      context: 'microbiologyApi.reportFinal',
+    });
+  },
+
+  async markNoGrowth(id: number): Promise<CultureResult> {
+    const response = await apiClient.post(`/api/lab/microbiology/cultures/${id}/no-growth/`);
+    return parseResponse(CultureResultSchema, response.data, {
+      context: 'microbiologyApi.markNoGrowth',
+    });
+  },
+
+  async cancelCulture(id: number): Promise<CultureResult> {
+    const response = await apiClient.post(`/api/lab/microbiology/cultures/${id}/cancel/`);
+    return parseResponse(CultureResultSchema, response.data, {
+      context: 'microbiologyApi.cancelCulture',
+    });
+  },
+
+  // ============ Sensitivities ============
+
+  async listCultureSensitivities(cultureId: number): Promise<AntibioticSensitivity[]> {
+    const response = await apiClient.get(`/api/lab/microbiology/cultures/${cultureId}/sensitivities/`);
+    return parseResponse(z.array(AntibioticSensitivitySchema), response.data, {
+      context: 'microbiologyApi.listCultureSensitivities',
+    });
+  },
+
+  async addSensitivity(cultureId: number, data: SensitivityCreateData): Promise<AntibioticSensitivity> {
+    const response = await apiClient.post(`/api/lab/microbiology/cultures/${cultureId}/sensitivities/`, data);
+    return parseResponse(AntibioticSensitivitySchema, response.data, {
+      context: 'microbiologyApi.addSensitivity',
+    });
+  },
+
+  // ============ Antibiogram ============
+
+  async listAntibiograms(params?: { year?: number; organism?: number }): Promise<PaginatedResponse<Antibiogram>> {
+    const response = await apiClient.get('/api/lab/microbiology/antibiogram/', { params });
+    return parseResponse(PaginatedAntibiogramSchema, response.data, {
+      context: 'microbiologyApi.listAntibiograms',
+    });
+  },
+
+  async generateAntibiogram(year: number): Promise<{ generated: number; year: number }> {
+    const response = await apiClient.post('/api/lab/microbiology/antibiogram/generate/', { year });
+    return response.data;
+  },
+
+  // ============ WHONET Export ============
+
+  async downloadWHONETExport(year: number, organism?: number): Promise<Blob> {
+    const params: Record<string, unknown> = { year };
+    if (organism) params.organism = organism;
+    const response = await apiClient.get('/api/lab/microbiology/whonet-export/', {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+};

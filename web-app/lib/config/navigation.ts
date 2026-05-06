@@ -80,6 +80,7 @@ import {
   CircleDot,
   Award,
   ShieldCheck,
+  Bug,
 } from 'lucide-react';
 
 import {
@@ -336,6 +337,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'SLA & Performance', href: '/laboratory/sla', icon: Target, actionKey: 'laboratory.view_analytics' },
       { label: 'Quality Control', href: '/laboratory/qc', icon: FlaskConical, actionKey: 'laboratory.view_dashboard' },
       { label: 'Auto-Verify', href: '/laboratory/autoverify', icon: ShieldCheck, actionKey: 'laboratory.verify_results' },
+      { label: 'Microbiology', href: '/laboratory/microbiology', icon: Bug, actionKey: 'laboratory.view_dashboard' },
       { label: 'EQA / PT', href: '/laboratory/qc/eqa', icon: Award, actionKey: 'laboratory.view_dashboard' },
     ],
   },
