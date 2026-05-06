@@ -225,7 +225,8 @@ export default function AnalyzersPage() {
                   </div>
                   {instruments.length === 0 && (
                     <p className="text-xs text-muted-foreground mt-4">
-                      You need at least one instrument registered before adding a channel. Ask your administrator to add instruments via the admin panel.
+                      You need at least one instrument registered before adding a channel. Register instruments in{' '}
+                      <a href="/laboratory/settings" className="underline text-primary">Lab Settings</a>.
                     </p>
                   )}
                 </CardContent>
@@ -668,7 +669,7 @@ function AddChannelDialog({
             </Select>
             {instruments.length === 0 && (
               <p className="text-xs text-destructive mt-1">
-                No instruments found. Register one via the admin panel first.
+                No instruments found. <a href="/laboratory/settings" className="underline">Register one in Lab Settings</a> first.
               </p>
             )}
           </div>
