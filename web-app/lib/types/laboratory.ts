@@ -879,3 +879,110 @@ export interface SensitivityCreateData {
   breakpoint_standard?: BreakpointStandard;
   notes?: string;
 }
+
+// =========== Phase L3 — Analyzer Interfacing ===========
+
+export type ChannelProtocol = 'ASTM' | 'HL7' | 'SERIAL' | 'TCP';
+export type ChannelDirection = 'BIDIRECTIONAL' | 'HOST_TO_INSTRUMENT' | 'INSTRUMENT_TO_HOST';
+export type ChannelConnectionStatus = 'CONNECTED' | 'DISCONNECTED' | 'ERROR' | 'IDLE';
+export type AnalyzerMessageDirection = 'INBOUND' | 'OUTBOUND';
+export type AnalyzerMessageType = 'RESULT' | 'ORDER_DOWNLOAD' | 'QUERY' | 'ACK' | 'STATUS' | 'OTHER';
+export type AnalyzerMessageStatus = 'RECEIVED' | 'PARSED' | 'APPLIED' | 'FAILED' | 'PENDING' | 'SENT' | 'TIMEOUT';
+
+export interface InstrumentChannel {
+  id: number;
+  instrument: number;
+  instrument_code: string;
+  instrument_name: string;
+  name: string;
+  protocol: ChannelProtocol;
+  protocol_display: string;
+  direction: ChannelDirection;
+  direction_display: string;
+  host: string;
+  port: number;
+  encoding: string;
+  config: Record<string, unknown>;
+  field_mapping: Record<string, unknown>;
+  is_active: boolean;
+  connection_status: ChannelConnectionStatus;
+  connection_status_display: string;
+  last_activity_at: string | null;
+  last_error: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InstrumentChannelCreateData {
+  instrument: number;
+  name: string;
+  protocol: ChannelProtocol;
+  direction?: ChannelDirection;
+  host: string;
+  port: number;
+  encoding?: string;
+  config?: Record<string, unknown>;
+  field_mapping?: Record<string, unknown>;
+  is_active?: boolean;
+}
+
+export interface AnalyzerMessage {
+  id: number;
+  channel: number;
+  channel_name: string;
+  specimen: number | null;
+  specimen_barcode: string | null;
+  lab_order_item: number | null;
+  direction: AnalyzerMessageDirection;
+  direction_display: string;
+  message_type: AnalyzerMessageType;
+  message_type_display: string;
+  status: AnalyzerMessageStatus;
+  status_display: string;
+  raw_data: string;
+  parsed_data: Record<string, unknown> | null;
+  sample_id: string;
+  test_code: string;
+  result_value: string;
+  result_unit: string;
+  error_message: string;
+  timestamp: string;
+  processed_at: string | null;
+}
+
+export interface AnalyzerDriverTemplate {
+  id: number;
+  name: string;
+  manufacturer: string;
+  model_pattern: string;
+  category: string;
+  protocol: ChannelProtocol;
+  protocol_display: string;
+  default_config: Record<string, unknown>;
+  default_field_mapping: Record<string, unknown>;
+  description: string;
+  created_at: string;
+}
+
+export interface ChannelHealthStatus {
+  channel_id: number;
+  instrument_code: string;
+  channel_name: string;
+  connection_status: ChannelConnectionStatus;
+  last_activity_at: string | null;
+  last_error: string;
+  messages_last_hour: number;
+  errors_last_hour: number;
+  is_healthy: boolean;
+}
+
+export interface AnalyzerDashboard {
+  total_channels: number;
+  active_channels: number;
+  connected_channels: number;
+  error_channels: number;
+  messages_today: number;
+  results_applied_today: number;
+  failed_messages_today: number;
+  channel_statuses: ChannelHealthStatus[];
+}

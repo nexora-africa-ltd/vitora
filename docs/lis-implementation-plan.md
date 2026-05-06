@@ -1,6 +1,6 @@
 # Vitora Full LIS Implementation Plan
 
-> **Status**: In Progress (L5 Complete)
+> **Status**: In Progress (L1-L5 Complete, L3 Complete)
 > **Owner**: Engineering Lead
 > **Last Updated**: May 6, 2026
 > **Estimated Effort**: 6-8 sprints (12-16 weeks)
@@ -138,9 +138,13 @@ New Models:
 
 ---
 
-### Phase L3: Analyzer Interfacing — 2 sprints
+### Phase L3: Analyzer Interfacing — 2 sprints ✅ COMPLETE
 
 Priority: **MEDIUM** (depends on facility analyzer inventory)
+
+> **Implemented**: May 2026 — Full backend (`laboratory/analyzers/` sub-module: InstrumentChannel, AnalyzerMessage, AnalyzerDriverTemplate models, ASTM/HL7/Serial protocol adapters, result auto-application service, Celery health-check tasks, 84 tests) + frontend (dashboard stats, channels table with test-connection, driver templates browser, add-channel dialog) + `seed_analyzer_templates` management command (9 Kenya-common analyzers: Sysmex XN, Mindray BC, Horiba Pentra, Roche cobas c, Erba Chem, Abbott Architect, Beckman Access, GeneXpert, Dirui H-Series). See `backend/hmis/apps/laboratory/analyzers/` and `web-app/app/(dashboard)/laboratory/analyzers/`.
+>
+> **After pilot facility identified**: TCP listener daemon, reconnect logic, production message replay, firmware-specific edge cases, Celery beat health-check scheduling.
 
 #### L3.1 Bidirectional Analyzer Communication
 

@@ -52,6 +52,7 @@ urlpatterns = [
     path("autoverify/", include("hmis.apps.laboratory.autoverify.urls")),
     path("reporting/", include("hmis.apps.laboratory.reporting.urls")),
     path("microbiology/", include("hmis.apps.laboratory.microbiology.urls")),
+    path("analyzers/", include("hmis.apps.laboratory.analyzers.urls")),
     path("", include(router.urls)),
 ]
 
