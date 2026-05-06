@@ -91,7 +91,8 @@ export function createQueryClient(): QueryClient {
       },
     }),
     mutationCache: new MutationCache({
-      onError: (error) => {
+      onError: (error, _variables, _context, mutation) => {
+        if (mutation.meta?.skipGlobalErrorHandler) return;
         handleGlobalError(error);
       },
     }),

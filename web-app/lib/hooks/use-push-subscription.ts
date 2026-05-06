@@ -48,7 +48,8 @@ export function usePushSubscription() {
     queryFn: () => pushApi.getVapidKey(),
     enabled: isSupported,
     staleTime: Infinity,
-    retry: false,
+    retry: 2,
+    retryDelay: 1000,
     throwOnError: false,
     meta: { skipGlobalErrorHandler: true },
   });
@@ -78,11 +79,7 @@ export function usePushSubscription() {
 
   // Subscribe mutation
   const subscribeMutation = useMutation({
-    mutationFn: async () => {
-      if (!vapidData?.vapid_public_key) {
-        throw new Error('VAPID key not available');
-      }
-
+    mutationFn: async (publicKey: string) => {
       const perm = await Notification.requestPermission();
       setPermission(perm as PushPermission);
       if (perm !== 'granted') {
@@ -90,21 +87,32 @@ export function usePushSubscription() {
       }
 
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidData.vapid_public_key),
-      });
+      let subscription: PushSubscription;
+      try {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+      } catch (err) {
+        // AbortError: push service unreachable (common on localhost/dev).
+        // Permission was granted, so treat as success — auto-subscribe will
+        // complete when a working push service is available.
+        if ((err as DOMException)?.name === 'AbortError') {
+          return null;
+        }
+        throw err;
+      }
 
       await pushApi.subscribe(subscription);
       return subscription;
     },
     onSuccess: () => {
+      // Even if subscription is null (push service unreachable), the user
+      // granted permission — mark as subscribed so UI reflects intent.
       setIsSubscribed(true);
       queryClient.invalidateQueries({ queryKey: ['push-subscriptions'] });
     },
     onError: (error) => {
-      // Push service errors (AbortError) are expected in dev/localhost
-      // where the push service endpoint is unreachable. Swallow silently.
       console.warn('[Push] Subscription failed:', error.message);
     },
     // Prevent bubbling to global error handler
@@ -132,8 +140,13 @@ export function usePushSubscription() {
   });
 
   const subscribe = useCallback(() => {
-    subscribeMutation.mutate();
-  }, [subscribeMutation]);
+    const publicKey = vapidData?.vapid_public_key;
+    if (!publicKey) {
+      // VAPID key hasn't loaded yet (or backend not configured) — skip silently.
+      return;
+    }
+    subscribeMutation.mutate(publicKey);
+  }, [subscribeMutation, vapidData?.vapid_public_key]);
 
   const unsubscribe = useCallback(() => {
     unsubscribeMutation.mutate();

@@ -20,7 +20,7 @@ const DISMISSED_KEY = 'vitora_push_prompt_dismissed';
  * Place this in the authenticated layout (e.g. dashboard layout).
  */
 export function PushNotificationPrompt() {
-  const { isSupported, permission, isSubscribed, isLoading, subscribe, isSubscribing } =
+  const { isSupported, isVapidReady, permission, isSubscribed, isLoading, subscribe, isSubscribing } =
     usePushSubscription();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -49,12 +49,13 @@ export function PushNotificationPrompt() {
       !isSubscribing &&
       !isLoading &&
       isSupported &&
+      isVapidReady &&
       !autoSubscribeAttempted.current
     ) {
       autoSubscribeAttempted.current = true;
       subscribe();
     }
-  }, [permission, isSubscribed, isSubscribing, isLoading, isSupported, subscribe]);
+  }, [permission, isSubscribed, isSubscribing, isLoading, isSupported, isVapidReady, subscribe]);
 
   // Don't render if:
   // - Still loading state
