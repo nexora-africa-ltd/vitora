@@ -933,3 +933,153 @@ export function useTATSnapshots(params?: { priority?: string; is_breach?: boolea
     queryFn: () => laboratoryApi.listTATSnapshots(params),
   });
 }
+
+// ============================================================================
+// Microbiology Hooks (Phase L4)
+// ============================================================================
+
+import { microbiologyApi } from '@/lib/api/laboratory';
+import {
+  CultureResultCreateData,
+  CultureIncubateData,
+  CultureReadingData,
+  CultureReportData,
+  SensitivityCreateData,
+} from '@/lib/types/laboratory';
+
+export function useOrganisms(params?: { gram_stain?: string; organism_type?: string; search?: string }) {
+  return useQuery({
+    queryKey: ['microbiology', 'organisms', params],
+    queryFn: () => microbiologyApi.listOrganisms(params),
+  });
+}
+
+export function useAntibiotics(params?: { antibiotic_class?: string; search?: string }) {
+  return useQuery({
+    queryKey: ['microbiology', 'antibiotics', params],
+    queryFn: () => microbiologyApi.listAntibiotics(params),
+  });
+}
+
+export function useCultures(params?: { status?: string; organism?: number; search?: string; page?: number }) {
+  return useQuery({
+    queryKey: ['microbiology', 'cultures', params],
+    queryFn: () => microbiologyApi.listCultures(params),
+  });
+}
+
+export function useCulture(id: number | undefined) {
+  return useQuery({
+    queryKey: ['microbiology', 'culture', id],
+    queryFn: () => microbiologyApi.getCulture(id!),
+    enabled: !!id,
+  });
+}
+
+export function useCreateCulture() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CultureResultCreateData) => microbiologyApi.createCulture(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'cultures'] });
+    },
+  });
+}
+
+export function useIncubateCulture() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CultureIncubateData }) =>
+      microbiologyApi.incubateCulture(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'culture', id] });
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'cultures'] });
+    },
+  });
+}
+
+export function useReadCulture() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CultureReadingData }) =>
+      microbiologyApi.readCulture(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'culture', id] });
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'cultures'] });
+    },
+  });
+}
+
+export function useReportPreliminary() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CultureReportData }) =>
+      microbiologyApi.reportPreliminary(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'culture', id] });
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'cultures'] });
+    },
+  });
+}
+
+export function useReportFinal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CultureReportData }) =>
+      microbiologyApi.reportFinal(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'culture', id] });
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'cultures'] });
+    },
+  });
+}
+
+export function useMarkNoGrowth() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => microbiologyApi.markNoGrowth(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'culture', id] });
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'cultures'] });
+    },
+  });
+}
+
+export function useCancelCulture() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => microbiologyApi.cancelCulture(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'culture', id] });
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'cultures'] });
+    },
+  });
+}
+
+export function useAddSensitivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ cultureId, data }: { cultureId: number; data: SensitivityCreateData }) =>
+      microbiologyApi.addSensitivity(cultureId, data),
+    onSuccess: (_, { cultureId }) => {
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'culture', cultureId] });
+    },
+  });
+}
+
+export function useAntibiograms(params?: { year?: number; organism?: number }) {
+  return useQuery({
+    queryKey: ['microbiology', 'antibiograms', params],
+    queryFn: () => microbiologyApi.listAntibiograms(params),
+  });
+}
+
+export function useGenerateAntibiogram() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (year: number) => microbiologyApi.generateAntibiogram(year),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['microbiology', 'antibiograms'] });
+    },
+  });
+}

@@ -725,3 +725,153 @@ export interface CriticalAlert {
   value: string;
   flag: ResultFlag;
 }
+
+// ============================================================================
+// Microbiology (Phase L4)
+// ============================================================================
+
+export type GramStain = 'POSITIVE' | 'NEGATIVE' | 'VARIABLE' | 'NA';
+export type OrganismType = 'BACTERIA' | 'FUNGUS' | 'PARASITE' | 'VIRUS' | 'MYCOBACTERIA' | 'OTHER';
+export type CultureStatus = 'INOCULATED' | 'INCUBATING' | 'READING' | 'PRELIMINARY' | 'FINAL' | 'NO_GROWTH' | 'CANCELLED';
+export type SensitivityInterpretation = 'S' | 'I' | 'R';
+export type SensitivityTestMethod = 'DISK' | 'MIC_BROTH' | 'MIC_ETEST' | 'VITEK' | 'OTHER';
+export type BreakpointStandard = 'CLSI' | 'EUCAST' | 'OTHER';
+export type IdentificationMethod = 'MANUAL' | 'VITEK' | 'MALDI_TOF' | 'MOLECULAR' | 'API' | 'OTHER';
+export type IncubationAtmosphere = 'AEROBIC' | 'ANAEROBIC' | 'CO2' | 'MICROAEROPHILIC';
+
+export interface Organism {
+  id: number;
+  code: string;
+  name: string;
+  genus: string;
+  species: string;
+  gram_stain: GramStain;
+  organism_type: OrganismType;
+  is_active: boolean;
+}
+
+export interface Antibiotic {
+  id: number;
+  code: string;
+  name: string;
+  antibiotic_class: string;
+  disk_content: string;
+  is_active: boolean;
+}
+
+export interface AntibioticSensitivity {
+  id: number;
+  culture: number;
+  antibiotic: number;
+  antibiotic_name: string;
+  antibiotic_code: string;
+  zone_diameter: number | null;
+  mic: number | null;
+  interpretation: SensitivityInterpretation;
+  interpretation_display: string;
+  test_method: SensitivityTestMethod;
+  test_method_display: string;
+  breakpoint_standard: BreakpointStandard;
+  tested_by: number | null;
+  tested_by_name: string | null;
+  tested_at: string | null;
+  notes: string;
+  created_at: string;
+}
+
+export interface CultureResult {
+  id: number;
+  lab_result: number;
+  specimen: number | null;
+  status: CultureStatus;
+  status_display: string;
+  culture_medium: string;
+  incubation_temperature: number | null;
+  incubation_atmosphere: string;
+  incubation_hours: number | null;
+  inoculated_by: number | null;
+  inoculated_by_name: string | null;
+  inoculated_at: string | null;
+  read_by: number | null;
+  read_by_name: string | null;
+  read_at: string | null;
+  colony_count: string;
+  morphology: string;
+  gram_stain_result: string;
+  microscopy_notes: string;
+  organism: number | null;
+  organism_name: string | null;
+  organism_code: string | null;
+  identification_method: string;
+  preliminary_report: string;
+  preliminary_reported_at: string | null;
+  final_report: string;
+  final_reported_at: string | null;
+  clinical_notes: string;
+  is_significant: boolean;
+  is_complete: boolean;
+  days_incubating: number | null;
+  sensitivities: AntibioticSensitivity[];
+  lab_order_number: string | null;
+  patient_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Antibiogram {
+  id: number;
+  year: number;
+  organism: number;
+  organism_name: string;
+  organism_code: string;
+  antibiotic: number;
+  antibiotic_name: string;
+  antibiotic_code: string;
+  total_isolates: number;
+  sensitive_count: number;
+  intermediate_count: number;
+  resistant_count: number;
+  percent_sensitive: number | null;
+  percent_resistant: number | null;
+  generated_at: string;
+}
+
+export interface CultureResultCreateData {
+  lab_result: number;
+  specimen?: number | null;
+  culture_medium?: string;
+  incubation_temperature?: number | null;
+  incubation_atmosphere?: IncubationAtmosphere;
+  incubation_hours?: number | null;
+}
+
+export interface CultureIncubateData {
+  temperature?: number;
+  atmosphere?: IncubationAtmosphere;
+  hours?: number;
+}
+
+export interface CultureReadingData {
+  colony_count?: string;
+  morphology?: string;
+  gram_stain_result?: string;
+  microscopy_notes?: string;
+  organism?: number | null;
+  identification_method?: IdentificationMethod;
+  is_significant?: boolean;
+}
+
+export interface CultureReportData {
+  report_text?: string;
+  clinical_notes?: string;
+}
+
+export interface SensitivityCreateData {
+  antibiotic: number;
+  zone_diameter?: number | null;
+  mic?: number | null;
+  interpretation: SensitivityInterpretation;
+  test_method?: SensitivityTestMethod;
+  breakpoint_standard?: BreakpointStandard;
+  notes?: string;
+}

@@ -127,6 +127,11 @@ class LaboratoryEvents:
     AUTO_VERIFY_PASSED = "laboratory.auto_verify.passed"
     AUTO_VERIFY_BLOCKED = "laboratory.auto_verify.blocked"
 
+    # Microbiology Events (Phase L4)
+    CULTURE_CREATED = "laboratory.culture.created"
+    CULTURE_UPDATED = "laboratory.culture.updated"
+    SENSITIVITY_CREATED = "laboratory.sensitivity.created"
+
 
 class ClinicalEvents:
     """Clinical / encounter domain event types."""
