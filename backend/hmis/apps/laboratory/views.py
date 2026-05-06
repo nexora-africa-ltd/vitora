@@ -13,6 +13,7 @@ from rest_framework import serializers as drf_serializers
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.filters import SearchFilter
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -521,11 +522,21 @@ class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 class LabResultViewSet(NestedTenantScopeMixin, viewsets.ModelViewSet):
     """
     ViewSet for lab results.
-    Provides CRUD operations and verification.
+    Provides CRUD operations, verification, and search.
     """
 
-    queryset = LabResult.objects.all().select_related("order_item__test", "entered_by")
+    queryset = LabResult.objects.all().select_related(
+        "order_item__test", "order_item__lab_order__patient", "entered_by"
+    )
     permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    filter_backends = [SearchFilter, filters.DjangoFilterBackend]
+    search_fields = [
+        "order_item__test__name",
+        "order_item__test__code",
+        "order_item__lab_order__order_number",
+        "order_item__lab_order__patient__first_name",
+        "order_item__lab_order__patient__last_name",
+    ]
     tenant_facility_chain = "order_item__lab_order__facility"
     tenant_org_chain = "order_item__lab_order__organization"
 

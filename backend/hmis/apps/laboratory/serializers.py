@@ -414,6 +414,9 @@ class LabResultSerializer(serializers.ModelSerializer):
     encounter_id = serializers.IntegerField(
         source="order_item.lab_order.encounter_id", read_only=True
     )
+    # Context fields for search/selection UX
+    patient_name = serializers.SerializerMethodField()
+    order_number = serializers.CharField(source="order_item.lab_order.order_number", read_only=True)
 
     class Meta:
         model = LabResult
@@ -454,6 +457,8 @@ class LabResultSerializer(serializers.ModelSerializer):
             "patient_gender",
             "patient_date_of_birth",
             "encounter_id",
+            "patient_name",
+            "order_number",
         ]
         read_only_fields = [
             "entered_by",
@@ -465,6 +470,8 @@ class LabResultSerializer(serializers.ModelSerializer):
             "patient_gender",
             "patient_date_of_birth",
             "encounter_id",
+            "patient_name",
+            "order_number",
         ]
 
     def get_numeric_value(self, obj) -> float | None:
@@ -490,6 +497,14 @@ class LabResultSerializer(serializers.ModelSerializer):
     def get_validation_summary(self, obj) -> dict | None:
         """Return two-stage validation summary for frontend display."""
         return obj.get_validation_summary()
+
+    def get_patient_name(self, obj) -> str | None:
+        """Return patient full name via order chain."""
+        try:
+            patient = obj.order_item.lab_order.patient
+            return f"{patient.first_name} {patient.last_name}"
+        except AttributeError:
+            return None
 
 
 class LabResultCreateSerializer(serializers.ModelSerializer):

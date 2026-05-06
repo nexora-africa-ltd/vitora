@@ -30,13 +30,16 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { qcMaterialsApi, qcLotsApi, qcRulesApi, qcViolationsApi } from '@/lib/api/qc';
-import type { QCMaterial, QCLot, QCRuleViolation } from '@/lib/types/qc';
+import type { QCMaterial, QCLot, QCLotCreateData, QCRuleViolation } from '@/lib/types/qc';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function QCDashboardPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const queryClient = useQueryClient();
   const [showMaterialDialog, setShowMaterialDialog] = useState(false);
   const [materialForm, setMaterialForm] = useState({ name: '', manufacturer: '', catalog_number: '', storage_conditions: '' });
+  const [showLotDialog, setShowLotDialog] = useState(false);
+  const [lotForm, setLotForm] = useState<{ material: string; lot_number: string; expiry_date: string; storage_conditions: string; notes: string }>({ material: '', lot_number: '', expiry_date: '', storage_conditions: '', notes: '' });
 
   const { data: materialsData } = useQuery({
     queryKey: ['qc-materials'],
@@ -64,6 +67,16 @@ export default function QCDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['qc-materials'] });
       setShowMaterialDialog(false);
       setMaterialForm({ name: '', manufacturer: '', catalog_number: '', storage_conditions: '' });
+    },
+  });
+
+  const createLot = useMutation({
+    mutationFn: (data: QCLotCreateData) => qcLotsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qc-materials'] });
+      queryClient.invalidateQueries({ queryKey: ['qc-lots-expiring'] });
+      setShowLotDialog(false);
+      setLotForm({ material: '', lot_number: '', expiry_date: '', storage_conditions: '', notes: '' });
     },
   });
 
@@ -158,6 +171,12 @@ export default function QCDashboardPage() {
           </TabsList>
 
           <TabsContent value="materials" className="mt-4">
+            <div className="flex justify-end mb-3">
+              <Button size="sm" variant="outline" onClick={() => setShowLotDialog(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                New Lot
+              </Button>
+            </div>
             <ResponsiveTable
               data={materials}
               keyExtractor={(item: QCMaterial) => item.id}
@@ -284,6 +303,83 @@ export default function QCDashboardPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Create Lot Dialog */}
+        <Dialog open={showLotDialog} onOpenChange={setShowLotDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add QC Lot</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Material *</Label>
+                <Select
+                  value={lotForm.material}
+                  onValueChange={(val) => setLotForm({ ...lotForm, material: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select material" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {materials.map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Lot Number *</Label>
+                <Input
+                  value={lotForm.lot_number}
+                  onChange={(e) => setLotForm({ ...lotForm, lot_number: e.target.value })}
+                  placeholder="e.g., 12345"
+                />
+              </div>
+              <div>
+                <Label>Expiry Date *</Label>
+                <Input
+                  type="date"
+                  value={lotForm.expiry_date}
+                  onChange={(e) => setLotForm({ ...lotForm, expiry_date: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Storage Conditions</Label>
+                <Input
+                  value={lotForm.storage_conditions}
+                  onChange={(e) => setLotForm({ ...lotForm, storage_conditions: e.target.value })}
+                  placeholder="e.g., 2-8°C"
+                />
+              </div>
+              <div>
+                <Label>Notes</Label>
+                <Input
+                  value={lotForm.notes}
+                  onChange={(e) => setLotForm({ ...lotForm, notes: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowLotDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => createLot.mutate({
+                  material: Number(lotForm.material),
+                  lot_number: lotForm.lot_number,
+                  expiry_date: lotForm.expiry_date,
+                  storage_conditions: lotForm.storage_conditions || undefined,
+                  notes: lotForm.notes || undefined,
+                })}
+                disabled={!lotForm.material || !lotForm.lot_number || !lotForm.expiry_date || createLot.isPending}
+              >
+                {createLot.isPending ? 'Creating...' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Create Material Dialog */}
         <Dialog open={showMaterialDialog} onOpenChange={setShowMaterialDialog}>

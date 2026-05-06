@@ -586,6 +586,10 @@ export interface LabResult {
   patient_date_of_birth?: string | null;
   /** Encounter ID from related order — for AI lab interpretation */
   encounter_id?: number | null;
+  /** Patient full name from related order — for search/selection UX */
+  patient_name?: string | null;
+  /** Order number from related lab order — for search/selection UX */
+  order_number?: string | null;
 }
 
 export interface ValidationSummary {

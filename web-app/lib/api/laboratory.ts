@@ -321,6 +321,23 @@ export const laboratoryApi = {
   // ============ Lab Results ============
 
   /**
+   * Search lab results by patient name, order number, or test name.
+   */
+  async searchResults(params?: { search?: string; page?: number; page_size?: number }): Promise<PaginatedResponse<LabResult>> {
+    const response = await apiClient.get('/api/lab/results/', { params });
+    return parseResponse(
+      z.object({
+        count: z.number(),
+        next: z.string().nullable(),
+        previous: z.string().nullable(),
+        results: z.array(LabResultSchema),
+      }),
+      response.data,
+      { context: 'laboratoryApi.searchResults' }
+    );
+  },
+
+  /**
    * Get a single lab result by result ID.
    */
   async getResult(resultId: number): Promise<LabResult> {
