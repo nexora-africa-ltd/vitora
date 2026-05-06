@@ -317,17 +317,21 @@ class ChannelHealthSerializer(serializers.Serializer):
     instrument_code = serializers.CharField()
     channel_name = serializers.CharField()
     connection_status = serializers.CharField()
-    last_activity = serializers.CharField(allow_null=True)
+    last_activity_at = serializers.CharField(allow_null=True)
     last_error = serializers.CharField(allow_blank=True)
-    messages_24h = serializers.DictField()
+    messages_last_hour = serializers.IntegerField()
+    errors_last_hour = serializers.IntegerField()
+    is_healthy = serializers.BooleanField()
 
 
 class ChannelStatusSummarySerializer(serializers.Serializer):
     """Summary of all channel statuses for the dashboard."""
 
     total_channels = serializers.IntegerField()
-    connected = serializers.IntegerField()
-    disconnected = serializers.IntegerField()
-    idle = serializers.IntegerField()
-    error = serializers.IntegerField()
-    channels = ChannelHealthSerializer(many=True)
+    active_channels = serializers.IntegerField()
+    connected_channels = serializers.IntegerField()
+    error_channels = serializers.IntegerField()
+    messages_today = serializers.IntegerField()
+    results_applied_today = serializers.IntegerField()
+    failed_messages_today = serializers.IntegerField()
+    channel_statuses = ChannelHealthSerializer(many=True)

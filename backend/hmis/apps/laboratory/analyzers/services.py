@@ -325,24 +325,32 @@ def check_channel_health(channel: InstrumentChannel) -> dict:
         channel.update_status(InstrumentChannel.ConnectionStatus.IDLE)
 
     # Recent message stats
-    last_24h = now - timedelta(hours=24)
-    recent_messages = channel.messages.filter(timestamp__gte=last_24h)
+    last_hour = now - timedelta(hours=1)
+    recent_hour_messages = channel.messages.filter(timestamp__gte=last_hour)
+    messages_last_hour = recent_hour_messages.count()
+    errors_last_hour = recent_hour_messages.filter(status=AnalyzerMessage.Status.FAILED).count()
+
+    is_healthy = (
+        channel.connection_status
+        in (
+            InstrumentChannel.ConnectionStatus.CONNECTED,
+            InstrumentChannel.ConnectionStatus.IDLE,
+        )
+        and errors_last_hour == 0
+    )
 
     return {
         "channel_id": channel.id,
         "instrument_code": channel.instrument.code,
         "channel_name": channel.name,
         "connection_status": channel.connection_status,
-        "last_activity": channel.last_activity_at.isoformat() if channel.last_activity_at else None,
+        "last_activity_at": channel.last_activity_at.isoformat()
+        if channel.last_activity_at
+        else None,
         "last_error": channel.last_error,
-        "messages_24h": {
-            "total": recent_messages.count(),
-            "inbound": recent_messages.filter(direction=AnalyzerMessage.Direction.INBOUND).count(),
-            "outbound": recent_messages.filter(
-                direction=AnalyzerMessage.Direction.OUTBOUND
-            ).count(),
-            "failed": recent_messages.filter(status=AnalyzerMessage.Status.FAILED).count(),
-        },
+        "messages_last_hour": messages_last_hour,
+        "errors_last_hour": errors_last_hour,
+        "is_healthy": is_healthy,
     }
 
 
