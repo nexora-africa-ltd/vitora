@@ -42,6 +42,12 @@ import {
   AnalyzerMessage,
   AnalyzerDriverTemplate,
   AnalyzerDashboard,
+  SpecimenRejectionReason,
+  ResultCommentTemplate,
+  ReferralLab,
+  SampleLabelTemplate,
+  LabBarcodeConfig,
+  LabWorkflowSettings,
 } from '@/lib/types/laboratory';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -89,6 +95,16 @@ import {
   AnalyzerDriverTemplateSchema,
   AnalyzerDriverTemplateArraySchema,
   AnalyzerDashboardSchema,
+  SpecimenRejectionReasonSchema,
+  SpecimenRejectionReasonArraySchema,
+  ResultCommentTemplateSchema,
+  ResultCommentTemplateArraySchema,
+  ReferralLabSchema,
+  ReferralLabArraySchema,
+  SampleLabelTemplateSchema,
+  SampleLabelTemplateArraySchema,
+  LabBarcodeConfigSchema,
+  LabWorkflowSettingsSchema,
 } from '@/lib/schemas/laboratory.schema';
 
 export const laboratoryApi = {
@@ -1144,6 +1160,143 @@ export const laboratoryApi = {
     const response = await apiClient.get<AnalyzerDashboard>('/api/lab/analyzers/dashboard/');
     return parseResponse(AnalyzerDashboardSchema, response.data, {
       context: 'laboratoryApi.getAnalyzerDashboard',
+    });
+  },
+
+  // ============ Lab Settings ============
+
+  async listRejectionReasons(params?: { is_active?: boolean }): Promise<SpecimenRejectionReason[]> {
+    const response = await apiClient.get('/api/lab/settings/rejection-reasons/', { params });
+    const data = Array.isArray(response.data) ? response.data : response.data.results || [];
+    return parseResponse(SpecimenRejectionReasonArraySchema, data, {
+      context: 'laboratoryApi.listRejectionReasons',
+    });
+  },
+
+  async createRejectionReason(data: Partial<SpecimenRejectionReason>): Promise<SpecimenRejectionReason> {
+    const response = await apiClient.post('/api/lab/settings/rejection-reasons/', data);
+    return parseResponse(SpecimenRejectionReasonSchema, response.data, {
+      context: 'laboratoryApi.createRejectionReason',
+    });
+  },
+
+  async updateRejectionReason(id: number, data: Partial<SpecimenRejectionReason>): Promise<SpecimenRejectionReason> {
+    const response = await apiClient.patch(`/api/lab/settings/rejection-reasons/${id}/`, data);
+    return parseResponse(SpecimenRejectionReasonSchema, response.data, {
+      context: 'laboratoryApi.updateRejectionReason',
+    });
+  },
+
+  async deleteRejectionReason(id: number): Promise<void> {
+    await apiClient.delete(`/api/lab/settings/rejection-reasons/${id}/`);
+  },
+
+  async listCommentTemplates(params?: { is_active?: boolean; category?: string }): Promise<ResultCommentTemplate[]> {
+    const response = await apiClient.get('/api/lab/settings/comment-templates/', { params });
+    const data = Array.isArray(response.data) ? response.data : response.data.results || [];
+    return parseResponse(ResultCommentTemplateArraySchema, data, {
+      context: 'laboratoryApi.listCommentTemplates',
+    });
+  },
+
+  async createCommentTemplate(data: Partial<ResultCommentTemplate>): Promise<ResultCommentTemplate> {
+    const response = await apiClient.post('/api/lab/settings/comment-templates/', data);
+    return parseResponse(ResultCommentTemplateSchema, response.data, {
+      context: 'laboratoryApi.createCommentTemplate',
+    });
+  },
+
+  async updateCommentTemplate(id: number, data: Partial<ResultCommentTemplate>): Promise<ResultCommentTemplate> {
+    const response = await apiClient.patch(`/api/lab/settings/comment-templates/${id}/`, data);
+    return parseResponse(ResultCommentTemplateSchema, response.data, {
+      context: 'laboratoryApi.updateCommentTemplate',
+    });
+  },
+
+  async deleteCommentTemplate(id: number): Promise<void> {
+    await apiClient.delete(`/api/lab/settings/comment-templates/${id}/`);
+  },
+
+  async listReferralLabs(params?: { is_active?: boolean; search?: string }): Promise<ReferralLab[]> {
+    const response = await apiClient.get('/api/lab/settings/referral-labs/', { params });
+    const data = Array.isArray(response.data) ? response.data : response.data.results || [];
+    return parseResponse(ReferralLabArraySchema, data, {
+      context: 'laboratoryApi.listReferralLabs',
+    });
+  },
+
+  async createReferralLab(data: Partial<ReferralLab>): Promise<ReferralLab> {
+    const response = await apiClient.post('/api/lab/settings/referral-labs/', data);
+    return parseResponse(ReferralLabSchema, response.data, {
+      context: 'laboratoryApi.createReferralLab',
+    });
+  },
+
+  async updateReferralLab(id: number, data: Partial<ReferralLab>): Promise<ReferralLab> {
+    const response = await apiClient.patch(`/api/lab/settings/referral-labs/${id}/`, data);
+    return parseResponse(ReferralLabSchema, response.data, {
+      context: 'laboratoryApi.updateReferralLab',
+    });
+  },
+
+  async deleteReferralLab(id: number): Promise<void> {
+    await apiClient.delete(`/api/lab/settings/referral-labs/${id}/`);
+  },
+
+  async listLabelTemplates(params?: { is_active?: boolean }): Promise<SampleLabelTemplate[]> {
+    const response = await apiClient.get('/api/lab/settings/label-templates/', { params });
+    const data = Array.isArray(response.data) ? response.data : response.data.results || [];
+    return parseResponse(SampleLabelTemplateArraySchema, data, {
+      context: 'laboratoryApi.listLabelTemplates',
+    });
+  },
+
+  async createLabelTemplate(data: Partial<SampleLabelTemplate>): Promise<SampleLabelTemplate> {
+    const response = await apiClient.post('/api/lab/settings/label-templates/', data);
+    return parseResponse(SampleLabelTemplateSchema, response.data, {
+      context: 'laboratoryApi.createLabelTemplate',
+    });
+  },
+
+  async updateLabelTemplate(id: number, data: Partial<SampleLabelTemplate>): Promise<SampleLabelTemplate> {
+    const response = await apiClient.patch(`/api/lab/settings/label-templates/${id}/`, data);
+    return parseResponse(SampleLabelTemplateSchema, response.data, {
+      context: 'laboratoryApi.updateLabelTemplate',
+    });
+  },
+
+  async deleteLabelTemplate(id: number): Promise<void> {
+    await apiClient.delete(`/api/lab/settings/label-templates/${id}/`);
+  },
+
+  async getBarcodeConfig(): Promise<LabBarcodeConfig> {
+    const response = await apiClient.get('/api/lab/settings/barcode-config/');
+    // Singleton returns single object from list endpoint
+    const data = Array.isArray(response.data) ? response.data[0] : (response.data.results?.[0] || response.data);
+    return parseResponse(LabBarcodeConfigSchema, data, {
+      context: 'laboratoryApi.getBarcodeConfig',
+    });
+  },
+
+  async updateBarcodeConfig(id: number, data: Partial<LabBarcodeConfig>): Promise<LabBarcodeConfig> {
+    const response = await apiClient.patch(`/api/lab/settings/barcode-config/${id}/`, data);
+    return parseResponse(LabBarcodeConfigSchema, response.data, {
+      context: 'laboratoryApi.updateBarcodeConfig',
+    });
+  },
+
+  async getWorkflowSettings(): Promise<LabWorkflowSettings> {
+    const response = await apiClient.get('/api/lab/settings/workflow/');
+    const data = Array.isArray(response.data) ? response.data[0] : (response.data.results?.[0] || response.data);
+    return parseResponse(LabWorkflowSettingsSchema, data, {
+      context: 'laboratoryApi.getWorkflowSettings',
+    });
+  },
+
+  async updateWorkflowSettings(id: number, data: Partial<LabWorkflowSettings>): Promise<LabWorkflowSettings> {
+    const response = await apiClient.patch(`/api/lab/settings/workflow/${id}/`, data);
+    return parseResponse(LabWorkflowSettingsSchema, response.data, {
+      context: 'laboratoryApi.updateWorkflowSettings',
     });
   },
 };

@@ -1034,3 +1034,95 @@ export const AnalyzerDashboardSchema = z.object({
   failed_messages_today: z.number(),
   channel_statuses: z.array(ChannelHealthStatusSchema),
 });
+
+// =============================================================================
+// Lab Settings Schemas
+// =============================================================================
+
+export const SpecimenRejectionReasonSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string(),
+  requires_recollection: z.boolean(),
+  is_active: z.boolean(),
+  display_order: z.number(),
+});
+export const SpecimenRejectionReasonArraySchema = z.array(SpecimenRejectionReasonSchema);
+
+export const ResultCommentTemplateSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  text: z.string(),
+  category: z.string(),
+  category_display: z.string(),
+  applicable_tests: z.array(z.number()),
+  is_active: z.boolean(),
+  display_order: z.number(),
+});
+export const ResultCommentTemplateArraySchema = z.array(ResultCommentTemplateSchema);
+
+export const ReferralLabSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  address: z.string(),
+  contact_person: z.string(),
+  phone: z.string(),
+  email: z.string(),
+  website: z.string(),
+  tests_offered: z.string(),
+  default_tat_days: z.number(),
+  courier_schedule: z.string(),
+  notes: z.string(),
+  is_active: z.boolean(),
+});
+export const ReferralLabArraySchema = z.array(ReferralLabSchema);
+
+export const SampleLabelTemplateSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  label_size: z.string(),
+  label_size_display: z.string(),
+  include_barcode: z.boolean(),
+  include_patient_name: z.boolean(),
+  include_mrn: z.boolean(),
+  include_dob: z.boolean(),
+  include_collection_date: z.boolean(),
+  include_test_name: z.boolean(),
+  include_specimen_type: z.boolean(),
+  include_priority: z.boolean(),
+  copies_per_specimen: z.number(),
+  is_default: z.boolean(),
+  is_active: z.boolean(),
+});
+export const SampleLabelTemplateArraySchema = z.array(SampleLabelTemplateSchema);
+
+export const LabBarcodeConfigSchema = z.object({
+  id: z.number(),
+  prefix: z.string(),
+  sequence_length: z.number(),
+  include_date: z.boolean(),
+  date_format: z.string(),
+  separator: z.string(),
+  barcode_format: z.string(),
+  barcode_format_display: z.string(),
+  current_sequence: z.number(),
+  sample_barcode: z.string(),
+});
+
+export const LabWorkflowSettingsSchema = z.object({
+  id: z.number(),
+  auto_release_normal_results: z.boolean(),
+  require_double_verification_critical: z.boolean(),
+  auto_print_on_verify: z.boolean(),
+  auto_print_labels_on_collect: z.boolean(),
+  notify_clinician_on_critical: z.boolean(),
+  notify_clinician_on_complete: z.boolean(),
+  require_specimen_receipt: z.boolean(),
+  specimen_rejection_requires_supervisor: z.boolean(),
+  tat_warning_threshold_percent: z.number(),
+  allow_duplicate_orders: z.boolean(),
+  require_clinical_notes: z.boolean(),
+});

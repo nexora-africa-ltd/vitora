@@ -26,12 +26,18 @@ from .models import (
     AnalyzerRun,
     DiagnosticReport,
     Instrument,
+    LabBarcodeConfig,
     LabOrder,
     LabOrderItem,
     LabResult,
     LabResultAttachment,
+    LabWorkflowSettings,
     LOINCCode,
+    ReferralLab,
+    ResultCommentTemplate,
+    SampleLabelTemplate,
     Specimen,
+    SpecimenRejectionReason,
     TestCatalog,
 )
 from .reports import LabReportService
@@ -46,6 +52,7 @@ from .serializers import (
     DiagnosticReportUpdateSerializer,
     InstrumentCreateSerializer,
     InstrumentSerializer,
+    LabBarcodeConfigSerializer,
     LabOrderCreateSerializer,
     LabOrderItemSerializer,
     LabOrderSerializer,
@@ -54,7 +61,12 @@ from .serializers import (
     LabResultCreateSerializer,
     LabResultSerializer,
     LabResultVerifySerializer,
+    LabWorkflowSettingsSerializer,
     LOINCCodeSerializer,
+    ReferralLabSerializer,
+    ResultCommentTemplateSerializer,
+    SampleLabelTemplateSerializer,
+    SpecimenRejectionReasonSerializer,
     SpecimenSerializer,
     TestCatalogCreateSerializer,
     TestCatalogDetailSerializer,
@@ -1633,3 +1645,150 @@ class SpecimenViewSet(NestedTenantScopeMixin, viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(barcode__icontains=barcode)
 
         return queryset
+
+
+# =============================================================================
+# Lab Settings ViewSets
+# =============================================================================
+
+
+class SpecimenRejectionReasonViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD for specimen rejection reasons."""
+
+    queryset = SpecimenRejectionReason.objects.all()
+    serializer_class = SpecimenRejectionReasonSerializer
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() == "true")
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+
+class ResultCommentTemplateViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD for result comment templates."""
+
+    queryset = ResultCommentTemplate.objects.prefetch_related("applicable_tests").all()
+    serializer_class = ResultCommentTemplateSerializer
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() == "true")
+        category = self.request.query_params.get("category")
+        if category:
+            qs = qs.filter(category=category)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+
+class ReferralLabViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD for referral/outsourced labs."""
+
+    queryset = ReferralLab.objects.all()
+    serializer_class = ReferralLabSerializer
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() == "true")
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(models.Q(name__icontains=search) | models.Q(code__icontains=search))
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+
+class SampleLabelTemplateViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """CRUD for sample label templates."""
+
+    queryset = SampleLabelTemplate.objects.all()
+    serializer_class = SampleLabelTemplateSerializer
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() == "true")
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+
+class LabBarcodeConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Singleton barcode configuration per facility. Use GET to retrieve, PATCH to update."""
+
+    queryset = LabBarcodeConfig.objects.all()
+    serializer_class = LabBarcodeConfigSerializer
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
+
+    def list(self, request, *args, **kwargs):
+        """Return the single config for current facility, creating default if needed."""
+        config, _created = LabBarcodeConfig.objects.get_or_create(
+            facility=request.facility,
+            defaults={"organization": request.facility.organization},
+        )
+        serializer = self.get_serializer(config)
+        return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+
+class LabWorkflowSettingsViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """Singleton workflow settings per facility. Use GET to retrieve, PATCH to update."""
+
+    queryset = LabWorkflowSettings.objects.all()
+    serializer_class = LabWorkflowSettingsSerializer
+    permission_classes = [IsAuthenticated]
+    tenant_scope = "facility"
+
+    def list(self, request, *args, **kwargs):
+        """Return the single settings for current facility, creating default if needed."""
+        settings, _created = LabWorkflowSettings.objects.get_or_create(
+            facility=request.facility,
+            defaults={"organization": request.facility.organization},
+        )
+        serializer = self.get_serializer(settings)
+        return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        serializer.save(**self.get_tenant_save_kwargs())
+
+    def perform_update(self, serializer):
+        serializer.save()
