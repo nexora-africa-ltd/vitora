@@ -171,6 +171,8 @@ export const LabResultSchema = z.object({
   patient_gender: z.enum(['M', 'F', 'O']).nullable().optional(),
   patient_date_of_birth: z.string().nullable().optional(),
   encounter_id: z.number().nullable().optional(),
+  patient_name: z.string().nullable().optional(),
+  order_number: z.string().nullable().optional(),
 });
 
 export type LabResultSchemaType = z.infer<typeof LabResultSchema>;

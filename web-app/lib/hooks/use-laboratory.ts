@@ -947,6 +947,14 @@ import {
   SensitivityCreateData,
 } from '@/lib/types/laboratory';
 
+export function useSearchLabResults(search?: string) {
+  return useQuery({
+    queryKey: ['lab', 'results', 'search', search],
+    queryFn: () => laboratoryApi.searchResults({ search, page_size: 20 }),
+    enabled: (search?.length ?? 0) >= 2,
+  });
+}
+
 export function useOrganisms(params?: { gram_stain?: string; organism_type?: string; search?: string }) {
   return useQuery({
     queryKey: ['microbiology', 'organisms', params],
