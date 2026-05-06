@@ -97,9 +97,10 @@ New Models:
 
 ---
 
-### Phase L2: Delta Checks & Auto-Verification — 2 sprints
+### Phase L2: Delta Checks & Auto-Verification — 2 sprints ✅
 
 Priority: **HIGH** (reduces pathologist workload by ~40%)
+Status: **COMPLETE** — Backend models, engines, serializers, views, signals, migration, 44 tests; Frontend types, schemas, API client, dashboard page, navigation entry.
 
 #### L2.1 Delta Check Engine
 
@@ -377,7 +378,7 @@ New Models:
 
 1. ~~**Immediate**: Implement facility-scoped HL7 endpoints~~ ✅
 2. ~~**Phase L1**: QC System (materials, lots, targets, Westgard, EQA)~~ ✅
-3. **Next sprint**: Begin Phase L2.1 (Delta Check engine)
-4. **Sprint +2**: L2.2 (Auto-verification rules engine)
-5. **Sprint +3**: L5.1 (TAT monitoring — highest ROI for facility managers)
-6. **Parallel**: Identify pilot facility for analyzer interfacing (Phase L3)
+3. ~~**Phase L2**: Delta Checks & Auto-Verification (engine + rules + management command)~~ ✅
+4. **Next sprint**: L5.1 (TAT monitoring — highest ROI for facility managers)
+5. **Parallel**: Identify pilot facility for analyzer interfacing (Phase L3)
+6. **Sprint +2**: L3 (Analyzer Integration — HL7/ASTM bi-directional)

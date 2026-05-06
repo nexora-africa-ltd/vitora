@@ -122,6 +122,11 @@ class LaboratoryEvents:
     EQA_SURVEY_OVERDUE = "laboratory.eqa.survey_overdue"
     EQA_SUBMISSION_UNACCEPTABLE = "laboratory.eqa.submission_unacceptable"
 
+    # Auto-Verification Events (Phase L2)
+    DELTA_CHECK_FAILED = "laboratory.delta_check.failed"
+    AUTO_VERIFY_PASSED = "laboratory.auto_verify.passed"
+    AUTO_VERIFY_BLOCKED = "laboratory.auto_verify.blocked"
+
 
 class ClinicalEvents:
     """Clinical / encounter domain event types."""
