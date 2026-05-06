@@ -132,6 +132,12 @@ class LaboratoryEvents:
     CULTURE_UPDATED = "laboratory.culture.updated"
     SENSITIVITY_CREATED = "laboratory.sensitivity.created"
 
+    # Analyzer Interfacing Events (Phase L3)
+    ANALYZER_MESSAGE_RECEIVED = "laboratory.analyzer.message_received"
+    ANALYZER_RESULT_APPLIED = "laboratory.analyzer.result_applied"
+    ANALYZER_MESSAGE_FAILED = "laboratory.analyzer.message_failed"
+    ANALYZER_CHANNEL_STATUS_CHANGED = "laboratory.analyzer.channel_status_changed"
+
 
 class ClinicalEvents:
     """Clinical / encounter domain event types."""

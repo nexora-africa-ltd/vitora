@@ -932,3 +932,105 @@ export const AntibiogramSchema = z.object({
   percent_resistant: z.number().nullable(),
   generated_at: z.string(),
 });
+
+// =============================================================================
+// ANALYZER INTERFACING (Phase L3)
+// =============================================================================
+
+export const ChannelProtocolSchema = z.enum(['ASTM', 'HL7', 'SERIAL', 'TCP']);
+export const ChannelDirectionSchema = z.enum(['BIDIRECTIONAL', 'HOST_TO_INSTRUMENT', 'INSTRUMENT_TO_HOST']);
+export const ChannelConnectionStatusSchema = z.enum(['CONNECTED', 'DISCONNECTED', 'ERROR', 'IDLE']);
+export const AnalyzerMessageDirectionSchema = z.enum(['INBOUND', 'OUTBOUND']);
+export const AnalyzerMessageTypeSchema = z.enum(['RESULT', 'ORDER_DOWNLOAD', 'QUERY', 'ACK', 'STATUS', 'OTHER']);
+export const AnalyzerMessageStatusSchema = z.enum(['RECEIVED', 'PARSED', 'APPLIED', 'FAILED', 'PENDING', 'SENT', 'TIMEOUT']);
+
+export const InstrumentChannelSchema = z.object({
+  id: z.number(),
+  instrument: z.number(),
+  instrument_code: z.string(),
+  instrument_name: z.string(),
+  name: z.string(),
+  protocol: ChannelProtocolSchema,
+  protocol_display: z.string(),
+  direction: ChannelDirectionSchema,
+  direction_display: z.string(),
+  host: z.string(),
+  port: z.number(),
+  encoding: z.string(),
+  config: z.record(z.unknown()),
+  field_mapping: z.record(z.unknown()),
+  is_active: z.boolean(),
+  connection_status: ChannelConnectionStatusSchema,
+  connection_status_display: z.string(),
+  last_activity_at: z.string().nullable(),
+  last_error: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const InstrumentChannelArraySchema = z.array(InstrumentChannelSchema);
+
+export const AnalyzerMessageSchema = z.object({
+  id: z.number(),
+  channel: z.number(),
+  channel_name: z.string(),
+  specimen: z.number().nullable(),
+  specimen_barcode: z.string().nullable(),
+  lab_order_item: z.number().nullable(),
+  direction: AnalyzerMessageDirectionSchema,
+  direction_display: z.string(),
+  message_type: AnalyzerMessageTypeSchema,
+  message_type_display: z.string(),
+  status: AnalyzerMessageStatusSchema,
+  status_display: z.string(),
+  raw_data: z.string(),
+  parsed_data: z.record(z.unknown()).nullable(),
+  sample_id: z.string(),
+  test_code: z.string(),
+  result_value: z.string(),
+  result_unit: z.string(),
+  error_message: z.string(),
+  timestamp: z.string(),
+  processed_at: z.string().nullable(),
+});
+
+export const AnalyzerMessageArraySchema = z.array(AnalyzerMessageSchema);
+
+export const AnalyzerDriverTemplateSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  manufacturer: z.string(),
+  model_pattern: z.string(),
+  category: z.string(),
+  protocol: ChannelProtocolSchema,
+  protocol_display: z.string(),
+  default_config: z.record(z.unknown()),
+  default_field_mapping: z.record(z.unknown()),
+  description: z.string(),
+  created_at: z.string(),
+});
+
+export const AnalyzerDriverTemplateArraySchema = z.array(AnalyzerDriverTemplateSchema);
+
+export const ChannelHealthStatusSchema = z.object({
+  channel_id: z.number(),
+  instrument_code: z.string(),
+  channel_name: z.string(),
+  connection_status: ChannelConnectionStatusSchema,
+  last_activity_at: z.string().nullable(),
+  last_error: z.string(),
+  messages_last_hour: z.number(),
+  errors_last_hour: z.number(),
+  is_healthy: z.boolean(),
+});
+
+export const AnalyzerDashboardSchema = z.object({
+  total_channels: z.number(),
+  active_channels: z.number(),
+  connected_channels: z.number(),
+  error_channels: z.number(),
+  messages_today: z.number(),
+  results_applied_today: z.number(),
+  failed_messages_today: z.number(),
+  channel_statuses: z.array(ChannelHealthStatusSchema),
+});

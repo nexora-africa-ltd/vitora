@@ -37,6 +37,11 @@ import {
   ActiveBreachesReport,
   TechnicianEfficiencyReport,
   WorkloadKPIReport,
+  InstrumentChannel,
+  InstrumentChannelCreateData,
+  AnalyzerMessage,
+  AnalyzerDriverTemplate,
+  AnalyzerDashboard,
 } from '@/lib/types/laboratory';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -77,6 +82,13 @@ import {
   ActiveBreachesReportSchema,
   TechnicianEfficiencyReportSchema,
   WorkloadKPIReportSchema,
+  InstrumentChannelSchema,
+  InstrumentChannelArraySchema,
+  AnalyzerMessageSchema,
+  AnalyzerMessageArraySchema,
+  AnalyzerDriverTemplateSchema,
+  AnalyzerDriverTemplateArraySchema,
+  AnalyzerDashboardSchema,
 } from '@/lib/schemas/laboratory.schema';
 
 export const laboratoryApi = {
@@ -998,6 +1010,140 @@ export const laboratoryApi = {
     });
     return parseResponse(WorkloadKPIReportSchema, response.data, {
       context: 'laboratoryApi.getWorkloadKPI',
+    });
+  },
+
+  // ============ Analyzer Channels (L3) ============
+
+  async listChannels(params?: { is_active?: boolean; instrument?: number }): Promise<InstrumentChannel[]> {
+    const response = await apiClient.get<InstrumentChannel[] | { results: InstrumentChannel[] }>(
+      '/api/lab/analyzers/channels/',
+      { params },
+    );
+    if (Array.isArray(response.data)) {
+      return parseResponse(InstrumentChannelArraySchema, response.data, {
+        context: 'laboratoryApi.listChannels',
+      });
+    }
+    return parseResponse(InstrumentChannelArraySchema, response.data.results || [], {
+      context: 'laboratoryApi.listChannels',
+    });
+  },
+
+  async getChannel(id: number): Promise<InstrumentChannel> {
+    const response = await apiClient.get<InstrumentChannel>(`/api/lab/analyzers/channels/${id}/`);
+    return parseResponse(InstrumentChannelSchema, response.data, {
+      context: 'laboratoryApi.getChannel',
+    });
+  },
+
+  async createChannel(data: InstrumentChannelCreateData): Promise<InstrumentChannel> {
+    const response = await apiClient.post<InstrumentChannel>('/api/lab/analyzers/channels/', data);
+    return parseResponse(InstrumentChannelSchema, response.data, {
+      context: 'laboratoryApi.createChannel',
+    });
+  },
+
+  async updateChannel(id: number, data: Partial<InstrumentChannelCreateData>): Promise<InstrumentChannel> {
+    const response = await apiClient.patch<InstrumentChannel>(`/api/lab/analyzers/channels/${id}/`, data);
+    return parseResponse(InstrumentChannelSchema, response.data, {
+      context: 'laboratoryApi.updateChannel',
+    });
+  },
+
+  async deleteChannel(id: number): Promise<void> {
+    await apiClient.delete(`/api/lab/analyzers/channels/${id}/`);
+  },
+
+  async getChannelHealth(id: number): Promise<Record<string, unknown>> {
+    const response = await apiClient.get(`/api/lab/analyzers/channels/${id}/health/`);
+    return response.data;
+  },
+
+  async testChannelConnection(id: number): Promise<Record<string, unknown>> {
+    const response = await apiClient.post(`/api/lab/analyzers/channels/${id}/test_connection/`);
+    return response.data;
+  },
+
+  async applyDriverTemplate(channelId: number, templateId: number): Promise<InstrumentChannel> {
+    const response = await apiClient.post<InstrumentChannel>(
+      `/api/lab/analyzers/channels/${channelId}/apply_template/`,
+      { template_id: templateId },
+    );
+    return parseResponse(InstrumentChannelSchema, response.data, {
+      context: 'laboratoryApi.applyDriverTemplate',
+    });
+  },
+
+  // ============ Analyzer Messages (L3) ============
+
+  async listMessages(params?: {
+    channel?: number;
+    direction?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<AnalyzerMessage[]> {
+    const response = await apiClient.get<AnalyzerMessage[] | { results: AnalyzerMessage[] }>(
+      '/api/lab/analyzers/messages/',
+      { params },
+    );
+    if (Array.isArray(response.data)) {
+      return parseResponse(AnalyzerMessageArraySchema, response.data, {
+        context: 'laboratoryApi.listMessages',
+      });
+    }
+    return parseResponse(AnalyzerMessageArraySchema, response.data.results || [], {
+      context: 'laboratoryApi.listMessages',
+    });
+  },
+
+  async getMessage(id: number): Promise<AnalyzerMessage> {
+    const response = await apiClient.get<AnalyzerMessage>(`/api/lab/analyzers/messages/${id}/`);
+    return parseResponse(AnalyzerMessageSchema, response.data, {
+      context: 'laboratoryApi.getMessage',
+    });
+  },
+
+  async ingestMessage(channelId: number, rawData: string): Promise<AnalyzerMessage> {
+    const response = await apiClient.post<AnalyzerMessage>(
+      '/api/lab/analyzers/messages/ingest/',
+      { channel_id: channelId, raw_data: rawData },
+    );
+    return parseResponse(AnalyzerMessageSchema, response.data, {
+      context: 'laboratoryApi.ingestMessage',
+    });
+  },
+
+  // ============ Analyzer Driver Templates (L3) ============
+
+  async listDriverTemplates(params?: { manufacturer?: string }): Promise<AnalyzerDriverTemplate[]> {
+    const response = await apiClient.get<AnalyzerDriverTemplate[] | { results: AnalyzerDriverTemplate[] }>(
+      '/api/lab/analyzers/templates/',
+      { params },
+    );
+    if (Array.isArray(response.data)) {
+      return parseResponse(AnalyzerDriverTemplateArraySchema, response.data, {
+        context: 'laboratoryApi.listDriverTemplates',
+      });
+    }
+    return parseResponse(AnalyzerDriverTemplateArraySchema, response.data.results || [], {
+      context: 'laboratoryApi.listDriverTemplates',
+    });
+  },
+
+  async getDriverTemplate(id: number): Promise<AnalyzerDriverTemplate> {
+    const response = await apiClient.get<AnalyzerDriverTemplate>(`/api/lab/analyzers/templates/${id}/`);
+    return parseResponse(AnalyzerDriverTemplateSchema, response.data, {
+      context: 'laboratoryApi.getDriverTemplate',
+    });
+  },
+
+  // ============ Analyzer Dashboard (L3) ============
+
+  async getAnalyzerDashboard(): Promise<AnalyzerDashboard> {
+    const response = await apiClient.get<AnalyzerDashboard>('/api/lab/analyzers/dashboard/');
+    return parseResponse(AnalyzerDashboardSchema, response.data, {
+      context: 'laboratoryApi.getAnalyzerDashboard',
     });
   },
 };
