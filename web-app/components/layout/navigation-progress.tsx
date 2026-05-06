@@ -1,6 +1,6 @@
 /**
  * Navigation Progress Bar Component
- * Displays a progress bar under the header during page navigation/loading
+ * Displays a pulsing gradient bar at the top of the page during navigation
  * Uses Next.js navigation events to show loading state
  */
 
@@ -11,43 +11,30 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 
 interface NavigationProgressProps {
-  /** Color of the progress bar */
-  color?: string;
   /** Height of the progress bar */
   height?: number;
-  /** Minimum progress when loading starts */
-  startPosition?: number;
   /** Delay before showing the progress bar (ms) */
   delay?: number;
-  /** Animation duration for completion (ms) */
+  /** Animation duration for fade-out on completion (ms) */
   completionDuration?: number;
 }
 
 export function NavigationProgress({
-  color = 'teal-100',
-  height = 4,
-  startPosition = 0.08,
+  height = 3,
   delay = 100,
-  completionDuration = 200,
+  completionDuration = 300,
 }: NavigationProgressProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
   const previousPathRef = useRef<string>('');
-  const incrementIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const delayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Clear all timers
   const clearTimers = useCallback(() => {
-    if (incrementIntervalRef.current) {
-      clearInterval(incrementIntervalRef.current);
-      incrementIntervalRef.current = null;
-    }
     if (delayTimeoutRef.current) {
       clearTimeout(delayTimeoutRef.current);
       delayTimeoutRef.current = null;
@@ -58,51 +45,30 @@ export function NavigationProgress({
     }
   }, []);
 
-  // Complete loading
   const complete = useCallback(() => {
     clearTimers();
+    setIsLoading(false);
 
-    if (isVisible) {
-      setProgress(1);
+    // Fade out then hide
+    completionTimeoutRef.current = setTimeout(() => {
+      setIsVisible(false);
+    }, completionDuration);
+  }, [clearTimers, completionDuration]);
 
-      // Hide after completion animation
-      completionTimeoutRef.current = setTimeout(() => {
-        setIsLoading(false);
-        setIsVisible(false);
-        setProgress(0);
-      }, completionDuration);
-    }
-  }, [clearTimers, completionDuration, isVisible]);
-
-  // Start loading
   const start = useCallback(() => {
     clearTimers();
 
-    // Delay before showing
     delayTimeoutRef.current = setTimeout(() => {
       setIsLoading(true);
       setIsVisible(true);
-      setProgress(startPosition);
-
-      // Increment progress gradually
-      incrementIntervalRef.current = setInterval(() => {
-        setProgress((prev) => {
-          // Slow down as we approach 90%
-          if (prev >= 0.9) return prev;
-          if (prev >= 0.7) return prev + 0.01;
-          if (prev >= 0.5) return prev + 0.02;
-          return prev + 0.05;
-        });
-      }, 200);
     }, delay);
-  }, [clearTimers, delay, startPosition]);
+  }, [clearTimers, delay]);
 
   // Track route changes
   useEffect(() => {
     const currentPath = `${pathname}?${searchParams?.toString() || ''}`;
 
     if (previousPathRef.current && previousPathRef.current !== currentPath) {
-      // Route changed - complete the loading
       complete();
     }
 
@@ -122,7 +88,6 @@ export function NavigationProgress({
       const href = anchor.getAttribute('href');
       if (!href) return;
 
-      // Check if it's an internal navigation
       const isInternal = href.startsWith('/') || href.startsWith(window.location.origin);
       const isSamePageAnchor = href.startsWith('#');
       const isNewTab = anchor.target === '_blank';
@@ -133,7 +98,6 @@ export function NavigationProgress({
         const targetUrl = new URL(href, window.location.origin);
         const targetPath = `${targetUrl.pathname}?${targetUrl.searchParams.toString()}`;
 
-        // Only start loading if navigating to a different page
         if (currentPath !== targetPath) {
           start();
         }
@@ -144,51 +108,94 @@ export function NavigationProgress({
     return () => document.removeEventListener('click', handleClick);
   }, [pathname, searchParams, start]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => clearTimers();
   }, [clearTimers]);
 
   if (!isVisible) return null;
 
-  const progressValue = Math.round(progress * 100);
-
   return (
-    <div
-      role="progressbar"
-      aria-label="Page loading progress"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={progressValue}
-      className={cn(
-        'fixed top-0 left-0 right-0 z-[100] pointer-events-none',
-        'transition-opacity duration-200',
-        isLoading ? 'opacity-100' : 'opacity-0'
-      )}
-    >
-      {/* Progress bar */}
+    <>
+      {/* Top bar */}
       <div
+        role="progressbar"
+        aria-label="Page loading"
+        aria-valuemin={0}
+        aria-valuemax={100}
         className={cn(
-          'transition-all duration-200 ease-out bg-teal-100',
-          progressValue === 100 && 'opacity-0'
+          'fixed top-0 left-0 right-0 z-[100] pointer-events-none',
+          'transition-opacity duration-300',
+          isLoading ? 'opacity-100' : 'opacity-0'
         )}
-        style={{
-          height: `${height}px`,
-          width: `${progressValue}%`,
-        }}
-      />
-      {/* Glow effect */}
+        style={{ height: `${height}px` }}
+      >
+        <div
+          className="h-full w-full animate-pulse-gradient"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent 0%, rgba(236,72,153,0.7) 25%, rgba(45,212,191,0.9) 50%, rgba(236,72,153,0.7) 75%, transparent 100%)',
+            backgroundSize: '200% 100%',
+          }}
+        />
+      </div>
+      {/* Right bar */}
       <div
+        aria-hidden="true"
         className={cn(
-          'absolute right-0 top-0 w-24 bg-gradient-to-r from-transparent to-teal-100/50 blur-sm',
-          progressValue === 100 && 'opacity-0'
+          'fixed top-0 right-0 bottom-0 z-[100] pointer-events-none',
+          'transition-opacity duration-300',
+          isLoading ? 'opacity-100' : 'opacity-0'
         )}
-        style={{
-          height: `${height}px`,
-          transform: `translateX(${progressValue < 100 ? '0' : '100%'})`,
-        }}
-      />
-    </div>
+        style={{ width: `${height}px` }}
+      >
+        <div
+          className="h-full w-full animate-pulse-gradient-vertical"
+          style={{
+            background:
+              'linear-gradient(180deg, transparent 0%, rgba(45,212,191,0.7) 25%, rgba(236,72,153,0.9) 50%, rgba(45,212,191,0.7) 75%, transparent 100%)',
+            backgroundSize: '100% 200%',
+          }}
+        />
+      </div>
+      {/* Bottom bar */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          'fixed bottom-0 left-0 right-0 z-[100] pointer-events-none',
+          'transition-opacity duration-300',
+          isLoading ? 'opacity-100' : 'opacity-0'
+        )}
+        style={{ height: `${height}px` }}
+      >
+        <div
+          className="h-full w-full animate-pulse-gradient"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent 0%, rgba(45,212,191,0.7) 25%, rgba(236,72,153,0.9) 50%, rgba(45,212,191,0.7) 75%, transparent 100%)',
+            backgroundSize: '200% 100%',
+          }}
+        />
+      </div>
+      {/* Left bar */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          'fixed top-0 left-0 bottom-0 z-[100] pointer-events-none',
+          'transition-opacity duration-300',
+          isLoading ? 'opacity-100' : 'opacity-0'
+        )}
+        style={{ width: `${height}px` }}
+      >
+        <div
+          className="h-full w-full animate-pulse-gradient-vertical"
+          style={{
+            background:
+              'linear-gradient(180deg, transparent 0%, rgba(236,72,153,0.7) 25%, rgba(45,212,191,0.9) 50%, rgba(236,72,153,0.7) 75%, transparent 100%)',
+            backgroundSize: '100% 200%',
+          }}
+        />
+      </div>
+    </>
   );
 }
 

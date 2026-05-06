@@ -190,6 +190,32 @@ const config: Config = {
   				to: {
   					transform: 'scaleX(0)'
   				}
+  			},
+  			'pulse-gradient': {
+  				'0%': {
+  					backgroundPosition: '200% 0',
+  					opacity: '0.7'
+  				},
+  				'50%': {
+  					opacity: '1'
+  				},
+  				'100%': {
+  					backgroundPosition: '-200% 0',
+  					opacity: '0.7'
+  				}
+  			},
+  			'pulse-gradient-vertical': {
+  				'0%': {
+  					backgroundPosition: '0 200%',
+  					opacity: '0.7'
+  				},
+  				'50%': {
+  					opacity: '1'
+  				},
+  				'100%': {
+  					backgroundPosition: '0 -200%',
+  					opacity: '0.7'
+  				}
   			}
   		},
   		animation: {
@@ -200,7 +226,9 @@ const config: Config = {
   			'slide-in-from-top': 'slide-in-from-top 0.3s ease-out',
   			'slide-in-from-bottom': 'slide-in-from-bottom 0.3s ease-out',
   			'pulse-text': 'pulse-text 0.6s ease-in-out',
-  			'shrinkBar': 'shrinkBar 30s linear forwards'
+  			'shrinkBar': 'shrinkBar 30s linear forwards',
+  			'pulse-gradient': 'pulse-gradient 1.8s ease-in-out infinite',
+  			'pulse-gradient-vertical': 'pulse-gradient-vertical 1.8s ease-in-out infinite'
   		}
   	}
   },
