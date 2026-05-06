@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 export function PushNotificationToggle({ className }: { className?: string }) {
   const {
     isSupported,
+    isVapidReady,
     permission,
     isSubscribed,
     isLoading,
@@ -91,7 +92,7 @@ export function PushNotificationToggle({ className }: { className?: string }) {
       variant="outline"
       size="sm"
       onClick={subscribe}
-      disabled={isSubscribing}
+      disabled={isSubscribing || !isVapidReady}
       className={cn('gap-2', className)}
     >
       {isSubscribing ? (

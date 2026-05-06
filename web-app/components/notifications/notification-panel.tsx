@@ -55,6 +55,7 @@ import {
 } from '@/lib/hooks/use-notifications';
 import { useNotificationSocket } from '@/lib/hooks/use-websocket';
 import type { Notification, NotificationPriority } from '@/lib/types/notification';
+import { PushNotificationToggle } from './push-notification-toggle';
 
 /** Get icon component based on notification type */
 function getNotificationIconComponent(type: string) {
@@ -481,6 +482,11 @@ export function NotificationPanel() {
                 Mark all read
               </Button>
             )}
+          </div>
+
+          {/* Push Toggle */}
+          <div className="px-4 py-2 border-b">
+            <PushNotificationToggle />
           </div>
 
           {/* Notification List */}
