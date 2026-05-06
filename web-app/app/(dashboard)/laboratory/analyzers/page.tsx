@@ -225,7 +225,7 @@ export default function AnalyzersPage() {
                   </div>
                   {instruments.length === 0 && (
                     <p className="text-xs text-muted-foreground mt-4">
-                      You need at least one instrument registered in QC → Instruments before adding a channel.
+                      You need at least one instrument registered before adding a channel. Ask your administrator to add instruments via the admin panel.
                     </p>
                   )}
                 </CardContent>
@@ -668,7 +668,7 @@ function AddChannelDialog({
             </Select>
             {instruments.length === 0 && (
               <p className="text-xs text-destructive mt-1">
-                No instruments found. Register one under QC → Instruments first.
+                No instruments found. Register one via the admin panel first.
               </p>
             )}
           </div>
