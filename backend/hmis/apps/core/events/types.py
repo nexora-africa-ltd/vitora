@@ -115,6 +115,13 @@ class LaboratoryEvents:
     CRITICAL_RESULT = "laboratory.result.critical"
     ORDER_BILLING = "laboratory.order.billed"
 
+    # QC Events (Phase L1)
+    QC_RESULT_ENTERED = "laboratory.qc.result_entered"
+    QC_RULE_VIOLATED = "laboratory.qc.rule_violated"
+    QC_LOT_EXPIRING = "laboratory.qc.lot_expiring"
+    EQA_SURVEY_OVERDUE = "laboratory.eqa.survey_overdue"
+    EQA_SUBMISSION_UNACCEPTABLE = "laboratory.eqa.submission_unacceptable"
+
 
 class ClinicalEvents:
     """Clinical / encounter domain event types."""

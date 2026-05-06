@@ -48,6 +48,7 @@ urlpatterns = [
     path(
         "reports/rejections/", LabSampleRejectionReportView.as_view(), name="lab-report-rejections"
     ),
+    path("qc/", include("hmis.apps.laboratory.qc.urls")),
     path("", include(router.urls)),
 ]
 

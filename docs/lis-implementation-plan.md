@@ -1,8 +1,8 @@
 # Vitora Full LIS Implementation Plan
 
-> **Status**: Planning
+> **Status**: In Progress (L1 Complete)
 > **Owner**: Engineering Lead
-> **Last Updated**: May 2026
+> **Last Updated**: May 6, 2026
 > **Estimated Effort**: 6-8 sprints (12-16 weeks)
 
 ---
@@ -30,14 +30,21 @@ Vitora's laboratory module already covers ~80% of a functional LIS. This plan ad
 | LOINC code mapping | ✅ |
 | Result templates | ✅ |
 | Result attachments (PDFs, images) | ✅ |
+| QC material & lot management | ✅ |
+| QC data entry with Westgard multi-rule engine | ✅ |
+| Levey-Jennings chart visualization | ✅ |
+| QC rule violation tracking & acknowledgment | ✅ |
+| External Quality Assessment (EQA/PT) tracking | ✅ |
 
 ---
 
 ## Gap Analysis & Implementation Phases
 
-### Phase L1: Quality Control (QC) System — 3 sprints
+### Phase L1: Quality Control (QC) System — 3 sprints ✅ COMPLETE
 
 Priority: **HIGH** (required for ISO 15189 accreditation)
+
+> **Implemented**: May 2026 — Full backend (9 models, Westgard engine, 60 tests) + frontend (QC dashboard, EQA page, Levey-Jennings charts, navigation). See `backend/hmis/apps/laboratory/qc/` and `web-app/app/(dashboard)/laboratory/qc/`.
 
 #### L1.1 QC Lot & Material Management
 
@@ -272,8 +279,8 @@ New Models:
 
 | Phase | Effort | Impact | Priority | Prerequisite |
 |-------|--------|--------|----------|--------------|
-| L1 (QC) | 3 sprints | High (accreditation) | P0 | None |
-| L2 (Delta/Auto-verify) | 2 sprints | High (efficiency) | P1 | None |
+| L1 (QC) | 3 sprints | High (accreditation) | ✅ Done | None |
+| L2 (Delta/Auto-verify) | 2 sprints | High (efficiency) | P0 — Next | None |
 | L3 (Analyzer Interface) | 2 sprints | Medium (automation) | P2 | L1 (QC validates results) |
 | L4 (Microbiology) | 2 sprints | Medium (completeness) | P2 | None |
 | L5 (Reporting) | 1 sprint | Medium (management) | P1 | L1 + L2 |
@@ -368,8 +375,9 @@ New Models:
 
 ## Next Steps
 
-1. **Immediate** (this sprint): Implement facility-scoped HL7 endpoints ✅
-2. **Next sprint**: Begin Phase L1.1 (QC Material & Lot management models)
-3. **Sprint +2**: L1.2 (QC data entry + Levey-Jennings charts)
-4. **Sprint +3**: L2 (Delta checks + auto-verification)
-5. **Parallel**: Identify pilot facility for analyzer interfacing (Phase L3)
+1. ~~**Immediate**: Implement facility-scoped HL7 endpoints~~ ✅
+2. ~~**Phase L1**: QC System (materials, lots, targets, Westgard, EQA)~~ ✅
+3. **Next sprint**: Begin Phase L2.1 (Delta Check engine)
+4. **Sprint +2**: L2.2 (Auto-verification rules engine)
+5. **Sprint +3**: L5.1 (TAT monitoring — highest ROI for facility managers)
+6. **Parallel**: Identify pilot facility for analyzer interfacing (Phase L3)
