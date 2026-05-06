@@ -78,6 +78,7 @@ import {
   BotIcon,
   Droplets,
   CircleDot,
+  Award,
 } from 'lucide-react';
 
 import {
@@ -331,6 +332,8 @@ const _allNavItems: NavItemType[] = [
       { label: 'Test Catalog', href: '/laboratory/tests', icon: TestTubes, actionKey: 'laboratory.view_dashboard' },
       { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText, actionKey: 'laboratory.view_reports' },
       { label: 'Lab Analytics', href: '/laboratory/analytics', icon: BarChart3, actionKey: 'laboratory.view_analytics' },
+      { label: 'Quality Control', href: '/laboratory/qc', icon: FlaskConical, actionKey: 'laboratory.view_dashboard' },
+      { label: 'EQA / PT', href: '/laboratory/qc/eqa', icon: Award, actionKey: 'laboratory.view_dashboard' },
     ],
   },
   {
