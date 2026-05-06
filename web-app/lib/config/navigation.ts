@@ -333,6 +333,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Test Catalog', href: '/laboratory/tests', icon: TestTubes, actionKey: 'laboratory.view_dashboard' },
       { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText, actionKey: 'laboratory.view_reports' },
       { label: 'Lab Analytics', href: '/laboratory/analytics', icon: BarChart3, actionKey: 'laboratory.view_analytics' },
+      { label: 'SLA & Performance', href: '/laboratory/sla', icon: Target, actionKey: 'laboratory.view_analytics' },
       { label: 'Quality Control', href: '/laboratory/qc', icon: FlaskConical, actionKey: 'laboratory.view_dashboard' },
       { label: 'Auto-Verify', href: '/laboratory/autoverify', icon: ShieldCheck, actionKey: 'laboratory.verify_results' },
       { label: 'EQA / PT', href: '/laboratory/qc/eqa', icon: Award, actionKey: 'laboratory.view_dashboard' },

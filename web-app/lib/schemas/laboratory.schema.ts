@@ -656,3 +656,176 @@ export const ResultValidationArraySchema = z.array(ResultValidationSchema);
 export const InstrumentArraySchema = z.array(InstrumentSchema);
 export const AnalyzerRunArraySchema = z.array(AnalyzerRunSchema);
 export const DiagnosticReportArraySchema = z.array(DiagnosticReportSchema);
+
+// =============================================================================
+// L5 — TAT MONITORING & SLA
+// =============================================================================
+
+export const TATSLATargetSchema = z.object({
+  id: z.number(),
+  test: z.number(),
+  test_code: z.string(),
+  test_name: z.string(),
+  priority: LabPrioritySchema,
+  target_order_to_collect_minutes: z.number().nullable(),
+  target_collect_to_receive_minutes: z.number().nullable(),
+  target_receive_to_result_minutes: z.number().nullable(),
+  target_result_to_verify_minutes: z.number().nullable(),
+  target_total_minutes: z.number(),
+  breach_escalation_email: z.string(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const TATSLATargetArraySchema = z.array(TATSLATargetSchema);
+
+export const TATSnapshotSchema = z.object({
+  id: z.number(),
+  order_number: z.string(),
+  test_code: z.string().nullable(),
+  test_name: z.string().nullable(),
+  priority: LabPrioritySchema,
+  ordered_at: z.string(),
+  collected_at: z.string().nullable(),
+  received_at: z.string().nullable(),
+  resulted_at: z.string().nullable(),
+  verified_at: z.string().nullable(),
+  released_at: z.string().nullable(),
+  tat_order_to_collect: z.number().nullable(),
+  tat_collect_to_receive: z.number().nullable(),
+  tat_receive_to_result: z.number().nullable(),
+  tat_result_to_verify: z.number().nullable(),
+  tat_total: z.number().nullable(),
+  is_breach: z.boolean(),
+  breach_minutes: z.number().nullable(),
+  sla_target_minutes: z.number().nullable(),
+  resulted_by_name: z.string().nullable(),
+  verified_by_name: z.string().nullable(),
+  snapshot_created_at: z.string(),
+});
+
+export const TATSnapshotArraySchema = z.array(TATSnapshotSchema);
+
+export const SLAComplianceReportSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  summary: z.object({
+    total_orders: z.number(),
+    breaches: z.number(),
+    compliance_rate: z.number(),
+    avg_total_minutes: z.number().nullable(),
+    p50_minutes: z.number().nullable(),
+    p90_minutes: z.number().nullable(),
+    p95_minutes: z.number().nullable(),
+  }),
+  segments: z.object({
+    avg_order_to_collect: z.number().nullable(),
+    avg_collect_to_receive: z.number().nullable(),
+    avg_receive_to_result: z.number().nullable(),
+    avg_result_to_verify: z.number().nullable(),
+  }),
+  by_priority: z.array(
+    z.object({
+      priority: LabPrioritySchema,
+      count: z.number(),
+      breaches: z.number(),
+      compliance_rate: z.number(),
+      avg_minutes: z.number(),
+      p50_minutes: z.number().nullable(),
+      p90_minutes: z.number().nullable(),
+      p95_minutes: z.number().nullable(),
+    })
+  ),
+  by_test: z.array(
+    z.object({
+      test_code: z.string(),
+      test_name: z.string(),
+      count: z.number(),
+      breaches: z.number(),
+      compliance_rate: z.number(),
+      avg_minutes: z.number().nullable(),
+    })
+  ),
+});
+
+export const TATTrendReportSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  daily: z.array(
+    z.object({
+      date: z.string(),
+      count: z.number(),
+      breaches: z.number(),
+      avg_minutes: z.number().nullable(),
+      p90_minutes: z.number().nullable(),
+    })
+  ),
+});
+
+export const ActiveBreachesReportSchema = z.object({
+  count: z.number(),
+  breaches: z.array(
+    z.object({
+      order_number: z.string(),
+      order_id: z.number(),
+      test_code: z.string(),
+      test_name: z.string(),
+      priority: LabPrioritySchema,
+      status: z.string(),
+      elapsed_minutes: z.number(),
+      target_minutes: z.number(),
+      breach_minutes: z.number(),
+      patient_name: z.string().nullable(),
+      ordered_at: z.string(),
+    })
+  ),
+});
+
+export const TechnicianEfficiencyReportSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  technicians: z.array(
+    z.object({
+      technician_id: z.number(),
+      technician_name: z.string(),
+      results_entered: z.number(),
+      avg_entry_time_minutes: z.number().nullable(),
+      breaches: z.number(),
+      breach_rate: z.number(),
+    })
+  ),
+});
+
+export const WorkloadKPIReportSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  totals: z.object({
+    tests_entered: z.number(),
+    tests_verified: z.number(),
+    specimens_collected: z.number(),
+    specimens_rejected: z.number(),
+    rejection_rate: z.number(),
+    critical_results: z.number(),
+    critical_compliance_rate: z.number(),
+    avg_entry_time_minutes: z.number().nullable(),
+    avg_verify_time_minutes: z.number().nullable(),
+  }),
+  by_technician: z.array(
+    z.object({
+      technician_id: z.number(),
+      technician_name: z.string(),
+      tests_entered: z.number(),
+      tests_verified: z.number(),
+      specimens_rejected: z.number(),
+      avg_entry_time_minutes: z.number().nullable(),
+    })
+  ),
+  by_day: z.array(
+    z.object({
+      date: z.string(),
+      tests_entered: z.number(),
+      tests_verified: z.number(),
+    })
+  ),
+});

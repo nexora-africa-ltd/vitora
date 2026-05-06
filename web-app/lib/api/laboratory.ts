@@ -29,6 +29,14 @@ import {
   WorkloadReport,
   CriticalValuesReport,
   SampleRejectionReport,
+  TATSLATarget,
+  TATSLATargetCreateData,
+  TATSnapshot,
+  SLAComplianceReport,
+  TATTrendReport,
+  ActiveBreachesReport,
+  TechnicianEfficiencyReport,
+  WorkloadKPIReport,
 } from '@/lib/types/laboratory';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -60,6 +68,15 @@ import {
   InstrumentArraySchema,
   AnalyzerRunArraySchema,
   DiagnosticReportArraySchema,
+  TATSLATargetSchema,
+  TATSLATargetArraySchema,
+  TATSnapshotSchema,
+  TATSnapshotArraySchema,
+  SLAComplianceReportSchema,
+  TATTrendReportSchema,
+  ActiveBreachesReportSchema,
+  TechnicianEfficiencyReportSchema,
+  WorkloadKPIReportSchema,
 } from '@/lib/schemas/laboratory.schema';
 
 export const laboratoryApi = {
@@ -875,6 +892,95 @@ export const laboratoryApi = {
     const response = await apiClient.get('/api/lab/queue/stats/');
     return parseResponse(LabQueueStatsSchema, response.data, {
       context: 'laboratoryApi.getQueueStats',
+    });
+  },
+
+  // ============ L5: TAT Monitoring & SLA ============
+
+  async listSLATargets(): Promise<TATSLATarget[]> {
+    const response = await apiClient.get('/api/lab/reporting/sla-targets/');
+    const data = response.data.results ?? response.data;
+    return parseResponse(TATSLATargetArraySchema, data, {
+      context: 'laboratoryApi.listSLATargets',
+    });
+  },
+
+  async createSLATarget(data: TATSLATargetCreateData): Promise<TATSLATarget> {
+    const response = await apiClient.post('/api/lab/reporting/sla-targets/', data);
+    return parseResponse(TATSLATargetSchema, response.data, {
+      context: 'laboratoryApi.createSLATarget',
+    });
+  },
+
+  async updateSLATarget(id: number, data: Partial<TATSLATargetCreateData>): Promise<TATSLATarget> {
+    const response = await apiClient.patch(`/api/lab/reporting/sla-targets/${id}/`, data);
+    return parseResponse(TATSLATargetSchema, response.data, {
+      context: 'laboratoryApi.updateSLATarget',
+    });
+  },
+
+  async deleteSLATarget(id: number): Promise<void> {
+    await apiClient.delete(`/api/lab/reporting/sla-targets/${id}/`);
+  },
+
+  async listTATSnapshots(params?: { priority?: string; is_breach?: boolean }): Promise<TATSnapshot[]> {
+    const response = await apiClient.get('/api/lab/reporting/tat-snapshots/', { params });
+    const data = response.data.results ?? response.data;
+    return parseResponse(TATSnapshotArraySchema, data, {
+      context: 'laboratoryApi.listTATSnapshots',
+    });
+  },
+
+  async getTATBreaches(startDate: string, endDate: string): Promise<TATSnapshot[]> {
+    const response = await apiClient.get('/api/lab/reporting/tat-snapshots/breaches/', {
+      params: { start: startDate, end: endDate },
+    });
+    const data = response.data.results ?? response.data;
+    return parseResponse(TATSnapshotArraySchema, data, {
+      context: 'laboratoryApi.getTATBreaches',
+    });
+  },
+
+  async getSLAComplianceReport(startDate: string, endDate: string): Promise<SLAComplianceReport> {
+    const response = await apiClient.get('/api/lab/reporting/sla-compliance/', {
+      params: { start: startDate, end: endDate },
+    });
+    return parseResponse(SLAComplianceReportSchema, response.data, {
+      context: 'laboratoryApi.getSLAComplianceReport',
+    });
+  },
+
+  async getTATTrendReport(startDate: string, endDate: string): Promise<TATTrendReport> {
+    const response = await apiClient.get('/api/lab/reporting/tat-trend/', {
+      params: { start: startDate, end: endDate },
+    });
+    return parseResponse(TATTrendReportSchema, response.data, {
+      context: 'laboratoryApi.getTATTrendReport',
+    });
+  },
+
+  async getActiveBreaches(): Promise<ActiveBreachesReport> {
+    const response = await apiClient.get('/api/lab/reporting/active-breaches/');
+    return parseResponse(ActiveBreachesReportSchema, response.data, {
+      context: 'laboratoryApi.getActiveBreaches',
+    });
+  },
+
+  async getTechnicianEfficiency(startDate: string, endDate: string): Promise<TechnicianEfficiencyReport> {
+    const response = await apiClient.get('/api/lab/reporting/technician-efficiency/', {
+      params: { start: startDate, end: endDate },
+    });
+    return parseResponse(TechnicianEfficiencyReportSchema, response.data, {
+      context: 'laboratoryApi.getTechnicianEfficiency',
+    });
+  },
+
+  async getWorkloadKPI(startDate: string, endDate: string): Promise<WorkloadKPIReport> {
+    const response = await apiClient.get('/api/lab/reporting/workload-kpi/', {
+      params: { start: startDate, end: endDate },
+    });
+    return parseResponse(WorkloadKPIReportSchema, response.data, {
+      context: 'laboratoryApi.getWorkloadKPI',
     });
   },
 };

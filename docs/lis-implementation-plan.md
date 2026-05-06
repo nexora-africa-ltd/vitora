@@ -1,6 +1,6 @@
 # Vitora Full LIS Implementation Plan
 
-> **Status**: In Progress (L1 Complete)
+> **Status**: In Progress (L5 Complete)
 > **Owner**: Engineering Lead
 > **Last Updated**: May 6, 2026
 > **Estimated Effort**: 6-8 sprints (12-16 weeks)
@@ -200,9 +200,11 @@ New Models:
 
 ---
 
-### Phase L5: Reporting & Analytics — 1 sprint
+### Phase L5: Reporting & Analytics — 1 sprint ✅ COMPLETE
 
 Priority: **MEDIUM**
+
+> **Implemented**: May 2026 — Full backend (`reporting/` sub-module: TATSLATarget, TATSnapshot, WorkloadSnapshot models, percentile-based engine, 5 report endpoints, signal-driven snapshot creation, 48 tests) + frontend (SLA dashboard page with compliance/breaches/efficiency/workload tabs, React Query hooks, Zod schemas). See `backend/hmis/apps/laboratory/reporting/` and `web-app/app/(dashboard)/laboratory/sla/`.
 
 #### L5.1 TAT Monitoring & SLA Dashboards
 
@@ -379,6 +381,7 @@ New Models:
 1. ~~**Immediate**: Implement facility-scoped HL7 endpoints~~ ✅
 2. ~~**Phase L1**: QC System (materials, lots, targets, Westgard, EQA)~~ ✅
 3. ~~**Phase L2**: Delta Checks & Auto-Verification (engine + rules + management command)~~ ✅
-4. **Next sprint**: L5.1 (TAT monitoring — highest ROI for facility managers)
-5. **Parallel**: Identify pilot facility for analyzer interfacing (Phase L3)
-6. **Sprint +2**: L3 (Analyzer Integration — HL7/ASTM bi-directional)
+4. ~~**Phase L5**: TAT/SLA monitoring, workload KPIs, technician efficiency (reporting sub-module)~~ ✅
+5. **Next sprint**: L3 (Analyzer Integration — HL7/ASTM bi-directional)
+6. **Parallel**: Identify pilot facility for analyzer interfacing (Phase L3)
+7. **Future**: L4 (Microbiology), L5.3 (Worksheet/Label printing), L6 (Advanced)
