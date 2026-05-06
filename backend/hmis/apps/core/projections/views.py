@@ -164,6 +164,9 @@ def ward_occupancy_stats(request):
     Query params:
     - ward_id (optional): Filter by specific ward
     - facility_id (optional): Filter by facility
+
+    Falls back to live computation from Inpatient Ward/Bed models when
+    the projection table has no matching records.
     """
     filters = {}
     ward_id = request.query_params.get("ward_id")
@@ -174,9 +177,56 @@ def ward_occupancy_stats(request):
     if facility_id:
         filters["facility_id"] = facility_id
 
-    qs = WardOccupancyStats.objects.filter(**filters)
-    serializer = WardOccupancyStatsSerializer(qs, many=True)
-    return Response(serializer.data)
+    # Always compute from source models for accuracy; projection table
+    # may be stale if domain events were not fired for all data paths.
+    data = _compute_live_ward_occupancy(filters)
+    return Response(data)
+
+
+def _compute_live_ward_occupancy(filters: dict) -> list[dict]:
+    """Compute ward occupancy from Inpatient Ward/Bed models."""
+    from django.db.models import Count, Q
+    from django.utils import timezone as tz
+
+    from hmis.apps.inpatient.models import Admission, Ward
+
+    ward_filters = {}
+    if filters.get("ward_id"):
+        ward_filters["id"] = filters["ward_id"]
+    if filters.get("facility_id"):
+        ward_filters["facility_id"] = filters["facility_id"]
+
+    wards = Ward.objects.filter(**ward_filters).annotate(
+        total_bed_count=Count("beds"),
+        occupied_bed_count=Count("beds", filter=Q(beds__status="OCCUPIED")),
+        available_bed_count=Count("beds", filter=Q(beds__status="AVAILABLE")),
+    )
+
+    today = tz.now().date()
+    results = []
+    for ward in wards:
+        total = ward.total_bed_count
+        occupied = ward.occupied_bed_count
+        available = ward.available_bed_count
+        occupancy_rate = round((occupied / total) * 100, 2) if total > 0 else 0
+
+        admissions_today = Admission.objects.filter(ward=ward, admission_date__date=today).count()
+        discharges_today = Admission.objects.filter(ward=ward, discharge_date__date=today).count()
+
+        results.append(
+            {
+                "facility_id": ward.facility_id,
+                "ward_id": ward.id,
+                "total_beds": total,
+                "occupied_beds": occupied,
+                "available_beds": available,
+                "occupancy_rate": occupancy_rate,
+                "admissions_today": admissions_today,
+                "discharges_today": discharges_today,
+                "last_updated": tz.now().isoformat(),
+            }
+        )
+    return results
 
 
 @extend_schema(
@@ -191,15 +241,106 @@ def pharmacy_queue_stats(request):
 
     Query params:
     - facility_id (optional): Filter by facility
+
+    Falls back to live computation from Pharmacy models when
+    the projection table has no matching records.
     """
     filters = {}
     facility_id = request.query_params.get("facility_id")
     if facility_id:
         filters["facility_id"] = facility_id
 
-    qs = PharmacyQueueStats.objects.filter(**filters)
-    serializer = PharmacyQueueStatsSerializer(qs, many=True)
-    return Response(serializer.data)
+    # Always compute from source models for accuracy; projection table
+    # may be stale if domain events were not fired for all data paths.
+    data = _compute_live_pharmacy_queue(filters)
+    return Response(data)
+
+
+def _compute_live_pharmacy_queue(filters: dict) -> list[dict]:
+    """Compute pharmacy queue stats from Prescription and StockAlert models."""
+    from django.db.models import Count
+    from django.utils import timezone as tz
+
+    from hmis.apps.pharmacy.models import Prescription, StockAlert
+
+    today = tz.now().date()
+    rx_filters = {}
+    if filters.get("facility_id"):
+        rx_filters["facility_id"] = filters["facility_id"]
+
+    # Group prescriptions by facility
+    pending_qs = (
+        Prescription.objects.filter(status="PENDING", facility_id__isnull=False, **rx_filters)
+        .values("facility_id")
+        .annotate(count=Count("id"))
+    )
+    dispensed_qs = (
+        Prescription.objects.filter(
+            status="DISPENSED",
+            updated_at__date=today,
+            facility_id__isnull=False,
+            **rx_filters,
+        )
+        .values("facility_id")
+        .annotate(count=Count("id"))
+    )
+
+    # Collect all facility IDs
+    facility_ids = set()
+    pending_map: dict[int, int] = {}
+    dispensed_map: dict[int, int] = {}
+
+    for row in pending_qs:
+        fid = row["facility_id"]
+        facility_ids.add(fid)
+        pending_map[fid] = row["count"]
+
+    for row in dispensed_qs:
+        fid = row["facility_id"]
+        facility_ids.add(fid)
+        dispensed_map[fid] = row["count"]
+
+    # Stock alerts (unresolved)
+    alert_filters_direct: dict = {}
+    if filters.get("facility_id"):
+        alert_filters_direct["facility_id"] = filters["facility_id"]
+
+    critical_qs = (
+        StockAlert.objects.filter(severity="CRITICAL", is_resolved=False, **alert_filters_direct)
+        .values("facility_id")
+        .annotate(count=Count("id"))
+    )
+    low_qs = (
+        StockAlert.objects.filter(alert_type="LOW_STOCK", is_resolved=False, **alert_filters_direct)
+        .values("facility_id")
+        .annotate(count=Count("id"))
+    )
+
+    critical_map: dict[int, int] = {}
+    low_map: dict[int, int] = {}
+    for row in critical_qs:
+        fid = row["facility_id"]
+        facility_ids.add(fid)
+        critical_map[fid] = row["count"]
+    for row in low_qs:
+        fid = row["facility_id"]
+        facility_ids.add(fid)
+        low_map[fid] = row["count"]
+
+    now_iso = tz.now().isoformat()
+    results = []
+    for fid in facility_ids:
+        results.append(
+            {
+                "facility_id": fid,
+                "pending_prescriptions": pending_map.get(fid, 0),
+                "dispensed_today": dispensed_map.get(fid, 0),
+                "critical_stock_count": critical_map.get(fid, 0),
+                "low_stock_count": low_map.get(fid, 0),
+                "last_updated": now_iso,
+            }
+        )
+    return results
 
 
 def _get_request_facility_id(request):

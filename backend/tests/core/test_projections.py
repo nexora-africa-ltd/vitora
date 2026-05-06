@@ -12,6 +12,7 @@ Tests cover:
 """
 
 import uuid
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest  # type: ignore
@@ -789,30 +790,81 @@ class TestProjectionAPIs:
         assert response.status_code == 200
         assert response.data == []
 
-    def test_ward_occupancy_stats_returns_data(self, authenticated_client):
-        """GET /api/projections/ward-occupancy/ should return stats."""
-        WardOccupancyStats.objects.create(
-            facility_id=1,
-            ward_id=5,
-            total_beds=20,
-            occupied_beds=8,
-            available_beds=12,
-            occupancy_rate=40.0,
+    def test_ward_occupancy_stats_returns_data(
+        self, authenticated_client, sample_organization, sample_facility
+    ):
+        """GET /api/projections/ward-occupancy/ should return live stats."""
+        from hmis.apps.inpatient.models import Bed, Ward
+
+        ward = Ward.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Test Ward Stats",
+            code="TWS01",
+            ward_type="GENERAL",
+            capacity=20,
+            daily_rate=1000,
         )
-        response = authenticated_client.get("/api/projections/ward-occupancy/?ward_id=5")
+        # Ward auto-generates 20 AVAILABLE beds; mark 8 as OCCUPIED
+        beds = list(ward.beds.all()[:8])
+        for bed in beds:
+            bed.status = "OCCUPIED"
+            bed.save(update_fields=["status"])
+
+        response = authenticated_client.get(f"/api/projections/ward-occupancy/?ward_id={ward.id}")
         assert response.status_code == 200
         assert len(response.data) == 1
         assert response.data[0]["total_beds"] == 20
         assert response.data[0]["occupied_beds"] == 8
 
-    def test_ward_occupancy_stats_filter_by_facility(self, authenticated_client):
+    def test_ward_occupancy_stats_filter_by_facility(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+    ):
         """Should filter by facility_id."""
-        WardOccupancyStats.objects.create(facility_id=1, ward_id=5, total_beds=20)
-        WardOccupancyStats.objects.create(facility_id=2, ward_id=6, total_beds=10)
+        from hmis.apps.core.models import Facility
+        from hmis.apps.inpatient.models import Bed, Ward
 
-        response = authenticated_client.get("/api/projections/ward-occupancy/?facility_id=1")
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Filter Test Facility",
+            mfl_code="66666",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ward_a = Ward.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Ward Filter A",
+            code="WFA01",
+            ward_type="GENERAL",
+            capacity=5,
+            daily_rate=1000,
+        )
+        ward_b = Ward.objects.create(
+            organization=sample_organization,
+            facility=other_facility,
+            name="Ward Filter B",
+            code="WFB01",
+            ward_type="GENERAL",
+            capacity=5,
+            daily_rate=1000,
+        )
+        # Both wards auto-generate beds (AVAILABLE)
+
+        response = authenticated_client.get(
+            f"/api/projections/ward-occupancy/?facility_id={sample_facility.id}"
+        )
         assert response.status_code == 200
-        assert len(response.data) == 1
+        ward_ids = [r["ward_id"] for r in response.data]
+        assert ward_a.id in ward_ids
+        assert ward_b.id not in ward_ids
 
     def test_room_utilization_returns_facility_scoped_rows(
         self,
@@ -943,14 +995,32 @@ class TestProjectionAPIs:
         assert response.data["total_visits_completed"] == 6
         assert response.data["avg_utilization_rate"] == 35.0
 
-    def test_pharmacy_queue_stats_returns_data(self, authenticated_client):
-        """GET /api/projections/pharmacy-queue/ should return stats."""
-        PharmacyQueueStats.objects.create(
-            facility_id=1,
-            pending_prescriptions=15,
-            dispensed_today=30,
+    def test_pharmacy_queue_stats_returns_data(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+        sample_patient,
+        test_user,
+    ):
+        """GET /api/projections/pharmacy-queue/ should return live stats."""
+        from hmis.apps.pharmacy.models import Prescription
+
+        PharmacyQueueStats.objects.all().delete()
+        _valid = timezone.localdate() + timedelta(days=7)
+        for _ in range(15):
+            Prescription.objects.create(
+                organization=sample_organization,
+                facility=sample_facility,
+                patient=sample_patient,
+                prescribed_by=test_user,
+                status="PENDING",
+                valid_until=_valid,
+            )
+
+        response = authenticated_client.get(
+            f"/api/projections/pharmacy-queue/?facility_id={sample_facility.id}"
         )
-        response = authenticated_client.get("/api/projections/pharmacy-queue/?facility_id=1")
         assert response.status_code == 200
         assert len(response.data) == 1
         assert response.data[0]["pending_prescriptions"] == 15
@@ -959,6 +1029,219 @@ class TestProjectionAPIs:
         """Unauthenticated requests should return 401."""
         response = api_client.get("/api/projections/clinic-queue/?clinic_id=10")
         assert response.status_code == 401
+
+    def test_ward_occupancy_live_fallback(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+    ):
+        """Ward occupancy endpoint should compute live stats from Ward/Bed models."""
+        from hmis.apps.inpatient.models import Bed, Ward
+
+        ward = Ward.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Test Ward",
+            code="TW001",
+            ward_type="GENERAL",
+            capacity=10,
+            daily_rate=1000,
+        )
+        # Ward auto-generates 10 AVAILABLE beds; mark 4 as OCCUPIED
+        beds = list(ward.beds.all()[:4])
+        for bed in beds:
+            bed.status = "OCCUPIED"
+            bed.save(update_fields=["status"])
+
+        response = authenticated_client.get("/api/projections/ward-occupancy/")
+        assert response.status_code == 200
+        assert len(response.data) >= 1
+
+        # Find our test ward in response
+        ward_row = next((r for r in response.data if r["ward_id"] == ward.id), None)
+        assert ward_row is not None
+        assert ward_row["total_beds"] == 10
+        assert ward_row["occupied_beds"] == 4
+        assert ward_row["available_beds"] == 6
+        assert float(ward_row["occupancy_rate"]) == 40.0
+        assert ward_row["facility_id"] == sample_facility.id
+
+    def test_ward_occupancy_live_filter_by_facility(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+        sample_county,
+        sample_sub_county,
+    ):
+        """Ward occupancy should filter by facility_id in live mode."""
+        from hmis.apps.core.models import Facility
+        from hmis.apps.inpatient.models import Bed, Ward
+
+        other_facility = Facility.objects.create(
+            organization=sample_organization,
+            name="Other Facility",
+            mfl_code="77777",
+            level="3",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            is_active=True,
+        )
+        ward_a = Ward.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Ward A",
+            code="WA01",
+            ward_type="GENERAL",
+            capacity=5,
+            daily_rate=1000,
+        )
+        ward_b = Ward.objects.create(
+            organization=sample_organization,
+            facility=other_facility,
+            name="Ward B",
+            code="WB01",
+            ward_type="GENERAL",
+            capacity=5,
+            daily_rate=1000,
+        )
+        # Mark one bed in ward_b as OCCUPIED
+        bed = ward_b.beds.first()
+        bed.status = "OCCUPIED"
+        bed.save(update_fields=["status"])
+
+        response = authenticated_client.get(
+            f"/api/projections/ward-occupancy/?facility_id={sample_facility.id}"
+        )
+        assert response.status_code == 200
+        ward_ids = [r["ward_id"] for r in response.data]
+        assert ward_a.id in ward_ids
+        assert ward_b.id not in ward_ids
+
+    def test_ward_occupancy_live_filter_by_ward_id(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+    ):
+        """Ward occupancy should filter by ward_id in live mode."""
+        from hmis.apps.inpatient.models import Bed, Ward
+
+        ward_a = Ward.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Ward C",
+            code="WC01",
+            ward_type="GENERAL",
+            capacity=5,
+            daily_rate=1000,
+        )
+        ward_b = Ward.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            name="Ward D",
+            code="WD01",
+            ward_type="GENERAL",
+            capacity=5,
+            daily_rate=1000,
+        )
+        # Mark one bed in ward_a as OCCUPIED
+        bed = ward_a.beds.first()
+        bed.status = "OCCUPIED"
+        bed.save(update_fields=["status"])
+
+        response = authenticated_client.get(f"/api/projections/ward-occupancy/?ward_id={ward_a.id}")
+        assert response.status_code == 200
+        assert len(response.data) == 1
+        assert response.data[0]["ward_id"] == ward_a.id
+        assert response.data[0]["occupied_beds"] == 1
+
+    def test_pharmacy_queue_live_fallback(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+        sample_patient,
+        test_user,
+    ):
+        """Pharmacy queue endpoint should compute live stats from Prescription model."""
+        from hmis.apps.pharmacy.models import Prescription
+
+        # Clear any existing projection records
+        PharmacyQueueStats.objects.all().delete()
+        _valid = timezone.localdate() + timedelta(days=7)
+
+        # Create pending prescriptions
+        for i in range(3):
+            Prescription.objects.create(
+                organization=sample_organization,
+                facility=sample_facility,
+                patient=sample_patient,
+                prescribed_by=test_user,
+                status="PENDING",
+                valid_until=_valid,
+            )
+        # Create a dispensed prescription (today)
+        Prescription.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            patient=sample_patient,
+            prescribed_by=test_user,
+            status="DISPENSED",
+            valid_until=_valid,
+        )
+
+        response = authenticated_client.get(
+            f"/api/projections/pharmacy-queue/?facility_id={sample_facility.id}"
+        )
+        assert response.status_code == 200
+        assert len(response.data) >= 1
+
+        row = next((r for r in response.data if r["facility_id"] == sample_facility.id), None)
+        assert row is not None
+        assert row["pending_prescriptions"] == 3
+        assert row["dispensed_today"] >= 1
+
+    def test_pharmacy_queue_live_excludes_null_facility(
+        self,
+        authenticated_client,
+        sample_organization,
+        sample_facility,
+        sample_patient,
+        test_user,
+    ):
+        """Prescriptions without facility_id should not appear in results."""
+        from hmis.apps.pharmacy.models import Prescription
+
+        PharmacyQueueStats.objects.all().delete()
+        _valid = timezone.localdate() + timedelta(days=7)
+
+        # Prescription with no facility
+        Prescription.objects.create(
+            organization=sample_organization,
+            facility=None,
+            patient=sample_patient,
+            prescribed_by=test_user,
+            status="PENDING",
+            valid_until=_valid,
+        )
+        # Prescription with facility
+        Prescription.objects.create(
+            organization=sample_organization,
+            facility=sample_facility,
+            patient=sample_patient,
+            prescribed_by=test_user,
+            status="PENDING",
+            valid_until=_valid,
+        )
+
+        response = authenticated_client.get("/api/projections/pharmacy-queue/")
+        assert response.status_code == 200
+        # Should only have the one with a facility
+        facility_ids = [r["facility_id"] for r in response.data]
+        assert None not in facility_ids
+        assert sample_facility.id in facility_ids
 
 
 # =============================================================================
