@@ -39,6 +39,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { HelpPopover } from '@/components/shared/help-popover';
 import type {
   Instrument,
   InterfaceType,
@@ -165,7 +166,10 @@ function InstrumentsTab({ queryClient }: { queryClient: ReturnType<typeof useQue
     <>
       <Card>
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base sm:text-lg">Instruments & Equipment</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base sm:text-lg">Instruments & Equipment</CardTitle>
+            <HelpPopover content="Register and manage laboratory analyzers and instruments. Configure interface type for automated result capture." />
+          </div>
           <Button size="sm" onClick={() => { setEditing(null); setShowDialog(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Add
           </Button>
@@ -242,9 +246,9 @@ function RejectionReasonsTab({ queryClient }: { queryClient: ReturnType<typeof u
     <>
       <Card>
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             <CardTitle className="text-base sm:text-lg">Specimen Rejection Reasons</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">Predefined reasons for specimen rejection, shown to lab techs when rejecting a sample</p>
+            <HelpPopover content="Predefined reasons for specimen rejection, shown to lab techs when rejecting a sample." />
           </div>
           <Button size="sm" onClick={() => { setEditing(null); setShowDialog(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Add
@@ -318,9 +322,9 @@ function CommentTemplatesTab({ queryClient }: { queryClient: ReturnType<typeof u
     <>
       <Card>
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             <CardTitle className="text-base sm:text-lg">Result Comment Templates</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">Pre-canned interpretive comments that lab staff can quickly insert into results</p>
+            <HelpPopover content="Pre-canned interpretive comments that lab staff can quickly insert into results." />
           </div>
           <Button size="sm" onClick={() => { setEditing(null); setShowDialog(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Add
@@ -394,9 +398,9 @@ function ReferralLabsTab({ queryClient }: { queryClient: ReturnType<typeof useQu
     <>
       <Card>
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             <CardTitle className="text-base sm:text-lg">Referral / Outsourced Labs</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">External laboratories for send-out tests. Linked to orders with type &quot;External&quot;</p>
+            <HelpPopover content="External laboratories for send-out tests. Linked to orders with type 'External'." />
           </div>
           <Button size="sm" onClick={() => { setEditing(null); setShowDialog(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Add
@@ -471,9 +475,9 @@ function LabelTemplatesTab({ queryClient }: { queryClient: ReturnType<typeof use
     <>
       <Card>
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             <CardTitle className="text-base sm:text-lg">Sample Label Templates</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">Configure what information appears on specimen container labels</p>
+            <HelpPopover content="Configure what information appears on specimen container labels." />
           </div>
           <Button size="sm" onClick={() => { setEditing(null); setShowDialog(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Add
@@ -517,13 +521,16 @@ function LabelTemplatesTab({ queryClient }: { queryClient: ReturnType<typeof use
 // =============================================================================
 
 function BarcodeConfigTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClient> }) {
-  const { data: config, isLoading } = useQuery({
+  const { data: config, isLoading, isError, refetch } = useQuery({
     queryKey: ['barcode-config'],
     queryFn: () => laboratoryApi.getBarcodeConfig(),
   });
 
   const update = useMutation({
-    mutationFn: (data: Partial<LabBarcodeConfig>) => laboratoryApi.updateBarcodeConfig(config!.id, data),
+    mutationFn: (data: Partial<LabBarcodeConfig>) => {
+      if (!config?.id) return Promise.reject(new Error('Config not loaded'));
+      return laboratoryApi.updateBarcodeConfig(config.id, data);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['barcode-config'] }); toast.success('Barcode config updated'); },
     onError: () => toast.error('Failed to update'),
   });
@@ -540,12 +547,16 @@ function BarcodeConfigTab({ queryClient }: { queryClient: ReturnType<typeof useQ
   };
 
   if (isLoading) return <Card><CardContent className="py-8 text-center text-muted-foreground">Loading...</CardContent></Card>;
+  if (isError || !config) return <Card><CardContent className="py-8 text-center"><p className="text-muted-foreground mb-3">Failed to load barcode configuration.</p><Button variant="outline" size="sm" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Retry</Button></CardContent></Card>;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base sm:text-lg">Barcode Configuration</CardTitle>
-        <p className="text-xs text-muted-foreground">Configure how specimen barcodes are generated. Preview: <span className="font-mono font-medium">{config?.sample_barcode}</span></p>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base sm:text-lg">Barcode Configuration</CardTitle>
+          <HelpPopover content="Configure how specimen barcodes are generated. Changes affect all future specimens." />
+        </div>
+        {config?.sample_barcode && <p className="text-xs text-muted-foreground">Preview: <span className="font-mono font-medium">{config.sample_barcode}</span></p>}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -608,19 +619,22 @@ function BarcodeConfigTab({ queryClient }: { queryClient: ReturnType<typeof useQ
 // =============================================================================
 
 function WorkflowSettingsTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClient> }) {
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading, isError, refetch } = useQuery({
     queryKey: ['workflow-settings'],
     queryFn: () => laboratoryApi.getWorkflowSettings(),
   });
 
   const update = useMutation({
-    mutationFn: (data: Partial<LabWorkflowSettings>) => laboratoryApi.updateWorkflowSettings(settings!.id, data),
+    mutationFn: (data: Partial<LabWorkflowSettings>) => {
+      if (!settings?.id) return Promise.reject(new Error('Settings not loaded'));
+      return laboratoryApi.updateWorkflowSettings(settings.id, data);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['workflow-settings'] }); toast.success('Workflow settings saved'); },
     onError: () => toast.error('Failed to save'),
   });
 
   if (isLoading) return <Card><CardContent className="py-8 text-center text-muted-foreground">Loading...</CardContent></Card>;
-  if (!settings) return null;
+  if (isError || !settings) return <Card><CardContent className="py-8 text-center"><p className="text-muted-foreground mb-3">Failed to load workflow settings.</p><Button variant="outline" size="sm" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Retry</Button></CardContent></Card>;
 
   const toggle = (field: keyof LabWorkflowSettings) => {
     update.mutate({ [field]: !settings[field] });
@@ -730,7 +744,7 @@ function InstrumentFormDialog({ open, onOpenChange, instrument, onSubmit, isLoad
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-lg">
         <DialogHeader><DialogTitle>{instrument ? 'Edit Instrument' : 'Register Instrument'}</DialogTitle></DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); if (form.code && form.name) onSubmit(form); }} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -784,7 +798,7 @@ function RejectionReasonDialog({ open, onOpenChange, item, onSubmit, isLoading }
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-md">
         <DialogHeader><DialogTitle>{item ? 'Edit Rejection Reason' : 'Add Rejection Reason'}</DialogTitle></DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); if (form.code && form.name) onSubmit(form); }} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -818,7 +832,7 @@ function CommentTemplateDialog({ open, onOpenChange, item, onSubmit, isLoading }
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-lg">
         <DialogHeader><DialogTitle>{item ? 'Edit Comment Template' : 'Add Comment Template'}</DialogTitle></DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); if (form.code && form.name && form.text) onSubmit(form); }} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -864,7 +878,7 @@ function ReferralLabDialog({ open, onOpenChange, item, onSubmit, isLoading }: {
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{item ? 'Edit Referral Lab' : 'Add Referral Lab'}</DialogTitle></DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); if (form.code && form.name) onSubmit(form); }} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -908,7 +922,7 @@ function LabelTemplateDialog({ open, onOpenChange, item, onSubmit, isLoading }: 
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-md">
         <DialogHeader><DialogTitle>{item ? 'Edit Label Template' : 'Add Label Template'}</DialogTitle></DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); if (form.name) onSubmit(form); }} className="space-y-4">
           <div><Label>Name *</Label><Input className="mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Standard Tube Label" /></div>
