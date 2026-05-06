@@ -320,6 +320,171 @@ export interface SampleRejectionReport {
   }>;
 }
 
+// =========== Phase L5 — TAT Monitoring & SLA ===========
+
+export interface TATSLATarget {
+  id: number;
+  test: number;
+  test_code: string;
+  test_name: string;
+  priority: LabPriority;
+  target_order_to_collect_minutes: number | null;
+  target_collect_to_receive_minutes: number | null;
+  target_receive_to_result_minutes: number | null;
+  target_result_to_verify_minutes: number | null;
+  target_total_minutes: number;
+  breach_escalation_email: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TATSLATargetCreateData {
+  test: number;
+  priority: LabPriority;
+  target_order_to_collect_minutes?: number | null;
+  target_collect_to_receive_minutes?: number | null;
+  target_receive_to_result_minutes?: number | null;
+  target_result_to_verify_minutes?: number | null;
+  target_total_minutes: number;
+  breach_escalation_email?: string;
+  is_active?: boolean;
+}
+
+export interface TATSnapshot {
+  id: number;
+  order_number: string;
+  test_code: string | null;
+  test_name: string | null;
+  priority: LabPriority;
+  ordered_at: string;
+  collected_at: string | null;
+  received_at: string | null;
+  resulted_at: string | null;
+  verified_at: string | null;
+  released_at: string | null;
+  tat_order_to_collect: number | null;
+  tat_collect_to_receive: number | null;
+  tat_receive_to_result: number | null;
+  tat_result_to_verify: number | null;
+  tat_total: number | null;
+  is_breach: boolean;
+  breach_minutes: number | null;
+  sla_target_minutes: number | null;
+  resulted_by_name: string | null;
+  verified_by_name: string | null;
+  snapshot_created_at: string;
+}
+
+export interface SLAComplianceReport {
+  start: string;
+  end: string;
+  summary: {
+    total_orders: number;
+    breaches: number;
+    compliance_rate: number;
+    avg_total_minutes: number | null;
+    p50_minutes: number | null;
+    p90_minutes: number | null;
+    p95_minutes: number | null;
+  };
+  segments: {
+    avg_order_to_collect: number | null;
+    avg_collect_to_receive: number | null;
+    avg_receive_to_result: number | null;
+    avg_result_to_verify: number | null;
+  };
+  by_priority: Array<{
+    priority: LabPriority;
+    count: number;
+    breaches: number;
+    compliance_rate: number;
+    avg_minutes: number;
+    p50_minutes: number | null;
+    p90_minutes: number | null;
+    p95_minutes: number | null;
+  }>;
+  by_test: Array<{
+    test_code: string;
+    test_name: string;
+    count: number;
+    breaches: number;
+    compliance_rate: number;
+    avg_minutes: number | null;
+  }>;
+}
+
+export interface TATTrendReport {
+  start: string;
+  end: string;
+  daily: Array<{
+    date: string;
+    count: number;
+    breaches: number;
+    avg_minutes: number | null;
+    p90_minutes: number | null;
+  }>;
+}
+
+export interface ActiveBreachesReport {
+  count: number;
+  breaches: Array<{
+    order_number: string;
+    order_id: number;
+    test_code: string;
+    test_name: string;
+    priority: LabPriority;
+    status: string;
+    elapsed_minutes: number;
+    target_minutes: number;
+    breach_minutes: number;
+    patient_name: string | null;
+    ordered_at: string;
+  }>;
+}
+
+export interface TechnicianEfficiencyReport {
+  start: string;
+  end: string;
+  technicians: Array<{
+    technician_id: number;
+    technician_name: string;
+    results_entered: number;
+    avg_entry_time_minutes: number | null;
+    breaches: number;
+    breach_rate: number;
+  }>;
+}
+
+export interface WorkloadKPIReport {
+  start: string;
+  end: string;
+  totals: {
+    tests_entered: number;
+    tests_verified: number;
+    specimens_collected: number;
+    specimens_rejected: number;
+    rejection_rate: number;
+    critical_results: number;
+    critical_compliance_rate: number;
+    avg_entry_time_minutes: number | null;
+    avg_verify_time_minutes: number | null;
+  };
+  by_technician: Array<{
+    technician_id: number;
+    technician_name: string;
+    tests_entered: number;
+    tests_verified: number;
+    specimens_rejected: number;
+    avg_entry_time_minutes: number | null;
+  }>;
+  by_day: Array<{
+    date: string;
+    tests_entered: number;
+    tests_verified: number;
+  }>;
+}
+
 // Lab order types
 export interface LabOrder {
   id: number;

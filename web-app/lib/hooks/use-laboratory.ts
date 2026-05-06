@@ -877,3 +877,59 @@ export function useLabSampleRejectionReport(startDate: string, endDate: string) 
     enabled: !!startDate && !!endDate,
   });
 }
+
+// ============ L5: TAT Monitoring & SLA Hooks ============
+
+export function useSLATargets() {
+  return useQuery({
+    queryKey: ['lab-reporting', 'sla-targets'],
+    queryFn: () => laboratoryApi.listSLATargets(),
+  });
+}
+
+export function useSLAComplianceReport(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['lab-reporting', 'sla-compliance', startDate, endDate],
+    queryFn: () => laboratoryApi.getSLAComplianceReport(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+export function useTATTrendReport(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['lab-reporting', 'tat-trend', startDate, endDate],
+    queryFn: () => laboratoryApi.getTATTrendReport(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+export function useActiveBreaches() {
+  return useQuery({
+    queryKey: ['lab-reporting', 'active-breaches'],
+    queryFn: () => laboratoryApi.getActiveBreaches(),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useTechnicianEfficiency(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['lab-reporting', 'technician-efficiency', startDate, endDate],
+    queryFn: () => laboratoryApi.getTechnicianEfficiency(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+export function useWorkloadKPI(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['lab-reporting', 'workload-kpi', startDate, endDate],
+    queryFn: () => laboratoryApi.getWorkloadKPI(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+export function useTATSnapshots(params?: { priority?: string; is_breach?: boolean }) {
+  return useQuery({
+    queryKey: ['lab-reporting', 'tat-snapshots', params],
+    queryFn: () => laboratoryApi.listTATSnapshots(params),
+  });
+}

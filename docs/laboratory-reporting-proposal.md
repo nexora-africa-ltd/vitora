@@ -401,7 +401,7 @@ This plan is intentionally incremental to reduce risk.
 2. ~~**Phase B: implement lab analytics services + endpoints + tests.**~~ ✅ **COMPLETED**
 3. ~~**Pre-Phase C: add `ExternalCodeMapping` model for external code resolution.**~~ ✅ **COMPLETED** (already exists in core app)
 4. ~~**Phase C: wire HL7/MLLP in a feature-flagged, testable manner.**~~ ✅ **COMPLETED**
-5. (Optional) **Phase B+ enhancements**: percentile TAT, category grouping, time-to-notify metrics
+5. ~~(Optional) **Phase B+ enhancements**: percentile TAT, category grouping, time-to-notify metrics~~ ✅ **COMPLETED** (implemented as Phase L5 `reporting/` sub-module: TATSLATarget, TATSnapshot, WorkloadSnapshot, percentile engine, 48 tests)
 6. (Future) **Phase D**: Offline-first lab operations with PowerSync
 
 ---
