@@ -287,31 +287,41 @@ class AnalyzerDashboardView(APIView):
             health = check_channel_health(channel)
             channel_health.append(health)
 
+        # Message stats for today
+        from django.utils import timezone
+
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_messages = AnalyzerMessage.objects.filter(timestamp__gte=today_start)
+        if facility:
+            today_messages = today_messages.filter(facility=facility)
+
         # Aggregate status counts
-        status_counts = {
+        dashboard_data = {
             "total_channels": len(channel_health),
-            "connected": sum(
+            "active_channels": sum(
+                1
+                for h in channel_health
+                if h["connection_status"] != InstrumentChannel.ConnectionStatus.DISCONNECTED
+            ),
+            "connected_channels": sum(
                 1
                 for h in channel_health
                 if h["connection_status"] == InstrumentChannel.ConnectionStatus.CONNECTED
             ),
-            "disconnected": sum(
-                1
-                for h in channel_health
-                if h["connection_status"] == InstrumentChannel.ConnectionStatus.DISCONNECTED
-            ),
-            "idle": sum(
-                1
-                for h in channel_health
-                if h["connection_status"] == InstrumentChannel.ConnectionStatus.IDLE
-            ),
-            "error": sum(
+            "error_channels": sum(
                 1
                 for h in channel_health
                 if h["connection_status"] == InstrumentChannel.ConnectionStatus.ERROR
             ),
-            "channels": channel_health,
+            "messages_today": today_messages.count(),
+            "results_applied_today": today_messages.filter(
+                status=AnalyzerMessage.Status.APPLIED
+            ).count(),
+            "failed_messages_today": today_messages.filter(
+                status=AnalyzerMessage.Status.FAILED
+            ).count(),
+            "channel_statuses": channel_health,
         }
 
-        serializer = ChannelStatusSummarySerializer(status_counts)
+        serializer = ChannelStatusSummarySerializer(dashboard_data)
         return Response(serializer.data)

@@ -776,8 +776,8 @@ class TestChannelHealth:
         health = check_channel_health(sample_channel)
         assert health["channel_id"] == sample_channel.id
         assert health["instrument_code"] == "SYS-XN1000"
-        assert "messages_24h" in health
-        assert "total" in health["messages_24h"]
+        assert "messages_last_hour" in health
+        assert "is_healthy" in health
 
     def test_idle_detection(self, sample_channel):
         """Should mark connected channel as idle if no recent activity."""
@@ -963,8 +963,8 @@ class TestAnalyzerDashboardAPI:
         response = authenticated_client.get("/api/lab/analyzers/dashboard/")
         assert response.status_code == status.HTTP_200_OK
         assert "total_channels" in response.data
-        assert "connected" in response.data
-        assert "channels" in response.data
+        assert "connected_channels" in response.data
+        assert "channel_statuses" in response.data
 
     def test_dashboard_unauthenticated(self, api_client):
         """Should reject unauthenticated access."""
