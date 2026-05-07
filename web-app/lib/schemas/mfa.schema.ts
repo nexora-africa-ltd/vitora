@@ -85,6 +85,7 @@ const FacilityModulesSchema = z.object({
   mortuary: z.boolean(),
   blood_bank: z.boolean(),
   inventory: z.boolean().default(false),
+  lis_standalone: z.boolean().default(false),
 });
 
 const UserFacilitySchema = z.object({

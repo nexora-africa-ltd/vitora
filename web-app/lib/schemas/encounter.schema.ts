@@ -90,9 +90,12 @@ export { TriageCategorySchema };
 export const ICD10CodeSchema = z.object({
   id: z.number(),
   code: z.string(),
+  short_description: z.string().optional().nullable(),
   description: z.string(),
+  long_description: z.string().optional().nullable(),
   category: z.string().optional().nullable(),
   chapter: z.string().optional().nullable(),
+  is_billable: z.boolean().optional(),
   is_active: z.boolean().optional(),
 });
 

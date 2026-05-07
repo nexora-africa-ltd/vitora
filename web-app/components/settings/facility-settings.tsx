@@ -186,6 +186,7 @@ function NoFacilityState() {
         mortuary: false,
         blood_bank: false,
         inventory: false,
+        lis_standalone: false,
       },
     });
     // Page will re-render with the selected facility

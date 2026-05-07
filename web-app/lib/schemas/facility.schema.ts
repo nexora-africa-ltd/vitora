@@ -14,6 +14,7 @@ export const FacilityModulesSchema = z.object({
   mortuary: z.boolean(),
   blood_bank: z.boolean(),
   inventory: z.boolean().default(false),
+  lis_standalone: z.boolean().default(false),
 });
 
 export const FacilityListItemSchema = z.object({
@@ -55,6 +56,7 @@ export const FacilityDetailSchema = FacilityListItemSchema.extend({
   has_maternity: z.boolean(),
   has_mortuary: z.boolean(),
   has_blood_bank: z.boolean(),
+  has_lis_standalone: z.boolean().default(false),
   created_at: z.string(),
   updated_at: z.string(),
 });
