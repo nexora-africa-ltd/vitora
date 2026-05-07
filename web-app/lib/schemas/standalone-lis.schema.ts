@@ -11,7 +11,7 @@ export const WalkInPatientSchema = z.object({
   last_name: z.string(),
   full_name: z.string(),
   date_of_birth: z.string().nullable(),
-  gender: z.string(),
+  gender: z.enum(['', 'M', 'F', 'O']).catch(''),
   phone_number: z.string(),
   email: z.string(),
   national_id: z.string(),
