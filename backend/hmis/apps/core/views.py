@@ -29,6 +29,7 @@ from .models import (
     CodeSystem,
     County,
     Department,
+    DHIS2Config,
     DocumentSignature,
     Facility,
     FeatureFlag,
@@ -51,6 +52,10 @@ from .serializers import (
     CodeSystemSerializer,
     CountySerializer,
     DepartmentSerializer,
+    DHIS2ConfigCreateSerializer,
+    DHIS2ConfigDetailSerializer,
+    DHIS2ConfigListSerializer,
+    DHIS2ConfigUpdateSerializer,
     DocumentSignatureSerializer,
     FacilityCreateSerializer,
     FacilityDetailSerializer,
@@ -2107,6 +2112,139 @@ class FacilityViewSet(viewsets.ModelViewSet):
 
         serializer = FacilityListSerializer(facilities, many=True)
         return Response(serializer.data)
+
+
+# =============================================================================
+# DHIS2 Configuration ViewSet
+# =============================================================================
+
+
+class DHIS2ConfigViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    """
+    CRUD for DHIS2/KHIS connection configurations.
+
+    Scoped to the user's organization (one active config per org).
+    Only admin users can create/update/delete configs.
+
+    Extra actions:
+      * ``POST /dhis2-configs/{id}/test_connection/`` — verify DHIS2 connectivity.
+    """
+
+    queryset = DHIS2Config.objects.select_related("organization").all()
+    tenant_scope = "organization"
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "base_url"]
+    ordering_fields = ["name", "environment", "is_active", "created_at"]
+    ordering = ["name"]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return DHIS2ConfigListSerializer
+        if self.action == "create":
+            return DHIS2ConfigCreateSerializer
+        if self.action in ("update", "partial_update"):
+            return DHIS2ConfigUpdateSerializer
+        return DHIS2ConfigDetailSerializer
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [IsAuthenticated()]
+        return [IsAdminUser()]
+
+    def perform_create(self, serializer):
+        instance = serializer.save(**self.get_tenant_save_kwargs())
+        AuditLog.log(
+            action="dhis2_config_created",
+            user=self.request.user,
+            resource_type="DHIS2Config",
+            resource_id=instance.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={"name": instance.name, "base_url": instance.base_url},
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="dhis2_config_updated",
+            user=self.request.user,
+            resource_type="DHIS2Config",
+            resource_id=instance.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "name": instance.name,
+                "updated_fields": list(serializer.validated_data.keys()),
+            },
+        )
+
+    def perform_destroy(self, instance):
+        AuditLog.log(
+            action="dhis2_config_deleted",
+            user=self.request.user,
+            resource_type="DHIS2Config",
+            resource_id=instance.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={"name": instance.name},
+        )
+        instance.delete()
+
+    def create(self, request, *args, **kwargs):
+        """Create config and return full detail representation."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        detail = DHIS2ConfigDetailSerializer(serializer.instance)
+        return Response(detail.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="test-connection")
+    def test_connection(self, request, pk=None):
+        """
+        Test connectivity to the configured DHIS2 instance.
+
+        Sends a lightweight ``GET /api/me`` request and returns the
+        authenticated user's display name if successful, or an error
+        message with HTTP status details on failure.
+        """
+        import requests as http_requests
+
+        config = self.get_object()
+        url = f"{config.api_url}/api/me"
+        try:
+            resp = http_requests.get(
+                url,
+                auth=(config.username, config.get_password()),
+                timeout=15,
+            )
+            if resp.ok:
+                data = resp.json()
+                return Response(
+                    {
+                        "status": "ok",
+                        "dhis2_user": data.get("displayName", data.get("name", "")),
+                        "server_version": data.get("serverVersion", ""),
+                    }
+                )
+            return Response(
+                {"status": "error", "detail": f"HTTP {resp.status_code}: {resp.reason}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except http_requests.ConnectionError:
+            return Response(
+                {"status": "error", "detail": "Connection refused or DNS failure."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except http_requests.Timeout:
+            return Response(
+                {"status": "error", "detail": "Connection timed out (15s)."},
+                status=status.HTTP_504_GATEWAY_TIMEOUT,
+            )
+        except Exception as exc:
+            return Response(
+                {"status": "error", "detail": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 # =============================================================================

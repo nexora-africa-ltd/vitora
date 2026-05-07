@@ -42,6 +42,7 @@ export const FacilityDetailSchema = FacilityListItemSchema.extend({
   effective_logo_url: z.string().nullable().default(null),
   sha_contract_expiry: z.string().nullable(),
   sha_facility_code: z.string(),
+  dhis2_org_unit: z.string().default(''),
   modules: FacilityModulesSchema,
   enabled_module_names: z.array(z.string()),
   has_outpatient: z.boolean(),

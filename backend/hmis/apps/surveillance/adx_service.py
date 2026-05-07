@@ -15,16 +15,17 @@ from xml.etree.ElementTree import (  # nosec B405 — building XML, not parsing 
     tostring,
 )
 
-from django.conf import settings
-
 logger = logging.getLogger(__name__)
 
 
 class ADXExportService:
     """Export aggregate data in ADX XML format for DHIS2."""
 
-    def __init__(self):
-        self.org_unit = getattr(settings, "DHIS2_ORG_UNIT", "")
+    def __init__(self, facility=None):
+        from hmis.apps.core.dhis2 import resolve_dhis2_credentials
+
+        creds = resolve_dhis2_credentials(facility)
+        self.org_unit = creds.org_unit
 
     def export_idsr_to_adx(self, report) -> str:
         """

@@ -15,7 +15,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.utils import timezone
 
-from hmis.apps.core.mixins import FacilityScopedModel
+from hmis.apps.core.mixins import FacilityScopedModel, OrganizationScopedModel
 from hmis.apps.core.upload_validators import validate_image_upload as _validate_image_upload
 
 
@@ -2776,6 +2776,18 @@ class Facility(TimeStampedModel):
     )
 
     # ------------------------------------------------------------------
+    # DHIS2 / KHIS Integration
+    # ------------------------------------------------------------------
+
+    dhis2_org_unit = models.CharField(
+        max_length=11,
+        blank=True,
+        default="",
+        help_text="DHIS2 Organisation Unit UID for this facility. "
+        "Each facility has a unique 11-character UID in KHIS.",
+    )
+
+    # ------------------------------------------------------------------
     # Enabled Modules (Capability-Based Experience)
     # ------------------------------------------------------------------
     # Explicit booleans are used instead of a JSONField so that Django
@@ -3090,6 +3102,123 @@ class SNOMEDConcept(models.Model):
 
     def __str__(self) -> str:
         return f"{self.concept_id} | {self.display}"
+
+
+# =============================================================================
+# DHIS2 Configuration (Multi-Facility / Multi-Org)
+# =============================================================================
+
+
+class DHIS2Config(OrganizationScopedModel, TimeStampedModel):
+    """
+    DHIS2/KHIS connection configuration scoped to an Organization.
+
+    In Kenya's DHIS2 ecosystem (KHIS), credentials are typically issued at
+    the sub-county or county level — one user account can submit data for
+    multiple facilities. The DHIS2 Organisation Unit UID, however, is
+    per-facility and lives on the ``Facility.dhis2_org_unit`` field.
+
+    This model stores the **connection credentials** (base URL + auth) that
+    are shared across all facilities within an organization. Facilities
+    resolve their own org unit from ``Facility.dhis2_org_unit``.
+
+    Security:
+        The ``password`` field is stored encrypted via the KMS provider.
+        Use ``set_password()`` / ``get_password()`` for read/write access.
+    """
+
+    class Environment(models.TextChoices):
+        """DHIS2 target environment."""
+
+        LOCAL = "local", "Local (dev/test)"
+        STAGING = "staging", "Staging"
+        PRODUCTION = "production", "Production (KHIS)"
+
+    name = models.CharField(
+        max_length=100,
+        help_text="Human-readable label, e.g. 'Mombasa Sub-County KHIS'.",
+    )
+    base_url = models.URLField(
+        max_length=255,
+        help_text="DHIS2 instance base URL, e.g. 'https://hiskenya.org'.",
+    )
+    username = models.CharField(
+        max_length=150,
+        help_text="DHIS2 API username.",
+    )
+    _password = models.TextField(
+        db_column="password",
+        help_text="Encrypted DHIS2 API password. Use set_password()/get_password().",
+    )
+    environment = models.CharField(
+        max_length=12,
+        choices=Environment.choices,
+        default=Environment.PRODUCTION,
+        help_text="Target DHIS2 environment (controls data-element UID resolution).",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this configuration is currently active.",
+    )
+
+    class Meta:
+        verbose_name = "DHIS2 Configuration"
+        verbose_name_plural = "DHIS2 Configurations"
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization"],
+                condition=models.Q(is_active=True),
+                name="unique_active_dhis2_config_per_org",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        org_name = getattr(self.organization, "name", "—")
+        return f"{self.name} ({org_name})"
+
+    # -- Password encryption helpers ------------------------------------
+
+    def set_password(self, plain: str) -> None:
+        """Encrypt and store a plaintext password."""
+        from hmis.apps.core.kms import get_kms_provider
+
+        kms = get_kms_provider()
+        self._password = kms.encrypt(plain.encode()).decode()
+
+    def get_password(self) -> str:
+        """Decrypt and return the stored password."""
+        if not self._password:
+            return ""
+        from hmis.apps.core.kms import get_kms_provider
+
+        kms = get_kms_provider()
+        return kms.decrypt(self._password.encode()).decode()
+
+    # -- Convenience helpers --------------------------------------------
+
+    @property
+    def api_url(self) -> str:
+        """Return the base URL with trailing slash stripped."""
+        return self.base_url.rstrip("/")
+
+    @classmethod
+    def get_for_facility(cls, facility) -> "DHIS2Config | None":
+        """Return the active DHIS2 config for a facility's organization.
+
+        Falls back to global Django settings if no DB config exists
+        (backward-compatible with env-var-only deployments).
+        """
+        if not facility or not facility.organization_id:
+            return None
+        return (
+            cls.objects.filter(
+                organization=facility.organization,
+                is_active=True,
+            )
+            .select_related("organization")
+            .first()
+        )
 
 
 # =============================================================================

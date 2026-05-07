@@ -748,19 +748,17 @@ class IDSRReportingService:
         Returns:
             DHIS2 API payload dict
         """
-        from django.conf import settings
+        from hmis.apps.core.dhis2 import resolve_dhis2_credentials
 
         from .dhis2_mappings import get_data_element_uid, get_environment
 
         # DHIS2 period format for weekly: YYYY"W"WW (e.g., 2026W08)
         period = f"{report.epi_year}W{report.epi_week:02d}"
 
-        # Get org unit: prefer DHIS2_ORG_UNIT (the actual DHIS2 UID) if configured,
-        # otherwise fall back to facility_code (MFL code) - note these are different:
-        # - DHIS2_ORG_UNIT: DHIS2's internal org unit UID (e.g., "lZtlGVzHnKF")
-        # - facility_code: Kenya MFL code (e.g., "12345")
-        dhis2_org_unit = getattr(settings, "DHIS2_ORG_UNIT", "")
-        org_unit = dhis2_org_unit if dhis2_org_unit else report.facility_code
+        # Resolve org unit from per-facility config or global fallback
+        facility = getattr(report, "facility", None)
+        creds = resolve_dhis2_credentials(facility)
+        org_unit = creds.org_unit if creds.org_unit else report.facility_code
 
         # Get current environment for mapping lookups
         environment = get_environment()
@@ -826,16 +824,16 @@ class IDSRReportingService:
             DHIS2 API response dict
         """
         import requests
-        from django.conf import settings
+
+        from hmis.apps.core.dhis2 import resolve_dhis2_credentials
 
         if report.status != "APPROVED":
             raise ValueError("Report must be approved before submission")
 
-        dhis2_url = getattr(settings, "DHIS2_API_URL", None)
-        dhis2_username = getattr(settings, "DHIS2_USERNAME", None)
-        dhis2_password = getattr(settings, "DHIS2_PASSWORD", None)
+        facility = getattr(report, "facility", None)
+        creds = resolve_dhis2_credentials(facility)
 
-        if not all([dhis2_url, dhis2_username, dhis2_password]):
+        if not all([creds.base_url, creds.username, creds.password]):
             logger.warning("DHIS2 credentials not configured")
             return {"status": "error", "message": "DHIS2 not configured"}
 
@@ -843,9 +841,9 @@ class IDSRReportingService:
 
         try:
             response = requests.post(
-                f"{dhis2_url}/api/dataValueSets",
+                f"{creds.base_url}/api/dataValueSets",
                 json=payload,
-                auth=(dhis2_username, dhis2_password),
+                auth=(creds.username, creds.password),
                 headers={"Content-Type": "application/json"},
                 timeout=30,
             )

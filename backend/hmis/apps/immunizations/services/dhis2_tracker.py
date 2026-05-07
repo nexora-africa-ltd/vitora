@@ -54,6 +54,10 @@ class AEFITrackerService:
         vaccine = record.vaccine if record else None
 
         org_unit = getattr(settings, "DHIS2_ORG_UNIT", "")
+        # Prefer per-facility org unit from DB config
+        facility = getattr(aefi, "facility", None)
+        if facility and getattr(facility, "dhis2_org_unit", ""):
+            org_unit = facility.dhis2_org_unit
         if aefi.institution_mfl_code:
             org_unit = aefi.institution_mfl_code
 
@@ -151,6 +155,17 @@ class AEFITrackerService:
         dhis2_url = getattr(settings, "DHIS2_API_URL", None)
         dhis2_username = getattr(settings, "DHIS2_USERNAME", None)
         dhis2_password = getattr(settings, "DHIS2_PASSWORD", None)
+
+        # Try DB-stored credentials for the facility's org
+        facility = getattr(aefi, "facility", None)
+        if facility:
+            from hmis.apps.core.dhis2 import resolve_dhis2_credentials
+
+            creds = resolve_dhis2_credentials(facility)
+            if creds.source == "db":
+                dhis2_url = creds.api_url
+                dhis2_username = creds.username
+                dhis2_password = creds.password
 
         if not all([dhis2_url, dhis2_username, dhis2_password]):
             logger.warning("DHIS2 credentials not configured, skipping AEFI submission")

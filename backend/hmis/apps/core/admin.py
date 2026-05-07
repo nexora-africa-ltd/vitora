@@ -17,6 +17,7 @@ from .models import (
     County,
     Department,
     DHAOutboundCall,
+    DHIS2Config,
     DocumentSignature,
     EmailVerificationToken,
     ExternalCodeMapping,
@@ -1127,6 +1128,15 @@ class FacilityAdmin(admin.ModelAdmin):
             },
         ),
         (
+            "DHIS2 / KHIS Integration",
+            {
+                "fields": ("dhis2_org_unit",),
+                "classes": ("collapse",),
+                "description": "DHIS2 Organisation Unit UID for reporting. "
+                "Connection credentials are managed in DHIS2 Configurations.",
+            },
+        ),
+        (
             "Enabled Service Modules",
             {
                 "fields": (
@@ -1199,6 +1209,42 @@ class FacilityAdmin(admin.ModelAdmin):
 # =============================================================================
 # PKI & Digital Signature Admin (DHA Gap #32 — Sprint 3.C)
 # =============================================================================
+# PKI & Digital Signature Admin (DHA Gap #32 — Sprint 3.C)
+# =============================================================================
+
+
+@admin.register(DHIS2Config)
+class DHIS2ConfigAdmin(admin.ModelAdmin):
+    """Admin for DHIS2/KHIS connection configurations."""
+
+    list_display = [
+        "name",
+        "organization",
+        "base_url",
+        "username",
+        "environment",
+        "is_active",
+        "created_at",
+    ]
+    list_filter = ["organization", "environment", "is_active"]
+    search_fields = ["name", "base_url"]
+    ordering = ["organization", "name"]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["organization"]
+    fieldsets = (
+        (None, {"fields": ("organization", "name", "environment", "is_active")}),
+        ("Connection", {"fields": ("base_url", "username")}),
+        (
+            "Timestamps",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
 
 
 @admin.register(CertificateAuthority)

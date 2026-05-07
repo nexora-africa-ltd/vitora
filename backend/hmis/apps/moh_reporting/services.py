@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 from datetime import date
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -482,10 +481,12 @@ class DHIS2SubmissionService:
     @classmethod
     def prepare_payload(cls, report: AbstractMOHReport) -> dict:  # type: ignore[type-arg]
         """Build a DHIS2 DataValueSet JSON payload for the given report."""
-        import os
+        from hmis.apps.core.dhis2 import resolve_dhis2_credentials
 
-        org_unit = getattr(settings, "DHIS2_ORG_UNIT", "")
-        env = os.environ.get("DHIS2_ENVIRONMENT", "local")
+        facility = getattr(report, "facility", None)
+        creds = resolve_dhis2_credentials(facility)
+        org_unit = creds.org_unit
+        env = creds.environment
         period = report.dhis2_period
 
         if isinstance(report, MOH705Report):
@@ -502,23 +503,24 @@ class DHIS2SubmissionService:
         """Submit an approved report to DHIS2."""
         import requests
 
+        from hmis.apps.core.dhis2 import resolve_dhis2_credentials
+
         if report.status != MOHReportStatus.APPROVED:
             raise ValueError("Only approved reports can be submitted to DHIS2")
 
         payload = cls.prepare_payload(report)
-        api_url = getattr(settings, "DHIS2_API_URL", "")
-        username = getattr(settings, "DHIS2_USERNAME", "")
-        password = getattr(settings, "DHIS2_PASSWORD", "")
+        facility = getattr(report, "facility", None)
+        creds = resolve_dhis2_credentials(facility)
 
-        if not api_url:
+        if not creds.base_url:
             raise ValueError("DHIS2_API_URL is not configured")
 
-        url = f"{api_url.rstrip('/')}/api/dataValueSets"
+        url = f"{creds.api_url}/api/dataValueSets"
         try:
             resp = requests.post(
                 url,
                 json=payload,
-                auth=(username, password),
+                auth=(creds.username, creds.password),
                 timeout=30,
                 headers={"Content-Type": "application/json"},
             )
