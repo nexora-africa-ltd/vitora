@@ -28,6 +28,8 @@ export interface FacilityDetail extends FacilityListItem {
   effective_logo_url: string | null;
   sha_contract_expiry: string | null;
   sha_facility_code: string;
+  /** DHIS2 Organisation Unit UID for this facility */
+  dhis2_org_unit: string;
   modules: FacilityModules;
   enabled_module_names: string[];
   has_outpatient: boolean;
@@ -59,6 +61,7 @@ export interface FacilityUpdateData {
   sha_contracted?: boolean;
   sha_contract_expiry?: string | null;
   sha_facility_code?: string;
+  dhis2_org_unit?: string;
   workstation_id?: string;
   biometrics_agent_national_id?: string;
   has_outpatient?: boolean;

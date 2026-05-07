@@ -833,7 +833,7 @@ class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         from hmis.apps.surveillance.adx_service import ADXExportService
 
         report = self.get_object()
-        service = ADXExportService()
+        service = ADXExportService(facility=getattr(report, "facility", None))
         xml_content = service.export_idsr_to_adx(report)
         response = DjangoHttpResponse(xml_content, content_type="application/xml")
         response["Content-Disposition"] = (

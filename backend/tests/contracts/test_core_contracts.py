@@ -230,6 +230,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             {
                 "branch_code",
                 "county",
+                "dhis2_org_unit",
                 "has_blood_bank",
                 "has_dialysis",
                 "has_emergency",
@@ -267,6 +268,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "county",
                 "county_name",
                 "created_at",
+                "dhis2_org_unit",
                 "effective_logo_url",
                 "enabled_module_names",
                 "has_blood_bank",

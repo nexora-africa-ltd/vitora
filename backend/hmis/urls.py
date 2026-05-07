@@ -30,6 +30,7 @@ from hmis.apps.core.views import (
     CodeSystemViewSet,
     CountyViewSet,
     DepartmentViewSet,
+    DHIS2ConfigViewSet,
     FacilityViewSet,
     NotificationViewSet,
     OrganizationViewSet,
@@ -158,6 +159,9 @@ router.register(r"push-subscriptions", PushSubscriptionViewSet, basename="pushsu
 
 # Facility endpoint (Capability-Based Experience)
 router.register(r"facilities", FacilityViewSet, basename="facility")
+
+# DHIS2 integration configuration
+router.register(r"dhis2-configs", DHIS2ConfigViewSet, basename="dhis2config")
 
 # Organization endpoint (Multitenancy)
 router.register(r"organizations", OrganizationViewSet, basename="organization")

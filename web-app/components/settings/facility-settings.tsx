@@ -95,6 +95,7 @@ interface FacilityFormState {
   sha_facility_code: string;
   workstation_id: string;
   biometrics_agent_national_id: string;
+  dhis2_org_unit: string;
   is_active: boolean;
   has_outpatient: boolean;
   has_inpatient: boolean;
@@ -122,6 +123,7 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     sha_facility_code: facility.sha_facility_code,
     workstation_id: facility.workstation_id ?? '',
     biometrics_agent_national_id: facility.biometrics_agent_national_id ?? '',
+    dhis2_org_unit: facility.dhis2_org_unit ?? '',
     is_active: facility.is_active,
     has_outpatient: facility.has_outpatient,
     has_inpatient: facility.has_inpatient,
