@@ -226,6 +226,15 @@ class TestDeathRecordAPI:
 class TestDeathRecordWorkflow:
     """Tests for DeathRecord workflow actions."""
 
+    @pytest.fixture(autouse=True)
+    def _grant_death_record_perms(self, test_user):
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(
+            codename__in=["certify_death", "release_body", "void_death_record"]
+        )
+        test_user.user_permissions.add(*perms)
+
     def test_certify_action(self, authenticated_client, sample_death_record):
         """Should certify a death record."""
         response = authenticated_client.post(

@@ -347,6 +347,15 @@ def blood_request(db, sample_patient, test_user, sample_facility):
 class TestBloodDonorAPI:
     """Tests for Blood Donor API endpoints."""
 
+    @pytest.fixture(autouse=True)
+    def _grant_blood_bank_perms(self, test_user):
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(
+            codename__in=["manage_blood_bank", "issue_blood_unit", "perform_crossmatch"]
+        )
+        test_user.user_permissions.add(*perms)
+
     def test_list_donors(self, authenticated_client, blood_donor):
         response = authenticated_client.get("/api/blood-bank/donors/")
         assert response.status_code == status.HTTP_200_OK
@@ -389,6 +398,15 @@ class TestBloodDonorAPI:
 
 class TestBloodUnitAPI:
     """Tests for Blood Unit API endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _grant_blood_bank_perms(self, test_user):
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(
+            codename__in=["manage_blood_bank", "issue_blood_unit", "perform_crossmatch"]
+        )
+        test_user.user_permissions.add(*perms)
 
     def test_list_units(self, authenticated_client, blood_unit):
         response = authenticated_client.get("/api/blood-bank/units/")
@@ -448,6 +466,15 @@ class TestBloodUnitAPI:
 class TestBloodRequestAPI:
     """Tests for Blood Request API endpoints."""
 
+    @pytest.fixture(autouse=True)
+    def _grant_blood_bank_perms(self, test_user):
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(
+            codename__in=["manage_blood_bank", "issue_blood_unit", "perform_crossmatch"]
+        )
+        test_user.user_permissions.add(*perms)
+
     def test_list_requests(self, authenticated_client, blood_request):
         response = authenticated_client.get("/api/blood-bank/requests/")
         assert response.status_code == status.HTTP_200_OK
@@ -488,6 +515,15 @@ class TestBloodRequestAPI:
 
 class TestCrossMatchAPI:
     """Tests for CrossMatch API endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _grant_blood_bank_perms(self, test_user):
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(
+            codename__in=["manage_blood_bank", "issue_blood_unit", "perform_crossmatch"]
+        )
+        test_user.user_permissions.add(*perms)
 
     def test_create_crossmatch(self, authenticated_client, blood_request, blood_unit):
         data = {
@@ -542,6 +578,15 @@ class TestCrossMatchAPI:
 
 class TestBloodIssueAPI:
     """Tests for Blood Issue API endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _grant_blood_bank_perms(self, test_user):
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(
+            codename__in=["manage_blood_bank", "issue_blood_unit", "perform_crossmatch"]
+        )
+        test_user.user_permissions.add(*perms)
 
     def test_create_issue(self, authenticated_client, blood_request, blood_unit):
         data = {
