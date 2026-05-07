@@ -882,6 +882,18 @@ FACILITY_HAS_PHARMACY = (
 )
 
 # =============================================================================
+# LIS (Laboratory Information System) STANDALONE MODE
+# =============================================================================
+# When True, the LIS module operates independently without requiring
+# the full HMIS (no patients/encounters/billing dependency).
+# This enables:
+# - Walk-in patient registration directly in the lab
+# - External order intake via HL7 ORM^O01
+# - Standalone lab order creation without encounters
+# When False (default), lab operates as an integrated HMIS module.
+LIS_STANDALONE_MODE = os.getenv("LIS_STANDALONE_MODE", "false").lower() == "true"
+
+# =============================================================================
 # TIBABOT AI INTEGRATION
 # =============================================================================
 # Feature flag: Set to true to enable AI proxy endpoints (/api/ai/*).

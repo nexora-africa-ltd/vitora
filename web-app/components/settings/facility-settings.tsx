@@ -82,6 +82,7 @@ const MODULE_FIELDS: Array<{
   { key: 'maternity', field: 'has_maternity', title: 'Maternity', description: 'Maternal and obstetric services.' },
   { key: 'mortuary', field: 'has_mortuary', title: 'Mortuary', description: 'Mortuary and post-mortem support.' },
   { key: 'blood_bank', field: 'has_blood_bank', title: 'Blood Bank', description: 'Blood storage and transfusion services.' },
+  { key: 'lis_standalone', field: 'has_lis_standalone', title: 'LIS Standalone', description: 'Lab operates independently — walk-in patients, external orders, no encounter required.' },
 ];
 
 interface FacilityFormState {
@@ -107,6 +108,7 @@ interface FacilityFormState {
   has_maternity: boolean;
   has_mortuary: boolean;
   has_blood_bank: boolean;
+  has_lis_standalone: boolean;
 }
 
 function createFormState(facility: FacilityDetail): FacilityFormState {
@@ -133,6 +135,7 @@ function createFormState(facility: FacilityDetail): FacilityFormState {
     has_maternity: facility.has_maternity,
     has_mortuary: facility.has_mortuary,
     has_blood_bank: facility.has_blood_bank,
+    has_lis_standalone: facility.has_lis_standalone,
   };
 }
 

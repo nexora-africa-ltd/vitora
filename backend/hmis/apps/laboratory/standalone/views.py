@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from hmis.apps.core.mixins import ReadOnCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.permissions import RequiresActiveShiftPermission
+from hmis.apps.laboratory.permissions import LISStandaloneRequired
 from hmis.apps.laboratory.serializers import LabOrderSerializer
 
 from .models import ExternalOrderRequest, WalkInPatient
@@ -34,7 +35,7 @@ class WalkInPatientViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Mo
 
     tenant_scope = "facility"
     queryset = WalkInPatient.objects.all().select_related("linked_patient")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission, LISStandaloneRequired]
     filter_backends = [filters.SearchFilter]
     search_fields = [
         "first_name",
@@ -88,7 +89,7 @@ class StandaloneOrderViewSet(TenantScopedViewMixin, viewsets.GenericViewSet):
     """
 
     tenant_scope = "facility"
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission, LISStandaloneRequired]
 
     def get_serializer_class(self):
         return StandaloneOrderCreateSerializer
@@ -119,7 +120,7 @@ class ExternalOrderRequestViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
     tenant_scope = "facility"
     queryset = ExternalOrderRequest.objects.all().select_related("walkin_patient", "lab_order")
-    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission]
+    permission_classes = [IsAuthenticated, RequiresActiveShiftPermission, LISStandaloneRequired]
     http_method_names = ["get", "post", "head", "options"]  # Read + accept/reject actions
 
     def get_serializer_class(self):

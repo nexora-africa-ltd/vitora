@@ -51,6 +51,7 @@ export const MODULE_PERMISSIONS = {
   dialysis: 'dialysis.view_dialysissession',
   pharmacy: 'pharmacy.view_prescription',
   laboratory: 'laboratory.view_laborder',
+  lis_standalone: 'laboratory.view_laborder',
   imaging: 'imaging.view_imagingorder',
   allied_health: [
     'physiotherapy.view_physiotherapyorder',

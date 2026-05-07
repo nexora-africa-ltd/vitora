@@ -2834,6 +2834,10 @@ class Facility(TimeStampedModel):
         default=False,
         help_text="Inventory / supply chain management module.",
     )
+    has_lis_standalone = models.BooleanField(
+        default=False,
+        help_text="LIS standalone mode: lab operates independently without full HMIS.",
+    )
 
     # ------------------------------------------------------------------
     # Status
@@ -2919,6 +2923,7 @@ class Facility(TimeStampedModel):
             "mortuary": self.has_mortuary,
             "blood_bank": self.has_blood_bank,
             "inventory": self.has_inventory,
+            "lis_standalone": self.has_lis_standalone,
         }
 
     @property

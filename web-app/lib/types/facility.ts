@@ -42,6 +42,7 @@ export interface FacilityDetail extends FacilityListItem {
   has_maternity: boolean;
   has_mortuary: boolean;
   has_blood_bank: boolean;
+  has_lis_standalone: boolean;
   /** Biometrics workstation ID for DHA HIE consent */
   workstation_id?: string;
   /** Agent national ID for biometric authorization */
@@ -72,6 +73,7 @@ export interface FacilityUpdateData {
   has_maternity?: boolean;
   has_mortuary?: boolean;
   has_blood_bank?: boolean;
+  has_lis_standalone?: boolean;
   is_active?: boolean;
 }
 
@@ -101,5 +103,6 @@ export interface FacilityCreateData {
   has_maternity?: boolean;
   has_mortuary?: boolean;
   has_blood_bank?: boolean;
+  has_lis_standalone?: boolean;
   is_active?: boolean;
 }
