@@ -8,9 +8,88 @@ Re-run the script to update after serializer changes:
 
 import pytest  # type: ignore
 
-from hmis.apps.hl7.serializers import HL7MessageListSerializer, HL7MessageSerializer
+from hmis.apps.hl7.serializers import (
+    HL7EndpointCreateSerializer,
+    HL7EndpointListSerializer,
+    HL7EndpointSerializer,
+    HL7EndpointTestSerializer,
+    HL7MessageListSerializer,
+    HL7MessageSerializer,
+)
 
 CONTRACTS: list[tuple[type, frozenset[str]]] = [
+    (
+        HL7EndpointCreateSerializer,
+        frozenset(
+            {
+                "endpoint_type",
+                "is_active",
+                "lis_code_system",
+                "max_retries",
+                "mllp_host",
+                "mllp_port",
+                "name",
+                "notes",
+                "receiving_application",
+                "receiving_facility",
+                "sending_application",
+                "sending_facility",
+                "timeout",
+                "use_ssl",
+            }
+        ),
+    ),
+    (
+        HL7EndpointListSerializer,
+        frozenset(
+            {
+                "created_at",
+                "endpoint_type",
+                "id",
+                "is_active",
+                "message_count",
+                "mllp_host",
+                "mllp_port",
+                "name",
+                "receiving_facility",
+            }
+        ),
+    ),
+    (
+        HL7EndpointSerializer,
+        frozenset(
+            {
+                "created_at",
+                "endpoint_type",
+                "id",
+                "is_active",
+                "lis_code_system",
+                "max_retries",
+                "message_count",
+                "mllp_host",
+                "mllp_port",
+                "name",
+                "notes",
+                "receiving_application",
+                "receiving_facility",
+                "sending_application",
+                "sending_facility",
+                "timeout",
+                "updated_at",
+                "use_ssl",
+            }
+        ),
+    ),
+    (
+        HL7EndpointTestSerializer,
+        frozenset(
+            {
+                "error",
+                "latency_ms",
+                "success",
+            }
+        ),
+    ),
     (
         HL7MessageListSerializer,
         frozenset(

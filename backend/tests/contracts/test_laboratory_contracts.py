@@ -19,6 +19,7 @@ from hmis.apps.laboratory.serializers import (
     DiagnosticReportUpdateSerializer,
     InstrumentCreateSerializer,
     InstrumentSerializer,
+    LabBarcodeConfigSerializer,
     LabOrderCreateSerializer,
     LabOrderItemCreateSerializer,
     LabOrderItemSerializer,
@@ -35,9 +36,14 @@ from hmis.apps.laboratory.serializers import (
     LabResultNestedSerializer,
     LabResultSerializer,
     LabResultVerifySerializer,
+    LabWorkflowSettingsSerializer,
     LOINCCodeSerializer,
+    ReferralLabSerializer,
+    ResultCommentTemplateSerializer,
     ResultValidationCreateSerializer,
     ResultValidationSerializer,
+    SampleLabelTemplateSerializer,
+    SpecimenRejectionReasonSerializer,
     SpecimenSerializer,
     TechnicianSerializer,
     TestCatalogCreateSerializer,
@@ -210,6 +216,23 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        LabBarcodeConfigSerializer,
+        frozenset(
+            {
+                "barcode_format",
+                "barcode_format_display",
+                "current_sequence",
+                "date_format",
+                "id",
+                "include_date",
+                "prefix",
+                "sample_barcode",
+                "separator",
+                "sequence_length",
+            }
+        ),
+    ),
+    (
         LabOrderCreateSerializer,
         frozenset(
             {
@@ -265,8 +288,10 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "completed_at",
                 "created_at",
                 "encounter",
+                "external_accession_number",
                 "external_lab",
                 "id",
+                "is_walkin",
                 "items",
                 "order_number",
                 "order_type",
@@ -283,6 +308,11 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "status",
                 "total_cost",
                 "updated_at",
+                "walkin_patient_dob",
+                "walkin_patient_gender",
+                "walkin_patient_id",
+                "walkin_patient_name",
+                "walkin_patient_phone",
             }
         ),
     ),
@@ -493,9 +523,11 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "numeric_value",
                 "option_value",
                 "order_item",
+                "order_number",
                 "original_value",
                 "patient_date_of_birth",
                 "patient_gender",
+                "patient_name",
                 "reference_high",
                 "reference_low",
                 "reference_range_text",
@@ -524,6 +556,61 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ),
     ),
     (
+        LabWorkflowSettingsSerializer,
+        frozenset(
+            {
+                "allow_duplicate_orders",
+                "auto_print_labels_on_collect",
+                "auto_print_on_verify",
+                "auto_release_normal_results",
+                "id",
+                "notify_clinician_on_complete",
+                "notify_clinician_on_critical",
+                "require_clinical_notes",
+                "require_double_verification_critical",
+                "require_specimen_receipt",
+                "specimen_rejection_requires_supervisor",
+                "tat_warning_threshold_percent",
+            }
+        ),
+    ),
+    (
+        ReferralLabSerializer,
+        frozenset(
+            {
+                "address",
+                "code",
+                "contact_person",
+                "courier_schedule",
+                "default_tat_days",
+                "email",
+                "id",
+                "is_active",
+                "name",
+                "notes",
+                "phone",
+                "tests_offered",
+                "website",
+            }
+        ),
+    ),
+    (
+        ResultCommentTemplateSerializer,
+        frozenset(
+            {
+                "applicable_tests",
+                "category",
+                "category_display",
+                "code",
+                "display_order",
+                "id",
+                "is_active",
+                "name",
+                "text",
+            }
+        ),
+    ),
+    (
         ResultValidationCreateSerializer,
         frozenset(
             {
@@ -547,6 +634,42 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "validated_by_name",
                 "validation_type",
                 "validation_type_display",
+            }
+        ),
+    ),
+    (
+        SampleLabelTemplateSerializer,
+        frozenset(
+            {
+                "copies_per_specimen",
+                "id",
+                "include_barcode",
+                "include_collection_date",
+                "include_dob",
+                "include_mrn",
+                "include_patient_name",
+                "include_priority",
+                "include_specimen_type",
+                "include_test_name",
+                "is_active",
+                "is_default",
+                "label_size",
+                "label_size_display",
+                "name",
+            }
+        ),
+    ),
+    (
+        SpecimenRejectionReasonSerializer,
+        frozenset(
+            {
+                "code",
+                "description",
+                "display_order",
+                "id",
+                "is_active",
+                "name",
+                "requires_recollection",
             }
         ),
     ),
