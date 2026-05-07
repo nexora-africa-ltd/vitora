@@ -22,4 +22,5 @@ class LaboratoryConfig(AppConfig):
         import hmis.apps.laboratory.reflex.signals  # noqa: F401
         import hmis.apps.laboratory.reporting.signals  # noqa: F401
         import hmis.apps.laboratory.signals  # noqa: F401
+        import hmis.apps.laboratory.standalone.signals  # noqa: F401
         import hmis.apps.laboratory.worksheets.signals  # noqa: F401

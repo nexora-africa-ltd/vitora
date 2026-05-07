@@ -295,10 +295,42 @@ class LabOrder(FacilityScopedModel):
 
     # Relationships
     patient = models.ForeignKey(
-        "patients.Patient", on_delete=models.PROTECT, related_name="lab_orders"
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="lab_orders",
+        null=True,
+        blank=True,
+        help_text="HMIS patient (null for walk-in/external standalone orders)",
     )
     encounter = models.ForeignKey(
-        "encounters.Encounter", on_delete=models.PROTECT, related_name="lab_orders"
+        "encounters.Encounter",
+        on_delete=models.PROTECT,
+        related_name="lab_orders",
+        null=True,
+        blank=True,
+        help_text="Clinical encounter (null for standalone lab orders)",
+    )
+    # Walk-in patient details (used when patient FK is null)
+    walkin_patient_name = models.CharField(
+        max_length=200, blank=True, help_text="Walk-in patient full name"
+    )
+    walkin_patient_id = models.CharField(
+        max_length=50, blank=True, help_text="Walk-in patient national ID or other identifier"
+    )
+    walkin_patient_phone = models.CharField(
+        max_length=20, blank=True, help_text="Walk-in patient phone number"
+    )
+    walkin_patient_dob = models.DateField(
+        null=True, blank=True, help_text="Walk-in patient date of birth"
+    )
+    walkin_patient_gender = models.CharField(
+        max_length=1,
+        blank=True,
+        choices=[("M", "Male"), ("F", "Female"), ("O", "Other")],
+        help_text="Walk-in patient gender",
+    )
+    is_walkin = models.BooleanField(
+        default=False, help_text="True if this is a standalone/walk-in order without HMIS patient"
     )
     admission = models.ForeignKey(
         "inpatient.Admission",
@@ -386,7 +418,8 @@ class LabOrder(FacilityScopedModel):
         ]
 
     def __str__(self):
-        return f"{self.order_number} - {self.patient}"
+        patient_str = self.patient or self.walkin_patient_name or "Walk-in"
+        return f"{self.order_number} - {patient_str}"
 
     def save(self, *args, **kwargs):
         """Override save to auto-generate order number."""
@@ -506,10 +539,11 @@ class LabOrder(FacilityScopedModel):
 
     def add_test(self, test_catalog, quantity: int = 1):
         """
-        Add a test to this lab order and create an invoice item.
+        Add a test to this lab order and optionally create an invoice item.
 
-        Creates a LabOrderItem linked to the test catalog and
-        automatically creates an InvoiceItem on the encounter's invoice.
+        Creates a LabOrderItem linked to the test catalog. If the order has
+        an encounter with an invoice, automatically creates an InvoiceItem.
+        For standalone/walk-in orders (no encounter), only creates the order item.
 
         Args:
             test_catalog: The TestCatalog instance to add
@@ -519,11 +553,9 @@ class LabOrder(FacilityScopedModel):
             LabOrderItem: The created lab order item
 
         Raises:
-            ValidationError: If the order is completed/cancelled or encounter has no invoice
+            ValidationError: If the order is completed/cancelled
         """
         from decimal import Decimal
-
-        from hmis.apps.billing.models import Invoice, InvoiceItem
 
         # Validate order status
         if self.status in ["COMPLETED", "CANCELLED", "REJECTED"]:
@@ -536,42 +568,39 @@ class LabOrder(FacilityScopedModel):
             unit_cost=test_catalog.cost,
         )
 
-        # Get the encounter's invoice
-        invoice = Invoice.objects.filter(encounter=self.encounter).first()
-        if not invoice:
-            raise ValidationError("Encounter has no associated invoice.")
+        # Only bill if there's an encounter (skip for standalone/walk-in orders)
+        if self.encounter_id:
+            try:
+                from hmis.apps.billing.models import Invoice, InvoiceItem
 
-        # Check if invoice is editable
-        if invoice.status != Invoice.Status.DRAFT:
-            raise ValidationError(
-                f"Cannot add lab tests to invoice with status '{invoice.status}'."
-            )
-
-        # Create invoice item
-        line_total = (test_catalog.cost * Decimal(str(quantity))).quantize(Decimal("0.01"))
-        InvoiceItem.objects.create(
-            invoice=invoice,
-            item_type=InvoiceItem.ItemType.LAB,
-            lab_order=self,
-            description=test_catalog.name,
-            quantity=quantity,
-            unit_price=test_catalog.cost,
-            line_total=line_total,
-            sha_code=test_catalog.loinc_code or "",
-        )
-
-        # Recalculate invoice totals
-        invoice.calculate_totals()
-        invoice.save(
-            update_fields=[
-                "subtotal",
-                "tax_amount",
-                "discount_amount",
-                "total_amount",
-                "balance_due",
-                "updated_at",
-            ]
-        )
+                invoice = Invoice.objects.filter(encounter=self.encounter).first()
+                if invoice and invoice.status == Invoice.Status.DRAFT:
+                    line_total = (test_catalog.cost * Decimal(str(quantity))).quantize(
+                        Decimal("0.01")
+                    )
+                    InvoiceItem.objects.create(
+                        invoice=invoice,
+                        item_type=InvoiceItem.ItemType.LAB,
+                        lab_order=self,
+                        description=test_catalog.name,
+                        quantity=quantity,
+                        unit_price=test_catalog.cost,
+                        line_total=line_total,
+                        sha_code=test_catalog.loinc_code or "",
+                    )
+                    invoice.calculate_totals()
+                    invoice.save(
+                        update_fields=[
+                            "subtotal",
+                            "tax_amount",
+                            "discount_amount",
+                            "total_amount",
+                            "balance_due",
+                            "updated_at",
+                        ]
+                    )
+            except Exception:
+                logger.warning("Could not create invoice item for order %s", self.order_number)
 
         # Update order total cost
         self.calculate_total_cost()
@@ -589,8 +618,6 @@ class LabOrder(FacilityScopedModel):
         Raises:
             ValidationError: If the order cannot be cancelled
         """
-        from hmis.apps.billing.models import Invoice
-
         # Validate order can be cancelled
         if self.status in ["COMPLETED", "CANCELLED"]:
             raise ValidationError(f"Cannot cancel a {self.status.lower()} order.")
@@ -614,23 +641,34 @@ class LabOrder(FacilityScopedModel):
             ]
         )
 
-        # Remove invoice items associated with this lab order
-        invoice = Invoice.objects.filter(encounter=self.encounter).first()
-        if invoice and invoice.status == Invoice.Status.DRAFT:
-            deleted_count, _ = invoice.items.filter(lab_order=self).delete()
-            if deleted_count > 0:
-                # Recalculate invoice totals
-                invoice.calculate_totals()
-                invoice.save(
-                    update_fields=[
-                        "subtotal",
-                        "tax_amount",
-                        "discount_amount",
-                        "total_amount",
-                        "balance_due",
-                        "updated_at",
-                    ]
+        # Remove invoice items if encounter exists (skip for standalone orders)
+        if self.encounter_id:
+            try:
+                from hmis.apps.billing.models import Invoice
+
+                invoice = Invoice.objects.filter(encounter=self.encounter).first()
+                if invoice and invoice.status == Invoice.Status.DRAFT:
+                    deleted_count, _ = invoice.items.filter(lab_order=self).delete()
+                    if deleted_count > 0:
+                        invoice.calculate_totals()
+                        invoice.save(
+                            update_fields=[
+                                "subtotal",
+                                "tax_amount",
+                                "discount_amount",
+                                "total_amount",
+                                "balance_due",
+                                "updated_at",
+                            ]
+                        )
+            except Exception:
+                logger.warning(
+                    "Could not remove invoice items for cancelled order %s",
+                    self.order_number,
                 )
+
+        # Cancel all order items
+        self.items.update(status="CANCELLED")
 
         # Cancel all order items
         self.items.update(status="CANCELLED")

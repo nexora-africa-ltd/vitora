@@ -150,6 +150,11 @@ class LaboratoryEvents:
     CRITICAL_NOTIFICATION_CREATED = "laboratory.critical_notification.created"
     CRITICAL_NOTIFICATION_ACKNOWLEDGED = "laboratory.critical_notification.acknowledged"
 
+    # Standalone LIS Events
+    WALKIN_PATIENT_REGISTERED = "laboratory.standalone.walkin_registered"
+    EXTERNAL_ORDER_RECEIVED = "laboratory.standalone.external_order_received"
+    EXTERNAL_ORDER_ACCEPTED = "laboratory.standalone.external_order_accepted"
+
 
 class ClinicalEvents:
     """Clinical / encounter domain event types."""
