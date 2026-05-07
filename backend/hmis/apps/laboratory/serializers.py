@@ -292,7 +292,7 @@ class LabOrderSerializer(serializers.ModelSerializer):
 
     items = LabOrderItemSerializer(many=True, read_only=True)
     patient_name = serializers.SerializerMethodField()
-    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
+    patient_mrn = serializers.SerializerMethodField()
     ordered_by_name = serializers.SerializerMethodField()
     # Coerce total_cost to float for frontend compatibility
     total_cost = serializers.SerializerMethodField()
@@ -319,6 +319,13 @@ class LabOrderSerializer(serializers.ModelSerializer):
             "specimen_collected_by",
             "total_cost",
             "bill_patient",
+            "is_walkin",
+            "walkin_patient_name",
+            "walkin_patient_id",
+            "walkin_patient_phone",
+            "walkin_patient_dob",
+            "walkin_patient_gender",
+            "external_accession_number",
             "items",
             "ordered_at",
             "completed_at",
@@ -333,8 +340,15 @@ class LabOrderSerializer(serializers.ModelSerializer):
     def get_total_cost(self, obj) -> float:
         return float(obj.total_cost) if obj.total_cost else 0.0
 
+    def get_patient_mrn(self, obj) -> str | None:
+        if obj.patient:
+            return obj.patient.mrn
+        return None
+
     def get_patient_name(self, obj) -> str:
-        return f"{obj.patient.first_name} {obj.patient.last_name}"
+        if obj.patient:
+            return f"{obj.patient.first_name} {obj.patient.last_name}"
+        return obj.walkin_patient_name or "Walk-in"
 
     def get_ordered_by_name(self, obj) -> str:
         return obj.ordered_by.get_full_name() or obj.ordered_by.username
@@ -693,7 +707,9 @@ class LabQueueSerializer(serializers.ModelSerializer):
 
     def get_patient_name(self, obj) -> str:
         patient = obj.lab_order.patient
-        return f"{patient.first_name} {patient.last_name}"
+        if patient:
+            return f"{patient.first_name} {patient.last_name}"
+        return obj.lab_order.walkin_patient_name or "Walk-in"
 
     def get_tests(self, obj) -> list:
         return [
@@ -1044,7 +1060,9 @@ class DiagnosticReportSerializer(serializers.ModelSerializer):
 
     def get_patient_name(self, obj) -> str:
         """Get patient full name from lab order."""
-        return str(obj.lab_order.patient)
+        if obj.lab_order.patient:
+            return str(obj.lab_order.patient)
+        return obj.lab_order.walkin_patient_name or "Walk-in"
 
     def get_issued_by_name(self, obj) -> str:
         """Get name of user who issued the report."""
@@ -1186,7 +1204,9 @@ class SpecimenSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         patient = obj.lab_order.patient
-        return f"{patient.first_name} {patient.last_name}"
+        if patient:
+            return f"{patient.first_name} {patient.last_name}"
+        return obj.lab_order.walkin_patient_name or "Walk-in"
 
     def get_collected_by_name(self, obj) -> str | None:
         """Get name of user who collected the specimen."""

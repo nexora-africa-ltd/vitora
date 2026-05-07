@@ -328,6 +328,14 @@ def handle_lab_order_billing(sender, instance, **kwargs):
         )
         return
 
+    # Skip billing for standalone/walk-in orders (no encounter)
+    if not instance.encounter_id:
+        logger.info(
+            "Billing agent: skipping standalone order %s (no encounter)",
+            instance.order_number,
+        )
+        return
+
     try:
         from hmis.apps.billing.agent import BillingAgentService
 

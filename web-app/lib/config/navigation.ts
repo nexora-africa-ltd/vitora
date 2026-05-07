@@ -85,6 +85,7 @@ import {
   FileSpreadsheet,
   Repeat2,
   BellRing,
+  Inbox,
 } from 'lucide-react';
 
 import {
@@ -346,6 +347,9 @@ const _allNavItems: NavItemType[] = [
       { label: 'Worksheets', href: '/laboratory/worksheets', icon: FileSpreadsheet, actionKey: 'laboratory.view_dashboard' },
       { label: 'Reflex Testing', href: '/laboratory/reflex', icon: Repeat2, actionKey: 'laboratory.view_dashboard' },
       { label: 'Critical Values', href: '/laboratory/critical-values', icon: BellRing, actionKey: 'laboratory.view_dashboard' },
+      { label: 'Walk-in Patients', href: '/laboratory/standalone/walk-in', icon: UserPlus, actionKey: 'laboratory.view_orders' },
+      { label: 'Standalone Order', href: '/laboratory/standalone/new-order', icon: FlaskConical, actionKey: 'laboratory.view_orders' },
+      { label: 'External Orders', href: '/laboratory/standalone/external-orders', icon: Inbox, actionKey: 'laboratory.view_orders' },
       { label: 'EQA / PT', href: '/laboratory/qc/eqa', icon: Award, actionKey: 'laboratory.view_dashboard' },
       { label: 'Settings', href: '/laboratory/settings', icon: Settings, actionKey: 'laboratory.view_dashboard' },
     ],

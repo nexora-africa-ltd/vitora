@@ -73,6 +73,7 @@ urlpatterns = [
     path("worksheets/", include("hmis.apps.laboratory.worksheets.urls")),
     path("reflex/", include("hmis.apps.laboratory.reflex.urls")),
     path("critical-values/", include("hmis.apps.laboratory.critical_values.urls")),
+    path("standalone/", include("hmis.apps.laboratory.standalone.urls")),
     path("", include(router.urls)),
 ]
 
