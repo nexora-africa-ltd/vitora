@@ -5946,7 +5946,7 @@
       "name": "LIS Administrator",
       "description": "Administrator for standalone LIS deployments. Full access to all laboratory features including walk-in registration, external orders, QC, test catalog management, and reporting.",
       "category": "TECHNICAL",
-      "scope": "FACILITY",
+      "scope": "ORG",
       "organization": null,
       "facility": null,
       "hierarchy_level": 2,
@@ -6085,7 +6085,10 @@
           "update": true,
           "delete": true
         }
-      }
+      },
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "is_active": true
     }
   }
 ]

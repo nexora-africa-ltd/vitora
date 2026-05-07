@@ -48,6 +48,24 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "DiagnosticReport": ("laboratory", "diagnosticreport"),
     "TestCatalog": ("laboratory", "testcatalog"),
     "Instrument": ("laboratory", "instrument"),
+    # laboratory — standalone LIS
+    "WalkInPatient": ("laboratory", "walkinpatient"),
+    "ExternalOrderRequest": ("laboratory", "externalorderrequest"),
+    # laboratory — QC
+    "QCMaterial": ("laboratory", "qcmaterial"),
+    "QCLot": ("laboratory", "qclot"),
+    "QCResult": ("laboratory", "qcresult"),
+    "EQASurvey": ("laboratory", "eqasurvey"),
+    # laboratory — reflex / critical values
+    "ReflexRule": ("laboratory", "reflexrule"),
+    "CriticalValueRange": ("laboratory", "criticalvaluerange"),
+    "CriticalValueNotification": ("laboratory", "criticalvaluenotification"),
+    # laboratory — worksheets / analyzers / autoverify
+    "WorksheetTemplate": ("laboratory", "worksheettemplate"),
+    "LabelTemplate": ("laboratory", "labeltemplate"),
+    "InstrumentChannel": ("laboratory", "instrumentchannel"),
+    "AutoVerifyRule": ("laboratory", "autoverifyrule"),
+    "DeltaCheckRule": ("laboratory", "deltacheckrule"),
     # imaging
     "ImagingOrder": ("imaging", "imagingorder"),
     "ImagingOrderItem": ("imaging", "imagingorderitem"),
@@ -85,6 +103,16 @@ MODEL_MAPPING: dict[str, tuple[str, str]] = {
     "MedicationAdministration": ("inpatient", "medicationadministration"),
     "AdverseTransfusionReaction": ("inpatient", "adversetransfusionreaction"),
     "DischargeTemplate": ("inpatient", "dischargetemplate"),
+    # blood_bank
+    "BloodDonor": ("blood_bank", "blooddonor"),
+    "BloodUnit": ("blood_bank", "bloodunit"),
+    "BloodRequest": ("blood_bank", "bloodrequest"),
+    "CrossMatch": ("blood_bank", "crossmatch"),
+    "BloodIssue": ("blood_bank", "bloodissue"),
+    # dialysis
+    "VascularAccess": ("dialysis", "vascularaccess"),
+    "DialysisOrder": ("dialysis", "dialysisorder"),
+    "DialysisSession": ("dialysis", "dialysissession"),
     # clinics
     "Clinic": ("clinics", "clinic"),
     "ClinicVisit": ("clinics", "clinicvisit"),
@@ -262,6 +290,18 @@ CUSTOM_ACTIONS: set[str] = {
     "approve_stock_transfer",
     "approve_stock_count",
     "manage_etims",
+    # blood_bank
+    "manage_blood_bank",
+    "issue_blood_unit",
+    "perform_crossmatch",
+    # dialysis
+    "manage_dialysis",
+    "perform_dialysis",
+    # laboratory — standalone LIS
+    "accept_order",
+    "reject_order",
+    # laboratory — critical values
+    "acknowledge",
     # immunizations
     "submit_to_authorities",
     "follow_up",

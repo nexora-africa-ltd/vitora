@@ -208,6 +208,13 @@ def dialysis_session(db, sample_patient, dialysis_order, sample_facility):
 class TestVascularAccessAPI:
     """Tests for Vascular Access API endpoints."""
 
+    @pytest.fixture(autouse=True)
+    def _grant_dialysis_perms(self, test_user):
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(codename__in=["manage_dialysis", "perform_dialysis"])
+        test_user.user_permissions.add(*perms)
+
     def test_list_accesses(self, authenticated_client, vascular_access):
         response = authenticated_client.get("/api/dialysis/accesses/")
         assert response.status_code == status.HTTP_200_OK
@@ -247,6 +254,13 @@ class TestVascularAccessAPI:
 
 class TestDialysisOrderAPI:
     """Tests for Dialysis Order API endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _grant_dialysis_perms(self, test_user):
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(codename__in=["manage_dialysis", "perform_dialysis"])
+        test_user.user_permissions.add(*perms)
 
     def test_list_orders(self, authenticated_client, dialysis_order):
         response = authenticated_client.get("/api/dialysis/orders/")
@@ -296,6 +310,13 @@ class TestDialysisOrderAPI:
 
 class TestDialysisSessionAPI:
     """Tests for Dialysis Session API endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _grant_dialysis_perms(self, test_user):
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(codename__in=["manage_dialysis", "perform_dialysis"])
+        test_user.user_permissions.add(*perms)
 
     def test_list_sessions(self, authenticated_client, dialysis_session):
         response = authenticated_client.get("/api/dialysis/sessions/")

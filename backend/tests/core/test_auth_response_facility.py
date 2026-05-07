@@ -299,6 +299,7 @@ class TestBuildUserInfo:
             "mortuary",
             "blood_bank",
             "inventory",
+            "lis_standalone",
         }
         assert set(modules.keys()) == expected_modules
 

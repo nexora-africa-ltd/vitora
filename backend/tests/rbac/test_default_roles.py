@@ -363,6 +363,18 @@ KNOWN_CUSTOM_ACTIONS = {
     "approve_stock_transfer",
     "approve_stock_count",
     "manage_etims",
+    # blood_bank
+    "manage_blood_bank",
+    "issue_blood_unit",
+    "perform_crossmatch",
+    # dialysis
+    "manage_dialysis",
+    "perform_dialysis",
+    # laboratory — standalone LIS
+    "accept_order",
+    "reject_order",
+    # laboratory — critical values
+    "acknowledge",
     # immunizations
     "submit_to_authorities",
     "follow_up",
