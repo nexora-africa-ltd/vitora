@@ -138,6 +138,18 @@ class LaboratoryEvents:
     ANALYZER_MESSAGE_FAILED = "laboratory.analyzer.message_failed"
     ANALYZER_CHANNEL_STATUS_CHANGED = "laboratory.analyzer.channel_status_changed"
 
+    # Worksheet & Label Events (Phase L5.3)
+    WORKSHEET_GENERATED = "laboratory.worksheet.generated"
+    LABEL_JOB_CREATED = "laboratory.label_job.created"
+
+    # Reflexive Testing Events (Phase L6.1)
+    REFLEX_ORDERED = "laboratory.reflex.ordered"
+    REFLEX_SUGGESTED = "laboratory.reflex.suggested"
+
+    # Critical Value Notification Events (Phase L6.2)
+    CRITICAL_NOTIFICATION_CREATED = "laboratory.critical_notification.created"
+    CRITICAL_NOTIFICATION_ACKNOWLEDGED = "laboratory.critical_notification.acknowledged"
+
 
 class ClinicalEvents:
     """Clinical / encounter domain event types."""

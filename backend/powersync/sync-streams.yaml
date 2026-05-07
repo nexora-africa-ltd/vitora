@@ -500,3 +500,95 @@ streams:
         updated_at
       FROM billing_invoice
       WHERE facility_id = auth.parameter('facility_id')
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Facility QC: materials, lots, targets, results (facility-scoped)
+  # ───────────────────────────────────────────────────────────────────────────
+
+  facility_qc_materials:
+    auto_subscribe: true
+    priority: 2
+    query: >
+      SELECT id, name, manufacturer, catalog_number, description,
+             storage_conditions, is_active, facility_id, organization_id,
+             created_at, updated_at
+      FROM laboratory_qcmaterial
+      WHERE facility_id = auth.parameter('facility_id')
+
+  facility_qc_lots:
+    auto_subscribe: true
+    priority: 2
+    query: >
+      SELECT id, material_id, lot_number, status, open_date, expiry_date,
+             storage_conditions, notes, facility_id, organization_id,
+             created_at, updated_at
+      FROM laboratory_qclot
+      WHERE facility_id = auth.parameter('facility_id')
+
+  facility_qc_targets:
+    auto_subscribe: true
+    priority: 2
+    query: >
+      SELECT id, lot_id, test_id, instrument_id, mean, sd, cv_percent,
+             unit, n_values, facility_id, organization_id,
+             created_at, updated_at
+      FROM laboratory_qctarget
+      WHERE facility_id = auth.parameter('facility_id')
+
+  facility_qc_results:
+    auto_subscribe: true
+    priority: 1
+    query: >
+      SELECT id, lot_id, test_id, instrument_id, value, run_date,
+             operator_id, accepted, comment, reviewed_by_id, reviewed_at,
+             facility_id, organization_id, created_at, updated_at
+      FROM laboratory_qcresult
+      WHERE facility_id = auth.parameter('facility_id')
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Facility Microbiology: cultures, AST results (facility-scoped)
+  # Global reference tables (Organism, Antibiotic) are unscoped.
+  # ───────────────────────────────────────────────────────────────────────────
+
+  global_organisms:
+    auto_subscribe: true
+    priority: 3
+    query: >
+      SELECT id, code, name, genus, species, gram_stain, organism_type,
+             is_active
+      FROM laboratory_organism
+      WHERE is_active = true
+
+  global_antibiotics:
+    auto_subscribe: true
+    priority: 3
+    query: >
+      SELECT id, code, name, antibiotic_class, disk_content, is_active
+      FROM laboratory_antibiotic
+      WHERE is_active = true
+
+  facility_culture_results:
+    auto_subscribe: true
+    priority: 1
+    query: >
+      SELECT id, lab_result_id, specimen_id, status, culture_medium,
+             incubation_temperature, incubation_atmosphere, incubation_hours,
+             inoculated_by_id, inoculated_at, read_by_id, read_at,
+             colony_count, morphology, gram_stain_result, microscopy_notes,
+             organism_id, identification_method, preliminary_report,
+             preliminary_reported_at, final_report, final_reported_at,
+             clinical_notes, is_significant,
+             facility_id, organization_id, created_at, updated_at
+      FROM laboratory_cultureresult
+      WHERE facility_id = auth.parameter('facility_id')
+
+  facility_antibiotic_sensitivities:
+    auto_subscribe: true
+    priority: 1
+    query: >
+      SELECT id, culture_id, antibiotic_id, zone_diameter, mic,
+             interpretation, test_method, breakpoint_standard,
+             tested_by_id, tested_at, notes,
+             facility_id, organization_id, created_at, updated_at
+      FROM laboratory_antibioticsensitivity
+      WHERE facility_id = auth.parameter('facility_id')
