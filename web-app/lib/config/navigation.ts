@@ -82,6 +82,9 @@ import {
   ShieldCheck,
   Bug,
   Cpu,
+  FileSpreadsheet,
+  Repeat2,
+  BellRing,
 } from 'lucide-react';
 
 import {
@@ -340,6 +343,9 @@ const _allNavItems: NavItemType[] = [
       { label: 'Auto-Verify', href: '/laboratory/autoverify', icon: ShieldCheck, actionKey: 'laboratory.verify_results' },
       { label: 'Analyzers', href: '/laboratory/analyzers', icon: Cpu, actionKey: 'laboratory.view_dashboard' },
       { label: 'Microbiology', href: '/laboratory/microbiology', icon: Bug, actionKey: 'laboratory.view_dashboard' },
+      { label: 'Worksheets', href: '/laboratory/worksheets', icon: FileSpreadsheet, actionKey: 'laboratory.view_dashboard' },
+      { label: 'Reflex Testing', href: '/laboratory/reflex', icon: Repeat2, actionKey: 'laboratory.view_dashboard' },
+      { label: 'Critical Values', href: '/laboratory/critical-values', icon: BellRing, actionKey: 'laboratory.view_dashboard' },
       { label: 'EQA / PT', href: '/laboratory/qc/eqa', icon: Award, actionKey: 'laboratory.view_dashboard' },
       { label: 'Settings', href: '/laboratory/settings', icon: Settings, actionKey: 'laboratory.view_dashboard' },
     ],

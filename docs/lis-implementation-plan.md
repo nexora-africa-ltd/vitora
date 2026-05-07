@@ -291,11 +291,11 @@ New Models:
 | Phase | Effort | Impact | Priority | Prerequisite |
 |-------|--------|--------|----------|--------------|
 | L1 (QC) | 3 sprints | High (accreditation) | ✅ Done | None |
-| L2 (Delta/Auto-verify) | 2 sprints | High (efficiency) | P0 — Next | None |
+| L2 (Delta/Auto-verify) | 2 sprints | High (efficiency) | ✅ Done | None |
 | L3 (Analyzer Interface) | 2 sprints | Medium (automation) | P2 | L1 (QC validates results) |
 | L4 (Microbiology) | 2 sprints | Medium (completeness) | ✅ Done | None |
-| L5 (Reporting) | 1 sprint | Medium (management) | P1 | L1 + L2 |
-| L6 (Advanced) | 1 sprint | Low (differentiator) | P3 | L2 |
+| L5 (Reporting) | 1 sprint | Medium (management) | ✅ Done | L1 + L2 |
+| L6 (Advanced) | 1 sprint | Low (differentiator) | ✅ Done | L2 |
 
 ---
 
