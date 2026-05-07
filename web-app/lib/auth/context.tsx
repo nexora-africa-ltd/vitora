@@ -19,6 +19,7 @@ export interface FacilityModules {
   mortuary: boolean;
   blood_bank: boolean;
   inventory: boolean;
+  lis_standalone: boolean;
 }
 
 // User's facility info included in auth response

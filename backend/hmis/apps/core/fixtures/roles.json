@@ -949,6 +949,20 @@
           "delete": true,
           "manage_dialysis": true,
           "perform_dialysis": true
+        },
+        "WalkInPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ExternalOrderRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true,
+          "accept_order": true,
+          "reject_order": true
         }
       },
       "hierarchy_level": 0,
@@ -2948,6 +2962,18 @@
           "update": true,
           "delete": false,
           "issue_blood_unit": true
+        },
+        "WalkInPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalOrderRequest": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 4,
@@ -4490,6 +4516,62 @@
           "update": true,
           "delete": false,
           "issue_blood_unit": true
+        },
+        "WalkInPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ExternalOrderRequest": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "accept_order": true,
+          "reject_order": true
+        },
+        "QCMaterial": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "QCLot": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "QCResult": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ReflexRule": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "CriticalValueRange": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "AutoVerifyRule": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "DeltaCheckRule": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
         }
       },
       "hierarchy_level": 3,
@@ -4560,6 +4642,57 @@
           "read": true,
           "update": true,
           "delete": false
+        },
+        "WalkInPatient": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false
+        },
+        "ExternalOrderRequest": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "accept_order": true,
+          "reject_order": true
+        },
+        "QCMaterial": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "QCLot": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "QCResult": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "ReflexRule": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "CriticalValueRange": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "CriticalValueNotification": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "acknowledge": true
         }
       },
       "hierarchy_level": 2,
@@ -4649,6 +4782,12 @@
           "update": true,
           "delete": false,
           "issue_blood_unit": true
+        },
+        "WalkInPatient": {
+          "create": true,
+          "read": true,
+          "update": false,
+          "delete": false
         }
       },
       "hierarchy_level": 5,
@@ -5790,6 +5929,163 @@
       "is_active": true,
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 36,
+    "fields": {
+      "name": "LIS Administrator"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 36,
+    "fields": {
+      "code": "LIS_ADMIN",
+      "name": "LIS Administrator",
+      "description": "Administrator for standalone LIS deployments. Full access to all laboratory features including walk-in registration, external orders, QC, test catalog management, and reporting.",
+      "category": "TECHNICAL",
+      "scope": "FACILITY",
+      "organization": null,
+      "facility": null,
+      "hierarchy_level": 2,
+      "parent_role": null,
+      "django_group": 36,
+      "requires_license": false,
+      "license_body": "",
+      "permissions_matrix": {
+        "Patient": {
+          "create": false,
+          "read": true,
+          "update": false,
+          "delete": false,
+          "view_sensitive": false
+        },
+        "LabOrder": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "LabResult": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "DiagnosticReport": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Specimen": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "Instrument": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "TestCatalog": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "WalkInPatient": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ExternalOrderRequest": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "accept_order": true,
+          "reject_order": true
+        },
+        "QCMaterial": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "QCLot": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "QCResult": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": false
+        },
+        "EQASurvey": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "ReflexRule": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "CriticalValueRange": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "CriticalValueNotification": {
+          "create": false,
+          "read": true,
+          "update": true,
+          "delete": false,
+          "acknowledge": true
+        },
+        "WorksheetTemplate": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "LabelTemplate": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "InstrumentChannel": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "AutoVerifyRule": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        },
+        "DeltaCheckRule": {
+          "create": true,
+          "read": true,
+          "update": true,
+          "delete": true
+        }
+      }
     }
   }
 ]
