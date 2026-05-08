@@ -52,8 +52,8 @@ def generate_lab_order_number():
     return f"{prefix}{sequence:04d}"
 
 
-class TestCatalog(models.Model):
-    """Laboratory test master catalog."""
+class TestCatalog(FacilityScopedModel):
+    """Laboratory test catalog, scoped per facility."""
 
     TEST_CATEGORIES = [
         ("HEMATOLOGY", "Hematology"),
@@ -91,7 +91,7 @@ class TestCatalog(models.Model):
     ]
 
     # Identity
-    code = models.CharField(max_length=50, unique=True, help_text="Internal test code")
+    code = models.CharField(max_length=50, help_text="Internal test code")
     name = models.CharField(max_length=200, help_text="Full test name")
     short_name = models.CharField(max_length=50, help_text="Test abbreviation")
     loinc_code = models.CharField(
@@ -150,6 +150,12 @@ class TestCatalog(models.Model):
             models.Index(fields=["code"]),
             models.Index(fields=["loinc_code"]),
             models.Index(fields=["category"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facility", "code"],
+                name="unique_test_code_per_facility",
+            ),
         ]
 
     def __str__(self):
