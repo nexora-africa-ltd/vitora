@@ -27,12 +27,14 @@ import {
   Coffee,
   Settings,
   Trash2,
+  MoreVertical,
+  MessageSquare,
+  ChevronDown,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +65,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from 'sonner';
@@ -81,7 +95,7 @@ import {
   type RosterStaffRow,
 } from '@/lib/documents/print-roster';
 import { CommentThread } from '@/components/comments/comment-thread';
-import { HelpPopover } from '@/components/shared/help-popover';
+
 
 // =============================================================================
 // Constants
@@ -165,6 +179,10 @@ export default function WeeklyRosterPage() {
   // Active paint brush
   const [paintType, setPaintType] = useState<ShiftType>('DAY');
   const [departmentFilter, setDepartmentFilter] = useState('');
+
+  // Mobile day-by-day navigation (< md breakpoint)
+  const [mobileDayIndex, setMobileDayIndex] = useState(() => new Date().getDay()); // 0=Sun
+  const [legendOpen, setLegendOpen] = useState(false);
 
   // Shift comments dialog
   const [commentShift, setCommentShift] = useState<ShiftListItem | null>(null);
@@ -891,128 +909,191 @@ export default function WeeklyRosterPage() {
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
-      <div className="space-y-4">
+      <div className={`space-y-4 ${hasDraftChanges ? 'pb-20' : ''}`}>
         <PageHeader
           title="Weekly Roster"
-          helpContent="Plan shifts for the week ahead. Click cells to assign shift types. Use the paint brush selector to choose a shift type, then click staff×day cells. Save when done. Right-click (or long-press on mobile) any saved shift to add notes/comments."
+          helpContent="Plan shifts for the week ahead. Click cells to assign shift types. Use the paint brush selector to choose a shift type, then click staff×day cells. Save when done. Tap the note icon on any saved shift to add comments."
           actions={
-            <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-              {canManageSchedules && (
-                <>
-                  <QRCodeDisplay />
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleAutoFill}
-                          disabled={staffList.length === 0}
-                        >
-                          <Wand2 className="h-4 w-4 mr-1" />
-                          <span className="hidden sm:inline">Auto-Fill</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          {(schedulingSettings?.active_shift_types?.length ?? 0) > 0
-                            ? `Fill all active shift types (${schedulingSettings!.active_shift_types.join(', ')}), max ${maxDaysPerStaff} days/staff`
-                            : `Fill empty cells with the selected shift type (max ${maxDaysPerStaff} days/staff)`
-                          }
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handlePrint}
-                disabled={staffList.length === 0}
-              >
-                <Printer className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
-              {canManageSchedules && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      {clearRosterMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 mr-1" />
-                      )}
-                      <span className="hidden sm:inline">Clear Week</span>
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Clear this week&apos;s roster?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will delete all <strong>scheduled</strong> shifts for {weekLabel}.
-                        Active, completed, and cancelled shifts will not be affected.
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => clearRosterMutation.mutate()}
-                        className="bg-destructive text-white hover:bg-destructive/90"
-                      >
-                        Clear Roster
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-              {canManageSchedules && (
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href="/scheduling/roster/settings">
-                          <Settings className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Roster Settings & Staff Constraints</p></TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              {canManageSchedules && hasDraftChanges && (
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* === Desktop: full button row (hidden on mobile) === */}
+              <div className="hidden md:flex items-center gap-2">
+                {canManageSchedules && (
+                  <>
+                    <QRCodeDisplay />
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleAutoFill}
+                            disabled={staffList.length === 0}
+                          >
+                            <Wand2 className="h-4 w-4 mr-1" />
+                            Auto-Fill
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            {(schedulingSettings?.active_shift_types?.length ?? 0) > 0
+                              ? `Fill all active shift types (${schedulingSettings!.active_shift_types.join(', ')}), max ${maxDaysPerStaff} days/staff`
+                              : `Fill empty cells with the selected shift type (max ${maxDaysPerStaff} days/staff)`
+                            }
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setDraft(new Map())}
+                  onClick={handlePrint}
+                  disabled={staffList.length === 0}
                 >
-                  <Eraser className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Discard</span>
+                  <Printer className="h-4 w-4 mr-1" />
+                  Print
                 </Button>
-              )}
-              {canManageSchedules && (
-                <Button
-                  size="sm"
-                  onClick={() => saveMutation.mutate()}
-                  disabled={!hasDraftChanges || saveMutation.isPending}
-                >
-                  {saveMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-1" />
-                  )}
-                  <span className="hidden sm:inline">
+                {canManageSchedules && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        {clearRosterMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-1" />
+                        )}
+                        Clear Week
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Clear this week&apos;s roster?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will delete all <strong>scheduled</strong> shifts for {weekLabel}.
+                          Active, completed, and cancelled shifts will not be affected.
+                          This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => clearRosterMutation.mutate()}
+                          className="bg-destructive text-white hover:bg-destructive/90"
+                        >
+                          Clear Roster
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                {canManageSchedules && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href="/scheduling/roster/settings">
+                            <Settings className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p>Roster Settings & Staff Constraints</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {canManageSchedules && hasDraftChanges && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDraft(new Map())}
+                  >
+                    <Eraser className="h-4 w-4 mr-1" />
+                    Discard
+                  </Button>
+                )}
+                {canManageSchedules && (
+                  <Button
+                    size="sm"
+                    onClick={() => saveMutation.mutate()}
+                    disabled={!hasDraftChanges || saveMutation.isPending}
+                  >
+                    {saveMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-1" />
+                    )}
                     Save Roster{hasDraftChanges ? ` (${draft.size})` : ''}
-                  </span>
-                  <span className="sm:hidden">Save</span>
-                </Button>
-              )}
+                  </Button>
+                )}
+              </div>
+
+              {/* === Mobile: Save + Settings + overflow menu (shown below md) === */}
+              <div className="flex md:hidden items-center gap-1.5">
+                {canManageSchedules && (
+                  <Button
+                    size="sm"
+                    onClick={() => saveMutation.mutate()}
+                    disabled={!hasDraftChanges || saveMutation.isPending}
+                  >
+                    {saveMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-1" />
+                    )}
+                    Save{hasDraftChanges ? ` (${draft.size})` : ''}
+                  </Button>
+                )}
+                {canManageSchedules && (
+                  <Button size="icon" variant="outline" className="h-8 w-8" asChild>
+                    <Link href="/scheduling/roster/settings">
+                      <Settings className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="outline" className="h-8 w-8">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {canManageSchedules && (
+                      <DropdownMenuItem onClick={handleAutoFill} disabled={staffList.length === 0}>
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        Auto-Fill
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={handlePrint} disabled={staffList.length === 0}>
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print
+                    </DropdownMenuItem>
+                    {canManageSchedules && (
+                      <>
+                        <DropdownMenuSeparator />
+                        {hasDraftChanges && (
+                          <DropdownMenuItem onClick={() => setDraft(new Map())}>
+                            <Eraser className="h-4 w-4 mr-2" />
+                            Discard Changes
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => { if (existingShifts.size > 0) clearRosterMutation.mutate(); }}
+                          disabled={existingShifts.size === 0 || clearRosterMutation.isPending}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Clear Week
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           }
         />
@@ -1035,13 +1116,13 @@ export default function WeeklyRosterPage() {
             </Button>
           </div>
 
-          {/* Paint Brush Selector + Department */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Paint Brush Selector + Department (desktop) */}
+          <div className="hidden md:flex items-center gap-2 flex-wrap">
             {canManageSchedules && (
               <>
                 <span className="text-xs text-muted-foreground shrink-0">Paint:</span>
                 <Select value={paintType} onValueChange={(v) => setPaintType(v as ShiftType)}>
-                  <SelectTrigger className="w-[100px] sm:w-[160px] h-8 text-xs">
+                  <SelectTrigger className="w-[160px] h-8 text-xs">
                     <SelectValue>
                       {(() => {
                         const st = SHIFT_MAP[paintType];
@@ -1072,15 +1153,15 @@ export default function WeeklyRosterPage() {
                           {st.icon}
                           <span>{st.label}</span>
                         </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </>
             )}
 
             <Select value={departmentFilter || '_none'} onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}>
-              <SelectTrigger className="w-[100px] sm:w-[130px] h-8 text-xs">
+              <SelectTrigger className="w-[130px] h-8 text-xs">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
@@ -1096,7 +1177,7 @@ export default function WeeklyRosterPage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Select value={String(maxDaysPerStaff)} onValueChange={(v) => setMaxDaysPerStaff(Number(v))}>
-                      <SelectTrigger className="w-[65px] sm:w-[80px] h-8 text-xs">
+                      <SelectTrigger className="w-[80px] h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1111,10 +1192,37 @@ export default function WeeklyRosterPage() {
               </TooltipProvider>
             )}
           </div>
+
+          {/* Filters (mobile only) — stacked vertically */}
+          <div className="flex md:hidden items-center gap-2">
+            <Select value={departmentFilter || '_none'} onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}>
+              <SelectTrigger className="w-[110px] h-8 text-xs">
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">All Depts</SelectItem>
+                {departments.map((d) => (
+                  <SelectItem key={d.name} value={d.name}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {canManageSchedules && (
+              <Select value={String(maxDaysPerStaff)} onValueChange={(v) => setMaxDaysPerStaff(Number(v))}>
+                <SelectTrigger className="w-[75px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[3, 4, 5, 6, 7].map((n) => (
+                    <SelectItem key={n} value={String(n)}>{n} days</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+        {/* Legend — collapsible on mobile, inline on desktop */}
+        <div className="hidden md:flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1142,13 +1250,40 @@ export default function WeeklyRosterPage() {
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p className="font-medium">{st.label}{st.isOff ? '' : ` Shift`}</p>
+                  <p className="font-medium">{st.label}{st.isOff ? '' : ' Shift'}</p>
                   {!st.isOff && <p className="text-muted-foreground">{st.start} – {st.end}</p>}
                   {st.isOff && <p className="text-muted-foreground">Non-working</p>}
                 </TooltipContent>
               </Tooltip>
             ))}
           </TooltipProvider>
+        </div>
+        <div className="md:hidden">
+          <Collapsible open={legendOpen} onOpenChange={setLegendOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
+                <ChevronDown className={`h-3 w-3 transition-transform ${legendOpen ? 'rotate-180' : ''}`} />
+                Shift legend
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="flex items-center gap-2.5 flex-wrap text-xs text-muted-foreground pt-1 pb-2">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 rounded border-2 border-dashed border-primary/50 bg-primary/5" />
+                  Unsaved
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 rounded bg-muted border border-border" />
+                  Saved
+                </span>
+                {SHIFT_TYPES.map((st) => (
+                  <span key={st.value} className="flex items-center gap-1">
+                    {st.icon} {st.label}
+                  </span>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {/* Cross-facility conflicts banner */}
@@ -1167,15 +1302,9 @@ export default function WeeklyRosterPage() {
           </div>
         )}
 
-        {/* Roster Grid */}
-        <Card>
+        {/* Roster Grid — Desktop (md+) */}
+        <Card className="hidden md:block">
           <CardContent className="p-0">
-            <div className="flex items-center justify-end px-3 pt-2">
-              <HelpPopover
-                content="Right-click (or long-press on mobile) any saved shift to add notes and comments."
-                size="sm"
-              />
-            </div>
             {isLoading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1226,16 +1355,15 @@ export default function WeeklyRosterPage() {
                             <span className="text-xs font-medium truncate">{staff.name}</span>
                           </div>
                         </td>
-                        {weekDates.map((date, i) => {
+                        {weekDates.map((date) => {
                           const cell = getCellState(staff.id, date);
                           const isToday = date === today;
                           const shiftInfo = cell.type ? SHIFT_MAP[cell.type] : null;
                           const conflict = conflictMap.get(cellKey(staff.id, date));
-
                           const savedShift = existingShifts.get(cellKey(staff.id, date));
                           const hasSavedShift = !!savedShift && !cell.isDraft && !cell.isRemoval;
 
-                          const cellContent = (
+                          return (
                             <td
                               key={date}
                               className={`px-1 py-1 text-center ${canManageSchedules ? 'cursor-pointer' : ''} transition-colors ${
@@ -1255,7 +1383,7 @@ export default function WeeklyRosterPage() {
                                     } ${cell.isDraft ? 'border-dashed border-2 border-primary/50' : ''}`}
                                   >
                                     {shiftInfo.icon}
-                                    <span className="hidden sm:inline">{shiftInfo.short}</span>
+                                    <span>{shiftInfo.short}</span>
                                   </div>
                                 ) : cell.isRemoval ? (
                                   <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] text-destructive/60 border border-dashed border-destructive/30">
@@ -1264,7 +1392,6 @@ export default function WeeklyRosterPage() {
                                 ) : (
                                   <div className="h-6 w-full rounded hover:bg-muted/60 transition-colors" />
                                 )}
-                                {/* Comment indicator dot */}
                                 {savedShift && (savedShift.comments_count ?? 0) > 0 && (
                                   <span className="absolute -bottom-0.5 -left-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-blue-500 text-white text-[7px] font-bold" title={`${savedShift.comments_count} note(s)`}>
                                     {savedShift.comments_count}
@@ -1291,8 +1418,6 @@ export default function WeeklyRosterPage() {
                               </div>
                             </td>
                           );
-
-                          return cellContent;
                         })}
                       </tr>
                     ))}
@@ -1303,9 +1428,190 @@ export default function WeeklyRosterPage() {
           </CardContent>
         </Card>
 
+        {/* Roster — Mobile day-by-day card layout (< md) */}
+        <div className="md:hidden">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading roster...
+            </div>
+          ) : staffList.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm font-medium">No staff resources found</p>
+              <p className="text-xs mt-1">Sync staff profiles on the Resources page first.</p>
+            </div>
+          ) : (
+            <>
+              {/* Mobile day navigation */}
+              <div className="flex items-center justify-between mb-3">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
+                  onClick={() => setMobileDayIndex((prev) => (prev > 0 ? prev - 1 : 6))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="text-center">
+                  <div className={`text-sm font-semibold ${weekDates[mobileDayIndex] === today ? 'text-primary' : ''}`}>
+                    {DAY_LABELS_FULL[mobileDayIndex]}
+                  </div>
+                  <div className={`text-xs ${weekDates[mobileDayIndex] === today ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {(() => {
+                      const d = new Date(weekDates[mobileDayIndex]! + 'T00:00:00');
+                      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    })()}
+                    {weekDates[mobileDayIndex] === today && (
+                      <span className="ml-1.5 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Today</span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
+                  onClick={() => setMobileDayIndex((prev) => (prev < 6 ? prev + 1 : 0))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Day dots navigation */}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                {weekDates.map((date, i) => (
+                  <button
+                    key={date}
+                    onClick={() => setMobileDayIndex(i)}
+                    className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${
+                      i === mobileDayIndex
+                        ? 'bg-primary text-primary-foreground'
+                        : date === today
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <span className="text-[10px] font-medium">{DAY_LABELS[i]}</span>
+                    <span className="text-[10px]">{formatDateShort(date)}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Staff cards for selected day */}
+              <div className="space-y-1.5">
+                {staffList.map((staff) => {
+                  const date = weekDates[mobileDayIndex]!;
+                  const cell = getCellState(staff.id, date);
+                  const shiftInfo = cell.type ? SHIFT_MAP[cell.type] : null;
+                  const conflict = conflictMap.get(cellKey(staff.id, date));
+                  const savedShift = existingShifts.get(cellKey(staff.id, date));
+                  const hasSavedShift = !!savedShift && !cell.isDraft && !cell.isRemoval;
+
+                  return (
+                    <div
+                      key={staff.id}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
+                        canManageSchedules ? 'cursor-pointer active:bg-muted/80' : ''
+                      } ${conflict ? 'border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-950/10' : 'bg-card'}`}
+                      onClick={() => handleCellClick(staff.id, date)}
+                    >
+                      {/* Avatar */}
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold">
+                        {staff.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                      </div>
+
+                      {/* Name */}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium truncate block">{staff.name}</span>
+                        {conflict && (
+                          <span className="text-[10px] text-orange-600 dark:text-orange-400">
+                            Conflict: {conflict.other_facility.name}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Shift badge + actions */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {cell.type && shiftInfo ? (
+                          <div
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border ${
+                              shiftInfo.color
+                            } ${cell.isDraft ? 'border-dashed border-2 border-primary/50' : ''}`}
+                          >
+                            {shiftInfo.icon}
+                            <span>{shiftInfo.label}</span>
+                          </div>
+                        ) : cell.isRemoval ? (
+                          <div className="inline-flex items-center px-2.5 py-1 rounded text-xs text-destructive/60 border border-dashed border-destructive/30">
+                            Removed
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground/50 px-2.5 py-1">—</div>
+                        )}
+
+                        {/* Note icon — explicit button for mobile */}
+                        {hasSavedShift && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCommentShift(savedShift);
+                            }}
+                            className="flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors relative"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                            {(savedShift.comments_count ?? 0) > 0 && (
+                              <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-white text-[8px] font-bold">
+                                {savedShift.comments_count}
+                              </span>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Mobile sticky paint bar */}
+              {canManageSchedules && (
+                <div className="sticky bottom-0 z-10 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-sm border-t mt-3">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    <span className="text-[10px] text-muted-foreground shrink-0 mr-1">Paint:</span>
+                    {SHIFT_TYPES.filter((st) => !st.isOff).map((st) => (
+                      <button
+                        key={st.value}
+                        onClick={() => setPaintType(st.value)}
+                        className={`shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-medium border transition-all ${
+                          st.color
+                        } ${paintType === st.value ? 'ring-2 ring-primary ring-offset-1 scale-105' : 'opacity-70'}`}
+                      >
+                        {st.icon}
+                        <span>{st.short}</span>
+                      </button>
+                    ))}
+                    <div className="w-px h-5 bg-border shrink-0 mx-0.5" />
+                    {SHIFT_TYPES.filter((st) => st.isOff).map((st) => (
+                      <button
+                        key={st.value}
+                        onClick={() => setPaintType(st.value)}
+                        className={`shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-medium border transition-all ${
+                          st.color
+                        } ${paintType === st.value ? 'ring-2 ring-primary ring-offset-1 scale-105' : 'opacity-70'}`}
+                      >
+                        {st.icon}
+                        <span>{st.short}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         {/* Summary bar */}
         {canManageSchedules && hasDraftChanges && (
-          <div className="sticky bottom-4 z-20">
+          <div className="sticky bottom-14 md:bottom-4 z-20">
             <Card className="border-primary/20 shadow-lg">
               <CardContent className="py-3 px-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2 text-sm">
