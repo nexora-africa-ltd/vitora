@@ -87,7 +87,7 @@ def sample_encounter(sample_patient, authenticated_user, sample_facility):
 
 
 @pytest.fixture
-def sample_test_catalog(db):
+def sample_test_catalog(db, sample_facility, sample_organization):
     """Create sample test catalog entries."""
     tests = []
     tests.append(
@@ -99,6 +99,8 @@ def sample_test_catalog(db):
             specimen_type="BLOOD",
             result_type="PANEL",
             cost=Decimal("500.00"),
+            facility=sample_facility,
+            organization=sample_organization,
         )
     )
     tests.append(
@@ -112,6 +114,8 @@ def sample_test_catalog(db):
             result_unit="mmol/L",
             normal_range_male="3.9-7.8",
             cost=Decimal("150.00"),
+            facility=sample_facility,
+            organization=sample_organization,
         )
     )
     return tests

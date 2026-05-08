@@ -368,7 +368,7 @@ def _notify_prescription_created(instance):
             return
 
         pharmacists = User.objects.filter(
-            staff_profile__facilities__id=facility_id,
+            staff_profile__primary_facility_id=facility_id,
             staff_profile__primary_role__code__in=["PHARMACIST", "PHARMACY_TECH"],
             is_active=True,
         ).distinct()

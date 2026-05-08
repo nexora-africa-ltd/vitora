@@ -46,8 +46,8 @@ class TestTestCatalog:
         assert test.is_active is True
         assert test.sha_claimable is True
 
-    def test_code_uniqueness(self):
-        """Test code should be unique."""
+    def test_code_uniqueness(self, sample_facility, sample_organization):
+        """Test code should be unique within a facility."""
         TestCatalog.objects.create(
             code="RBS",
             name="Random Blood Sugar",
@@ -55,15 +55,19 @@ class TestTestCatalog:
             category="CHEMISTRY",
             specimen_type="BLOOD",
             result_type="NUMERIC",
+            facility=sample_facility,
+            organization=sample_organization,
         )
         with pytest.raises(Exception):  # Integrity error
             TestCatalog.objects.create(
-                code="RBS",  # Duplicate
+                code="RBS",  # Duplicate within same facility
                 name="Another Test",
                 short_name="RBS2",
                 category="CHEMISTRY",
                 specimen_type="BLOOD",
                 result_type="NUMERIC",
+                facility=sample_facility,
+                organization=sample_organization,
             )
 
     def test_loinc_code_assignment(self):
