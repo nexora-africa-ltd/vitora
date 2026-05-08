@@ -171,10 +171,7 @@ export const worksheetsApi = {
     });
   },
 
-  async markPrintJobPrinted(id: number): Promise<LabelPrintJob> {
-    const response = await apiClient.post(`${BASE}/labels/jobs/${id}/mark_printed/`);
-    return parseResponse(LabelPrintJobSchema, response.data, {
-      context: 'worksheetsApi.markPrintJobPrinted',
-    });
+  async markPrintJobPrinted(id: number): Promise<void> {
+    await apiClient.post(`${BASE}/labels/jobs/${id}/mark_printed/`);
   },
 };

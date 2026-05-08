@@ -19,7 +19,6 @@ from .models import (
     ReferralLab,
     ResultCommentTemplate,
     ResultValidation,
-    SampleLabelTemplate,
     Specimen,
     SpecimenRejectionReason,
     TestCatalog,
@@ -1283,31 +1282,6 @@ class ReferralLabSerializer(serializers.ModelSerializer):
             "is_active",
         ]
         read_only_fields = ["id"]
-
-
-class SampleLabelTemplateSerializer(serializers.ModelSerializer):
-    label_size_display = serializers.CharField(source="get_label_size_display", read_only=True)
-
-    class Meta:
-        model = SampleLabelTemplate
-        fields = [
-            "id",
-            "name",
-            "label_size",
-            "label_size_display",
-            "include_barcode",
-            "include_patient_name",
-            "include_mrn",
-            "include_dob",
-            "include_collection_date",
-            "include_test_name",
-            "include_specimen_type",
-            "include_priority",
-            "copies_per_specimen",
-            "is_default",
-            "is_active",
-        ]
-        read_only_fields = ["id", "label_size_display"]
 
 
 class LabBarcodeConfigSerializer(serializers.ModelSerializer):

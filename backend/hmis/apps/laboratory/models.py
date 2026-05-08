@@ -2171,46 +2171,6 @@ class ReferralLab(FacilityScopedModel):
         return self.name
 
 
-class SampleLabelTemplate(FacilityScopedModel):
-    """Configurable label templates for specimen containers."""
-
-    class LabelSize(models.TextChoices):
-        SMALL = "SMALL", "Small (25×10mm)"
-        MEDIUM = "MEDIUM", "Medium (50×25mm)"
-        LARGE = "LARGE", "Large (75×25mm)"
-
-    name = models.CharField(max_length=100)
-    label_size = models.CharField(
-        max_length=10, choices=LabelSize.choices, default=LabelSize.MEDIUM
-    )
-    include_barcode = models.BooleanField(default=True)
-    include_patient_name = models.BooleanField(default=True)
-    include_mrn = models.BooleanField(default=True)
-    include_dob = models.BooleanField(default=False)
-    include_collection_date = models.BooleanField(default=True)
-    include_test_name = models.BooleanField(default=True)
-    include_specimen_type = models.BooleanField(default=True)
-    include_priority = models.BooleanField(default=False)
-    copies_per_specimen = models.PositiveIntegerField(default=1)
-    is_default = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-
-    class Meta:
-        verbose_name = "Sample Label Template"
-        verbose_name_plural = "Sample Label Templates"
-        ordering = ["-is_default", "name"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["facility"],
-                condition=models.Q(is_default=True),
-                name="one_default_label_template_per_facility",
-            ),
-        ]
-
-    def __str__(self):
-        return f"{self.name} ({self.get_label_size_display()})"
-
-
 class LabBarcodeConfig(FacilityScopedModel):
     """Facility-level barcode generation configuration."""
 

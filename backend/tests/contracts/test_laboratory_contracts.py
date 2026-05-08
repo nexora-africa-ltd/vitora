@@ -42,7 +42,6 @@ from hmis.apps.laboratory.serializers import (
     ResultCommentTemplateSerializer,
     ResultValidationCreateSerializer,
     ResultValidationSerializer,
-    SampleLabelTemplateSerializer,
     SpecimenRejectionReasonSerializer,
     SpecimenSerializer,
     TechnicianSerializer,
@@ -634,28 +633,6 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "validated_by_name",
                 "validation_type",
                 "validation_type_display",
-            }
-        ),
-    ),
-    (
-        SampleLabelTemplateSerializer,
-        frozenset(
-            {
-                "copies_per_specimen",
-                "id",
-                "include_barcode",
-                "include_collection_date",
-                "include_dob",
-                "include_mrn",
-                "include_patient_name",
-                "include_priority",
-                "include_specimen_type",
-                "include_test_name",
-                "is_active",
-                "is_default",
-                "label_size",
-                "label_size_display",
-                "name",
             }
         ),
     ),

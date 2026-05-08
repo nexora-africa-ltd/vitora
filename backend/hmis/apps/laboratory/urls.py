@@ -25,7 +25,6 @@ from .views import (
     PatientLabResultViewSet,
     ReferralLabViewSet,
     ResultCommentTemplateViewSet,
-    SampleLabelTemplateViewSet,
     SpecimenRejectionReasonViewSet,
     SpecimenViewSet,
     TestCatalogViewSet,
@@ -50,7 +49,6 @@ router.register(
     r"settings/comment-templates", ResultCommentTemplateViewSet, basename="comment-template"
 )
 router.register(r"settings/referral-labs", ReferralLabViewSet, basename="referral-lab")
-router.register(r"settings/label-templates", SampleLabelTemplateViewSet, basename="label-template")
 router.register(r"settings/barcode-config", LabBarcodeConfigViewSet, basename="barcode-config")
 router.register(r"settings/workflow", LabWorkflowSettingsViewSet, basename="workflow-settings")
 
