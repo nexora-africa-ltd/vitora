@@ -24,19 +24,20 @@ export type ReflexExecutionStatus =
 
 export interface ReflexRule {
   id: number;
-  name: string;
+  name?: string;
   trigger_test: number;
   trigger_test_name: string;
   trigger_test_code: string;
   operator: ReflexOperator;
   threshold_value: number | null;
-  threshold_value_high: number | null;
-  threshold_text: string;
+  threshold_high: number | null;
+  threshold_text?: string;
+  text_value?: string;
   reflex_test: number;
   reflex_test_name: string;
   reflex_test_code: string;
   action: ReflexAction;
-  priority: number;
+  priority: string;
   is_active: boolean;
   description: string;
   created_at: string;
@@ -44,16 +45,16 @@ export interface ReflexRule {
 }
 
 export interface ReflexRuleCreateData {
-  name: string;
   trigger_test: number;
+  reflex_test: number;
   operator: ReflexOperator;
   threshold_value?: number | null;
-  threshold_value_high?: number | null;
-  threshold_text?: string;
-  reflex_test: number;
+  threshold_high?: number | null;
+  text_value?: string;
   action: ReflexAction;
-  priority?: number;
+  priority?: string;
   description?: string;
+  is_active?: boolean;
 }
 
 // =============================================================================

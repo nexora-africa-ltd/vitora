@@ -61,6 +61,81 @@ class ReflexRuleViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
 
         from hmis.apps.laboratory.models import TestCatalog
 
+        # Catalog metadata for auto-creating missing TestCatalog entries
+        catalog_defaults = {
+            "TSH": {
+                "name": "Thyroid Stimulating Hormone",
+                "short_name": "TSH",
+                "category": "CHEMISTRY",
+                "specimen_type": "SERUM",
+                "result_type": "NUMERIC",
+                "result_unit": "mIU/L",
+            },
+            "FT4": {
+                "name": "Free Thyroxine",
+                "short_name": "FT4",
+                "category": "CHEMISTRY",
+                "specimen_type": "SERUM",
+                "result_type": "NUMERIC",
+                "result_unit": "pmol/L",
+            },
+            "HBsAg": {
+                "name": "Hepatitis B Surface Antigen",
+                "short_name": "HBsAg",
+                "category": "SEROLOGY",
+                "specimen_type": "SERUM",
+                "result_type": "OPTIONS",
+                "result_options": ["positive", "negative"],
+            },
+            "HBeAg": {
+                "name": "Hepatitis B e Antigen",
+                "short_name": "HBeAg",
+                "category": "SEROLOGY",
+                "specimen_type": "SERUM",
+                "result_type": "OPTIONS",
+                "result_options": ["positive", "negative"],
+            },
+            "HIV_SCREEN": {
+                "name": "HIV Screening Test",
+                "short_name": "HIV Screen",
+                "category": "SEROLOGY",
+                "specimen_type": "SERUM",
+                "result_type": "OPTIONS",
+                "result_options": ["reactive", "non-reactive"],
+            },
+            "HIV_CONFIRM": {
+                "name": "HIV Confirmatory Test",
+                "short_name": "HIV Confirm",
+                "category": "SEROLOGY",
+                "specimen_type": "SERUM",
+                "result_type": "OPTIONS",
+                "result_options": ["positive", "negative", "indeterminate"],
+            },
+            "PSA": {
+                "name": "Prostate Specific Antigen",
+                "short_name": "PSA",
+                "category": "CHEMISTRY",
+                "specimen_type": "SERUM",
+                "result_type": "NUMERIC",
+                "result_unit": "ng/mL",
+            },
+            "FREE_PSA": {
+                "name": "Free Prostate Specific Antigen",
+                "short_name": "Free PSA",
+                "category": "CHEMISTRY",
+                "specimen_type": "SERUM",
+                "result_type": "NUMERIC",
+                "result_unit": "ng/mL",
+            },
+        }
+
+        def get_or_create_test(code):
+            test = TestCatalog.objects.filter(code=code).first()
+            if not test:
+                meta = catalog_defaults[code]
+                test = TestCatalog.objects.create(code=code, **meta)
+            return test
+
         defaults = [
             {
                 "trigger_code": "TSH",
@@ -102,10 +177,8 @@ class ReflexRuleViewSet(ReadOnCreateMixin, TenantScopedViewMixin, viewsets.Model
 
         created_count = 0
         for d in defaults:
-            trigger = TestCatalog.objects.filter(code=d["trigger_code"]).first()
-            reflex = TestCatalog.objects.filter(code=d["reflex_code"]).first()
-            if not trigger or not reflex:
-                continue
+            trigger = get_or_create_test(d["trigger_code"])
+            reflex = get_or_create_test(d["reflex_code"])
 
             _, created = ReflexRule.objects.get_or_create(
                 facility=facility,

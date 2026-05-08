@@ -38,7 +38,7 @@ export const CriticalValueRangeSchema = z.object({
   critical_high: coerceDecimal,
   panic_low: coerceDecimal,
   panic_high: coerceDecimal,
-  unit: z.string(),
+  unit: z.string().optional(),
   notification_deadline_minutes: z.number(),
   is_active: z.boolean(),
   created_at: z.string(),
