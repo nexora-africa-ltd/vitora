@@ -1041,7 +1041,7 @@ export default function WeeklyRosterPage() {
               <>
                 <span className="text-xs text-muted-foreground shrink-0">Paint:</span>
                 <Select value={paintType} onValueChange={(v) => setPaintType(v as ShiftType)}>
-                  <SelectTrigger className="w-[160px] h-8 text-xs">
+                  <SelectTrigger className="w-[100px] sm:w-[160px] h-8 text-xs">
                     <SelectValue>
                       {(() => {
                         const st = SHIFT_MAP[paintType];
@@ -1080,7 +1080,7 @@ export default function WeeklyRosterPage() {
             )}
 
             <Select value={departmentFilter || '_none'} onValueChange={(v) => setDepartmentFilter(v === '_none' ? '' : v)}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectTrigger className="w-[100px] sm:w-[130px] h-8 text-xs">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
@@ -1096,7 +1096,7 @@ export default function WeeklyRosterPage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Select value={String(maxDaysPerStaff)} onValueChange={(v) => setMaxDaysPerStaff(Number(v))}>
-                      <SelectTrigger className="w-[80px] h-8 text-xs">
+                      <SelectTrigger className="w-[65px] sm:w-[80px] h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

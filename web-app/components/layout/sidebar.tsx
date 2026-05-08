@@ -791,8 +791,10 @@ export function Sidebar({
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-dvh border-r bg-card/95 backdrop-blur transition-all duration-300 overscroll-contain',
-          effectiveCollapsed ? 'w-20' : 'w-64',
+          'fixed left-0 top-0 z-50 h-dvh border-r bg-card/95 backdrop-blur overscroll-contain',
+          'transition-transform duration-300 ease-out',
+          'w-full xl:w-auto',
+          effectiveCollapsed ? 'xl:w-20' : 'xl:w-64',
           mobileOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-0'
         )}
       >

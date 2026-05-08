@@ -19,6 +19,7 @@ import {
   WorksheetTemplateSchema,
   PaginatedWorksheetTemplateSchema,
   WorksheetSchema,
+  WorksheetListItemSchema,
   PaginatedWorksheetSchema,
   LabelTemplateSchema,
   PaginatedLabelTemplateSchema,
@@ -92,9 +93,9 @@ export const worksheetsApi = {
 
   async markWorksheetPrinted(id: number): Promise<Worksheet> {
     const response = await apiClient.post(`${BASE}/batches/${id}/mark_printed/`);
-    return parseResponse(WorksheetSchema, response.data, {
+    return parseResponse(WorksheetListItemSchema, response.data, {
       context: 'worksheetsApi.markWorksheetPrinted',
-    });
+    }) as unknown as Worksheet;
   },
 
   async exportWorksheetCsv(id: number): Promise<Blob> {

@@ -9,7 +9,7 @@
 
 export type WorksheetGroupBy = 'TEST' | 'PANEL' | 'DEPARTMENT' | 'PRIORITY' | 'SPECIMEN_TYPE';
 export type WorksheetExportFormat = 'CSV' | 'PDF' | 'TSV';
-export type WorksheetStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type WorksheetStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'PRINTED';
 
 export type LabelFormat = 'ZPL' | 'PDF';
 export type LabelType = 'SPECIMEN' | 'ALIQUOT' | 'SLIDE' | 'BLOCK' | 'RACK' | 'TRAY';
@@ -54,27 +54,43 @@ export interface Worksheet {
   template_name: string;
   status: WorksheetStatus;
   title: string;
-  filters_applied: Record<string, unknown>;
+  specimen_count: number;
+  export_format: string;
+  notes: string;
+  generated_by: number;
   generated_by_name: string;
   generated_at: string;
   printed_at: string | null;
-  item_count: number;
   items: WorksheetItem[];
   created_at: string;
   updated_at: string;
 }
 
+export interface WorksheetListItem {
+  id: number;
+  worksheet_number: string;
+  template: number | null;
+  template_name: string;
+  status: WorksheetStatus;
+  title: string;
+  specimen_count: number;
+  export_format: string;
+  generated_by: number;
+  generated_by_name: string;
+  generated_at: string;
+  printed_at: string | null;
+  created_at: string;
+}
+
 export interface WorksheetItem {
   id: number;
-  worksheet: number;
-  lab_order_item: number;
-  test_name: string;
-  patient_name: string;
-  patient_mrn: string;
+  order_item: number | null;
+  specimen: number | null;
   specimen_barcode: string;
+  patient_name: string;
+  test_name: string;
   position: number;
-  result_value: string;
-  result_entered_at: string | null;
+  is_qc_slot: boolean;
 }
 
 export interface WorksheetGenerateData {

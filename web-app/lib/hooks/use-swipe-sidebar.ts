@@ -8,14 +8,12 @@ interface UseSwipeSidebarOptions {
   threshold?: number;
   /** Max vertical drift (px) before the gesture is cancelled. Default: 80 */
   maxVerticalDrift?: number;
-  /** Left-edge zone width (px) where an open-swipe can start. Default: 30 */
-  edgeWidth?: number;
 }
 
 /**
  * Adds touch-swipe gesture support for the mobile sidebar.
  *
- * - Swipe right from the left edge → open sidebar
+ * - Swipe right from anywhere on the screen → open sidebar
  * - Swipe left anywhere (when open) → close sidebar
  *
  * Only active on screens where the hamburger icon is shown (< xl / 1280px).
@@ -26,11 +24,9 @@ export function useSwipeSidebar({
   isOpen,
   threshold = 50,
   maxVerticalDrift = 80,
-  edgeWidth = 30,
 }: UseSwipeSidebarOptions) {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
-  const startedInEdge = useRef(false);
 
   useEffect(() => {
     function isDesktop() {
@@ -43,7 +39,6 @@ export function useSwipeSidebar({
       if (!touch) return;
       touchStartX.current = touch.clientX;
       touchStartY.current = touch.clientY;
-      startedInEdge.current = touch.clientX <= edgeWidth;
     }
 
     function handleTouchEnd(e: TouchEvent) {
@@ -57,8 +52,8 @@ export function useSwipeSidebar({
       // Ignore if vertical movement is too large (user is scrolling)
       if (dy > maxVerticalDrift) return;
 
-      // Swipe right → open (must start from left edge)
-      if (!isOpen && dx > threshold && startedInEdge.current) {
+      // Swipe right → open (from anywhere on screen)
+      if (!isOpen && dx > threshold) {
         onOpen();
         return;
       }
@@ -76,5 +71,5 @@ export function useSwipeSidebar({
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isOpen, onOpen, onClose, threshold, maxVerticalDrift, edgeWidth]);
+  }, [isOpen, onOpen, onClose, threshold, maxVerticalDrift]);
 }

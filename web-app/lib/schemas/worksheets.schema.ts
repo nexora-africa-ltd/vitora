@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 export const WorksheetGroupBySchema = z.enum(['TEST', 'PANEL', 'DEPARTMENT', 'PRIORITY', 'SPECIMEN_TYPE']);
 export const WorksheetExportFormatSchema = z.enum(['CSV', 'PDF', 'TSV']);
-export const WorksheetStatusSchema = z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']);
+export const WorksheetStatusSchema = z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'PRINTED']);
 
 export const LabelFormatSchema = z.enum(['ZPL', 'PDF']);
 export const LabelTypeSchema = z.enum(['SPECIMEN', 'ALIQUOT', 'SLIDE', 'BLOCK', 'RACK', 'TRAY']);
@@ -48,15 +48,13 @@ export const PaginatedWorksheetTemplateSchema = z.object({
 
 export const WorksheetItemSchema = z.object({
   id: z.number(),
-  worksheet: z.number(),
-  lab_order_item: z.number(),
-  test_name: z.string(),
-  patient_name: z.string(),
-  patient_mrn: z.string(),
+  order_item: z.number().nullable(),
+  specimen: z.number().nullable(),
   specimen_barcode: z.string(),
+  patient_name: z.string(),
+  test_name: z.string(),
   position: z.number(),
-  result_value: z.string(),
-  result_entered_at: z.string().nullable(),
+  is_qc_slot: z.boolean(),
 });
 
 // =============================================================================
@@ -70,21 +68,39 @@ export const WorksheetSchema = z.object({
   template_name: z.string(),
   status: WorksheetStatusSchema,
   title: z.string(),
-  filters_applied: z.record(z.unknown()),
+  specimen_count: z.number(),
+  export_format: z.string(),
+  notes: z.string(),
+  generated_by: z.number(),
   generated_by_name: z.string(),
   generated_at: z.string(),
   printed_at: z.string().nullable(),
-  item_count: z.number(),
   items: z.array(WorksheetItemSchema),
   created_at: z.string(),
   updated_at: z.string(),
+});
+
+export const WorksheetListItemSchema = z.object({
+  id: z.number(),
+  worksheet_number: z.string(),
+  template: z.number().nullable(),
+  template_name: z.string(),
+  status: WorksheetStatusSchema,
+  title: z.string(),
+  specimen_count: z.number(),
+  export_format: z.string(),
+  generated_by: z.number(),
+  generated_by_name: z.string(),
+  generated_at: z.string(),
+  printed_at: z.string().nullable(),
+  created_at: z.string(),
 });
 
 export const PaginatedWorksheetSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
   previous: z.string().nullable(),
-  results: z.array(WorksheetSchema),
+  results: z.array(WorksheetListItemSchema),
 });
 
 // =============================================================================

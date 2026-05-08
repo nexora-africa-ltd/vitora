@@ -93,12 +93,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
 
               {/* Mobile sidebar overlay */}
-              {mobileSidebarOpen && (
-                <div
-                  className="fixed inset-0 z-40 bg-black/50 xl:hidden"
-                  onClick={closeMobileSidebar}
-                />
-              )}
+              <div
+                className={cn(
+                  'fixed inset-0 z-40 bg-black/50 xl:hidden transition-opacity duration-300 ease-out',
+                  mobileSidebarOpen
+                    ? 'opacity-100 pointer-events-auto'
+                    : 'opacity-0 pointer-events-none'
+                )}
+                onClick={closeMobileSidebar}
+              />
 
               {/* Mobile bottom navigation (Telegram-style) */}
               <MobileBottomNav hidden={mobileSidebarOpen} />
