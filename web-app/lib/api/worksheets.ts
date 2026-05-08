@@ -66,6 +66,11 @@ export const worksheetsApi = {
     await apiClient.delete(`${BASE}/templates/${id}/`);
   },
 
+  async seedDefaultTemplates(): Promise<{ created: number; total: number; message: string }> {
+    const response = await apiClient.post(`${BASE}/templates/seed_defaults/`);
+    return response.data;
+  },
+
   // ===========================================================================
   // Worksheets (Batches)
   // ===========================================================================

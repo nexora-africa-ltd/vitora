@@ -10,6 +10,11 @@ import {
   CheckCircle2,
   Clock,
   Tag,
+  Loader2,
+  Sparkles,
+  Pencil,
+  Trash2,
+  MoreHorizontal,
 } from 'lucide-react';
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -36,8 +41,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { worksheetsApi } from '@/lib/api/worksheets';
-import type { Worksheet, WorksheetTemplate, LabelPrintJob } from '@/lib/types/worksheets';
+import { toast } from 'sonner';
+import type { Worksheet, WorksheetTemplate, WorksheetTemplateCreateData, LabelPrintJob, WorksheetGroupBy, WorksheetExportFormat } from '@/lib/types/worksheets';
 
 // =============================================================================
 // Helpers
@@ -90,11 +114,29 @@ function formatDate(dateStr: string | null) {
 // Page Component
 // =============================================================================
 
+const EMPTY_TEMPLATE_FORM: WorksheetTemplateCreateData = {
+  name: '',
+  description: '',
+  group_by: 'SECTION',
+  section_filter: '',
+  instrument: null,
+  include_qc_slots: false,
+  max_specimens_per_page: 30,
+  default_export_format: 'PDF',
+  columns: [],
+};
+
 export default function WorksheetsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const queryClient = useQueryClient();
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [generateTitle, setGenerateTitle] = useState('');
+
+  // Template CRUD state
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<WorksheetTemplate | null>(null);
+  const [templateForm, setTemplateForm] = useState<WorksheetTemplateCreateData>(EMPTY_TEMPLATE_FORM);
+  const [deleteTemplateId, setDeleteTemplateId] = useState<number | null>(null);
 
   // Queries
   const { data: worksheetsData } = useQuery({
@@ -126,6 +168,76 @@ export default function WorksheetsPage() {
     mutationFn: (id: number) => worksheetsApi.markWorksheetPrinted(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['worksheets'] }),
   });
+
+  const seedDefaultsMutation = useMutation({
+    mutationFn: () => worksheetsApi.seedDefaultTemplates(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['worksheet-templates'] });
+      toast.success(data.message);
+    },
+    onError: () => toast.error('Failed to seed default templates'),
+  });
+
+  const createTemplateMutation = useMutation({
+    mutationFn: (data: WorksheetTemplateCreateData) => worksheetsApi.createTemplate(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worksheet-templates'] });
+      setShowTemplateDialog(false);
+      toast.success('Template created');
+    },
+    onError: () => toast.error('Failed to create template'),
+  });
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<WorksheetTemplateCreateData> }) =>
+      worksheetsApi.updateTemplate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worksheet-templates'] });
+      setShowTemplateDialog(false);
+      toast.success('Template updated');
+    },
+    onError: () => toast.error('Failed to update template'),
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id: number) => worksheetsApi.deleteTemplate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worksheet-templates'] });
+      setDeleteTemplateId(null);
+      toast.success('Template deleted');
+    },
+    onError: () => toast.error('Failed to delete template'),
+  });
+
+  function openCreateTemplate() {
+    setEditingTemplate(null);
+    setTemplateForm(EMPTY_TEMPLATE_FORM);
+    setShowTemplateDialog(true);
+  }
+
+  function openEditTemplate(t: WorksheetTemplate) {
+    setEditingTemplate(t);
+    setTemplateForm({
+      name: t.name,
+      description: t.description,
+      group_by: t.group_by,
+      section_filter: t.section_filter,
+      instrument: t.instrument,
+      include_qc_slots: t.include_qc_slots,
+      max_specimens_per_page: t.max_specimens_per_page,
+      default_export_format: t.default_export_format,
+      columns: t.columns || [],
+    });
+    setShowTemplateDialog(true);
+  }
+
+  function handleTemplateSubmit() {
+    if (editingTemplate) {
+      updateTemplateMutation.mutate({ id: editingTemplate.id, data: templateForm });
+    } else {
+      createTemplateMutation.mutate(templateForm);
+    }
+  }
 
   const worksheets = worksheetsData?.results || [];
   const templates = templatesData?.results || [];
@@ -283,7 +395,7 @@ export default function WorksheetsPage() {
                       >
                         <Download className="h-4 w-4" />
                       </Button>
-                      {item.status !== 'COMPLETED' && item.status !== 'PRINTED' && (
+                      {item.status !== 'CANCELLED' && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -424,74 +536,174 @@ export default function WorksheetsPage() {
           </TabsContent>
 
           <TabsContent value="templates" className="mt-4">
-            <ResponsiveTable
-              data={templates}
-              keyExtractor={(item) => item.id}
-              columns={[
-                {
-                  key: 'name',
-                  header: 'Name',
-                  sortable: true,
-                  cell: (item) => item.name,
-                },
-                {
-                  key: 'group_by',
-                  header: 'Group By',
-                  sortable: true,
-                  cell: (item) => item.group_by.replace('_', ' '),
-                },
-                {
-                  key: 'default_export_format',
-                  header: 'Format',
-                  sortable: true,
-                  cell: (item) => item.default_export_format,
-                  hideOnMobile: true,
-                },
-                {
-                  key: 'page_size',
-                  header: 'Page Size',
-                  sortable: true,
-                  sortType: 'number',
-                  cell: (item) => item.page_size,
-                  hideOnMobile: true,
-                },
-                {
-                  key: 'is_active',
-                  header: 'Active',
-                  sortable: true,
-                  cell: (item) => (
-                    <Badge
-                      className={
-                        item.is_active
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300'
-                      }
-                    >
-                      {item.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  ),
-                },
-              ]}
-              mobileCard={(item) => (
-                <div className="p-3 space-y-1">
-                  <div className="flex justify-between items-center">
-                    <p className="font-medium">{item.name}</p>
-                    <Badge
-                      className={
-                        item.is_active
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300'
-                      }
-                    >
-                      {item.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Group by {item.group_by.replace('_', ' ')} • {item.default_export_format}
-                  </p>
+            {templates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileSpreadsheet className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="text-sm font-medium text-muted-foreground mb-1">No templates yet</p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Seed default lab worksheet templates to get started, or create your own.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => seedDefaultsMutation.mutate()}
+                    disabled={seedDefaultsMutation.isPending}
+                  >
+                    {seedDefaultsMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-2" />
+                    )}
+                    Seed Defaults
+                  </Button>
+                  <Button size="sm" onClick={openCreateTemplate}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Template
+                  </Button>
                 </div>
-              )}
-            />
+              </div>
+            ) : (
+            <>
+              <div className="flex justify-end mb-3">
+                <Button size="sm" onClick={openCreateTemplate}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">New Template</span>
+                  <span className="sm:hidden">New</span>
+                </Button>
+              </div>
+              <ResponsiveTable
+                data={templates}
+                keyExtractor={(item) => item.id}
+                onRowClick={(item) => openEditTemplate(item)}
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Name',
+                    sortable: true,
+                    cell: (item) => (
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        {item.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'group_by',
+                    header: 'Group By',
+                    sortable: true,
+                    cell: (item) => item.group_by.replace('_', ' '),
+                    hideOnMobile: true,
+                  },
+                  {
+                    key: 'section_filter',
+                    header: 'Section',
+                    sortable: true,
+                    cell: (item) => item.section_filter || '—',
+                    hideOnMobile: true,
+                  },
+                  {
+                    key: 'max_specimens_per_page',
+                    header: 'Max/Page',
+                    sortable: true,
+                    sortType: 'number',
+                    cell: (item) => item.max_specimens_per_page,
+                    hideOnMobile: true,
+                  },
+                  {
+                    key: 'is_active',
+                    header: 'Active',
+                    sortable: true,
+                    cell: (item) => (
+                      <Badge
+                        className={
+                          item.is_active
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300'
+                        }
+                      >
+                        {item.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'actions',
+                    header: '',
+                    cell: (item) => (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditTemplate(item)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setDeleteTemplateId(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ),
+                  },
+                ]}
+                mobileCard={(item) => (
+                  <div className="p-3 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{item.name}</p>
+                        {item.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Badge
+                          className={
+                            item.is_active
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300'
+                          }
+                        >
+                          {item.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => e.stopPropagation()}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditTemplate(item)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => setDeleteTemplateId(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Group by {item.group_by.replace('_', ' ')} • {item.default_export_format} • {item.max_specimens_per_page}/page
+                    </p>
+                  </div>
+                )}
+              />
+            </>
+            )}
           </TabsContent>
         </Tabs>
 
@@ -526,6 +738,163 @@ export default function WorksheetsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Create/Edit Template Dialog */}
+        <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingTemplate ? 'Edit Template' : 'New Template'}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              <div>
+                <Label htmlFor="tpl-name">Name *</Label>
+                <Input
+                  id="tpl-name"
+                  value={templateForm.name}
+                  onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
+                  placeholder="e.g., Hematology Worklist"
+                />
+              </div>
+              <div>
+                <Label htmlFor="tpl-desc">Description</Label>
+                <Textarea
+                  id="tpl-desc"
+                  value={templateForm.description || ''}
+                  onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                  placeholder="Brief description of this worksheet template"
+                  rows={2}
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Group By</Label>
+                  <Select
+                    value={templateForm.group_by}
+                    onValueChange={(v) => setTemplateForm({ ...templateForm, group_by: v as WorksheetGroupBy })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SECTION">Section</SelectItem>
+                      <SelectItem value="ANALYZER">Analyzer</SelectItem>
+                      <SelectItem value="PRIORITY">Priority</SelectItem>
+                      <SelectItem value="SPECIMEN_TYPE">Specimen Type</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Export Format</Label>
+                  <Select
+                    value={templateForm.default_export_format || 'PDF'}
+                    onValueChange={(v) => setTemplateForm({ ...templateForm, default_export_format: v as WorksheetExportFormat })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PDF">PDF</SelectItem>
+                      <SelectItem value="CSV">CSV</SelectItem>
+                      <SelectItem value="ZPL">ZPL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="tpl-section">Section Filter</Label>
+                  <Input
+                    id="tpl-section"
+                    value={templateForm.section_filter || ''}
+                    onChange={(e) => setTemplateForm({ ...templateForm, section_filter: e.target.value })}
+                    placeholder="e.g., HEMATOLOGY"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tpl-max">Max Specimens/Page</Label>
+                  <Input
+                    id="tpl-max"
+                    type="number"
+                    min={1}
+                    value={templateForm.max_specimens_per_page || 30}
+                    onChange={(e) => setTemplateForm({ ...templateForm, max_specimens_per_page: parseInt(e.target.value) || 30 })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={templateForm.include_qc_slots || false}
+                  onCheckedChange={(checked) => setTemplateForm({ ...templateForm, include_qc_slots: checked })}
+                />
+                <Label>Include QC slots</Label>
+              </div>
+              <div>
+                <Label className="mb-2 block">Columns</Label>
+                <div className="space-y-2">
+                  {['specimen_barcode', 'patient_name', 'test_name', 'priority', 'collection_time', 'specimen_type', 'section'].map((col) => {
+                    const selected = (templateForm.columns || []).includes(col);
+                    return (
+                      <label key={col} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => {
+                            const current = templateForm.columns || [];
+                            const next = selected
+                              ? current.filter((c) => c !== col)
+                              : [...current, col];
+                            setTemplateForm({ ...templateForm, columns: next });
+                          }}
+                          className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm">{col.replace(/_/g, ' ')}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTemplateDialog(false)} className="w-full sm:w-auto">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleTemplateSubmit}
+                disabled={!templateForm.name || createTemplateMutation.isPending || updateTemplateMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                {(createTemplateMutation.isPending || updateTemplateMutation.isPending) ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                {editingTemplate ? 'Save Changes' : 'Create Template'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Template Confirmation */}
+        <AlertDialog open={deleteTemplateId !== null} onOpenChange={(open) => { if (!open) setDeleteTemplateId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete template?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove the template. Worksheets already generated from it will not be affected.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => { if (deleteTemplateId) deleteTemplateMutation.mutate(deleteTemplateId); }}
+              >
+                {deleteTemplateMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </PullToRefresh>
   );
