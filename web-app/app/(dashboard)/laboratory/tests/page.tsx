@@ -211,20 +211,24 @@ export default function LaboratoryTestsPage() {
               </div>
             ) : errorMessage ? (
               <div className="text-sm text-destructive">{errorMessage}</div>
-            ) : catalogEmpty && canManage ? (
+            ) : catalogEmpty ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <FlaskConical className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-1">No tests in catalog</h3>
                 <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-                  Seed the catalog with 16 essential Kenya laboratory tests (CBC, HIV, Malaria, Urinalysis, etc.) to get started.
+                  {canManage
+                    ? 'Seed the catalog with 16 essential Kenya laboratory tests (CBC, HIV, Malaria, Urinalysis, etc.) to get started.'
+                    : 'No tests have been configured yet. Ask an administrator to seed the test catalog.'}
                 </p>
-                <Button
-                  onClick={() => seedMutation.mutate()}
-                  disabled={seedMutation.isPending}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
-                </Button>
+                {canManage && (
+                  <Button
+                    onClick={() => seedMutation.mutate()}
+                    disabled={seedMutation.isPending}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {seedMutation.isPending ? 'Seeding...' : 'Seed Defaults'}
+                  </Button>
+                )}
               </div>
             ) : (
               <ResponsiveTable
